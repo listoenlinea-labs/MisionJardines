@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Directorio | Misión Jardines</title>
+
+  <style>
+    :root{
+      --bg:#07111f;--bg2:#0d1b2f;--card:rgba(255,255,255,.08);
+      --text:#f4f7fb;--muted:#aebbd0;--accent:#5eead4;--accent2:#60a5fa;
+      --success:#4ade80;--warning:#facc15;--danger:#fb7185;--radius:24px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    body{
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:
+        radial-gradient(circle at top left,rgba(94,234,212,.22),transparent 35%),
+        radial-gradient(circle at 80% 20%,rgba(96,165,250,.22),transparent 35%),
+        linear-gradient(135deg,var(--bg),var(--bg2));
+      color:var(--text);
+      min-height:100vh;
+    }
+
+    header{
+      position:sticky;top:0;z-index:50;
+      backdrop-filter:blur(18px);
+      background:rgba(7,17,31,.82);
+      border-bottom:1px solid rgba(255,255,255,.09);
+    }
+
+    nav{
+      max-width:1450px;margin:auto;padding:16px 24px;
+      display:flex;justify-content:space-between;align-items:center;gap:18px;
+    }
+
+    .brand{display:flex;align-items:center;gap:12px;font-weight:900}
+
+    .logo{
+      width:44px;height:44px;border-radius:15px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:grid;place-items:center;color:#06101e;
+      box-shadow:0 0 30px rgba(94,234,212,.45);
+    }
+
+    .brand small{color:var(--muted);font-weight:500}
+
+    .menu{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+
+    .menu a{
+      color:var(--muted);text-decoration:none;font-size:13px;
+      padding:9px 12px;border-radius:999px;transition:.25s;
+    }
+
+    .menu a:hover,.menu a.active{background:rgba(255,255,255,.1);color:white}
+
+    .hero,.section{max-width:1450px;margin:auto;padding:42px 24px}
+
+    .badge{
+      display:inline-flex;gap:8px;padding:9px 14px;
+      background:rgba(94,234,212,.13);
+      border:1px solid rgba(94,234,212,.35);
+      border-radius:999px;color:#bcfff6;font-size:13px;margin-bottom:20px;
+    }
+
+    h1{font-size:clamp(34px,4vw,58px);line-height:1;letter-spacing:-2px;margin-bottom:18px}
+
+    h1 span{
+      background:linear-gradient(90deg,var(--accent),var(--accent2));
+      -webkit-background-clip:text;color:transparent;
+    }
+
+    .hero p,.section-title p{color:var(--muted);line-height:1.6;max-width:900px;font-size:17px}
+
+    .card{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.11);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:0 15px 45px rgba(0,0,0,.2);
+      backdrop-filter:blur(12px);
+    }
+
+    .section-title{
+      display:flex;justify-content:space-between;align-items:flex-end;
+      gap:20px;margin-bottom:22px;
+    }
+
+    .section-title h2{font-size:30px;letter-spacing:-1px}
+
+    label{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}
+
+    input,select{
+      width:100%;background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      color:white;padding:12px;border-radius:14px;outline:none;font-family:inherit;
+    }
+
+    option{background:#1f2937;color:white}
+
+    .filters{
+      display:grid;
+      grid-template-columns:1.3fr 1fr auto;
+      gap:14px;
+      align-items:end;
+    }
+
+    button,.btn{
+      border:none;cursor:pointer;border-radius:14px;padding:12px 16px;
+      font-weight:800;transition:.25s;text-decoration:none;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    }
+
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06101e}
+    .btn-secondary{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.13)}
+
+    button:hover,.btn:hover{transform:translateY(-2px);filter:brightness(1.08)}
+
+    .directory-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:18px;
+    }
+
+    .person-grid{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:18px;
+    }
+
+    .directory-card{
+      position:relative;
+      overflow:hidden;
+      min-height:250px;
+    }
+
+    .directory-card:after{
+      content:"";
+      position:absolute;
+      right:-50px;
+      top:-50px;
+      width:150px;
+      height:150px;
+      border-radius:50%;
+      background:rgba(255,255,255,.06);
+    }
+
+    .icon{
+      width:54px;
+      height:54px;
+      border-radius:18px;
+      display:grid;
+      place-items:center;
+      font-size:27px;
+      background:linear-gradient(135deg,rgba(94,234,212,.18),rgba(96,165,250,.18));
+      border:1px solid rgba(255,255,255,.12);
+      margin-bottom:16px;
+    }
+
+    .directory-card h3{
+      font-size:20px;
+      margin-bottom:8px;
+      position:relative;
+      z-index:2;
+    }
+
+    .directory-card p{
+      color:var(--muted);
+      line-height:1.5;
+      font-size:14px;
+      margin-bottom:10px;
+      position:relative;
+      z-index:2;
+    }
+
+    .meta{
+      display:grid;
+      gap:7px;
+      margin-top:12px;
+      position:relative;
+      z-index:2;
+    }
+
+    .meta-row{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      color:var(--muted);
+      font-size:13px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      padding-bottom:7px;
+    }
+
+    .meta-row strong{
+      color:white;
+      text-align:right;
+    }
+
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:14px;
+      position:relative;
+      z-index:2;
+    }
+
+    .chip{
+      display:inline-flex;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .servicio{background:rgba(96,165,250,.16);color:#bfdbfe}
+    .comida{background:rgba(250,204,21,.16);color:#fde68a}
+    .emergencia{background:rgba(251,113,133,.16);color:#fda4af}
+    .mesa{background:rgba(94,234,212,.16);color:#99f6e4}
+    .hogar{background:rgba(74,222,128,.16);color:#86efac}
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+      position:relative;
+      z-index:2;
+    }
+
+    .profile{
+      text-align:center;
+      min-height:265px;
+    }
+
+    .avatar{
+      width:76px;
+      height:76px;
+      margin:0 auto 14px;
+      border-radius:24px;
+      display:grid;
+      place-items:center;
+      font-size:32px;
+      font-weight:900;
+      color:#06101e;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      box-shadow:0 0 30px rgba(94,234,212,.28);
+    }
+
+    .profile h3{
+      font-size:18px;
+      margin-bottom:5px;
+    }
+
+    .profile p{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+      margin-bottom:12px;
+    }
+
+    .empty{
+      text-align:center;
+      color:var(--muted);
+      padding:28px;
+      border:1px dashed rgba(255,255,255,.18);
+      border-radius:22px;
+      grid-column:1/-1;
+    }
+
+    footer{
+      padding:50px 24px;text-align:center;color:var(--muted);
+      border-top:1px solid rgba(255,255,255,.08);margin-top:30px;
+    }
+
+    @media(max-width:1200px){
+      .directory-grid{grid-template-columns:repeat(2,1fr)}
+      .person-grid{grid-template-columns:repeat(2,1fr)}
+    }
+
+    @media(max-width:700px){
+      nav{align-items:flex-start;flex-direction:column}
+      .menu{justify-content:flex-start}
+      .filters,.directory-grid,.person-grid{grid-template-columns:1fr}
+      .section-title{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <nav>
+    <div class="brand">
+      <div class="logo">MJ</div>
+      <div>
+        <div>Misión Jardines</div>
+        <small>Directorio vecinal</small>
+      </div>
+    </div>
+
+    <div class="menu">
+      <a href="index.html">Inicio</a>
+      <a href="cuotas.html">Cuotas</a>
+      <a href="mapa.html">Mapa</a>
+      <a href="visitas.html">Visitas</a>
+      <a href="seguridad.html">Seguridad</a>
+      <a href="calendario.html">Calendario</a>
+      <a href="reportes.html">Reportes</a>
+      <a class="active" href="directorio.html">Directorio</a>
+    </div>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="badge">📞 Contactos útiles · Zona 45138 Zapopan</div>
+  <h1>Directorio de <span>Misión Jardines</span></h1>
+  <p>
+    Contactos recomendados para servicios del hogar, mantenimiento, comida cercana,
+    emergencias y comunicación con la mesa directiva del fraccionamiento.
+  </p>
+</section>
+
+<section class="section">
+  <div class="card">
+    <div class="filters">
+      <div>
+        <label>Buscar por nombre, servicio o zona</label>
+        <input id="searchInput" placeholder="Ej. plomero, tacos, jardinero, emergencia" oninput="renderDirectory()">
+      </div>
+
+      <div>
+        <label>Categoría</label>
+        <select id="categoryFilter" onchange="renderDirectory()">
+          <option value="">Todas</option>
+          <option>Servicios del hogar</option>
+          <option>Comida y restaurantes</option>
+          <option>Emergencias</option>
+          <option>Mantenimiento</option>
+          <option>Mesa directiva</option>
+        </select>
+      </div>
+
+      <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-title">
+    <div>
+      <h2>Conoce a tu nueva mesa directiva</h2>
+      <p>
+        Datos de ejemplo para maqueta. Sustituye estos nombres y teléfonos por los reales cuando el fraccionamiento los confirme.
+      </p>
+    </div>
+  </div>
+
+  <div class="person-grid" id="boardGrid"></div>
+</section>
+
+<section class="section">
+  <div class="section-title">
+    <div>
+      <h2>Contactos y recomendaciones</h2>
+      <p>Filtra por categoría para encontrar servicios útiles cerca de Misión Jardines.</p>
+    </div>
+  </div>
+
+  <div class="directory-grid" id="directoryGrid"></div>
+</section>
+
+<footer>
+  Misión Jardines © 2026 — Directorio vecinal y contactos recomendados.
+</footer>
+
+<script>
+  const boardMembers = [
+    {
+      name:"Mariana Torres",
+      role:"Presidenta",
+      phone:"33 4100 2351",
+      house:"MJ-014",
+      emoji:"👩‍💼"
+    },
+    {
+      name:"Eduardo Ramírez",
+      role:"Tesorero",
+      phone:"33 5721 8840",
+      house:"MG-008",
+      emoji:"👨‍💻"
+    },
+    {
+      name:"Claudia Hernández",
+      role:"Secretaria",
+      phone:"33 6902 1475",
+      house:"MZ-021",
+      emoji:"👩‍🏫"
+    },
+    {
+      name:"Raúl Méndez",
+      role:"Vocal de seguridad",
+      phone:"33 8045 9912",
+      house:"ML-006",
+      emoji:"🛡️"
+    },
+    {
+      name:"Patricia Gómez",
+      role:"Vocal de mantenimiento",
+      phone:"33 2368 7744",
+      house:"MR-011",
+      emoji:"🌳"
+    }
+  ];
+
+  const contacts = [
+    {
+      name:"Servicios Ibarra",
+      category:"Servicios del hogar",
+      type:"Plomería / Fontanería",
+      zone:"Zapopan",
+      phone:"Consultar en sitio",
+      description:"Servicio de plomería, fugas de agua/gas, tinacos, calentadores, destapacaños y tuberías.",
+      source:"Referencia pública de servicios de fontanería en Zapopan.",
+      emoji:"🔧",
+      tags:["Plomero","Fugas","Tinacos"]
+    },
+    {
+      name:"Fontanero GDL / Servicio Flores",
+      category:"Servicios del hogar",
+      type:"Fontanería",
+      zone:"Zapopan / GDL",
+      phone:"Consultar en sitio",
+      description:"Servicio de fontanería en Zapopan para desagües, tuberías, gas y reparaciones generales.",
+      source:"Referencia pública de fontaneros en Zapopan.",
+      emoji:"🚿",
+      tags:["Fontanero","Gas","Desagües"]
+    },
+    {
+      name:"Cronoshare Zapopan",
+      category:"Servicios del hogar",
+      type:"Plomeros por cotización",
+      zone:"Zapopan",
+      phone:"Cotización online",
+      description:"Plataforma para pedir cotizaciones de plomeros; útil para comparar precios antes de contratar.",
+      source:"Referencia pública de cotizaciones de plomería en Zapopan.",
+      emoji:"📲",
+      tags:["Cotización","Plomero","Comparar"]
+    },
+    {
+      name:"Maestro Javier",
+      category:"Mantenimiento",
+      type:"Albañilería / Reparaciones",
+      zone:"Zona Misión Jardines",
+      phone:"33 6124 9082",
+      description:"Contacto demo para reparaciones menores, resanes, pintura, banquetas y trabajos generales.",
+      source:"Dato de ejemplo editable.",
+      emoji:"🧱",
+      tags:["Albañil","Pintura","Resanes"]
+    },
+    {
+      name:"Jardinería El Roble",
+      category:"Mantenimiento",
+      type:"Jardinería",
+      zone:"Zapopan Norte",
+      phone:"33 7820 4419",
+      description:"Contacto demo para poda, limpieza de áreas verdes, riego, jardineras y mantenimiento mensual.",
+      source:"Dato de ejemplo editable.",
+      emoji:"🌿",
+      tags:["Jardinero","Poda","Áreas verdes"]
+    },
+    {
+      name:"Electricista Miguel",
+      category:"Servicios del hogar",
+      type:"Electricidad",
+      zone:"Zapopan",
+      phone:"33 9012 3375",
+      description:"Contacto demo para luminarias, contactos, apagadores, centros de carga y fallas básicas.",
+      source:"Dato de ejemplo editable.",
+      emoji:"💡",
+      tags:["Electricista","Luminarias","Contactos"]
+    },
+    {
+      name:"La Ruta del Chilaquil",
+      category:"Comida y restaurantes",
+      type:"Mexicana / Desayunos",
+      zone:"Misión Jardines 45138",
+      phone:"App de delivery",
+      description:"Opción de comida mexicana ubicada dentro/zona Misión Jardines, útil para desayunos o comida rápida.",
+      source:"Referencia pública de delivery en Misión Jardines.",
+      emoji:"🍳",
+      tags:["Chilaquiles","Mexicana","Cercano"]
+    },
+    {
+      name:"El Hangar de Moes",
+      category:"Comida y restaurantes",
+      type:"Mexicana / Económica",
+      zone:"Nuevo México / 45138",
+      phone:"App de delivery",
+      description:"Opción económica de comida mexicana cercana a Nuevo México/Zapopan 45138.",
+      source:"Referencia pública de delivery en zona Nuevo México.",
+      emoji:"🌮",
+      tags:["Mexicana","Económica","Delivery"]
+    },
+    {
+      name:"Tacos de Barbacoa MC",
+      category:"Comida y restaurantes",
+      type:"Tacos / Barbacoa",
+      zone:"45138 Zapopan",
+      phone:"App de delivery",
+      description:"Opción de tacos de barbacoa en la zona 45138, útil para fines de semana o desayunos.",
+      source:"Referencia pública de delivery en zona 45138.",
+      emoji:"🌮",
+      tags:["Tacos","Barbacoa","Cercano"]
+    },
+    {
+      name:"Akari Sushi",
+      category:"Comida y restaurantes",
+      type:"Sushi",
+      zone:"Jardines del Valle 45138",
+      phone:"Redes sociales",
+      description:"Opción de sushi en zona Jardines del Valle / 45138.",
+      source:"Referencia pública en redes sociales.",
+      emoji:"🍣",
+      tags:["Sushi","Comida","Zona 45138"]
+    },
+    {
+      name:"Emergencias 911",
+      category:"Emergencias",
+      type:"Emergencia general",
+      zone:"México",
+      phone:"911",
+      description:"Número nacional para emergencias médicas, seguridad, protección civil o situaciones de riesgo.",
+      source:"Número público de emergencia.",
+      emoji:"🚨",
+      tags:["Emergencia","Policía","Ambulancia"]
+    },
+    {
+      name:"Caseta Misión Jardines",
+      category:"Emergencias",
+      type:"Seguridad interna",
+      zone:"Fraccionamiento",
+      phone:"33 0000 0000",
+      description:"Número demo para caseta. Reemplazar por el teléfono real de vigilancia.",
+      source:"Dato de ejemplo editable.",
+      emoji:"🛡️",
+      tags:["Caseta","Seguridad","Acceso"]
+    },
+    {
+      name:"Administración Misión Jardines",
+      category:"Mesa directiva",
+      type:"Administración vecinal",
+      zone:"Fraccionamiento",
+      phone:"33 1111 1111",
+      description:"Contacto demo para dudas de cuotas, reportes, mantenimiento y comunicación general.",
+      source:"Dato de ejemplo editable.",
+      emoji:"🏡",
+      tags:["Administración","Cuotas","Reportes"]
+    }
+  ];
+
+  function categoryClass(category){
+    if(category === "Comida y restaurantes") return "comida";
+    if(category === "Emergencias") return "emergencia";
+    if(category === "Mesa directiva") return "mesa";
+    if(category === "Mantenimiento") return "hogar";
+    return "servicio";
+  }
+
+  function renderBoard(){
+    const grid = document.getElementById("boardGrid");
+    grid.innerHTML = "";
+
+    boardMembers.forEach(member => {
+      const card = document.createElement("div");
+      card.className = "card profile";
+
+      card.innerHTML = `
+        <div class="avatar">${member.emoji}</div>
+        <h3>${member.name}</h3>
+        <p><strong>${member.role}</strong></p>
+        <p>Casa: ${member.house}</p>
+        <div class="chips" style="justify-content:center">
+          <span class="chip mesa">${member.phone}</span>
+        </div>
+        <div class="actions" style="justify-content:center">
+          <a class="btn btn-secondary" href="tel:${member.phone.replaceAll(" ","")}">Llamar</a>
+          <a class="btn btn-primary" href="https://wa.me/52${member.phone.replaceAll(" ","")}" target="_blank">WhatsApp</a>
+        </div>
+      `;
+
+      grid.appendChild(card);
+    });
+  }
+
+  function renderDirectory(){
+    const grid = document.getElementById("directoryGrid");
+    grid.innerHTML = "";
+
+    const search = document.getElementById("searchInput").value.toLowerCase().trim();
+    const category = document.getElementById("categoryFilter").value;
+
+    const filtered = contacts.filter(contact => {
+      const text = `
+        ${contact.name}
+        ${contact.category}
+        ${contact.type}
+        ${contact.zone}
+        ${contact.phone}
+        ${contact.description}
+        ${contact.tags.join(" ")}
+      `.toLowerCase();
+
+      const matchSearch = !search || text.includes(search);
+      const matchCategory = !category || contact.category === category;
+
+      return matchSearch && matchCategory;
+    });
+
+    if(filtered.length === 0){
+      grid.innerHTML = `<div class="empty">No se encontraron contactos con esos filtros.</div>`;
+      return;
+    }
+
+    filtered.forEach(contact => {
+      const card = document.createElement("article");
+      card.className = "card directory-card";
+
+      const cleanPhone = String(contact.phone).replaceAll(" ","").replaceAll("-","");
+
+      card.innerHTML = `
+        <div class="icon">${contact.emoji}</div>
+        <h3>${contact.name}</h3>
+        <p>${contact.description}</p>
+
+        <div class="meta">
+          <div class="meta-row"><span>Categoría</span><strong>${contact.category}</strong></div>
+          <div class="meta-row"><span>Tipo</span><strong>${contact.type}</strong></div>
+          <div class="meta-row"><span>Zona</span><strong>${contact.zone}</strong></div>
+          <div class="meta-row"><span>Contacto</span><strong>${contact.phone}</strong></div>
+        </div>
+
+        <div class="chips">
+          <span class="chip ${categoryClass(contact.category)}">${contact.category}</span>
+          ${contact.tags.map(tag => `<span class="chip servicio">${tag}</span>`).join("")}
+        </div>
+
+        <div class="actions">
+          ${
+            /^[0-9]/.test(cleanPhone)
+              ? `<a class="btn btn-secondary" href="tel:${cleanPhone}">Llamar</a>
+                 <a class="btn btn-primary" href="https://wa.me/52${cleanPhone}" target="_blank">WhatsApp</a>`
+              : `<button class="btn-secondary" onclick="alert('Contacto disponible mediante plataforma, app o redes sociales.')">Ver contacto</button>`
+          }
+        </div>
+      `;
+
+      grid.appendChild(card);
+    });
+  }
+
+  function clearFilters(){
+    document.getElementById("searchInput").value = "";
+    document.getElementById("categoryFilter").value = "";
+    renderDirectory();
+  }
+
+  renderBoard();
+  renderDirectory();
+</script>
+
+</body>
+</html>

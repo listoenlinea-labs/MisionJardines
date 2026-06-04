@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mapa | Misión Jardines</title>
+
+  <style>
+    :root{
+      --bg:#07111f;
+      --bg2:#0d1b2f;
+      --card:rgba(255,255,255,.08);
+      --text:#f4f7fb;
+      --muted:#aebbd0;
+      --accent:#5eead4;
+      --accent2:#60a5fa;
+      --success:#4ade80;
+      --warning:#facc15;
+      --danger:#fb7185;
+      --road:#64748b;
+      --main-road:#facc15;
+      --radius:24px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    body{
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:
+        radial-gradient(circle at top left,rgba(94,234,212,.22),transparent 35%),
+        radial-gradient(circle at 80% 20%,rgba(96,165,250,.22),transparent 35%),
+        linear-gradient(135deg,var(--bg),var(--bg2));
+      color:var(--text);
+      min-height:100vh;
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:50;
+      backdrop-filter:blur(18px);
+      background:rgba(7,17,31,.82);
+      border-bottom:1px solid rgba(255,255,255,.09);
+    }
+
+    nav{
+      max-width:1450px;
+      margin:auto;
+      padding:16px 24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:18px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      font-weight:900;
+    }
+
+    .logo{
+      width:44px;
+      height:44px;
+      border-radius:15px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:grid;
+      place-items:center;
+      color:#06101e;
+      box-shadow:0 0 30px rgba(94,234,212,.45);
+    }
+
+    .brand small{color:var(--muted);font-weight:500}
+
+    .menu{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .menu a{
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+      padding:9px 12px;
+      border-radius:999px;
+      transition:.25s;
+    }
+
+    .menu a:hover,
+    .menu a.active{
+      background:rgba(255,255,255,.1);
+      color:white;
+    }
+
+    .hero,.section{
+      max-width:1450px;
+      margin:auto;
+      padding:42px 24px;
+    }
+
+    .badge{
+      display:inline-flex;
+      gap:8px;
+      padding:9px 14px;
+      background:rgba(94,234,212,.13);
+      border:1px solid rgba(94,234,212,.35);
+      border-radius:999px;
+      color:#bcfff6;
+      font-size:13px;
+      margin-bottom:20px;
+    }
+
+    h1{
+      font-size:clamp(34px,4vw,58px);
+      line-height:1;
+      letter-spacing:-2px;
+      margin-bottom:18px;
+    }
+
+    h1 span{
+      background:linear-gradient(90deg,var(--accent),var(--accent2));
+      -webkit-background-clip:text;
+      color:transparent;
+    }
+
+    .hero p{
+      color:var(--muted);
+      line-height:1.6;
+      max-width:850px;
+      font-size:17px;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns:1fr 360px;
+      gap:24px;
+      align-items:start;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.11);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:0 15px 45px rgba(0,0,0,.2);
+      backdrop-filter:blur(12px);
+    }
+
+    .map-scroll{
+      overflow:auto;
+      border-radius:22px;
+      background:rgba(255,255,255,.035);
+      padding:18px;
+    }
+
+    .croquis{
+      width:1050px;
+      height:720px;
+      position:relative;
+      border-radius:26px;
+      background:#eaf2f8;
+      border:8px solid rgba(255,255,255,.18);
+      overflow:hidden;
+      box-shadow:inset 0 0 45px rgba(15,23,42,.25);
+    }
+
+    .zone{
+      position:absolute;
+      left:110px;
+      top:105px;
+      width:820px;
+      height:520px;
+      background:#d9e8d9;
+      border:8px solid #facc15;
+      border-radius:18px;
+      box-shadow:0 0 0 4px rgba(180,83,9,.65), 0 20px 45px rgba(15,23,42,.18);
+    }
+
+    .road{
+      position:absolute;
+      background:#94a3b8;
+      border-radius:12px;
+      z-index:4;
+      border:2px solid rgba(255,255,255,.65);
+    }
+
+    .road.main{
+      background:#facc15;
+      border:2px solid #a16207;
+    }
+
+    .road-label{
+      position:absolute;
+      z-index:35;
+      background:none;
+      color:#111827;
+      padding:0;
+      border:none;
+      font-size:13px;
+      font-weight:900;
+      white-space:nowrap;
+      box-shadow:none;
+      text-shadow:0 1px 0 rgba(255,255,255,.55);
+      pointer-events:none;
+    }
+
+    .outer-top{left:160px;top:78px;width:720px;height:28px}
+    .outer-left{left:78px;top:120px;width:28px;height:500px}
+    .outer-right{right:78px;top:150px;width:28px;height:500px}
+    .outer-bottom{left:105px;bottom:58px;width:825px;height:28px}
+
+    .inner-jardines{left:220px;top:190px;width:24px;height:360px}
+    .inner-gardenias{left:385px;top:190px;width:24px;height:360px}
+    .inner-jazmines{left:550px;top:190px;width:24px;height:360px}
+    .inner-lirios{left:570px;top:310px;width:260px;height:22px}
+    .inner-rosas{left:570px;top:450px;width:260px;height:22px}
+
+    .lbl-top{
+      left:482px;
+      top:86px;
+    }
+
+    .lbl-left{
+      left:82px;
+      top:365px;
+      transform:rotate(-90deg);
+    }
+
+    .lbl-right{
+      right:70px;
+      top:400px;
+      transform:rotate(-90deg);
+    }
+
+    .lbl-bottom{
+      left:420px;
+      bottom:68px;
+    }
+
+    .lbl-jardines{
+      left:186px;
+      top:360px;
+      transform:rotate(-90deg);
+    }
+
+    .lbl-gardenias{
+      left:350px;
+      top:360px;
+      transform:rotate(-90deg);
+    }
+
+    .lbl-jazmines{
+      left:515px;
+      top:355px;
+      transform:rotate(-90deg);
+    }
+
+    .lbl-lirios{
+      left:655px;
+      top:314px;
+    }
+
+    .lbl-rosas{
+      left:668px;
+      top:454px;
+    }
+
+    .block{
+      position:absolute;
+      z-index:6;
+      background:rgba(255,255,255,.18);
+      border:2px dashed rgba(15,23,42,.18);
+      border-radius:18px;
+    }
+
+    .block-a{left:145px;top:170px;width:235px;height:410px}
+    .block-b{left:410px;top:170px;width:140px;height:410px}
+    .block-c{left:575px;top:170px;width:300px;height:165px}
+    .block-d{left:575px;top:365px;width:300px;height:170px}
+
+    .house{
+      position:absolute;
+      z-index:30;
+      width:58px;
+      height:48px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      font-weight:900;
+      font-size:13px;
+      color:#06101e;
+      cursor:pointer;
+      border:3px solid white;
+      box-shadow:0 10px 18px rgba(15,23,42,.18);
+      transition:.2s ease;
+      animation:pop .35s ease both;
+    }
+
+    @keyframes pop{
+      from{opacity:0;transform:scale(.85)}
+      to{opacity:1;transform:scale(1)}
+    }
+
+    .house:hover{
+      transform:translateY(-5px) scale(1.08);
+      box-shadow:0 18px 28px rgba(15,23,42,.28);
+      z-index:60;
+    }
+
+    .house.selected{
+      outline:5px solid rgba(94,234,212,.75);
+      transform:translateY(-5px) scale(1.1);
+    }
+
+    .paid{background:linear-gradient(145deg,#bbf7d0,#4ade80)}
+    .pending{background:linear-gradient(145deg,#fecdd3,#fb7185)}
+    .review{background:linear-gradient(145deg,#fde68a,#facc15)}
+
+    .park{
+      position:absolute;
+      z-index:8;
+      left:160px;
+      top:115px;
+      width:720px;
+      height:68px;
+      border-radius:18px;
+      background:linear-gradient(145deg,#86efac,#22c55e);
+      border:3px solid white;
+      display:grid;
+      place-items:center;
+      font-size:28px;
+      box-shadow:0 12px 22px rgba(15,23,42,.18);
+    }
+
+    .park-label{
+      position:absolute;
+      z-index:36;
+      left:465px;
+      top:138px;
+      background:transparent;
+      color:#052e16;
+      font-size:14px;
+      font-weight:900;
+      padding:0;
+      border-radius:0;
+      text-shadow:0 1px 0 rgba(255,255,255,.55);
+    }
+
+    .zone-title{
+        position:absolute;
+        z-index:40;
+        left:520px;
+        top:10px;
+        transform:translateX(-50%);
+        padding:12px 24px;
+        border-radius:999px;
+        color:#06101e;
+        background:linear-gradient(135deg,var(--accent),var(--accent2));
+        font-weight:900;
+        font-size:24px;
+        box-shadow:0 12px 24px rgba(15,23,42,.22);
+        white-space:nowrap;
+    }
+
+    .panel h2{
+      font-size:25px;
+      margin-bottom:10px;
+    }
+
+    .panel p{
+      color:var(--muted);
+      line-height:1.6;
+      font-size:14px;
+    }
+
+    .info-box{
+      margin-top:18px;
+      padding:16px;
+      border-radius:18px;
+      background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.1);
+    }
+
+    .info-box h3{
+      margin-bottom:10px;
+      color:#bcfff6;
+    }
+
+    .info-row{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding:8px 0;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .info-row:last-child{border-bottom:none}
+    .info-row strong{color:white;text-align:right}
+
+    .chip{
+      display:inline-flex;
+      padding:7px 10px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:12px;
+      margin-top:8px;
+    }
+
+    .chip.paid{background:rgba(74,222,128,.16);color:#86efac}
+    .chip.pending{background:rgba(251,113,133,.16);color:#fda4af}
+    .chip.review{background:rgba(250,204,21,.16);color:#fde68a}
+
+    .legend{
+      display:grid;
+      gap:12px;
+      margin-top:18px;
+    }
+
+    .legend-item{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .legend-item span:last-child{
+      display:inline-block;
+      line-height:1.2;
+    }
+
+    .dot{
+      width:16px;
+      height:16px;
+      min-width:16px;
+      min-height:16px;
+      border-radius:5px;
+      display:block;
+      justify-self:center;
+    }
+    
+    .dot.paid{background:#4ade80}
+    .dot.pending{background:#fb7185}
+    .dot.review{background:#facc15}
+    .dot.road{
+      background:#94a3b8;
+      border:2px solid rgba(255,255,255,.75);
+      box-shadow:0 0 0 1px rgba(148,163,184,.35);
+    }
+    .dot.limit{background:#facc15}
+
+    .panel-actions{
+      display:grid;
+      gap:10px;
+      margin-top:18px;
+    }
+
+    button{
+      border:none;
+      cursor:pointer;
+      border-radius:14px;
+      padding:12px 16px;
+      font-weight:800;
+      transition:.25s;
+    }
+
+    .btn-primary{
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#06101e;
+    }
+
+    .btn-secondary{
+      background:rgba(255,255,255,.1);
+      color:white;
+      border:1px solid rgba(255,255,255,.13);
+    }
+
+    button:hover{
+      transform:translateY(-2px);
+      filter:brightness(1.08);
+    }
+
+    footer{
+      padding:50px 24px;
+      text-align:center;
+      color:var(--muted);
+      border-top:1px solid rgba(255,255,255,.08);
+      margin-top:30px;
+    }
+
+    @media(max-width:1200px){
+      .layout{grid-template-columns:1fr}
+    }
+
+    @media(max-width:700px){
+      nav{align-items:flex-start;flex-direction:column}
+      .menu{justify-content:flex-start}
+      .map-scroll{height:560px}
+      .croquis{transform:scale(.72);transform-origin:left top}
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <nav>
+    <div class="brand">
+      <div class="logo">MJ</div>
+      <div>
+        <div>Misión Jardines</div>
+        <small>Croquis interactivo del fraccionamiento</small>
+      </div>
+    </div>
+
+    <div class="menu">
+      <a href="index.html">Inicio</a>
+      <a href="cuotas.html">Cuotas</a>
+      <a class="active" href="mapa.html">Mapa</a>
+      <a href="visitas.html">Visitas</a>
+      <a href="seguridad.html">Seguridad</a>
+      <a href="calendario.html">Calendario</a>
+      <a href="reportes.html">Reportes</a>
+      <a href="directorio.html">Directorio</a>
+    </div>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="badge">🗺️ Croquis visual · Misión Jardines</div>
+  <h1>Mapa del <span>fraccionamiento</span></h1>
+  <p>
+    Croquis plano, limpio y fácil de leer para identificar casas, calles principales,
+    estatus de cuota y ubicación general dentro de Misión Jardines.
+  </p>
+</section>
+
+<section class="section">
+  <div class="layout">
+    <div class="card">
+      <div class="map-scroll">
+        <div class="croquis">
+          <div class="zone"></div>
+
+          <div class="road main outer-top"></div>
+          <div class="road main outer-left"></div>
+          <div class="road main outer-right"></div>
+          <div class="road main outer-bottom"></div>
+
+          <div class="road inner-jardines"></div>
+          <div class="road inner-gardenias"></div>
+          <div class="road inner-jazmines"></div>
+          <div class="road inner-lirios"></div>
+          <div class="road inner-rosas"></div>
+
+          <div class="block block-a"></div>
+          <div class="block block-b"></div>
+          <div class="block block-c"></div>
+          <div class="block block-d"></div>
+
+          <div class="road-label lbl-top">Calle Prof. Acueducto</div>
+          <div class="road-label lbl-left">C. Atotonilco</div>
+          <div class="road-label lbl-right">Av. Guadalajara</div>
+          <div class="road-label lbl-bottom">Av. Valle de México</div>
+
+          <div class="road-label lbl-jardines">Misión Jardines</div>
+          <div class="road-label lbl-gardenias">C. Misión Gardenias</div>
+          <div class="road-label lbl-jazmines">Misión Jazmines</div>
+          <div class="road-label lbl-lirios">Misión de Los Lirios</div>
+          <div class="road-label lbl-rosas">C. Misión Rosas</div>
+
+          <div class="zone-title">Fraccionamiento Misión Jardines</div>
+
+          <div class="park"></div>
+          <div class="park-label">Jardín / Área común</div>
+
+          <div class="house paid" style="left:160px;top:210px" onclick="selectHouse(this,'MJ-001','Misión Jardines','101','Pagado','04/06/2026')">101</div>
+          <div class="house pending" style="left:160px;top:270px" onclick="selectHouse(this,'MJ-002','Misión Jardines','102','Pendiente','')">102</div>
+          <div class="house paid" style="left:160px;top:330px" onclick="selectHouse(this,'MJ-003','Misión Jardines','103','Pagado','02/06/2026')">103</div>
+          <div class="house review" style="left:160px;top:390px" onclick="selectHouse(this,'MJ-004','Misión Jardines','104','En revisión','')">104</div>
+
+          <div class="house paid" style="left:310px;top:210px" onclick="selectHouse(this,'MG-001','Misión Gardenias','201','Pagado','05/06/2026')">201</div>
+          <div class="house pending" style="left:310px;top:270px" onclick="selectHouse(this,'MG-002','Misión Gardenias','202','Pendiente','')">202</div>
+          <div class="house paid" style="left:310px;top:330px" onclick="selectHouse(this,'MG-003','Misión Gardenias','203','Pagado','01/06/2026')">203</div>
+          <div class="house pending" style="left:310px;top:390px" onclick="selectHouse(this,'MG-004','Misión Gardenias','204','Pendiente','')">204</div>
+
+          <div class="house review" style="left:475px;top:210px" onclick="selectHouse(this,'MZ-001','Misión Jazmines','301','En revisión','')">301</div>
+          <div class="house paid" style="left:475px;top:270px" onclick="selectHouse(this,'MZ-002','Misión Jazmines','302','Pagado','06/06/2026')">302</div>
+          <div class="house pending" style="left:475px;top:330px" onclick="selectHouse(this,'MZ-003','Misión Jazmines','303','Pendiente','')">303</div>
+
+          <div class="house paid" style="left:610px;top:260px" onclick="selectHouse(this,'ML-001','Misión de Los Lirios','401','Pagado','03/06/2026')">401</div>
+          <div class="house pending" style="left:675px;top:260px" onclick="selectHouse(this,'ML-002','Misión de Los Lirios','402','Pendiente','')">402</div>
+          <div class="house paid" style="left:740px;top:260px" onclick="selectHouse(this,'ML-003','Misión de Los Lirios','403','Pagado','04/06/2026')">403</div>
+
+          <div class="house pending" style="left:625px;top:405px" onclick="selectHouse(this,'MR-001','Misión Rosas','501','Pendiente','')">501</div>
+          <div class="house paid" style="left:690px;top:405px" onclick="selectHouse(this,'MR-002','Misión Rosas','502','Pagado','02/06/2026')">502</div>
+          <div class="house review" style="left:755px;top:405px" onclick="selectHouse(this,'MR-003','Misión Rosas','503','En revisión','')">503</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="card panel">
+      <h2>Detalle de casa</h2>
+      <p>Da clic sobre una casa para ver información de ubicación y estado de cuota.</p>
+
+      <div class="info-box">
+        <h3>Casa seleccionada</h3>
+        <div class="info-row"><span>Casa/Lote</span><strong id="infoCasa">MJ-001</strong></div>
+        <div class="info-row"><span>Calle</span><strong id="infoCalle">Misión Jardines</strong></div>
+        <div class="info-row"><span>Número</span><strong id="infoNumero">101</strong></div>
+        <div class="info-row"><span>Último pago</span><strong id="infoPago">04/06/2026</strong></div>
+        <span id="infoStatus" class="chip paid">Pagado</span>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><span class="dot paid"></span><span>Cuota pagada</span></div>
+        <div class="legend-item"><span class="dot pending"></span><span>Pendiente</span></div>
+        <div class="legend-item"><span class="dot review"></span><span>En revisión</span></div>
+        <div class="legend-item"><span class="dot road"></span><span style="padding-left:30px;">Calles interiores</span></div>
+        <div class="legend-item"><span class="dot limit"></span><span>Calles límite</span></div>
+      </div>
+
+      <div class="panel-actions">
+        <button class="btn-primary" onclick="centerMap()">Centrar croquis</button>
+        <button class="btn-secondary" onclick="clearSelection()">Quitar selección</button>
+      </div>
+
+      <div class="info-box">
+        <h3>Límites principales</h3>
+        <div class="info-row"><span>Sur</span><strong>Av. Valle de México</strong></div>
+        <div class="info-row"><span>Oeste</span><strong>C. Atotonilco</strong></div>
+        <div class="info-row"><span>Este</span><strong>Av. Guadalajara</strong></div>
+        <div class="info-row"><span>Norte</span><strong>Calle Prof. Acueducto</strong></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<footer>
+  Misión Jardines © 2026 — Croquis interactivo conceptual del fraccionamiento.
+</footer>
+
+<script>
+  let selectedHouse = null;
+
+  function selectHouse(element, casa, calle, numero, status, pago){
+    if(selectedHouse){
+      selectedHouse.classList.remove("selected");
+    }
+
+    selectedHouse = element;
+    selectedHouse.classList.add("selected");
+
+    document.getElementById("infoCasa").textContent = casa;
+    document.getElementById("infoCalle").textContent = calle;
+    document.getElementById("infoNumero").textContent = numero;
+    document.getElementById("infoPago").textContent = pago || "Sin pago registrado";
+
+    const badge = document.getElementById("infoStatus");
+    badge.textContent = status;
+    badge.className = "chip";
+
+    if(status === "Pagado"){
+      badge.classList.add("paid");
+    }else if(status === "Pendiente"){
+      badge.classList.add("pending");
+    }else{
+      badge.classList.add("review");
+    }
+  }
+
+  function clearSelection(){
+    if(selectedHouse){
+      selectedHouse.classList.remove("selected");
+      selectedHouse = null;
+    }
+  }
+
+  function centerMap(){
+    const scroll = document.querySelector(".map-scroll");
+    scroll.scrollTo({
+      left:120,
+      top:60,
+      behavior:"smooth"
+    });
+  }
+</script>
+
+</body>
+</html>

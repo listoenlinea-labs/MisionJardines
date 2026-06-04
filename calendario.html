@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calendario | Misión Jardines</title>
+
+  <style>
+    :root{
+      --bg:#07111f;--bg2:#0d1b2f;--card:rgba(255,255,255,.08);
+      --text:#f4f7fb;--muted:#aebbd0;--accent:#5eead4;--accent2:#60a5fa;
+      --success:#4ade80;--warning:#facc15;--danger:#fb7185;--radius:24px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    body{
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:
+        radial-gradient(circle at top left,rgba(94,234,212,.22),transparent 35%),
+        radial-gradient(circle at 80% 20%,rgba(96,165,250,.22),transparent 35%),
+        linear-gradient(135deg,var(--bg),var(--bg2));
+      color:var(--text);
+      min-height:100vh;
+    }
+
+    header{
+      position:sticky;top:0;z-index:50;
+      backdrop-filter:blur(18px);
+      background:rgba(7,17,31,.82);
+      border-bottom:1px solid rgba(255,255,255,.09);
+    }
+
+    nav{
+      max-width:1450px;margin:auto;padding:16px 24px;
+      display:flex;justify-content:space-between;align-items:center;gap:18px;
+    }
+
+    .brand{display:flex;align-items:center;gap:12px;font-weight:900}
+
+    .logo{
+      width:44px;height:44px;border-radius:15px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:grid;place-items:center;color:#06101e;
+      box-shadow:0 0 30px rgba(94,234,212,.45);
+    }
+
+    .brand small{color:var(--muted);font-weight:500}
+
+    .menu{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+
+    .menu a{
+      color:var(--muted);text-decoration:none;font-size:13px;
+      padding:9px 12px;border-radius:999px;transition:.25s;
+    }
+
+    .menu a:hover,.menu a.active{background:rgba(255,255,255,.1);color:white}
+
+    .hero,.section{max-width:1450px;margin:auto;padding:42px 24px}
+
+    .badge{
+      display:inline-flex;gap:8px;padding:9px 14px;
+      background:rgba(94,234,212,.13);
+      border:1px solid rgba(94,234,212,.35);
+      border-radius:999px;color:#bcfff6;font-size:13px;margin-bottom:20px;
+    }
+
+    h1{font-size:clamp(34px,4vw,58px);line-height:1;letter-spacing:-2px;margin-bottom:18px}
+
+    h1 span{
+      background:linear-gradient(90deg,var(--accent),var(--accent2));
+      -webkit-background-clip:text;color:transparent;
+    }
+
+    .hero p,.section-title p{color:var(--muted);line-height:1.6;max-width:850px;font-size:17px}
+
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+
+    .layout{
+      display:grid;
+      grid-template-columns:420px 1fr;
+      gap:24px;
+      align-items:start;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.11);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:0 15px 45px rgba(0,0,0,.2);
+      backdrop-filter:blur(12px);
+    }
+
+    .metric small{color:var(--muted);display:block;margin-bottom:10px}
+    .metric strong{display:block;font-size:32px;letter-spacing:-1px}
+    .metric .hint{margin-top:8px;color:var(--muted);font-size:12px}
+
+    .section-title{
+      display:flex;justify-content:space-between;align-items:flex-end;
+      gap:20px;margin-bottom:22px;
+    }
+
+    .section-title h2{font-size:30px;letter-spacing:-1px}
+
+    label{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}
+
+    input,select,textarea{
+      width:100%;background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      color:white;padding:12px;border-radius:14px;outline:none;font-family:inherit;
+    }
+
+    textarea{resize:vertical;min-height:86px}
+    option{background:#1f2937;color:white}
+
+    .form-grid{display:grid;gap:14px}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+    button{
+      border:none;cursor:pointer;border-radius:14px;padding:12px 16px;
+      font-weight:800;transition:.25s;
+    }
+
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06101e}
+    .btn-secondary{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.13)}
+    .btn-danger{background:rgba(251,113,133,.15);color:#fda4af;border:1px solid rgba(251,113,133,.24)}
+
+    button:hover{transform:translateY(-2px);filter:brightness(1.08)}
+
+    .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
+
+    .calendar-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:18px;
+      flex-wrap:wrap;
+    }
+
+    .calendar-title{
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:-1px;
+    }
+
+    .calendar-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .calendar-grid{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:10px;
+    }
+
+    .day-name{
+      text-align:center;
+      color:#bcfff6;
+      font-weight:900;
+      font-size:13px;
+      padding:10px;
+      border-radius:14px;
+      background:rgba(94,234,212,.1);
+      border:1px solid rgba(94,234,212,.16);
+    }
+
+    .day{
+      min-height:128px;
+      border-radius:18px;
+      background:rgba(255,255,255,.055);
+      border:1px solid rgba(255,255,255,.1);
+      padding:12px;
+      position:relative;
+      overflow:hidden;
+      transition:.2s;
+    }
+
+    .day:hover{
+      transform:translateY(-3px);
+      background:rgba(255,255,255,.085);
+      border-color:rgba(94,234,212,.28);
+    }
+
+    .day.muted{
+      opacity:.34;
+    }
+
+    .day.today{
+      border-color:rgba(94,234,212,.75);
+      box-shadow:0 0 24px rgba(94,234,212,.18);
+    }
+
+    .day-number{
+      font-weight:900;
+      margin-bottom:8px;
+      color:white;
+    }
+
+    .event-pill{
+      display:block;
+      padding:6px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      margin-top:6px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      cursor:pointer;
+    }
+
+    .mantenimiento{background:rgba(96,165,250,.18);color:#bfdbfe}
+    .asamblea{background:rgba(94,234,212,.18);color:#99f6e4}
+    .basura{background:rgba(74,222,128,.18);color:#86efac}
+    .seguridad{background:rgba(251,113,133,.18);color:#fda4af}
+    .evento{background:rgba(250,204,21,.18);color:#fde68a}
+
+    .event-list{
+      display:grid;
+      gap:12px;
+    }
+
+    .event-card{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      padding:14px;
+      border-radius:18px;
+      background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.1);
+    }
+
+    .event-date{
+      width:56px;
+      height:56px;
+      border-radius:18px;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      font-weight:900;
+      line-height:1.05;
+      color:#06101e;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      flex:0 0 auto;
+    }
+
+    .event-card p{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+      margin-top:4px;
+    }
+
+    .chip{
+      display:inline-flex;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+      margin-top:8px;
+    }
+
+    .toast{
+      position:fixed;right:24px;bottom:24px;background:rgba(15,23,42,.96);
+      border:1px solid rgba(94,234,212,.35);color:white;padding:16px 18px;
+      border-radius:18px;max-width:420px;display:none;z-index:300;
+    }
+
+    footer{
+      padding:50px 24px;text-align:center;color:var(--muted);
+      border-top:1px solid rgba(255,255,255,.08);margin-top:30px;
+    }
+
+    @media(max-width:1200px){
+      .layout{grid-template-columns:1fr}
+      .grid{grid-template-columns:repeat(2,1fr)}
+    }
+
+    @media(max-width:800px){
+      .calendar-grid{grid-template-columns:repeat(2,1fr)}
+      .day-name{display:none}
+    }
+
+    @media(max-width:700px){
+      nav{align-items:flex-start;flex-direction:column}
+      .menu{justify-content:flex-start}
+      .grid,.two{grid-template-columns:1fr}
+      .section-title{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <nav>
+    <div class="brand">
+      <div class="logo">MJ</div>
+      <div>
+        <div>Misión Jardines</div>
+        <small>Calendario vecinal</small>
+      </div>
+    </div>
+
+    <div class="menu">
+      <a href="index.html">Inicio</a>
+      <a href="cuotas.html">Cuotas</a>
+      <a href="mapa.html">Mapa</a>
+      <a href="visitas.html">Visitas</a>
+      <a href="seguridad.html">Seguridad</a>
+      <a class="active" href="calendario.html">Calendario</a>
+      <a href="reportes.html">Reportes</a>
+      <a href="directorio.html">Directorio</a>
+    </div>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="badge">📅 Organización comunitaria</div>
+  <h1>Calendario de <span>Misión Jardines</span></h1>
+  <p>
+    Administra eventos vecinales, asambleas, recolección de basura, mantenimiento,
+    rondines y actividades importantes del fraccionamiento.
+  </p>
+</section>
+
+<section class="section">
+
+  <div class="card" style="
+      margin-bottom:24px;
+      border:1px solid rgba(74,222,128,.35);
+      background:rgba(74,222,128,.08);
+  ">
+
+      <h2 style="margin-bottom:14px">
+          🚛 Recolección de basura
+      </h2>
+
+      <div style="
+          display:flex;
+          flex-wrap:wrap;
+          gap:12px;
+          margin-bottom:12px;
+      ">
+
+          <span class="chip basura">Lunes</span>
+          <span class="chip basura">Miércoles</span>
+          <span class="chip basura">Viernes</span>
+          <span class="chip basura">Sábado</span>
+
+      </div>
+
+      <p style="color:var(--muted)">
+          Horario oficial:
+          <strong>08:00 AM</strong>
+          <br>
+          Favor de sacar la basura antes de la hora indicada.
+      </p>
+
+  </div>
+
+</section>
+
+<section class="section">
+  <div class="grid">
+    <div class="card metric">
+      <small>Eventos del mes</small>
+      <strong id="metricEventos">0</strong>
+      <div class="hint">Actividades registradas</div>
+    </div>
+
+    <div class="card metric">
+      <small>Mantenimientos</small>
+      <strong id="metricMantenimiento">0</strong>
+      <div class="hint">Trabajos programados</div>
+    </div>
+
+    <div class="card metric">
+      <small>Asambleas</small>
+      <strong id="metricAsambleas">0</strong>
+      <div class="hint">Reuniones vecinales</div>
+    </div>
+
+    <div class="card metric">
+      <small>Próximo evento</small>
+      <strong id="metricProximo">-</strong>
+      <div class="hint">Día más cercano</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="layout">
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>Nuevo evento</h2>
+          <p>Agrega actividades importantes para los vecinos.</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div>
+          <label>Título del evento</label>
+          <input id="eventTitle" placeholder="Ej. Asamblea vecinal">
+        </div>
+
+        <div class="two">
+          <div>
+            <label>Fecha</label>
+            <input id="eventDate" type="date">
+          </div>
+
+          <div>
+            <label>Hora</label>
+            <input id="eventTime" type="time">
+          </div>
+        </div>
+
+        <div class="two">
+          <div>
+            <label>Tipo</label>
+            <select id="eventType">
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="asamblea">Asamblea</option>
+              <option value="basura">Basura</option>
+              <option value="seguridad">Seguridad</option>
+              <option value="evento">Evento vecinal</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Ubicación</label>
+            <input id="eventLocation" placeholder="Ej. Área común">
+          </div>
+        </div>
+
+        <div>
+          <label>Descripción</label>
+          <textarea id="eventDescription" placeholder="Describe brevemente la actividad..."></textarea>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" onclick="addEvent()">Agregar evento</button>
+          <button class="btn-secondary" onclick="clearEventForm()">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="calendar-head">
+        <div class="calendar-title" id="calendarTitle">Calendario</div>
+
+        <div class="calendar-actions">
+          <button class="btn-secondary" onclick="previousMonth()">← Mes anterior</button>
+          <button class="btn-primary" onclick="goToday()">Hoy</button>
+          <button class="btn-secondary" onclick="nextMonth()">Mes siguiente →</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="card">
+    <div class="section-title">
+      <div>
+        <h2>Próximos eventos</h2>
+        <p>Listado de actividades ordenadas por fecha.</p>
+      </div>
+    </div>
+
+    <div class="event-list" id="eventList"></div>
+  </div>
+</section>
+
+<footer>
+  Misión Jardines © 2026 — Calendario comunitario.
+</footer>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  const STORAGE_KEY = "mision_jardines_calendario";
+
+  const monthNames = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+  ];
+
+  const dayNames = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+  let currentDate = new Date();
+
+  const BASURA_HORA = "08:00";
+
+  let events = [
+    {
+      id:"EV-1002",
+      title:"Mantenimiento de jardineras",
+      date:"2026-06-08",
+      time:"09:00",
+      type:"mantenimiento",
+      location:"Área común",
+      description:"Poda y limpieza de jardín principal."
+    },
+    {
+      id:"EV-1003",
+      title:"Asamblea vecinal",
+      date:"2026-06-15",
+      time:"19:00",
+      type:"asamblea",
+      location:"Área común",
+      description:"Revisión de cuotas, seguridad y próximos trabajos."
+    }
+  ];
+
+  function loadData(){
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved) events = JSON.parse(saved);
+  }
+
+  function saveData(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  }
+
+  function showToast(message){
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.style.display = "block";
+    setTimeout(() => toast.style.display = "none", 3200);
+  }
+
+  function generateId(){
+    return "EV-" + String(Date.now()).slice(-6);
+  }
+
+  function addEvent(){
+    const event = {
+      id:generateId(),
+      title:document.getElementById("eventTitle").value.trim(),
+      date:document.getElementById("eventDate").value,
+      time:document.getElementById("eventTime").value,
+      type:document.getElementById("eventType").value,
+      location:document.getElementById("eventLocation").value.trim(),
+      description:document.getElementById("eventDescription").value.trim()
+    };
+
+    if(!event.title || !event.date || !event.location){
+      showToast("Completa título, fecha y ubicación.");
+      return;
+    }
+
+    events.push(event);
+    saveData();
+    clearEventForm();
+    renderAll();
+    showToast("Evento agregado al calendario.");
+  }
+
+  function clearEventForm(){
+    document.getElementById("eventTitle").value = "";
+    document.getElementById("eventDate").value = "";
+    document.getElementById("eventTime").value = "";
+    document.getElementById("eventType").value = "mantenimiento";
+    document.getElementById("eventLocation").value = "";
+    document.getElementById("eventDescription").value = "";
+  }
+
+  function eventsForDate(dateString){
+
+    const normalEvents =
+      events.filter(e => e.date === dateString);
+
+    const trashEvent =
+      createTrashEvent(dateString);
+
+    if(trashEvent){
+      return [trashEvent, ...normalEvents];
+    }
+
+    return normalEvents;
+  }
+
+  function formatDate(date){
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,"0");
+    const d = String(date.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function isTrashDay(date){
+    return [1,3,5,6].includes(date.getDay());
+  }
+
+  function createTrashEvent(dateString){
+    const date = new Date(dateString + "T00:00:00");
+
+    if(!isTrashDay(date)) return null;
+
+    return {
+      id:"BASURA-" + dateString,
+      title:"🚛 Recolección de basura",
+      date:dateString,
+      time:BASURA_HORA,
+      type:"basura",
+      location:"Todo el fraccionamiento",
+      description:"Sacar la basura antes de las 08:00 AM.",
+      fixed:true
+    };
+  }
+
+  function renderCalendar(){
+    const grid = document.getElementById("calendarGrid");
+    grid.innerHTML = "";
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    document.getElementById("calendarTitle").textContent =
+      `${monthNames[month]} ${year}`;
+
+    dayNames.forEach(day => {
+      const div = document.createElement("div");
+      div.className = "day-name";
+      div.textContent = day;
+      grid.appendChild(div);
+    });
+
+    const firstDay = new Date(year, month, 1);
+    const startDay = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysPrevMonth = new Date(year, month, 0).getDate();
+
+    const todayString = formatDate(new Date());
+
+    for(let i = startDay - 1; i >= 0; i--){
+      const dayNumber = daysPrevMonth - i;
+      const div = document.createElement("div");
+      div.className = "day muted";
+      div.innerHTML = `<div class="day-number">${dayNumber}</div>`;
+      grid.appendChild(div);
+    }
+
+    for(let day = 1; day <= daysInMonth; day++){
+      const date = new Date(year, month, day);
+      const dateString = formatDate(date);
+      const dayEvents = eventsForDate(dateString);
+
+      const div = document.createElement("div");
+      div.className = "day";
+      if(dateString === todayString) div.classList.add("today");
+
+      div.innerHTML = `
+        <div class="day-number">${day}</div>
+        ${dayEvents.map(e => `
+          <span class="event-pill ${e.type}" onclick="showToast('${e.title} · ${e.location}')">
+            ${e.title}
+          </span>
+        `).join("")}
+      `;
+
+      grid.appendChild(div);
+    }
+
+    const totalCells = grid.children.length;
+    const remainder = totalCells % 7;
+    if(remainder !== 0){
+      for(let i = 1; i <= 7 - remainder; i++){
+        const div = document.createElement("div");
+        div.className = "day muted";
+        div.innerHTML = `<div class="day-number">${i}</div>`;
+        grid.appendChild(div);
+      }
+    }
+  }
+
+  function renderEventList(){
+    const list = document.getElementById("eventList");
+    list.innerHTML = "";
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const daysInMonth =
+      new Date(year, month + 1, 0).getDate();
+
+    const trashEvents = [];
+
+    for(let d = 1; d <= daysInMonth; d++){
+
+      const dateString =
+        formatDate(new Date(year, month, d));
+
+      const trash =
+        createTrashEvent(dateString);
+
+      if(trash){
+        trashEvents.push(trash);
+      }
+    }
+
+    const sorted =
+      [...trashEvents, ...events]
+        .sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+    sorted.forEach(e => {
+      const date = new Date(e.date + "T00:00:00");
+      const div = document.createElement("div");
+      div.className = "event-card";
+
+      div.innerHTML = `
+        <div class="event-date">
+          ${String(date.getDate()).padStart(2,"0")}<br>
+          ${monthNames[date.getMonth()].slice(0,3).toUpperCase()}
+        </div>
+
+        <div>
+          <h3>${e.title}</h3>
+          <p>
+            ${e.time ? e.time + " hrs · " : ""}
+            ${e.location}
+          </p>
+          <p>${e.description || "Sin descripción."}</p>
+          <span class="chip ${e.type}">${eventTypeLabel(e.type)}</span>
+          ${
+              e.fixed
+                ? `<span class="chip basura" style="margin-left:10px">
+                     Evento fijo
+                   </span>`
+                : `<button class="btn-danger"
+                     style="margin-left:10px;padding:7px 10px"
+                     onclick="deleteEvent('${e.id}')">
+                     Eliminar
+                   </button>`
+            }
+        </div>
+      `;
+
+      list.appendChild(div);
+    });
+  }
+
+  function eventTypeLabel(type){
+    const labels = {
+      mantenimiento:"Mantenimiento",
+      asamblea:"Asamblea",
+      basura:"Basura",
+      seguridad:"Seguridad",
+      evento:"Evento vecinal"
+    };
+
+    return labels[type] || "Evento";
+  }
+
+  function deleteEvent(id){
+    if(!confirm("¿Seguro que deseas eliminar este evento?")) return;
+    events = events.filter(e => e.id !== id);
+    saveData();
+    renderAll();
+    showToast("Evento eliminado.");
+  }
+
+  function updateMetrics(){
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const monthEvents = [...events];
+
+    const daysInMonth =
+      new Date(year, month + 1, 0).getDate();
+
+    for(let d=1; d<=daysInMonth; d++){
+
+      const dateString =
+        formatDate(new Date(year, month, d));
+
+      const trash =
+        createTrashEvent(dateString);
+
+      if(trash){
+        monthEvents.push(trash);
+      }
+    }
+
+    document.getElementById("metricEventos").textContent = monthEvents.length;
+    document.getElementById("metricMantenimiento").textContent =
+      monthEvents.filter(e => e.type === "mantenimiento").length;
+    document.getElementById("metricAsambleas").textContent =
+      monthEvents.filter(e => e.type === "asamblea").length;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const next = [...events]
+      .filter(e => new Date(e.date + "T00:00:00") >= today)
+      .sort((a,b) => new Date(a.date) - new Date(b.date))[0];
+
+    document.getElementById("metricProximo").textContent = next
+      ? String(new Date(next.date + "T00:00:00").getDate()).padStart(2,"0")
+      : "-";
+  }
+
+  function previousMonth(){
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderAll();
+  }
+
+  function nextMonth(){
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderAll();
+  }
+
+  function goToday(){
+    currentDate = new Date();
+    renderAll();
+  }
+
+  function renderAll(){
+    renderCalendar();
+    renderEventList();
+    updateMetrics();
+  }
+
+  loadData();
+  renderAll();
+</script>
+
+</body>
+</html>

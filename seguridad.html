@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Seguridad | Misión Jardines</title>
+
+  <style>
+    :root{
+      --bg:#07111f;--bg2:#0d1b2f;--card:rgba(255,255,255,.08);
+      --text:#f4f7fb;--muted:#aebbd0;--accent:#5eead4;--accent2:#60a5fa;
+      --success:#4ade80;--warning:#facc15;--danger:#fb7185;--radius:24px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    body{
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:
+        radial-gradient(circle at top left,rgba(94,234,212,.22),transparent 35%),
+        radial-gradient(circle at 80% 20%,rgba(96,165,250,.22),transparent 35%),
+        linear-gradient(135deg,var(--bg),var(--bg2));
+      color:var(--text);
+      min-height:100vh;
+    }
+
+    header{
+      position:sticky;top:0;z-index:50;
+      backdrop-filter:blur(18px);
+      background:rgba(7,17,31,.82);
+      border-bottom:1px solid rgba(255,255,255,.09);
+    }
+
+    nav{
+      max-width:1450px;margin:auto;padding:16px 24px;
+      display:flex;justify-content:space-between;align-items:center;gap:18px;
+    }
+
+    .brand{display:flex;align-items:center;gap:12px;font-weight:900}
+
+    .logo{
+      width:44px;height:44px;border-radius:15px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:grid;place-items:center;color:#06101e;
+      box-shadow:0 0 30px rgba(94,234,212,.45);
+    }
+
+    .brand small{color:var(--muted);font-weight:500}
+
+    .menu{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+
+    .menu a{
+      color:var(--muted);text-decoration:none;font-size:13px;
+      padding:9px 12px;border-radius:999px;transition:.25s;
+    }
+
+    .menu a:hover,.menu a.active{background:rgba(255,255,255,.1);color:white}
+
+    .hero,.section{max-width:1450px;margin:auto;padding:42px 24px}
+
+    .badge{
+      display:inline-flex;gap:8px;padding:9px 14px;
+      background:rgba(94,234,212,.13);
+      border:1px solid rgba(94,234,212,.35);
+      border-radius:999px;color:#bcfff6;font-size:13px;margin-bottom:20px;
+    }
+
+    h1{font-size:clamp(34px,4vw,58px);line-height:1;letter-spacing:-2px;margin-bottom:18px}
+
+    h1 span{
+      background:linear-gradient(90deg,var(--accent),var(--accent2));
+      -webkit-background-clip:text;color:transparent;
+    }
+
+    .hero p,.section-title p{color:var(--muted);line-height:1.6;max-width:850px;font-size:17px}
+
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+
+    .layout{
+      display:grid;
+      grid-template-columns:420px 1fr;
+      gap:24px;
+      align-items:start;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.11);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:0 15px 45px rgba(0,0,0,.2);
+      backdrop-filter:blur(12px);
+    }
+
+    .metric small{color:var(--muted);display:block;margin-bottom:10px}
+    .metric strong{display:block;font-size:32px;letter-spacing:-1px}
+    .metric .hint{margin-top:8px;color:var(--muted);font-size:12px}
+
+    .section-title{
+      display:flex;justify-content:space-between;align-items:flex-end;
+      gap:20px;margin-bottom:22px;
+    }
+
+    .section-title h2{font-size:30px;letter-spacing:-1px}
+
+    label{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}
+
+    input,select,textarea{
+      width:100%;background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      color:white;padding:12px;border-radius:14px;outline:none;font-family:inherit;
+    }
+
+    textarea{resize:vertical;min-height:86px}
+    option{background:#1f2937;color:white}
+
+    .form-grid{display:grid;gap:14px}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+    button{
+      border:none;cursor:pointer;border-radius:14px;padding:12px 16px;
+      font-weight:800;transition:.25s;
+    }
+
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06101e}
+    .btn-secondary{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.13)}
+    .btn-danger{background:rgba(251,113,133,.15);color:#fda4af;border:1px solid rgba(251,113,133,.24)}
+
+    button:hover{transform:translateY(-2px);filter:brightness(1.08)}
+
+    .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
+
+    .filters{
+      display:grid;grid-template-columns:1.2fr 1fr 1fr auto;
+      gap:14px;align-items:end;margin-bottom:18px;
+    }
+
+    .table-wrap{overflow:auto;border-radius:22px;border:1px solid rgba(255,255,255,.1)}
+
+    table{
+      width:max-content;min-width:100%;border-collapse:collapse;table-layout:auto;
+      background:rgba(255,255,255,.055);
+    }
+
+    th,td{
+      padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.09);
+      text-align:left;font-size:13px;vertical-align:middle;white-space:nowrap;
+    }
+
+    th{background:rgba(255,255,255,.09);color:#dff7ff}
+
+    .priority{
+      display:inline-flex;
+      width:14px;
+      height:14px;
+      border-radius:50%;
+      margin-right:8px;
+      vertical-align:middle;
+    }
+
+    .p-baja{background:#4ade80}
+    .p-media{background:#facc15}
+    .p-alta{background:#fb7185}
+
+    .status-select{
+      min-width:145px;
+      width:145px;
+      font-weight:900;
+      border-radius:999px;
+      text-align:center;
+      cursor:pointer;
+      appearance:none;
+      -webkit-appearance:none;
+    }
+
+    .status-select.abierto{
+      background:rgba(250,204,21,.18);
+      color:#fde68a;
+      border:1px solid rgba(250,204,21,.45);
+    }
+
+    .status-select.atendido{
+      background:rgba(96,165,250,.18);
+      color:#bfdbfe;
+      border:1px solid rgba(96,165,250,.45);
+    }
+
+    .status-select.cerrado{
+      background:rgba(74,222,128,.18);
+      color:#86efac;
+      border:1px solid rgba(74,222,128,.45);
+    }
+
+    .status-select.critico{
+      background:rgba(251,113,133,.20);
+      color:#fda4af;
+      border:1px solid rgba(251,113,133,.45);
+    }
+
+    .security-grid{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:24px;
+      margin-bottom:24px;
+    }
+
+    .camera-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:14px;
+    }
+
+    .camera{
+      min-height:155px;
+      border-radius:18px;
+      background:
+        linear-gradient(rgba(94,234,212,.12) 1px, transparent 1px),
+        linear-gradient(90deg,rgba(94,234,212,.12) 1px, transparent 1px),
+        rgba(0,0,0,.28);
+      background-size:22px 22px;
+      border:1px solid rgba(94,234,212,.22);
+      position:relative;
+      overflow:hidden;
+      padding:14px;
+    }
+
+    .camera:before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:radial-gradient(circle at center,rgba(94,234,212,.16),transparent 55%);
+      animation:pulse 2.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse{
+      from{opacity:.25}
+      to{opacity:1}
+    }
+
+    .camera strong,.camera span,.camera .camera-view{
+      position:relative;
+      z-index:2;
+    }
+
+    .camera strong{display:block;margin-bottom:8px}
+
+    .camera span{
+      color:#86efac;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .camera.off span{color:#fda4af}
+    .camera.off{border-color:rgba(251,113,133,.22)}
+
+    .camera-view{
+      margin-top:16px;
+      height:72px;
+      border-radius:14px;
+      background:
+        radial-gradient(circle at 70% 40%,rgba(255,255,255,.16),transparent 12%),
+        linear-gradient(135deg,rgba(96,165,250,.24),rgba(94,234,212,.08));
+      border:1px solid rgba(255,255,255,.1);
+      display:grid;
+      place-items:center;
+      color:#dff7ff;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .gate-card{
+      display:grid;
+      gap:16px;
+    }
+
+    .gate-scene{
+      height:230px;
+      border-radius:22px;
+      background:
+        radial-gradient(circle at center,rgba(94,234,212,.13),transparent 55%),
+        linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.12);
+      position:relative;
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+    }
+
+    .gate-base{
+      position:absolute;
+      left:64px;
+      bottom:54px;
+      width:58px;
+      height:86px;
+      border-radius:18px;
+      background:#334155;
+      border:2px solid rgba(255,255,255,.18);
+      box-shadow:0 14px 30px rgba(0,0,0,.28);
+    }
+
+    .gate-light{
+      position:absolute;
+      left:84px;
+      bottom:153px;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:#fb7185;
+      box-shadow:0 0 22px rgba(251,113,133,.85);
+      transition:.35s;
+    }
+
+    .gate-arm{
+      position:absolute;
+      left:105px;
+      bottom:132px;
+      width:230px;
+      height:18px;
+      border-radius:999px;
+      background:repeating-linear-gradient(
+        90deg,
+        #f8fafc 0,
+        #f8fafc 28px,
+        #fb7185 28px,
+        #fb7185 56px
+      );
+      transform-origin:left center;
+      transform:rotate(0deg);
+      box-shadow:0 10px 24px rgba(0,0,0,.28);
+      transition:.55s cubic-bezier(.25,.8,.25,1);
+    }
+
+    .gate-status{
+      position:absolute;
+      bottom:22px;
+      left:50%;
+      transform:translateX(-50%);
+      padding:9px 14px;
+      border-radius:999px;
+      font-weight:900;
+      background:rgba(251,113,133,.16);
+      color:#fda4af;
+      border:1px solid rgba(251,113,133,.35);
+      transition:.35s;
+    }
+
+    .gate-open .gate-arm{
+      transform:rotate(-58deg);
+      background:repeating-linear-gradient(
+        90deg,
+        #f8fafc 0,
+        #f8fafc 28px,
+        #4ade80 28px,
+        #4ade80 56px
+      );
+    }
+
+    .gate-open .gate-light{
+      background:#4ade80;
+      box-shadow:0 0 26px rgba(74,222,128,.95);
+    }
+
+    .gate-open .gate-status{
+      background:rgba(74,222,128,.16);
+      color:#86efac;
+      border:1px solid rgba(74,222,128,.35);
+    }
+
+    .gate-actions{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .quick-actions{
+      display:grid;
+      gap:12px;
+      margin-top:18px;
+    }
+
+    .quick-card{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:14px;
+      border-radius:18px;
+      background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.1);
+    }
+
+    .quick-icon{
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.1);
+      font-size:22px;
+      flex:0 0 auto;
+    }
+
+    .quick-card p{
+      color:var(--muted);
+      font-size:13px;
+      margin-top:3px;
+      line-height:1.4;
+    }
+
+    .toast{
+      position:fixed;right:24px;bottom:24px;background:rgba(15,23,42,.96);
+      border:1px solid rgba(94,234,212,.35);color:white;padding:16px 18px;
+      border-radius:18px;max-width:420px;display:none;z-index:300;
+    }
+
+    footer{
+      padding:50px 24px;text-align:center;color:var(--muted);
+      border-top:1px solid rgba(255,255,255,.08);margin-top:30px;
+    }
+
+    @media(max-width:1200px){
+      .layout,.security-grid{grid-template-columns:1fr}
+      .grid{grid-template-columns:repeat(2,1fr)}
+      .filters{grid-template-columns:1fr 1fr}
+    }
+
+    @media(max-width:700px){
+      nav{align-items:flex-start;flex-direction:column}
+      .menu{justify-content:flex-start}
+      .grid,.two,.filters,.camera-grid,.gate-actions{grid-template-columns:1fr}
+      .section-title{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <nav>
+    <div class="brand">
+      <div class="logo">MJ</div>
+      <div>
+        <div>Misión Jardines</div>
+        <small>Seguridad y reportes</small>
+      </div>
+    </div>
+
+    <div class="menu">
+      <a href="index.html">Inicio</a>
+      <a href="cuotas.html">Cuotas</a>
+      <a href="mapa.html">Mapa</a>
+      <a href="visitas.html">Visitas</a>
+      <a class="active" href="seguridad.html">Seguridad</a>
+      <a href="calendario.html">Calendario</a>
+      <a href="reportes.html">Reportes</a>
+      <a href="directorio.html">Directorio</a>
+    </div>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="badge">🛡️ Seguridad vecinal</div>
+  <h1>Seguridad de <span>Misión Jardines</span></h1>
+  <p>
+    Panel para registrar incidencias, revisar cámaras, controlar la pluma principal
+    y dar seguimiento a reportes de seguridad dentro del fraccionamiento.
+  </p>
+</section>
+
+<section class="section">
+  <div class="grid">
+    <div class="card metric">
+      <small>Incidencias abiertas</small>
+      <strong id="metricAbiertas">0</strong>
+      <div class="hint">Requieren seguimiento</div>
+    </div>
+
+    <div class="card metric">
+      <small>Atendidas</small>
+      <strong id="metricAtendidas">0</strong>
+      <div class="hint">En proceso o revisadas</div>
+    </div>
+
+    <div class="card metric">
+      <small>Críticas</small>
+      <strong id="metricCriticas">0</strong>
+      <div class="hint">Alta prioridad</div>
+    </div>
+
+    <div class="card metric">
+      <small>Rondines hoy</small>
+      <strong id="metricRondines">4</strong>
+      <div class="hint">Programados / registrados</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="security-grid">
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>Cámaras de seguridad</h2>
+          <p>Vista conceptual de puntos de vigilancia.</p>
+        </div>
+      </div>
+
+      <div class="camera-grid">
+        <div class="camera">
+          <strong>Entrada principal</strong>
+          <span>● En línea</span>
+          <div class="camera-view">Vista acceso principal</div>
+        </div>
+
+        <div class="camera">
+          <strong>Av. Valle de México</strong>
+          <span>● En línea</span>
+          <div class="camera-view">Vista vialidad sur</div>
+        </div>
+
+        <div class="camera">
+          <strong>Área común</strong>
+          <span>● En línea</span>
+          <div class="camera-view">Vista jardín</div>
+        </div>
+
+        <div class="camera off">
+          <strong>C. Atotonilco</strong>
+          <span>● Revisión requerida</span>
+          <div class="camera-view">Sin señal estable</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card gate-card">
+      <div class="section-title">
+        <div>
+          <h2>Pluma principal</h2>
+          <p>Control visual de apertura y cierre de acceso.</p>
+        </div>
+      </div>
+
+      <div class="gate-scene" id="gateScene">
+        <div class="gate-base"></div>
+        <div class="gate-light"></div>
+        <div class="gate-arm"></div>
+        <div class="gate-status" id="gateStatus">CERRADA</div>
+      </div>
+
+      <div class="gate-actions">
+        <button class="btn-primary" onclick="openGate()">Abrir pluma</button>
+        <button class="btn-danger" onclick="closeGate()">Cerrar pluma</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <div class="section-title">
+          <div>
+            <h2>Nueva incidencia</h2>
+            <p>Registra eventos de seguridad para seguimiento interno.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label>Tipo de incidencia</label>
+            <select id="incidentType">
+              <option>Acceso no autorizado</option>
+              <option>Vehículo sospechoso</option>
+              <option>Ruido / alteración del orden</option>
+              <option>Persona sospechosa</option>
+              <option>Daño a propiedad</option>
+              <option>Alumbrado / zona oscura</option>
+              <option>Otro</option>
+            </select>
+          </div>
+
+          <div class="two">
+            <div>
+              <label>Ubicación</label>
+              <input id="incidentLocation" placeholder="Ej. Misión Jardines, casa 101">
+            </div>
+
+            <div>
+              <label>Reportado por</label>
+              <input id="reportedBy" placeholder="Ej. Vecino, caseta, administración">
+            </div>
+          </div>
+
+          <div class="two">
+            <div>
+              <label>Prioridad</label>
+              <select id="incidentPriority">
+                <option>Baja</option>
+                <option>Media</option>
+                <option>Alta</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Estatus</label>
+              <select id="incidentStatus">
+                <option>Abierto</option>
+                <option>Atendido</option>
+                <option>Cerrado</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label>Descripción</label>
+            <textarea id="incidentDescription" placeholder="Describe brevemente lo ocurrido..."></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" onclick="addIncident()">Registrar incidencia</button>
+            <button class="btn-secondary" onclick="clearIncidentForm()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>Bitácora de seguridad</h2>
+          <p>Consulta, filtra y actualiza incidencias registradas.</p>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div>
+          <label>Buscar tipo, ubicación o reportante</label>
+          <input id="filterText" placeholder="Ej. vehículo, caseta, casa 101" oninput="renderIncidents()">
+        </div>
+
+        <div>
+          <label>Prioridad</label>
+          <select id="filterPriority" onchange="renderIncidents()">
+            <option value="">Todas</option>
+            <option>Baja</option>
+            <option>Media</option>
+            <option>Alta</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Estatus</label>
+          <select id="filterStatus" onchange="renderIncidents()">
+            <option value="">Todos</option>
+            <option>Abierto</option>
+            <option>Atendido</option>
+            <option>Cerrado</option>
+          </select>
+        </div>
+
+        <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Folio</th>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Ubicación</th>
+              <th>Reportado por</th>
+              <th>Prioridad</th>
+              <th>Estatus</th>
+              <th>Descripción</th>
+              <th>Eliminar</th>
+            </tr>
+          </thead>
+          <tbody id="incidentsTable"></tbody>
+        </table>
+      </div>
+
+      <div class="quick-actions">
+        <div class="quick-card">
+          <div class="quick-icon">🚨</div>
+          <div>
+            <strong>Emergencia</strong>
+            <p>En una versión final, este botón podría activar protocolo o aviso inmediato.</p>
+          </div>
+        </div>
+
+        <div class="quick-card">
+          <div class="quick-icon">📋</div>
+          <div>
+            <strong>Reporte diario</strong>
+            <p>Resumen de incidencias, rondines y puntos críticos para administración.</p>
+          </div>
+        </div>
+
+        <div class="quick-card">
+          <div class="quick-icon">🚶</div>
+          <div>
+            <strong>Rondines</strong>
+            <p>Registro visual de horarios y zonas recorridas por vigilancia.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Misión Jardines © 2026 — Seguridad y bitácora vecinal.
+</footer>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  const STORAGE_KEY = "mision_jardines_seguridad";
+
+  let incidents = [
+    {
+      folio:"SEG-1001",
+      date:"2026-06-04 20:15",
+      type:"Vehículo sospechoso",
+      location:"Av. Valle de México",
+      reportedBy:"Caseta",
+      priority:"Media",
+      status:"Atendido",
+      description:"Vehículo estacionado por más de 30 minutos sin identificarse."
+    },
+    {
+      folio:"SEG-1002",
+      date:"2026-06-04 22:40",
+      type:"Alumbrado / zona oscura",
+      location:"C. Atotonilco",
+      reportedBy:"Vecino",
+      priority:"Alta",
+      status:"Abierto",
+      description:"Zona con poca iluminación cerca del límite oeste."
+    }
+  ];
+
+  function loadData(){
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved) incidents = JSON.parse(saved);
+  }
+
+  function saveData(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(incidents));
+  }
+
+  function showToast(message){
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.style.display = "block";
+    setTimeout(() => toast.style.display = "none", 3200);
+  }
+
+  function nowText(){
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2,"0");
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mi = String(d.getMinutes()).padStart(2,"0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  function generateFolio(){
+    return "SEG-" + String(Date.now()).slice(-6);
+  }
+
+  function priorityClass(priority){
+    if(priority === "Alta") return "p-alta";
+    if(priority === "Media") return "p-media";
+    return "p-baja";
+  }
+
+  function statusClass(status, priority){
+    if(priority === "Alta" && status === "Abierto") return "critico";
+    if(status === "Atendido") return "atendido";
+    if(status === "Cerrado") return "cerrado";
+    return "abierto";
+  }
+
+  function getStatusLabel(status, priority){
+    if(priority === "Alta" && status === "Abierto") return "Crítico";
+    return status;
+  }
+
+  function openGate(){
+    document.getElementById("gateScene").classList.add("gate-open");
+    document.getElementById("gateStatus").textContent = "ABIERTA";
+    showToast("Pluma principal abierta.");
+  }
+
+  function closeGate(){
+    document.getElementById("gateScene").classList.remove("gate-open");
+    document.getElementById("gateStatus").textContent = "CERRADA";
+    showToast("Pluma principal cerrada.");
+  }
+
+  function addIncident(){
+    const incident = {
+      folio:generateFolio(),
+      date:nowText(),
+      type:document.getElementById("incidentType").value,
+      location:document.getElementById("incidentLocation").value.trim(),
+      reportedBy:document.getElementById("reportedBy").value.trim(),
+      priority:document.getElementById("incidentPriority").value,
+      status:document.getElementById("incidentStatus").value,
+      description:document.getElementById("incidentDescription").value.trim()
+    };
+
+    if(!incident.location || !incident.reportedBy || !incident.description){
+      showToast("Completa ubicación, reportado por y descripción.");
+      return;
+    }
+
+    incidents.unshift(incident);
+    saveData();
+    renderIncidents();
+    clearIncidentForm();
+    showToast("Incidencia registrada.");
+  }
+
+  function clearIncidentForm(){
+    document.getElementById("incidentType").value = "Acceso no autorizado";
+    document.getElementById("incidentLocation").value = "";
+    document.getElementById("reportedBy").value = "";
+    document.getElementById("incidentPriority").value = "Baja";
+    document.getElementById("incidentStatus").value = "Abierto";
+    document.getElementById("incidentDescription").value = "";
+  }
+
+  function getFilteredIncidents(){
+    const text = document.getElementById("filterText").value.toLowerCase().trim();
+    const priority = document.getElementById("filterPriority").value;
+    const status = document.getElementById("filterStatus").value;
+
+    return incidents.filter(i => {
+      const matchText =
+        !text ||
+        String(i.type).toLowerCase().includes(text) ||
+        String(i.location).toLowerCase().includes(text) ||
+        String(i.reportedBy).toLowerCase().includes(text) ||
+        String(i.folio).toLowerCase().includes(text);
+
+      const matchPriority = !priority || i.priority === priority;
+      const matchStatus = !status || i.status === status;
+
+      return matchText && matchPriority && matchStatus;
+    });
+  }
+
+  function renderIncidents(){
+    const tbody = document.getElementById("incidentsTable");
+    tbody.innerHTML = "";
+
+    getFilteredIncidents().forEach(i => {
+      const index = incidents.indexOf(i);
+      const tr = document.createElement("tr");
+      const statusCss = statusClass(i.status, i.priority);
+
+      tr.innerHTML = `
+        <td><strong>${i.folio}</strong></td>
+        <td>${i.date}</td>
+        <td>${i.type}</td>
+        <td>${i.location}</td>
+        <td>${i.reportedBy}</td>
+        <td><span class="priority ${priorityClass(i.priority)}"></span>${i.priority}</td>
+        <td>
+          <select class="status-select ${statusCss}" onchange="changeStatus(${index}, this.value)">
+            <option ${i.status === "Abierto" ? "selected" : ""}>Abierto</option>
+            <option ${i.status === "Atendido" ? "selected" : ""}>Atendido</option>
+            <option ${i.status === "Cerrado" ? "selected" : ""}>Cerrado</option>
+          </select>
+        </td>
+        <td>${i.description}</td>
+        <td><button class="btn-danger" onclick="deleteIncident(${index})">Eliminar</button></td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+
+    updateMetrics();
+  }
+
+  function changeStatus(index, status){
+    incidents[index].status = status;
+    saveData();
+    renderIncidents();
+  }
+
+  function deleteIncident(index){
+    if(!confirm("¿Seguro que deseas eliminar esta incidencia?")) return;
+    incidents.splice(index,1);
+    saveData();
+    renderIncidents();
+    showToast("Incidencia eliminada.");
+  }
+
+  function clearFilters(){
+    document.getElementById("filterText").value = "";
+    document.getElementById("filterPriority").value = "";
+    document.getElementById("filterStatus").value = "";
+    renderIncidents();
+  }
+
+  function updateMetrics(){
+    document.getElementById("metricAbiertas").textContent =
+      incidents.filter(i => i.status === "Abierto").length;
+
+    document.getElementById("metricAtendidas").textContent =
+      incidents.filter(i => i.status === "Atendido").length;
+
+    document.getElementById("metricCriticas").textContent =
+      incidents.filter(i => i.priority === "Alta" && i.status === "Abierto").length;
+  }
+
+  loadData();
+  renderIncidents();
+</script>
+
+</body>
+</html>
