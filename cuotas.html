@@ -318,6 +318,24 @@
       .grid,.filters{grid-template-columns:1fr}
       .section-title{flex-direction:column;align-items:flex-start}
     }
+    .powered-by{
+      margin-top:12px;
+      font-size:12px;
+      color:rgba(255,255,255,.45);
+      letter-spacing:.3px;
+    }
+
+    .powered-by a{
+      color:rgba(94,234,212,.75);
+      text-decoration:none;
+      font-weight:600;
+      transition:.25s;
+    }
+
+    .powered-by a:hover{
+      color:var(--accent);
+      text-shadow:0 0 10px rgba(94,234,212,.4);
+    }
   </style>
 </head>
 
@@ -473,8 +491,18 @@
 </section>
 
 <footer>
-  Misión Jardines © 2026 — Administración de cuotas del fraccionamiento.
+  <div>
+    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
+  </div>
+
+  <div class="powered-by">
+    Plataforma desarrollada por
+    <a href="https://listoenlinea.com" target="_blank">
+      ListoEnLinea.com
+    </a>
+  </div>
 </footer>
+
 
 <div id="receiptContainer" class="receipt-hidden"></div>
 <div id="toast" class="toast"></div>

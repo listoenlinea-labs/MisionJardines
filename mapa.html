@@ -503,6 +503,24 @@
       .map-scroll{height:560px}
       .croquis{transform:scale(.72);transform-origin:left top}
     }
+    .powered-by{
+      margin-top:12px;
+      font-size:12px;
+      color:rgba(255,255,255,.45);
+      letter-spacing:.3px;
+    }
+
+    .powered-by a{
+      color:rgba(94,234,212,.75);
+      text-decoration:none;
+      font-weight:600;
+      transition:.25s;
+    }
+
+    .powered-by a:hover{
+      color:var(--accent);
+      text-shadow:0 0 10px rgba(94,234,212,.4);
+    }
   </style>
 </head>
 
@@ -642,8 +660,18 @@
 </section>
 
 <footer>
-  Misión Jardines © 2026 — Croquis interactivo conceptual del fraccionamiento.
+  <div>
+    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
+  </div>
+
+  <div class="powered-by">
+    Plataforma desarrollada por
+    <a href="https://listoenlinea.com" target="_blank">
+      ListoEnLinea.com
+    </a>
+  </div>
 </footer>
+
 
 <script>
   let selectedHouse = null;
