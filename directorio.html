@@ -36,15 +36,28 @@
       display:flex;justify-content:space-between;align-items:center;gap:18px;
     }
 
-    .brand{display:flex;align-items:center;gap:12px;font-weight:900}
-
-    .logo{
-      width:44px;height:44px;border-radius:15px;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-      display:grid;place-items:center;color:#06101e;
-      box-shadow:0 0 30px rgba(94,234,212,.45);
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:24px;
+      font-weight:900;
     }
 
+    .logo{
+      width:180px;
+      height:90px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+    }
+
+    .logo img{
+      width:100%;
+      height:auto;
+      object-fit:contain;
+      filter:drop-shadow(0 0 12px rgba(94,234,212,.35));
+    }
     .brand small{color:var(--muted);font-weight:500}
 
     .menu{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
@@ -312,10 +325,18 @@
 <header>
   <nav>
     <div class="brand">
-      <div class="logo">MJ</div>
+      <div class="logo">
+        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
+      </div>
+
       <div>
-        <div>Misión Jardines</div>
-        <small>Directorio vecinal</small>
+        <div style="font-size:2rem;font-weight:900;">
+          Misión Jardines
+        </div>
+
+        <small style="font-size:1.1rem;">
+          Directorio vecinal
+        </small>
       </div>
     </div>
 
