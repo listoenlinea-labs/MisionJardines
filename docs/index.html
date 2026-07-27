@@ -23,14 +23,38 @@
       </div>
 
       <div class="menu">
-        <a class="active" href="index.html">Inicio</a>
-        <a href="cuotas.html">Cuotas</a>
-        <a href="mapa.html">Mapa</a>
-        <a href="visitas.html">Visitas</a>
-        <a href="seguridad.html">Seguridad</a>
-        <a href="calendario.html">Calendario</a>
-        <a href="reportes.html">Reportes</a>
-        <a href="directorio.html">Directorio</a>
+        <a class="active" href="index.html">
+          Inicio
+        </a>
+
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
+
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
+
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
+
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
       </div>
     </nav>
   </header>
@@ -275,7 +299,6 @@
         </div>
       </div>
     </div>
-    </div>
   </section>
 
   <section id="avisos" class="section">
@@ -498,43 +521,46 @@
     </div>
 
     <div class="grid">
-      <a class="card quick-card" href="cuotas.html">
+      <a class="card quick-card" href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
         <div class="quick-icon">💳</div>
         <strong>Cuotas</strong>
         <p>Consulta, administra y registra pagos de mantenimiento.</p>
       </a>
 
-      <a class="card quick-card" href="mapa.html">
+      <a class="card quick-card" href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
         <div class="quick-icon">🗺️</div>
         <strong>Mapa 3D</strong>
         <p>Explora calles, casas y zonas importantes del fraccionamiento.</p>
       </a>
 
-      <a class="card quick-card" href="visitas.html">
+      <a class="card quick-card" href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
         <div class="quick-icon">🚗</div>
         <strong>Visitas</strong>
         <p>Registro de visitantes, placas, horarios y casas destino.</p>
       </a>
 
-      <a class="card quick-card" href="seguridad.html">
+      <a class="card quick-card" href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
         <div class="quick-icon">🛡️</div>
         <strong>Seguridad</strong>
         <p>Panel para reportes, accesos y novedades de caseta.</p>
       </a>
 
-      <a class="card quick-card" href="calendario.html">
+      <a class="card quick-card" href="calendario.html"
+        data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
         <div class="quick-icon">📅</div>
         <strong>Calendario</strong>
         <p>Consulta eventos, mantenimiento, basura y juntas vecinales.</p>
       </a>
 
-      <a class="card quick-card" href="reportes.html">
+      <a class="card quick-card" href="reportes.html"
+        data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
         <div class="quick-icon">📝</div>
         <strong>Reportes</strong>
         <p>Levanta reportes de fugas, luminarias, baches o incidencias.</p>
       </a>
 
-      <a class="card quick-card" href="directorio.html">
+      <a class="card quick-card" href="directorio.html"
+        data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
         <div class="quick-icon">📞</div>
         <strong>Directorio</strong>
         <p>Contactos útiles, servicios, emergencias y recomendaciones.</p>
@@ -563,6 +589,89 @@
 
 
   <script>
+    const token =
+      localStorage.getItem('misionJardinesToken')
+      || sessionStorage.getItem('misionJardinesToken');
+
+    if (!token) {
+      window.location.replace('login.html');
+    }
+    async function validarSesion() {
+      const token =
+        localStorage.getItem('misionJardinesToken')
+        || sessionStorage.getItem('misionJardinesToken');
+
+      if (!token) {
+        window.location.replace('login.html');
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          'http://localhost:3000/api/auth/perfil',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(
+            result.message || 'Sesión inválida'
+          );
+        }
+
+        console.log(
+          'Sesión válida:',
+          result.usuario
+        );
+        aplicarPermisosVisuales(
+          result.usuario.rol?.nombre
+        );
+      } catch (error) {
+        localStorage.removeItem(
+          'misionJardinesToken'
+        );
+
+        localStorage.removeItem(
+          'misionJardinesUsuario'
+        );
+
+        sessionStorage.removeItem(
+          'misionJardinesToken'
+        );
+
+        sessionStorage.removeItem(
+          'misionJardinesUsuario'
+        );
+
+        window.location.replace('login.html');
+      }
+    }
+
+    function aplicarPermisosVisuales(rol) {
+      const elementosProtegidos =
+        document.querySelectorAll('[data-roles]');
+
+      elementosProtegidos.forEach((elemento) => {
+        const rolesPermitidos =
+          elemento.dataset.roles
+            .split(',')
+            .map((item) => item.trim());
+
+        const tienePermiso =
+          rolesPermitidos.includes(rol);
+
+        elemento.hidden = !tienePermiso;
+      });
+    }
+
+    validarSesion();
+
+
     (() => {
       const button = document.getElementById("notificationsButton");
       const panel = document.getElementById("notificationsPanel");

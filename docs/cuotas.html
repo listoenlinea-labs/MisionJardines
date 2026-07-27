@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cuotas | Misión Jardines</title>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
@@ -12,327 +13,351 @@
 
 <body class="page-cuotas">
 
-<header>
-  <nav>
-    <div class="brand">
-      <div class="logo">
-        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
-      </div>
-
-      <div>
-        <div style="font-size:2rem;font-weight:900;">
-          Misión Jardines
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <small style="font-size:1.1rem;">
-          Administración de cuotas
-        </small>
+        <div>
+          <div style="font-size:2rem;font-weight:900;">
+            Misión Jardines
+          </div>
+
+          <small style="font-size:1.1rem;">
+            Administración de cuotas
+          </small>
+        </div>
+      </div>
+
+      <div class="menu">
+        <a href="index.html">
+          Inicio
+        </a>
+
+        <a class="active" href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
+
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
+
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
+
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">💳 Control de mantenimiento vecinal</div>
+    <h1>Cuotas de <span>Misión Jardines</span></h1>
+    <p>
+      Panel para administrar casas, propietarios, cuotas, estatus de pago,
+      folios, referencias y comprobantes generados con plantilla local.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="grid">
+      <div class="card metric">
+        <small>Casas registradas</small>
+        <strong id="metricCasas">0</strong>
+        <div class="hint">Total en padrón</div>
+      </div>
+
+      <div class="card metric">
+        <small>Pagadas</small>
+        <strong id="metricPagadas">0</strong>
+        <div class="hint">Cuotas al corriente</div>
+      </div>
+
+      <div class="card metric">
+        <small>Pendientes</small>
+        <strong id="metricPendientes">0</strong>
+        <div class="hint">Requieren seguimiento</div>
+      </div>
+
+      <div class="card metric">
+        <small>Monto recaudado</small>
+        <strong id="metricIngresos">$0</strong>
+        <div class="hint">Pagos registrados</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <div>
+        <h2>Filtros</h2>
+        <p>Busca por propietario, casa, calle o estatus.</p>
       </div>
     </div>
 
-    <div class="menu">
-      <a href="index.html">Inicio</a>
-      <a class="active" href="cuotas.html">Cuotas</a>
-      <a href="mapa.html">Mapa</a>
-      <a href="visitas.html">Visitas</a>
-      <a href="seguridad.html">Seguridad</a>
-      <a href="calendario.html">Calendario</a>
-      <a href="reportes.html">Reportes</a>
-      <a href="directorio.html">Directorio</a>
+    <div class="card">
+      <div class="filters">
+        <div>
+          <label>Buscar propietario, correo o teléfono</label>
+          <input id="filterText" placeholder="Ej. Juan Pérez" oninput="renderHouses()">
+        </div>
+
+        <div>
+          <label>Casa</label>
+          <input id="filterHouse" placeholder="Ej. MJ-001" oninput="renderHouses()">
+        </div>
+
+        <div>
+          <label>Calle</label>
+          <select id="filterStreet" onchange="renderHouses()">
+            <option value="">Todas las calles</option>
+            <option>Misión Jardines</option>
+            <option>Misión Gardenias</option>
+            <option>Misión Jazmines</option>
+            <option>Misión Rosas</option>
+            <option>Misión de Los Lirios</option>
+            <option>Av. Valle de México</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Estatus</label>
+          <select id="filterStatus" onchange="renderHouses()">
+            <option value="">Todos</option>
+            <option>Pagado</option>
+            <option>Pendiente</option>
+          </select>
+        </div>
+
+        <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
+      </div>
     </div>
-  </nav>
-</header>
+  </section>
 
-<section class="hero">
-  <div class="badge">💳 Control de mantenimiento vecinal</div>
-  <h1>Cuotas de <span>Misión Jardines</span></h1>
-  <p>
-    Panel para administrar casas, propietarios, cuotas, estatus de pago,
-    folios, referencias y comprobantes generados con plantilla local.
-  </p>
-</section>
+  <section class="section">
+    <div class="section-title">
+      <div>
+        <h2>Tabla de cuotas</h2>
+      </div>
 
-<section class="section">
-  <div class="grid">
-    <div class="card metric">
-      <small>Casas registradas</small>
-      <strong id="metricCasas">0</strong>
-      <div class="hint">Total en padrón</div>
+      <div class="actions">
+        <input id="excelInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+        <button class="btn-secondary" onclick="document.getElementById('excelInput').click()">Importar Excel</button>
+        <button class="btn-secondary" onclick="exportExcel()">Exportar Excel</button>
+        <button class="btn-primary" onclick="addHouse()">+ Agregar casa</button>
+      </div>
     </div>
 
-    <div class="card metric">
-      <small>Pagadas</small>
-      <strong id="metricPagadas">0</strong>
-      <div class="hint">Cuotas al corriente</div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Casa</th>
+              <th>Propietario</th>
+              <th>Calle</th>
+              <th>Número</th>
+              <th>Correo</th>
+              <th>Teléfono</th>
+              <th>Cuota</th>
+              <th>Mes</th>
+              <th>Referencia</th>
+              <th>Folio</th>
+              <th>Estatus</th>
+              <th>Fecha pago</th>
+              <th>Comprobante</th>
+              <th>Correo</th>
+              <th>Eliminar</th>
+            </tr>
+          </thead>
+          <tbody id="housesTable"></tbody>
+        </table>
+      </div>
     </div>
+  </section>
 
-    <div class="card metric">
-      <small>Pendientes</small>
-      <strong id="metricPendientes">0</strong>
-      <div class="hint">Requieren seguimiento</div>
-    </div>
-
-    <div class="card metric">
-      <small>Monto recaudado</small>
-      <strong id="metricIngresos">$0</strong>
-      <div class="hint">Pagos registrados</div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="section-title">
+  <footer>
     <div>
-      <h2>Filtros</h2>
-      <p>Busca por propietario, casa, calle o estatus.</p>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="filters">
-      <div>
-        <label>Buscar propietario, correo o teléfono</label>
-        <input id="filterText" placeholder="Ej. Juan Pérez" oninput="renderHouses()">
-      </div>
-
-      <div>
-        <label>Casa</label>
-        <input id="filterHouse" placeholder="Ej. MJ-001" oninput="renderHouses()">
-      </div>
-
-      <div>
-        <label>Calle</label>
-        <select id="filterStreet" onchange="renderHouses()">
-          <option value="">Todas las calles</option>
-          <option>Misión Jardines</option>
-          <option>Misión Gardenias</option>
-          <option>Misión Jazmines</option>
-          <option>Misión Rosas</option>
-          <option>Misión de Los Lirios</option>
-          <option>Av. Valle de México</option>
-        </select>
-      </div>
-
-      <div>
-        <label>Estatus</label>
-        <select id="filterStatus" onchange="renderHouses()">
-          <option value="">Todos</option>
-          <option>Pagado</option>
-          <option>Pendiente</option>
-        </select>
-      </div>
-
-      <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="section-title">
-    <div>
-      <h2>Tabla de cuotas</h2>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
 
-    <div class="actions">
-      <input id="excelInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
-      <button class="btn-secondary" onclick="document.getElementById('excelInput').click()">Importar Excel</button>
-      <button class="btn-secondary" onclick="exportExcel()">Exportar Excel</button>
-      <button class="btn-primary" onclick="addHouse()">+ Agregar casa</button>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank">
+        ListoEnLinea.com
+      </a>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Casa</th>
-            <th>Propietario</th>
-            <th>Calle</th>
-            <th>Número</th>
-            <th>Correo</th>
-            <th>Teléfono</th>
-            <th>Cuota</th>
-            <th>Mes</th>
-            <th>Referencia</th>
-            <th>Folio</th>
-            <th>Estatus</th>
-            <th>Fecha pago</th>
-            <th>Comprobante</th>
-            <th>Correo</th>
-            <th>Eliminar</th>
-          </tr>
-        </thead>
-        <tbody id="housesTable"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div>
-    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-  </div>
-
-  <div class="powered-by">
-    Plataforma desarrollada por
-    <a href="https://listoenlinea.com" target="_blank">
-      ListoEnLinea.com
-    </a>
-  </div>
-</footer>
+  </footer>
 
 
-<div id="receiptContainer" class="receipt-hidden"></div>
-<div id="toast" class="toast"></div>
+  <div id="receiptContainer" class="receipt-hidden"></div>
+  <div id="toast" class="toast"></div>
 
-<script>
-  const STORAGE_KEY = "mision_jardines_cuotas";
+  <script>
+    const STORAGE_KEY = "mision_jardines_cuotas";
 
-  let houses = [
-    {
-      casa:"MJ-001",
-      propietario:"Laura Gómez",
-      calle:"Misión Jardines",
-      numero:"101",
-      correo:"laura@email.com",
-      telefono:"3312345678",
-      cuota:850,
-      mes:"Junio",
-      referencia:"",
-      folio:"",
-      estatus:"Pendiente",
-      fechaPago:""
-    },
-    {
-      casa:"MG-002",
-      propietario:"Martín Pérez",
-      calle:"Misión Gardenias",
-      numero:"102",
-      correo:"martin@email.com",
-      telefono:"3399887766",
-      cuota:850,
-      mes:"Junio",
-      referencia:"TR-MG002",
-      folio:"MJ-2026-0001",
-      estatus:"Pagado",
-      fechaPago:"05/06/2026"
-    }
-  ];
-
-  function loadData(){
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved){
-      houses = JSON.parse(saved);
-    }
-  }
-
-  function saveData(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(houses));
-  }
-
-  function money(n){
-    return Number(n || 0).toLocaleString("es-MX", {
-      minimumFractionDigits:2,
-      maximumFractionDigits:2
-    });
-  }
-
-  function todayDDMMYYYY(){
-    const d = new Date();
-    const dd = String(d.getDate()).padStart(2,"0");
-    const mm = String(d.getMonth() + 1).padStart(2,"0");
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  }
-
-  function currentYear(){
-    return new Date().getFullYear();
-  }
-
-  function generateFolio(){
-    const year = currentYear();
-    const count = houses.filter(h => h.folio && h.folio.includes(`MJ-${year}`)).length + 1;
-    return `MJ-${year}-${String(count).padStart(4,"0")}`;
-  }
-
-  function generateReference(h){
-    const cleanCasa = String(h.casa || "CASA").replace(/\s+/g,"").replace(/[^A-Z0-9-]/gi,"").toUpperCase();
-    return `REF-${cleanCasa}-${Date.now().toString().slice(-5)}`;
-  }
-
-  function showToast(message){
-    const toast = document.getElementById("toast");
-    toast.innerHTML = message;
-    toast.style.display = "block";
-    setTimeout(() => toast.style.display = "none", 3600);
-  }
-
-  function getStatusClass(status){
-    if(status === "Pagado") return "paid";
-    return "pending";
-  }
-
-  function streetOptions(selected){
-    const streets = [
-      "Misión Jardines",
-      "Misión Gardenias",
-      "Misión Jazmines",
-      "Misión Rosas",
-      "Misión de Los Lirios",
-      "Av. Valle de México"
+    let houses = [
+      {
+        casa: "MJ-001",
+        propietario: "Laura Gómez",
+        calle: "Misión Jardines",
+        numero: "101",
+        correo: "laura@email.com",
+        telefono: "3312345678",
+        cuota: 850,
+        mes: "Junio",
+        referencia: "",
+        folio: "",
+        estatus: "Pendiente",
+        fechaPago: ""
+      },
+      {
+        casa: "MG-002",
+        propietario: "Martín Pérez",
+        calle: "Misión Gardenias",
+        numero: "102",
+        correo: "martin@email.com",
+        telefono: "3399887766",
+        cuota: 850,
+        mes: "Junio",
+        referencia: "TR-MG002",
+        folio: "MJ-2026-0001",
+        estatus: "Pagado",
+        fechaPago: "05/06/2026"
+      }
     ];
 
-    return streets.map(street => {
-      return `<option ${street === selected ? "selected" : ""}>${street}</option>`;
-    }).join("");
-  }
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        houses = JSON.parse(saved);
+      }
+    }
 
-  function monthOptions(selected){
-    const months = [
-      "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-      "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
-    ];
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(houses));
+    }
 
-    return months.map(month => {
-      return `<option ${month === selected ? "selected" : ""}>${month}</option>`;
-    }).join("");
-  }
+    function money(n) {
+      return Number(n || 0).toLocaleString("es-MX", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
 
-  function getFilteredHouses(){
-    const text = document.getElementById("filterText").value.toLowerCase().trim();
-    const house = document.getElementById("filterHouse").value.toLowerCase().trim();
-    const street = document.getElementById("filterStreet").value;
-    const status = document.getElementById("filterStatus").value;
+    function todayDDMMYYYY() {
+      const d = new Date();
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
 
-    return houses.filter(h => {
-      const matchText =
-        !text ||
-        String(h.propietario).toLowerCase().includes(text) ||
-        String(h.correo).toLowerCase().includes(text) ||
-        String(h.telefono).toLowerCase().includes(text);
+    function currentYear() {
+      return new Date().getFullYear();
+    }
 
-      const matchHouse =
-        !house ||
-        String(h.casa).toLowerCase().includes(house) ||
-        String(h.numero).toLowerCase().includes(house);
+    function generateFolio() {
+      const year = currentYear();
+      const count = houses.filter(h => h.folio && h.folio.includes(`MJ-${year}`)).length + 1;
+      return `MJ-${year}-${String(count).padStart(4, "0")}`;
+    }
 
-      const matchStreet = !street || h.calle === street;
-      const matchStatus = !status || h.estatus === status;
+    function generateReference(h) {
+      const cleanCasa = String(h.casa || "CASA").replace(/\s+/g, "").replace(/[^A-Z0-9-]/gi, "").toUpperCase();
+      return `REF-${cleanCasa}-${Date.now().toString().slice(-5)}`;
+    }
 
-      return matchText && matchHouse && matchStreet && matchStatus;
-    });
-  }
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.innerHTML = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3600);
+    }
 
-  function renderHouses(){
-    const tbody = document.getElementById("housesTable");
-    tbody.innerHTML = "";
+    function getStatusClass(status) {
+      if (status === "Pagado") return "paid";
+      return "pending";
+    }
 
-    getFilteredHouses().forEach((h) => {
-      const realIndex = houses.indexOf(h);
-      const tr = document.createElement("tr");
+    function streetOptions(selected) {
+      const streets = [
+        "Misión Jardines",
+        "Misión Gardenias",
+        "Misión Jazmines",
+        "Misión Rosas",
+        "Misión de Los Lirios",
+        "Av. Valle de México"
+      ];
 
-      tr.innerHTML = `
+      return streets.map(street => {
+        return `<option ${street === selected ? "selected" : ""}>${street}</option>`;
+      }).join("");
+    }
+
+    function monthOptions(selected) {
+      const months = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+      ];
+
+      return months.map(month => {
+        return `<option ${month === selected ? "selected" : ""}>${month}</option>`;
+      }).join("");
+    }
+
+    function getFilteredHouses() {
+      const text = document.getElementById("filterText").value.toLowerCase().trim();
+      const house = document.getElementById("filterHouse").value.toLowerCase().trim();
+      const street = document.getElementById("filterStreet").value;
+      const status = document.getElementById("filterStatus").value;
+
+      return houses.filter(h => {
+        const matchText =
+          !text ||
+          String(h.propietario).toLowerCase().includes(text) ||
+          String(h.correo).toLowerCase().includes(text) ||
+          String(h.telefono).toLowerCase().includes(text);
+
+        const matchHouse =
+          !house ||
+          String(h.casa).toLowerCase().includes(house) ||
+          String(h.numero).toLowerCase().includes(house);
+
+        const matchStreet = !street || h.calle === street;
+        const matchStatus = !status || h.estatus === status;
+
+        return matchText && matchHouse && matchStreet && matchStatus;
+      });
+    }
+
+    function renderHouses() {
+      const tbody = document.getElementById("housesTable");
+      tbody.innerHTML = "";
+
+      getFilteredHouses().forEach((h) => {
+        const realIndex = houses.indexOf(h);
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
         <td><input value="${h.casa || ""}" onchange="updateHouse(${realIndex}, 'casa', this.value)"></td>
         <td><input value="${h.propietario || ""}" onchange="updateHouse(${realIndex}, 'propietario', this.value)"></td>
         <td><select onchange="updateHouse(${realIndex}, 'calle', this.value)">${streetOptions(h.calle)}</select></td>
@@ -366,80 +391,80 @@
         </td>
       `;
 
-      tbody.appendChild(tr);
-    });
+        tbody.appendChild(tr);
+      });
 
-    updateMetrics();
-  }
-
-  function updateHouse(index, field, value){
-    houses[index][field] = field === "cuota" ? Number(value) : value;
-    saveData();
-    updateMetrics();
-  }
-
-  function addHouse(){
-    houses.push({
-      casa:"Nueva",
-      propietario:"Nombre propietario",
-      calle:"Misión Jardines",
-      numero:"000",
-      correo:"correo@email.com",
-      telefono:"3300000000",
-      cuota:850,
-      mes:"Junio",
-      referencia:"",
-      folio:"",
-      estatus:"Pendiente",
-      fechaPago:""
-    });
-
-    saveData();
-    renderHouses();
-    showToast("Casa agregada correctamente.");
-  }
-
-  function deleteHouse(index){
-    if(!confirm("¿Seguro que deseas eliminar esta casa?")) return;
-    houses.splice(index, 1);
-    saveData();
-    renderHouses();
-    showToast("Casa eliminada.");
-  }
-
-  function changePaymentStatus(index, value){
-    houses[index].estatus = value;
-
-    if(value === "Pagado"){
-      if(!houses[index].fechaPago) houses[index].fechaPago = todayDDMMYYYY();
-      if(!houses[index].folio) houses[index].folio = generateFolio();
-      if(!houses[index].referencia) houses[index].referencia = generateReference(houses[index]);
-      showToast("Pago registrado. Se asignó fecha, folio y referencia.");
+      updateMetrics();
     }
 
-    saveData();
-    renderHouses();
-  }
+    function updateHouse(index, field, value) {
+      houses[index][field] = field === "cuota" ? Number(value) : value;
+      saveData();
+      updateMetrics();
+    }
 
-  function updateMetrics(){
-    const total = houses.length;
-    const pagadas = houses.filter(h => h.estatus === "Pagado").length;
-    const pendientes = houses.filter(h => h.estatus === "Pendiente").length;
+    function addHouse() {
+      houses.push({
+        casa: "Nueva",
+        propietario: "Nombre propietario",
+        calle: "Misión Jardines",
+        numero: "000",
+        correo: "correo@email.com",
+        telefono: "3300000000",
+        cuota: 850,
+        mes: "Junio",
+        referencia: "",
+        folio: "",
+        estatus: "Pendiente",
+        fechaPago: ""
+      });
 
-    const ingresos = houses
-    .filter(h => h.estatus === "Pagado")
-    .reduce((acc, h) => acc + Number(h.cuota || 0), 0);
+      saveData();
+      renderHouses();
+      showToast("Casa agregada correctamente.");
+    }
 
-    document.getElementById("metricCasas").textContent = total;
-    document.getElementById("metricPagadas").textContent = pagadas;
-    document.getElementById("metricPendientes").textContent = pendientes;
-    document.getElementById("metricIngresos").textContent = `$${money(ingresos)}`;
-  }
+    function deleteHouse(index) {
+      if (!confirm("¿Seguro que deseas eliminar esta casa?")) return;
+      houses.splice(index, 1);
+      saveData();
+      renderHouses();
+      showToast("Casa eliminada.");
+    }
 
-  function buildReceiptHTML(h){
-    const logoPath = "assets/images/logo-mision-jardines.png";
+    function changePaymentStatus(index, value) {
+      houses[index].estatus = value;
 
-    return `
+      if (value === "Pagado") {
+        if (!houses[index].fechaPago) houses[index].fechaPago = todayDDMMYYYY();
+        if (!houses[index].folio) houses[index].folio = generateFolio();
+        if (!houses[index].referencia) houses[index].referencia = generateReference(houses[index]);
+        showToast("Pago registrado. Se asignó fecha, folio y referencia.");
+      }
+
+      saveData();
+      renderHouses();
+    }
+
+    function updateMetrics() {
+      const total = houses.length;
+      const pagadas = houses.filter(h => h.estatus === "Pagado").length;
+      const pendientes = houses.filter(h => h.estatus === "Pendiente").length;
+
+      const ingresos = houses
+        .filter(h => h.estatus === "Pagado")
+        .reduce((acc, h) => acc + Number(h.cuota || 0), 0);
+
+      document.getElementById("metricCasas").textContent = total;
+      document.getElementById("metricPagadas").textContent = pagadas;
+      document.getElementById("metricPendientes").textContent = pendientes;
+      document.getElementById("metricIngresos").textContent = `$${money(ingresos)}`;
+    }
+
+    function buildReceiptHTML(h) {
+      const logoPath = "assets/images/logo-mision-jardines.png";
+
+      return `
       <div class="receipt-page" id="receiptPDF">
         <div class="receipt-box">
           <img src="${logoPath}" class="receipt-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
@@ -520,20 +545,20 @@
         </div>
       </div>
     `;
-  }
-
-  function previewReceipt(index){
-    const h = houses[index];
-
-    if(h.estatus !== "Pagado"){
-      showToast("Primero cambia el estatus a Pagado para generar el comprobante.");
-      return;
     }
 
-    const html = buildReceiptHTML(h);
-    const win = window.open("", "_blank");
+    function previewReceipt(index) {
+      const h = houses[index];
 
-    win.document.write(`
+      if (h.estatus !== "Pagado") {
+        showToast("Primero cambia el estatus a Pagado para generar el comprobante.");
+        return;
+      }
+
+      const html = buildReceiptHTML(h);
+      const win = window.open("", "_blank");
+
+      win.document.write(`
       <html>
         <head>
           <title>Comprobante ${h.folio || h.casa}</title>
@@ -549,46 +574,46 @@
       </html>
     `);
 
-    win.document.close();
-  }
-
-  function downloadReceiptPDF(index){
-    const h = houses[index];
-
-    if(h.estatus !== "Pagado"){
-      showToast("Primero cambia el estatus a Pagado.");
-      return;
+      win.document.close();
     }
 
-    const container = document.getElementById("receiptContainer");
-    container.innerHTML = buildReceiptHTML(h);
+    function downloadReceiptPDF(index) {
+      const h = houses[index];
 
-    const element = document.getElementById("receiptPDF");
-    const filename = `Comprobante_${h.folio || h.casa}.pdf`;
+      if (h.estatus !== "Pagado") {
+        showToast("Primero cambia el estatus a Pagado.");
+        return;
+      }
 
-    html2pdf()
-      .set({
-        margin:0,
-        filename,
-        image:{type:"jpeg", quality:0.98},
-        html2canvas:{scale:2, useCORS:true},
-        jsPDF:{unit:"mm", format:"letter", orientation:"portrait"}
-      })
-      .from(element)
-      .save();
-  }
+      const container = document.getElementById("receiptContainer");
+      container.innerHTML = buildReceiptHTML(h);
 
-  function sendMail(index){
-    const h = houses[index];
+      const element = document.getElementById("receiptPDF");
+      const filename = `Comprobante_${h.folio || h.casa}.pdf`;
 
-    if(h.estatus !== "Pagado"){
-      showToast("Primero cambia el estatus a Pagado.");
-      return;
+      html2pdf()
+        .set({
+          margin: 0,
+          filename,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "letter", orientation: "portrait" }
+        })
+        .from(element)
+        .save();
     }
 
-    const subject = encodeURIComponent(`Comprobante de pago ${h.folio || ""} - Misión Jardines`);
-    const body = encodeURIComponent(
-`Hola ${h.propietario || ""},
+    function sendMail(index) {
+      const h = houses[index];
+
+      if (h.estatus !== "Pagado") {
+        showToast("Primero cambia el estatus a Pagado.");
+        return;
+      }
+
+      const subject = encodeURIComponent(`Comprobante de pago ${h.folio || ""} - Misión Jardines`);
+      const body = encodeURIComponent(
+        `Hola ${h.propietario || ""},
 
 Adjunto/comparto el comprobante de pago de mantenimiento.
 
@@ -605,83 +630,84 @@ Nota: El comprobante se puede descargar desde el sistema en formato PDF.
 Saludos,
 Administración
 Fraccionamiento Misión Jardines`
-    );
+      );
 
-    window.location.href = `mailto:${h.correo || ""}?subject=${subject}&body=${body}`;
-  }
+      window.location.href = `mailto:${h.correo || ""}?subject=${subject}&body=${body}`;
+    }
 
-  function exportExcel(){
-    const data = houses.map(h => ({
-      Casa:h.casa,
-      Propietario:h.propietario,
-      Calle:h.calle,
-      Numero:h.numero,
-      Correo:h.correo,
-      Telefono:h.telefono,
-      Cuota:h.cuota,
-      Mes:h.mes,
-      Referencia:h.referencia,
-      Folio:h.folio,
-      Estatus:h.estatus,
-      FechaPago:h.fechaPago
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(wb, ws, "Cuotas");
-    XLSX.writeFile(wb, "cuotas_mision_jardines.xlsx");
-
-    showToast("Excel exportado correctamente.");
-  }
-
-  function importExcel(event){
-    const file = event.target.files[0];
-    if(!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = function(e){
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type:"array"});
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, {defval:""});
-
-      houses = rows.map(row => ({
-        casa: row.Casa || row.casa || "",
-        propietario: row.Propietario || row.propietario || row.Nombre || "",
-        calle: row.Calle || row.calle || "",
-        numero: row.Numero || row.Número || row.numero || "",
-        correo: row.Correo || row.correo || "",
-        telefono: row.Telefono || row.Teléfono || row.telefono || "",
-        cuota: Number(row.Cuota || row.cuota || 0),
-        mes: row.Mes || row.mes || "Junio",
-        referencia: row.Referencia || row.referencia || "",
-        folio: row.Folio || row.folio || "",
-        estatus: (row.Estatus || row.estatus || "Pendiente") === "Pagado" ? "Pagado" : "Pendiente",
-        fechaPago: row.FechaPago || row["Fecha Pago"] || row["Fecha pago"] || row.fechaPago || ""
+    function exportExcel() {
+      const data = houses.map(h => ({
+        Casa: h.casa,
+        Propietario: h.propietario,
+        Calle: h.calle,
+        Numero: h.numero,
+        Correo: h.correo,
+        Telefono: h.telefono,
+        Cuota: h.cuota,
+        Mes: h.mes,
+        Referencia: h.referencia,
+        Folio: h.folio,
+        Estatus: h.estatus,
+        FechaPago: h.fechaPago
       }));
 
-      saveData();
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(wb, ws, "Cuotas");
+      XLSX.writeFile(wb, "cuotas_mision_jardines.xlsx");
+
+      showToast("Excel exportado correctamente.");
+    }
+
+    function importExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+        houses = rows.map(row => ({
+          casa: row.Casa || row.casa || "",
+          propietario: row.Propietario || row.propietario || row.Nombre || "",
+          calle: row.Calle || row.calle || "",
+          numero: row.Numero || row.Número || row.numero || "",
+          correo: row.Correo || row.correo || "",
+          telefono: row.Telefono || row.Teléfono || row.telefono || "",
+          cuota: Number(row.Cuota || row.cuota || 0),
+          mes: row.Mes || row.mes || "Junio",
+          referencia: row.Referencia || row.referencia || "",
+          folio: row.Folio || row.folio || "",
+          estatus: (row.Estatus || row.estatus || "Pendiente") === "Pagado" ? "Pagado" : "Pendiente",
+          fechaPago: row.FechaPago || row["Fecha Pago"] || row["Fecha pago"] || row.fechaPago || ""
+        }));
+
+        saveData();
+        renderHouses();
+        showToast(`Excel importado correctamente. Registros cargados: ${houses.length}`);
+      };
+
+      reader.readAsArrayBuffer(file);
+      event.target.value = "";
+    }
+
+    function clearFilters() {
+      document.getElementById("filterText").value = "";
+      document.getElementById("filterHouse").value = "";
+      document.getElementById("filterStreet").value = "";
+      document.getElementById("filterStatus").value = "";
       renderHouses();
-      showToast(`Excel importado correctamente. Registros cargados: ${houses.length}`);
-    };
+    }
 
-    reader.readAsArrayBuffer(file);
-    event.target.value = "";
-  }
-
-  function clearFilters(){
-    document.getElementById("filterText").value = "";
-    document.getElementById("filterHouse").value = "";
-    document.getElementById("filterStreet").value = "";
-    document.getElementById("filterStatus").value = "";
+    loadData();
     renderHouses();
-  }
-
-  loadData();
-  renderHouses();
-</script>
+  </script>
 
 </body>
+
 </html>

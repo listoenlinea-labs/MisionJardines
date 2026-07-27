@@ -1,319 +1,345 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Directorio | Misión Jardines</title>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body class="page-directorio">
 
-<header>
-  <nav>
-    <div class="brand">
-      <div class="logo">
-        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
-      </div>
-
-      <div>
-        <div style="font-size:2rem;font-weight:900;">
-          Misión Jardines
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <small style="font-size:1.1rem;">
-          Directorio vecinal
-        </small>
+        <div>
+          <div style="font-size:2rem;font-weight:900;">
+            Misión Jardines
+          </div>
+
+          <small style="font-size:1.1rem;">
+            Directorio vecinal
+          </small>
+        </div>
+      </div>
+
+      <div class="menu">
+        <a href="index.html">
+          Inicio
+        </a>
+
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
+
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
+
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
+
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a class="active" href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">📞 Contactos útiles · Zona 45138 Zapopan</div>
+    <h1>Directorio de <span>Misión Jardines</span></h1>
+    <p>
+      Contactos recomendados para servicios del hogar, mantenimiento, comida cercana,
+      emergencias y comunicación con la mesa directiva del fraccionamiento.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="card">
+      <div class="filters">
+        <div>
+          <label>Buscar por nombre, servicio o zona</label>
+          <input id="searchInput" placeholder="Ej. plomero, tacos, jardinero, emergencia" oninput="renderDirectory()">
+        </div>
+
+        <div>
+          <label>Categoría</label>
+          <select id="categoryFilter" onchange="renderDirectory()">
+            <option value="">Todas</option>
+            <option>Servicios del hogar</option>
+            <option>Comida y restaurantes</option>
+            <option>Emergencias</option>
+            <option>Mantenimiento</option>
+            <option>Mesa directiva</option>
+          </select>
+        </div>
+
+        <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
       </div>
     </div>
+  </section>
 
-    <div class="menu">
-      <a href="index.html">Inicio</a>
-      <a href="cuotas.html">Cuotas</a>
-      <a href="mapa.html">Mapa</a>
-      <a href="visitas.html">Visitas</a>
-      <a href="seguridad.html">Seguridad</a>
-      <a href="calendario.html">Calendario</a>
-      <a href="reportes.html">Reportes</a>
-      <a class="active" href="directorio.html">Directorio</a>
-    </div>
-  </nav>
-</header>
-
-<section class="hero">
-  <div class="badge">📞 Contactos útiles · Zona 45138 Zapopan</div>
-  <h1>Directorio de <span>Misión Jardines</span></h1>
-  <p>
-    Contactos recomendados para servicios del hogar, mantenimiento, comida cercana,
-    emergencias y comunicación con la mesa directiva del fraccionamiento.
-  </p>
-</section>
-
-<section class="section">
-  <div class="card">
-    <div class="filters">
+  <section class="section">
+    <div class="section-title">
       <div>
-        <label>Buscar por nombre, servicio o zona</label>
-        <input id="searchInput" placeholder="Ej. plomero, tacos, jardinero, emergencia" oninput="renderDirectory()">
+        <h2>Conoce a tu nueva mesa directiva</h2>
+        <p>
+          Datos de ejemplo para maqueta. Sustituye estos nombres y teléfonos por los reales cuando el fraccionamiento
+          los confirme.
+        </p>
       </div>
+    </div>
 
+    <div class="person-grid" id="boardGrid"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
       <div>
-        <label>Categoría</label>
-        <select id="categoryFilter" onchange="renderDirectory()">
-          <option value="">Todas</option>
-          <option>Servicios del hogar</option>
-          <option>Comida y restaurantes</option>
-          <option>Emergencias</option>
-          <option>Mantenimiento</option>
-          <option>Mesa directiva</option>
-        </select>
+        <h2>Contactos y recomendaciones</h2>
+        <p>Filtra por categoría para encontrar servicios útiles cerca de Misión Jardines.</p>
       </div>
-
-      <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
     </div>
-  </div>
-</section>
 
-<section class="section">
-  <div class="section-title">
+    <div class="directory-grid" id="directoryGrid"></div>
+  </section>
+
+  <footer>
     <div>
-      <h2>Conoce a tu nueva mesa directiva</h2>
-      <p>
-        Datos de ejemplo para maqueta. Sustituye estos nombres y teléfonos por los reales cuando el fraccionamiento los confirme.
-      </p>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
-  </div>
 
-  <div class="person-grid" id="boardGrid"></div>
-</section>
-
-<section class="section">
-  <div class="section-title">
-    <div>
-      <h2>Contactos y recomendaciones</h2>
-      <p>Filtra por categoría para encontrar servicios útiles cerca de Misión Jardines.</p>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank">
+        ListoEnLinea.com
+      </a>
     </div>
-  </div>
-
-  <div class="directory-grid" id="directoryGrid"></div>
-</section>
-
-<footer>
-  <div>
-    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-  </div>
-
-  <div class="powered-by">
-    Plataforma desarrollada por
-    <a href="https://listoenlinea.com" target="_blank">
-      ListoEnLinea.com
-    </a>
-  </div>
-</footer>
+  </footer>
 
 
-<script>
-  const boardMembers = [
-    {
-      name:"Mariana Torres",
-      role:"Presidenta",
-      phone:"33 4100 2351",
-      house:"MJ-014",
-      emoji:"👩‍💼"
-    },
-    {
-      name:"Eduardo Ramírez",
-      role:"Tesorero",
-      phone:"33 5721 8840",
-      house:"MG-008",
-      emoji:"👨‍💻"
-    },
-    {
-      name:"Claudia Hernández",
-      role:"Secretaria",
-      phone:"33 6902 1475",
-      house:"MZ-021",
-      emoji:"👩‍🏫"
-    },
-    {
-      name:"Raúl Méndez",
-      role:"Vocal de seguridad",
-      phone:"33 8045 9912",
-      house:"ML-006",
-      emoji:"🛡️"
-    },
-    {
-      name:"Patricia Gómez",
-      role:"Vocal de mantenimiento",
-      phone:"33 2368 7744",
-      house:"MR-011",
-      emoji:"🌳"
+  <script>
+    const boardMembers = [
+      {
+        name: "Mariana Torres",
+        role: "Presidenta",
+        phone: "33 4100 2351",
+        house: "MJ-014",
+        emoji: "👩‍💼"
+      },
+      {
+        name: "Eduardo Ramírez",
+        role: "Tesorero",
+        phone: "33 5721 8840",
+        house: "MG-008",
+        emoji: "👨‍💻"
+      },
+      {
+        name: "Claudia Hernández",
+        role: "Secretaria",
+        phone: "33 6902 1475",
+        house: "MZ-021",
+        emoji: "👩‍🏫"
+      },
+      {
+        name: "Raúl Méndez",
+        role: "Vocal de seguridad",
+        phone: "33 8045 9912",
+        house: "ML-006",
+        emoji: "🛡️"
+      },
+      {
+        name: "Patricia Gómez",
+        role: "Vocal de mantenimiento",
+        phone: "33 2368 7744",
+        house: "MR-011",
+        emoji: "🌳"
+      }
+    ];
+
+    const contacts = [
+      {
+        name: "Servicios Ibarra",
+        category: "Servicios del hogar",
+        type: "Plomería / Fontanería",
+        zone: "Zapopan",
+        phone: "Consultar en sitio",
+        description: "Servicio de plomería, fugas de agua/gas, tinacos, calentadores, destapacaños y tuberías.",
+        source: "Referencia pública de servicios de fontanería en Zapopan.",
+        emoji: "🔧",
+        tags: ["Plomero", "Fugas", "Tinacos"]
+      },
+      {
+        name: "Fontanero GDL / Servicio Flores",
+        category: "Servicios del hogar",
+        type: "Fontanería",
+        zone: "Zapopan / GDL",
+        phone: "Consultar en sitio",
+        description: "Servicio de fontanería en Zapopan para desagües, tuberías, gas y reparaciones generales.",
+        source: "Referencia pública de fontaneros en Zapopan.",
+        emoji: "🚿",
+        tags: ["Fontanero", "Gas", "Desagües"]
+      },
+      {
+        name: "Cronoshare Zapopan",
+        category: "Servicios del hogar",
+        type: "Plomeros por cotización",
+        zone: "Zapopan",
+        phone: "Cotización online",
+        description: "Plataforma para pedir cotizaciones de plomeros; útil para comparar precios antes de contratar.",
+        source: "Referencia pública de cotizaciones de plomería en Zapopan.",
+        emoji: "📲",
+        tags: ["Cotización", "Plomero", "Comparar"]
+      },
+      {
+        name: "Maestro Javier",
+        category: "Mantenimiento",
+        type: "Albañilería / Reparaciones",
+        zone: "Zona Misión Jardines",
+        phone: "33 6124 9082",
+        description: "Contacto demo para reparaciones menores, resanes, pintura, banquetas y trabajos generales.",
+        source: "Dato de ejemplo editable.",
+        emoji: "🧱",
+        tags: ["Albañil", "Pintura", "Resanes"]
+      },
+      {
+        name: "Jardinería El Roble",
+        category: "Mantenimiento",
+        type: "Jardinería",
+        zone: "Zapopan Norte",
+        phone: "33 7820 4419",
+        description: "Contacto demo para poda, limpieza de áreas verdes, riego, jardineras y mantenimiento mensual.",
+        source: "Dato de ejemplo editable.",
+        emoji: "🌿",
+        tags: ["Jardinero", "Poda", "Áreas verdes"]
+      },
+      {
+        name: "Electricista Miguel",
+        category: "Servicios del hogar",
+        type: "Electricidad",
+        zone: "Zapopan",
+        phone: "33 9012 3375",
+        description: "Contacto demo para luminarias, contactos, apagadores, centros de carga y fallas básicas.",
+        source: "Dato de ejemplo editable.",
+        emoji: "💡",
+        tags: ["Electricista", "Luminarias", "Contactos"]
+      },
+      {
+        name: "La Ruta del Chilaquil",
+        category: "Comida y restaurantes",
+        type: "Mexicana / Desayunos",
+        zone: "Misión Jardines 45138",
+        phone: "App de delivery",
+        description: "Opción de comida mexicana ubicada dentro/zona Misión Jardines, útil para desayunos o comida rápida.",
+        source: "Referencia pública de delivery en Misión Jardines.",
+        emoji: "🍳",
+        tags: ["Chilaquiles", "Mexicana", "Cercano"]
+      },
+      {
+        name: "El Hangar de Moes",
+        category: "Comida y restaurantes",
+        type: "Mexicana / Económica",
+        zone: "Nuevo México / 45138",
+        phone: "App de delivery",
+        description: "Opción económica de comida mexicana cercana a Nuevo México/Zapopan 45138.",
+        source: "Referencia pública de delivery en zona Nuevo México.",
+        emoji: "🌮",
+        tags: ["Mexicana", "Económica", "Delivery"]
+      },
+      {
+        name: "Tacos de Barbacoa MC",
+        category: "Comida y restaurantes",
+        type: "Tacos / Barbacoa",
+        zone: "45138 Zapopan",
+        phone: "App de delivery",
+        description: "Opción de tacos de barbacoa en la zona 45138, útil para fines de semana o desayunos.",
+        source: "Referencia pública de delivery en zona 45138.",
+        emoji: "🌮",
+        tags: ["Tacos", "Barbacoa", "Cercano"]
+      },
+      {
+        name: "Akari Sushi",
+        category: "Comida y restaurantes",
+        type: "Sushi",
+        zone: "Jardines del Valle 45138",
+        phone: "Redes sociales",
+        description: "Opción de sushi en zona Jardines del Valle / 45138.",
+        source: "Referencia pública en redes sociales.",
+        emoji: "🍣",
+        tags: ["Sushi", "Comida", "Zona 45138"]
+      },
+      {
+        name: "Emergencias 911",
+        category: "Emergencias",
+        type: "Emergencia general",
+        zone: "México",
+        phone: "911",
+        description: "Número nacional para emergencias médicas, seguridad, protección civil o situaciones de riesgo.",
+        source: "Número público de emergencia.",
+        emoji: "🚨",
+        tags: ["Emergencia", "Policía", "Ambulancia"]
+      },
+      {
+        name: "Caseta Misión Jardines",
+        category: "Emergencias",
+        type: "Seguridad interna",
+        zone: "Fraccionamiento",
+        phone: "33 0000 0000",
+        description: "Número demo para caseta. Reemplazar por el teléfono real de vigilancia.",
+        source: "Dato de ejemplo editable.",
+        emoji: "🛡️",
+        tags: ["Caseta", "Seguridad", "Acceso"]
+      },
+      {
+        name: "Administración Misión Jardines",
+        category: "Mesa directiva",
+        type: "Administración vecinal",
+        zone: "Fraccionamiento",
+        phone: "33 1111 1111",
+        description: "Contacto demo para dudas de cuotas, reportes, mantenimiento y comunicación general.",
+        source: "Dato de ejemplo editable.",
+        emoji: "🏡",
+        tags: ["Administración", "Cuotas", "Reportes"]
+      }
+    ];
+
+    function categoryClass(category) {
+      if (category === "Comida y restaurantes") return "comida";
+      if (category === "Emergencias") return "emergencia";
+      if (category === "Mesa directiva") return "mesa";
+      if (category === "Mantenimiento") return "hogar";
+      return "servicio";
     }
-  ];
 
-  const contacts = [
-    {
-      name:"Servicios Ibarra",
-      category:"Servicios del hogar",
-      type:"Plomería / Fontanería",
-      zone:"Zapopan",
-      phone:"Consultar en sitio",
-      description:"Servicio de plomería, fugas de agua/gas, tinacos, calentadores, destapacaños y tuberías.",
-      source:"Referencia pública de servicios de fontanería en Zapopan.",
-      emoji:"🔧",
-      tags:["Plomero","Fugas","Tinacos"]
-    },
-    {
-      name:"Fontanero GDL / Servicio Flores",
-      category:"Servicios del hogar",
-      type:"Fontanería",
-      zone:"Zapopan / GDL",
-      phone:"Consultar en sitio",
-      description:"Servicio de fontanería en Zapopan para desagües, tuberías, gas y reparaciones generales.",
-      source:"Referencia pública de fontaneros en Zapopan.",
-      emoji:"🚿",
-      tags:["Fontanero","Gas","Desagües"]
-    },
-    {
-      name:"Cronoshare Zapopan",
-      category:"Servicios del hogar",
-      type:"Plomeros por cotización",
-      zone:"Zapopan",
-      phone:"Cotización online",
-      description:"Plataforma para pedir cotizaciones de plomeros; útil para comparar precios antes de contratar.",
-      source:"Referencia pública de cotizaciones de plomería en Zapopan.",
-      emoji:"📲",
-      tags:["Cotización","Plomero","Comparar"]
-    },
-    {
-      name:"Maestro Javier",
-      category:"Mantenimiento",
-      type:"Albañilería / Reparaciones",
-      zone:"Zona Misión Jardines",
-      phone:"33 6124 9082",
-      description:"Contacto demo para reparaciones menores, resanes, pintura, banquetas y trabajos generales.",
-      source:"Dato de ejemplo editable.",
-      emoji:"🧱",
-      tags:["Albañil","Pintura","Resanes"]
-    },
-    {
-      name:"Jardinería El Roble",
-      category:"Mantenimiento",
-      type:"Jardinería",
-      zone:"Zapopan Norte",
-      phone:"33 7820 4419",
-      description:"Contacto demo para poda, limpieza de áreas verdes, riego, jardineras y mantenimiento mensual.",
-      source:"Dato de ejemplo editable.",
-      emoji:"🌿",
-      tags:["Jardinero","Poda","Áreas verdes"]
-    },
-    {
-      name:"Electricista Miguel",
-      category:"Servicios del hogar",
-      type:"Electricidad",
-      zone:"Zapopan",
-      phone:"33 9012 3375",
-      description:"Contacto demo para luminarias, contactos, apagadores, centros de carga y fallas básicas.",
-      source:"Dato de ejemplo editable.",
-      emoji:"💡",
-      tags:["Electricista","Luminarias","Contactos"]
-    },
-    {
-      name:"La Ruta del Chilaquil",
-      category:"Comida y restaurantes",
-      type:"Mexicana / Desayunos",
-      zone:"Misión Jardines 45138",
-      phone:"App de delivery",
-      description:"Opción de comida mexicana ubicada dentro/zona Misión Jardines, útil para desayunos o comida rápida.",
-      source:"Referencia pública de delivery en Misión Jardines.",
-      emoji:"🍳",
-      tags:["Chilaquiles","Mexicana","Cercano"]
-    },
-    {
-      name:"El Hangar de Moes",
-      category:"Comida y restaurantes",
-      type:"Mexicana / Económica",
-      zone:"Nuevo México / 45138",
-      phone:"App de delivery",
-      description:"Opción económica de comida mexicana cercana a Nuevo México/Zapopan 45138.",
-      source:"Referencia pública de delivery en zona Nuevo México.",
-      emoji:"🌮",
-      tags:["Mexicana","Económica","Delivery"]
-    },
-    {
-      name:"Tacos de Barbacoa MC",
-      category:"Comida y restaurantes",
-      type:"Tacos / Barbacoa",
-      zone:"45138 Zapopan",
-      phone:"App de delivery",
-      description:"Opción de tacos de barbacoa en la zona 45138, útil para fines de semana o desayunos.",
-      source:"Referencia pública de delivery en zona 45138.",
-      emoji:"🌮",
-      tags:["Tacos","Barbacoa","Cercano"]
-    },
-    {
-      name:"Akari Sushi",
-      category:"Comida y restaurantes",
-      type:"Sushi",
-      zone:"Jardines del Valle 45138",
-      phone:"Redes sociales",
-      description:"Opción de sushi en zona Jardines del Valle / 45138.",
-      source:"Referencia pública en redes sociales.",
-      emoji:"🍣",
-      tags:["Sushi","Comida","Zona 45138"]
-    },
-    {
-      name:"Emergencias 911",
-      category:"Emergencias",
-      type:"Emergencia general",
-      zone:"México",
-      phone:"911",
-      description:"Número nacional para emergencias médicas, seguridad, protección civil o situaciones de riesgo.",
-      source:"Número público de emergencia.",
-      emoji:"🚨",
-      tags:["Emergencia","Policía","Ambulancia"]
-    },
-    {
-      name:"Caseta Misión Jardines",
-      category:"Emergencias",
-      type:"Seguridad interna",
-      zone:"Fraccionamiento",
-      phone:"33 0000 0000",
-      description:"Número demo para caseta. Reemplazar por el teléfono real de vigilancia.",
-      source:"Dato de ejemplo editable.",
-      emoji:"🛡️",
-      tags:["Caseta","Seguridad","Acceso"]
-    },
-    {
-      name:"Administración Misión Jardines",
-      category:"Mesa directiva",
-      type:"Administración vecinal",
-      zone:"Fraccionamiento",
-      phone:"33 1111 1111",
-      description:"Contacto demo para dudas de cuotas, reportes, mantenimiento y comunicación general.",
-      source:"Dato de ejemplo editable.",
-      emoji:"🏡",
-      tags:["Administración","Cuotas","Reportes"]
-    }
-  ];
+    function renderBoard() {
+      const grid = document.getElementById("boardGrid");
+      grid.innerHTML = "";
 
-  function categoryClass(category){
-    if(category === "Comida y restaurantes") return "comida";
-    if(category === "Emergencias") return "emergencia";
-    if(category === "Mesa directiva") return "mesa";
-    if(category === "Mantenimiento") return "hogar";
-    return "servicio";
-  }
+      boardMembers.forEach(member => {
+        const card = document.createElement("div");
+        card.className = "card profile";
 
-  function renderBoard(){
-    const grid = document.getElementById("boardGrid");
-    grid.innerHTML = "";
-
-    boardMembers.forEach(member => {
-      const card = document.createElement("div");
-      card.className = "card profile";
-
-      card.innerHTML = `
+        card.innerHTML = `
         <div class="avatar">${member.emoji}</div>
         <h3>${member.name}</h3>
         <p><strong>${member.role}</strong></p>
@@ -322,24 +348,24 @@
           <span class="chip mesa">${member.phone}</span>
         </div>
         <div class="actions" style="justify-content:center">
-          <a class="btn btn-secondary" href="tel:${member.phone.replaceAll(" ","")}">Llamar</a>
-          <a class="btn btn-primary" href="https://wa.me/52${member.phone.replaceAll(" ","")}" target="_blank">WhatsApp</a>
+          <a class="btn btn-secondary" href="tel:${member.phone.replaceAll(" ", "")}">Llamar</a>
+          <a class="btn btn-primary" href="https://wa.me/52${member.phone.replaceAll(" ", "")}" target="_blank">WhatsApp</a>
         </div>
       `;
 
-      grid.appendChild(card);
-    });
-  }
+        grid.appendChild(card);
+      });
+    }
 
-  function renderDirectory(){
-    const grid = document.getElementById("directoryGrid");
-    grid.innerHTML = "";
+    function renderDirectory() {
+      const grid = document.getElementById("directoryGrid");
+      grid.innerHTML = "";
 
-    const search = document.getElementById("searchInput").value.toLowerCase().trim();
-    const category = document.getElementById("categoryFilter").value;
+      const search = document.getElementById("searchInput").value.toLowerCase().trim();
+      const category = document.getElementById("categoryFilter").value;
 
-    const filtered = contacts.filter(contact => {
-      const text = `
+      const filtered = contacts.filter(contact => {
+        const text = `
         ${contact.name}
         ${contact.category}
         ${contact.type}
@@ -349,24 +375,24 @@
         ${contact.tags.join(" ")}
       `.toLowerCase();
 
-      const matchSearch = !search || text.includes(search);
-      const matchCategory = !category || contact.category === category;
+        const matchSearch = !search || text.includes(search);
+        const matchCategory = !category || contact.category === category;
 
-      return matchSearch && matchCategory;
-    });
+        return matchSearch && matchCategory;
+      });
 
-    if(filtered.length === 0){
-      grid.innerHTML = `<div class="empty">No se encontraron contactos con esos filtros.</div>`;
-      return;
-    }
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty">No se encontraron contactos con esos filtros.</div>`;
+        return;
+      }
 
-    filtered.forEach(contact => {
-      const card = document.createElement("article");
-      card.className = "card directory-card";
+      filtered.forEach(contact => {
+        const card = document.createElement("article");
+        card.className = "card directory-card";
 
-      const cleanPhone = String(contact.phone).replaceAll(" ","").replaceAll("-","");
+        const cleanPhone = String(contact.phone).replaceAll(" ", "").replaceAll("-", "");
 
-      card.innerHTML = `
+        card.innerHTML = `
         <div class="icon">${contact.emoji}</div>
         <h3>${contact.name}</h3>
         <p>${contact.description}</p>
@@ -384,28 +410,28 @@
         </div>
 
         <div class="actions">
-          ${
-            /^[0-9]/.test(cleanPhone)
-              ? `<a class="btn btn-secondary" href="tel:${cleanPhone}">Llamar</a>
+          ${/^[0-9]/.test(cleanPhone)
+            ? `<a class="btn btn-secondary" href="tel:${cleanPhone}">Llamar</a>
                  <a class="btn btn-primary" href="https://wa.me/52${cleanPhone}" target="_blank">WhatsApp</a>`
-              : `<button class="btn-secondary" onclick="alert('Contacto disponible mediante plataforma, app o redes sociales.')">Ver contacto</button>`
+            : `<button class="btn-secondary" onclick="alert('Contacto disponible mediante plataforma, app o redes sociales.')">Ver contacto</button>`
           }
         </div>
       `;
 
-      grid.appendChild(card);
-    });
-  }
+        grid.appendChild(card);
+      });
+    }
 
-  function clearFilters(){
-    document.getElementById("searchInput").value = "";
-    document.getElementById("categoryFilter").value = "";
+    function clearFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("categoryFilter").value = "";
+      renderDirectory();
+    }
+
+    renderBoard();
     renderDirectory();
-  }
-
-  renderBoard();
-  renderDirectory();
-</script>
+  </script>
 
 </body>
+
 </html>

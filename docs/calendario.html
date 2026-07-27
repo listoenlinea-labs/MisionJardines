@@ -1,64 +1,90 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Calendario | Misión Jardines</title>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body class="page-calendario">
 
-<header>
-  <nav>
-    <div class="brand">
-      <div class="logo">
-        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
-      </div>
-
-      <div>
-        <div style="font-size:2rem;font-weight:900;">
-          Misión Jardines
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <small style="font-size:1.1rem;">
-          Calendario vecinal
-        </small>
+        <div>
+          <div style="font-size:2rem;font-weight:900;">
+            Misión Jardines
+          </div>
+
+          <small style="font-size:1.1rem;">
+            Calendario vecinal
+          </small>
+        </div>
       </div>
-    </div>
 
-    <div class="menu">
-      <a href="index.html">Inicio</a>
-      <a href="cuotas.html">Cuotas</a>
-      <a href="mapa.html">Mapa</a>
-      <a href="visitas.html">Visitas</a>
-      <a href="seguridad.html">Seguridad</a>
-      <a class="active" href="calendario.html">Calendario</a>
-      <a href="reportes.html">Reportes</a>
-      <a href="directorio.html">Directorio</a>
-    </div>
-  </nav>
-</header>
+      <div class="menu">
+        <a href="index.html">
+          Inicio
+        </a>
 
-<section class="hero">
-  <div class="badge">📅 Organización comunitaria</div>
-  <h1>Calendario de <span>Misión Jardines</span></h1>
-  <p>
-    Administra eventos vecinales, asambleas, recolección de basura, mantenimiento,
-    rondines y actividades importantes del fraccionamiento.
-  </p>
-</section>
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
 
-<section class="section">
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
 
-  <div class="card" style="
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
+
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a class="active" href="calendario.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">📅 Organización comunitaria</div>
+    <h1>Calendario de <span>Misión Jardines</span></h1>
+    <p>
+      Administra eventos vecinales, asambleas, recolección de basura, mantenimiento,
+      rondines y actividades importantes del fraccionamiento.
+    </p>
+  </section>
+
+  <section class="section">
+
+    <div class="card" style="
       margin-bottom:24px;
       border:1px solid rgba(74,222,128,.35);
       background:rgba(74,222,128,.08);
   ">
 
       <h2 style="margin-bottom:14px">
-          🚛 Recolección de basura
+        🚛 Recolección de basura
       </h2>
 
       <div style="
@@ -68,327 +94,327 @@
           margin-bottom:12px;
       ">
 
-          <span class="chip basura">Lunes</span>
-          <span class="chip basura">Miércoles</span>
-          <span class="chip basura">Viernes</span>
-          <span class="chip basura">Sábado</span>
+        <span class="chip basura">Lunes</span>
+        <span class="chip basura">Miércoles</span>
+        <span class="chip basura">Viernes</span>
+        <span class="chip basura">Sábado</span>
 
       </div>
 
       <p style="color:var(--muted)">
-          Horario oficial:
-          <strong>08:00 AM</strong>
-          <br>
-          Favor de sacar la basura antes de la hora indicada.
+        Horario oficial:
+        <strong>08:00 AM</strong>
+        <br>
+        Favor de sacar la basura antes de la hora indicada.
       </p>
 
-  </div>
-
-</section>
-
-<section class="section">
-  <div class="grid">
-    <div class="card metric">
-      <small>Eventos del mes</small>
-      <strong id="metricEventos">0</strong>
-      <div class="hint">Actividades registradas</div>
     </div>
 
-    <div class="card metric">
-      <small>Mantenimientos</small>
-      <strong id="metricMantenimiento">0</strong>
-      <div class="hint">Trabajos programados</div>
-    </div>
+  </section>
 
-    <div class="card metric">
-      <small>Asambleas</small>
-      <strong id="metricAsambleas">0</strong>
-      <div class="hint">Reuniones vecinales</div>
-    </div>
+  <section class="section">
+    <div class="grid">
+      <div class="card metric">
+        <small>Eventos del mes</small>
+        <strong id="metricEventos">0</strong>
+        <div class="hint">Actividades registradas</div>
+      </div>
 
-    <div class="card metric">
-      <small>Próximo evento</small>
-      <strong id="metricProximo">-</strong>
-      <div class="hint">Día más cercano</div>
-    </div>
-  </div>
-</section>
+      <div class="card metric">
+        <small>Mantenimientos</small>
+        <strong id="metricMantenimiento">0</strong>
+        <div class="hint">Trabajos programados</div>
+      </div>
 
-<section class="section">
-  <div class="layout">
+      <div class="card metric">
+        <small>Asambleas</small>
+        <strong id="metricAsambleas">0</strong>
+        <div class="hint">Reuniones vecinales</div>
+      </div>
+
+      <div class="card metric">
+        <small>Próximo evento</small>
+        <strong id="metricProximo">-</strong>
+        <div class="hint">Día más cercano</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="layout">
+      <div class="card">
+        <div class="section-title">
+          <div>
+            <h2>Nuevo evento</h2>
+            <p>Agrega actividades importantes para los vecinos.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label>Título del evento</label>
+            <input id="eventTitle" placeholder="Ej. Asamblea vecinal">
+          </div>
+
+          <div class="two">
+            <div>
+              <label>Fecha</label>
+              <input id="eventDate" type="date">
+            </div>
+
+            <div>
+              <label>Hora</label>
+              <input id="eventTime" type="time">
+            </div>
+          </div>
+
+          <div class="two">
+            <div>
+              <label>Tipo</label>
+              <select id="eventType">
+                <option value="mantenimiento">Mantenimiento</option>
+                <option value="asamblea">Asamblea</option>
+                <option value="basura">Basura</option>
+                <option value="seguridad">Seguridad</option>
+                <option value="evento">Evento vecinal</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Ubicación</label>
+              <input id="eventLocation" placeholder="Ej. Área común">
+            </div>
+          </div>
+
+          <div>
+            <label>Descripción</label>
+            <textarea id="eventDescription" placeholder="Describe brevemente la actividad..."></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" onclick="addEvent()">Agregar evento</button>
+            <button class="btn-secondary" onclick="clearEventForm()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="calendar-head">
+          <div class="calendar-title" id="calendarTitle">Calendario</div>
+
+          <div class="calendar-actions">
+            <button class="btn-secondary" onclick="previousMonth()">← Mes anterior</button>
+            <button class="btn-primary" onclick="goToday()">Hoy</button>
+            <button class="btn-secondary" onclick="nextMonth()">Mes siguiente →</button>
+          </div>
+        </div>
+
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
     <div class="card">
       <div class="section-title">
         <div>
-          <h2>Nuevo evento</h2>
-          <p>Agrega actividades importantes para los vecinos.</p>
+          <h2>Próximos eventos</h2>
+          <p>Listado de actividades ordenadas por fecha.</p>
         </div>
       </div>
 
-      <div class="form-grid">
-        <div>
-          <label>Título del evento</label>
-          <input id="eventTitle" placeholder="Ej. Asamblea vecinal">
-        </div>
+      <div class="event-list" id="eventList"></div>
+    </div>
+  </section>
 
-        <div class="two">
-          <div>
-            <label>Fecha</label>
-            <input id="eventDate" type="date">
-          </div>
-
-          <div>
-            <label>Hora</label>
-            <input id="eventTime" type="time">
-          </div>
-        </div>
-
-        <div class="two">
-          <div>
-            <label>Tipo</label>
-            <select id="eventType">
-              <option value="mantenimiento">Mantenimiento</option>
-              <option value="asamblea">Asamblea</option>
-              <option value="basura">Basura</option>
-              <option value="seguridad">Seguridad</option>
-              <option value="evento">Evento vecinal</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Ubicación</label>
-            <input id="eventLocation" placeholder="Ej. Área común">
-          </div>
-        </div>
-
-        <div>
-          <label>Descripción</label>
-          <textarea id="eventDescription" placeholder="Describe brevemente la actividad..."></textarea>
-        </div>
-
-        <div class="actions">
-          <button class="btn-primary" onclick="addEvent()">Agregar evento</button>
-          <button class="btn-secondary" onclick="clearEventForm()">Limpiar</button>
-        </div>
-      </div>
+  <footer>
+    <div>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
 
-    <div class="card">
-      <div class="calendar-head">
-        <div class="calendar-title" id="calendarTitle">Calendario</div>
-
-        <div class="calendar-actions">
-          <button class="btn-secondary" onclick="previousMonth()">← Mes anterior</button>
-          <button class="btn-primary" onclick="goToday()">Hoy</button>
-          <button class="btn-secondary" onclick="nextMonth()">Mes siguiente →</button>
-        </div>
-      </div>
-
-      <div class="calendar-grid" id="calendarGrid"></div>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank">
+        ListoEnLinea.com
+      </a>
     </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="card">
-    <div class="section-title">
-      <div>
-        <h2>Próximos eventos</h2>
-        <p>Listado de actividades ordenadas por fecha.</p>
-      </div>
-    </div>
-
-    <div class="event-list" id="eventList"></div>
-  </div>
-</section>
-
-<footer>
-  <div>
-    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-  </div>
-
-  <div class="powered-by">
-    Plataforma desarrollada por
-    <a href="https://listoenlinea.com" target="_blank">
-      ListoEnLinea.com
-    </a>
-  </div>
-</footer>
+  </footer>
 
 
-<div id="toast" class="toast"></div>
+  <div id="toast" class="toast"></div>
 
-<script>
-  const STORAGE_KEY = "mision_jardines_calendario";
+  <script>
+    const STORAGE_KEY = "mision_jardines_calendario";
 
-  const monthNames = [
-    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
-  ];
+    const monthNames = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
 
-  const dayNames = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
-  let currentDate = new Date();
+    let currentDate = new Date();
 
-  const BASURA_HORA = "08:00";
+    const BASURA_HORA = "08:00";
 
-  let events = [
-    {
-      id:"EV-1002",
-      title:"Mantenimiento de jardineras",
-      date:"2026-06-08",
-      time:"09:00",
-      type:"mantenimiento",
-      location:"Área común",
-      description:"Poda y limpieza de jardín principal."
-    },
-    {
-      id:"EV-1003",
-      title:"Asamblea vecinal",
-      date:"2026-06-15",
-      time:"19:00",
-      type:"asamblea",
-      location:"Área común",
-      description:"Revisión de cuotas, seguridad y próximos trabajos."
-    }
-  ];
+    let events = [
+      {
+        id: "EV-1002",
+        title: "Mantenimiento de jardineras",
+        date: "2026-06-08",
+        time: "09:00",
+        type: "mantenimiento",
+        location: "Área común",
+        description: "Poda y limpieza de jardín principal."
+      },
+      {
+        id: "EV-1003",
+        title: "Asamblea vecinal",
+        date: "2026-06-15",
+        time: "19:00",
+        type: "asamblea",
+        location: "Área común",
+        description: "Revisión de cuotas, seguridad y próximos trabajos."
+      }
+    ];
 
-  function loadData(){
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved) events = JSON.parse(saved);
-  }
-
-  function saveData(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-  }
-
-  function showToast(message){
-    const toast = document.getElementById("toast");
-    toast.textContent = message;
-    toast.style.display = "block";
-    setTimeout(() => toast.style.display = "none", 3200);
-  }
-
-  function generateId(){
-    return "EV-" + String(Date.now()).slice(-6);
-  }
-
-  function addEvent(){
-    const event = {
-      id:generateId(),
-      title:document.getElementById("eventTitle").value.trim(),
-      date:document.getElementById("eventDate").value,
-      time:document.getElementById("eventTime").value,
-      type:document.getElementById("eventType").value,
-      location:document.getElementById("eventLocation").value.trim(),
-      description:document.getElementById("eventDescription").value.trim()
-    };
-
-    if(!event.title || !event.date || !event.location){
-      showToast("Completa título, fecha y ubicación.");
-      return;
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) events = JSON.parse(saved);
     }
 
-    events.push(event);
-    saveData();
-    clearEventForm();
-    renderAll();
-    showToast("Evento agregado al calendario.");
-  }
-
-  function clearEventForm(){
-    document.getElementById("eventTitle").value = "";
-    document.getElementById("eventDate").value = "";
-    document.getElementById("eventTime").value = "";
-    document.getElementById("eventType").value = "mantenimiento";
-    document.getElementById("eventLocation").value = "";
-    document.getElementById("eventDescription").value = "";
-  }
-
-  function eventsForDate(dateString){
-
-    const normalEvents =
-      events.filter(e => e.date === dateString);
-
-    const trashEvent =
-      createTrashEvent(dateString);
-
-    if(trashEvent){
-      return [trashEvent, ...normalEvents];
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
     }
 
-    return normalEvents;
-  }
-
-  function formatDate(date){
-    const y = date.getFullYear();
-    const m = String(date.getMonth()+1).padStart(2,"0");
-    const d = String(date.getDate()).padStart(2,"0");
-    return `${y}-${m}-${d}`;
-  }
-
-  function isTrashDay(date){
-    return [1,3,5,6].includes(date.getDay());
-  }
-
-  function createTrashEvent(dateString){
-    const date = new Date(dateString + "T00:00:00");
-
-    if(!isTrashDay(date)) return null;
-
-    return {
-      id:"BASURA-" + dateString,
-      title:"🚛 Recolección de basura",
-      date:dateString,
-      time:BASURA_HORA,
-      type:"basura",
-      location:"Todo el fraccionamiento",
-      description:"Sacar la basura antes de las 08:00 AM.",
-      fixed:true
-    };
-  }
-
-  function renderCalendar(){
-    const grid = document.getElementById("calendarGrid");
-    grid.innerHTML = "";
-
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
-    document.getElementById("calendarTitle").textContent =
-      `${monthNames[month]} ${year}`;
-
-    dayNames.forEach(day => {
-      const div = document.createElement("div");
-      div.className = "day-name";
-      div.textContent = day;
-      grid.appendChild(div);
-    });
-
-    const firstDay = new Date(year, month, 1);
-    const startDay = firstDay.getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysPrevMonth = new Date(year, month, 0).getDate();
-
-    const todayString = formatDate(new Date());
-
-    for(let i = startDay - 1; i >= 0; i--){
-      const dayNumber = daysPrevMonth - i;
-      const div = document.createElement("div");
-      div.className = "day muted";
-      div.innerHTML = `<div class="day-number">${dayNumber}</div>`;
-      grid.appendChild(div);
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3200);
     }
 
-    for(let day = 1; day <= daysInMonth; day++){
-      const date = new Date(year, month, day);
-      const dateString = formatDate(date);
-      const dayEvents = eventsForDate(dateString);
+    function generateId() {
+      return "EV-" + String(Date.now()).slice(-6);
+    }
 
-      const div = document.createElement("div");
-      div.className = "day";
-      if(dateString === todayString) div.classList.add("today");
+    function addEvent() {
+      const event = {
+        id: generateId(),
+        title: document.getElementById("eventTitle").value.trim(),
+        date: document.getElementById("eventDate").value,
+        time: document.getElementById("eventTime").value,
+        type: document.getElementById("eventType").value,
+        location: document.getElementById("eventLocation").value.trim(),
+        description: document.getElementById("eventDescription").value.trim()
+      };
 
-      div.innerHTML = `
+      if (!event.title || !event.date || !event.location) {
+        showToast("Completa título, fecha y ubicación.");
+        return;
+      }
+
+      events.push(event);
+      saveData();
+      clearEventForm();
+      renderAll();
+      showToast("Evento agregado al calendario.");
+    }
+
+    function clearEventForm() {
+      document.getElementById("eventTitle").value = "";
+      document.getElementById("eventDate").value = "";
+      document.getElementById("eventTime").value = "";
+      document.getElementById("eventType").value = "mantenimiento";
+      document.getElementById("eventLocation").value = "";
+      document.getElementById("eventDescription").value = "";
+    }
+
+    function eventsForDate(dateString) {
+
+      const normalEvents =
+        events.filter(e => e.date === dateString);
+
+      const trashEvent =
+        createTrashEvent(dateString);
+
+      if (trashEvent) {
+        return [trashEvent, ...normalEvents];
+      }
+
+      return normalEvents;
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function isTrashDay(date) {
+      return [1, 3, 5, 6].includes(date.getDay());
+    }
+
+    function createTrashEvent(dateString) {
+      const date = new Date(dateString + "T00:00:00");
+
+      if (!isTrashDay(date)) return null;
+
+      return {
+        id: "BASURA-" + dateString,
+        title: "🚛 Recolección de basura",
+        date: dateString,
+        time: BASURA_HORA,
+        type: "basura",
+        location: "Todo el fraccionamiento",
+        description: "Sacar la basura antes de las 08:00 AM.",
+        fixed: true
+      };
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById("calendarGrid");
+      grid.innerHTML = "";
+
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      document.getElementById("calendarTitle").textContent =
+        `${monthNames[month]} ${year}`;
+
+      dayNames.forEach(day => {
+        const div = document.createElement("div");
+        div.className = "day-name";
+        div.textContent = day;
+        grid.appendChild(div);
+      });
+
+      const firstDay = new Date(year, month, 1);
+      const startDay = firstDay.getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const daysPrevMonth = new Date(year, month, 0).getDate();
+
+      const todayString = formatDate(new Date());
+
+      for (let i = startDay - 1; i >= 0; i--) {
+        const dayNumber = daysPrevMonth - i;
+        const div = document.createElement("div");
+        div.className = "day muted";
+        div.innerHTML = `<div class="day-number">${dayNumber}</div>`;
+        grid.appendChild(div);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateString = formatDate(date);
+        const dayEvents = eventsForDate(dateString);
+
+        const div = document.createElement("div");
+        div.className = "day";
+        if (dateString === todayString) div.classList.add("today");
+
+        div.innerHTML = `
         <div class="day-number">${day}</div>
         ${dayEvents.map(e => `
           <span class="event-pill ${e.type}" onclick="showToast('${e.title} · ${e.location}')">
@@ -397,59 +423,59 @@
         `).join("")}
       `;
 
-      grid.appendChild(div);
-    }
-
-    const totalCells = grid.children.length;
-    const remainder = totalCells % 7;
-    if(remainder !== 0){
-      for(let i = 1; i <= 7 - remainder; i++){
-        const div = document.createElement("div");
-        div.className = "day muted";
-        div.innerHTML = `<div class="day-number">${i}</div>`;
         grid.appendChild(div);
       }
-    }
-  }
 
-  function renderEventList(){
-    const list = document.getElementById("eventList");
-    list.innerHTML = "";
-
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
-    const daysInMonth =
-      new Date(year, month + 1, 0).getDate();
-
-    const trashEvents = [];
-
-    for(let d = 1; d <= daysInMonth; d++){
-
-      const dateString =
-        formatDate(new Date(year, month, d));
-
-      const trash =
-        createTrashEvent(dateString);
-
-      if(trash){
-        trashEvents.push(trash);
+      const totalCells = grid.children.length;
+      const remainder = totalCells % 7;
+      if (remainder !== 0) {
+        for (let i = 1; i <= 7 - remainder; i++) {
+          const div = document.createElement("div");
+          div.className = "day muted";
+          div.innerHTML = `<div class="day-number">${i}</div>`;
+          grid.appendChild(div);
+        }
       }
     }
 
-    const sorted =
-      [...trashEvents, ...events]
-        .sort((a,b)=>new Date(a.date)-new Date(b.date));
+    function renderEventList() {
+      const list = document.getElementById("eventList");
+      list.innerHTML = "";
 
-    sorted.forEach(e => {
-      const date = new Date(e.date + "T00:00:00");
-      const div = document.createElement("div");
-      div.className = "event-card";
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
 
-      div.innerHTML = `
+      const daysInMonth =
+        new Date(year, month + 1, 0).getDate();
+
+      const trashEvents = [];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+
+        const dateString =
+          formatDate(new Date(year, month, d));
+
+        const trash =
+          createTrashEvent(dateString);
+
+        if (trash) {
+          trashEvents.push(trash);
+        }
+      }
+
+      const sorted =
+        [...trashEvents, ...events]
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      sorted.forEach(e => {
+        const date = new Date(e.date + "T00:00:00");
+        const div = document.createElement("div");
+        div.className = "event-card";
+
+        div.innerHTML = `
         <div class="event-date">
-          ${String(date.getDate()).padStart(2,"0")}<br>
-          ${monthNames[date.getMonth()].slice(0,3).toUpperCase()}
+          ${String(date.getDate()).padStart(2, "0")}<br>
+          ${monthNames[date.getMonth()].slice(0, 3).toUpperCase()}
         </div>
 
         <div>
@@ -460,108 +486,108 @@
           </p>
           <p>${e.description || "Sin descripción."}</p>
           <span class="chip ${e.type}">${eventTypeLabel(e.type)}</span>
-          ${
-              e.fixed
-                ? `<span class="chip basura" style="margin-left:10px">
+          ${e.fixed
+            ? `<span class="chip basura" style="margin-left:10px">
                      Evento fijo
                    </span>`
-                : `<button class="btn-danger"
+            : `<button class="btn-danger"
                      style="margin-left:10px;padding:7px 10px"
                      onclick="deleteEvent('${e.id}')">
                      Eliminar
                    </button>`
-            }
+          }
         </div>
       `;
 
-      list.appendChild(div);
-    });
-  }
-
-  function eventTypeLabel(type){
-    const labels = {
-      mantenimiento:"Mantenimiento",
-      asamblea:"Asamblea",
-      basura:"Basura",
-      seguridad:"Seguridad",
-      evento:"Evento vecinal"
-    };
-
-    return labels[type] || "Evento";
-  }
-
-  function deleteEvent(id){
-    if(!confirm("¿Seguro que deseas eliminar este evento?")) return;
-    events = events.filter(e => e.id !== id);
-    saveData();
-    renderAll();
-    showToast("Evento eliminado.");
-  }
-
-  function updateMetrics(){
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
-    const monthEvents = [...events];
-
-    const daysInMonth =
-      new Date(year, month + 1, 0).getDate();
-
-    for(let d=1; d<=daysInMonth; d++){
-
-      const dateString =
-        formatDate(new Date(year, month, d));
-
-      const trash =
-        createTrashEvent(dateString);
-
-      if(trash){
-        monthEvents.push(trash);
-      }
+        list.appendChild(div);
+      });
     }
 
-    document.getElementById("metricEventos").textContent = monthEvents.length;
-    document.getElementById("metricMantenimiento").textContent =
-      monthEvents.filter(e => e.type === "mantenimiento").length;
-    document.getElementById("metricAsambleas").textContent =
-      monthEvents.filter(e => e.type === "asamblea").length;
+    function eventTypeLabel(type) {
+      const labels = {
+        mantenimiento: "Mantenimiento",
+        asamblea: "Asamblea",
+        basura: "Basura",
+        seguridad: "Seguridad",
+        evento: "Evento vecinal"
+      };
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
+      return labels[type] || "Evento";
+    }
 
-    const next = [...events]
-      .filter(e => new Date(e.date + "T00:00:00") >= today)
-      .sort((a,b) => new Date(a.date) - new Date(b.date))[0];
+    function deleteEvent(id) {
+      if (!confirm("¿Seguro que deseas eliminar este evento?")) return;
+      events = events.filter(e => e.id !== id);
+      saveData();
+      renderAll();
+      showToast("Evento eliminado.");
+    }
 
-    document.getElementById("metricProximo").textContent = next
-      ? String(new Date(next.date + "T00:00:00").getDate()).padStart(2,"0")
-      : "-";
-  }
+    function updateMetrics() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
 
-  function previousMonth(){
-    currentDate.setMonth(currentDate.getMonth() - 1);
+      const monthEvents = [...events];
+
+      const daysInMonth =
+        new Date(year, month + 1, 0).getDate();
+
+      for (let d = 1; d <= daysInMonth; d++) {
+
+        const dateString =
+          formatDate(new Date(year, month, d));
+
+        const trash =
+          createTrashEvent(dateString);
+
+        if (trash) {
+          monthEvents.push(trash);
+        }
+      }
+
+      document.getElementById("metricEventos").textContent = monthEvents.length;
+      document.getElementById("metricMantenimiento").textContent =
+        monthEvents.filter(e => e.type === "mantenimiento").length;
+      document.getElementById("metricAsambleas").textContent =
+        monthEvents.filter(e => e.type === "asamblea").length;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const next = [...events]
+        .filter(e => new Date(e.date + "T00:00:00") >= today)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+      document.getElementById("metricProximo").textContent = next
+        ? String(new Date(next.date + "T00:00:00").getDate()).padStart(2, "0")
+        : "-";
+    }
+
+    function previousMonth() {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderAll();
+    }
+
+    function nextMonth() {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderAll();
+    }
+
+    function goToday() {
+      currentDate = new Date();
+      renderAll();
+    }
+
+    function renderAll() {
+      renderCalendar();
+      renderEventList();
+      updateMetrics();
+    }
+
+    loadData();
     renderAll();
-  }
-
-  function nextMonth(){
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderAll();
-  }
-
-  function goToday(){
-    currentDate = new Date();
-    renderAll();
-  }
-
-  function renderAll(){
-    renderCalendar();
-    renderEventList();
-    updateMetrics();
-  }
-
-  loadData();
-  renderAll();
-</script>
+  </script>
 
 </body>
+
 </html>

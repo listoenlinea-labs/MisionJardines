@@ -1,214 +1,328 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mapa | Misión Jardines</title>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body class="page-mapa">
 
-<header>
-  <nav>
-    <div class="brand">
-      <div class="logo">
-        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
-      </div>
-
-      <div>
-        <div style="font-size:2rem;font-weight:900;">
-          Misión Jardines
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <small style="font-size:1.1rem;">
-          Croquis interactivo del fraccionamiento
-        </small>
-      </div>
-    </div>
+        <div>
+          <div style="font-size:2rem;font-weight:900;">
+            Misión Jardines
+          </div>
 
-    <div class="menu">
-      <a href="index.html">Inicio</a>
-      <a href="cuotas.html">Cuotas</a>
-      <a class="active" href="mapa.html">Mapa</a>
-      <a href="visitas.html">Visitas</a>
-      <a href="seguridad.html">Seguridad</a>
-      <a href="calendario.html">Calendario</a>
-      <a href="reportes.html">Reportes</a>
-      <a href="directorio.html">Directorio</a>
-    </div>
-  </nav>
-</header>
-
-<section class="hero">
-  <div class="badge">🗺️ Croquis visual · Misión Jardines</div>
-  <h1>Mapa del <span>fraccionamiento</span></h1>
-  <p>
-    Croquis plano, limpio y fácil de leer para identificar casas, calles principales,
-    estatus de cuota y ubicación general dentro de Misión Jardines.
-  </p>
-</section>
-
-<section class="section">
-  <div class="layout">
-    <div class="card">
-      <div class="map-scroll">
-        <div class="croquis">
-          <div class="zone"></div>
-
-          <div class="road main outer-top"></div>
-          <div class="road main outer-left"></div>
-          <div class="road main outer-right"></div>
-          <div class="road main outer-bottom"></div>
-
-          <div class="road inner-jardines"></div>
-          <div class="road inner-gardenias"></div>
-          <div class="road inner-jazmines"></div>
-          <div class="road inner-lirios"></div>
-          <div class="road inner-rosas"></div>
-
-          <div class="block block-a"></div>
-          <div class="block block-b"></div>
-          <div class="block block-c"></div>
-          <div class="block block-d"></div>
-
-          <div class="road-label lbl-top">Calle Prof. Acueducto</div>
-          <div class="road-label lbl-left">C. Atotonilco</div>
-          <div class="road-label lbl-right">Av. Guadalajara</div>
-          <div class="road-label lbl-bottom">Av. Valle de México</div>
-
-          <div class="road-label lbl-jardines">Misión Jardines</div>
-          <div class="road-label lbl-gardenias">C. Misión Gardenias</div>
-          <div class="road-label lbl-jazmines">Misión Jazmines</div>
-          <div class="road-label lbl-lirios">Misión de Los Lirios</div>
-          <div class="road-label lbl-rosas">C. Misión Rosas</div>
-
-          <div class="zone-title">Fraccionamiento Misión Jardines</div>
-
-          <div class="park"></div>
-          <div class="park-label">Jardín / Área común</div>
-
-          <div class="house paid" style="left:160px;top:210px" onclick="selectHouse(this,'MJ-001','Misión Jardines','101','Pagado','04/06/2026')">101</div>
-          <div class="house pending" style="left:160px;top:270px" onclick="selectHouse(this,'MJ-002','Misión Jardines','102','Pendiente','')">102</div>
-          <div class="house paid" style="left:160px;top:330px" onclick="selectHouse(this,'MJ-003','Misión Jardines','103','Pagado','02/06/2026')">103</div>
-          <div class="house review" style="left:160px;top:390px" onclick="selectHouse(this,'MJ-004','Misión Jardines','104','En revisión','')">104</div>
-
-          <div class="house paid" style="left:310px;top:210px" onclick="selectHouse(this,'MG-001','Misión Gardenias','201','Pagado','05/06/2026')">201</div>
-          <div class="house pending" style="left:310px;top:270px" onclick="selectHouse(this,'MG-002','Misión Gardenias','202','Pendiente','')">202</div>
-          <div class="house paid" style="left:310px;top:330px" onclick="selectHouse(this,'MG-003','Misión Gardenias','203','Pagado','01/06/2026')">203</div>
-          <div class="house pending" style="left:310px;top:390px" onclick="selectHouse(this,'MG-004','Misión Gardenias','204','Pendiente','')">204</div>
-
-          <div class="house review" style="left:475px;top:210px" onclick="selectHouse(this,'MZ-001','Misión Jazmines','301','En revisión','')">301</div>
-          <div class="house paid" style="left:475px;top:270px" onclick="selectHouse(this,'MZ-002','Misión Jazmines','302','Pagado','06/06/2026')">302</div>
-          <div class="house pending" style="left:475px;top:330px" onclick="selectHouse(this,'MZ-003','Misión Jazmines','303','Pendiente','')">303</div>
-
-          <div class="house paid" style="left:610px;top:260px" onclick="selectHouse(this,'ML-001','Misión de Los Lirios','401','Pagado','03/06/2026')">401</div>
-          <div class="house pending" style="left:675px;top:260px" onclick="selectHouse(this,'ML-002','Misión de Los Lirios','402','Pendiente','')">402</div>
-          <div class="house paid" style="left:740px;top:260px" onclick="selectHouse(this,'ML-003','Misión de Los Lirios','403','Pagado','04/06/2026')">403</div>
-
-          <div class="house pending" style="left:625px;top:405px" onclick="selectHouse(this,'MR-001','Misión Rosas','501','Pendiente','')">501</div>
-          <div class="house paid" style="left:690px;top:405px" onclick="selectHouse(this,'MR-002','Misión Rosas','502','Pagado','02/06/2026')">502</div>
-          <div class="house review" style="left:755px;top:405px" onclick="selectHouse(this,'MR-003','Misión Rosas','503','En revisión','')">503</div>
+          <small style="font-size:1.1rem;">
+            Croquis interactivo del fraccionamiento
+          </small>
         </div>
       </div>
+
+      <div class="menu">
+        <a href="index.html">
+          Inicio
+        </a>
+
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
+
+        <a class="active" href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
+
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
+
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">🗺️ Croquis visual · Misión Jardines</div>
+    <h1>Mapa del <span>fraccionamiento</span></h1>
+    <p>
+      Croquis plano, limpio y fácil de leer para identificar casas, calles principales,
+      estatus de cuota y ubicación general dentro de Misión Jardines.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="layout">
+      <div class="card">
+        <div class="map-scroll">
+          <div class="croquis">
+            <div class="zone"></div>
+
+            <div class="road main outer-top"></div>
+            <div class="road main outer-left"></div>
+            <div class="road main outer-right"></div>
+            <div class="road main outer-bottom"></div>
+
+            <div class="road inner-jardines"></div>
+            <div class="road inner-gardenias"></div>
+            <div class="road inner-jazmines"></div>
+            <div class="road inner-lirios"></div>
+            <div class="road inner-rosas"></div>
+
+            <div class="block block-a"></div>
+            <div class="block block-b"></div>
+            <div class="block block-c"></div>
+            <div class="block block-d"></div>
+
+            <div class="road-label lbl-top">Calle Prof. Acueducto</div>
+            <div class="road-label lbl-left">C. Atotonilco</div>
+            <div class="road-label lbl-right">Av. Guadalajara</div>
+            <div class="road-label lbl-bottom">Av. Valle de México</div>
+
+            <div class="road-label lbl-jardines">Misión Jardines</div>
+            <div class="road-label lbl-gardenias">C. Misión Gardenias</div>
+            <div class="road-label lbl-jazmines">Misión Jazmines</div>
+            <div class="road-label lbl-lirios">Misión de Los Lirios</div>
+            <div class="road-label lbl-rosas">C. Misión Rosas</div>
+
+            <div class="zone-title">Fraccionamiento Misión Jardines</div>
+
+            <div class="park"></div>
+            <div class="park-label">Jardín / Área común</div>
+
+            <div class="house paid" style="left:160px;top:210px"
+              onclick="selectHouse(this,'MJ-001','Misión Jardines','101','Pagado','04/06/2026')">101</div>
+            <div class="house pending" style="left:160px;top:270px"
+              onclick="selectHouse(this,'MJ-002','Misión Jardines','102','Pendiente','')">102</div>
+            <div class="house paid" style="left:160px;top:330px"
+              onclick="selectHouse(this,'MJ-003','Misión Jardines','103','Pagado','02/06/2026')">103</div>
+            <div class="house review" style="left:160px;top:390px"
+              onclick="selectHouse(this,'MJ-004','Misión Jardines','104','En revisión','')">104</div>
+
+            <div class="house paid" style="left:310px;top:210px"
+              onclick="selectHouse(this,'MG-001','Misión Gardenias','201','Pagado','05/06/2026')">201</div>
+            <div class="house pending" style="left:310px;top:270px"
+              onclick="selectHouse(this,'MG-002','Misión Gardenias','202','Pendiente','')">202</div>
+            <div class="house paid" style="left:310px;top:330px"
+              onclick="selectHouse(this,'MG-003','Misión Gardenias','203','Pagado','01/06/2026')">203</div>
+            <div class="house pending" style="left:310px;top:390px"
+              onclick="selectHouse(this,'MG-004','Misión Gardenias','204','Pendiente','')">204</div>
+
+            <div class="house review" style="left:475px;top:210px"
+              onclick="selectHouse(this,'MZ-001','Misión Jazmines','301','En revisión','')">301</div>
+            <div class="house paid" style="left:475px;top:270px"
+              onclick="selectHouse(this,'MZ-002','Misión Jazmines','302','Pagado','06/06/2026')">302</div>
+            <div class="house pending" style="left:475px;top:330px"
+              onclick="selectHouse(this,'MZ-003','Misión Jazmines','303','Pendiente','')">303</div>
+
+            <div class="house paid" style="left:610px;top:260px"
+              onclick="selectHouse(this,'ML-001','Misión de Los Lirios','401','Pagado','03/06/2026')">401</div>
+            <div class="house pending" style="left:675px;top:260px"
+              onclick="selectHouse(this,'ML-002','Misión de Los Lirios','402','Pendiente','')">402</div>
+            <div class="house paid" style="left:740px;top:260px"
+              onclick="selectHouse(this,'ML-003','Misión de Los Lirios','403','Pagado','04/06/2026')">403</div>
+
+            <div class="house pending" style="left:625px;top:405px"
+              onclick="selectHouse(this,'MR-001','Misión Rosas','501','Pendiente','')">501</div>
+            <div class="house paid" style="left:690px;top:405px"
+              onclick="selectHouse(this,'MR-002','Misión Rosas','502','Pagado','02/06/2026')">502</div>
+            <div class="house review" style="left:755px;top:405px"
+              onclick="selectHouse(this,'MR-003','Misión Rosas','503','En revisión','')">503</div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card panel">
+        <h2>Detalle de casa</h2>
+        <p>Da clic sobre una casa para ver información de ubicación y estado de cuota.</p>
+
+        <div class="info-box">
+          <h3>Casa seleccionada</h3>
+          <div class="info-row"><span>Casa/Lote</span><strong id="infoCasa">MJ-001</strong></div>
+          <div class="info-row"><span>Calle</span><strong id="infoCalle">Misión Jardines</strong></div>
+          <div class="info-row"><span>Número</span><strong id="infoNumero">101</strong></div>
+          <div class="info-row"><span>Último pago</span><strong id="infoPago">04/06/2026</strong></div>
+          <span id="infoStatus" class="chip paid">Pagado</span>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="dot paid"></span><span>Cuota pagada</span></div>
+          <div class="legend-item"><span class="dot pending"></span><span>Pendiente</span></div>
+          <div class="legend-item"><span class="dot review"></span><span>En revisión</span></div>
+          <div class="legend-item"><span class="dot road"></span><span style="padding-left:30px;">Calles
+              interiores</span></div>
+          <div class="legend-item"><span class="dot limit"></span><span>Calles límite</span></div>
+        </div>
+
+        <div class="panel-actions">
+          <button class="btn-primary" onclick="centerMap()">Centrar croquis</button>
+          <button class="btn-secondary" onclick="clearSelection()">Quitar selección</button>
+        </div>
+
+        <div class="info-box">
+          <h3>Límites principales</h3>
+          <div class="info-row"><span>Sur</span><strong>Av. Valle de México</strong></div>
+          <div class="info-row"><span>Oeste</span><strong>C. Atotonilco</strong></div>
+          <div class="info-row"><span>Este</span><strong>Av. Guadalajara</strong></div>
+          <div class="info-row"><span>Norte</span><strong>Calle Prof. Acueducto</strong></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <footer>
+    <div>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
 
-    <aside class="card panel">
-      <h2>Detalle de casa</h2>
-      <p>Da clic sobre una casa para ver información de ubicación y estado de cuota.</p>
-
-      <div class="info-box">
-        <h3>Casa seleccionada</h3>
-        <div class="info-row"><span>Casa/Lote</span><strong id="infoCasa">MJ-001</strong></div>
-        <div class="info-row"><span>Calle</span><strong id="infoCalle">Misión Jardines</strong></div>
-        <div class="info-row"><span>Número</span><strong id="infoNumero">101</strong></div>
-        <div class="info-row"><span>Último pago</span><strong id="infoPago">04/06/2026</strong></div>
-        <span id="infoStatus" class="chip paid">Pagado</span>
-      </div>
-
-      <div class="legend">
-        <div class="legend-item"><span class="dot paid"></span><span>Cuota pagada</span></div>
-        <div class="legend-item"><span class="dot pending"></span><span>Pendiente</span></div>
-        <div class="legend-item"><span class="dot review"></span><span>En revisión</span></div>
-        <div class="legend-item"><span class="dot road"></span><span style="padding-left:30px;">Calles interiores</span></div>
-        <div class="legend-item"><span class="dot limit"></span><span>Calles límite</span></div>
-      </div>
-
-      <div class="panel-actions">
-        <button class="btn-primary" onclick="centerMap()">Centrar croquis</button>
-        <button class="btn-secondary" onclick="clearSelection()">Quitar selección</button>
-      </div>
-
-      <div class="info-box">
-        <h3>Límites principales</h3>
-        <div class="info-row"><span>Sur</span><strong>Av. Valle de México</strong></div>
-        <div class="info-row"><span>Oeste</span><strong>C. Atotonilco</strong></div>
-        <div class="info-row"><span>Este</span><strong>Av. Guadalajara</strong></div>
-        <div class="info-row"><span>Norte</span><strong>Calle Prof. Acueducto</strong></div>
-      </div>
-    </aside>
-  </div>
-</section>
-
-<footer>
-  <div>
-    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-  </div>
-
-  <div class="powered-by">
-    Plataforma desarrollada por
-    <a href="https://listoenlinea.com" target="_blank">
-      ListoEnLinea.com
-    </a>
-  </div>
-</footer>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank">
+        ListoEnLinea.com
+      </a>
+    </div>
+  </footer>
 
 
-<script>
-  let selectedHouse = null;
+  <script>
+    const API_URL = 'http://localhost:3000/api';
 
-  function selectHouse(element, casa, calle, numero, status, pago){
-    if(selectedHouse){
-      selectedHouse.classList.remove("selected");
+    const token =
+      localStorage.getItem('misionJardinesToken')
+      || sessionStorage.getItem('misionJardinesToken');
+
+    if (!token) {
+      window.location.replace('login.html');
     }
 
-    selectedHouse = element;
-    selectedHouse.classList.add("selected");
+    function aplicarPermisosVisuales(rol) {
+      const elementosProtegidos =
+        document.querySelectorAll('[data-roles]');
 
-    document.getElementById("infoCasa").textContent = casa;
-    document.getElementById("infoCalle").textContent = calle;
-    document.getElementById("infoNumero").textContent = numero;
-    document.getElementById("infoPago").textContent = pago || "Sin pago registrado";
+      elementosProtegidos.forEach((elemento) => {
+        const rolesPermitidos =
+          elemento.dataset.roles
+            .split(',')
+            .map((item) => item.trim());
 
-    const badge = document.getElementById("infoStatus");
-    badge.textContent = status;
-    badge.className = "chip";
-
-    if(status === "Pagado"){
-      badge.classList.add("paid");
-    }else if(status === "Pendiente"){
-      badge.classList.add("pending");
-    }else{
-      badge.classList.add("review");
+        elemento.hidden =
+          !rolesPermitidos.includes(rol);
+      });
     }
-  }
 
-  function clearSelection(){
-    if(selectedHouse){
-      selectedHouse.classList.remove("selected");
-      selectedHouse = null;
+    async function validarSesion() {
+      try {
+        const response = await fetch(
+          `${API_URL}/auth/perfil`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(
+            result.message || 'Sesión inválida'
+          );
+        }
+
+        aplicarPermisosVisuales(
+          result.usuario.rol?.nombre
+        );
+      } catch (error) {
+        localStorage.removeItem(
+          'misionJardinesToken'
+        );
+
+        localStorage.removeItem(
+          'misionJardinesUsuario'
+        );
+
+        sessionStorage.removeItem(
+          'misionJardinesToken'
+        );
+
+        sessionStorage.removeItem(
+          'misionJardinesUsuario'
+        );
+
+        window.location.replace('login.html');
+      }
     }
-  }
 
-  function centerMap(){
-    const scroll = document.querySelector(".map-scroll");
-    scroll.scrollTo({
-      left:120,
-      top:60,
-      behavior:"smooth"
-    });
-  }
-</script>
+    validarSesion();
+
+    let selectedHouse = null;
+
+    function selectHouse(element, casa, calle, numero, status, pago) {
+      if (selectedHouse) {
+        selectedHouse.classList.remove("selected");
+      }
+
+      selectedHouse = element;
+      selectedHouse.classList.add("selected");
+
+      document.getElementById("infoCasa").textContent = casa;
+      document.getElementById("infoCalle").textContent = calle;
+      document.getElementById("infoNumero").textContent = numero;
+      document.getElementById("infoPago").textContent = pago || "Sin pago registrado";
+
+      const badge = document.getElementById("infoStatus");
+      badge.textContent = status;
+      badge.className = "chip";
+
+      if (status === "Pagado") {
+        badge.classList.add("paid");
+      } else if (status === "Pendiente") {
+        badge.classList.add("pending");
+      } else {
+        badge.classList.add("review");
+      }
+    }
+
+    function clearSelection() {
+      if (selectedHouse) {
+        selectedHouse.classList.remove("selected");
+        selectedHouse = null;
+      }
+    }
+
+    function centerMap() {
+      const scroll = document.querySelector(".map-scroll");
+      scroll.scrollTo({
+        left: 120,
+        top: 60,
+        behavior: "smooth"
+      });
+    }
+  </script>
 
 </body>
+
 </html>

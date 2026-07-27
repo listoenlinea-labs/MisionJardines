@@ -4,6 +4,9 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const sequelize = require('./config/database');
+const casasRoutes = require('./routes/casas.routes');
+const authRoutes = require('./routes/auth.routes');
+require('./models');
 
 const app = express();
 
@@ -21,7 +24,16 @@ app.use(express.urlencoded({
 
 const allowedOrigins = [
     process.env.FRONTEND_URL,
-    process.env.FRONTEND_URL_LOCALHOST
+    process.env.FRONTEND_URL_LOCALHOST,
+
+    'http://127.0.0.1:8080',
+    'http://localhost:8080',
+
+    'http://127.0.0.1:5050',
+    'http://localhost:5050',
+
+    'http://127.0.0.1:5500',
+    'http://localhost:5500'
 ].filter(Boolean);
 
 app.use(
@@ -34,6 +46,8 @@ app.use(
             if (allowedOrigins.includes(origin)) {
                 return callback(null, true);
             }
+
+            console.error('Origen bloqueado por CORS:', origin);
 
             return callback(
                 new Error('Origen no permitido por CORS')
@@ -79,6 +93,9 @@ app.get('/api/health/database', async (req, res) => {
         });
     }
 });
+
+app.use('/api/casas', casasRoutes);
+app.use('/api/auth', authRoutes);
 
 app.use((req, res) => {
     res.status(404).json({

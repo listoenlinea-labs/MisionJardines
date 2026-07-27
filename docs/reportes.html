@@ -1,478 +1,503 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reportes | Misión Jardines</title>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body class="page-reportes">
 
-<header>
-  <nav>
-    <div class="brand">
-      <div class="logo">
-        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
-      </div>
-
-      <div>
-        <div style="font-size:2rem;font-weight:900;">
-          Misión Jardines
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <small style="font-size:1.1rem;">
-          Reportes vecinales
-        </small>
+        <div>
+          <div style="font-size:2rem;font-weight:900;">
+            Misión Jardines
+          </div>
+
+          <small style="font-size:1.1rem;">
+            Reportes vecinales
+          </small>
+        </div>
+      </div>
+
+      <div class="menu">
+        <a href="index.html">
+          Inicio
+        </a>
+
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
+
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
+
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
+
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a class="active" href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">📝 Atención y seguimiento vecinal</div>
+    <h1>Reportes de <span>Misión Jardines</span></h1>
+    <p>
+      Módulo para registrar reportes de mantenimiento, alumbrado, fugas, limpieza,
+      vialidades, áreas comunes y seguimiento administrativo del fraccionamiento.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="grid">
+      <div class="card metric">
+        <small>Reportes abiertos</small>
+        <strong id="metricAbiertos">0</strong>
+        <div class="hint">Pendientes de atender</div>
+      </div>
+
+      <div class="card metric">
+        <small>En proceso</small>
+        <strong id="metricProceso">0</strong>
+        <div class="hint">Con seguimiento activo</div>
+      </div>
+
+      <div class="card metric">
+        <small>Resueltos</small>
+        <strong id="metricResueltos">0</strong>
+        <div class="hint">Cerrados correctamente</div>
+      </div>
+
+      <div class="card metric">
+        <small>Alta prioridad</small>
+        <strong id="metricAlta">0</strong>
+        <div class="hint">Requieren atención rápida</div>
       </div>
     </div>
+  </section>
 
-    <div class="menu">
-      <a href="index.html">Inicio</a>
-      <a href="cuotas.html">Cuotas</a>
-      <a href="mapa.html">Mapa</a>
-      <a href="visitas.html">Visitas</a>
-      <a href="seguridad.html">Seguridad</a>
-      <a href="calendario.html">Calendario</a>
-      <a class="active" href="reportes.html">Reportes</a>
-      <a href="directorio.html">Directorio</a>
-    </div>
-  </nav>
-</header>
+  <section class="section">
+    <div class="layout">
+      <div>
+        <div class="card">
+          <div class="section-title">
+            <div>
+              <h2>Nuevo reporte</h2>
+              <p>Selecciona el tipo de problema y registra los detalles.</p>
+            </div>
+          </div>
 
-<section class="hero">
-  <div class="badge">📝 Atención y seguimiento vecinal</div>
-  <h1>Reportes de <span>Misión Jardines</span></h1>
-  <p>
-    Módulo para registrar reportes de mantenimiento, alumbrado, fugas, limpieza,
-    vialidades, áreas comunes y seguimiento administrativo del fraccionamiento.
-  </p>
-</section>
+          <div class="type-grid">
+            <div class="type-card active" onclick="selectType(this,'Alumbrado')">
+              <strong>💡 Alumbrado</strong>
+              <span>Luminarias fundidas, zonas oscuras o fallas eléctricas.</span>
+            </div>
 
-<section class="section">
-  <div class="grid">
-    <div class="card metric">
-      <small>Reportes abiertos</small>
-      <strong id="metricAbiertos">0</strong>
-      <div class="hint">Pendientes de atender</div>
-    </div>
+            <div class="type-card" onclick="selectType(this,'Agua / Fuga')">
+              <strong>💧 Agua / Fuga</strong>
+              <span>Fugas, baja presión, charcos o tuberías visibles.</span>
+            </div>
 
-    <div class="card metric">
-      <small>En proceso</small>
-      <strong id="metricProceso">0</strong>
-      <div class="hint">Con seguimiento activo</div>
-    </div>
+            <div class="type-card" onclick="selectType(this,'Vialidad')">
+              <strong>🚧 Vialidad</strong>
+              <span>Baches, banquetas dañadas, señalización o accesos.</span>
+            </div>
 
-    <div class="card metric">
-      <small>Resueltos</small>
-      <strong id="metricResueltos">0</strong>
-      <div class="hint">Cerrados correctamente</div>
-    </div>
+            <div class="type-card" onclick="selectType(this,'Limpieza')">
+              <strong>🧹 Limpieza</strong>
+              <span>Basura, maleza, escombro o áreas comunes sucias.</span>
+            </div>
 
-    <div class="card metric">
-      <small>Alta prioridad</small>
-      <strong id="metricAlta">0</strong>
-      <div class="hint">Requieren atención rápida</div>
-    </div>
-  </div>
-</section>
+            <div class="type-card" onclick="selectType(this,'Jardinería')">
+              <strong>🌳 Jardinería</strong>
+              <span>Poda, riego, árboles, jardineras o área común.</span>
+            </div>
 
-<section class="section">
-  <div class="layout">
-    <div>
+            <div class="type-card" onclick="selectType(this,'Otro')">
+              <strong>📌 Otro</strong>
+              <span>Reportes generales que no entren en otra categoría.</span>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <input id="reportType" type="hidden" value="Alumbrado">
+
+            <div class="two">
+              <div>
+                <label>Casa / Lote</label>
+                <input id="reportHouse" placeholder="Ej. MJ-001">
+              </div>
+
+              <div>
+                <label>Reportado por</label>
+                <input id="reportedBy" placeholder="Ej. Laura Gómez">
+              </div>
+            </div>
+
+            <div>
+              <label>Ubicación del problema</label>
+              <input id="reportLocation" placeholder="Ej. Misión Jardines frente a casa 101">
+            </div>
+
+            <div class="two">
+              <div>
+                <label>Prioridad</label>
+                <select id="reportPriority">
+                  <option>Baja</option>
+                  <option>Media</option>
+                  <option>Alta</option>
+                </select>
+              </div>
+
+              <div>
+                <label>Área responsable</label>
+                <select id="responsibleArea">
+                  <option>Administración</option>
+                  <option>Mantenimiento</option>
+                  <option>Seguridad</option>
+                  <option>Jardinería</option>
+                  <option>Proveedor externo</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label>Descripción</label>
+              <textarea id="reportDescription" placeholder="Describe claramente el problema..."></textarea>
+            </div>
+
+            <div>
+              <label>Foto del reporte</label>
+              <input id="reportPhoto" type="file" accept="image/*" onchange="previewPhoto(event)">
+              <div class="photo-preview" id="photoPreview">
+                Sin imagen cargada
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn-primary" onclick="addReport()">Registrar reporte</button>
+              <button class="btn-secondary" onclick="clearReportForm()">Limpiar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:24px">
+          <div class="section-title">
+            <div>
+              <h2>Seguimiento sugerido</h2>
+              <p>Guía para priorizar y atender reportes.</p>
+            </div>
+          </div>
+
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-dot">1</div>
+              <div>
+                <strong>Registro del reporte</strong>
+                <p>El vecino o administración documenta el problema con ubicación, prioridad y evidencia.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot">2</div>
+              <div>
+                <strong>Revisión por administración</strong>
+                <p>Se valida si corresponde a mantenimiento interno, seguridad o proveedor externo.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot">3</div>
+              <div>
+                <strong>Atención y cierre</strong>
+                <p>Una vez resuelto, se cambia el estatus a Resuelto y queda registro en la bitácora.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="section-title">
           <div>
-            <h2>Nuevo reporte</h2>
-            <p>Selecciona el tipo de problema y registra los detalles.</p>
+            <h2>Bitácora de reportes</h2>
+            <p>Consulta, filtra y cambia el estado de los reportes registrados.</p>
           </div>
         </div>
 
-        <div class="type-grid">
-          <div class="type-card active" onclick="selectType(this,'Alumbrado')">
-            <strong>💡 Alumbrado</strong>
-            <span>Luminarias fundidas, zonas oscuras o fallas eléctricas.</span>
+        <div class="filters">
+          <div>
+            <label>Buscar reporte, ubicación, casa o persona</label>
+            <input id="filterText" placeholder="Ej. fuga, MJ-001, luminaria" oninput="renderReports()">
           </div>
 
-          <div class="type-card" onclick="selectType(this,'Agua / Fuga')">
-            <strong>💧 Agua / Fuga</strong>
-            <span>Fugas, baja presión, charcos o tuberías visibles.</span>
+          <div>
+            <label>Prioridad</label>
+            <select id="filterPriority" onchange="renderReports()">
+              <option value="">Todas</option>
+              <option>Baja</option>
+              <option>Media</option>
+              <option>Alta</option>
+            </select>
           </div>
 
-          <div class="type-card" onclick="selectType(this,'Vialidad')">
-            <strong>🚧 Vialidad</strong>
-            <span>Baches, banquetas dañadas, señalización o accesos.</span>
+          <div>
+            <label>Estatus</label>
+            <select id="filterStatus" onchange="renderReports()">
+              <option value="">Todos</option>
+              <option>Abierto</option>
+              <option>En proceso</option>
+              <option>Resuelto</option>
+              <option>Rechazado</option>
+            </select>
           </div>
 
-          <div class="type-card" onclick="selectType(this,'Limpieza')">
-            <strong>🧹 Limpieza</strong>
-            <span>Basura, maleza, escombro o áreas comunes sucias.</span>
-          </div>
-
-          <div class="type-card" onclick="selectType(this,'Jardinería')">
-            <strong>🌳 Jardinería</strong>
-            <span>Poda, riego, árboles, jardineras o área común.</span>
-          </div>
-
-          <div class="type-card" onclick="selectType(this,'Otro')">
-            <strong>📌 Otro</strong>
-            <span>Reportes generales que no entren en otra categoría.</span>
-          </div>
+          <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
         </div>
 
-        <div class="form-grid">
-          <input id="reportType" type="hidden" value="Alumbrado">
-
-          <div class="two">
-            <div>
-              <label>Casa / Lote</label>
-              <input id="reportHouse" placeholder="Ej. MJ-001">
-            </div>
-
-            <div>
-              <label>Reportado por</label>
-              <input id="reportedBy" placeholder="Ej. Laura Gómez">
-            </div>
-          </div>
-
-          <div>
-            <label>Ubicación del problema</label>
-            <input id="reportLocation" placeholder="Ej. Misión Jardines frente a casa 101">
-          </div>
-
-          <div class="two">
-            <div>
-              <label>Prioridad</label>
-              <select id="reportPriority">
-                <option>Baja</option>
-                <option>Media</option>
-                <option>Alta</option>
-              </select>
-            </div>
-
-            <div>
-              <label>Área responsable</label>
-              <select id="responsibleArea">
-                <option>Administración</option>
-                <option>Mantenimiento</option>
-                <option>Seguridad</option>
-                <option>Jardinería</option>
-                <option>Proveedor externo</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label>Descripción</label>
-            <textarea id="reportDescription" placeholder="Describe claramente el problema..."></textarea>
-          </div>
-
-          <div>
-            <label>Foto del reporte</label>
-            <input id="reportPhoto" type="file" accept="image/*" onchange="previewPhoto(event)">
-            <div class="photo-preview" id="photoPreview">
-              Sin imagen cargada
-            </div>
-          </div>
-
-          <div class="actions">
-            <button class="btn-primary" onclick="addReport()">Registrar reporte</button>
-            <button class="btn-secondary" onclick="clearReportForm()">Limpiar</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:24px">
-        <div class="section-title">
-          <div>
-            <h2>Seguimiento sugerido</h2>
-            <p>Guía para priorizar y atender reportes.</p>
-          </div>
-        </div>
-
-        <div class="timeline">
-          <div class="timeline-item">
-            <div class="timeline-dot">1</div>
-            <div>
-              <strong>Registro del reporte</strong>
-              <p>El vecino o administración documenta el problema con ubicación, prioridad y evidencia.</p>
-            </div>
-          </div>
-
-          <div class="timeline-item">
-            <div class="timeline-dot">2</div>
-            <div>
-              <strong>Revisión por administración</strong>
-              <p>Se valida si corresponde a mantenimiento interno, seguridad o proveedor externo.</p>
-            </div>
-          </div>
-
-          <div class="timeline-item">
-            <div class="timeline-dot">3</div>
-            <div>
-              <strong>Atención y cierre</strong>
-              <p>Una vez resuelto, se cambia el estatus a Resuelto y queda registro en la bitácora.</p>
-            </div>
-          </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Casa</th>
+                <th>Ubicación</th>
+                <th>Reportado por</th>
+                <th>Prioridad</th>
+                <th>Responsable</th>
+                <th>Estatus</th>
+                <th>Descripción</th>
+                <th>Evidencia</th>
+                <th>Eliminar</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTable"></tbody>
+          </table>
         </div>
       </div>
     </div>
+  </section>
 
-    <div class="card">
-      <div class="section-title">
-        <div>
-          <h2>Bitácora de reportes</h2>
-          <p>Consulta, filtra y cambia el estado de los reportes registrados.</p>
-        </div>
-      </div>
-
-      <div class="filters">
-        <div>
-          <label>Buscar reporte, ubicación, casa o persona</label>
-          <input id="filterText" placeholder="Ej. fuga, MJ-001, luminaria" oninput="renderReports()">
-        </div>
-
-        <div>
-          <label>Prioridad</label>
-          <select id="filterPriority" onchange="renderReports()">
-            <option value="">Todas</option>
-            <option>Baja</option>
-            <option>Media</option>
-            <option>Alta</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Estatus</label>
-          <select id="filterStatus" onchange="renderReports()">
-            <option value="">Todos</option>
-            <option>Abierto</option>
-            <option>En proceso</option>
-            <option>Resuelto</option>
-            <option>Rechazado</option>
-          </select>
-        </div>
-
-        <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Folio</th>
-              <th>Fecha</th>
-              <th>Tipo</th>
-              <th>Casa</th>
-              <th>Ubicación</th>
-              <th>Reportado por</th>
-              <th>Prioridad</th>
-              <th>Responsable</th>
-              <th>Estatus</th>
-              <th>Descripción</th>
-              <th>Evidencia</th>
-              <th>Eliminar</th>
-            </tr>
-          </thead>
-          <tbody id="reportsTable"></tbody>
-        </table>
-      </div>
+  <footer>
+    <div>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
-  </div>
-</section>
 
-<footer>
-  <div>
-    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-  </div>
-
-  <div class="powered-by">
-    Plataforma desarrollada por
-    <a href="https://listoenlinea.com" target="_blank">
-      ListoEnLinea.com
-    </a>
-  </div>
-</footer>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank">
+        ListoEnLinea.com
+      </a>
+    </div>
+  </footer>
 
 
-<div id="toast" class="toast"></div>
+  <div id="toast" class="toast"></div>
 
-<script>
-  const STORAGE_KEY = "mision_jardines_reportes";
+  <script>
+    const STORAGE_KEY = "mision_jardines_reportes";
 
-  let selectedPhoto = "";
+    let selectedPhoto = "";
 
-  let reports = [
-    {
-      folio:"REP-1001",
-      date:"2026-06-04 18:20",
-      type:"Alumbrado",
-      house:"MJ-001",
-      location:"Misión Jardines frente a casa 101",
-      reportedBy:"Laura Gómez",
-      priority:"Alta",
-      area:"Mantenimiento",
-      status:"En proceso",
-      description:"Luminaria parpadeando y zona oscura por la noche.",
-      photo:""
-    },
-    {
-      folio:"REP-1002",
-      date:"2026-06-03 09:15",
-      type:"Jardinería",
-      house:"MG-002",
-      location:"Área común",
-      reportedBy:"Martín Pérez",
-      priority:"Media",
-      area:"Jardinería",
-      status:"Abierto",
-      description:"Se requiere poda y limpieza de maleza cerca del jardín.",
-      photo:""
+    let reports = [
+      {
+        folio: "REP-1001",
+        date: "2026-06-04 18:20",
+        type: "Alumbrado",
+        house: "MJ-001",
+        location: "Misión Jardines frente a casa 101",
+        reportedBy: "Laura Gómez",
+        priority: "Alta",
+        area: "Mantenimiento",
+        status: "En proceso",
+        description: "Luminaria parpadeando y zona oscura por la noche.",
+        photo: ""
+      },
+      {
+        folio: "REP-1002",
+        date: "2026-06-03 09:15",
+        type: "Jardinería",
+        house: "MG-002",
+        location: "Área común",
+        reportedBy: "Martín Pérez",
+        priority: "Media",
+        area: "Jardinería",
+        status: "Abierto",
+        description: "Se requiere poda y limpieza de maleza cerca del jardín.",
+        photo: ""
+      }
+    ];
+
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) reports = JSON.parse(saved);
     }
-  ];
 
-  function loadData(){
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved) reports = JSON.parse(saved);
-  }
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+    }
 
-  function saveData(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
-  }
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3200);
+    }
 
-  function showToast(message){
-    const toast = document.getElementById("toast");
-    toast.textContent = message;
-    toast.style.display = "block";
-    setTimeout(() => toast.style.display = "none", 3200);
-  }
+    function nowText() {
+      const d = new Date();
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
 
-  function nowText(){
-    const d = new Date();
-    const dd = String(d.getDate()).padStart(2,"0");
-    const mm = String(d.getMonth()+1).padStart(2,"0");
-    const yyyy = d.getFullYear();
-    const hh = String(d.getHours()).padStart(2,"0");
-    const mi = String(d.getMinutes()).padStart(2,"0");
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-  }
+    function generateFolio() {
+      return "REP-" + String(Date.now()).slice(-6);
+    }
 
-  function generateFolio(){
-    return "REP-" + String(Date.now()).slice(-6);
-  }
+    function selectType(element, type) {
+      document.querySelectorAll(".type-card").forEach(card => card.classList.remove("active"));
+      element.classList.add("active");
+      document.getElementById("reportType").value = type;
+    }
 
-  function selectType(element, type){
-    document.querySelectorAll(".type-card").forEach(card => card.classList.remove("active"));
-    element.classList.add("active");
-    document.getElementById("reportType").value = type;
-  }
+    function previewPhoto(event) {
+      const file = event.target.files[0];
+      const preview = document.getElementById("photoPreview");
 
-  function previewPhoto(event){
-    const file = event.target.files[0];
-    const preview = document.getElementById("photoPreview");
+      if (!file) {
+        selectedPhoto = "";
+        preview.textContent = "Sin imagen cargada";
+        return;
+      }
 
-    if(!file){
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        selectedPhoto = e.target.result;
+        preview.innerHTML = `<img src="${selectedPhoto}" alt="Evidencia del reporte">`;
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    function priorityClass(priority) {
+      if (priority === "Alta") return "p-alta";
+      if (priority === "Media") return "p-media";
+      return "p-baja";
+    }
+
+    function statusClass(status) {
+      if (status === "En proceso") return "en-proceso";
+      if (status === "Resuelto") return "resuelto";
+      if (status === "Rechazado") return "rechazado";
+      return "abierto";
+    }
+
+    function addReport() {
+      const report = {
+        folio: generateFolio(),
+        date: nowText(),
+        type: document.getElementById("reportType").value,
+        house: document.getElementById("reportHouse").value.trim().toUpperCase(),
+        location: document.getElementById("reportLocation").value.trim(),
+        reportedBy: document.getElementById("reportedBy").value.trim(),
+        priority: document.getElementById("reportPriority").value,
+        area: document.getElementById("responsibleArea").value,
+        status: "Abierto",
+        description: document.getElementById("reportDescription").value.trim(),
+        photo: selectedPhoto
+      };
+
+      if (!report.house || !report.location || !report.reportedBy || !report.description) {
+        showToast("Completa casa, ubicación, reportado por y descripción.");
+        return;
+      }
+
+      reports.unshift(report);
+      saveData();
+      renderReports();
+      clearReportForm();
+      showToast("Reporte registrado correctamente.");
+    }
+
+    function clearReportForm() {
+      document.getElementById("reportHouse").value = "";
+      document.getElementById("reportedBy").value = "";
+      document.getElementById("reportLocation").value = "";
+      document.getElementById("reportPriority").value = "Baja";
+      document.getElementById("responsibleArea").value = "Administración";
+      document.getElementById("reportDescription").value = "";
+      document.getElementById("reportPhoto").value = "";
+      document.getElementById("photoPreview").textContent = "Sin imagen cargada";
       selectedPhoto = "";
-      preview.textContent = "Sin imagen cargada";
-      return;
+
+      document.querySelectorAll(".type-card").forEach(card => card.classList.remove("active"));
+      document.querySelector(".type-card").classList.add("active");
+      document.getElementById("reportType").value = "Alumbrado";
     }
 
-    const reader = new FileReader();
+    function getFilteredReports() {
+      const text = document.getElementById("filterText").value.toLowerCase().trim();
+      const priority = document.getElementById("filterPriority").value;
+      const status = document.getElementById("filterStatus").value;
 
-    reader.onload = function(e){
-      selectedPhoto = e.target.result;
-      preview.innerHTML = `<img src="${selectedPhoto}" alt="Evidencia del reporte">`;
-    };
+      return reports.filter(r => {
+        const matchText =
+          !text ||
+          String(r.type).toLowerCase().includes(text) ||
+          String(r.location).toLowerCase().includes(text) ||
+          String(r.reportedBy).toLowerCase().includes(text) ||
+          String(r.house).toLowerCase().includes(text) ||
+          String(r.folio).toLowerCase().includes(text);
 
-    reader.readAsDataURL(file);
-  }
+        const matchPriority = !priority || r.priority === priority;
+        const matchStatus = !status || r.status === status;
 
-  function priorityClass(priority){
-    if(priority === "Alta") return "p-alta";
-    if(priority === "Media") return "p-media";
-    return "p-baja";
-  }
-
-  function statusClass(status){
-    if(status === "En proceso") return "en-proceso";
-    if(status === "Resuelto") return "resuelto";
-    if(status === "Rechazado") return "rechazado";
-    return "abierto";
-  }
-
-  function addReport(){
-    const report = {
-      folio:generateFolio(),
-      date:nowText(),
-      type:document.getElementById("reportType").value,
-      house:document.getElementById("reportHouse").value.trim().toUpperCase(),
-      location:document.getElementById("reportLocation").value.trim(),
-      reportedBy:document.getElementById("reportedBy").value.trim(),
-      priority:document.getElementById("reportPriority").value,
-      area:document.getElementById("responsibleArea").value,
-      status:"Abierto",
-      description:document.getElementById("reportDescription").value.trim(),
-      photo:selectedPhoto
-    };
-
-    if(!report.house || !report.location || !report.reportedBy || !report.description){
-      showToast("Completa casa, ubicación, reportado por y descripción.");
-      return;
+        return matchText && matchPriority && matchStatus;
+      });
     }
 
-    reports.unshift(report);
-    saveData();
-    renderReports();
-    clearReportForm();
-    showToast("Reporte registrado correctamente.");
-  }
+    function renderReports() {
+      const tbody = document.getElementById("reportsTable");
+      tbody.innerHTML = "";
 
-  function clearReportForm(){
-    document.getElementById("reportHouse").value = "";
-    document.getElementById("reportedBy").value = "";
-    document.getElementById("reportLocation").value = "";
-    document.getElementById("reportPriority").value = "Baja";
-    document.getElementById("responsibleArea").value = "Administración";
-    document.getElementById("reportDescription").value = "";
-    document.getElementById("reportPhoto").value = "";
-    document.getElementById("photoPreview").textContent = "Sin imagen cargada";
-    selectedPhoto = "";
+      getFilteredReports().forEach(r => {
+        const index = reports.indexOf(r);
+        const tr = document.createElement("tr");
 
-    document.querySelectorAll(".type-card").forEach(card => card.classList.remove("active"));
-    document.querySelector(".type-card").classList.add("active");
-    document.getElementById("reportType").value = "Alumbrado";
-  }
-
-  function getFilteredReports(){
-    const text = document.getElementById("filterText").value.toLowerCase().trim();
-    const priority = document.getElementById("filterPriority").value;
-    const status = document.getElementById("filterStatus").value;
-
-    return reports.filter(r => {
-      const matchText =
-        !text ||
-        String(r.type).toLowerCase().includes(text) ||
-        String(r.location).toLowerCase().includes(text) ||
-        String(r.reportedBy).toLowerCase().includes(text) ||
-        String(r.house).toLowerCase().includes(text) ||
-        String(r.folio).toLowerCase().includes(text);
-
-      const matchPriority = !priority || r.priority === priority;
-      const matchStatus = !status || r.status === status;
-
-      return matchText && matchPriority && matchStatus;
-    });
-  }
-
-  function renderReports(){
-    const tbody = document.getElementById("reportsTable");
-    tbody.innerHTML = "";
-
-    getFilteredReports().forEach(r => {
-      const index = reports.indexOf(r);
-      const tr = document.createElement("tr");
-
-      tr.innerHTML = `
+        tr.innerHTML = `
         <td><strong>${r.folio}</strong></td>
         <td>${r.date}</td>
         <td>${r.type}</td>
@@ -491,31 +516,30 @@
         </td>
         <td>${r.description}</td>
         <td>
-          ${
-            r.photo
-              ? `<button class="btn-secondary" onclick="viewPhoto(${index})">Ver foto</button>`
-              : "-"
+          ${r.photo
+            ? `<button class="btn-secondary" onclick="viewPhoto(${index})">Ver foto</button>`
+            : "-"
           }
         </td>
         <td><button class="btn-danger" onclick="deleteReport(${index})">Eliminar</button></td>
       `;
 
-      tbody.appendChild(tr);
-    });
+        tbody.appendChild(tr);
+      });
 
-    updateMetrics();
-  }
-
-  function viewPhoto(index){
-    const r = reports[index];
-
-    if(!r.photo){
-      showToast("Este reporte no tiene evidencia.");
-      return;
+      updateMetrics();
     }
 
-    const win = window.open("", "_blank");
-    win.document.write(`
+    function viewPhoto(index) {
+      const r = reports[index];
+
+      if (!r.photo) {
+        showToast("Este reporte no tiene evidencia.");
+        return;
+      }
+
+      const win = window.open("", "_blank");
+      win.document.write(`
       <html>
         <head>
           <title>Evidencia ${r.folio}</title>
@@ -532,47 +556,48 @@
       </html>
     `);
 
-    win.document.close();
-  }
+      win.document.close();
+    }
 
-  function changeStatus(index, status){
-    reports[index].status = status;
-    saveData();
+    function changeStatus(index, status) {
+      reports[index].status = status;
+      saveData();
+      renderReports();
+    }
+
+    function deleteReport(index) {
+      if (!confirm("¿Seguro que deseas eliminar este reporte?")) return;
+      reports.splice(index, 1);
+      saveData();
+      renderReports();
+      showToast("Reporte eliminado.");
+    }
+
+    function clearFilters() {
+      document.getElementById("filterText").value = "";
+      document.getElementById("filterPriority").value = "";
+      document.getElementById("filterStatus").value = "";
+      renderReports();
+    }
+
+    function updateMetrics() {
+      document.getElementById("metricAbiertos").textContent =
+        reports.filter(r => r.status === "Abierto").length;
+
+      document.getElementById("metricProceso").textContent =
+        reports.filter(r => r.status === "En proceso").length;
+
+      document.getElementById("metricResueltos").textContent =
+        reports.filter(r => r.status === "Resuelto").length;
+
+      document.getElementById("metricAlta").textContent =
+        reports.filter(r => r.priority === "Alta" && r.status !== "Resuelto").length;
+    }
+
+    loadData();
     renderReports();
-  }
-
-  function deleteReport(index){
-    if(!confirm("¿Seguro que deseas eliminar este reporte?")) return;
-    reports.splice(index,1);
-    saveData();
-    renderReports();
-    showToast("Reporte eliminado.");
-  }
-
-  function clearFilters(){
-    document.getElementById("filterText").value = "";
-    document.getElementById("filterPriority").value = "";
-    document.getElementById("filterStatus").value = "";
-    renderReports();
-  }
-
-  function updateMetrics(){
-    document.getElementById("metricAbiertos").textContent =
-      reports.filter(r => r.status === "Abierto").length;
-
-    document.getElementById("metricProceso").textContent =
-      reports.filter(r => r.status === "En proceso").length;
-
-    document.getElementById("metricResueltos").textContent =
-      reports.filter(r => r.status === "Resuelto").length;
-
-    document.getElementById("metricAlta").textContent =
-      reports.filter(r => r.priority === "Alta" && r.status !== "Resuelto").length;
-  }
-
-  loadData();
-  renderReports();
-</script>
+  </script>
 
 </body>
+
 </html>

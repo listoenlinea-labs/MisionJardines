@@ -1,142 +1,305 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Visitas | Misión Jardines</title>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body class="page-visitas">
 
-<header>
-  <nav>
-    <div class="brand">
-      <div class="logo">
-        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
-      </div>
-
-      <div>
-        <div style="font-size:2rem;font-weight:900;">
-          Misión Jardines
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <small style="font-size:1.1rem;">
-          Control de visitas
-        </small>
-      </div>
-    </div>
-
-    <div class="menu">
-      <a href="index.html">Inicio</a>
-      <a href="cuotas.html">Cuotas</a>
-      <a href="mapa.html">Mapa</a>
-      <a class="active" href="visitas.html">Visitas</a>
-      <a href="seguridad.html">Seguridad</a>
-      <a href="calendario.html">Calendario</a>
-      <a href="reportes.html">Reportes</a>
-      <a href="directorio.html">Directorio</a>
-    </div>
-  </nav>
-</header>
-
-<section class="hero">
-  <div class="badge">🚗 Registro y control de acceso</div>
-  <h1>Visitas de <span>Misión Jardines</span></h1>
-  <p>
-    Los condóminos pueden solicitar accesos para sus visitas. Gerencia y seguridad
-    pueden visualizar y administrar todas las visitas del fraccionamiento.
-  </p>
-
-  <div class="card role-card">
-    <div>
-      <label>Vista / Rol</label>
-      <select id="roleSelect" onchange="applyRole()">
-        <option value="usuario">Condómino / Usuario común</option>
-        <option value="seguridad">Seguridad</option>
-        <option value="gerente">Gerente / Administración</option>
-      </select>
-    </div>
-
-    <div id="userHouseBox">
-      <label>Mi casa</label>
-      <input id="currentUserHouse" value="MJ-001" onchange="applyRole()">
-    </div>
-
-    <button class="btn-primary user-only" onclick="openVisitModal()">Solicitar visita</button>
-  </div>
-</section>
-
-<section class="section">
-  <div class="grid">
-    <div class="card metric">
-      <small id="metricTotalLabel">Mis visitas</small>
-      <strong id="metricTotal">0</strong>
-      <div class="hint">Registros visibles</div>
-    </div>
-
-    <div class="card metric">
-      <small>Programadas</small>
-      <strong id="metricProgramadas">0</strong>
-      <div class="hint">Pendientes de llegar</div>
-    </div>
-
-    <div class="card metric">
-      <small>En curso</small>
-      <strong id="metricEnCurso">0</strong>
-      <div class="hint">Dentro del fraccionamiento</div>
-    </div>
-
-    <div class="card metric">
-      <small>Finalizadas</small>
-      <strong id="metricFinalizadas">0</strong>
-      <div class="hint">Salida registrada</div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="layout">
-    <div class="card admin-only" id="adminFormCard">
-      <div class="section-title">
         <div>
-          <h2>Registro administrativo</h2>
-          <p>Gerencia o seguridad pueden registrar visitas manualmente.</p>
+          <div style="font-size:2rem;font-weight:900;">
+            Misión Jardines
+          </div>
+
+          <small style="font-size:1.1rem;">
+            Control de visitas
+          </small>
         </div>
       </div>
 
-      <div class="form-grid">
-        <div><label>Nombre del visitante</label><input id="visitorName"></div>
+      <div class="menu">
+        <a href="index.html">
+          Inicio
+        </a>
 
-        <div class="two">
-          <div><label>Teléfono</label><input id="visitorPhone"></div>
-          <div><label>Placas</label><input id="visitorPlate"></div>
-        </div>
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
 
-        <div class="two">
-          <div><label>Casa destino</label><input id="visitorHouse"></div>
-          <div><label>Vecino que autoriza</label><input id="authorizedBy"></div>
-        </div>
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
 
-        <div class="two">
-          <div><label>Fecha</label><input id="visitDate" type="date"></div>
-          <div><label>Hora</label><input id="visitTime" type="time"></div>
-        </div>
+        <a class="active" href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
 
-        <div class="two">
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">🚗 Registro y control de acceso</div>
+    <h1>Visitas de <span>Misión Jardines</span></h1>
+    <p>
+      Los condóminos pueden solicitar accesos para sus visitas. Gerencia y seguridad
+      pueden visualizar y administrar todas las visitas del fraccionamiento.
+    </p>
+
+    <div class="card role-card">
+      <div>
+        <label>Vista / Rol</label>
+        <select id="roleSelect" onchange="applyRole()">
+          <option value="usuario">Condómino / Usuario común</option>
+          <option value="seguridad">Seguridad</option>
+          <option value="gerente">Gerente / Administración</option>
+        </select>
+      </div>
+
+      <div id="userHouseBox">
+        <label>Mi casa</label>
+        <input id="currentUserHouse" value="MJ-001" onchange="applyRole()">
+      </div>
+
+      <button class="btn-primary user-only" onclick="openVisitModal()">Solicitar visita</button>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="grid">
+      <div class="card metric">
+        <small id="metricTotalLabel">Mis visitas</small>
+        <strong id="metricTotal">0</strong>
+        <div class="hint">Registros visibles</div>
+      </div>
+
+      <div class="card metric">
+        <small>Programadas</small>
+        <strong id="metricProgramadas">0</strong>
+        <div class="hint">Pendientes de llegar</div>
+      </div>
+
+      <div class="card metric">
+        <small>En curso</small>
+        <strong id="metricEnCurso">0</strong>
+        <div class="hint">Dentro del fraccionamiento</div>
+      </div>
+
+      <div class="card metric">
+        <small>Finalizadas</small>
+        <strong id="metricFinalizadas">0</strong>
+        <div class="hint">Salida registrada</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="layout">
+      <div class="card admin-only" id="adminFormCard">
+        <div class="section-title">
           <div>
-            <label>Vigencia</label>
-            <select id="validity">
-              <option value="1 día">1 día</option>
-              <option value="Fin de semana">Fin de semana</option>
-              <option value="1 semana">1 semana</option>
-              <option value="Permanente temporal">Permanente temporal</option>
+            <h2>Registro administrativo</h2>
+            <p>Gerencia o seguridad pueden registrar visitas manualmente.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div><label>Nombre del visitante</label><input id="visitorName"></div>
+
+          <div class="two">
+            <div><label>Teléfono</label><input id="visitorPhone"></div>
+            <div><label>Placas</label><input id="visitorPlate"></div>
+          </div>
+
+          <div class="two">
+            <div><label>Casa destino</label><input id="visitorHouse"></div>
+            <div><label>Vecino que autoriza</label><input id="authorizedBy"></div>
+          </div>
+
+          <div class="two">
+            <div><label>Fecha</label><input id="visitDate" type="date"></div>
+            <div><label>Hora</label><input id="visitTime" type="time"></div>
+          </div>
+
+          <div class="two">
+            <div>
+              <label>Vigencia</label>
+              <select id="validity">
+                <option value="1 día">1 día</option>
+                <option value="Fin de semana">Fin de semana</option>
+                <option value="1 semana">1 semana</option>
+                <option value="Permanente temporal">Permanente temporal</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Tipo</label>
+              <select id="visitType">
+                <option>Familiar</option>
+                <option>Amistad</option>
+                <option>Proveedor</option>
+                <option>Servicio</option>
+                <option>Repartidor</option>
+                <option>Otro</option>
+              </select>
+            </div>
+          </div>
+
+          <div><label>Notas para caseta</label><textarea id="visitNotes"></textarea></div>
+
+          <div class="actions">
+            <button class="btn-primary" onclick="addVisit('admin')">Registrar visita</button>
+            <button class="btn-secondary" onclick="clearForm()">Limpiar</button>
+          </div>
+        </div>
+
+        <div class="qr-card" id="qrCard">
+          <h3>Acceso generado</h3>
+          <div class="qr-box">
+            <div>
+              <div class="qr-code"></div>
+              <p id="qrText" style="margin-top:12px;font-size:13px;"></p>
+            </div>
+          </div>
+          <button class="btn-secondary" onclick="copyAccess()">Copiar mensaje para WhatsApp</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <div>
+            <h2 id="tableTitle">Mis visitas</h2>
+            <p id="tableDescription">Consulta las visitas registradas para tu casa.</p>
+          </div>
+        </div>
+
+        <div class="filters admin-only" id="adminFilters">
+          <div>
+            <label>Buscar visitante, casa o placas</label>
+            <input id="filterText" placeholder="Ej. Juan, MJ-001, JLS" oninput="renderVisits()">
+          </div>
+
+          <div>
+            <label>Estatus</label>
+            <select id="filterStatus" onchange="renderVisits()">
+              <option value="">Todos</option>
+              <option>Programada</option>
+              <option>En curso</option>
+              <option>Finalizada</option>
+              <option>Cancelada</option>
             </select>
           </div>
 
           <div>
             <label>Tipo</label>
-            <select id="visitType">
+            <select id="filterType" onchange="renderVisits()">
+              <option value="">Todos</option>
+              <option>Familiar</option>
+              <option>Amistad</option>
+              <option>Proveedor</option>
+              <option>Servicio</option>
+              <option>Repartidor</option>
+              <option>Otro</option>
+            </select>
+          </div>
+
+          <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Visitante</th>
+                <th>Teléfono</th>
+                <th>Placas</th>
+                <th>Casa</th>
+                <th>Autoriza</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Tipo</th>
+                <th>Vigencia</th>
+                <th>Estatus</th>
+                <th>Notas</th>
+                <th class="admin-col">Eliminar</th>
+              </tr>
+            </thead>
+            <tbody id="visitsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" id="visitModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2>Solicitar visita</h2>
+          <p>Completa los datos para generar un acceso para tu visitante.</p>
+        </div>
+        <button class="close-btn" onclick="closeVisitModal()">×</button>
+      </div>
+
+      <div class="form-grid">
+        <div><label>Nombre del visitante</label><input id="modalVisitorName"></div>
+
+        <div class="two">
+          <div><label>Teléfono visitante</label><input id="modalVisitorPhone"></div>
+          <div><label>Placas</label><input id="modalVisitorPlate"></div>
+        </div>
+
+        <div class="two">
+          <div><label>Casa destino</label><input id="modalVisitorHouse" readonly></div>
+          <div><label>Vecino que autoriza</label><input id="modalAuthorizedBy" placeholder="Tu nombre"></div>
+        </div>
+
+        <div class="two">
+          <div><label>Fecha de visita</label><input id="modalVisitDate" type="date"></div>
+          <div><label>Hora aproximada</label><input id="modalVisitTime" type="time"></div>
+        </div>
+
+        <div class="two">
+          <div>
+            <label>Vigencia</label>
+            <select id="modalValidity">
+              <option value="1 día">1 día</option>
+              <option value="Fin de semana">Fin de semana</option>
+              <option value="1 semana">1 semana</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Tipo</label>
+            <select id="modalVisitType">
               <option>Familiar</option>
               <option>Amistad</option>
               <option>Proveedor</option>
@@ -147,339 +310,201 @@
           </div>
         </div>
 
-        <div><label>Notas para caseta</label><textarea id="visitNotes"></textarea></div>
+        <div><label>Notas para caseta</label><textarea id="modalVisitNotes"></textarea></div>
 
         <div class="actions">
-          <button class="btn-primary" onclick="addVisit('admin')">Registrar visita</button>
-          <button class="btn-secondary" onclick="clearForm()">Limpiar</button>
+          <button class="btn-primary" onclick="submitUserVisit()">Enviar solicitud</button>
+          <button class="btn-secondary" onclick="closeVisitModal()">Cancelar</button>
         </div>
-      </div>
-
-      <div class="qr-card" id="qrCard">
-        <h3>Acceso generado</h3>
-        <div class="qr-box">
-          <div>
-            <div class="qr-code"></div>
-            <p id="qrText" style="margin-top:12px;font-size:13px;"></p>
-          </div>
-        </div>
-        <button class="btn-secondary" onclick="copyAccess()">Copiar mensaje para WhatsApp</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">
-        <div>
-          <h2 id="tableTitle">Mis visitas</h2>
-          <p id="tableDescription">Consulta las visitas registradas para tu casa.</p>
-        </div>
-      </div>
-
-      <div class="filters admin-only" id="adminFilters">
-        <div>
-          <label>Buscar visitante, casa o placas</label>
-          <input id="filterText" placeholder="Ej. Juan, MJ-001, JLS" oninput="renderVisits()">
-        </div>
-
-        <div>
-          <label>Estatus</label>
-          <select id="filterStatus" onchange="renderVisits()">
-            <option value="">Todos</option>
-            <option>Programada</option>
-            <option>En curso</option>
-            <option>Finalizada</option>
-            <option>Cancelada</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Tipo</label>
-          <select id="filterType" onchange="renderVisits()">
-            <option value="">Todos</option>
-            <option>Familiar</option>
-            <option>Amistad</option>
-            <option>Proveedor</option>
-            <option>Servicio</option>
-            <option>Repartidor</option>
-            <option>Otro</option>
-          </select>
-        </div>
-
-        <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Visitante</th>
-              <th>Teléfono</th>
-              <th>Placas</th>
-              <th>Casa</th>
-              <th>Autoriza</th>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Tipo</th>
-              <th>Vigencia</th>
-              <th>Estatus</th>
-              <th>Notas</th>
-              <th class="admin-col">Eliminar</th>
-            </tr>
-          </thead>
-          <tbody id="visitsTable"></tbody>
-        </table>
       </div>
     </div>
   </div>
-</section>
 
-<div class="modal-backdrop" id="visitModal">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <h2>Solicitar visita</h2>
-        <p>Completa los datos para generar un acceso para tu visitante.</p>
-      </div>
-      <button class="close-btn" onclick="closeVisitModal()">×</button>
+  <footer>
+    <div>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
 
-    <div class="form-grid">
-      <div><label>Nombre del visitante</label><input id="modalVisitorName"></div>
-
-      <div class="two">
-        <div><label>Teléfono visitante</label><input id="modalVisitorPhone"></div>
-        <div><label>Placas</label><input id="modalVisitorPlate"></div>
-      </div>
-
-      <div class="two">
-        <div><label>Casa destino</label><input id="modalVisitorHouse" readonly></div>
-        <div><label>Vecino que autoriza</label><input id="modalAuthorizedBy" placeholder="Tu nombre"></div>
-      </div>
-
-      <div class="two">
-        <div><label>Fecha de visita</label><input id="modalVisitDate" type="date"></div>
-        <div><label>Hora aproximada</label><input id="modalVisitTime" type="time"></div>
-      </div>
-
-      <div class="two">
-        <div>
-          <label>Vigencia</label>
-          <select id="modalValidity">
-            <option value="1 día">1 día</option>
-            <option value="Fin de semana">Fin de semana</option>
-            <option value="1 semana">1 semana</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Tipo</label>
-          <select id="modalVisitType">
-            <option>Familiar</option>
-            <option>Amistad</option>
-            <option>Proveedor</option>
-            <option>Servicio</option>
-            <option>Repartidor</option>
-            <option>Otro</option>
-          </select>
-        </div>
-      </div>
-
-      <div><label>Notas para caseta</label><textarea id="modalVisitNotes"></textarea></div>
-
-      <div class="actions">
-        <button class="btn-primary" onclick="submitUserVisit()">Enviar solicitud</button>
-        <button class="btn-secondary" onclick="closeVisitModal()">Cancelar</button>
-      </div>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank">
+        ListoEnLinea.com
+      </a>
     </div>
-  </div>
-</div>
-
-<footer>
-  <div>
-    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-  </div>
-
-  <div class="powered-by">
-    Plataforma desarrollada por
-    <a href="https://listoenlinea.com" target="_blank">
-      ListoEnLinea.com
-    </a>
-  </div>
-</footer>
+  </footer>
 
 
-<div id="toast" class="toast"></div>
+  <div id="toast" class="toast"></div>
 
-<script>
-  const STORAGE_KEY = "mision_jardines_visitas";
-  let lastMessage = "";
+  <script>
+    const STORAGE_KEY = "mision_jardines_visitas";
+    let lastMessage = "";
 
-  let visits = [
-    {
-      code:"MJ-VIS-1001", name:"Carlos Rivera", phone:"3312345678", plate:"JLS-123-A",
-      house:"MJ-001", authorizedBy:"Laura Gómez", date:"2026-06-04", time:"18:30",
-      type:"Familiar", validity:"1 día", status:"Programada", notes:"Avisar a la casa al llegar."
-    },
-    {
-      code:"MJ-VIS-1002", name:"Paquetería", phone:"", plate:"REPARTO",
-      house:"MG-002", authorizedBy:"Martín Pérez", date:"2026-06-04", time:"12:00",
-      type:"Repartidor", validity:"1 día", status:"Finalizada", notes:"Entrega rápida."
-    }
-  ];
+    let visits = [
+      {
+        code: "MJ-VIS-1001", name: "Carlos Rivera", phone: "3312345678", plate: "JLS-123-A",
+        house: "MJ-001", authorizedBy: "Laura Gómez", date: "2026-06-04", time: "18:30",
+        type: "Familiar", validity: "1 día", status: "Programada", notes: "Avisar a la casa al llegar."
+      },
+      {
+        code: "MJ-VIS-1002", name: "Paquetería", phone: "", plate: "REPARTO",
+        house: "MG-002", authorizedBy: "Martín Pérez", date: "2026-06-04", time: "12:00",
+        type: "Repartidor", validity: "1 día", status: "Finalizada", notes: "Entrega rápida."
+      }
+    ];
 
-  function loadData(){
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved) visits = JSON.parse(saved);
-  }
-
-  function saveData(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(visits));
-  }
-
-  function showToast(message){
-    const toast = document.getElementById("toast");
-    toast.textContent = message;
-    toast.style.display = "block";
-    setTimeout(() => toast.style.display = "none", 3200);
-  }
-
-  function generateCode(){
-    return "MJ-VIS-" + String(Date.now()).slice(-6);
-  }
-
-  function currentRole(){
-    return document.getElementById("roleSelect").value;
-  }
-
-  function currentHouse(){
-    return document.getElementById("currentUserHouse").value.trim().toUpperCase();
-  }
-
-  function isAdmin(){
-    return currentRole() === "gerente" || currentRole() === "seguridad";
-  }
-
-  function applyRole(){
-    const admin = isAdmin();
-
-    document.querySelectorAll(".admin-only").forEach(el => {
-      el.style.display = admin ? "" : "none";
-    });
-
-    document.querySelectorAll(".user-only").forEach(el => {
-      el.style.display = admin ? "none" : "";
-    });
-
-    document.getElementById("adminFormCard").style.display = admin ? "block" : "none";
-    document.getElementById("adminFilters").style.display = admin ? "grid" : "none";
-    document.getElementById("userHouseBox").style.display = admin ? "none" : "block";
-
-    document.getElementById("tableTitle").textContent = admin ? "Todas las visitas" : "Mis visitas";
-    document.getElementById("tableDescription").textContent = admin
-      ? "Consulta y administra las visitas registradas del fraccionamiento."
-      : "Consulta únicamente las visitas registradas para tu casa.";
-
-    document.getElementById("metricTotalLabel").textContent = admin ? "Visitas visibles" : "Mis visitas";
-
-    renderVisits();
-  }
-
-  function getStatusClass(status){
-    if(status === "En curso") return "en-curso";
-    if(status === "Finalizada") return "finalizada";
-    if(status === "Cancelada") return "cancelada";
-    return "programada";
-  }
-
-  function openVisitModal(){
-    document.getElementById("modalVisitorHouse").value = currentHouse();
-    document.getElementById("visitModal").style.display = "flex";
-  }
-
-  function closeVisitModal(){
-    document.getElementById("visitModal").style.display = "none";
-  }
-
-  function submitUserVisit(){
-    const visit = {
-      code:generateCode(),
-      name:document.getElementById("modalVisitorName").value.trim(),
-      phone:document.getElementById("modalVisitorPhone").value.trim(),
-      plate:document.getElementById("modalVisitorPlate").value.trim().toUpperCase(),
-      house:document.getElementById("modalVisitorHouse").value.trim().toUpperCase(),
-      authorizedBy:document.getElementById("modalAuthorizedBy").value.trim(),
-      date:document.getElementById("modalVisitDate").value,
-      time:document.getElementById("modalVisitTime").value,
-      validity:document.getElementById("modalValidity").value,
-      type:document.getElementById("modalVisitType").value,
-      status:"Programada",
-      notes:document.getElementById("modalVisitNotes").value.trim()
-    };
-
-    if(!visit.name || !visit.house || !visit.authorizedBy || !visit.date){
-      showToast("Completa visitante, casa, tu nombre y fecha.");
-      return;
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) visits = JSON.parse(saved);
     }
 
-    visits.unshift(visit);
-    saveData();
-    closeVisitModal();
-    clearModalForm();
-    renderVisits();
-    showToast("Solicitud de visita registrada.");
-  }
-
-  function clearModalForm(){
-    document.getElementById("modalVisitorName").value = "";
-    document.getElementById("modalVisitorPhone").value = "";
-    document.getElementById("modalVisitorPlate").value = "";
-    document.getElementById("modalAuthorizedBy").value = "";
-    document.getElementById("modalVisitDate").value = "";
-    document.getElementById("modalVisitTime").value = "";
-    document.getElementById("modalValidity").value = "1 día";
-    document.getElementById("modalVisitType").value = "Familiar";
-    document.getElementById("modalVisitNotes").value = "";
-  }
-
-  function addVisit(){
-    const visit = {
-      code:generateCode(),
-      name:document.getElementById("visitorName").value.trim(),
-      phone:document.getElementById("visitorPhone").value.trim(),
-      plate:document.getElementById("visitorPlate").value.trim().toUpperCase(),
-      house:document.getElementById("visitorHouse").value.trim().toUpperCase(),
-      authorizedBy:document.getElementById("authorizedBy").value.trim(),
-      date:document.getElementById("visitDate").value,
-      time:document.getElementById("visitTime").value,
-      validity:document.getElementById("validity").value,
-      type:document.getElementById("visitType").value,
-      status:"Programada",
-      notes:document.getElementById("visitNotes").value.trim()
-    };
-
-    if(!visit.name || !visit.house || !visit.authorizedBy || !visit.date){
-      showToast("Completa al menos visitante, casa, vecino que autoriza y fecha.");
-      return;
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(visits));
     }
 
-    visits.unshift(visit);
-    saveData();
-    renderVisits();
-    renderQR(visit);
-    clearForm(false);
-    showToast("Acceso de visita generado.");
-  }
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3200);
+    }
 
-  function renderQR(visit){
-    const qrCard = document.getElementById("qrCard");
-    const qrText = document.getElementById("qrText");
+    function generateCode() {
+      return "MJ-VIS-" + String(Date.now()).slice(-6);
+    }
 
-    qrCard.style.display = "block";
-    qrText.textContent = visit.code;
+    function currentRole() {
+      return document.getElementById("roleSelect").value;
+    }
 
-    lastMessage =
-`Acceso autorizado - Misión Jardines
+    function currentHouse() {
+      return document.getElementById("currentUserHouse").value.trim().toUpperCase();
+    }
+
+    function isAdmin() {
+      return currentRole() === "gerente" || currentRole() === "seguridad";
+    }
+
+    function applyRole() {
+      const admin = isAdmin();
+
+      document.querySelectorAll(".admin-only").forEach(el => {
+        el.style.display = admin ? "" : "none";
+      });
+
+      document.querySelectorAll(".user-only").forEach(el => {
+        el.style.display = admin ? "none" : "";
+      });
+
+      document.getElementById("adminFormCard").style.display = admin ? "block" : "none";
+      document.getElementById("adminFilters").style.display = admin ? "grid" : "none";
+      document.getElementById("userHouseBox").style.display = admin ? "none" : "block";
+
+      document.getElementById("tableTitle").textContent = admin ? "Todas las visitas" : "Mis visitas";
+      document.getElementById("tableDescription").textContent = admin
+        ? "Consulta y administra las visitas registradas del fraccionamiento."
+        : "Consulta únicamente las visitas registradas para tu casa.";
+
+      document.getElementById("metricTotalLabel").textContent = admin ? "Visitas visibles" : "Mis visitas";
+
+      renderVisits();
+    }
+
+    function getStatusClass(status) {
+      if (status === "En curso") return "en-curso";
+      if (status === "Finalizada") return "finalizada";
+      if (status === "Cancelada") return "cancelada";
+      return "programada";
+    }
+
+    function openVisitModal() {
+      document.getElementById("modalVisitorHouse").value = currentHouse();
+      document.getElementById("visitModal").style.display = "flex";
+    }
+
+    function closeVisitModal() {
+      document.getElementById("visitModal").style.display = "none";
+    }
+
+    function submitUserVisit() {
+      const visit = {
+        code: generateCode(),
+        name: document.getElementById("modalVisitorName").value.trim(),
+        phone: document.getElementById("modalVisitorPhone").value.trim(),
+        plate: document.getElementById("modalVisitorPlate").value.trim().toUpperCase(),
+        house: document.getElementById("modalVisitorHouse").value.trim().toUpperCase(),
+        authorizedBy: document.getElementById("modalAuthorizedBy").value.trim(),
+        date: document.getElementById("modalVisitDate").value,
+        time: document.getElementById("modalVisitTime").value,
+        validity: document.getElementById("modalValidity").value,
+        type: document.getElementById("modalVisitType").value,
+        status: "Programada",
+        notes: document.getElementById("modalVisitNotes").value.trim()
+      };
+
+      if (!visit.name || !visit.house || !visit.authorizedBy || !visit.date) {
+        showToast("Completa visitante, casa, tu nombre y fecha.");
+        return;
+      }
+
+      visits.unshift(visit);
+      saveData();
+      closeVisitModal();
+      clearModalForm();
+      renderVisits();
+      showToast("Solicitud de visita registrada.");
+    }
+
+    function clearModalForm() {
+      document.getElementById("modalVisitorName").value = "";
+      document.getElementById("modalVisitorPhone").value = "";
+      document.getElementById("modalVisitorPlate").value = "";
+      document.getElementById("modalAuthorizedBy").value = "";
+      document.getElementById("modalVisitDate").value = "";
+      document.getElementById("modalVisitTime").value = "";
+      document.getElementById("modalValidity").value = "1 día";
+      document.getElementById("modalVisitType").value = "Familiar";
+      document.getElementById("modalVisitNotes").value = "";
+    }
+
+    function addVisit() {
+      const visit = {
+        code: generateCode(),
+        name: document.getElementById("visitorName").value.trim(),
+        phone: document.getElementById("visitorPhone").value.trim(),
+        plate: document.getElementById("visitorPlate").value.trim().toUpperCase(),
+        house: document.getElementById("visitorHouse").value.trim().toUpperCase(),
+        authorizedBy: document.getElementById("authorizedBy").value.trim(),
+        date: document.getElementById("visitDate").value,
+        time: document.getElementById("visitTime").value,
+        validity: document.getElementById("validity").value,
+        type: document.getElementById("visitType").value,
+        status: "Programada",
+        notes: document.getElementById("visitNotes").value.trim()
+      };
+
+      if (!visit.name || !visit.house || !visit.authorizedBy || !visit.date) {
+        showToast("Completa al menos visitante, casa, vecino que autoriza y fecha.");
+        return;
+      }
+
+      visits.unshift(visit);
+      saveData();
+      renderVisits();
+      renderQR(visit);
+      clearForm(false);
+      showToast("Acceso de visita generado.");
+    }
+
+    function renderQR(visit) {
+      const qrCard = document.getElementById("qrCard");
+      const qrText = document.getElementById("qrText");
+
+      qrCard.style.display = "block";
+      qrText.textContent = visit.code;
+
+      lastMessage =
+        `Acceso autorizado - Misión Jardines
 
 Código: ${visit.code}
 Visitante: ${visit.name}
@@ -491,70 +516,70 @@ Placas: ${visit.plate || "Sin placas"}
 Vigencia: ${visit.validity}
 
 Favor de presentar este código en caseta.`;
-  }
-
-  function copyAccess(){
-    if(!lastMessage){
-      showToast("Primero genera un acceso.");
-      return;
     }
 
-    navigator.clipboard.writeText(lastMessage);
-    showToast("Mensaje copiado para WhatsApp.");
-  }
+    function copyAccess() {
+      if (!lastMessage) {
+        showToast("Primero genera un acceso.");
+        return;
+      }
 
-  function clearForm(hideQR = true){
-    ["visitorName","visitorPhone","visitorPlate","visitorHouse","authorizedBy","visitDate","visitTime","visitNotes"]
-      .forEach(id => document.getElementById(id).value = "");
-
-    document.getElementById("validity").value = "1 día";
-    document.getElementById("visitType").value = "Familiar";
-
-    if(hideQR) document.getElementById("qrCard").style.display = "none";
-  }
-
-  function getFilteredVisits(){
-    let data = visits;
-
-    if(!isAdmin()){
-      data = data.filter(v => String(v.house).toUpperCase() === currentHouse());
-      return data;
+      navigator.clipboard.writeText(lastMessage);
+      showToast("Mensaje copiado para WhatsApp.");
     }
 
-    const text = document.getElementById("filterText").value.toLowerCase().trim();
-    const status = document.getElementById("filterStatus").value;
-    const type = document.getElementById("filterType").value;
+    function clearForm(hideQR = true) {
+      ["visitorName", "visitorPhone", "visitorPlate", "visitorHouse", "authorizedBy", "visitDate", "visitTime", "visitNotes"]
+        .forEach(id => document.getElementById(id).value = "");
 
-    return data.filter(v => {
-      const matchText =
-        !text ||
-        String(v.name).toLowerCase().includes(text) ||
-        String(v.house).toLowerCase().includes(text) ||
-        String(v.plate).toLowerCase().includes(text) ||
-        String(v.code).toLowerCase().includes(text);
+      document.getElementById("validity").value = "1 día";
+      document.getElementById("visitType").value = "Familiar";
 
-      const matchStatus = !status || v.status === status;
-      const matchType = !type || v.type === type;
+      if (hideQR) document.getElementById("qrCard").style.display = "none";
+    }
 
-      return matchText && matchStatus && matchType;
-    });
-  }
+    function getFilteredVisits() {
+      let data = visits;
 
-  function renderVisits(){
-    const tbody = document.getElementById("visitsTable");
-    tbody.innerHTML = "";
+      if (!isAdmin()) {
+        data = data.filter(v => String(v.house).toUpperCase() === currentHouse());
+        return data;
+      }
 
-    const admin = isAdmin();
+      const text = document.getElementById("filterText").value.toLowerCase().trim();
+      const status = document.getElementById("filterStatus").value;
+      const type = document.getElementById("filterType").value;
 
-    document.querySelectorAll(".admin-col").forEach(el => {
-      el.style.display = admin ? "" : "none";
-    });
+      return data.filter(v => {
+        const matchText =
+          !text ||
+          String(v.name).toLowerCase().includes(text) ||
+          String(v.house).toLowerCase().includes(text) ||
+          String(v.plate).toLowerCase().includes(text) ||
+          String(v.code).toLowerCase().includes(text);
 
-    getFilteredVisits().forEach(v => {
-      const index = visits.indexOf(v);
-      const tr = document.createElement("tr");
+        const matchStatus = !status || v.status === status;
+        const matchType = !type || v.type === type;
 
-      tr.innerHTML = `
+        return matchText && matchStatus && matchType;
+      });
+    }
+
+    function renderVisits() {
+      const tbody = document.getElementById("visitsTable");
+      tbody.innerHTML = "";
+
+      const admin = isAdmin();
+
+      document.querySelectorAll(".admin-col").forEach(el => {
+        el.style.display = admin ? "" : "none";
+      });
+
+      getFilteredVisits().forEach(v => {
+        const index = visits.indexOf(v);
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
         <td><strong>${v.code}</strong></td>
         <td>${v.name}</td>
         <td>${v.phone || "-"}</td>
@@ -566,15 +591,14 @@ Favor de presentar este código en caseta.`;
         <td>${v.type}</td>
         <td>${v.validity}</td>
         <td>
-          ${
-            admin
-              ? `<select onchange="changeStatus(${index}, this.value)">
+          ${admin
+            ? `<select onchange="changeStatus(${index}, this.value)">
                   <option ${v.status === "Programada" ? "selected" : ""}>Programada</option>
                   <option ${v.status === "En curso" ? "selected" : ""}>En curso</option>
                   <option ${v.status === "Finalizada" ? "selected" : ""}>Finalizada</option>
                   <option ${v.status === "Cancelada" ? "selected" : ""}>Cancelada</option>
                 </select>`
-              : ""
+            : ""
           }
           <div style="margin-top:${admin ? "8px" : "0"};">
             <span class="chip ${getStatusClass(v.status)}">${v.status}</span>
@@ -584,44 +608,45 @@ Favor de presentar este código en caseta.`;
         <td class="admin-col">${admin ? `<button class="btn-danger" onclick="deleteVisit(${index})">Eliminar</button>` : ""}</td>
       `;
 
-      tbody.appendChild(tr);
-    });
+        tbody.appendChild(tr);
+      });
 
-    updateMetrics();
-  }
+      updateMetrics();
+    }
 
-  function changeStatus(index, status){
-    visits[index].status = status;
-    saveData();
-    renderVisits();
-  }
+    function changeStatus(index, status) {
+      visits[index].status = status;
+      saveData();
+      renderVisits();
+    }
 
-  function deleteVisit(index){
-    if(!confirm("¿Seguro que deseas eliminar esta visita?")) return;
-    visits.splice(index,1);
-    saveData();
-    renderVisits();
-    showToast("Visita eliminada.");
-  }
+    function deleteVisit(index) {
+      if (!confirm("¿Seguro que deseas eliminar esta visita?")) return;
+      visits.splice(index, 1);
+      saveData();
+      renderVisits();
+      showToast("Visita eliminada.");
+    }
 
-  function clearFilters(){
-    document.getElementById("filterText").value = "";
-    document.getElementById("filterStatus").value = "";
-    document.getElementById("filterType").value = "";
-    renderVisits();
-  }
+    function clearFilters() {
+      document.getElementById("filterText").value = "";
+      document.getElementById("filterStatus").value = "";
+      document.getElementById("filterType").value = "";
+      renderVisits();
+    }
 
-  function updateMetrics(){
-    const data = getFilteredVisits();
-    document.getElementById("metricTotal").textContent = data.length;
-    document.getElementById("metricProgramadas").textContent = data.filter(v => v.status === "Programada").length;
-    document.getElementById("metricEnCurso").textContent = data.filter(v => v.status === "En curso").length;
-    document.getElementById("metricFinalizadas").textContent = data.filter(v => v.status === "Finalizada").length;
-  }
+    function updateMetrics() {
+      const data = getFilteredVisits();
+      document.getElementById("metricTotal").textContent = data.length;
+      document.getElementById("metricProgramadas").textContent = data.filter(v => v.status === "Programada").length;
+      document.getElementById("metricEnCurso").textContent = data.filter(v => v.status === "En curso").length;
+      document.getElementById("metricFinalizadas").textContent = data.filter(v => v.status === "Finalizada").length;
+    }
 
-  loadData();
-  applyRole();
-</script>
+    loadData();
+    applyRole();
+  </script>
 
 </body>
+
 </html>

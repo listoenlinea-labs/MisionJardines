@@ -1,460 +1,485 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Seguridad | Misión Jardines</title>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body class="page-seguridad">
 
-<header>
-  <nav>
-    <div class="brand">
-      <div class="logo">
-        <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
-      </div>
-
-      <div>
-        <div style="font-size:2rem;font-weight:900;">
-          Misión Jardines
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <small style="font-size:1.1rem;">
-          Seguridad y reportes
-        </small>
-      </div>
-    </div>
-
-    <div class="menu">
-      <a href="index.html">Inicio</a>
-      <a href="cuotas.html">Cuotas</a>
-      <a href="mapa.html">Mapa</a>
-      <a href="visitas.html">Visitas</a>
-      <a class="active" href="seguridad.html">Seguridad</a>
-      <a href="calendario.html">Calendario</a>
-      <a href="reportes.html">Reportes</a>
-      <a href="directorio.html">Directorio</a>
-    </div>
-  </nav>
-</header>
-
-<section class="hero">
-  <div class="badge">🛡️ Seguridad vecinal</div>
-  <h1>Seguridad de <span>Misión Jardines</span></h1>
-  <p>
-    Panel para registrar incidencias, revisar cámaras, controlar la pluma principal
-    y dar seguimiento a reportes de seguridad dentro del fraccionamiento.
-  </p>
-</section>
-
-<section class="section">
-  <div class="grid">
-    <div class="card metric">
-      <small>Incidencias abiertas</small>
-      <strong id="metricAbiertas">0</strong>
-      <div class="hint">Requieren seguimiento</div>
-    </div>
-
-    <div class="card metric">
-      <small>Atendidas</small>
-      <strong id="metricAtendidas">0</strong>
-      <div class="hint">En proceso o revisadas</div>
-    </div>
-
-    <div class="card metric">
-      <small>Críticas</small>
-      <strong id="metricCriticas">0</strong>
-      <div class="hint">Alta prioridad</div>
-    </div>
-
-    <div class="card metric">
-      <small>Rondines hoy</small>
-      <strong id="metricRondines">4</strong>
-      <div class="hint">Programados / registrados</div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="security-grid">
-    <div class="card">
-      <div class="section-title">
         <div>
-          <h2>Cámaras de seguridad</h2>
-          <p>Vista conceptual de puntos de vigilancia.</p>
+          <div style="font-size:2rem;font-weight:900;">
+            Misión Jardines
+          </div>
+
+          <small style="font-size:1.1rem;">
+            Seguridad y reportes
+          </small>
         </div>
       </div>
 
-      <div class="camera-grid">
-        <div class="camera">
-          <strong>Entrada principal</strong>
-          <span>● En línea</span>
-          <div class="camera-view">Vista acceso principal</div>
-        </div>
+      <div class="menu">
+        <a href="index.html">
+          Inicio
+        </a>
 
-        <div class="camera">
-          <strong>Av. Valle de México</strong>
-          <span>● En línea</span>
-          <div class="camera-view">Vista vialidad sur</div>
-        </div>
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Cuotas
+        </a>
 
-        <div class="camera">
-          <strong>Área común</strong>
-          <span>● En línea</span>
-          <div class="camera-view">Vista jardín</div>
-        </div>
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Mapa
+        </a>
 
-        <div class="camera off">
-          <strong>C. Atotonilco</strong>
-          <span>● Revisión requerida</span>
-          <div class="camera-view">Sin señal estable</div>
-        </div>
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
+          Visitas
+        </a>
+
+        <a class="active" href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
+          Seguridad
+        </a>
+
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
+          Calendario
+        </a>
+
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
+          Reportes
+        </a>
+
+        <a href="directorio.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
+          Directorio
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">🛡️ Seguridad vecinal</div>
+    <h1>Seguridad de <span>Misión Jardines</span></h1>
+    <p>
+      Panel para registrar incidencias, revisar cámaras, controlar la pluma principal
+      y dar seguimiento a reportes de seguridad dentro del fraccionamiento.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="grid">
+      <div class="card metric">
+        <small>Incidencias abiertas</small>
+        <strong id="metricAbiertas">0</strong>
+        <div class="hint">Requieren seguimiento</div>
+      </div>
+
+      <div class="card metric">
+        <small>Atendidas</small>
+        <strong id="metricAtendidas">0</strong>
+        <div class="hint">En proceso o revisadas</div>
+      </div>
+
+      <div class="card metric">
+        <small>Críticas</small>
+        <strong id="metricCriticas">0</strong>
+        <div class="hint">Alta prioridad</div>
+      </div>
+
+      <div class="card metric">
+        <small>Rondines hoy</small>
+        <strong id="metricRondines">4</strong>
+        <div class="hint">Programados / registrados</div>
       </div>
     </div>
+  </section>
 
-    <div class="card gate-card">
-      <div class="section-title">
-        <div>
-          <h2>Pluma principal</h2>
-          <p>Control visual de apertura y cierre de acceso.</p>
-        </div>
-      </div>
-
-      <div class="gate-scene" id="gateScene">
-        <div class="gate-base"></div>
-        <div class="gate-light"></div>
-        <div class="gate-arm"></div>
-        <div class="gate-status" id="gateStatus">CERRADA</div>
-      </div>
-
-      <div class="gate-actions">
-        <button class="btn-primary" onclick="openGate()">Abrir pluma</button>
-        <button class="btn-danger" onclick="closeGate()">Cerrar pluma</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="layout">
-    <div>
+  <section class="section">
+    <div class="security-grid">
       <div class="card">
         <div class="section-title">
           <div>
-            <h2>Nueva incidencia</h2>
-            <p>Registra eventos de seguridad para seguimiento interno.</p>
+            <h2>Cámaras de seguridad</h2>
+            <p>Vista conceptual de puntos de vigilancia.</p>
           </div>
         </div>
 
-        <div class="form-grid">
+        <div class="camera-grid">
+          <div class="camera">
+            <strong>Entrada principal</strong>
+            <span>● En línea</span>
+            <div class="camera-view">Vista acceso principal</div>
+          </div>
+
+          <div class="camera">
+            <strong>Av. Valle de México</strong>
+            <span>● En línea</span>
+            <div class="camera-view">Vista vialidad sur</div>
+          </div>
+
+          <div class="camera">
+            <strong>Área común</strong>
+            <span>● En línea</span>
+            <div class="camera-view">Vista jardín</div>
+          </div>
+
+          <div class="camera off">
+            <strong>C. Atotonilco</strong>
+            <span>● Revisión requerida</span>
+            <div class="camera-view">Sin señal estable</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card gate-card">
+        <div class="section-title">
           <div>
-            <label>Tipo de incidencia</label>
-            <select id="incidentType">
-              <option>Acceso no autorizado</option>
-              <option>Vehículo sospechoso</option>
-              <option>Ruido / alteración del orden</option>
-              <option>Persona sospechosa</option>
-              <option>Daño a propiedad</option>
-              <option>Alumbrado / zona oscura</option>
-              <option>Otro</option>
+            <h2>Pluma principal</h2>
+            <p>Control visual de apertura y cierre de acceso.</p>
+          </div>
+        </div>
+
+        <div class="gate-scene" id="gateScene">
+          <div class="gate-base"></div>
+          <div class="gate-light"></div>
+          <div class="gate-arm"></div>
+          <div class="gate-status" id="gateStatus">CERRADA</div>
+        </div>
+
+        <div class="gate-actions">
+          <button class="btn-primary" onclick="openGate()">Abrir pluma</button>
+          <button class="btn-danger" onclick="closeGate()">Cerrar pluma</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="card">
+          <div class="section-title">
+            <div>
+              <h2>Nueva incidencia</h2>
+              <p>Registra eventos de seguridad para seguimiento interno.</p>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div>
+              <label>Tipo de incidencia</label>
+              <select id="incidentType">
+                <option>Acceso no autorizado</option>
+                <option>Vehículo sospechoso</option>
+                <option>Ruido / alteración del orden</option>
+                <option>Persona sospechosa</option>
+                <option>Daño a propiedad</option>
+                <option>Alumbrado / zona oscura</option>
+                <option>Otro</option>
+              </select>
+            </div>
+
+            <div class="two">
+              <div>
+                <label>Ubicación</label>
+                <input id="incidentLocation" placeholder="Ej. Misión Jardines, casa 101">
+              </div>
+
+              <div>
+                <label>Reportado por</label>
+                <input id="reportedBy" placeholder="Ej. Vecino, caseta, administración">
+              </div>
+            </div>
+
+            <div class="two">
+              <div>
+                <label>Prioridad</label>
+                <select id="incidentPriority">
+                  <option>Baja</option>
+                  <option>Media</option>
+                  <option>Alta</option>
+                </select>
+              </div>
+
+              <div>
+                <label>Estatus</label>
+                <select id="incidentStatus">
+                  <option>Abierto</option>
+                  <option>Atendido</option>
+                  <option>Cerrado</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label>Descripción</label>
+              <textarea id="incidentDescription" placeholder="Describe brevemente lo ocurrido..."></textarea>
+            </div>
+
+            <div class="actions">
+              <button class="btn-primary" onclick="addIncident()">Registrar incidencia</button>
+              <button class="btn-secondary" onclick="clearIncidentForm()">Limpiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <div>
+            <h2>Bitácora de seguridad</h2>
+            <p>Consulta, filtra y actualiza incidencias registradas.</p>
+          </div>
+        </div>
+
+        <div class="filters">
+          <div>
+            <label>Buscar tipo, ubicación o reportante</label>
+            <input id="filterText" placeholder="Ej. vehículo, caseta, casa 101" oninput="renderIncidents()">
+          </div>
+
+          <div>
+            <label>Prioridad</label>
+            <select id="filterPriority" onchange="renderIncidents()">
+              <option value="">Todas</option>
+              <option>Baja</option>
+              <option>Media</option>
+              <option>Alta</option>
             </select>
           </div>
 
-          <div class="two">
-            <div>
-              <label>Ubicación</label>
-              <input id="incidentLocation" placeholder="Ej. Misión Jardines, casa 101">
-            </div>
-
-            <div>
-              <label>Reportado por</label>
-              <input id="reportedBy" placeholder="Ej. Vecino, caseta, administración">
-            </div>
-          </div>
-
-          <div class="two">
-            <div>
-              <label>Prioridad</label>
-              <select id="incidentPriority">
-                <option>Baja</option>
-                <option>Media</option>
-                <option>Alta</option>
-              </select>
-            </div>
-
-            <div>
-              <label>Estatus</label>
-              <select id="incidentStatus">
-                <option>Abierto</option>
-                <option>Atendido</option>
-                <option>Cerrado</option>
-              </select>
-            </div>
-          </div>
-
           <div>
-            <label>Descripción</label>
-            <textarea id="incidentDescription" placeholder="Describe brevemente lo ocurrido..."></textarea>
+            <label>Estatus</label>
+            <select id="filterStatus" onchange="renderIncidents()">
+              <option value="">Todos</option>
+              <option>Abierto</option>
+              <option>Atendido</option>
+              <option>Cerrado</option>
+            </select>
           </div>
 
-          <div class="actions">
-            <button class="btn-primary" onclick="addIncident()">Registrar incidencia</button>
-            <button class="btn-secondary" onclick="clearIncidentForm()">Limpiar</button>
+          <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Ubicación</th>
+                <th>Reportado por</th>
+                <th>Prioridad</th>
+                <th>Estatus</th>
+                <th>Descripción</th>
+                <th>Eliminar</th>
+              </tr>
+            </thead>
+            <tbody id="incidentsTable"></tbody>
+          </table>
+        </div>
+
+        <div class="quick-actions">
+          <div class="quick-card">
+            <div class="quick-icon">🚨</div>
+            <div>
+              <strong>Emergencia</strong>
+              <p>En una versión final, este botón podría activar protocolo o aviso inmediato.</p>
+            </div>
+          </div>
+
+          <div class="quick-card">
+            <div class="quick-icon">📋</div>
+            <div>
+              <strong>Reporte diario</strong>
+              <p>Resumen de incidencias, rondines y puntos críticos para administración.</p>
+            </div>
+          </div>
+
+          <div class="quick-card">
+            <div class="quick-icon">🚶</div>
+            <div>
+              <strong>Rondines</strong>
+              <p>Registro visual de horarios y zonas recorridas por vigilancia.</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  </section>
 
-    <div class="card">
-      <div class="section-title">
-        <div>
-          <h2>Bitácora de seguridad</h2>
-          <p>Consulta, filtra y actualiza incidencias registradas.</p>
-        </div>
-      </div>
-
-      <div class="filters">
-        <div>
-          <label>Buscar tipo, ubicación o reportante</label>
-          <input id="filterText" placeholder="Ej. vehículo, caseta, casa 101" oninput="renderIncidents()">
-        </div>
-
-        <div>
-          <label>Prioridad</label>
-          <select id="filterPriority" onchange="renderIncidents()">
-            <option value="">Todas</option>
-            <option>Baja</option>
-            <option>Media</option>
-            <option>Alta</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Estatus</label>
-          <select id="filterStatus" onchange="renderIncidents()">
-            <option value="">Todos</option>
-            <option>Abierto</option>
-            <option>Atendido</option>
-            <option>Cerrado</option>
-          </select>
-        </div>
-
-        <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Folio</th>
-              <th>Fecha</th>
-              <th>Tipo</th>
-              <th>Ubicación</th>
-              <th>Reportado por</th>
-              <th>Prioridad</th>
-              <th>Estatus</th>
-              <th>Descripción</th>
-              <th>Eliminar</th>
-            </tr>
-          </thead>
-          <tbody id="incidentsTable"></tbody>
-        </table>
-      </div>
-
-      <div class="quick-actions">
-        <div class="quick-card">
-          <div class="quick-icon">🚨</div>
-          <div>
-            <strong>Emergencia</strong>
-            <p>En una versión final, este botón podría activar protocolo o aviso inmediato.</p>
-          </div>
-        </div>
-
-        <div class="quick-card">
-          <div class="quick-icon">📋</div>
-          <div>
-            <strong>Reporte diario</strong>
-            <p>Resumen de incidencias, rondines y puntos críticos para administración.</p>
-          </div>
-        </div>
-
-        <div class="quick-card">
-          <div class="quick-icon">🚶</div>
-          <div>
-            <strong>Rondines</strong>
-            <p>Registro visual de horarios y zonas recorridas por vigilancia.</p>
-          </div>
-        </div>
-      </div>
+  <footer>
+    <div>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
-  </div>
-</section>
 
-<footer>
-  <div>
-    Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-  </div>
-
-  <div class="powered-by">
-    Plataforma desarrollada por
-    <a href="https://listoenlinea.com" target="_blank">
-      ListoEnLinea.com
-    </a>
-  </div>
-</footer>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank">
+        ListoEnLinea.com
+      </a>
+    </div>
+  </footer>
 
 
-<div id="toast" class="toast"></div>
+  <div id="toast" class="toast"></div>
 
-<script>
-  const STORAGE_KEY = "mision_jardines_seguridad";
+  <script>
+    const STORAGE_KEY = "mision_jardines_seguridad";
 
-  let incidents = [
-    {
-      folio:"SEG-1001",
-      date:"2026-06-04 20:15",
-      type:"Vehículo sospechoso",
-      location:"Av. Valle de México",
-      reportedBy:"Caseta",
-      priority:"Media",
-      status:"Atendido",
-      description:"Vehículo estacionado por más de 30 minutos sin identificarse."
-    },
-    {
-      folio:"SEG-1002",
-      date:"2026-06-04 22:40",
-      type:"Alumbrado / zona oscura",
-      location:"C. Atotonilco",
-      reportedBy:"Vecino",
-      priority:"Alta",
-      status:"Abierto",
-      description:"Zona con poca iluminación cerca del límite oeste."
-    }
-  ];
+    let incidents = [
+      {
+        folio: "SEG-1001",
+        date: "2026-06-04 20:15",
+        type: "Vehículo sospechoso",
+        location: "Av. Valle de México",
+        reportedBy: "Caseta",
+        priority: "Media",
+        status: "Atendido",
+        description: "Vehículo estacionado por más de 30 minutos sin identificarse."
+      },
+      {
+        folio: "SEG-1002",
+        date: "2026-06-04 22:40",
+        type: "Alumbrado / zona oscura",
+        location: "C. Atotonilco",
+        reportedBy: "Vecino",
+        priority: "Alta",
+        status: "Abierto",
+        description: "Zona con poca iluminación cerca del límite oeste."
+      }
+    ];
 
-  function loadData(){
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved) incidents = JSON.parse(saved);
-  }
-
-  function saveData(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(incidents));
-  }
-
-  function showToast(message){
-    const toast = document.getElementById("toast");
-    toast.textContent = message;
-    toast.style.display = "block";
-    setTimeout(() => toast.style.display = "none", 3200);
-  }
-
-  function nowText(){
-    const d = new Date();
-    const dd = String(d.getDate()).padStart(2,"0");
-    const mm = String(d.getMonth()+1).padStart(2,"0");
-    const yyyy = d.getFullYear();
-    const hh = String(d.getHours()).padStart(2,"0");
-    const mi = String(d.getMinutes()).padStart(2,"0");
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-  }
-
-  function generateFolio(){
-    return "SEG-" + String(Date.now()).slice(-6);
-  }
-
-  function priorityClass(priority){
-    if(priority === "Alta") return "p-alta";
-    if(priority === "Media") return "p-media";
-    return "p-baja";
-  }
-
-  function statusClass(status, priority){
-    if(priority === "Alta" && status === "Abierto") return "critico";
-    if(status === "Atendido") return "atendido";
-    if(status === "Cerrado") return "cerrado";
-    return "abierto";
-  }
-
-  function getStatusLabel(status, priority){
-    if(priority === "Alta" && status === "Abierto") return "Crítico";
-    return status;
-  }
-
-  function openGate(){
-    document.getElementById("gateScene").classList.add("gate-open");
-    document.getElementById("gateStatus").textContent = "ABIERTA";
-    showToast("Pluma principal abierta.");
-  }
-
-  function closeGate(){
-    document.getElementById("gateScene").classList.remove("gate-open");
-    document.getElementById("gateStatus").textContent = "CERRADA";
-    showToast("Pluma principal cerrada.");
-  }
-
-  function addIncident(){
-    const incident = {
-      folio:generateFolio(),
-      date:nowText(),
-      type:document.getElementById("incidentType").value,
-      location:document.getElementById("incidentLocation").value.trim(),
-      reportedBy:document.getElementById("reportedBy").value.trim(),
-      priority:document.getElementById("incidentPriority").value,
-      status:document.getElementById("incidentStatus").value,
-      description:document.getElementById("incidentDescription").value.trim()
-    };
-
-    if(!incident.location || !incident.reportedBy || !incident.description){
-      showToast("Completa ubicación, reportado por y descripción.");
-      return;
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) incidents = JSON.parse(saved);
     }
 
-    incidents.unshift(incident);
-    saveData();
-    renderIncidents();
-    clearIncidentForm();
-    showToast("Incidencia registrada.");
-  }
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(incidents));
+    }
 
-  function clearIncidentForm(){
-    document.getElementById("incidentType").value = "Acceso no autorizado";
-    document.getElementById("incidentLocation").value = "";
-    document.getElementById("reportedBy").value = "";
-    document.getElementById("incidentPriority").value = "Baja";
-    document.getElementById("incidentStatus").value = "Abierto";
-    document.getElementById("incidentDescription").value = "";
-  }
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3200);
+    }
 
-  function getFilteredIncidents(){
-    const text = document.getElementById("filterText").value.toLowerCase().trim();
-    const priority = document.getElementById("filterPriority").value;
-    const status = document.getElementById("filterStatus").value;
+    function nowText() {
+      const d = new Date();
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
 
-    return incidents.filter(i => {
-      const matchText =
-        !text ||
-        String(i.type).toLowerCase().includes(text) ||
-        String(i.location).toLowerCase().includes(text) ||
-        String(i.reportedBy).toLowerCase().includes(text) ||
-        String(i.folio).toLowerCase().includes(text);
+    function generateFolio() {
+      return "SEG-" + String(Date.now()).slice(-6);
+    }
 
-      const matchPriority = !priority || i.priority === priority;
-      const matchStatus = !status || i.status === status;
+    function priorityClass(priority) {
+      if (priority === "Alta") return "p-alta";
+      if (priority === "Media") return "p-media";
+      return "p-baja";
+    }
 
-      return matchText && matchPriority && matchStatus;
-    });
-  }
+    function statusClass(status, priority) {
+      if (priority === "Alta" && status === "Abierto") return "critico";
+      if (status === "Atendido") return "atendido";
+      if (status === "Cerrado") return "cerrado";
+      return "abierto";
+    }
 
-  function renderIncidents(){
-    const tbody = document.getElementById("incidentsTable");
-    tbody.innerHTML = "";
+    function getStatusLabel(status, priority) {
+      if (priority === "Alta" && status === "Abierto") return "Crítico";
+      return status;
+    }
 
-    getFilteredIncidents().forEach(i => {
-      const index = incidents.indexOf(i);
-      const tr = document.createElement("tr");
-      const statusCss = statusClass(i.status, i.priority);
+    function openGate() {
+      document.getElementById("gateScene").classList.add("gate-open");
+      document.getElementById("gateStatus").textContent = "ABIERTA";
+      showToast("Pluma principal abierta.");
+    }
 
-      tr.innerHTML = `
+    function closeGate() {
+      document.getElementById("gateScene").classList.remove("gate-open");
+      document.getElementById("gateStatus").textContent = "CERRADA";
+      showToast("Pluma principal cerrada.");
+    }
+
+    function addIncident() {
+      const incident = {
+        folio: generateFolio(),
+        date: nowText(),
+        type: document.getElementById("incidentType").value,
+        location: document.getElementById("incidentLocation").value.trim(),
+        reportedBy: document.getElementById("reportedBy").value.trim(),
+        priority: document.getElementById("incidentPriority").value,
+        status: document.getElementById("incidentStatus").value,
+        description: document.getElementById("incidentDescription").value.trim()
+      };
+
+      if (!incident.location || !incident.reportedBy || !incident.description) {
+        showToast("Completa ubicación, reportado por y descripción.");
+        return;
+      }
+
+      incidents.unshift(incident);
+      saveData();
+      renderIncidents();
+      clearIncidentForm();
+      showToast("Incidencia registrada.");
+    }
+
+    function clearIncidentForm() {
+      document.getElementById("incidentType").value = "Acceso no autorizado";
+      document.getElementById("incidentLocation").value = "";
+      document.getElementById("reportedBy").value = "";
+      document.getElementById("incidentPriority").value = "Baja";
+      document.getElementById("incidentStatus").value = "Abierto";
+      document.getElementById("incidentDescription").value = "";
+    }
+
+    function getFilteredIncidents() {
+      const text = document.getElementById("filterText").value.toLowerCase().trim();
+      const priority = document.getElementById("filterPriority").value;
+      const status = document.getElementById("filterStatus").value;
+
+      return incidents.filter(i => {
+        const matchText =
+          !text ||
+          String(i.type).toLowerCase().includes(text) ||
+          String(i.location).toLowerCase().includes(text) ||
+          String(i.reportedBy).toLowerCase().includes(text) ||
+          String(i.folio).toLowerCase().includes(text);
+
+        const matchPriority = !priority || i.priority === priority;
+        const matchStatus = !status || i.status === status;
+
+        return matchText && matchPriority && matchStatus;
+      });
+    }
+
+    function renderIncidents() {
+      const tbody = document.getElementById("incidentsTable");
+      tbody.innerHTML = "";
+
+      getFilteredIncidents().forEach(i => {
+        const index = incidents.indexOf(i);
+        const tr = document.createElement("tr");
+        const statusCss = statusClass(i.status, i.priority);
+
+        tr.innerHTML = `
         <td><strong>${i.folio}</strong></td>
         <td>${i.date}</td>
         <td>${i.type}</td>
@@ -472,47 +497,48 @@
         <td><button class="btn-danger" onclick="deleteIncident(${index})">Eliminar</button></td>
       `;
 
-      tbody.appendChild(tr);
-    });
+        tbody.appendChild(tr);
+      });
 
-    updateMetrics();
-  }
+      updateMetrics();
+    }
 
-  function changeStatus(index, status){
-    incidents[index].status = status;
-    saveData();
+    function changeStatus(index, status) {
+      incidents[index].status = status;
+      saveData();
+      renderIncidents();
+    }
+
+    function deleteIncident(index) {
+      if (!confirm("¿Seguro que deseas eliminar esta incidencia?")) return;
+      incidents.splice(index, 1);
+      saveData();
+      renderIncidents();
+      showToast("Incidencia eliminada.");
+    }
+
+    function clearFilters() {
+      document.getElementById("filterText").value = "";
+      document.getElementById("filterPriority").value = "";
+      document.getElementById("filterStatus").value = "";
+      renderIncidents();
+    }
+
+    function updateMetrics() {
+      document.getElementById("metricAbiertas").textContent =
+        incidents.filter(i => i.status === "Abierto").length;
+
+      document.getElementById("metricAtendidas").textContent =
+        incidents.filter(i => i.status === "Atendido").length;
+
+      document.getElementById("metricCriticas").textContent =
+        incidents.filter(i => i.priority === "Alta" && i.status === "Abierto").length;
+    }
+
+    loadData();
     renderIncidents();
-  }
-
-  function deleteIncident(index){
-    if(!confirm("¿Seguro que deseas eliminar esta incidencia?")) return;
-    incidents.splice(index,1);
-    saveData();
-    renderIncidents();
-    showToast("Incidencia eliminada.");
-  }
-
-  function clearFilters(){
-    document.getElementById("filterText").value = "";
-    document.getElementById("filterPriority").value = "";
-    document.getElementById("filterStatus").value = "";
-    renderIncidents();
-  }
-
-  function updateMetrics(){
-    document.getElementById("metricAbiertas").textContent =
-      incidents.filter(i => i.status === "Abierto").length;
-
-    document.getElementById("metricAtendidas").textContent =
-      incidents.filter(i => i.status === "Atendido").length;
-
-    document.getElementById("metricCriticas").textContent =
-      incidents.filter(i => i.priority === "Alta" && i.status === "Abierto").length;
-  }
-
-  loadData();
-  renderIncidents();
-</script>
+  </script>
 
 </body>
+
 </html>
