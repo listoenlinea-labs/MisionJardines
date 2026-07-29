@@ -6,6 +6,9 @@ const rateLimit = require('express-rate-limit');
 const sequelize = require('./config/database');
 const casasRoutes = require('./routes/casas.routes');
 const authRoutes = require('./routes/auth.routes');
+const path = require('path');
+const cuotasRoutes = require('./routes/cuotas.routes');
+const callesRoutes = require('./routes/calles.routes');
 require('./models');
 
 const app = express();
@@ -22,9 +25,23 @@ app.use(express.urlencoded({
     extended: true
 }));
 
+app.use(
+    '/recibos',
+    express.static(
+        path.resolve(
+            process.cwd(),
+            'storage',
+            'recibos'
+        )
+    )
+);
+
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     process.env.FRONTEND_URL_LOCALHOST,
+
+    'http://127.0.0.1:3000',
+    'http://localhost:3000',
 
     'http://127.0.0.1:8080',
     'http://localhost:8080',
@@ -96,6 +113,8 @@ app.get('/api/health/database', async (req, res) => {
 
 app.use('/api/casas', casasRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/cuotas', cuotasRoutes);
+app.use('/api/calles', callesRoutes);
 
 app.use((req, res) => {
     res.status(404).json({

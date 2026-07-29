@@ -67,3 +67,10 @@ build/
 *.pem
 *.key
 *.crt
+
+
+storage/recibos/*
+!storage/recibos/.gitkeep
+
+.env.development
+.env.production

@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "importar:julio": "node src/scripts/importar-julio-2026.js"
   },
   "keywords": [],
   "author": "",

@@ -23,6 +23,12 @@ const Casa = sequelize.define(
             field: 'numero_casa'
         },
 
+        calleId: {
+            type: DataTypes.BIGINT.UNSIGNED,
+            allowNull: true,
+            field: 'calle_id'
+        },
+
         calle: {
             type: DataTypes.STRING(100),
             allowNull: false

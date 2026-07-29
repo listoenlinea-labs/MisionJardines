@@ -210,502 +210,1017 @@
 
   <div id="receiptContainer" class="receipt-hidden"></div>
   <div id="toast" class="toast"></div>
-
   <script>
-    const STORAGE_KEY = "mision_jardines_cuotas";
+    const API_BASE_URL = 'http://localhost:3000/api';
 
-    let houses = [
-      {
-        casa: "MJ-001",
-        propietario: "Laura Gómez",
-        calle: "Misión Jardines",
-        numero: "101",
-        correo: "laura@email.com",
-        telefono: "3312345678",
-        cuota: 850,
-        mes: "Junio",
-        referencia: "",
-        folio: "",
-        estatus: "Pendiente",
-        fechaPago: ""
-      },
-      {
-        casa: "MG-002",
-        propietario: "Martín Pérez",
-        calle: "Misión Gardenias",
-        numero: "102",
-        correo: "martin@email.com",
-        telefono: "3399887766",
-        cuota: 850,
-        mes: "Junio",
-        referencia: "TR-MG002",
-        folio: "MJ-2026-0001",
-        estatus: "Pagado",
-        fechaPago: "05/06/2026"
+    const token =
+      localStorage.getItem('misionJardinesToken') ||
+      sessionStorage.getItem('misionJardinesToken');
+
+    let cuotas = [];
+    let usuarioActual = null;
+
+    if (!token) {
+      window.location.replace('login.html');
+    }
+
+    function authHeaders(includeJson = false) {
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+
+      if (includeJson) {
+        headers['Content-Type'] = 'application/json';
       }
-    ];
 
-    function loadData() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        houses = JSON.parse(saved);
+      return headers;
+    }
+
+    async function apiRequest(
+      url,
+      options = {}
+    ) {
+      const response = await fetch(url, options);
+
+      let result;
+
+      try {
+        result = await response.json();
+      } catch {
+        result = {
+          ok: false,
+          message:
+            'El servidor devolvió una respuesta inválida'
+        };
       }
+
+      if (response.status === 401) {
+        localStorage.removeItem(
+          'misionJardinesToken'
+        );
+
+        localStorage.removeItem(
+          'misionJardinesUsuario'
+        );
+
+        sessionStorage.removeItem(
+          'misionJardinesToken'
+        );
+
+        sessionStorage.removeItem(
+          'misionJardinesUsuario'
+        );
+
+        window.location.replace('login.html');
+
+        throw new Error(
+          'La sesión expiró'
+        );
+      }
+
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          result.message ||
+          'No fue posible completar la solicitud'
+        );
+      }
+
+      return result;
     }
 
-    function saveData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(houses));
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
     }
 
-    function money(n) {
-      return Number(n || 0).toLocaleString("es-MX", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
+    function money(value) {
+      return Number(value || 0).toLocaleString(
+        'es-MX',
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }
+      );
     }
 
-    function todayDDMMYYYY() {
-      const d = new Date();
-      const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const yyyy = d.getFullYear();
-      return `${dd}/${mm}/${yyyy}`;
+    function formatDate(value) {
+      if (!value) {
+        return '';
+      }
+
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) {
+        return '';
+      }
+
+      return new Intl.DateTimeFormat(
+        'es-MX',
+        {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }
+      ).format(date);
     }
 
-    function currentYear() {
-      return new Date().getFullYear();
-    }
+    function statusLabel(status) {
+      const labels = {
+        PENDIENTE: 'Pendiente',
+        PAGO_PARCIAL: 'Pago parcial',
+        PAGADO: 'Pagado',
+        CANCELADO: 'Cancelado',
+        CONDONADO: 'Condonado'
+      };
 
-    function generateFolio() {
-      const year = currentYear();
-      const count = houses.filter(h => h.folio && h.folio.includes(`MJ-${year}`)).length + 1;
-      return `MJ-${year}-${String(count).padStart(4, "0")}`;
-    }
-
-    function generateReference(h) {
-      const cleanCasa = String(h.casa || "CASA").replace(/\s+/g, "").replace(/[^A-Z0-9-]/gi, "").toUpperCase();
-      return `REF-${cleanCasa}-${Date.now().toString().slice(-5)}`;
-    }
-
-    function showToast(message) {
-      const toast = document.getElementById("toast");
-      toast.innerHTML = message;
-      toast.style.display = "block";
-      setTimeout(() => toast.style.display = "none", 3600);
+      return labels[status] || status;
     }
 
     function getStatusClass(status) {
-      if (status === "Pagado") return "paid";
-      return "pending";
+      return status === 'PAGADO'
+        ? 'paid'
+        : 'pending';
     }
 
-    function streetOptions(selected) {
-      const streets = [
-        "Misión Jardines",
-        "Misión Gardenias",
-        "Misión Jazmines",
-        "Misión Rosas",
-        "Misión de Los Lirios",
-        "Av. Valle de México"
-      ];
-
-      return streets.map(street => {
-        return `<option ${street === selected ? "selected" : ""}>${street}</option>`;
-      }).join("");
+    function esRolAdministrativo() {
+      return [
+        'SUPER_ADMIN',
+        'ADMINISTRADOR',
+        'MESA_DIRECTIVA'
+      ].includes(
+        usuarioActual?.rol?.nombre
+      );
     }
 
-    function monthOptions(selected) {
-      const months = [
-        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-      ];
+    function obtenerPropietario(cuota) {
+      if (cuota.nombrePagador) {
+        return cuota.nombrePagador;
+      }
 
-      return months.map(month => {
-        return `<option ${month === selected ? "selected" : ""}>${month}</option>`;
-      }).join("");
+      const usuarios =
+        cuota.casa?.usuarios || [];
+
+      const principal =
+        usuarios.find(
+          usuario =>
+            usuario.esContactoPrincipal
+        ) || usuarios[0];
+
+      if (!principal) {
+        return '';
+      }
+
+      return [
+        principal.nombre,
+        principal.apellidoPaterno,
+        principal.apellidoMaterno
+      ]
+        .filter(Boolean)
+        .join(' ');
+    }
+
+    function obtenerCorreo(cuota) {
+      if (cuota.correoDestino) {
+        return cuota.correoDestino;
+      }
+
+      const usuarios =
+        cuota.casa?.usuarios || [];
+
+      const contacto =
+        usuarios.find(
+          usuario =>
+            usuario.esContactoPrincipal &&
+            usuario.recibeCorreosPago
+        ) ||
+        usuarios.find(
+          usuario =>
+            usuario.recibeCorreosPago
+        );
+
+      return (
+        contacto?.correo ||
+        cuota.casa?.correoPrincipal ||
+        ''
+      );
+    }
+
+    function obtenerTelefono(cuota) {
+      const usuarios =
+        cuota.casa?.usuarios || [];
+
+      const contacto =
+        usuarios.find(
+          usuario =>
+            usuario.esContactoPrincipal
+        ) || usuarios[0];
+
+      return (
+        contacto?.telefono ||
+        cuota.casa?.telefonoPrincipal ||
+        ''
+      );
+    }
+
+    async function validarSesion() {
+      const result = await apiRequest(
+        `${API_BASE_URL}/auth/perfil`,
+        {
+          headers: authHeaders()
+        }
+      );
+
+      usuarioActual = result.usuario;
+
+      aplicarPermisosVisuales(
+        usuarioActual.rol?.nombre
+      );
+    }
+
+    function aplicarPermisosVisuales(rol) {
+      document
+        .querySelectorAll('[data-roles]')
+        .forEach(elemento => {
+          const permitidos =
+            elemento.dataset.roles
+              .split(',')
+              .map(item => item.trim());
+
+          elemento.hidden =
+            !permitidos.includes(rol);
+        });
+
+      const botonAgregar =
+        document.querySelector(
+          '[onclick="addHouse()"]'
+        );
+
+      if (botonAgregar) {
+        botonAgregar.hidden =
+          ![
+            'SUPER_ADMIN',
+            'ADMINISTRADOR'
+          ].includes(rol);
+      }
+    }
+
+    async function cargarCuotas() {
+      const mes = 'JULIO';
+      const anio = 2026;
+
+      const result = await apiRequest(
+        `${API_BASE_URL}/cuotas?anio=${anio}&mes=${mes}`,
+        {
+          headers: authHeaders()
+        }
+      );
+
+      cuotas = result.data || [];
+
+      llenarFiltroCalles();
+      renderHouses();
+    }
+
+    function llenarFiltroCalles() {
+      const select =
+        document.getElementById(
+          'filterStreet'
+        );
+
+      const valorActual = select.value;
+
+      const calles = [
+        ...new Set(
+          cuotas
+            .map(
+              cuota =>
+                cuota.calleSnapshot ||
+                cuota.casa?.calle
+            )
+            .filter(Boolean)
+        )
+      ].sort(
+        (a, b) =>
+          a.localeCompare(
+            b,
+            'es'
+          )
+      );
+
+      select.innerHTML =
+        '<option value="">Todas las calles</option>' +
+        calles
+          .map(
+            calle =>
+              `<option value="${escapeHtml(calle)}">${escapeHtml(calle)}</option>`
+          )
+          .join('');
+
+      select.value = valorActual;
     }
 
     function getFilteredHouses() {
-      const text = document.getElementById("filterText").value.toLowerCase().trim();
-      const house = document.getElementById("filterHouse").value.toLowerCase().trim();
-      const street = document.getElementById("filterStreet").value;
-      const status = document.getElementById("filterStatus").value;
+      const text =
+        document.getElementById(
+          'filterText'
+        ).value
+          .toLowerCase()
+          .trim();
 
-      return houses.filter(h => {
+      const house =
+        document.getElementById(
+          'filterHouse'
+        ).value
+          .toLowerCase()
+          .trim();
+
+      const street =
+        document.getElementById(
+          'filterStreet'
+        ).value;
+
+      const status =
+        document.getElementById(
+          'filterStatus'
+        ).value;
+
+      return cuotas.filter(cuota => {
+        const propietario =
+          obtenerPropietario(cuota);
+
+        const correo =
+          obtenerCorreo(cuota);
+
+        const telefono =
+          obtenerTelefono(cuota);
+
+        const codigo =
+          cuota.casa?.codigoCasa || '';
+
+        const numero =
+          cuota.numeroCasaSnapshot ||
+          cuota.casa?.numeroCasa ||
+          '';
+
+        const calle =
+          cuota.calleSnapshot ||
+          cuota.casa?.calle ||
+          '';
+
+        const estatus =
+          statusLabel(
+            cuota.estatusPago
+          );
+
         const matchText =
           !text ||
-          String(h.propietario).toLowerCase().includes(text) ||
-          String(h.correo).toLowerCase().includes(text) ||
-          String(h.telefono).toLowerCase().includes(text);
+          propietario
+            .toLowerCase()
+            .includes(text) ||
+          correo
+            .toLowerCase()
+            .includes(text) ||
+          telefono
+            .toLowerCase()
+            .includes(text);
 
         const matchHouse =
           !house ||
-          String(h.casa).toLowerCase().includes(house) ||
-          String(h.numero).toLowerCase().includes(house);
+          codigo
+            .toLowerCase()
+            .includes(house) ||
+          String(numero)
+            .toLowerCase()
+            .includes(house);
 
-        const matchStreet = !street || h.calle === street;
-        const matchStatus = !status || h.estatus === status;
+        const matchStreet =
+          !street ||
+          calle === street;
 
-        return matchText && matchHouse && matchStreet && matchStatus;
+        const matchStatus =
+          !status ||
+          estatus === status;
+
+        return (
+          matchText &&
+          matchHouse &&
+          matchStreet &&
+          matchStatus
+        );
       });
     }
 
     function renderHouses() {
-      const tbody = document.getElementById("housesTable");
-      tbody.innerHTML = "";
+      const tbody =
+        document.getElementById(
+          'housesTable'
+        );
 
-      getFilteredHouses().forEach((h) => {
-        const realIndex = houses.indexOf(h);
-        const tr = document.createElement("tr");
+      tbody.innerHTML = '';
 
-        tr.innerHTML = `
-        <td><input value="${h.casa || ""}" onchange="updateHouse(${realIndex}, 'casa', this.value)"></td>
-        <td><input value="${h.propietario || ""}" onchange="updateHouse(${realIndex}, 'propietario', this.value)"></td>
-        <td><select onchange="updateHouse(${realIndex}, 'calle', this.value)">${streetOptions(h.calle)}</select></td>
-        <td><input value="${h.numero || ""}" onchange="updateHouse(${realIndex}, 'numero', this.value)"></td>
-        <td><input value="${h.correo || ""}" onchange="updateHouse(${realIndex}, 'correo', this.value)"></td>
-        <td><input value="${h.telefono || ""}" onchange="updateHouse(${realIndex}, 'telefono', this.value)"></td>
-        <td><input type="number" value="${h.cuota || 0}" onchange="updateHouse(${realIndex}, 'cuota', this.value)"></td>
-        <td><select onchange="updateHouse(${realIndex}, 'mes', this.value)">${monthOptions(h.mes || "Junio")}</select></td>
-        <td><input value="${h.referencia || ""}" onchange="updateHouse(${realIndex}, 'referencia', this.value)"></td>
-        <td><input value="${h.folio || ""}" onchange="updateHouse(${realIndex}, 'folio', this.value)"></td>
+      const administrativo =
+        esRolAdministrativo();
 
-        <td>
-          <select class="status-select ${getStatusClass(h.estatus)}" onchange="changePaymentStatus(${realIndex}, this.value)">
-            <option ${h.estatus === "Pendiente" ? "selected" : ""}>Pendiente</option>
-            <option ${h.estatus === "Pagado" ? "selected" : ""}>Pagado</option>
-          </select>
-        </td>
+      getFilteredHouses().forEach(
+        cuota => {
+          const tr =
+            document.createElement('tr');
 
-        <td><input value="${h.fechaPago || ""}" placeholder="DD/MM/AAAA" onchange="updateHouse(${realIndex}, 'fechaPago', this.value)"></td>
+          const codigoCasa =
+            cuota.casa?.codigoCasa ||
+            cuota.numeroCasaSnapshot ||
+            '';
 
-        <td>
-          <button class="btn-secondary" onclick="previewReceipt(${realIndex})">Generar</button>
-        </td>
+          const numeroCasa =
+            cuota.numeroCasaSnapshot ||
+            cuota.casa?.numeroCasa ||
+            '';
 
-        <td>
-          <button class="btn-secondary" onclick="sendMail(${realIndex})">Preparar</button>
-        </td>
+          const calle =
+            cuota.calleSnapshot ||
+            cuota.casa?.calle ||
+            '';
 
-        <td>
-          <button class="btn-danger" onclick="deleteHouse(${realIndex})">Eliminar</button>
-        </td>
-      `;
+          const propietario =
+            obtenerPropietario(cuota);
 
-        tbody.appendChild(tr);
-      });
+          const correo =
+            obtenerCorreo(cuota);
+
+          const telefono =
+            obtenerTelefono(cuota);
+
+          const pagada =
+            cuota.estatusPago ===
+            'PAGADO';
+
+          const disabled =
+            !administrativo ||
+              pagada
+              ? 'disabled'
+              : '';
+
+          const recibo =
+            cuota.reciboPdfUrl
+              ? `
+                            <a
+                                class="btn-secondary"
+                                href="${escapeHtml(cuota.reciboPdfUrl)}"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                Descargar
+                            </a>
+                        `
+              : '<span>Sin recibo</span>';
+
+          const correoEstado =
+            cuota.correoEnviado
+              ? `
+                            <span>
+                                Enviado
+                                ${formatDate(cuota.fechaEnvioCorreo)}
+                            </span>
+                        `
+              : administrativo &&
+                pagada &&
+                cuota.reciboPdfUrl
+                ? `
+                                <button
+                                    class="btn-secondary"
+                                    onclick="reenviarRecibo(${cuota.id})"
+                                >
+                                    Reenviar
+                                </button>
+                            `
+                : '<span>No enviado</span>';
+
+          tr.innerHTML = `
+                    <td>
+                        ${escapeHtml(codigoCasa)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(propietario)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(calle)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(numeroCasa)}
+                    </td>
+
+                    <td>
+                        <input
+                            value="${escapeHtml(correo)}"
+                            ${disabled}
+                            onchange="actualizarCampo(${cuota.id}, 'correoDestino', this.value)"
+                        >
+                    </td>
+
+                    <td>
+                        ${escapeHtml(telefono)}
+                    </td>
+
+                    <td>
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value="${Number(cuota.montoCuota || 0)}"
+                            ${disabled}
+                            onchange="actualizarCampo(${cuota.id}, 'montoCuota', Number(this.value))"
+                        >
+                    </td>
+
+                    <td>
+                        ${escapeHtml(cuota.mes)}
+                    </td>
+
+                    <td>
+                        <input
+                            value="${escapeHtml(cuota.referencia || '')}"
+                            ${disabled}
+                            onchange="actualizarCampo(${cuota.id}, 'referencia', this.value)"
+                        >
+                    </td>
+
+                    <td>
+                        ${escapeHtml(cuota.folio || '')}
+                    </td>
+
+                    <td>
+                        ${administrativo
+              ? `
+                                    <select
+                                        class="status-select ${getStatusClass(cuota.estatusPago)}"
+                                        onchange="cambiarEstatus(${cuota.id}, this.value)"
+                                        ${pagada ? 'disabled' : ''}
+                                    >
+                                        <option
+                                            value="PENDIENTE"
+                                            ${cuota.estatusPago === 'PENDIENTE' ? 'selected' : ''}
+                                        >
+                                            Pendiente
+                                        </option>
+
+                                        <option
+                                            value="PAGADO"
+                                        >
+                                            Pagado
+                                        </option>
+                                    </select>
+                                `
+              : `
+                                    <span class="status-select ${getStatusClass(cuota.estatusPago)}">
+                                        ${escapeHtml(statusLabel(cuota.estatusPago))}
+                                    </span>
+                                `
+            }
+                    </td>
+
+                    <td>
+                        ${escapeHtml(formatDate(cuota.fechaPago))}
+                    </td>
+
+                    <td>
+                        ${recibo}
+                    </td>
+
+                    <td>
+                        ${correoEstado}
+                    </td>
+
+                    <td>
+                        —
+                    </td>
+                `;
+
+          tbody.appendChild(tr);
+        }
+      );
 
       updateMetrics();
     }
 
-    function updateHouse(index, field, value) {
-      houses[index][field] = field === "cuota" ? Number(value) : value;
-      saveData();
-      updateMetrics();
+    async function actualizarCampo(
+      cuotaId,
+      campo,
+      valor
+    ) {
+      try {
+        await apiRequest(
+          `${API_BASE_URL}/cuotas/${cuotaId}`,
+          {
+            method: 'PATCH',
+            headers:
+              authHeaders(true),
+            body: JSON.stringify({
+              [campo]: valor
+            })
+          }
+        );
+
+        const cuota =
+          cuotas.find(
+            item =>
+              Number(item.id) ===
+              Number(cuotaId)
+          );
+
+        if (cuota) {
+          cuota[campo] = valor;
+        }
+
+        showToast(
+          'Información actualizada.'
+        );
+      } catch (error) {
+        showToast(
+          `Error: ${error.message}`
+        );
+
+        await cargarCuotas();
+      }
     }
 
-    function addHouse() {
-      houses.push({
-        casa: "Nueva",
-        propietario: "Nombre propietario",
-        calle: "Misión Jardines",
-        numero: "000",
-        correo: "correo@email.com",
-        telefono: "3300000000",
-        cuota: 850,
-        mes: "Junio",
-        referencia: "",
-        folio: "",
-        estatus: "Pendiente",
-        fechaPago: ""
-      });
-
-      saveData();
-      renderHouses();
-      showToast("Casa agregada correctamente.");
-    }
-
-    function deleteHouse(index) {
-      if (!confirm("¿Seguro que deseas eliminar esta casa?")) return;
-      houses.splice(index, 1);
-      saveData();
-      renderHouses();
-      showToast("Casa eliminada.");
-    }
-
-    function changePaymentStatus(index, value) {
-      houses[index].estatus = value;
-
-      if (value === "Pagado") {
-        if (!houses[index].fechaPago) houses[index].fechaPago = todayDDMMYYYY();
-        if (!houses[index].folio) houses[index].folio = generateFolio();
-        if (!houses[index].referencia) houses[index].referencia = generateReference(houses[index]);
-        showToast("Pago registrado. Se asignó fecha, folio y referencia.");
+    async function cambiarEstatus(
+      cuotaId,
+      estatus
+    ) {
+      if (estatus !== 'PAGADO') {
+        return;
       }
 
-      saveData();
-      renderHouses();
+      const cuota =
+        cuotas.find(
+          item =>
+            Number(item.id) ===
+            Number(cuotaId)
+        );
+
+      if (!cuota) {
+        return;
+      }
+
+      const montoDefault =
+        Number(
+          cuota.montoPagado ||
+          cuota.montoCuota ||
+          0
+        );
+
+      const montoIngresado = prompt(
+        'Monto pagado:',
+        montoDefault
+      );
+
+      if (montoIngresado === null) {
+        await cargarCuotas();
+        return;
+      }
+
+      const montoPagado =
+        Number(montoIngresado);
+
+      if (
+        !Number.isFinite(montoPagado) ||
+        montoPagado <= 0
+      ) {
+        showToast(
+          'Ingresa un monto válido.'
+        );
+
+        await cargarCuotas();
+        return;
+      }
+
+      const formaPago = prompt(
+        'Forma de pago: EFECTIVO, TRANSFERENCIA, DEPOSITO, TARJETA, CHEQUE u OTRO',
+        cuota.formaPago ||
+        'EFECTIVO'
+      );
+
+      if (formaPago === null) {
+        await cargarCuotas();
+        return;
+      }
+
+      const formaNormalizada =
+        formaPago
+          .trim()
+          .toUpperCase();
+
+      const formasPermitidas = [
+        'EFECTIVO',
+        'TRANSFERENCIA',
+        'DEPOSITO',
+        'TARJETA',
+        'CHEQUE',
+        'OTRO'
+      ];
+
+      if (
+        !formasPermitidas.includes(
+          formaNormalizada
+        )
+      ) {
+        showToast(
+          'La forma de pago no es válida.'
+        );
+
+        await cargarCuotas();
+        return;
+      }
+
+      const referencia = prompt(
+        'Referencia del pago:',
+        cuota.referencia || ''
+      );
+
+      if (referencia === null) {
+        await cargarCuotas();
+        return;
+      }
+
+      try {
+        showToast(
+          'Confirmando pago y generando recibo...'
+        );
+
+        const result = await apiRequest(
+          `${API_BASE_URL}/cuotas/${cuotaId}/confirmar`,
+          {
+            method: 'PATCH',
+            headers:
+              authHeaders(true),
+            body: JSON.stringify({
+              montoPagado,
+              formaPago:
+                formaNormalizada,
+              referencia:
+                referencia.trim(),
+              correoDestino:
+                obtenerCorreo(cuota),
+              nombrePagador:
+                obtenerPropietario(cuota)
+            })
+          }
+        );
+
+        showToast(result.message);
+
+        await cargarCuotas();
+      } catch (error) {
+        showToast(
+          `Error: ${error.message}`
+        );
+
+        await cargarCuotas();
+      }
+    }
+
+    async function reenviarRecibo(
+      cuotaId
+    ) {
+      const cuota =
+        cuotas.find(
+          item =>
+            Number(item.id) ===
+            Number(cuotaId)
+        );
+
+      const correo = prompt(
+        'Correo de destino:',
+        obtenerCorreo(cuota)
+      );
+
+      if (!correo) {
+        return;
+      }
+
+      try {
+        const result = await apiRequest(
+          `${API_BASE_URL}/cuotas/${cuotaId}/reenviar`,
+          {
+            method: 'POST',
+            headers:
+              authHeaders(true),
+            body: JSON.stringify({
+              correoDestino:
+                correo.trim()
+            })
+          }
+        );
+
+        showToast(result.message);
+
+        await cargarCuotas();
+      } catch (error) {
+        showToast(
+          `Error: ${error.message}`
+        );
+      }
     }
 
     function updateMetrics() {
-      const total = houses.length;
-      const pagadas = houses.filter(h => h.estatus === "Pagado").length;
-      const pendientes = houses.filter(h => h.estatus === "Pendiente").length;
+      const total = cuotas.length;
 
-      const ingresos = houses
-        .filter(h => h.estatus === "Pagado")
-        .reduce((acc, h) => acc + Number(h.cuota || 0), 0);
+      const pagadas =
+        cuotas.filter(
+          cuota =>
+            cuota.estatusPago ===
+            'PAGADO'
+        ).length;
 
-      document.getElementById("metricCasas").textContent = total;
-      document.getElementById("metricPagadas").textContent = pagadas;
-      document.getElementById("metricPendientes").textContent = pendientes;
-      document.getElementById("metricIngresos").textContent = `$${money(ingresos)}`;
-    }
+      const pendientes =
+        cuotas.filter(
+          cuota =>
+            cuota.estatusPago ===
+            'PENDIENTE'
+        ).length;
 
-    function buildReceiptHTML(h) {
-      const logoPath = "assets/images/logo-mision-jardines.png";
+      const ingresos =
+        cuotas
+          .filter(
+            cuota =>
+              cuota.estatusPago ===
+              'PAGADO'
+          )
+          .reduce(
+            (total, cuota) =>
+              total +
+              Number(
+                cuota.montoPagado ||
+                0
+              ),
+            0
+          );
 
-      return `
-      <div class="receipt-page" id="receiptPDF">
-        <div class="receipt-box">
-          <img src="${logoPath}" class="receipt-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-          <div class="receipt-logo-fallback" style="display:none;">Misión Jardines</div>
+      document.getElementById(
+        'metricCasas'
+      ).textContent = total;
 
-          <div class="receipt-title">FRACCIONAMIENTO MISIÓN JARDINES</div>
-          <div class="receipt-subtitle">Recibo de pago de mantenimiento</div>
+      document.getElementById(
+        'metricPagadas'
+      ).textContent = pagadas;
 
-          <hr class="receipt-line">
+      document.getElementById(
+        'metricPendientes'
+      ).textContent = pendientes;
 
-          <div class="receipt-text">
-            <strong>Folio:</strong> ${h.folio || ""}<br>
-            <strong>Fecha de emisión:</strong> ${h.fechaPago || todayDDMMYYYY()}
-          </div>
-
-          <hr class="receipt-line">
-
-          <div class="receipt-text">
-            <strong>Recibido de:</strong><br>
-            <strong>Nombre:</strong> ${h.propietario || ""}<br><br>
-            <strong>Calle:</strong> ${h.calle || ""}<br>
-            <strong>Casa / Lote:</strong> ${h.casa || h.numero || ""}
-          </div>
-
-          <hr class="receipt-line">
-
-          <div class="receipt-text">
-            <strong>Concepto del pago:</strong><br>
-            Pago de mantenimiento correspondiente al mes de <strong>${h.mes || ""}</strong>
-          </div>
-
-          <hr class="receipt-line">
-
-          <div class="receipt-center receipt-text"><strong>Detalle del pago</strong></div>
-
-          <table class="receipt-table">
-            <thead>
-              <tr>
-                <th style="width:150px;">Concepto</th>
-                <th style="width:170px;">Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Mantenimiento</td>
-                <td>$${money(h.cuota)} MXN</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <hr class="receipt-line">
-
-          <div class="receipt-text">
-            <strong>Forma de pago:</strong> Efectivo / Transferencia<br>
-            <strong>Referencia:</strong> ${h.referencia || ""}
-          </div>
-
-          <hr class="receipt-line">
-
-          <p class="receipt-text" style="text-align:justify;">
-            El presente comprobante de pago se expide exclusivamente para fines administrativos internos del
-            Fraccionamiento Misión Jardines, de conformidad con el Código Civil del Estado de Jalisco. No constituye un
-            comprobante fiscal ni sustituye a un Comprobante Fiscal Digital por Internet (CFDI), ni implica la liberación
-            de adeudos anteriores o pendientes.
-          </p>
-
-          <hr class="receipt-line">
-
-          <div class="receipt-center receipt-text">
-            <strong>Atentamente:</strong><br><br>
-            <strong>Administración</strong><br>
-            Fraccionamiento Misión Jardines
-          </div>
-
-          <hr class="receipt-line">
-
-          <div class="receipt-paid">PAGADO</div>
-        </div>
-      </div>
-    `;
-    }
-
-    function previewReceipt(index) {
-      const h = houses[index];
-
-      if (h.estatus !== "Pagado") {
-        showToast("Primero cambia el estatus a Pagado para generar el comprobante.");
-        return;
-      }
-
-      const html = buildReceiptHTML(h);
-      const win = window.open("", "_blank");
-
-      win.document.write(`
-      <html>
-        <head>
-          <title>Comprobante ${h.folio || h.casa}</title>
-
-  <link rel="stylesheet" href="assets/css/style.css" />
-</head>
-        <body>
-          <div class="receipt-actions">
-            <button onclick="window.print()">Imprimir / Guardar PDF</button>
-          </div>
-          ${html}
-        </body>
-      </html>
-    `);
-
-      win.document.close();
-    }
-
-    function downloadReceiptPDF(index) {
-      const h = houses[index];
-
-      if (h.estatus !== "Pagado") {
-        showToast("Primero cambia el estatus a Pagado.");
-        return;
-      }
-
-      const container = document.getElementById("receiptContainer");
-      container.innerHTML = buildReceiptHTML(h);
-
-      const element = document.getElementById("receiptPDF");
-      const filename = `Comprobante_${h.folio || h.casa}.pdf`;
-
-      html2pdf()
-        .set({
-          margin: 0,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "mm", format: "letter", orientation: "portrait" }
-        })
-        .from(element)
-        .save();
-    }
-
-    function sendMail(index) {
-      const h = houses[index];
-
-      if (h.estatus !== "Pagado") {
-        showToast("Primero cambia el estatus a Pagado.");
-        return;
-      }
-
-      const subject = encodeURIComponent(`Comprobante de pago ${h.folio || ""} - Misión Jardines`);
-      const body = encodeURIComponent(
-        `Hola ${h.propietario || ""},
-
-Adjunto/comparto el comprobante de pago de mantenimiento.
-
-Folio: ${h.folio || ""}
-Fecha: ${h.fechaPago || ""}
-Casa/Lote: ${h.casa || ""}
-Calle: ${h.calle || ""}
-Mes: ${h.mes || ""}
-Monto: $${money(h.cuota)} MXN
-Referencia: ${h.referencia || ""}
-
-Nota: El comprobante se puede descargar desde el sistema en formato PDF.
-
-Saludos,
-Administración
-Fraccionamiento Misión Jardines`
-      );
-
-      window.location.href = `mailto:${h.correo || ""}?subject=${subject}&body=${body}`;
-    }
-
-    function exportExcel() {
-      const data = houses.map(h => ({
-        Casa: h.casa,
-        Propietario: h.propietario,
-        Calle: h.calle,
-        Numero: h.numero,
-        Correo: h.correo,
-        Telefono: h.telefono,
-        Cuota: h.cuota,
-        Mes: h.mes,
-        Referencia: h.referencia,
-        Folio: h.folio,
-        Estatus: h.estatus,
-        FechaPago: h.fechaPago
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-
-      XLSX.utils.book_append_sheet(wb, ws, "Cuotas");
-      XLSX.writeFile(wb, "cuotas_mision_jardines.xlsx");
-
-      showToast("Excel exportado correctamente.");
-    }
-
-    function importExcel(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-
-      reader.onload = function (e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-        houses = rows.map(row => ({
-          casa: row.Casa || row.casa || "",
-          propietario: row.Propietario || row.propietario || row.Nombre || "",
-          calle: row.Calle || row.calle || "",
-          numero: row.Numero || row.Número || row.numero || "",
-          correo: row.Correo || row.correo || "",
-          telefono: row.Telefono || row.Teléfono || row.telefono || "",
-          cuota: Number(row.Cuota || row.cuota || 0),
-          mes: row.Mes || row.mes || "Junio",
-          referencia: row.Referencia || row.referencia || "",
-          folio: row.Folio || row.folio || "",
-          estatus: (row.Estatus || row.estatus || "Pendiente") === "Pagado" ? "Pagado" : "Pendiente",
-          fechaPago: row.FechaPago || row["Fecha Pago"] || row["Fecha pago"] || row.fechaPago || ""
-        }));
-
-        saveData();
-        renderHouses();
-        showToast(`Excel importado correctamente. Registros cargados: ${houses.length}`);
-      };
-
-      reader.readAsArrayBuffer(file);
-      event.target.value = "";
+      document.getElementById(
+        'metricIngresos'
+      ).textContent =
+        `$${money(ingresos)}`;
     }
 
     function clearFilters() {
-      document.getElementById("filterText").value = "";
-      document.getElementById("filterHouse").value = "";
-      document.getElementById("filterStreet").value = "";
-      document.getElementById("filterStatus").value = "";
+      document.getElementById(
+        'filterText'
+      ).value = '';
+
+      document.getElementById(
+        'filterHouse'
+      ).value = '';
+
+      document.getElementById(
+        'filterStreet'
+      ).value = '';
+
+      document.getElementById(
+        'filterStatus'
+      ).value = '';
+
       renderHouses();
     }
 
-    loadData();
-    renderHouses();
+    function showToast(message) {
+      const toast =
+        document.getElementById('toast');
+
+      toast.textContent = message;
+      toast.style.display = 'block';
+
+      clearTimeout(
+        window.cuotasToastTimer
+      );
+
+      window.cuotasToastTimer =
+        setTimeout(
+          () => {
+            toast.style.display =
+              'none';
+          },
+          4000
+        );
+    }
+
+    function addHouse() {
+      showToast(
+        'Primero terminaremos el alta de casas desde el módulo de casas.'
+      );
+    }
+
+    function exportExcel() {
+      const rows =
+        getFilteredHouses().map(
+          cuota => ({
+            Casa:
+              cuota.casa?.codigoCasa ||
+              '',
+            Propietario:
+              obtenerPropietario(cuota),
+            Calle:
+              cuota.calleSnapshot ||
+              cuota.casa?.calle ||
+              '',
+            Numero:
+              cuota.numeroCasaSnapshot ||
+              cuota.casa?.numeroCasa ||
+              '',
+            Correo:
+              obtenerCorreo(cuota),
+            Telefono:
+              obtenerTelefono(cuota),
+            Cuota:
+              Number(
+                cuota.montoCuota ||
+                0
+              ),
+            MontoPagado:
+              Number(
+                cuota.montoPagado ||
+                0
+              ),
+            Mes:
+              cuota.mes,
+            Referencia:
+              cuota.referencia ||
+              '',
+            Folio:
+              cuota.folio || '',
+            Estatus:
+              statusLabel(
+                cuota.estatusPago
+              ),
+            FechaPago:
+              formatDate(
+                cuota.fechaPago
+              )
+          })
+        );
+
+      const worksheet =
+        XLSX.utils.json_to_sheet(
+          rows
+        );
+
+      const workbook =
+        XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        'Cuotas'
+      );
+
+      XLSX.writeFile(
+        workbook,
+        'cuotas_mision_jardines.xlsx'
+      );
+
+      showToast(
+        'Excel exportado correctamente.'
+      );
+    }
+
+    function importExcel() {
+      showToast(
+        'La importación debe realizarse desde el backend para proteger la base de datos.'
+      );
+    }
+
+    async function iniciarPagina() {
+      try {
+        await validarSesion();
+        await cargarCuotas();
+      } catch (error) {
+        console.error(error);
+
+        showToast(
+          `Error: ${error.message}`
+        );
+      }
+    }
+
+    iniciarPagina();
   </script>
 
 </body>

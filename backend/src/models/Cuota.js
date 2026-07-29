@@ -16,6 +16,24 @@ const Cuota = sequelize.define(
             field: 'casa_id'
         },
 
+        nombrePagador: {
+            type: DataTypes.STRING(250),
+            allowNull: true,
+            field: 'nombre_pagador'
+        },
+
+        numeroCasaSnapshot: {
+            type: DataTypes.STRING(30),
+            allowNull: true,
+            field: 'numero_casa_snapshot'
+        },
+
+        calleSnapshot: {
+            type: DataTypes.STRING(120),
+            allowNull: true,
+            field: 'calle_snapshot'
+        },
+
         anio: {
             type: DataTypes.SMALLINT.UNSIGNED,
             allowNull: false
@@ -145,6 +163,23 @@ const Cuota = sequelize.define(
             allowNull: true
         },
 
+        controles: {
+            type: DataTypes.STRING(250),
+            allowNull: true
+        },
+
+        tipoPago: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+            field: 'tipo_pago'
+        },
+
+        origenImportacion: {
+            type: DataTypes.STRING(150),
+            allowNull: true,
+            field: 'origen_importacion'
+        },
+
         creadoEn: {
             type: DataTypes.DATE,
             allowNull: false,
@@ -161,7 +196,18 @@ const Cuota = sequelize.define(
     },
     {
         tableName: 'cuotas',
-        timestamps: false
+        timestamps: false,
+
+        indexes: [
+            {
+                unique: true,
+                fields: [
+                    'casa_id',
+                    'anio',
+                    'mes'
+                ]
+            }
+        ]
     }
 );
 
