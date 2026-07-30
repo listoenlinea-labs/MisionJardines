@@ -6847,32 +6847,35 @@ footer,
 
 .page-calendario .event-pill,
 .page-calendario .chip {
-  border: 1px solid currentColor;
+  border: 1px solid rgba(15, 23, 42, .18);
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .18);
 }
 
 .page-calendario .mantenimiento {
-  background: #dbeafe !important;
-  color: #1e3a8a !important;
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
 }
 
 .page-calendario .asamblea {
-  background: #ccfbf1 !important;
-  color: #115e59 !important;
+  background: #0f766e !important;
+  color: #ffffff !important;
 }
 
 .page-calendario .basura {
-  background: #dcfce7 !important;
-  color: #166534 !important;
+  background: #15803d !important;
+  color: #ffffff !important;
 }
 
 .page-calendario .seguridad {
-  background: #ffe4e6 !important;
-  color: #9f1239 !important;
+  background: #be123c !important;
+  color: #ffffff !important;
 }
 
 .page-calendario .evento {
-  background: #fef3c7 !important;
-  color: #78350f !important;
+  background: #a16207 !important;
+  color: #ffffff !important;
 }
 
 .page-calendario .event-list-empty {
