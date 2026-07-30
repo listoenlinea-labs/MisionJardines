@@ -4,6 +4,7 @@ const Usuario = require('./Usuario');
 const Cuota = require('./Cuota');
 const FolioConsecutivo = require('./FolioConsecutivo');
 const Calle = require('./Calle');
+const Evento = require('./Evento');
 
 /*
  * Casa 1 ─── N Usuarios
@@ -74,5 +75,6 @@ module.exports = {
     Rol,
     Usuario,
     Cuota,
-    FolioConsecutivo
+    FolioConsecutivo,
+    Evento
 };

@@ -223,7 +223,7 @@
       <div class="section-title">
         <div>
           <h2>Próximos eventos</h2>
-          <p>Listado de actividades ordenadas por fecha.</p>
+          <p>Actividades programadas para los próximos 30 días.</p>
         </div>
       </div>
 
@@ -249,6 +249,9 @@
 
   <script>
     const STORAGE_KEY = "mision_jardines_calendario";
+    const API_BASE_URL =
+      window.MISION_JARDINES_API_URL || "http://localhost:3000/api";
+    const UPCOMING_DAYS = 30;
 
     const monthNames = [
       "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -282,13 +285,69 @@
       }
     ];
 
-    function loadData() {
+    function loadLocalData() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) events = JSON.parse(saved);
     }
 
-    function saveData() {
+    function saveLocalData() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    }
+
+    function getAuthToken() {
+      return localStorage.getItem("misionJardinesToken")
+        || sessionStorage.getItem("misionJardinesToken");
+    }
+
+    const eventRepository = {
+      async list() {
+        const response = await fetch(`${API_BASE_URL}/eventos`, {
+          headers: getAuthToken()
+            ? { Authorization: `Bearer ${getAuthToken()}` }
+            : {}
+        });
+
+        if (!response.ok) throw new Error("API de eventos no disponible");
+        const result = await response.json();
+        return result.data;
+      },
+
+      async create(event) {
+        const response = await fetch(`${API_BASE_URL}/eventos`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(getAuthToken()
+              ? { Authorization: `Bearer ${getAuthToken()}` }
+              : {})
+          },
+          body: JSON.stringify(event)
+        });
+
+        if (!response.ok) throw new Error("No fue posible guardar el evento");
+        const result = await response.json();
+        return result.data;
+      },
+
+      async remove(id) {
+        const response = await fetch(`${API_BASE_URL}/eventos/${id}`, {
+          method: "DELETE",
+          headers: getAuthToken()
+            ? { Authorization: `Bearer ${getAuthToken()}` }
+            : {}
+        });
+
+        if (!response.ok) throw new Error("No fue posible eliminar el evento");
+      }
+    };
+
+    async function loadData() {
+      try {
+        events = await eventRepository.list();
+      } catch (error) {
+        loadLocalData();
+        console.info("Calendario usando almacenamiento local:", error.message);
+      }
     }
 
     function showToast(message) {
@@ -302,9 +361,8 @@
       return "EV-" + String(Date.now()).slice(-6);
     }
 
-    function addEvent() {
-      const event = {
-        id: generateId(),
+    async function addEvent() {
+      let event = {
         title: document.getElementById("eventTitle").value.trim(),
         date: document.getElementById("eventDate").value,
         time: document.getElementById("eventTime").value,
@@ -318,8 +376,19 @@
         return;
       }
 
+      try {
+        event = await eventRepository.create(event);
+      } catch (error) {
+        event.id = generateId();
+        events.push(event);
+        saveLocalData();
+        clearEventForm();
+        renderAll();
+        showToast("Evento guardado localmente; la API no está disponible.");
+        return;
+      }
+
       events.push(event);
-      saveData();
       clearEventForm();
       renderAll();
       showToast("Evento agregado al calendario.");
@@ -446,30 +515,35 @@
       const list = document.getElementById("eventList");
       list.innerHTML = "";
 
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-
-      const daysInMonth =
-        new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + UPCOMING_DAYS - 1);
 
       const trashEvents = [];
-
-      for (let d = 1; d <= daysInMonth; d++) {
-
-        const dateString =
-          formatDate(new Date(year, month, d));
-
-        const trash =
-          createTrashEvent(dateString);
-
-        if (trash) {
-          trashEvents.push(trash);
-        }
+      for (let offset = 0; offset < UPCOMING_DAYS; offset++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + offset);
+        const trash = createTrashEvent(formatDate(date));
+        if (trash) trashEvents.push(trash);
       }
 
       const sorted =
         [...trashEvents, ...events]
+          .filter(e => {
+            const eventDate = new Date(e.date + "T00:00:00");
+            return eventDate >= today && eventDate <= endDate;
+          })
           .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (!sorted.length) {
+        list.innerHTML = `
+          <div class="event-list-empty">
+            No hay eventos programados para los próximos 30 días.
+          </div>
+        `;
+        return;
+      }
 
       sorted.forEach(e => {
         const date = new Date(e.date + "T00:00:00");
@@ -519,10 +593,17 @@
       return labels[type] || "Evento";
     }
 
-    function deleteEvent(id) {
+    async function deleteEvent(id) {
       if (!confirm("¿Seguro que deseas eliminar este evento?")) return;
+
+      try {
+        await eventRepository.remove(id);
+      } catch (error) {
+        console.info("Eliminación realizada solo localmente:", error.message);
+      }
+
       events = events.filter(e => e.id !== id);
-      saveData();
+      saveLocalData();
       renderAll();
       showToast("Evento eliminado.");
     }
@@ -588,8 +669,12 @@
       updateMetrics();
     }
 
-    loadData();
-    renderAll();
+    async function initializeCalendar() {
+      await loadData();
+      renderAll();
+    }
+
+    initializeCalendar();
   </script>
 
 </body>

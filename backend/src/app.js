@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth.routes');
 const path = require('path');
 const cuotasRoutes = require('./routes/cuotas.routes');
 const callesRoutes = require('./routes/calles.routes');
+const eventosRoutes = require('./routes/eventos.routes');
 require('./models');
 
 const app = express();
@@ -115,6 +116,7 @@ app.use('/api/casas', casasRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/cuotas', cuotasRoutes);
 app.use('/api/calles', callesRoutes);
+app.use('/api/eventos', eventosRoutes);
 
 app.use((req, res) => {
     res.status(404).json({

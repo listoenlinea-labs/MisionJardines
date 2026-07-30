@@ -6835,6 +6835,56 @@ footer,
   }
 }
 
+/* Calendario: contraste alto para fechas, eventos y etiquetas */
+.page-calendario .calendar-title,
+.page-calendario .day-number {
+  color: #172033 !important;
+}
+
+.page-calendario .day.muted .day-number {
+  color: #596174 !important;
+}
+
+.page-calendario .event-pill,
+.page-calendario .chip {
+  border: 1px solid currentColor;
+}
+
+.page-calendario .mantenimiento {
+  background: #dbeafe !important;
+  color: #1e3a8a !important;
+}
+
+.page-calendario .asamblea {
+  background: #ccfbf1 !important;
+  color: #115e59 !important;
+}
+
+.page-calendario .basura {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.page-calendario .seguridad {
+  background: #ffe4e6 !important;
+  color: #9f1239 !important;
+}
+
+.page-calendario .evento {
+  background: #fef3c7 !important;
+  color: #78350f !important;
+}
+
+.page-calendario .event-list-empty {
+  padding: 28px;
+  border: 1px dashed #c8cbd5;
+  border-radius: 16px;
+  background: #fafbfc;
+  color: #4b5563;
+  font-weight: 700;
+  text-align: center;
+}
+
 /* Corrección definitiva de la paginación de cuotas */
 .page-cuotas .table-pagination {
   width: 100% !important;

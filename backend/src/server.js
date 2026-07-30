@@ -1,33 +1,37 @@
 const path = require('path');
 
-const environment = process.env.NODE_ENV || 'development';
+const nodeEnv =
+    process.env.NODE_ENV || 'development';
 
 require('dotenv').config({
     path: path.resolve(
-        process.cwd(),
-        `.env.${environment}`
+        __dirname,
+        `../.env.${nodeEnv}`
     )
 });
 
 const app = require('./app');
 const sequelize = require('./config/database');
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT =
+    process.env.PORT || 3000;
 
-async function startServer() {
+async function iniciarServidor() {
     try {
         await sequelize.authenticate();
 
-        console.log('Base de datos conectada correctamente.');
+        console.log(
+            'Conexión con MySQL correcta'
+        );
 
         app.listen(PORT, () => {
             console.log(
-                `API de Misión Jardines ejecutándose en http://localhost:${PORT}`
+                `Servidor corriendo en http://localhost:${PORT}`
             );
         });
     } catch (error) {
         console.error(
-            'No fue posible iniciar el servidor:',
+            'Error al iniciar el servidor:',
             error
         );
 
@@ -35,4 +39,4 @@ async function startServer() {
     }
 }
 
-startServer();
+iniciarServidor();
