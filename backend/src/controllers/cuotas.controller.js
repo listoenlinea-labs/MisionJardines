@@ -274,13 +274,7 @@ async function actualizarCuota(req, res) {
             });
         }
 
-        if (cuota.estatusPago === 'PAGADO') {
-            return res.status(409).json({
-                ok: false,
-                message:
-                    'Una cuota pagada no puede editarse directamente'
-            });
-        }
+
 
         const camposPermitidos = [
             'anio',

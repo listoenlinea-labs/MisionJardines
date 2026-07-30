@@ -40,6 +40,10 @@
           Cuotas
         </a>
 
+        <a href="bases_datos.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
+          Base de Datos
+        </a>
+
         <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
           Mapa
         </a>
@@ -160,9 +164,27 @@
 
       <div class="actions">
         <input id="excelInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
-        <button class="btn-secondary" onclick="document.getElementById('excelInput').click()">Importar Excel</button>
-        <button class="btn-secondary" onclick="exportExcel()">Exportar Excel</button>
-        <button class="btn-primary" onclick="addHouse()">+ Agregar casa</button>
+
+        <button class="btn-secondary" onclick="
+      document
+        .getElementById('excelInput')
+        .click()
+    ">
+          Importar Excel
+        </button>
+
+        <button class="btn-secondary" onclick="exportExcel()">
+          Exportar Excel
+        </button>
+
+        <button id="editTableButton" class="btn-edit-table" type="button" onclick="alternarModoEdicion()"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA">
+          ✏️ Editar tabla
+        </button>
+
+        <button class="btn-primary" onclick="addHouse()">
+          + Agregar casa
+        </button>
       </div>
     </div>
 
@@ -233,6 +255,41 @@
 
   <div id="receiptContainer" class="receipt-hidden"></div>
   <div id="toast" class="toast"></div>
+
+  <div id="saveChangesModal" class="edit-modal" hidden aria-hidden="true">
+    <div class="edit-modal-backdrop" onclick="cerrarModalGuardado()"></div>
+
+    <div class="edit-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="saveChangesTitle">
+      <div class="edit-modal-icon">
+        💾
+      </div>
+
+      <h3 id="saveChangesTitle">
+        ¿Guardar los cambios?
+      </h3>
+
+      <p id="saveChangesDescription">
+        Los cambios realizados se guardarán en la base de datos.
+      </p>
+
+      <div id="saveChangesSummary" class="edit-modal-summary"></div>
+
+      <div class="edit-modal-actions">
+        <button type="button" class="btn-secondary" onclick="cerrarModalGuardado()">
+          Seguir editando
+        </button>
+
+        <button type="button" class="btn-discard" onclick="descartarCambios()">
+          Descartar cambios
+        </button>
+
+        <button id="confirmSaveChangesButton" type="button" class="btn-primary" onclick="guardarCambiosPendientes()">
+          Guardar cambios
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -245,6 +302,22 @@
 
     let paginaActual = 1;
     let registrosPorPagina = 5;
+
+    let modoEdicion = false;
+
+    /*
+     * Guarda únicamente las cuotas y campos que
+     * fueron modificados antes de enviarlos al backend.
+     *
+     * Estructura:
+     * {
+     *   "15": {
+     *     nombrePagador: "Nuevo nombre",
+     *     referencia: "ABC123"
+     *   }
+     * }
+     */
+    let cambiosPendientes = {};
 
     if (!token) {
       window.location.replace('login.html');
@@ -629,6 +702,20 @@
             'ADMINISTRADOR'
           ].includes(rol);
       }
+
+      const botonEditar =
+        document.getElementById(
+          'editTableButton'
+        );
+
+      if (botonEditar) {
+        botonEditar.hidden =
+          ![
+            'SUPER_ADMIN',
+            'ADMINISTRADOR',
+            'MESA_DIRECTIVA'
+          ].includes(rol);
+      }
     }
 
     async function cargarCuotas() {
@@ -644,8 +731,13 @@
 
       cuotas = result.data || [];
 
+      if (!modoEdicion) {
+        cambiosPendientes = {};
+      }
+
       llenarFiltroCalles();
       renderHouses();
+      actualizarEstadoBotonEdicion();
     }
 
     function llenarFiltroCalles() {
@@ -1073,6 +1165,405 @@
       );
     }
 
+    function obtenerCuotaPorId(cuotaId) {
+      return cuotas.find(
+        cuota =>
+          Number(cuota.id) ===
+          Number(cuotaId)
+      );
+    }
+
+    function obtenerValorActual(
+      cuotaId,
+      campo
+    ) {
+      const cuota =
+        obtenerCuotaPorId(cuotaId);
+
+      if (!cuota) {
+        return '';
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          cambiosPendientes[cuotaId] || {},
+          campo
+        )
+      ) {
+        return cambiosPendientes[cuotaId][campo];
+      }
+
+      return cuota[campo];
+    }
+
+    function registrarCambio(
+      cuotaId,
+      campo,
+      valor
+    ) {
+      const cuota =
+        obtenerCuotaPorId(cuotaId);
+
+      if (!cuota) {
+        return;
+      }
+
+      if (!cambiosPendientes[cuotaId]) {
+        cambiosPendientes[cuotaId] = {};
+      }
+
+      cambiosPendientes[cuotaId][campo] =
+        valor;
+
+      actualizarEstadoBotonEdicion();
+    }
+
+    function registrarCambioTexto(
+      cuotaId,
+      campo,
+      elemento
+    ) {
+      registrarCambio(
+        cuotaId,
+        campo,
+        elemento.value.trim()
+      );
+    }
+
+    function registrarCambioSelect(
+      cuotaId,
+      campo,
+      elemento
+    ) {
+      registrarCambio(
+        cuotaId,
+        campo,
+        elemento.value || null
+      );
+    }
+
+    function registrarCambioFecha(
+      cuotaId,
+      elemento
+    ) {
+      registrarCambio(
+        cuotaId,
+        'fechaPago',
+        elemento.value || null
+      );
+    }
+
+    function registrarCambioEntero(
+      cuotaId,
+      campo,
+      elemento
+    ) {
+      const valor =
+        Number(elemento.value);
+
+      if (
+        !Number.isInteger(valor) ||
+        valor < 0
+      ) {
+        showToast(
+          'El valor debe ser un número entero mayor o igual a cero.'
+        );
+
+        elemento.value =
+          Math.round(
+            Number(
+              obtenerValorActual(
+                cuotaId,
+                campo
+              ) || 0
+            )
+          );
+
+        return;
+      }
+
+      registrarCambio(
+        cuotaId,
+        campo,
+        valor
+      );
+    }
+
+    function cantidadCuotasModificadas() {
+      return Object.keys(
+        cambiosPendientes
+      ).filter(
+        cuotaId =>
+          Object.keys(
+            cambiosPendientes[cuotaId]
+          ).length > 0
+      ).length;
+    }
+
+    function cantidadCamposModificados() {
+      return Object.values(
+        cambiosPendientes
+      ).reduce(
+        (total, cambios) =>
+          total +
+          Object.keys(cambios).length,
+        0
+      );
+    }
+
+    function actualizarEstadoBotonEdicion() {
+      const boton =
+        document.getElementById(
+          'editTableButton'
+        );
+
+      if (!boton) {
+        return;
+      }
+
+      if (!modoEdicion) {
+        boton.textContent =
+          '✏️ Editar tabla';
+
+        boton.classList.remove(
+          'editing'
+        );
+
+        return;
+      }
+
+      const totalCambios =
+        cantidadCamposModificados();
+
+      boton.textContent =
+        totalCambios > 0
+          ? `💾 Finalizar edición (${totalCambios})`
+          : '✓ Finalizar edición';
+
+      boton.classList.add(
+        'editing'
+      );
+    }
+
+    function alternarModoEdicion() {
+      if (!esRolAdministrativo()) {
+        showToast(
+          'No tienes permisos para editar cuotas.'
+        );
+
+        return;
+      }
+
+      if (!modoEdicion) {
+        modoEdicion = true;
+        cambiosPendientes = {};
+
+        actualizarEstadoBotonEdicion();
+        renderHouses();
+
+        showToast(
+          'Modo edición activado.'
+        );
+
+        return;
+      }
+
+      if (
+        cantidadCamposModificados() === 0
+      ) {
+        modoEdicion = false;
+
+        actualizarEstadoBotonEdicion();
+        renderHouses();
+
+        showToast(
+          'Modo edición desactivado.'
+        );
+
+        return;
+      }
+
+      abrirModalGuardado();
+    }
+
+    function abrirModalGuardado() {
+      const modal =
+        document.getElementById(
+          'saveChangesModal'
+        );
+
+      const resumen =
+        document.getElementById(
+          'saveChangesSummary'
+        );
+
+      if (!modal || !resumen) {
+        console.error(
+          'No se encontró el modal de guardado.'
+        );
+
+        showToast(
+          'No fue posible abrir la confirmación.'
+        );
+
+        return;
+      }
+
+      const cuotasModificadas =
+        cantidadCuotasModificadas();
+
+      const camposModificados =
+        cantidadCamposModificados();
+
+      resumen.textContent =
+        `Se modificarán ${camposModificados} ` +
+        `campo(s) en ${cuotasModificadas} ` +
+        `cuota(s).`;
+
+      modal.hidden = false;
+      modal.setAttribute(
+        'aria-hidden',
+        'false'
+      );
+      modal.classList.add('is-open');
+
+      /*
+       * Fuerza la visualización incluso si alguna regla
+       * anterior del CSS intenta esconder el modal.
+       */
+      modal.style.setProperty(
+        'display',
+        'flex',
+        'important'
+      );
+
+      document.body.classList.add(
+        'modal-open'
+      );
+    }
+
+    function cerrarModalGuardado() {
+      const modal =
+        document.getElementById(
+          'saveChangesModal'
+        );
+
+      if (!modal) {
+        return;
+      }
+
+      modal.classList.remove('is-open');
+
+      modal.style.setProperty(
+        'display',
+        'none',
+        'important'
+      );
+
+      modal.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+      modal.hidden = true;
+
+      document.body.classList.remove(
+        'modal-open'
+      );
+    }
+
+    function descartarCambios() {
+      cambiosPendientes = {};
+      modoEdicion = false;
+
+      cerrarModalGuardado();
+      actualizarEstadoBotonEdicion();
+      renderHouses();
+
+      showToast(
+        'Los cambios fueron descartados.'
+      );
+    }
+
+    async function guardarCambiosPendientes() {
+      const boton =
+        document.getElementById(
+          'confirmSaveChangesButton'
+        );
+
+      const cambios =
+        Object.entries(
+          cambiosPendientes
+        ).filter(
+          ([, campos]) =>
+            Object.keys(campos).length > 0
+        );
+
+      if (!cambios.length) {
+        cerrarModalGuardado();
+
+        modoEdicion = false;
+        actualizarEstadoBotonEdicion();
+        renderHouses();
+
+        return;
+      }
+
+      boton.disabled = true;
+      boton.textContent =
+        'Guardando...';
+
+      try {
+        /*
+         * Se guarda una petición PATCH por cada cuota
+         * modificada, no una petición por cada celda.
+         */
+        for (
+          const [cuotaId, campos]
+          of cambios
+        ) {
+          await apiRequest(
+            `${API_BASE_URL}/cuotas/${cuotaId}`,
+            {
+              method: 'PATCH',
+              headers: authHeaders(true),
+              body: JSON.stringify(campos)
+            }
+          );
+        }
+
+        cambiosPendientes = {};
+        modoEdicion = false;
+
+        cerrarModalGuardado();
+        actualizarEstadoBotonEdicion();
+
+        /*
+         * Se vuelve a consultar MySQL para mostrar
+         * exactamente los datos guardados.
+         */
+        await cargarCuotas();
+
+        showToast(
+          'Los cambios se guardaron correctamente.'
+        );
+      } catch (error) {
+        showToast(
+          `No fue posible guardar: ${error.message}`
+        );
+
+        /*
+         * Conservamos el modo edición y los cambios
+         * pendientes para que el usuario pueda corregirlos.
+         */
+        modoEdicion = true;
+        renderHouses();
+      } finally {
+        boton.disabled = false;
+        boton.textContent =
+          'Guardar cambios';
+      }
+    }
+
     function renderHouses() {
 
       const { registrosPagina, totalRegistros, totalPaginas, inicio, fin } = obtenerDatosPaginados();
@@ -1133,8 +1624,15 @@
         const pagada =
           cuota.estatusPago === 'PAGADO';
 
-        const disabled =
-          !administrativo || pagada
+        const camposDeshabilitados =
+          !administrativo ||
+            !modoEdicion
+            ? 'disabled'
+            : '';
+
+        const eliminarDeshabilitado =
+          !administrativo ||
+            !modoEdicion
             ? 'disabled'
             : '';
 
@@ -1181,40 +1679,46 @@
       <!-- Año -->
       <td>
         <input
-        type="number"
-        min="0"
-        step="1"
-        inputmode="numeric"
-        value="${Math.round(
-          Number(
-            cuota.montoPagado ||
-            cuota.montoCuota ||
-            0
-          )
+          type="number"
+          min="2000"
+          max="2100"
+          step="1"
+          inputmode="numeric"
+          value="${Number(
+          obtenerValorActual(
+            cuota.id,
+            'anio'
+          ) || cuota.anio
         )}"
-        ${disabled}
-        onchange="
-          actualizarMontoEntero(
-            ${cuota.id},
-            this
-          )
-        "
-      >
+          ${camposDeshabilitados}
+          onchange="
+            registrarCambioEntero(
+              ${cuota.id},
+              'anio',
+              this
+            )
+          "
+        >
       </td>
 
       <!-- Mes -->
       <td>
         <select
-          ${disabled}
+          ${camposDeshabilitados}
           onchange="
-            actualizarCampo(
+            registrarCambioSelect(
               ${cuota.id},
               'mes',
-              this.value
+              this
             )
           "
         >
-          ${obtenerOpcionesMeses(cuota.mes)}
+          ${obtenerOpcionesMeses(
+          obtenerValorActual(
+            cuota.id,
+            'mes'
+          ) || cuota.mes
+        )}
         </select>
       </td>
 
@@ -1223,7 +1727,7 @@
         <input
           type="text"
           value="${escapeHtml(casa)}"
-          readonly
+          
           title="La casa proviene del padrón de viviendas"
         >
       </td>
@@ -1233,7 +1737,7 @@
         <input
           type="text"
           value="${escapeHtml(calle)}"
-          readonly
+          
           title="La calle proviene del padrón de viviendas"
         >
       </td>
@@ -1243,13 +1747,18 @@
         <input
           type="text"
           maxlength="250"
-          value="${escapeHtml(nombre)}"
-          ${disabled}
+          value="${escapeHtml(
+          obtenerValorActual(
+            cuota.id,
+            'nombrePagador'
+          ) ?? nombre
+        )}"
+          ${camposDeshabilitados}
           onchange="
-            actualizarCampo(
+            registrarCambioTexto(
               ${cuota.id},
               'nombrePagador',
-              this.value.trim()
+              this
             )
           "
         >
@@ -1259,16 +1768,26 @@
       <td>
         <input
           type="number"
-          inputmode="integer"
-          value="${Number(
-          cuota.montoPagado || 0
-        ).toFixed(2)}"
-          
+          min="0"
+          step="1"
+          inputmode="numeric"
+          value="${Math.round(
+          Number(
+            obtenerValorActual(
+              cuota.id,
+              'montoPagado'
+            ) ??
+            cuota.montoPagado ??
+            cuota.montoCuota ??
+            0
+          )
+        )}"
+          ${camposDeshabilitados}
           onchange="
-            actualizarCampo(
+            registrarCambioEntero(
               ${cuota.id},
               'montoPagado',
-              Number(this.value)
+              this
             )
           "
         >
@@ -1277,17 +1796,20 @@
       <!-- Forma de Pago -->
       <td>
         <select
-          ${disabled}
+          ${camposDeshabilitados}
           onchange="
-            actualizarCampo(
+            registrarCambioSelect(
               ${cuota.id},
               'formaPago',
-              this.value || null
+              this
             )
           "
         >
           ${obtenerOpcionesFormaPago(
-          cuota.formaPago
+          obtenerValorActual(
+            cuota.id,
+            'formaPago'
+          ) ?? cuota.formaPago
         )}
         </select>
       </td>
@@ -1298,14 +1820,19 @@
           type="text"
           maxlength="150"
           value="${escapeHtml(
-          cuota.referencia || ''
+          obtenerValorActual(
+            cuota.id,
+            'referencia'
+          ) ??
+          cuota.referencia ??
+          ''
         )}"
-          ${disabled}
+          ${camposDeshabilitados}
           onchange="
-            actualizarCampo(
+            registrarCambioTexto(
               ${cuota.id},
               'referencia',
-              this.value.trim()
+              this
             )
           "
         >
@@ -1316,14 +1843,17 @@
         <input
           type="date"
           value="${formatDateForInput(
+          obtenerValorActual(
+            cuota.id,
+            'fechaPago'
+          ) ??
           cuota.fechaPago
         )}"
-          ${disabled}
+          ${camposDeshabilitados}
           onchange="
-            actualizarCampo(
+            registrarCambioFecha(
               ${cuota.id},
-              'fechaPago',
-              this.value || null
+              this
             )
           "
         >
@@ -1340,7 +1870,7 @@
               cuota.estatusPago
             )}
                 "
-                ${pagada ? 'disabled' : ''}
+                
                 onchange="
                   cambiarEstatus(
                     ${cuota.id},
@@ -1379,7 +1909,7 @@
           value="${escapeHtml(
             cuota.folio || ''
           )}"
-          readonly
+          disabled
           title="El folio se genera automáticamente"
         >
       </td>
@@ -1399,13 +1929,18 @@
         <input
           type="email"
           maxlength="150"
-          value="${escapeHtml(email)}"
-          ${administrativo ? '' : 'enabled'}
+          value="${escapeHtml(
+            obtenerValorActual(
+              cuota.id,
+              'correoDestino'
+            ) ?? email
+          )}"
+          ${camposDeshabilitados}
           onchange="
-            actualizarCampo(
+            registrarCambioTexto(
               ${cuota.id},
               'correoDestino',
-              this.value.trim()
+              this
             )
           "
         >
@@ -1418,6 +1953,7 @@
           class="btn-delete"
           onclick="eliminarCuota(${cuota.id})"
           title="Eliminar cuota"
+          ${eliminarDeshabilitado}
         >
           Eliminar
         </button>
