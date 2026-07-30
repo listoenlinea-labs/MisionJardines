@@ -6480,3 +6480,496 @@ footer,
     display: none;
   }
 }
+
+.page-cuotas .table-wrap {
+  overflow-x: auto;
+}
+
+.page-cuotas table {
+  min-width: 2150px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.page-cuotas th {
+  white-space: nowrap;
+}
+
+.page-cuotas td {
+  vertical-align: middle;
+  min-width: 130px;
+}
+
+.page-cuotas td:nth-child(1) {
+  min-width: 90px;
+}
+
+.page-cuotas td:nth-child(2) {
+  min-width: 150px;
+}
+
+.page-cuotas td:nth-child(3) {
+  min-width: 120px;
+}
+
+.page-cuotas td:nth-child(4) {
+  min-width: 190px;
+}
+
+.page-cuotas td:nth-child(5) {
+  min-width: 230px;
+}
+
+.page-cuotas td:nth-child(6) {
+  min-width: 130px;
+}
+
+.page-cuotas td:nth-child(7) {
+  min-width: 180px;
+}
+
+.page-cuotas td:nth-child(8) {
+  min-width: 190px;
+}
+
+.page-cuotas td:nth-child(9) {
+  min-width: 165px;
+}
+
+.page-cuotas td:nth-child(10) {
+  min-width: 170px;
+}
+
+.page-cuotas td:nth-child(11) {
+  min-width: 130px;
+}
+
+.page-cuotas td:nth-child(12) {
+  min-width: 130px;
+}
+
+.page-cuotas td:nth-child(13) {
+  min-width: 160px;
+}
+
+.page-cuotas td:nth-child(14) {
+  min-width: 260px;
+}
+
+.page-cuotas td input,
+.page-cuotas td select {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+}
+
+.page-cuotas td input[readonly] {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.page-cuotas .email-status-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-cuotas .btn-delete {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #dc2626;
+  border-radius: 10px;
+  background: #fff;
+  color: #dc2626;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.page-cuotas .btn-delete:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+.page-cuotas .table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 4px 4px;
+  flex-wrap: wrap;
+}
+
+.page-cuotas .pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-cuotas #paginationPages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-cuotas .pagination-page {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid #d7ddea;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.page-cuotas .pagination-page.active {
+  background: #ef7d00;
+  border-color: #ef7d00;
+  color: #fff;
+}
+
+.page-cuotas .pagination-page:hover {
+  border-color: #ef7d00;
+}
+
+.page-cuotas .pagination-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.page-cuotas .pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-cuotas .pagination-size select {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid #d7ddea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+
+/* ==================================================
+   PAGINACIÓN DE CUOTAS
+   ================================================== */
+
+.page-cuotas .table-pagination {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 10px;
+
+  padding: 12px 16px 4px;
+  margin: 0;
+}
+
+.page-cuotas .pagination-info {
+  margin: 0;
+  padding: 0;
+
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.page-cuotas .pagination-controls {
+  width: auto;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  margin: 0;
+  padding: 0;
+}
+
+.page-cuotas .pagination-pages {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  margin: 0;
+  padding: 0;
+}
+
+.page-cuotas .pagination-page,
+.page-cuotas .pagination-arrow {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+
+  margin: 0;
+  padding: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #d9e0ea;
+  border-radius: 12px;
+
+  background: #ffffff;
+  color: #172033;
+
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.04),
+    0 1px 2px rgba(15, 23, 42, 0.03);
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.page-cuotas .pagination-page:hover,
+.page-cuotas .pagination-arrow:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #f8fbff;
+
+  box-shadow:
+    0 5px 14px rgba(37, 99, 235, 0.12);
+
+  transform: translateY(-1px);
+}
+
+.page-cuotas .pagination-page.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+
+  box-shadow:
+    0 7px 18px rgba(37, 99, 235, 0.28);
+
+  pointer-events: none;
+}
+
+.page-cuotas .pagination-arrow svg {
+  width: 20px;
+  height: 20px;
+
+  display: block;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.page-cuotas .pagination-arrow:disabled {
+  border-color: #e8edf4;
+  background: #f8fafc;
+  color: #bdc6d3;
+
+  box-shadow: none;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+}
+
+.page-cuotas .pagination-ellipsis {
+  width: 26px;
+  height: 44px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 800;
+
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .page-cuotas .table-pagination {
+    gap: 8px;
+    padding: 10px 4px 2px;
+  }
+
+  .page-cuotas .pagination-controls {
+    gap: 5px;
+  }
+
+  .page-cuotas .pagination-pages {
+    gap: 5px;
+  }
+
+  .page-cuotas .pagination-page,
+  .page-cuotas .pagination-arrow {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  .page-cuotas .pagination-arrow svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .page-cuotas .pagination-ellipsis {
+    width: 18px;
+    height: 38px;
+  }
+}
+
+/* Corrección definitiva de la paginación de cuotas */
+.page-cuotas .table-pagination {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+
+  margin: 0 !important;
+  padding: 10px 12px 4px !important;
+}
+
+.page-cuotas .pagination-info {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+
+  text-align: center !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 20px !important;
+}
+
+.page-cuotas .pagination-controls {
+  width: auto !important;
+  min-height: 44px !important;
+
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 8px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+.page-cuotas .pagination-pages {
+  width: auto !important;
+
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.page-cuotas .pagination-page,
+.page-cuotas .pagination-arrow {
+  position: static !important;
+
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+
+  display: inline-flex !important;
+  flex: 0 0 44px !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  border: 1px solid #d9e0ea !important;
+  border-radius: 12px !important;
+
+  background: #ffffff !important;
+  color: #172033 !important;
+
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+
+  cursor: pointer;
+}
+
+.page-cuotas .pagination-page.active {
+  border-color: #2563eb !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+
+  box-shadow:
+    0 7px 18px rgba(37, 99, 235, 0.28) !important;
+}
+
+.page-cuotas .pagination-arrow svg {
+  display: block !important;
+  width: 20px !important;
+  height: 20px !important;
+
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2.25 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.page-cuotas .pagination-arrow:disabled {
+  border-color: #e8edf4 !important;
+  background: #f8fafc !important;
+  color: #bdc6d3 !important;
+
+  opacity: 1 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 600px) {
+
+  .page-cuotas .pagination-controls,
+  .page-cuotas .pagination-pages {
+    gap: 5px !important;
+  }
+
+  .page-cuotas .pagination-page,
+  .page-cuotas .pagination-arrow {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+
+    flex-basis: 38px !important;
+  }
+}

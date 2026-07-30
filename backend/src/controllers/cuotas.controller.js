@@ -283,10 +283,14 @@ async function actualizarCuota(req, res) {
         }
 
         const camposPermitidos = [
+            'anio',
+            'mes',
             'montoCuota',
             'montoPagado',
             'formaPago',
             'referencia',
+            'fechaPago',
+            'estatusPago',
             'correoDestino',
             'nombrePagador',
             'observaciones',
@@ -304,6 +308,162 @@ async function actualizarCuota(req, res) {
                 )
             ) {
                 cambios[campo] = req.body[campo];
+            }
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                cambios,
+                'anio'
+            )
+        ) {
+            const anio = Number(cambios.anio);
+
+            if (
+                !Number.isInteger(anio) ||
+                anio < 2000 ||
+                anio > 2100
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    message:
+                        'El año debe ser un número entre 2000 y 2100'
+                });
+            }
+
+            cambios.anio = anio;
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                cambios,
+                'mes'
+            )
+        ) {
+            const mesNormalizado =
+                String(cambios.mes || '')
+                    .trim()
+                    .toUpperCase();
+
+            if (!MESES.includes(mesNormalizado)) {
+                return res.status(400).json({
+                    ok: false,
+                    message:
+                        'El mes seleccionado no es válido'
+                });
+            }
+
+            cambios.mes = mesNormalizado;
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                cambios,
+                'montoPagado'
+            )
+        ) {
+            const montoPagado =
+                Number(cambios.montoPagado);
+
+            if (
+                !Number.isFinite(montoPagado) ||
+                montoPagado < 0
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    message:
+                        'El monto debe ser un número mayor o igual a cero'
+                });
+            }
+
+            cambios.montoPagado = montoPagado;
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                cambios,
+                'formaPago'
+            )
+        ) {
+            const formasPermitidas = [
+                'EFECTIVO',
+                'TRANSFERENCIA',
+                'DEPOSITO',
+                'TARJETA',
+                'CHEQUE',
+                'OTRO'
+            ];
+
+            if (
+                cambios.formaPago !== null &&
+                !formasPermitidas.includes(
+                    cambios.formaPago
+                )
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    message:
+                        'La forma de pago no es válida'
+                });
+            }
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                cambios,
+                'fechaPago'
+            )
+        ) {
+            if (
+                cambios.fechaPago === null ||
+                cambios.fechaPago === ''
+            ) {
+                cambios.fechaPago = null;
+            } else {
+                const fechaPago =
+                    new Date(
+                        `${cambios.fechaPago}T12:00:00`
+                    );
+
+                if (
+                    Number.isNaN(
+                        fechaPago.getTime()
+                    )
+                ) {
+                    return res.status(400).json({
+                        ok: false,
+                        message:
+                            'La fecha de pago no es válida'
+                    });
+                }
+
+                cambios.fechaPago = fechaPago;
+            }
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                cambios,
+                'estatusPago'
+            )
+        ) {
+            const estatusPermitidos = [
+                'PENDIENTE',
+                'PAGO_PARCIAL',
+                'CANCELADO',
+                'CONDONADO'
+            ];
+
+            if (
+                !estatusPermitidos.includes(
+                    cambios.estatusPago
+                )
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    message:
+                        'El estatus no puede asignarse directamente'
+                });
             }
         }
 
@@ -341,6 +501,16 @@ async function actualizarCuota(req, res) {
             data: cuota
         });
     } catch (error) {
+        if (
+            error.name ===
+            'SequelizeUniqueConstraintError'
+        ) {
+            return res.status(409).json({
+                ok: false,
+                message:
+                    'Esta casa ya tiene una cuota registrada para ese año y mes'
+            });
+        }
         console.error(
             'Error al actualizar cuota:',
             error
@@ -693,10 +863,55 @@ async function reenviarRecibo(req, res) {
     }
 }
 
+async function eliminarCuota(
+    req,
+    res
+) {
+    try {
+        const cuota =
+            await Cuota.findByPk(
+                req.params.id
+            );
+
+        if (!cuota) {
+            return res.status(404).json({
+                ok: false,
+                message:
+                    'Cuota no encontrada'
+            });
+        }
+
+        await cuota.destroy();
+
+        return res.json({
+            ok: true,
+            message:
+                'Cuota eliminada correctamente'
+        });
+    } catch (error) {
+        console.error(
+            'Error al eliminar cuota:',
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            message:
+                'No fue posible eliminar la cuota',
+            error:
+                process.env.NODE_ENV ===
+                    'development'
+                    ? error.message
+                    : undefined
+        });
+    }
+}
+
 module.exports = {
     listarCuotas,
     crearCuota,
     actualizarCuota,
     confirmarPago,
-    reenviarRecibo
+    reenviarRecibo,
+    eliminarCuota
 };

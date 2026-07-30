@@ -5,7 +5,8 @@ const {
     crearCuota,
     actualizarCuota,
     confirmarPago,
-    reenviarRecibo
+    reenviarRecibo,
+    eliminarCuota
 } = require('../controllers/cuotas.controller');
 
 const {
@@ -68,6 +69,15 @@ router.post(
         'MESA_DIRECTIVA'
     ),
     reenviarRecibo
+);
+
+router.delete(
+    '/:id',
+    autorizarRoles(
+        'SUPER_ADMIN',
+        'ADMINISTRADOR'
+    ),
+    eliminarCuota
 );
 
 module.exports = router;
