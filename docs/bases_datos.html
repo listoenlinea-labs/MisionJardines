@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bases de datos | Misión Jardines</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+
+    <style>
+        .page-bases-datos .database-summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .page-bases-datos .database-summary .metric {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-bases-datos .database-summary .metric::after {
+            content: "";
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            right: -35px;
+            top: -35px;
+            border-radius: 50%;
+            background: rgba(94, 234, 212, .08);
+        }
+
+        .page-bases-datos .database-list {
+            display: grid;
+            gap: 18px;
+        }
+
+        .page-bases-datos .database-panel {
+            background: rgba(255, 255, 255, .075);
+            border: 1px solid rgba(255, 255, 255, .11);
+            border-radius: var(--radius);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, .20);
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+        }
+
+        .page-bases-datos .database-panel[open] {
+            border-color: rgba(94, 234, 212, .28);
+        }
+
+        .page-bases-datos .database-panel summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 22px;
+            user-select: none;
+        }
+
+        .page-bases-datos .database-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .page-bases-datos .database-panel-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 0;
+        }
+
+        .page-bases-datos .database-panel-icon {
+            width: 52px;
+            height: 52px;
+            flex: 0 0 52px;
+            border-radius: 17px;
+            display: grid;
+            place-items: center;
+            font-size: 25px;
+            background: linear-gradient(135deg, rgba(94, 234, 212, .18), rgba(96, 165, 250, .18));
+            border: 1px solid rgba(255, 255, 255, .1);
+        }
+
+        .page-bases-datos .database-panel-copy {
+            min-width: 0;
+        }
+
+        .page-bases-datos .database-panel-copy strong {
+            display: block;
+            font-size: 20px;
+            color: var(--text);
+            margin-bottom: 5px;
+        }
+
+        .page-bases-datos .database-panel-copy span {
+            display: block;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .page-bases-datos .database-panel-meta {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        .page-bases-datos .database-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 84px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(94, 234, 212, .12);
+            border: 1px solid rgba(94, 234, 212, .26);
+            color: #bcfff6;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .page-bases-datos .database-chevron {
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .08);
+            color: var(--text);
+            font-size: 20px;
+            transition: transform .25s ease, background .25s ease;
+        }
+
+        .page-bases-datos .database-panel[open] .database-chevron {
+            transform: rotate(180deg);
+            background: rgba(94, 234, 212, .13);
+        }
+
+        .page-bases-datos .database-content {
+            padding: 0 22px 22px;
+            border-top: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .page-bases-datos .database-toolbar {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.5fr) minmax(180px, .8fr) auto;
+            gap: 12px;
+            align-items: end;
+            padding: 20px 0;
+        }
+
+        .page-bases-datos .database-toolbar-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .page-bases-datos .database-table td,
+        .page-bases-datos .database-table th {
+            vertical-align: middle;
+        }
+
+        .page-bases-datos .database-table tbody tr:hover {
+            background: rgba(255, 255, 255, .035);
+        }
+
+        .page-bases-datos .boolean-chip,
+        .page-bases-datos .payment-chip,
+        .page-bases-datos .fine-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 82px;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .page-bases-datos .boolean-chip.yes,
+        .page-bases-datos .payment-chip.paid {
+            background: rgba(74, 222, 128, .16);
+            color: #86efac;
+            border: 1px solid rgba(74, 222, 128, .28);
+        }
+
+        .page-bases-datos .boolean-chip.no,
+        .page-bases-datos .payment-chip.pending,
+        .page-bases-datos .fine-chip.active {
+            background: rgba(251, 113, 133, .16);
+            color: #fda4af;
+            border: 1px solid rgba(251, 113, 133, .28);
+        }
+
+        .page-bases-datos .fine-chip.none {
+            background: rgba(96, 165, 250, .14);
+            color: #bfdbfe;
+            border: 1px solid rgba(96, 165, 250, .24);
+        }
+
+        .page-bases-datos .database-empty-note {
+            padding-top: 14px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        @media(max-width: 1000px) {
+            .page-bases-datos .database-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .page-bases-datos .database-toolbar {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .page-bases-datos .database-toolbar-actions {
+                grid-column: 1 / -1;
+                justify-content: flex-start;
+            }
+        }
+
+        @media(max-width: 700px) {
+            .page-bases-datos .database-panel summary {
+                align-items: flex-start;
+                padding: 18px;
+            }
+
+            .page-bases-datos .database-panel-meta {
+                gap: 8px;
+            }
+
+            .page-bases-datos .database-count {
+                display: none;
+            }
+
+            .page-bases-datos .database-content {
+                padding: 0 18px 18px;
+            }
+
+            .page-bases-datos .database-toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .page-bases-datos .database-toolbar-actions {
+                grid-column: auto;
+            }
+        }
+    </style>
+</head>
+
+<body class="page-bases-datos">
+
+    <header>
+        <nav>
+            <div class="brand">
+                <div class="logo">
+                    <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
+                </div>
+
+                <div>
+                    <div style="font-size:2rem;font-weight:900;">Misión Jardines</div>
+                    <small style="font-size:1.1rem;">Administración de bases de datos</small>
+                </div>
+            </div>
+
+            <div class="menu">
+                <a href="index.html">Inicio</a>
+                <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">Cuotas</a>
+                <a class="active" href="bases_datos.html"
+                    data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">Bases de datos</a>
+                <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">Mapa</a>
+                <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">Visitas</a>
+                <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">Seguridad</a>
+                <a href="calendario.html"
+                    data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">Calendario</a>
+                <a href="reportes.html"
+                    data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">Reportes</a>
+                <a href="directorio.html"
+                    data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">Directorio</a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="badge">🗃️ Información centralizada del fraccionamiento</div>
+        <h1>Bases de datos de <span>Misión Jardines</span></h1>
+        <p>
+            Consulta de forma ordenada el padrón de domicilios, los vehículos registrados y las rentas de la Casa Club.
+            Cada módulo se puede desplegar únicamente cuando sea necesario.
+        </p>
+    </section>
+
+    <section class="section">
+        <div class="database-summary">
+            <article class="card metric">
+                <small>Direcciones registradas</small>
+                <strong>96</strong>
+                <div class="hint">Padrón general de viviendas</div>
+            </article>
+
+            <article class="card metric">
+                <small>Vehículos registrados</small>
+                <strong>143</strong>
+                <div class="hint">Automóviles vinculados a una casa</div>
+            </article>
+
+            <article class="card metric">
+                <small>Rentas Casa Club</small>
+                <strong>12</strong>
+                <div class="hint">Reservaciones del mes actual</div>
+            </article>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="section-title">
+            <div>
+                <h2>Registros disponibles</h2>
+                <p>Abre solo la tabla que deseas consultar para mantener la pantalla limpia y cómoda.</p>
+            </div>
+        </div>
+
+        <div class="database-list">
+
+            <details class="database-panel" open>
+                <summary>
+                    <div class="database-panel-title">
+                        <div class="database-panel-icon">🏠</div>
+                        <div class="database-panel-copy">
+                            <strong>Direcciones</strong>
+                            <span>Padrón de casas, propietarios y medios de contacto.</span>
+                        </div>
+                    </div>
+
+                    <div class="database-panel-meta">
+                        <span class="database-count">96 registros</span>
+                        <span class="database-chevron">⌄</span>
+                    </div>
+                </summary>
+
+                <div class="database-content">
+                    <div class="database-toolbar">
+                        <div>
+                            <label for="searchAddresses">Buscar</label>
+                            <input id="searchAddresses" type="search"
+                                placeholder="Casa, calle, propietario, teléfono o correo"
+                                oninput="filterTable('addressesTable', this.value)">
+                        </div>
+
+                        <div>
+                            <label for="addressStreet">Calle</label>
+                            <select id="addressStreet" onchange="filterTableByStreet('addressesTable', this.value)">
+                                <option value="">Todas las calles</option>
+                                <option>Misión Jardines</option>
+                                <option>Misión Gardenias</option>
+                                <option>Misión Jazmines</option>
+                                <option>Misión Rosas</option>
+                            </select>
+                        </div>
+
+                        <div class="database-toolbar-actions">
+                            <button class="btn-secondary" type="button">Exportar Excel</button>
+                            <button class="btn-primary" type="button">+ Agregar dirección</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table id="addressesTable" class="database-table">
+                            <thead>
+                                <tr>
+                                    <th>Casa</th>
+                                    <th>Calle</th>
+                                    <th>Número</th>
+                                    <th>Propietario</th>
+                                    <th>En renta</th>
+                                    <th>Teléfono</th>
+                                    <th>Correo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>MJ-001</td>
+                                    <td>Misión Jardines</td>
+                                    <td>12</td>
+                                    <td>Alejandro Ramírez</td>
+                                    <td><span class="boolean-chip no">No</span></td>
+                                    <td>33 1234 5678</td>
+                                    <td>alejandro@email.com</td>
+                                </tr>
+                                <tr>
+                                    <td>MG-014</td>
+                                    <td>Misión Gardenias</td>
+                                    <td>28</td>
+                                    <td>Mariana López</td>
+                                    <td><span class="boolean-chip yes">Sí</span></td>
+                                    <td>33 9876 4521</td>
+                                    <td>mariana@email.com</td>
+                                </tr>
+                                <tr>
+                                    <td>MZ-021</td>
+                                    <td>Misión Jazmines</td>
+                                    <td>41</td>
+                                    <td>Fernando Ortega</td>
+                                    <td><span class="boolean-chip no">No</span></td>
+                                    <td>33 4567 8821</td>
+                                    <td>fernando@email.com</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="database-empty-note">Los datos mostrados son de ejemplo y después podrán venir desde tu
+                        API.</p>
+                </div>
+            </details>
+
+            <details class="database-panel">
+                <summary>
+                    <div class="database-panel-title">
+                        <div class="database-panel-icon">🚙</div>
+                        <div class="database-panel-copy">
+                            <strong>Vehículos</strong>
+                            <span>Control de vehículos vinculados con cada domicilio.</span>
+                        </div>
+                    </div>
+
+                    <div class="database-panel-meta">
+                        <span class="database-count">143 registros</span>
+                        <span class="database-chevron">⌄</span>
+                    </div>
+                </summary>
+
+                <div class="database-content">
+                    <div class="database-toolbar">
+                        <div>
+                            <label for="searchVehicles">Buscar</label>
+                            <input id="searchVehicles" type="search"
+                                placeholder="Casa, propietario, placas, teléfono o correo"
+                                oninput="filterTable('vehiclesTable', this.value)">
+                        </div>
+
+                        <div>
+                            <label for="vehicleStreet">Calle</label>
+                            <select id="vehicleStreet" onchange="filterTableByStreet('vehiclesTable', this.value)">
+                                <option value="">Todas las calles</option>
+                                <option>Misión Jardines</option>
+                                <option>Misión Gardenias</option>
+                                <option>Misión Jazmines</option>
+                                <option>Misión Rosas</option>
+                            </select>
+                        </div>
+
+                        <div class="database-toolbar-actions">
+                            <button class="btn-secondary" type="button">Exportar Excel</button>
+                            <button class="btn-primary" type="button">+ Agregar vehículo</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table id="vehiclesTable" class="database-table">
+                            <thead>
+                                <tr>
+                                    <th>Casa</th>
+                                    <th>Calle</th>
+                                    <th>Número</th>
+                                    <th>Propietario</th>
+                                    <th>Placas</th>
+                                    <th>Teléfono</th>
+                                    <th>Correo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>MJ-001</td>
+                                    <td>Misión Jardines</td>
+                                    <td>12</td>
+                                    <td>Alejandro Ramírez</td>
+                                    <td>JKS-42-18</td>
+                                    <td>33 1234 5678</td>
+                                    <td>alejandro@email.com</td>
+                                </tr>
+                                <tr>
+                                    <td>MG-014</td>
+                                    <td>Misión Gardenias</td>
+                                    <td>28</td>
+                                    <td>Mariana López</td>
+                                    <td>JRP-91-25</td>
+                                    <td>33 9876 4521</td>
+                                    <td>mariana@email.com</td>
+                                </tr>
+                                <tr>
+                                    <td>MZ-021</td>
+                                    <td>Misión Jazmines</td>
+                                    <td>41</td>
+                                    <td>Fernando Ortega</td>
+                                    <td>JTE-73-04</td>
+                                    <td>33 4567 8821</td>
+                                    <td>fernando@email.com</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="database-empty-note">Una casa puede tener uno o varios vehículos registrados.</p>
+                </div>
+            </details>
+
+            <details class="database-panel">
+                <summary>
+                    <div class="database-panel-title">
+                        <div class="database-panel-icon">🎉</div>
+                        <div class="database-panel-copy">
+                            <strong>Renta de Casa Club</strong>
+                            <span>Reservaciones, pagos y multas relacionadas con el uso de la Casa Club.</span>
+                        </div>
+                    </div>
+
+                    <div class="database-panel-meta">
+                        <span class="database-count">12 registros</span>
+                        <span class="database-chevron">⌄</span>
+                    </div>
+                </summary>
+
+                <div class="database-content">
+                    <div class="database-toolbar">
+                        <div>
+                            <label for="searchClubhouse">Buscar</label>
+                            <input id="searchClubhouse" type="search"
+                                placeholder="Casa, propietario, fecha, teléfono o correo"
+                                oninput="filterTable('clubhouseTable', this.value)">
+                        </div>
+
+                        <div>
+                            <label for="clubhouseStatus">Estatus de pago</label>
+                            <select id="clubhouseStatus" onchange="filterTable('clubhouseTable', this.value)">
+                                <option value="">Todos</option>
+                                <option>Pagado</option>
+                                <option>Pendiente</option>
+                            </select>
+                        </div>
+
+                        <div class="database-toolbar-actions">
+                            <button class="btn-secondary" type="button">Exportar Excel</button>
+                            <button class="btn-primary" type="button">+ Nueva renta</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table id="clubhouseTable" class="database-table">
+                            <thead>
+                                <tr>
+                                    <th>Casa</th>
+                                    <th>Calle</th>
+                                    <th>Número</th>
+                                    <th>Propietario</th>
+                                    <th>Fecha de la renta</th>
+                                    <th>Teléfono</th>
+                                    <th>Correo</th>
+                                    <th>Pagado</th>
+                                    <th>Multas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>MJ-001</td>
+                                    <td>Misión Jardines</td>
+                                    <td>12</td>
+                                    <td>Alejandro Ramírez</td>
+                                    <td>15/08/2026</td>
+                                    <td>33 1234 5678</td>
+                                    <td>alejandro@email.com</td>
+                                    <td><span class="payment-chip paid">Pagado</span></td>
+                                    <td><span class="fine-chip none">Sin multas</span></td>
+                                </tr>
+                                <tr>
+                                    <td>MG-014</td>
+                                    <td>Misión Gardenias</td>
+                                    <td>28</td>
+                                    <td>Mariana López</td>
+                                    <td>22/08/2026</td>
+                                    <td>33 9876 4521</td>
+                                    <td>mariana@email.com</td>
+                                    <td><span class="payment-chip pending">Pendiente</span></td>
+                                    <td><span class="fine-chip none">Sin multas</span></td>
+                                </tr>
+                                <tr>
+                                    <td>MZ-021</td>
+                                    <td>Misión Jazmines</td>
+                                    <td>41</td>
+                                    <td>Fernando Ortega</td>
+                                    <td>03/09/2026</td>
+                                    <td>33 4567 8821</td>
+                                    <td>fernando@email.com</td>
+                                    <td><span class="payment-chip paid">Pagado</span></td>
+                                    <td><span class="fine-chip active">$500</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="database-empty-note">Las multas pueden representar daños, limpieza adicional o
+                        incumplimiento de horario.</p>
+                </div>
+            </details>
+
+        </div>
+    </section>
+
+    <footer>
+        <div>
+            Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del
+            fraccionamiento.
+        </div>
+
+        <div class="powered-by">
+            Plataforma desarrollada por
+            <a href="https://listoenlinea.com" target="_blank" rel="noopener noreferrer">ListoEnLinea.com</a>
+        </div>
+    </footer>
+
+    <script>
+        const token =
+            localStorage.getItem('misionJardinesToken') ||
+            sessionStorage.getItem('misionJardinesToken');
+
+        if (!token) {
+            window.location.replace('login.html');
+        }
+
+        async function validarSesion() {
+            try {
+                const response = await fetch(
+                    'http://localhost:3000/api/auth/perfil',
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    }
+                );
+
+                const result = await response.json();
+
+                if (!response.ok || !result.ok) {
+                    throw new Error(result.message || 'Sesión inválida');
+                }
+
+                aplicarPermisosVisuales(result.usuario.rol?.nombre);
+            } catch (error) {
+                localStorage.removeItem('misionJardinesToken');
+                localStorage.removeItem('misionJardinesUsuario');
+                sessionStorage.removeItem('misionJardinesToken');
+                sessionStorage.removeItem('misionJardinesUsuario');
+                window.location.replace('login.html');
+            }
+        }
+
+        function aplicarPermisosVisuales(rol) {
+            document.querySelectorAll('[data-roles]').forEach((elemento) => {
+                const rolesPermitidos = elemento.dataset.roles
+                    .split(',')
+                    .map((item) => item.trim());
+
+                elemento.hidden = !rolesPermitidos.includes(rol);
+            });
+        }
+
+        function normalizeText(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+        }
+
+        function filterTable(tableId, query) {
+            const table = document.getElementById(tableId);
+
+            if (!table) {
+                return;
+            }
+
+            const normalizedQuery = normalizeText(query);
+
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                const rowText = normalizeText(row.textContent);
+                row.hidden = normalizedQuery !== '' && !rowText.includes(normalizedQuery);
+            });
+        }
+
+        function filterTableByStreet(tableId, street) {
+            const table = document.getElementById(tableId);
+
+            if (!table) {
+                return;
+            }
+
+            const normalizedStreet = normalizeText(street);
+
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                const streetCell = row.cells[1];
+                const rowStreet = normalizeText(streetCell?.textContent);
+                row.hidden = normalizedStreet !== '' && rowStreet !== normalizedStreet;
+            });
+        }
+
+        validarSesion();
+    </script>
+
+</body>
+
+</html>
