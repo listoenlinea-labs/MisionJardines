@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Calendario | Misión Jardines</title>
-  <link rel="stylesheet" href="assets/css/style.css?v=20260730-2" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260730-3" />
 </head>
 
 <body class="page-calendario">
@@ -556,24 +556,23 @@
           ${monthNames[date.getMonth()].slice(0, 3).toUpperCase()}
         </div>
 
-        <div>
+        <div class="event-card-content">
           <h3>${e.title}</h3>
-          <p>
+          <p class="event-meta">
             ${e.time ? e.time + " hrs · " : ""}
             ${e.location}
           </p>
-          <p>${e.description || "Sin descripción."}</p>
-          <span class="chip ${e.type}">${eventTypeLabel(e.type)}</span>
-          ${e.fixed
-            ? `<span class="chip basura" style="margin-left:10px">
-                     Evento fijo
-                   </span>`
-            : `<button class="btn-danger"
-                     style="margin-left:10px;padding:7px 10px"
-                     onclick="deleteEvent('${e.id}')">
-                     Eliminar
-                   </button>`
-          }
+          <p class="event-description">${e.description || "Sin descripción."}</p>
+          <div class="event-card-actions">
+            <span class="chip ${e.type}">${eventTypeLabel(e.type)}</span>
+            ${e.fixed
+              ? `<span class="chip event-fixed">Evento fijo</span>`
+              : `<button class="btn-danger event-delete"
+                       onclick="deleteEvent('${e.id}')">
+                       Eliminar
+                     </button>`
+            }
+          </div>
         </div>
       `;
 

@@ -6888,6 +6888,93 @@ footer,
   text-align: center;
 }
 
+/* Lista compacta de próximos eventos */
+.page-calendario .event-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px !important;
+}
+
+.page-calendario .event-card {
+  min-width: 0;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e3e6ee;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(44, 52, 77, .06);
+}
+
+.page-calendario .event-card:hover {
+  border-color: #f2c36b;
+  box-shadow: 0 9px 24px rgba(44, 52, 77, .1);
+}
+
+.page-calendario .event-date {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(217, 119, 6, .2);
+}
+
+.page-calendario .event-card-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.page-calendario .event-card-content h3 {
+  color: #172033;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.page-calendario .event-card .event-meta {
+  margin-top: 3px;
+  color: #515a6d;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.page-calendario .event-card .event-description {
+  margin-top: 5px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.page-calendario .event-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.page-calendario .event-card-actions .chip {
+  margin: 0;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+.page-calendario .event-fixed {
+  background: #4b5563 !important;
+  color: #ffffff !important;
+}
+
+.page-calendario .event-delete {
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .page-calendario .event-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Corrección definitiva de la paginación de cuotas */
 .page-cuotas .table-pagination {
   width: 100% !important;
