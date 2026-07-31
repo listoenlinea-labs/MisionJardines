@@ -10,40 +10,62 @@ const Evento = sequelize.define(
             autoIncrement: true
         },
         titulo: {
-            type: DataTypes.STRING(160),
+            type: DataTypes.STRING(200),
             allowNull: false
         },
-        fecha: {
-            type: DataTypes.DATEONLY,
-            allowNull: false
-        },
-        hora: {
-            type: DataTypes.TIME,
-            allowNull: true
-        },
-        tipo: {
-            type: DataTypes.ENUM(
-                'mantenimiento',
-                'asamblea',
-                'basura',
-                'seguridad',
-                'evento'
-            ),
-            allowNull: false,
-            defaultValue: 'evento'
-        },
-        ubicacion: {
-            type: DataTypes.STRING(180),
-            allowNull: false
-        },
-        descripcion: {
-            type: DataTypes.TEXT,
-            allowNull: true
+        casaId: {
+            type: DataTypes.BIGINT.UNSIGNED,
+            allowNull: true,
+            field: 'casa_id'
         },
         creadoPorUsuarioId: {
             type: DataTypes.BIGINT.UNSIGNED,
             allowNull: true,
             field: 'creado_por_usuario_id'
+        },
+        descripcion: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        tipoEvento: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            field: 'tipo_evento'
+        },
+        ubicacion: {
+            type: DataTypes.STRING(250),
+            allowNull: true
+        },
+        fechaInicio: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: 'fecha_inicio'
+        },
+        fechaFin: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: 'fecha_fin'
+        },
+        todoElDia: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            field: 'todo_el_dia'
+        },
+        visibilidad: {
+            type: DataTypes.STRING(30),
+            allowNull: false,
+            defaultValue: 'TODOS'
+        },
+        estatus: {
+            type: DataTypes.STRING(30),
+            allowNull: false,
+            defaultValue: 'PROGRAMADO'
+        },
+        activo: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true
         },
         creadoEn: {
             type: DataTypes.DATE,
@@ -59,7 +81,7 @@ const Evento = sequelize.define(
         }
     },
     {
-        tableName: 'eventos',
+        tableName: 'calendario',
         timestamps: false
     }
 );

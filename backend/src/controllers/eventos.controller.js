@@ -1,28 +1,94 @@
 const { Op } = require('sequelize');
 const { Evento } = require('../models');
 
+const TIPOS_FRONTEND_A_DB = {
+    mantenimiento: 'MANTENIMIENTO',
+    asamblea: 'ASAMBLEA',
+    basura: 'RECOLECCION_BASURA',
+    seguridad: 'SEGURIDAD',
+    evento: 'EVENTO_VECINAL'
+};
+
+const TIPOS_DB_A_FRONTEND = Object.fromEntries(
+    Object.entries(TIPOS_FRONTEND_A_DB)
+        .map(([frontend, database]) => [database, frontend])
+);
+
+function separarFechaHora(fecha) {
+    const valor = new Date(fecha);
+    const year = valor.getFullYear();
+    const month = String(valor.getMonth() + 1).padStart(2, '0');
+    const day = String(valor.getDate()).padStart(2, '0');
+    const hours = String(valor.getHours()).padStart(2, '0');
+    const minutes = String(valor.getMinutes()).padStart(2, '0');
+
+    return {
+        date: `${year}-${month}-${day}`,
+        time: `${hours}:${minutes}`
+    };
+}
+
+function construirRango(date, time) {
+    const todoElDia = !time;
+    const inicio = new Date(`${date}T${time || '00:00'}:00`);
+    const fin = new Date(inicio);
+
+    if (todoElDia) {
+        fin.setHours(23, 59, 59, 0);
+    } else {
+        fin.setHours(fin.getHours() + 1);
+    }
+
+    return { inicio, fin, todoElDia };
+}
+
 function serializarEvento(evento) {
+    const { date, time } = separarFechaHora(evento.fechaInicio);
+
     return {
         id: String(evento.id),
         title: evento.titulo,
-        date: evento.fecha,
-        time: evento.hora ? String(evento.hora).slice(0, 5) : '',
-        type: evento.tipo,
-        location: evento.ubicacion,
-        description: evento.descripcion || ''
+        date,
+        time: evento.todoElDia ? '' : time,
+        type: TIPOS_DB_A_FRONTEND[evento.tipoEvento] || 'evento',
+        location: evento.ubicacion || 'Sin ubicación',
+        description: evento.descripcion || '',
+        status: evento.estatus
     };
 }
 
 async function obtenerEventos(req, res) {
     try {
-        const where = {};
+        const where = { activo: true };
+
         if (req.query.desde && req.query.hasta) {
-            where.fecha = { [Op.between]: [req.query.desde, req.query.hasta] };
+            where.fechaInicio = {
+                [Op.between]: [
+                    new Date(`${req.query.desde}T00:00:00`),
+                    new Date(`${req.query.hasta}T23:59:59`)
+                ]
+            };
+        }
+
+        const rolesAdministrativos = [
+            'SUPER_ADMIN',
+            'ADMINISTRADOR',
+            'MESA_DIRECTIVA'
+        ];
+
+        if (!rolesAdministrativos.includes(req.usuario.rol)) {
+            where[Op.or] = [
+                { visibilidad: 'TODOS' },
+                {
+                    visibilidad: 'SOLO_CASA',
+                    casaId: req.usuario.casaId
+                }
+            ];
         }
 
         const eventos = await Evento.findAll({
             where,
-            order: [['fecha', 'ASC'], ['hora', 'ASC']]
+            order: [['fechaInicio', 'ASC']]
         });
 
         return res.json({
@@ -48,29 +114,44 @@ async function crearEvento(req, res) {
     }
 
     try {
+        const { inicio, fin, todoElDia } = construirRango(date, time);
         const evento = await Evento.create({
             titulo: title.trim(),
-            fecha: date,
-            hora: time || null,
-            tipo: type || 'evento',
-            ubicacion: location.trim(),
+            casaId: null,
+            creadoPorUsuarioId: req.usuario.usuarioId,
             descripcion: description?.trim() || null,
-            creadoPorUsuarioId: req.usuario?.id || null
+            tipoEvento: TIPOS_FRONTEND_A_DB[type] || 'EVENTO_VECINAL',
+            ubicacion: location?.trim() || null,
+            fechaInicio: inicio,
+            fechaFin: fin,
+            todoElDia,
+            visibilidad: 'TODOS',
+            estatus: 'PROGRAMADO',
+            activo: true
         });
 
         return res.status(201).json({ ok: true, data: serializarEvento(evento) });
     } catch (error) {
+        console.error('Error al crear evento:', error);
         return res.status(500).json({
             ok: false,
-            message: 'No fue posible crear el evento'
+            message: 'No fue posible crear el evento',
+            error:
+                process.env.NODE_ENV === 'development'
+                    ? error.message
+                    : undefined
         });
     }
 }
 
 async function eliminarEvento(req, res) {
     try {
-        const eliminados = await Evento.destroy({ where: { id: req.params.id } });
-        if (!eliminados) {
+        const [actualizados] = await Evento.update(
+            { activo: false },
+            { where: { id: req.params.id, activo: true } }
+        );
+
+        if (!actualizados) {
             return res.status(404).json({ ok: false, message: 'Evento no encontrado' });
         }
 
