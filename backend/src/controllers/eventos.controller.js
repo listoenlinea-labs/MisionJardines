@@ -4,9 +4,9 @@ const { Evento } = require('../models');
 const TIPOS_FRONTEND_A_DB = {
     mantenimiento: 'MANTENIMIENTO',
     asamblea: 'ASAMBLEA',
-    basura: 'RECOLECCION_BASURA',
+    basura: 'RECOLECCION',
     seguridad: 'SEGURIDAD',
-    evento: 'EVENTO_VECINAL'
+    evento: 'SOCIAL'
 };
 
 const TIPOS_DB_A_FRONTEND = Object.fromEntries(
@@ -76,7 +76,12 @@ async function obtenerEventos(req, res) {
             'MESA_DIRECTIVA'
         ];
 
-        if (!rolesAdministrativos.includes(req.usuario.rol)) {
+        if (req.usuario.rol === 'SEGURIDAD') {
+            where[Op.or] = [
+                { visibilidad: 'TODOS' },
+                { visibilidad: 'SEGURIDAD' }
+            ];
+        } else if (!rolesAdministrativos.includes(req.usuario.rol)) {
             where[Op.or] = [
                 { visibilidad: 'TODOS' },
                 {
@@ -120,7 +125,7 @@ async function crearEvento(req, res) {
             casaId: null,
             creadoPorUsuarioId: req.usuario.usuarioId,
             descripcion: description?.trim() || null,
-            tipoEvento: TIPOS_FRONTEND_A_DB[type] || 'EVENTO_VECINAL',
+            tipoEvento: TIPOS_FRONTEND_A_DB[type] || 'OTRO',
             ubicacion: location?.trim() || null,
             fechaInicio: inicio,
             fechaFin: fin,

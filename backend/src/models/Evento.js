@@ -28,7 +28,15 @@ const Evento = sequelize.define(
             allowNull: true
         },
         tipoEvento: {
-            type: DataTypes.STRING(50),
+            type: DataTypes.ENUM(
+                'MANTENIMIENTO',
+                'ASAMBLEA',
+                'RECOLECCION',
+                'SOCIAL',
+                'SEGURIDAD',
+                'SUSPENSION_SERVICIO',
+                'OTRO'
+            ),
             allowNull: false,
             field: 'tipo_evento'
         },
@@ -53,12 +61,22 @@ const Evento = sequelize.define(
             field: 'todo_el_dia'
         },
         visibilidad: {
-            type: DataTypes.STRING(30),
+            type: DataTypes.ENUM(
+                'TODOS',
+                'SOLO_CASA',
+                'ADMINISTRACION',
+                'SEGURIDAD'
+            ),
             allowNull: false,
             defaultValue: 'TODOS'
         },
         estatus: {
-            type: DataTypes.STRING(30),
+            type: DataTypes.ENUM(
+                'PROGRAMADO',
+                'EN_CURSO',
+                'FINALIZADO',
+                'CANCELADO'
+            ),
             allowNull: false,
             defaultValue: 'PROGRAMADO'
         },
