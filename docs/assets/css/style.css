@@ -7448,3 +7448,173 @@ body.modal-open {
     width: 100% !important;
   }
 }
+
+/* =========================================================
+   TABLA DE CUOTAS - APARIENCIA EJECUTIVA
+   ========================================================= */
+
+/* ----- Filas alternadas ----- */
+
+.page-cuotas .cuotas-table tbody tr {
+  background: #ffffff;
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.page-cuotas .cuotas-table tbody tr:nth-child(even) {
+  background: #f6f9fd;
+}
+
+/* Hover muy discreto */
+.page-cuotas .cuotas-table tbody tr:hover {
+  background: #eef5fc;
+}
+
+
+/* Mantener el color de la fila también dentro de las celdas */
+.page-cuotas .cuotas-table tbody td {
+  background: transparent;
+  border-bottom: 1px solid #edf1f6;
+}
+
+
+/* =========================================================
+   MODO NORMAL / SOLO LECTURA
+   ========================================================= */
+
+.page-cuotas .cuotas-table:not(.modo-edicion) td input,
+
+.page-cuotas .cuotas-table:not(.modo-edicion) td select {
+  width: 100%;
+
+  min-height: auto;
+
+  padding: 4px 0;
+
+  border: 0 !important;
+  border-radius: 0 !important;
+
+  background: transparent !important;
+
+  box-shadow: none !important;
+  outline: none !important;
+
+  color: #243147 !important;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+
+  opacity: 1 !important;
+
+  cursor: default !important;
+
+  pointer-events: none;
+}
+
+
+/* Quitar apariencia de selector */
+.page-cuotas .cuotas-table:not(.modo-edicion) td select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none !important;
+}
+
+
+/* Quitar flechas del input number en Chrome */
+.page-cuotas .cuotas-table:not(.modo-edicion) input[type="number"]::-webkit-inner-spin-button,
+
+.page-cuotas .cuotas-table:not(.modo-edicion) input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+
+/* Firefox */
+.page-cuotas .cuotas-table:not(.modo-edicion) input[type="number"] {
+  appearance: textfield;
+}
+
+
+/* =========================================================
+   MODO EDICIÓN
+   ========================================================= */
+
+.page-cuotas .cuotas-table.modo-edicion td input,
+
+.page-cuotas .cuotas-table.modo-edicion td select {
+  width: 100%;
+  min-height: 42px;
+
+  padding: 9px 12px;
+
+  border: 1px solid #d7e0eb !important;
+  border-radius: 10px !important;
+
+  background: #ffffff !important;
+
+  color: #1f2937 !important;
+
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+
+  font-family: inherit;
+  font-size: 14px;
+
+  opacity: 1 !important;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+
+/* Focus profesional */
+.page-cuotas .cuotas-table.modo-edicion td input:focus,
+
+.page-cuotas .cuotas-table.modo-edicion td select:focus {
+  border-color: #60a5fa !important;
+
+  box-shadow:
+    0 0 0 3px rgba(96, 165, 250, 0.12);
+
+  outline: none;
+}
+
+
+/* Inputs bloqueados incluso en modo edición */
+.page-cuotas .cuotas-table.modo-edicion td input:disabled,
+
+.page-cuotas .cuotas-table.modo-edicion td select:disabled {
+  background: #f8fafc !important;
+  color: #94a3b8 !important;
+  border-color: #e2e8f0 !important;
+}
+
+
+/* =========================================================
+   CELDAS
+   ========================================================= */
+
+.page-cuotas .cuotas-table tbody td {
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+
+
+/* Un poco más de peso visual a Casa y Nombre */
+.page-cuotas .cuotas-table tbody td:nth-child(3),
+.page-cuotas .cuotas-table tbody td:nth-child(5) {
+  font-weight: 600;
+}
+
+
+/* Transición suave al entrar en edición */
+.page-cuotas .cuotas-table td input,
+.page-cuotas .cuotas-table td select {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}

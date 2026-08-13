@@ -190,7 +190,7 @@
 
     <div class="card">
       <div class="table-wrap">
-        <table>
+        <table id="cuotasTable" class="cuotas-table">
           <thead>
             <tr>
               <th>Año</th>
@@ -639,8 +639,8 @@
         );
 
       return (
-        contacto?.correo ||
-        cuota.casa?.correoPrincipal ||
+        cuota.casa?.correo ||
+        cuota.casa?.telefono ||
         ''
       );
     }
@@ -813,12 +813,11 @@
         const telefono =
           obtenerTelefono(cuota);
 
-        const codigo =
-          cuota.casa?.codigoCasa || '';
+        const codigo = '';
 
         const numero =
           cuota.numeroCasaSnapshot ||
-          cuota.casa?.numeroCasa ||
+          cuota.casa?.numero ||
           '';
 
         const calle =
@@ -1572,6 +1571,16 @@
           'housesTable'
         );
 
+      const tabla =
+        document.getElementById('cuotasTable');
+
+      if (tabla) {
+        tabla.classList.toggle(
+          'modo-edicion',
+          modoEdicion
+        );
+      }
+
       tbody.innerHTML = '';
 
       const administrativo =
@@ -1606,8 +1615,7 @@
 
         const casa =
           cuota.numeroCasaSnapshot ||
-          cuota.casa?.numeroCasa ||
-          cuota.casa?.codigoCasa ||
+          cuota.casa?.numero ||
           '';
 
         const calle =
