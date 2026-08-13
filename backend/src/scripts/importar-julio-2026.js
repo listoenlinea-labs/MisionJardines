@@ -241,11 +241,15 @@ async function buscarOCrearCasa(
     registro,
     transaction
 ) {
+    const numeroCasa =
+        registro.numeroCasa ||
+        registro.casaExcel ||
+        'SIN-NUMERO';
+
     let casa = await Casa.findOne({
         where: {
             calle: registro.calle,
-            numeroCasa:
-                registro.numeroCasa
+            numero: numeroCasa
         },
         transaction
     });
@@ -254,81 +258,33 @@ async function buscarOCrearCasa(
         return casa;
     }
 
-    const codigoBase = [
-        registro.calle,
-        registro.numeroCasa ||
-        registro.casaExcel
-    ]
-        .join('-')
-        .normalize('NFD')
-        .replace(
-            /[\u0300-\u036f]/g,
-            ''
-        )
-        .replace(
-            /[^a-zA-Z0-9]+/g,
-            '-'
-        )
-        .replace(
-            /^-|-$/g,
-            ''
-        )
-        .toUpperCase()
-        .slice(0, 20);
-
-    let codigoCasa =
-        codigoBase || `MJ-${Date.now()}`;
-
-    let consecutivo = 1;
-
-    while (
-        await Casa.findOne({
-            where: {
-                codigoCasa
-            },
-            transaction
-        })
-    ) {
-        const sufijo =
-            `-${consecutivo}`;
-
-        codigoCasa =
-            `${codigoBase.slice(
-                0,
-                20 - sufijo.length
-            )}${sufijo}`;
-
-        consecutivo++;
-    }
-
     casa = await Casa.create(
         {
-            codigoCasa,
-            numeroCasa:
-                registro.numeroCasa ||
-                registro.casaExcel ||
-                'SIN-NUMERO',
+            calle: registro.calle,
+            numero: numeroCasa,
 
-            calle:
-                registro.calle,
+            nombre:
+                registro.nombre ||
+                null,
 
-            estatus:
-                registro.nombre
-                    ?.toUpperCase()
+            controles:
+                registro.controles ||
+                null,
+
+            pago:
+                ['ANUAL', 'MENSUAL', 'CONVENIO', 'OTRO']
                     .includes(
-                        'CASA NO EXISTE'
+                        texto(registro.tipoPago)
+                            .toUpperCase()
                     )
-                    ? 'INACTIVA'
-                    : 'ACTIVA',
+                    ? texto(registro.tipoPago)
+                        .toUpperCase()
+                    : null,
+
+            enRenta: false,
 
             observaciones: [
-                registro.nombre
-                    ? `Registro histórico julio 2026: ${registro.nombre}`
-                    : null,
-
-                registro.controles
-                    ? `Controles: ${registro.controles}`
-                    : null,
+                'Registro importado desde julio 2026',
 
                 registro.observaciones ||
                 null
@@ -484,7 +440,7 @@ async function ejecutar() {
 
                         correoEnviado: false,
                         correoDestino:
-                            casa.correoPrincipal,
+                            casa.correo,
 
                         fechaConfirmacion:
                             estatusPago === 'PAGADO'

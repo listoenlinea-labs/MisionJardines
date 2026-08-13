@@ -55,12 +55,14 @@ function obtenerInclude() {
             as: 'casa',
             attributes: [
                 'id',
-                'codigoCasa',
-                'numeroCasa',
+                'numero',
                 'calle',
-                'correoPrincipal',
-                'telefonoPrincipal',
-                'estatus'
+                'nombre',
+                'correo',
+                'telefono',
+                'pago',
+                'enRenta',
+                'controles'
             ],
             include: [
                 {
@@ -144,7 +146,7 @@ async function listarCuotas(req, res) {
                         model: Casa,
                         as: 'casa'
                     },
-                    'numeroCasa',
+                    'numero',
                     'ASC'
                 ]
             ]
@@ -218,11 +220,11 @@ async function crearCuota(req, res) {
             estatusPago: 'PENDIENTE',
             nombrePagador: null,
             numeroCasaSnapshot:
-                casa.numeroCasa,
+                casa.numero,
             calleSnapshot:
                 casa.calle,
             correoDestino:
-                casa.correoPrincipal,
+                casa.correo,
             observaciones:
                 observaciones || null
         });
@@ -610,8 +612,8 @@ async function confirmarPago(req, res) {
             req.body.correoDestino ||
             cuota.correoDestino ||
             contactoPrincipal?.correo ||
-            cuota.casa?.correoPrincipal ||
-            null;
+            cuota.casa?.correo
+        null;
 
         await cuota.update(
             {

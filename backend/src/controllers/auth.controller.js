@@ -40,9 +40,9 @@ async function iniciarSesion(req, res) {
                         as: 'casa',
                         attributes: [
                             'id',
-                            'codigoCasa',
-                            'numeroCasa',
-                            'calle'
+                            'numero',
+                            'calle',
+                            'nombre'
                         ]
                     }
                 ]
@@ -136,9 +136,9 @@ async function obtenerPerfil(req, res) {
                         as: 'casa',
                         attributes: [
                             'id',
-                            'codigoCasa',
-                            'numeroCasa',
-                            'calle'
+                            'numero',
+                            'calle',
+                            'nombre'
                         ]
                     }
                 ]
