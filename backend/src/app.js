@@ -39,7 +39,8 @@ app.use(
 
 const allowedOrigins = [
     process.env.FRONTEND_URL,
-    process.env.FRONTEND_URL_LOCALHOST,
+
+    'https://listoenlinea-labs.github.io',
 
     'http://127.0.0.1:3000',
     'http://localhost:3000',

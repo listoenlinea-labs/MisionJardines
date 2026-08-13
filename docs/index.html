@@ -593,6 +593,11 @@
 
 
   <script>
+    const API_URL =
+      location.hostname === 'localhost' ||
+        location.hostname === '127.0.0.1'
+        ? 'http://localhost:3000/api'
+        : 'https://TU-API-DE-HOSTINGER/api';
     const token =
       localStorage.getItem('misionJardinesToken')
       || sessionStorage.getItem('misionJardinesToken');
@@ -612,7 +617,7 @@
 
       try {
         const response = await fetch(
-          'http://localhost:3000/api/auth/perfil',
+          `${API_URL}/auth/perfil`,
           {
             headers: {
               Authorization: `Bearer ${token}`
