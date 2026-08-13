@@ -3,11 +3,13 @@ const Rol = require('./Rol');
 const Usuario = require('./Usuario');
 const Cuota = require('./Cuota');
 const FolioConsecutivo = require('./FolioConsecutivo');
-const Calle = require('./Calle');
 const Evento = require('./Evento');
 
 /*
- * Casa 1 ─── N Usuarios
+ * Casa 1 --- N Usuarios
+ *
+ * IMPORTANTE:
+ * Casa utiliza físicamente la tabla "direcciones".
  */
 Casa.hasMany(Usuario, {
     foreignKey: 'casaId',
@@ -20,31 +22,20 @@ Usuario.belongsTo(Casa, {
 });
 
 /*
- * Rol 1 ─── N Usuarios
+ * Rol 1 --- N Usuarios
  */
 Rol.hasMany(Usuario, {
     foreignKey: 'rolId',
     as: 'usuarios'
 });
-/*
- * Calle 1 ─── N Casas
- */
-Calle.hasMany(Casa, {
-    foreignKey: 'calleId',
-    as: 'casas'
-});
 
-Casa.belongsTo(Calle, {
-    foreignKey: 'calleId',
-    as: 'calleRelacion'
-});
 Usuario.belongsTo(Rol, {
     foreignKey: 'rolId',
     as: 'rol'
 });
 
 /*
- * Casa 1 ─── N Cuotas
+ * Casa 1 --- N Cuotas
  */
 Casa.hasMany(Cuota, {
     foreignKey: 'casaId',
@@ -57,7 +48,7 @@ Cuota.belongsTo(Casa, {
 });
 
 /*
- * Usuario confirma muchas cuotas.
+ * Usuario 1 --- N Cuotas confirmadas
  */
 Usuario.hasMany(Cuota, {
     foreignKey: 'confirmadoPorUsuarioId',
@@ -70,7 +61,6 @@ Cuota.belongsTo(Usuario, {
 });
 
 module.exports = {
-    Calle,
     Casa,
     Rol,
     Usuario,

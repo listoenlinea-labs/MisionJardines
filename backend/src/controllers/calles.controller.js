@@ -1,38 +1,36 @@
-const { Calle } = require('../models');
+const { Casa } = require('../models');
 
-async function listarCalles(req, res) {
+const listarCalles = async (req, res) => {
     try {
-        const calles = await Calle.findAll({
-            where: {
-                activo: true
-            },
+        const resultados = await Casa.findAll({
+            attributes: ['calle'],
+
+            group: ['calle'],
+
             order: [
-                ['nombre', 'ASC']
-            ]
+                ['calle', 'ASC']
+            ],
+
+            raw: true
         });
 
-        return res.json({
+        const calles = resultados.map(item => item.calle);
+
+        return res.status(200).json({
             ok: true,
             total: calles.length,
-            data: calles
+            calles
         });
+
     } catch (error) {
-        console.error(
-            'Error al listar calles:',
-            error
-        );
+        console.error('Error al obtener calles:', error);
 
         return res.status(500).json({
             ok: false,
-            message:
-                'No fue posible consultar las calles',
-            error:
-                process.env.NODE_ENV === 'development'
-                    ? error.message
-                    : undefined
+            message: 'Error al obtener las calles'
         });
     }
-}
+};
 
 module.exports = {
     listarCalles

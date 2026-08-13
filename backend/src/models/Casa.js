@@ -5,28 +5,9 @@ const Casa = sequelize.define(
     'Casa',
     {
         id: {
-            type: DataTypes.BIGINT.UNSIGNED,
+            type: DataTypes.INTEGER.UNSIGNED,
             primaryKey: true,
             autoIncrement: true
-        },
-
-        codigoCasa: {
-            type: DataTypes.STRING(20),
-            allowNull: false,
-            unique: true,
-            field: 'codigo_casa'
-        },
-
-        numeroCasa: {
-            type: DataTypes.STRING(20),
-            allowNull: false,
-            field: 'numero_casa'
-        },
-
-        calleId: {
-            type: DataTypes.BIGINT.UNSIGNED,
-            allowNull: true,
-            field: 'calle_id'
         },
 
         calle: {
@@ -34,44 +15,46 @@ const Casa = sequelize.define(
             allowNull: false
         },
 
-        manzana: {
+        numero: {
             type: DataTypes.STRING(20),
-            allowNull: true
+            allowNull: false
         },
 
-        lote: {
-            type: DataTypes.STRING(20),
-            allowNull: true
-        },
-
-        correoPrincipal: {
+        nombre: {
             type: DataTypes.STRING(150),
-            allowNull: true,
-            field: 'correo_principal'
+            allowNull: true
         },
 
-        telefonoPrincipal: {
-            type: DataTypes.STRING(25),
-            allowNull: true,
-            field: 'telefono_principal'
+        controles: {
+            type: DataTypes.STRING(255),
+            allowNull: true
         },
 
-        estatus: {
+        pago: {
             type: DataTypes.ENUM(
-                'ACTIVA',
-                'INACTIVA',
-                'DESHABITADA',
-                'RENTADA',
-                'BLOQUEADA'
+                'ANUAL',
+                'MENSUAL',
+                'CONVENIO',
+                'OTRO'
             ),
-            allowNull: false,
-            defaultValue: 'ACTIVA'
+            allowNull: true
         },
 
-        motivoBloqueo: {
-            type: DataTypes.STRING(500),
-            allowNull: true,
-            field: 'motivo_bloqueo'
+        enRenta: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            field: 'en_renta'
+        },
+
+        telefono: {
+            type: DataTypes.STRING(25),
+            allowNull: true
+        },
+
+        correo: {
+            type: DataTypes.STRING(150),
+            allowNull: true
         },
 
         observaciones: {
@@ -79,22 +62,24 @@ const Casa = sequelize.define(
             allowNull: true
         },
 
-        creadoEn: {
+        createdAt: {
             type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-            field: 'creado_en'
+            allowNull: true,
+            field: 'created_at'
         },
 
-        actualizadoEn: {
+        updatedAt: {
             type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-            field: 'actualizado_en'
+            allowNull: true,
+            field: 'updated_at'
         }
     },
     {
-        tableName: 'casas',
+        // IMPORTANTE:
+        // En MySQL se llama "direcciones", aunque en el backend
+        // conceptualmente lo manejemos como Casa.
+        tableName: 'direcciones',
+
         timestamps: false
     }
 );

@@ -1,32 +1,42 @@
 const { Casa } = require('../models');
 
-async function obtenerCasas(req, res) {
+const obtenerCasas = async (req, res) => {
     try {
         const casas = await Casa.findAll({
+            attributes: [
+                'id',
+                'calle',
+                'numero',
+                'nombre',
+                'controles',
+                'pago',
+                'enRenta',
+                'telefono',
+                'correo',
+                'observaciones'
+            ],
+
             order: [
                 ['calle', 'ASC'],
-                ['numeroCasa', 'ASC']
+                ['numero', 'ASC']
             ]
         });
 
         return res.status(200).json({
             ok: true,
             total: casas.length,
-            data: casas
+            casas
         });
+
     } catch (error) {
-        console.error('Error al consultar casas:', error);
+        console.error('Error al obtener casas:', error);
 
         return res.status(500).json({
             ok: false,
-            message: 'No fue posible consultar las casas',
-            error:
-                process.env.NODE_ENV === 'development'
-                    ? error.message
-                    : undefined
+            message: 'Error al obtener las casas'
         });
     }
-}
+};
 
 module.exports = {
     obtenerCasas
