@@ -117,21 +117,28 @@
         }
 
         .brand-logo {
-            width: 58px;
-            height: 58px;
-            display: grid;
-            place-items: center;
+            width: 135px;
+            height: 82px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow: hidden;
-            border: 1px solid #f3dcc3;
-            border-radius: 17px;
-            background: #fff7ed;
-            box-shadow: 0 8px 22px rgba(145, 79, 15, .09)
+
+            padding: 8px;
+
+            border: 1px solid rgba(219, 184, 143, .65);
+            border-radius: 18px;
+
+            background: rgba(255, 255, 255, .92);
+
+            box-shadow:
+                0 12px 30px rgba(98, 66, 30, .10);
         }
 
         .brand-logo img {
-            width: 82%;
-            height: 82%;
-            object-fit: contain
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .brand-copy strong {
@@ -396,21 +403,57 @@
         .password-toggle {
             position: absolute;
             top: 50%;
-            right: 9px;
+            right: 10px;
             transform: translateY(-50%);
-            width: 34px;
-            height: 34px;
-            display: grid;
-            place-items: center;
+
+            width: 36px;
+            height: 36px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 0;
+
             border: 0;
-            border-radius: 9px;
-            color: #7f8596;
+            border-radius: 10px;
+
+            color: #8b92a3;
             background: transparent;
-            cursor: pointer
+
+            cursor: pointer;
+
+            transition:
+                color .18s ease,
+                background .18s ease,
+                transform .18s ease;
+        }
+
+        .password-toggle svg {
+            width: 19px;
+            height: 19px;
+
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+
+            pointer-events: none;
         }
 
         .password-toggle:hover {
-            background: #f5f6f9
+            color: var(--primary-dark);
+            background: var(--primary-soft);
+        }
+
+        .password-toggle:active {
+            transform: translateY(-50%) scale(.94);
+        }
+
+        .password-toggle:focus-visible {
+            outline: 2px solid rgba(242, 140, 40, .35);
+            outline-offset: 2px;
         }
 
         .form-meta {
@@ -706,11 +749,116 @@
 
 <body>
     <main class="login-page">
+        <section class="login-showcase">
+
+            <div class="showcase-glow showcase-glow-one"></div>
+            <div class="showcase-glow showcase-glow-two"></div>
+
+            <div class="brand">
+                <div class="brand-logo">
+                    <img src="assets/images/logo-mision-jardines.png" alt="Logo Misión Jardines">
+                </div>
+
+                <div class="brand-copy">
+                    <strong>Misión Jardines</strong>
+                    <span>Portal residencial</span>
+                </div>
+            </div>
+
+
+            <div class="showcase-content">
+
+                <div class="showcase-badge">
+                    ● Plataforma vecinal
+                </div>
+
+                <h1>
+                    Tu comunidad,
+                    <span>más cerca de ti.</span>
+                </h1>
+
+                <p>
+                    Accede de forma segura a cuotas, visitas,
+                    avisos, reportes, eventos y servicios de
+                    Misión Jardines desde un solo lugar.
+                </p>
+
+
+                <div class="showcase-dashboard">
+
+                    <div class="showcase-dashboard-header">
+                        <strong>Portal Misión Jardines</strong>
+
+                        <span class="system-status">
+                            Sistema disponible
+                        </span>
+                    </div>
+
+                    <div class="showcase-metrics">
+
+                        <div class="showcase-metric">
+                            <small>Acceso</small>
+                            <strong>24/7</strong>
+                            <span>Portal disponible</span>
+                        </div>
+
+                        <div class="showcase-metric">
+                            <small>Seguridad</small>
+                            <strong>JWT</strong>
+                            <span>Sesión protegida</span>
+                        </div>
+
+                        <div class="showcase-metric">
+                            <small>Servicios</small>
+                            <strong>Todo</strong>
+                            <span>En un solo lugar</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="showcase-footer">
+
+                <div class="showcase-feature">
+
+                    <div class="feature-check">✓</div>
+
+                    <div>
+                        <strong>Información centralizada</strong>
+                        <small>Cuotas, visitas y avisos</small>
+                    </div>
+
+                </div>
+
+
+                <div class="showcase-feature">
+
+                    <div class="feature-check">✓</div>
+
+                    <div>
+                        <strong>Acceso protegido</strong>
+                        <small>Información según tu perfil</small>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
         <section class="login-form-section">
             <div class="login-card">
-                <div class="login-heading"><small>Acceso al portal</small>
+                <div class="login-heading">
+                    <small>BIENVENIDO</small>
+
                     <h2>Iniciar sesión</h2>
-                    <p>Escribe el correo y la contraseña registrados por la administración.</p>
+
+                    <p>
+                        Ingresa a tu portal residencial de Misión Jardines.
+                    </p>
                 </div>
                 <form id="loginForm" novalidate>
                     <div class="form-group"><label class="form-label" for="correo">Correo electrónico</label>
@@ -722,7 +870,16 @@
                         <div class="input-wrapper"><span class="input-icon">🔒</span><input class="form-input"
                                 id="contrasena" name="contrasena" type="password" placeholder="Escribe tu contraseña"
                                 autocomplete="current-password" required /><button class="password-toggle"
-                                id="passwordToggle" type="button" aria-label="Mostrar contraseña">👁</button></div>
+                                id="passwordToggle" type="button" aria-label="Mostrar contraseña"
+                                title="Mostrar contraseña">
+                                <svg id="passwordToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 3l18 18"></path>
+                                    <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path>
+                                    <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c5.5 0 9.5 5 9.5 5a17.6 17.6 0 0 1-2.1 2.6">
+                                    </path>
+                                    <path d="M6.6 6.6C4 8.2 2.5 12 2.5 12s4 5 9.5 5a10.6 10.6 0 0 0 4.1-.8"></path>
+                                </svg>
+                            </button></div>
                     </div>
                     <div class="form-meta"><label class="remember-option"><input id="recordarme"
                                 type="checkbox" />Mantener sesión iniciada</label><a class="forgot-link" href="#"
@@ -753,7 +910,50 @@
                 ? 'http://localhost:3000/api'
                 : 'https://api-misionjardines.listoenlinea.host/api';
         const loginForm = document.getElementById("loginForm"), correoInput = document.getElementById("correo"), contrasenaInput = document.getElementById("contrasena"), passwordToggle = document.getElementById("passwordToggle"), loginButton = document.getElementById("loginButton"), buttonText = document.getElementById("buttonText"), loginMessage = document.getElementById("loginMessage"), messageIcon = document.getElementById("messageIcon"), messageTitle = document.getElementById("messageTitle"), messageText = document.getElementById("messageText"), sessionPreview = document.getElementById("sessionPreview"), sessionAvatar = document.getElementById("sessionAvatar"), sessionName = document.getElementById("sessionName"), sessionDetails = document.getElementById("sessionDetails");
-        passwordToggle.addEventListener("click", () => { const mostrando = contrasenaInput.type === "text"; contrasenaInput.type = mostrando ? "password" : "text"; passwordToggle.textContent = mostrando ? "👁" : "🙈"; passwordToggle.setAttribute("aria-label", mostrando ? "Mostrar contraseña" : "Ocultar contraseña") });
+        const iconoOjoCerrado = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 3l18 18"></path>
+        <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path>
+        <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c5.5 0 9.5 5 9.5 5a17.6 17.6 0 0 1-2.1 2.6"></path>
+        <path d="M6.6 6.6C4 8.2 2.5 12 2.5 12s4 5 9.5 5a10.6 10.6 0 0 0 4.1-.8"></path>
+    </svg>
+`;
+
+        const iconoOjoAbierto = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"></path>
+        <circle cx="12" cy="12" r="2.5"></circle>
+    </svg>
+`;
+
+        passwordToggle.addEventListener("click", () => {
+            const contraseñaVisible =
+                contrasenaInput.type === "text";
+
+            if (contraseñaVisible) {
+                contrasenaInput.type = "password";
+                passwordToggle.innerHTML = iconoOjoCerrado;
+                passwordToggle.setAttribute(
+                    "aria-label",
+                    "Mostrar contraseña"
+                );
+                passwordToggle.setAttribute(
+                    "title",
+                    "Mostrar contraseña"
+                );
+            } else {
+                contrasenaInput.type = "text";
+                passwordToggle.innerHTML = iconoOjoAbierto;
+                passwordToggle.setAttribute(
+                    "aria-label",
+                    "Ocultar contraseña"
+                );
+                passwordToggle.setAttribute(
+                    "title",
+                    "Ocultar contraseña"
+                );
+            }
+        });
         function mostrarMensaje(tipo, titulo, texto) { loginMessage.className = `login-message visible ${tipo}`; messageIcon.textContent = tipo === "success" ? "✓" : "!"; messageTitle.textContent = titulo; messageText.textContent = texto }
         function limpiarMensaje() { loginMessage.className = "login-message"; sessionPreview.classList.remove("visible") }
         function activarCarga() { loginButton.disabled = true; loginButton.classList.add("loading"); buttonText.textContent = "Verificando acceso..." }
