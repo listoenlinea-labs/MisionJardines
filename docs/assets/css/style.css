@@ -7618,3 +7618,224 @@ body.modal-open {
     border-color 0.18s ease,
     box-shadow 0.18s ease;
 }
+
+/* =========================================================
+   MAPA NUEVO — MISION JARDINES
+   Compatibilidad con sistema visual general
+   ========================================================= */
+
+.page-mapa {
+  background:
+    radial-gradient(circle at 90% 0%,
+      rgba(113, 87, 217, 0.07),
+      transparent 28%),
+    linear-gradient(180deg,
+      #fbfcfe 0%,
+      #f4f6fb 100%) !important;
+
+  color: #202536 !important;
+}
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.page-mapa header {
+  background: #ffffff !important;
+  border-right: 1px solid #e5e8f0 !important;
+  border-bottom: 0 !important;
+  box-shadow: 7px 0 24px rgba(44, 52, 77, 0.04) !important;
+}
+
+.page-mapa nav {
+  background: transparent !important;
+}
+
+.page-mapa .brand-title {
+  color: #202536 !important;
+}
+
+.page-mapa .brand small {
+  color: #7b8191 !important;
+}
+
+.page-mapa .menu a {
+  color: #697184 !important;
+}
+
+.page-mapa .menu a:hover {
+  color: #d97706 !important;
+  background: #fff4e6 !important;
+}
+
+.page-mapa .menu a.active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg,
+      #f28c28,
+      #d97706) !important;
+
+  box-shadow:
+    0 7px 18px rgba(217, 119, 6, 0.2) !important;
+}
+
+
+/* =========================================================
+   LOGO
+   ========================================================= */
+
+.page-mapa .logo img {
+  filter: none !important;
+}
+
+
+/* =========================================================
+   EVITAR QUE REGLAS GENERALES AFECTEN EL BUSCADOR
+   ========================================================= */
+
+.page-mapa .map-search input {
+  color: #243147 !important;
+  background: #ffffff !important;
+  border: 1px solid #dfe5ed !important;
+
+  padding:
+    0 14px 0 42px !important;
+
+  border-radius: 13px !important;
+}
+
+.page-mapa .map-search input::placeholder {
+  color: #98a1b0 !important;
+}
+
+.page-mapa .map-search input:focus {
+  border-color: #efa75f !important;
+
+  background: #ffffff !important;
+
+  box-shadow:
+    0 0 0 4px rgba(232, 121, 10, 0.1) !important;
+}
+
+
+/* =========================================================
+   BOTONES DEL MAPA
+   Evita las reglas globales de button:hover
+   ========================================================= */
+
+.page-mapa .map-icon-button,
+.page-mapa .detail-actions button {
+  font-family: inherit;
+}
+
+.page-mapa .map-icon-button:hover {
+  transform: none !important;
+  filter: none !important;
+}
+
+.page-mapa .detail-secondary:hover {
+  transform: none !important;
+  filter: none !important;
+}
+
+
+/* =========================================================
+   CROQUIS
+   ========================================================= */
+
+.page-mapa .map-viewport {
+  border-radius: 0 0 21px 21px;
+}
+
+.page-mapa .map-svg {
+  max-width: none !important;
+}
+
+.page-mapa .map-lot {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* =========================================================
+   PANEL LATERAL
+   ========================================================= */
+
+.page-mapa .detail-card,
+.page-mapa .legend-card {
+  color: #202536 !important;
+}
+
+.page-mapa .detail-row strong {
+  color: #303a4d !important;
+}
+
+.page-mapa .detail-row span {
+  color: #8a93a4 !important;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.page-mapa footer {
+  color: #9298a8 !important;
+  border-top: 1px solid #e5e8f0 !important;
+}
+
+.page-mapa .powered-by {
+  color: #9298a8 !important;
+}
+
+.page-mapa .powered-by a {
+  color: #d97706 !important;
+}
+
+.page-mapa .powered-by a:hover {
+  color: #f28c28 !important;
+  text-shadow: none !important;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .page-mapa {
+    padding-left: 0 !important;
+  }
+
+  .page-mapa header {
+    border-right: 0 !important;
+    border-bottom: 1px solid #e5e8f0 !important;
+  }
+
+  .page-mapa .map-page-shell {
+    width: calc(100% - 28px);
+  }
+
+}
+
+
+@media (max-width: 640px) {
+
+  .page-mapa .map-page-shell {
+    width: calc(100% - 22px);
+    padding-top: 22px;
+  }
+
+  .page-mapa .map-hero h1 {
+    font-size: 32px !important;
+  }
+
+  .page-mapa .map-hero p {
+    font-size: 13px;
+  }
+
+  .page-mapa .map-card {
+    border-radius: 17px;
+  }
+
+}

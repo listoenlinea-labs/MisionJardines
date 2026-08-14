@@ -6,6 +6,779 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mapa | Misión Jardines</title>
   <link rel="stylesheet" href="assets/css/style.css" />
+
+  <style>
+    /* =========================================================
+       MAPA MISION JARDINES — PLANO REAL
+       ========================================================= */
+
+    .page-mapa {
+      --map-orange: #e8790a;
+      --map-orange-soft: #fff4e8;
+      --map-green: #a8cf8b;
+      --map-green-line: #7fa867;
+      --map-blue: #dbe8f1;
+      --map-blue-line: #9eb4c3;
+      --map-beige: #fff1cf;
+      --map-beige-line: #caa96a;
+      --map-road: #d8d8d8;
+      --map-road-line: #a8a8a8;
+      --map-peach: #f4ab7a;
+      --map-ink: #172033;
+      --map-muted: #687386;
+      --map-line: #e4e9f0;
+      --map-surface: #ffffff;
+    }
+
+    .page-mapa .map-page-shell {
+      width: min(1460px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 34px 0 52px;
+    }
+
+    .page-mapa .map-hero {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 28px;
+      margin-bottom: 20px;
+    }
+
+    .page-mapa .map-hero-copy {
+      max-width: 760px;
+    }
+
+    .page-mapa .map-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+      padding: 7px 11px;
+      border: 1px solid #f2d6b5;
+      border-radius: 999px;
+      color: #b95f08;
+      background: #fff8ef;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .page-mapa .map-hero h1 {
+      margin: 0;
+      color: var(--map-ink);
+      font-size: clamp(34px, 4vw, 52px);
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+
+    .page-mapa .map-hero h1 span {
+      color: var(--map-orange);
+      background: none;
+      -webkit-text-fill-color: initial;
+    }
+
+    .page-mapa .map-hero p {
+      max-width: 760px;
+      margin: 12px 0 0;
+      color: var(--map-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .page-mapa .map-tools {
+      display: flex;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+
+    .page-mapa .map-search {
+      position: relative;
+      width: min(330px, 38vw);
+    }
+
+    .page-mapa .map-search svg {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      width: 17px;
+      height: 17px;
+      transform: translateY(-50%);
+      fill: none;
+      stroke: #8b95a7;
+      stroke-width: 2;
+      pointer-events: none;
+    }
+
+    .page-mapa .map-search input {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px 0 41px !important;
+      border: 1px solid #dfe5ed !important;
+      border-radius: 13px !important;
+      color: #243147 !important;
+      background: #fff !important;
+      outline: none;
+      font-size: 12px;
+      box-shadow: 0 5px 18px rgba(41, 55, 76, .045);
+    }
+
+    .page-mapa .map-search input:focus {
+      border-color: #efa75f !important;
+      box-shadow: 0 0 0 4px rgba(232, 121, 10, .1) !important;
+    }
+
+    .page-mapa .map-dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .page-mapa .map-card {
+      min-width: 0;
+      border: 1px solid var(--map-line);
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 12px 35px rgba(44, 57, 78, .07);
+    }
+
+    .page-mapa .map-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 15px 17px;
+      border-bottom: 1px solid #edf1f5;
+    }
+
+    .page-mapa .map-card-head strong {
+      display: block;
+      color: #283247;
+      font-size: 14px;
+    }
+
+    .page-mapa .map-card-head small {
+      display: block;
+      margin-top: 2px;
+      color: #8993a4;
+      font-size: 10px;
+    }
+
+    .page-mapa .map-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid #cbe8d8;
+      border-radius: 999px;
+      color: #23704d;
+      background: #edf9f2;
+      font-size: 9px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .page-mapa .map-live::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #2eaa70;
+    }
+
+    /* IMPORTANTE: sin scroll interno */
+    .page-mapa .map-viewport {
+      overflow: hidden !important;
+      padding: 14px;
+      background: linear-gradient(180deg, #fafbfd, #f5f7fa);
+    }
+
+    .page-mapa .map-canvas {
+      width: 100%;
+      height: min(72vh, 860px);
+      min-height: 650px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .page-mapa .map-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      user-select: none;
+    }
+
+    .page-mapa .map-lot {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .page-mapa .map-lot rect {
+      transition: .15s ease;
+    }
+
+    .page-mapa .map-lot:hover rect,
+    .page-mapa .map-lot:focus rect {
+      stroke: #e8790a !important;
+      stroke-width: 2.4 !important;
+      filter: drop-shadow(0 2px 3px rgba(80, 45, 10, .2));
+    }
+
+    .page-mapa .map-lot.selected rect {
+      stroke: #e8790a !important;
+      stroke-width: 3 !important;
+      filter: drop-shadow(0 3px 4px rgba(232, 121, 10, .28));
+    }
+
+    .page-mapa .map-lot text {
+      fill: #172033;
+      font-size: 7.2px;
+      font-weight: 800;
+      pointer-events: none;
+    }
+
+    .page-mapa .map-side {
+      display: grid;
+      gap: 14px;
+      position: sticky;
+      top: 18px;
+    }
+
+    .page-mapa .detail-card,
+    .page-mapa .legend-card {
+      padding: 18px;
+    }
+
+    .page-mapa .detail-kicker {
+      color: var(--map-orange);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+    }
+
+    .page-mapa .detail-title {
+      margin: 5px 0 4px;
+      color: #273247;
+      font-size: 23px;
+      letter-spacing: -.7px;
+    }
+
+    .page-mapa .detail-subtitle {
+      margin: 0 0 15px;
+      color: #7d8799;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .page-mapa .detail-empty {
+      padding: 22px 12px;
+      border: 1px dashed #d5dce6;
+      border-radius: 14px;
+      color: #8791a3;
+      background: #fafbfd;
+      text-align: center;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    .page-mapa .detail-grid {
+      display: none;
+      overflow: hidden;
+      border: 1px solid #e6eaf0;
+      border-radius: 13px;
+      background: #e6eaf0;
+      gap: 1px;
+    }
+
+    .page-mapa .detail-grid.visible {
+      display: grid;
+    }
+
+    .page-mapa .detail-row {
+      display: grid;
+      grid-template-columns: 95px 1fr;
+      gap: 10px;
+      padding: 10px 11px;
+      background: #fff;
+    }
+
+    .page-mapa .detail-row span {
+      color: #8a93a4;
+      font-size: 9.5px;
+    }
+
+    .page-mapa .detail-row strong {
+      color: #303a4d;
+      font-size: 10px;
+      text-align: right;
+    }
+
+    .page-mapa .status-pill {
+      display: inline-flex;
+      margin-top: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 900;
+    }
+
+    .page-mapa .status-pill.none {
+      color: #687386;
+      background: #f0f3f7;
+    }
+
+    .page-mapa .detail-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .page-mapa .detail-actions button,
+    .page-mapa .detail-actions a {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 9.5px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .page-mapa .detail-primary {
+      color: #fff;
+      border: 1px solid #d66e08;
+      background: linear-gradient(135deg, #f28c28, #dc7208);
+    }
+
+    .page-mapa .detail-secondary {
+      color: #536074;
+      border: 1px solid #dfe5ed;
+      background: #fff;
+    }
+
+    .page-mapa .legend-card h3 {
+      margin: 0 0 12px;
+      color: #354054;
+      font-size: 12px;
+    }
+
+    .page-mapa .legend-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .page-mapa .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #707b8f;
+      font-size: 9.5px;
+    }
+
+    .page-mapa .legend-swatch {
+      width: 10px;
+      height: 10px;
+      border: 1px solid #cbd4df;
+      border-radius: 3px;
+      background: #fff;
+    }
+
+    .page-mapa .legend-swatch.common {
+      border-color: #7fa867;
+      background: #a8cf8b;
+    }
+
+    .page-mapa .legend-swatch.road {
+      border-color: #aaa;
+      background: #d8d8d8;
+    }
+
+    .page-mapa .map-hint {
+      padding: 10px 16px;
+      border-top: 1px solid #edf1f5;
+      color: #8a94a5;
+      background: #fbfcfd;
+      font-size: 8.5px;
+      text-align: center;
+    }
+
+    .page-mapa .search-results {
+      position: absolute;
+      z-index: 500;
+      top: calc(100% + 7px);
+      left: 0;
+      right: 0;
+      display: none;
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid #e1e6ed;
+      border-radius: 13px;
+      background: #fff;
+      box-shadow: 0 14px 35px rgba(35, 47, 66, .14);
+    }
+
+    .page-mapa .search-results.visible {
+      display: block;
+    }
+
+    .page-mapa .search-result {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 11px;
+      border: 0;
+      border-bottom: 1px solid #eef1f5;
+      border-radius: 0;
+      color: #344054;
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      font-size: 9.5px;
+    }
+
+    .page-mapa .search-result:hover {
+      transform: none;
+      filter: none;
+      background: #fff8f0;
+    }
+
+    @media (max-width: 1120px) {
+      .page-mapa .map-dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .page-mapa .map-side {
+        position: static;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .page-mapa .map-canvas {
+        height: 820px;
+      }
+    }
+
+    @media (max-width: 780px) {
+      .page-mapa .map-page-shell {
+        width: calc(100% - 26px);
+        padding-top: 24px;
+      }
+
+      .page-mapa .map-hero {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .page-mapa .map-tools,
+      .page-mapa .map-search {
+        width: 100%;
+      }
+
+      .page-mapa .map-side {
+        grid-template-columns: 1fr;
+      }
+
+      .page-mapa .map-canvas {
+        height: 680px;
+        min-height: 560px;
+      }
+    }
+
+    /* =========================================================
+       CONTROLES PROFESIONALES DEL PLANO
+       ========================================================= */
+
+    .page-mapa .map-card-head {
+      align-items: flex-start;
+    }
+
+    .page-mapa .map-card-head-copy {
+      min-width: 180px;
+      padding-top: 2px;
+    }
+
+    .page-mapa .map-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    .page-mapa .street-filter-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 220px;
+      height: 38px;
+      padding: 0 10px;
+      border: 1px solid #dfe5ed;
+      border-radius: 11px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(41, 55, 76, .035);
+    }
+
+    .page-mapa .street-filter-wrap svg {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: #8b95a7;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .page-mapa .street-filter {
+      width: 100%;
+      height: 36px;
+      padding: 0 28px 0 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      color: #344054 !important;
+      background: transparent !important;
+      outline: 0 !important;
+      box-shadow: none !important;
+      font-family: inherit;
+      font-size: 10.5px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .page-mapa .map-control-group {
+      display: inline-flex;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid #dfe5ed;
+      border-radius: 11px;
+      background: #f8fafc;
+    }
+
+    .page-mapa .map-control {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 8px !important;
+      color: #667085;
+      background: transparent;
+      cursor: pointer;
+      transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+    }
+
+    .page-mapa .map-control:hover {
+      transform: none !important;
+      filter: none !important;
+      color: #d97706;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(44, 57, 78, .08);
+    }
+
+    .page-mapa .map-control.active {
+      color: #fff;
+      background: #e8790a;
+    }
+
+    .page-mapa .map-control svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .page-mapa .map-stage {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #e5eaf0;
+      background:
+        linear-gradient(rgba(82, 103, 128, .028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(82, 103, 128, .028) 1px, transparent 1px),
+        radial-gradient(circle at 50% 45%, #ffffff 0%, #f8fafc 72%);
+      background-size: 24px 24px, 24px 24px, auto;
+    }
+
+    .page-mapa .map-stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      box-shadow: inset 0 0 45px rgba(56, 68, 86, .035);
+    }
+
+    .page-mapa .map-viewport {
+      position: relative;
+      z-index: 1;
+      padding: 10px !important;
+      background: transparent !important;
+    }
+
+    .page-mapa .map-canvas {
+      min-height: 700px;
+      height: min(76vh, 900px);
+    }
+
+    .page-mapa .map-svg {
+      transition: filter .18s ease;
+    }
+
+    .page-mapa .map-lot.is-dimmed {
+      opacity: .18;
+    }
+
+    .page-mapa .map-lot.is-highlighted rect {
+      stroke: #e8790a !important;
+      stroke-width: 1.8 !important;
+    }
+
+    .page-mapa .map-selection-banner {
+      position: absolute;
+      z-index: 5;
+      top: 14px;
+      left: 14px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      max-width: calc(100% - 28px);
+      padding: 8px 10px;
+      border: 1px solid #f0c48f;
+      border-radius: 10px;
+      color: #9a5108;
+      background: rgba(255, 248, 239, .94);
+      box-shadow: 0 6px 18px rgba(86, 54, 20, .08);
+      backdrop-filter: blur(8px);
+      font-size: 9.5px;
+      font-weight: 800;
+    }
+
+    .page-mapa .map-selection-banner.visible {
+      display: flex;
+    }
+
+    .page-mapa .map-selection-banner button {
+      margin-left: 3px;
+      padding: 3px 6px !important;
+      border: 0 !important;
+      border-radius: 6px !important;
+      color: #9a5108;
+      background: rgba(232, 121, 10, .08);
+      font-size: 9px;
+      cursor: pointer;
+    }
+
+    .page-mapa .map-selection-banner button:hover {
+      transform: none !important;
+      filter: none !important;
+      background: rgba(232, 121, 10, .15);
+    }
+
+    .page-mapa .map-zoom-indicator {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border: 1px solid rgba(213, 220, 229, .92);
+      border-radius: 9px;
+      color: #7b8597;
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(8px);
+      font-size: 8.5px;
+      font-weight: 800;
+      pointer-events: none;
+    }
+
+    .page-mapa .map-zoom-indicator::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #e8790a;
+    }
+
+    .page-mapa .map-summary-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      border-top: 1px solid #edf1f5;
+      background: #edf1f5;
+    }
+
+    .page-mapa .map-summary-item {
+      padding: 9px 13px;
+      background: #fff;
+    }
+
+    .page-mapa .map-summary-item span {
+      display: block;
+      color: #929bad;
+      font-size: 8px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: .45px;
+    }
+
+    .page-mapa .map-summary-item strong {
+      display: block;
+      margin-top: 2px;
+      color: #354054;
+      font-size: 10px;
+    }
+
+    @media (max-width: 1180px) {
+      .page-mapa .map-card-head {
+        flex-direction: column;
+      }
+
+      .page-mapa .map-toolbar {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .page-mapa .street-filter-wrap {
+        flex: 1 1 240px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page-mapa .map-toolbar {
+        display: grid;
+        grid-template-columns: 1fr auto;
+      }
+
+      .page-mapa .street-filter-wrap {
+        min-width: 0;
+      }
+
+      .page-mapa .map-live {
+        display: none;
+      }
+
+      .page-mapa .map-summary-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .page-mapa .map-canvas {
+        min-height: 570px;
+        height: 68vh;
+      }
+    }
+  </style>
 </head>
 
 <body class="page-mapa">
@@ -16,315 +789,1023 @@
         <div class="logo">
           <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
-
         <div>
-          <div style="font-size:2rem;font-weight:900;">
-            Misión Jardines
-          </div>
-
-          <small style="font-size:1.1rem;">
-            Croquis interactivo del fraccionamiento
-          </small>
+          <div class="brand-title">Misión Jardines</div>
+          <small>Portal vecinal · Zapopan, Jalisco</small>
         </div>
       </div>
 
       <div class="menu">
-        <a href="index.html">
-          Inicio
-        </a>
-
-        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
-          Cuotas
-        </a>
-
-        <a href="bases_datos.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">
-          Base de Datos
-        </a>
-
-        <a class="active" href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
-          Mapa
-        </a>
-
-        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">
-          Visitas
-        </a>
-
-        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">
-          Seguridad
-        </a>
-
-        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">
-          Calendario
-        </a>
-
-        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">
-          Reportes
-        </a>
-
+        <a href="index.html">Inicio</a>
+        <a href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">Cuotas</a>
+        <a href="bases_datos.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">Base de Datos</a>
+        <a class="active" href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">Mapa</a>
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">Visitas</a>
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">Seguridad</a>
+        <a href="calendario.html"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">Calendario</a>
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">Reportes</a>
         <a href="directorio.html"
-          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">
-          Directorio
-        </a>
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">Directorio</a>
       </div>
     </nav>
   </header>
 
-  <section class="hero">
-    <div class="badge">🗺️ Croquis visual · Misión Jardines</div>
-    <h1>Mapa del <span>fraccionamiento</span></h1>
-    <p>
-      Croquis plano, limpio y fácil de leer para identificar casas, calles principales,
-      estatus de cuota y ubicación general dentro de Misión Jardines.
-    </p>
-  </section>
+  <main class="map-page-shell">
 
-  <section class="section">
-    <div class="layout">
-      <div class="card">
-        <div class="map-scroll">
-          <div class="croquis">
-            <div class="zone"></div>
-
-            <div class="road main outer-top"></div>
-            <div class="road main outer-left"></div>
-            <div class="road main outer-right"></div>
-            <div class="road main outer-bottom"></div>
-
-            <div class="road inner-jardines"></div>
-            <div class="road inner-gardenias"></div>
-            <div class="road inner-jazmines"></div>
-            <div class="road inner-lirios"></div>
-            <div class="road inner-rosas"></div>
-
-            <div class="block block-a"></div>
-            <div class="block block-b"></div>
-            <div class="block block-c"></div>
-            <div class="block block-d"></div>
-
-            <div class="road-label lbl-top">Calle Prof. Acueducto</div>
-            <div class="road-label lbl-left">C. Atotonilco</div>
-            <div class="road-label lbl-right">Av. Guadalajara</div>
-            <div class="road-label lbl-bottom">Av. Valle de México</div>
-
-            <div class="road-label lbl-jardines">Misión Jardines</div>
-            <div class="road-label lbl-gardenias">C. Misión Gardenias</div>
-            <div class="road-label lbl-jazmines">Misión Jazmines</div>
-            <div class="road-label lbl-lirios">Misión de Los Lirios</div>
-            <div class="road-label lbl-rosas">C. Misión Rosas</div>
-
-            <div class="zone-title">Fraccionamiento Misión Jardines</div>
-
-            <div class="park"></div>
-            <div class="park-label">Jardín / Área común</div>
-
-            <div class="house paid" style="left:160px;top:210px"
-              onclick="selectHouse(this,'MJ-001','Misión Jardines','101','Pagado','04/06/2026')">101</div>
-            <div class="house pending" style="left:160px;top:270px"
-              onclick="selectHouse(this,'MJ-002','Misión Jardines','102','Pendiente','')">102</div>
-            <div class="house paid" style="left:160px;top:330px"
-              onclick="selectHouse(this,'MJ-003','Misión Jardines','103','Pagado','02/06/2026')">103</div>
-            <div class="house review" style="left:160px;top:390px"
-              onclick="selectHouse(this,'MJ-004','Misión Jardines','104','En revisión','')">104</div>
-
-            <div class="house paid" style="left:310px;top:210px"
-              onclick="selectHouse(this,'MG-001','Misión Gardenias','201','Pagado','05/06/2026')">201</div>
-            <div class="house pending" style="left:310px;top:270px"
-              onclick="selectHouse(this,'MG-002','Misión Gardenias','202','Pendiente','')">202</div>
-            <div class="house paid" style="left:310px;top:330px"
-              onclick="selectHouse(this,'MG-003','Misión Gardenias','203','Pagado','01/06/2026')">203</div>
-            <div class="house pending" style="left:310px;top:390px"
-              onclick="selectHouse(this,'MG-004','Misión Gardenias','204','Pendiente','')">204</div>
-
-            <div class="house review" style="left:475px;top:210px"
-              onclick="selectHouse(this,'MZ-001','Misión Jazmines','301','En revisión','')">301</div>
-            <div class="house paid" style="left:475px;top:270px"
-              onclick="selectHouse(this,'MZ-002','Misión Jazmines','302','Pagado','06/06/2026')">302</div>
-            <div class="house pending" style="left:475px;top:330px"
-              onclick="selectHouse(this,'MZ-003','Misión Jazmines','303','Pendiente','')">303</div>
-
-            <div class="house paid" style="left:610px;top:260px"
-              onclick="selectHouse(this,'ML-001','Misión de Los Lirios','401','Pagado','03/06/2026')">401</div>
-            <div class="house pending" style="left:675px;top:260px"
-              onclick="selectHouse(this,'ML-002','Misión de Los Lirios','402','Pendiente','')">402</div>
-            <div class="house paid" style="left:740px;top:260px"
-              onclick="selectHouse(this,'ML-003','Misión de Los Lirios','403','Pagado','04/06/2026')">403</div>
-
-            <div class="house pending" style="left:625px;top:405px"
-              onclick="selectHouse(this,'MR-001','Misión Rosas','501','Pendiente','')">501</div>
-            <div class="house paid" style="left:690px;top:405px"
-              onclick="selectHouse(this,'MR-002','Misión Rosas','502','Pagado','02/06/2026')">502</div>
-            <div class="house review" style="left:755px;top:405px"
-              onclick="selectHouse(this,'MR-003','Misión Rosas','503','En revisión','')">503</div>
-          </div>
-        </div>
+    <section class="map-hero">
+      <div class="map-hero-copy">
+        <div class="map-eyebrow">Plano residencial · Misión Jardines</div>
+        <h1>Mapa del <span>fraccionamiento</span></h1>
+        <p>
+          Croquis interactivo basado en el plano administrativo real. La distribución mantiene
+          la estructura general del archivo original y permite seleccionar viviendas directamente.
+        </p>
       </div>
 
-      <aside class="card panel">
-        <h2>Detalle de casa</h2>
-        <p>Da clic sobre una casa para ver información de ubicación y estado de cuota.</p>
+      <div class="map-tools">
+        <div class="map-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.5-3.5"></path>
+          </svg>
+          <input id="houseSearch" type="search" placeholder="Buscar casa o calle..." autocomplete="off">
+          <div id="searchResults" class="search-results"></div>
+        </div>
+      </div>
+    </section>
 
-        <div class="info-box">
-          <h3>Casa seleccionada</h3>
-          <div class="info-row"><span>Casa/Lote</span><strong id="infoCasa">MJ-001</strong></div>
-          <div class="info-row"><span>Calle</span><strong id="infoCalle">Misión Jardines</strong></div>
-          <div class="info-row"><span>Número</span><strong id="infoNumero">101</strong></div>
-          <div class="info-row"><span>Último pago</span><strong id="infoPago">04/06/2026</strong></div>
-          <span id="infoStatus" class="chip paid">Pagado</span>
+    <section class="map-dashboard">
+
+      <article class="map-card">
+        <div class="map-card-head">
+          <div class="map-card-head-copy">
+            <strong>Croquis interactivo</strong>
+            <small>Filtra por calle, acerca el plano o selecciona directamente una vivienda.</small>
+          </div>
+
+          <div class="map-toolbar">
+            <div class="street-filter-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16"></path>
+                <path d="M7 12h10"></path>
+                <path d="M10 18h4"></path>
+              </svg>
+
+              <select id="streetFilter" class="street-filter" aria-label="Filtrar por calle">
+                <option value="">Todas las calles</option>
+              </select>
+            </div>
+
+            <div class="map-control-group" aria-label="Controles de zoom">
+              <button id="zoomOutButton" class="map-control" type="button" title="Alejar" aria-label="Alejar">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <path d="M8 11h6"></path>
+                  <path d="m20 20-4-4"></path>
+                </svg>
+              </button>
+
+              <button id="resetZoomButton" class="map-control" type="button" title="Ver plano completo"
+                aria-label="Ver plano completo">
+                <svg viewBox="0 0 24 24">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+                  <path d="M16 3h3a2 2 0 0 1 2 2v3"></path>
+                  <path d="M8 21H5a2 2 0 0 1-2-2v-3"></path>
+                  <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+                </svg>
+              </button>
+
+              <button id="zoomInButton" class="map-control" type="button" title="Acercar" aria-label="Acercar">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <path d="M8 11h6"></path>
+                  <path d="M11 8v6"></path>
+                  <path d="m20 20-4-4"></path>
+                </svg>
+              </button>
+            </div>
+
+            <span class="map-live">Plano disponible</span>
+          </div>
         </div>
 
-        <div class="legend">
-          <div class="legend-item"><span class="dot paid"></span><span>Cuota pagada</span></div>
-          <div class="legend-item"><span class="dot pending"></span><span>Pendiente</span></div>
-          <div class="legend-item"><span class="dot review"></span><span>En revisión</span></div>
-          <div class="legend-item"><span class="dot road"></span><span style="padding-left:30px;">Calles
-              interiores</span></div>
-          <div class="legend-item"><span class="dot limit"></span><span>Calles límite</span></div>
+        <div class="map-stage">
+          <div id="mapSelectionBanner" class="map-selection-banner">
+            <span id="mapSelectionText">Mostrando todos los lotes</span>
+            <button id="clearStreetFilterButton" type="button">Restablecer</button>
+          </div>
+
+          <div class="map-viewport">
+            <div class="map-canvas">
+              <svg id="residentialMap" class="map-svg" viewBox="0 0 760 1030" preserveAspectRatio="xMidYMid meet"
+                role="img" aria-label="Plano real de Misión Jardines">
+
+                <!-- Fondo exterior -->
+                <rect x="2" y="2" width="756" height="1026" fill="#f4ab7a" stroke="#111" stroke-width="2" />
+
+                <!-- Estructura general gris -->
+                <path d="
+              M55 32
+              H742
+              V1018
+              H55
+              V896
+              H18
+              V810
+              H55
+              V722
+              H18
+              V642
+              H55
+              V556
+              H18
+              V476
+              H55
+              V390
+              H18
+              V310
+              H55
+              Z" fill="#d8d8d8" stroke="#111" stroke-width="1.6" />
+
+                <!-- Zona interior principal -->
+                <path d="
+              M78 56
+              H714
+              V90
+              H668
+              V196
+              H636
+              V228
+              H624
+              V598
+              H544
+              V986
+              H78
+              Z" fill="#fff" stroke="#111" stroke-width="1.4" />
+
+                <!-- ATOTONILCO -->
+                <rect x="78" y="56" width="636" height="38" fill="#fff" stroke="#111" stroke-width="1" />
+                <text x="395" y="78" text-anchor="middle" font-size="11" font-weight="900">ATOTONILCO</text>
+
+                <!-- H4-1 -->
+                <rect x="103" y="100" width="340" height="111" fill="#dbe8f1" stroke="#111" stroke-width="1.2" />
+                <rect x="116" y="151" width="314" height="34" fill="#fff" stroke="#111" stroke-width=".8" />
+                <text x="132" y="200" font-size="9" font-weight="900">H4-1</text>
+
+                <!-- Estacionamiento / Casa Club -->
+                <rect x="460" y="101" width="90" height="62" fill="#dbe8f1" stroke="#111" stroke-width="1.1" />
+                <rect x="552" y="101" width="66" height="62" fill="#fff" stroke="#111" stroke-width="1" />
+                <rect x="460" y="164" width="78" height="58" fill="#8fa5c0" stroke="#111" stroke-width="1.1" />
+                <text x="499" y="192" text-anchor="middle" font-size="10" font-weight="900">CASA CLUB</text>
+                <rect x="460" y="208" width="78" height="14" fill="#dfe4ea" stroke="#111" stroke-width=".8" />
+                <text x="499" y="218" text-anchor="middle" font-size="6.5" font-weight="900">MINI SALÓN</text>
+                <text x="586" y="133" text-anchor="middle" font-size="7" font-weight="800"
+                  transform="rotate(-90 586 133)">ESTACIONAMIENTO</text>
+
+                <!-- Jardín y parque -->
+                <path d="M540 101 H624 V228 H612 V598 H540 Z" fill="#a8cf8b" stroke="#111" stroke-width="1.2" />
+                <text x="582" y="390" text-anchor="middle" font-size="11" font-weight="900">JARDÍN Y PARQUE</text>
+
+                <!-- Bloque verde superior / centro -->
+                <rect x="78" y="232" width="363" height="447" fill="#a8cf8b" stroke="#111" stroke-width="1.2" />
+
+                <!-- Calles grises interiores -->
+                <rect x="78" y="214" width="363" height="18" fill="#d8d8d8" />
+                <text x="258" y="227" text-anchor="middle" font-size="8.5" font-weight="900">MISIÓN JARDINES</text>
+
+                <rect x="78" y="336" width="363" height="18" fill="#d8d8d8" />
+                <text x="258" y="349" text-anchor="middle" font-size="8.5" font-weight="900">MISIÓN MAGNOLIAS</text>
+
+                <rect x="78" y="467" width="363" height="18" fill="#d8d8d8" />
+                <text x="258" y="480" text-anchor="middle" font-size="8.5" font-weight="900">MISIÓN GARDENIAS</text>
+
+                <rect x="78" y="592" width="363" height="18" fill="#d8d8d8" />
+                <text x="258" y="605" text-anchor="middle" font-size="8.5" font-weight="900">MISIÓN JARDINES</text>
+
+                <!-- Misión Jardines 3 -->
+                <rect x="441" y="222" width="19" height="376" fill="#d8d8d8" />
+                <text x="455" y="414" text-anchor="middle" font-size="7.5" font-weight="900"
+                  transform="rotate(-90 455 414)">MISIÓN JARDINES 3</text>
+
+                <!-- Equipamiento escolar -->
+                <path d="M460 598 H624 V986 H544 V1018 H460 Z" fill="#a8cf8b" stroke="#111" stroke-width="1.2" />
+                <text x="542" y="825" text-anchor="middle" font-size="10.5" font-weight="900">
+                  ÁREA DE EQUIPAMIENTO ESCOLAR
+                </text>
+
+                <!-- Bloque beige inferior -->
+                <rect x="78" y="626" width="363" height="360" fill="#fff1cf" stroke="#111" stroke-width="1.2" />
+
+                <!-- Misión Rosas y Magnolias -->
+                <rect x="245" y="626" width="20" height="360" fill="#fff" />
+                <text x="258" y="806" text-anchor="middle" font-size="8" font-weight="900"
+                  transform="rotate(-90 258 806)">MISIÓN ROSAS</text>
+
+                <rect x="365" y="626" width="20" height="360" fill="#fff" />
+                <text x="378" y="806" text-anchor="middle" font-size="7.5" font-weight="900"
+                  transform="rotate(-90 378 806)">MISIÓN MAGNOLIAS</text>
+
+                <!-- Valle de Mexico -->
+                <text x="56" y="520" text-anchor="middle" font-size="9" font-weight="900"
+                  transform="rotate(-90 56 520)">VALLE DE MÉXICO</text>
+
+                <!-- Capas de lotes -->
+                <g id="lotsLayer"></g>
+              </svg>
+            </div>
+          </div>
+
+          <div id="zoomIndicator" class="map-zoom-indicator">Plano completo</div>
         </div>
 
-        <div class="panel-actions">
-          <button class="btn-primary" onclick="centerMap()">Centrar croquis</button>
-          <button class="btn-secondary" onclick="clearSelection()">Quitar selección</button>
+        <div class="map-summary-strip">
+          <div class="map-summary-item">
+            <span>Vista actual</span>
+            <strong id="currentViewLabel">Plano completo</strong>
+          </div>
+
+          <div class="map-summary-item">
+            <span>Lotes visibles</span>
+            <strong id="visibleLotsCount">—</strong>
+          </div>
+
+          <div class="map-summary-item">
+            <span>Interacción</span>
+            <strong>Haz clic en cualquier lote</strong>
+          </div>
         </div>
 
-        <div class="info-box">
-          <h3>Límites principales</h3>
-          <div class="info-row"><span>Sur</span><strong>Av. Valle de México</strong></div>
-          <div class="info-row"><span>Oeste</span><strong>C. Atotonilco</strong></div>
-          <div class="info-row"><span>Este</span><strong>Av. Guadalajara</strong></div>
-          <div class="info-row"><span>Norte</span><strong>Calle Prof. Acueducto</strong></div>
+        <div class="map-hint">
+          Usa el filtro de calle para enfocar una zona. Los botones −, encuadre y + permiten controlar el zoom sin
+          barras de desplazamiento.
         </div>
+      </article>
+
+      <aside class="map-side">
+        <section class="map-card detail-card">
+          <div class="detail-kicker">Casa seleccionada</div>
+          <h2 id="detailTitle" class="detail-title">Selecciona un lote</h2>
+          <p id="detailSubtitle" class="detail-subtitle">
+            Haz clic sobre una vivienda del croquis para consultar su ubicación.
+          </p>
+
+          <div id="detailEmpty" class="detail-empty">
+            Aún no hay una vivienda seleccionada.
+          </div>
+
+          <div id="detailGrid" class="detail-grid">
+            <div class="detail-row"><span>Número</span><strong id="detailNumber">—</strong></div>
+            <div class="detail-row"><span>Calle</span><strong id="detailStreet">—</strong></div>
+            <div class="detail-row"><span>Residente</span><strong id="detailResident">Sin información</strong></div>
+            <div class="detail-row"><span>Último pago</span><strong id="detailPayment">Sin información</strong></div>
+          </div>
+
+          <span id="detailStatus" class="status-pill none" hidden>Sin información de cuota</span>
+
+          <div class="detail-actions">
+            <a id="goToFees" class="detail-primary" href="cuotas.html">Ver en módulo de cuotas</a>
+            <button id="clearSelectionButton" class="detail-secondary" type="button">Quitar selección</button>
+          </div>
+        </section>
+
+        <section class="map-card legend-card">
+          <h3>Referencia visual</h3>
+          <div class="legend-list">
+            <div class="legend-item"><span class="legend-swatch"></span><span>Vivienda / lote</span></div>
+            <div class="legend-item"><span class="legend-swatch road"></span><span>Vialidad interior</span></div>
+            <div class="legend-item"><span class="legend-swatch common"></span><span>Área común / jardín</span></div>
+          </div>
+        </section>
       </aside>
-    </div>
-  </section>
+    </section>
+  </main>
 
   <footer>
-    <div>
-      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
+    <div>Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
     </div>
-
     <div class="powered-by">
       Plataforma desarrollada por
-      <a href="https://listoenlinea.com" target="_blank">
-        ListoEnLinea.com
-      </a>
+      <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a>
     </div>
   </footer>
 
-
   <script>
-    const API_URL = 'http://localhost:3000/api';
+    const API_URL =
+      location.hostname === 'localhost' ||
+        location.hostname === '127.0.0.1'
+        ? 'http://localhost:3000/api'
+        : 'https://api-misionjardines.listoenlinea.host/api';
 
     const token =
-      localStorage.getItem('misionJardinesToken')
-      || sessionStorage.getItem('misionJardinesToken');
+      localStorage.getItem('misionJardinesToken') ||
+      sessionStorage.getItem('misionJardinesToken');
 
     if (!token) {
       window.location.replace('login.html');
     }
 
     function aplicarPermisosVisuales(rol) {
-      const elementosProtegidos =
-        document.querySelectorAll('[data-roles]');
-
-      elementosProtegidos.forEach((elemento) => {
+      document.querySelectorAll('[data-roles]').forEach(elemento => {
         const rolesPermitidos =
-          elemento.dataset.roles
-            .split(',')
-            .map((item) => item.trim());
+          elemento.dataset.roles.split(',').map(item => item.trim());
 
-        elemento.hidden =
-          !rolesPermitidos.includes(rol);
+        elemento.hidden = !rolesPermitidos.includes(rol);
       });
     }
 
     async function validarSesion() {
       try {
-        const response = await fetch(
-          `${API_URL}/auth/perfil`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+        const response = await fetch(`${API_URL}/auth/perfil`, {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
-        );
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('misionJardinesToken');
+          localStorage.removeItem('misionJardinesUsuario');
+          sessionStorage.removeItem('misionJardinesToken');
+          sessionStorage.removeItem('misionJardinesUsuario');
+          window.location.replace('login.html');
+          return;
+        }
+
+        if (!response.ok) return;
 
         const result = await response.json();
 
-        if (!response.ok || !result.ok) {
-          throw new Error(
-            result.message || 'Sesión inválida'
-          );
+        if (result?.ok && result?.usuario) {
+          aplicarPermisosVisuales(result.usuario.rol?.nombre);
         }
-
-        aplicarPermisosVisuales(
-          result.usuario.rol?.nombre
-        );
       } catch (error) {
-        localStorage.removeItem(
-          'misionJardinesToken'
-        );
-
-        localStorage.removeItem(
-          'misionJardinesUsuario'
-        );
-
-        sessionStorage.removeItem(
-          'misionJardinesToken'
-        );
-
-        sessionStorage.removeItem(
-          'misionJardinesUsuario'
-        );
-
-        window.location.replace('login.html');
+        console.warn('No fue posible validar la sesión:', error);
       }
     }
 
-    validarSesion();
+    const lots = [];
 
-    let selectedHouse = null;
+    function addHorizontalLots({
+      numbers,
+      street,
+      x,
+      y,
+      width,
+      height,
+      gap,
+      fill,
+      stroke,
+      section = ''
+    }) {
+      numbers.forEach((number, index) => {
+        lots.push({
+          number: String(number),
+          street,
+          section,
+          x: x + index * (width + gap),
+          y,
+          width,
+          height,
+          fill,
+          stroke,
+          resident: '',
+          payment: ''
+        });
+      });
+    }
 
-    function selectHouse(element, casa, calle, numero, status, pago) {
-      if (selectedHouse) {
-        selectedHouse.classList.remove("selected");
+    function addVerticalLots({
+      numbers,
+      street,
+      x,
+      y,
+      width,
+      height,
+      gap,
+      fill,
+      stroke,
+      section = ''
+    }) {
+      numbers.forEach((number, index) => {
+        lots.push({
+          number: String(number),
+          street,
+          section,
+          x,
+          y: y + index * (height + gap),
+          width,
+          height,
+          fill,
+          stroke,
+          resident: '',
+          payment: ''
+        });
+      });
+    }
+
+    /* H4-1 superior */
+    addHorizontalLots({
+      street: 'H4-1',
+      section: 'Sector norte',
+      x: 112,
+      y: 109,
+      width: 12,
+      height: 38,
+      gap: 1.1,
+      fill: '#dbe8f1',
+      stroke: '#879cab',
+      numbers: [796, 792, 788, 784, 780, 776, 772, 768, 764, 760, 756, 752, 748, 744, 740, 736, 732, 728, 724, 720, 716, 712, 708, 704]
+    });
+
+    addHorizontalLots({
+      street: 'H4-1',
+      section: 'Sector norte',
+      x: 112,
+      y: 154,
+      width: 12,
+      height: 27,
+      gap: 1.1,
+      fill: '#dbe8f1',
+      stroke: '#879cab',
+      numbers: [379, 375, 371, 367, 363, 359, 355, 351, 347, 343, 339, 335, 331, 327, 323, 319, 315, 311, 307, 303, 299, 295, 291, 287]
+    });
+
+    /* Sector verde superior */
+    addVerticalLots({
+      street: 'Misión Jardines',
+      section: 'Poniente',
+      x: 86,
+      y: 244,
+      width: 47,
+      height: 16,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [3580, 3586, 3582, 3578, 3574, 3570]
+    });
+
+    addHorizontalLots({
+      street: 'Misión Jardines',
+      section: 'Superior',
+      x: 137,
+      y: 244,
+      width: 13,
+      height: 82,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21]
+    });
+
+    addVerticalLots({
+      street: 'Misión Jardines',
+      section: 'Oriente',
+      x: 393,
+      y: 244,
+      width: 40,
+      height: 16,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [289, 285, 281, 277, 273, 269]
+    });
+
+    /* Magnolia */
+    addVerticalLots({
+      street: 'Misión Magnolias',
+      section: 'Poniente',
+      x: 86,
+      y: 365,
+      width: 47,
+      height: 16,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [3558, 3556, 3552, 3548, 3544, 3540]
+    });
+
+    addHorizontalLots({
+      street: 'Misión Magnolias',
+      section: 'Central',
+      x: 137,
+      y: 365,
+      width: 13,
+      height: 90,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42]
+    });
+
+    addVerticalLots({
+      street: 'Misión Magnolias',
+      section: 'Oriente',
+      x: 393,
+      y: 365,
+      width: 40,
+      height: 16,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [257, 253, 249, 245, 241, 237]
+    });
+
+    /* Gardenias */
+    addVerticalLots({
+      street: 'Misión Gardenias',
+      section: 'Poniente',
+      x: 86,
+      y: 496,
+      width: 47,
+      height: 16,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [3522, 3518, 3514, 3510, 3506, 3502]
+    });
+
+    addHorizontalLots({
+      street: 'Misión Gardenias',
+      section: 'Central',
+      x: 137,
+      y: 496,
+      width: 13,
+      height: 84,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [125, 129, 133, 137, 141, 145, 149, 153, 157, 161, 165, 169, 173, 177, 181, 185, 189, 193, 197, 201]
+    });
+
+    addVerticalLots({
+      street: 'Misión Gardenias',
+      section: 'Oriente',
+      x: 393,
+      y: 496,
+      width: 40,
+      height: 16,
+      gap: 1.2,
+      fill: '#a8cf8b',
+      stroke: '#6f925b',
+      numbers: [221, 217, 213, 209, 205, 201]
+    });
+
+    /* Zona beige inferior izquierda */
+    addVerticalLots({
+      street: 'Misión Rosas',
+      section: 'Poniente',
+      x: 90,
+      y: 646,
+      width: 48,
+      height: 15,
+      gap: 1,
+      fill: '#fff1cf',
+      stroke: '#b78d49',
+      numbers: [5050, 5046, 5042, 5038, 5034, 5030, 5026, 5022, 5018, 5014, 5010, 5006, 5002, 4998, 4994, 4990, 4986, 4982, 4978, 4974, 4970]
+    });
+
+    addVerticalLots({
+      street: 'Misión Rosas',
+      section: 'Central',
+      x: 139,
+      y: 646,
+      width: 48,
+      height: 15,
+      gap: 1,
+      fill: '#fff1cf',
+      stroke: '#b78d49',
+      numbers: [42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22]
+    });
+
+    addVerticalLots({
+      street: 'Misión Magnolias',
+      section: 'Inferior',
+      x: 266,
+      y: 646,
+      width: 45,
+      height: 15,
+      gap: 1,
+      fill: '#fff1cf',
+      stroke: '#b78d49',
+      numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+    });
+
+    addVerticalLots({
+      street: 'Misión Magnolias',
+      section: 'Inferior oriente',
+      x: 312,
+      y: 646,
+      width: 45,
+      height: 15,
+      gap: 1,
+      fill: '#fff1cf',
+      stroke: '#b78d49',
+      numbers: [42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22]
+    });
+
+    /* Hilera angosta al lado del equipamiento */
+    addVerticalLots({
+      street: 'Área de Equipamiento',
+      section: 'Colindancia',
+      x: 404,
+      y: 648,
+      width: 36,
+      height: 19,
+      gap: 1,
+      fill: '#fff1cf',
+      stroke: '#b78d49',
+      numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+    });
+
+    const lotsLayer = document.getElementById('lotsLayer');
+
+    const residentialMap = document.getElementById('residentialMap');
+    const streetFilter = document.getElementById('streetFilter');
+    const mapSelectionBanner = document.getElementById('mapSelectionBanner');
+    const mapSelectionText = document.getElementById('mapSelectionText');
+    const clearStreetFilterButton = document.getElementById('clearStreetFilterButton');
+    const zoomIndicator = document.getElementById('zoomIndicator');
+    const currentViewLabel = document.getElementById('currentViewLabel');
+    const visibleLotsCount = document.getElementById('visibleLotsCount');
+
+    const FULL_VIEW = {
+      x: 0,
+      y: 0,
+      width: 760,
+      height: 1030
+    };
+
+    let currentView = { ...FULL_VIEW };
+    let activeStreet = '';
+    let selectedLotId = null;
+
+    function setViewBox(view, label = 'Plano completo') {
+      const minWidth = 150;
+      const minHeight = 200;
+
+      const width = Math.max(minWidth, Math.min(FULL_VIEW.width, view.width));
+      const height = Math.max(minHeight, Math.min(FULL_VIEW.height, view.height));
+
+      let x = Math.max(FULL_VIEW.x, view.x);
+      let y = Math.max(FULL_VIEW.y, view.y);
+
+      if (x + width > FULL_VIEW.width) {
+        x = FULL_VIEW.width - width;
       }
 
-      selectedHouse = element;
-      selectedHouse.classList.add("selected");
-
-      document.getElementById("infoCasa").textContent = casa;
-      document.getElementById("infoCalle").textContent = calle;
-      document.getElementById("infoNumero").textContent = numero;
-      document.getElementById("infoPago").textContent = pago || "Sin pago registrado";
-
-      const badge = document.getElementById("infoStatus");
-      badge.textContent = status;
-      badge.className = "chip";
-
-      if (status === "Pagado") {
-        badge.classList.add("paid");
-      } else if (status === "Pendiente") {
-        badge.classList.add("pending");
-      } else {
-        badge.classList.add("review");
+      if (y + height > FULL_VIEW.height) {
+        y = FULL_VIEW.height - height;
       }
+
+      currentView = { x, y, width, height };
+
+      residentialMap.setAttribute(
+        'viewBox',
+        `${x} ${y} ${width} ${height}`
+      );
+
+      zoomIndicator.textContent = label;
+      currentViewLabel.textContent = label;
+    }
+
+    function resetZoom() {
+      setViewBox(FULL_VIEW, 'Plano completo');
+    }
+
+    function zoomBy(factor) {
+      const centerX = currentView.x + currentView.width / 2;
+      const centerY = currentView.y + currentView.height / 2;
+
+      const newWidth = currentView.width * factor;
+      const newHeight = currentView.height * factor;
+
+      setViewBox({
+        x: centerX - newWidth / 2,
+        y: centerY - newHeight / 2,
+        width: newWidth,
+        height: newHeight
+      }, factor < 1 ? 'Vista ampliada' : 'Vista alejada');
+    }
+
+    function getLotsBounds(items, padding = 28) {
+      if (!items.length) {
+        return FULL_VIEW;
+      }
+
+      const minX = Math.min(...items.map(lot => lot.x));
+      const minY = Math.min(...items.map(lot => lot.y));
+      const maxX = Math.max(...items.map(lot => lot.x + lot.width));
+      const maxY = Math.max(...items.map(lot => lot.y + lot.height));
+
+      return {
+        x: minX - padding,
+        y: minY - padding,
+        width: (maxX - minX) + padding * 2,
+        height: (maxY - minY) + padding * 2
+      };
+    }
+
+    function populateStreetFilter() {
+      const streets = [...new Set(
+        lots.map(lot => lot.street).filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b, 'es'));
+
+      streetFilter.innerHTML =
+        '<option value="">Todas las calles</option>' +
+        streets
+          .map(street => `<option value="${street}">${street}</option>`)
+          .join('');
+    }
+
+    function applyStreetFilter(street) {
+      activeStreet = street || '';
+
+      const matchingLots = activeStreet
+        ? lots.filter(lot => lot.street === activeStreet)
+        : lots;
+
+      document
+        .querySelectorAll('.map-lot')
+        .forEach(element => {
+          const lot = lots.find(
+            item => item.id === element.dataset.lotId
+          );
+
+          const matches =
+            !activeStreet ||
+            lot?.street === activeStreet;
+
+          element.classList.toggle(
+            'is-dimmed',
+            Boolean(activeStreet) && !matches
+          );
+
+          element.classList.toggle(
+            'is-highlighted',
+            Boolean(activeStreet) && matches
+          );
+        });
+
+      visibleLotsCount.textContent = matchingLots.length;
+
+      if (!activeStreet) {
+        mapSelectionBanner.classList.remove('visible');
+        resetZoom();
+        return;
+      }
+
+      mapSelectionText.textContent =
+        `${activeStreet} · ${matchingLots.length} lotes`;
+
+      mapSelectionBanner.classList.add('visible');
+
+      setViewBox(
+        getLotsBounds(matchingLots, 34),
+        activeStreet
+      );
+    }
+
+    function zoomToLot(lot) {
+      const targetWidth = 230;
+      const targetHeight = 310;
+
+      setViewBox({
+        x: lot.x + lot.width / 2 - targetWidth / 2,
+        y: lot.y + lot.height / 2 - targetHeight / 2,
+        width: targetWidth,
+        height: targetHeight
+      }, `Casa ${lot.number}`);
+    }
+
+
+    function createSvgElement(tag, attributes = {}) {
+      const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+      return element;
+    }
+
+    function renderLots() {
+      lotsLayer.innerHTML = '';
+
+      lots.forEach((lot, index) => {
+        lot.id = `lot-${index}`;
+
+        const group = createSvgElement('g', {
+          class: 'map-lot',
+          tabindex: '0',
+          role: 'button',
+          'aria-label': `Casa ${lot.number}, ${lot.street}`,
+          'data-lot-id': lot.id
+        });
+
+        const rect = createSvgElement('rect', {
+          x: lot.x,
+          y: lot.y,
+          width: lot.width,
+          height: lot.height,
+          rx: 0,
+          fill: lot.fill,
+          stroke: lot.stroke,
+          'stroke-width': 0.8
+        });
+
+        const text = createSvgElement('text', {
+          x: lot.x + lot.width / 2,
+          y: lot.y + lot.height / 2 + 2.4,
+          'text-anchor': 'middle'
+        });
+
+        text.textContent = lot.number;
+
+        group.append(rect, text);
+
+        group.addEventListener('click', () => selectLot(lot, group));
+        group.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectLot(lot, group);
+          }
+        });
+
+        lotsLayer.appendChild(group);
+      });
+    }
+
+    const detailTitle = document.getElementById('detailTitle');
+    const detailSubtitle = document.getElementById('detailSubtitle');
+    const detailEmpty = document.getElementById('detailEmpty');
+    const detailGrid = document.getElementById('detailGrid');
+    const detailNumber = document.getElementById('detailNumber');
+    const detailStreet = document.getElementById('detailStreet');
+    const detailResident = document.getElementById('detailResident');
+    const detailPayment = document.getElementById('detailPayment');
+    const detailStatus = document.getElementById('detailStatus');
+    const goToFees = document.getElementById('goToFees');
+
+    function selectLot(lot, element) {
+
+      // Si hago clic otra vez en la MISMA casa,
+      // quitar selección y regresar a la vista anterior.
+      if (selectedLotId === lot.id) {
+        clearSelection();
+        return;
+      }
+
+      // Guardamos la casa seleccionada.
+      selectedLotId = lot.id;
+
+      document.querySelectorAll('.map-lot.selected')
+        .forEach(item => item.classList.remove('selected'));
+
+      element.classList.add('selected');
+
+      detailEmpty.hidden = true;
+      detailGrid.classList.add('visible');
+
+      detailTitle.textContent = `Casa ${lot.number}`;
+      detailSubtitle.textContent = lot.section || lot.street;
+      detailNumber.textContent = lot.number;
+      detailStreet.textContent = lot.street;
+      detailResident.textContent =
+        lot.resident || 'Sin información cargada';
+
+      detailPayment.textContent =
+        lot.payment || 'Sin información cargada';
+
+      detailStatus.hidden = false;
+      detailStatus.className = 'status-pill none';
+      detailStatus.textContent =
+        'Sin información de cuota';
+
+      goToFees.href =
+        `cuotas.html?casa=${encodeURIComponent(lot.number)}`;
+
+      zoomToLot(lot);
     }
 
     function clearSelection() {
-      if (selectedHouse) {
-        selectedHouse.classList.remove("selected");
-        selectedHouse = null;
+      selectedLotId = null;
+      document.querySelectorAll('.map-lot.selected')
+        .forEach(item => item.classList.remove('selected'));
+
+      detailTitle.textContent = 'Selecciona un lote';
+      detailSubtitle.textContent =
+        'Haz clic sobre una vivienda del croquis para consultar su ubicación.';
+      detailEmpty.hidden = false;
+      detailGrid.classList.remove('visible');
+      detailStatus.hidden = true;
+
+      if (activeStreet) {
+        const matchingLots =
+          lots.filter(lot => lot.street === activeStreet);
+
+        setViewBox(
+          getLotsBounds(matchingLots, 34),
+          activeStreet
+        );
+      } else {
+        resetZoom();
       }
     }
 
-    function centerMap() {
-      const scroll = document.querySelector(".map-scroll");
-      scroll.scrollTo({
-        left: 120,
-        top: 60,
-        behavior: "smooth"
+    const houseSearch = document.getElementById('houseSearch');
+    const searchResults = document.getElementById('searchResults');
+
+    function normalizeText(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function runSearch(query) {
+      const normalized = normalizeText(query);
+
+      if (!normalized) {
+        searchResults.classList.remove('visible');
+        searchResults.innerHTML = '';
+        return;
+      }
+
+      const matches = lots
+        .filter(lot =>
+          normalizeText(`${lot.number} ${lot.street} ${lot.section}`).includes(normalized)
+        )
+        .slice(0, 12);
+
+      if (!matches.length) {
+        searchResults.innerHTML =
+          '<div style="padding:13px;color:#8a94a5;font-size:10px;text-align:center;">No se encontraron coincidencias.</div>';
+        searchResults.classList.add('visible');
+        return;
+      }
+
+      searchResults.innerHTML = matches.map(lot => `
+      <button class="search-result" type="button" data-search-lot="${lot.id}">
+        <strong>Casa ${lot.number}</strong>
+        <span>${lot.street}</span>
+      </button>
+    `).join('');
+
+      searchResults.classList.add('visible');
+
+      searchResults.querySelectorAll('[data-search-lot]').forEach(button => {
+        button.addEventListener('click', () => {
+          const lot = lots.find(item => item.id === button.dataset.searchLot);
+          const element = document.querySelector(`[data-lot-id="${button.dataset.searchLot}"]`);
+
+          if (lot && element) {
+            selectLot(lot, element);
+            houseSearch.value = lot.number;
+          }
+
+          searchResults.classList.remove('visible');
+        });
       });
     }
+
+    houseSearch.addEventListener('input', event => runSearch(event.target.value));
+
+    document.addEventListener('click', event => {
+      if (!event.target.closest('.map-search')) {
+        searchResults.classList.remove('visible');
+      }
+    });
+
+    document.getElementById('clearSelectionButton')
+      .addEventListener('click', clearSelection);
+
+    document.getElementById('zoomInButton')
+      .addEventListener('click', () => zoomBy(0.78));
+
+    document.getElementById('zoomOutButton')
+      .addEventListener('click', () => zoomBy(1.28));
+
+    document.getElementById('resetZoomButton')
+      .addEventListener('click', () => {
+        streetFilter.value = '';
+        activeStreet = '';
+        applyStreetFilter('');
+        clearSelection();
+      });
+
+    streetFilter.addEventListener('change', event => {
+      clearSelection();
+      applyStreetFilter(event.target.value);
+    });
+
+    clearStreetFilterButton.addEventListener('click', () => {
+      streetFilter.value = '';
+      applyStreetFilter('');
+      clearSelection();
+    });
+
+    renderLots();
+    populateStreetFilter();
+    visibleLotsCount.textContent = lots.length;
+    resetZoom();
+    validarSesion();
   </script>
 
 </body>
