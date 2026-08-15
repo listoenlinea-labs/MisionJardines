@@ -904,11 +904,7 @@
         </section>
     </main>
     <script>
-        const API_URL =
-            location.hostname === 'localhost' ||
-                location.hostname === '127.0.0.1'
-                ? 'http://localhost:3000/api'
-                : 'https://api-misionjardines.listoenlinea.host/api';
+        const API_URL = 'https://api-misionjardines.listoenlinea.host/api';
         const loginForm = document.getElementById("loginForm"), correoInput = document.getElementById("correo"), contrasenaInput = document.getElementById("contrasena"), passwordToggle = document.getElementById("passwordToggle"), loginButton = document.getElementById("loginButton"), buttonText = document.getElementById("buttonText"), loginMessage = document.getElementById("loginMessage"), messageIcon = document.getElementById("messageIcon"), messageTitle = document.getElementById("messageTitle"), messageText = document.getElementById("messageText"), sessionPreview = document.getElementById("sessionPreview"), sessionAvatar = document.getElementById("sessionAvatar"), sessionName = document.getElementById("sessionName"), sessionDetails = document.getElementById("sessionDetails");
         const iconoOjoCerrado = `
     <svg viewBox="0 0 24 24" aria-hidden="true">
