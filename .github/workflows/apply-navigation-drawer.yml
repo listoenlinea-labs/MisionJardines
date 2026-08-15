@@ -1,0 +1,35 @@
+name: Apply navigation drawer
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-navigation-drawer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-navigation-drawer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply navigation drawer
+        run: bash scripts/apply-navigation-drawer.sh
+
+      - name: Commit generated changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs scripts .github/workflows/apply-navigation-drawer.yml
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Convert navigation to overlay drawer"
+          git push
