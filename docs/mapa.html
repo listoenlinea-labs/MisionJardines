@@ -185,7 +185,6 @@
       background: #2eaa70;
     }
 
-    /* IMPORTANTE: sin scroll interno */
     .page-mapa .map-viewport {
       overflow: hidden !important;
       padding: 14px;
@@ -486,10 +485,6 @@
         min-height: 560px;
       }
     }
-
-    /* =========================================================
-       CONTROLES PROFESIONALES DEL PLANO
-       ========================================================= */
 
     .page-mapa .map-card-head {
       align-items: flex-start;
@@ -901,10 +896,8 @@
               <svg id="residentialMap" class="map-svg" viewBox="0 0 760 1030" preserveAspectRatio="xMidYMid meet"
                 role="img" aria-label="Plano real de Misión Jardines">
 
-                <!-- Fondo exterior -->
                 <rect x="2" y="2" width="756" height="1026" fill="#f4ab7a" stroke="#111" stroke-width="2" />
 
-                <!-- Estructura general gris -->
                 <path d="
               M55 32
               H742
@@ -928,7 +921,6 @@
               H55
               Z" fill="#d8d8d8" stroke="#111" stroke-width="1.6" />
 
-                <!-- Zona interior principal -->
                 <path d="
               M78 56
               H714
@@ -944,16 +936,13 @@
               H78
               Z" fill="#fff" stroke="#111" stroke-width="1.4" />
 
-                <!-- ATOTONILCO -->
                 <rect x="78" y="56" width="636" height="38" fill="#fff" stroke="#111" stroke-width="1" />
                 <text x="395" y="78" text-anchor="middle" font-size="11" font-weight="900">ATOTONILCO</text>
 
-                <!-- H4-1 -->
                 <rect x="103" y="100" width="340" height="111" fill="#dbe8f1" stroke="#111" stroke-width="1.2" />
                 <rect x="116" y="151" width="314" height="34" fill="#fff" stroke="#111" stroke-width=".8" />
                 <text x="132" y="200" font-size="9" font-weight="900">H4-1</text>
 
-                <!-- Estacionamiento / Casa Club -->
                 <rect x="460" y="101" width="90" height="62" fill="#dbe8f1" stroke="#111" stroke-width="1.1" />
                 <rect x="552" y="101" width="66" height="62" fill="#fff" stroke="#111" stroke-width="1" />
                 <rect x="460" y="164" width="78" height="58" fill="#8fa5c0" stroke="#111" stroke-width="1.1" />
@@ -963,14 +952,11 @@
                 <text x="586" y="133" text-anchor="middle" font-size="7" font-weight="800"
                   transform="rotate(-90 586 133)">ESTACIONAMIENTO</text>
 
-                <!-- Jardín y parque -->
                 <path d="M540 101 H624 V228 H612 V598 H540 Z" fill="#a8cf8b" stroke="#111" stroke-width="1.2" />
                 <text x="582" y="390" text-anchor="middle" font-size="11" font-weight="900">JARDÍN Y PARQUE</text>
 
-                <!-- Bloque verde superior / centro -->
                 <rect x="78" y="232" width="363" height="447" fill="#a8cf8b" stroke="#111" stroke-width="1.2" />
 
-                <!-- Calles grises interiores -->
                 <rect x="78" y="214" width="363" height="18" fill="#d8d8d8" />
                 <text x="258" y="227" text-anchor="middle" font-size="8.5" font-weight="900">MISIÓN JARDINES</text>
 
@@ -983,21 +969,17 @@
                 <rect x="78" y="592" width="363" height="18" fill="#d8d8d8" />
                 <text x="258" y="605" text-anchor="middle" font-size="8.5" font-weight="900">MISIÓN JARDINES</text>
 
-                <!-- Misión Jardines 3 -->
                 <rect x="441" y="222" width="19" height="376" fill="#d8d8d8" />
                 <text x="455" y="414" text-anchor="middle" font-size="7.5" font-weight="900"
                   transform="rotate(-90 455 414)">MISIÓN JARDINES 3</text>
 
-                <!-- Equipamiento escolar -->
                 <path d="M460 598 H624 V986 H544 V1018 H460 Z" fill="#a8cf8b" stroke="#111" stroke-width="1.2" />
                 <text x="542" y="825" text-anchor="middle" font-size="10.5" font-weight="900">
                   ÁREA DE EQUIPAMIENTO ESCOLAR
                 </text>
 
-                <!-- Bloque beige inferior -->
                 <rect x="78" y="626" width="363" height="360" fill="#fff1cf" stroke="#111" stroke-width="1.2" />
 
-                <!-- Misión Rosas y Magnolias -->
                 <rect x="245" y="626" width="20" height="360" fill="#fff" />
                 <text x="258" y="806" text-anchor="middle" font-size="8" font-weight="900"
                   transform="rotate(-90 258 806)">MISIÓN ROSAS</text>
@@ -1006,11 +988,9 @@
                 <text x="378" y="806" text-anchor="middle" font-size="7.5" font-weight="900"
                   transform="rotate(-90 378 806)">MISIÓN MAGNOLIAS</text>
 
-                <!-- Valle de Mexico -->
                 <text x="56" y="520" text-anchor="middle" font-size="9" font-weight="900"
                   transform="rotate(-90 56 520)">VALLE DE MÉXICO</text>
 
-                <!-- Capas de lotes -->
                 <g id="lotsLayer"></g>
               </svg>
             </div>
@@ -1091,11 +1071,7 @@
   </footer>
 
   <script>
-    const API_URL =
-      location.hostname === 'localhost' ||
-        location.hostname === '127.0.0.1'
-        ? 'http://localhost:3000/api'
-        : 'https://api-misionjardines.listoenlinea.host/api';
+    const API_URL = 'https://api-misionjardines.listoenlinea.host/api';
 
     const token =
       localStorage.getItem('misionJardinesToken') ||
@@ -1203,7 +1179,6 @@
       });
     }
 
-    /* H4-1 superior */
     addHorizontalLots({
       street: 'H4-1',
       section: 'Sector norte',
@@ -1230,7 +1205,6 @@
       numbers: [379, 375, 371, 367, 363, 359, 355, 351, 347, 343, 339, 335, 331, 327, 323, 319, 315, 311, 307, 303, 299, 295, 291, 287]
     });
 
-    /* Sector verde superior */
     addVerticalLots({
       street: 'Misión Jardines',
       section: 'Poniente',
@@ -1270,7 +1244,6 @@
       numbers: [289, 285, 281, 277, 273, 269]
     });
 
-    /* Magnolia */
     addVerticalLots({
       street: 'Misión Magnolias',
       section: 'Poniente',
@@ -1310,7 +1283,6 @@
       numbers: [257, 253, 249, 245, 241, 237]
     });
 
-    /* Gardenias */
     addVerticalLots({
       street: 'Misión Gardenias',
       section: 'Poniente',
@@ -1350,7 +1322,6 @@
       numbers: [221, 217, 213, 209, 205, 201]
     });
 
-    /* Zona beige inferior izquierda */
     addVerticalLots({
       street: 'Misión Rosas',
       section: 'Poniente',
@@ -1403,7 +1374,6 @@
       numbers: [42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22]
     });
 
-    /* Hilera angosta al lado del equipamiento */
     addVerticalLots({
       street: 'Área de Equipamiento',
       section: 'Colindancia',
@@ -1418,7 +1388,6 @@
     });
 
     const lotsLayer = document.getElementById('lotsLayer');
-
     const residentialMap = document.getElementById('residentialMap');
     const streetFilter = document.getElementById('streetFilter');
     const mapSelectionBanner = document.getElementById('mapSelectionBanner');
@@ -1428,13 +1397,7 @@
     const currentViewLabel = document.getElementById('currentViewLabel');
     const visibleLotsCount = document.getElementById('visibleLotsCount');
 
-    const FULL_VIEW = {
-      x: 0,
-      y: 0,
-      width: 760,
-      height: 1030
-    };
-
+    const FULL_VIEW = { x: 0, y: 0, width: 760, height: 1030 };
     let currentView = { ...FULL_VIEW };
     let activeStreet = '';
     let selectedLotId = null;
@@ -1442,28 +1405,14 @@
     function setViewBox(view, label = 'Plano completo') {
       const minWidth = 150;
       const minHeight = 200;
-
       const width = Math.max(minWidth, Math.min(FULL_VIEW.width, view.width));
       const height = Math.max(minHeight, Math.min(FULL_VIEW.height, view.height));
-
       let x = Math.max(FULL_VIEW.x, view.x);
       let y = Math.max(FULL_VIEW.y, view.y);
-
-      if (x + width > FULL_VIEW.width) {
-        x = FULL_VIEW.width - width;
-      }
-
-      if (y + height > FULL_VIEW.height) {
-        y = FULL_VIEW.height - height;
-      }
-
+      if (x + width > FULL_VIEW.width) x = FULL_VIEW.width - width;
+      if (y + height > FULL_VIEW.height) y = FULL_VIEW.height - height;
       currentView = { x, y, width, height };
-
-      residentialMap.setAttribute(
-        'viewBox',
-        `${x} ${y} ${width} ${height}`
-      );
-
+      residentialMap.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
       zoomIndicator.textContent = label;
       currentViewLabel.textContent = label;
     }
@@ -1475,10 +1424,8 @@
     function zoomBy(factor) {
       const centerX = currentView.x + currentView.width / 2;
       const centerY = currentView.y + currentView.height / 2;
-
       const newWidth = currentView.width * factor;
       const newHeight = currentView.height * factor;
-
       setViewBox({
         x: centerX - newWidth / 2,
         y: centerY - newHeight / 2,
@@ -1488,15 +1435,11 @@
     }
 
     function getLotsBounds(items, padding = 28) {
-      if (!items.length) {
-        return FULL_VIEW;
-      }
-
+      if (!items.length) return FULL_VIEW;
       const minX = Math.min(...items.map(lot => lot.x));
       const minY = Math.min(...items.map(lot => lot.y));
       const maxX = Math.max(...items.map(lot => lot.x + lot.width));
       const maxY = Math.max(...items.map(lot => lot.y + lot.height));
-
       return {
         x: minX - padding,
         y: minY - padding,
@@ -1506,69 +1449,35 @@
     }
 
     function populateStreetFilter() {
-      const streets = [...new Set(
-        lots.map(lot => lot.street).filter(Boolean)
-      )].sort((a, b) => a.localeCompare(b, 'es'));
-
-      streetFilter.innerHTML =
-        '<option value="">Todas las calles</option>' +
-        streets
-          .map(street => `<option value="${street}">${street}</option>`)
-          .join('');
+      const streets = [...new Set(lots.map(lot => lot.street).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es'));
+      streetFilter.innerHTML = '<option value="">Todas las calles</option>' +
+        streets.map(street => `<option value="${street}">${street}</option>`).join('');
     }
 
     function applyStreetFilter(street) {
       activeStreet = street || '';
-
-      const matchingLots = activeStreet
-        ? lots.filter(lot => lot.street === activeStreet)
-        : lots;
-
-      document
-        .querySelectorAll('.map-lot')
-        .forEach(element => {
-          const lot = lots.find(
-            item => item.id === element.dataset.lotId
-          );
-
-          const matches =
-            !activeStreet ||
-            lot?.street === activeStreet;
-
-          element.classList.toggle(
-            'is-dimmed',
-            Boolean(activeStreet) && !matches
-          );
-
-          element.classList.toggle(
-            'is-highlighted',
-            Boolean(activeStreet) && matches
-          );
-        });
-
+      const matchingLots = activeStreet ? lots.filter(lot => lot.street === activeStreet) : lots;
+      document.querySelectorAll('.map-lot').forEach(element => {
+        const lot = lots.find(item => item.id === element.dataset.lotId);
+        const matches = !activeStreet || lot?.street === activeStreet;
+        element.classList.toggle('is-dimmed', Boolean(activeStreet) && !matches);
+        element.classList.toggle('is-highlighted', Boolean(activeStreet) && matches);
+      });
       visibleLotsCount.textContent = matchingLots.length;
-
       if (!activeStreet) {
         mapSelectionBanner.classList.remove('visible');
         resetZoom();
         return;
       }
-
-      mapSelectionText.textContent =
-        `${activeStreet} · ${matchingLots.length} lotes`;
-
+      mapSelectionText.textContent = `${activeStreet} · ${matchingLots.length} lotes`;
       mapSelectionBanner.classList.add('visible');
-
-      setViewBox(
-        getLotsBounds(matchingLots, 34),
-        activeStreet
-      );
+      setViewBox(getLotsBounds(matchingLots, 34), activeStreet);
     }
 
     function zoomToLot(lot) {
       const targetWidth = 230;
       const targetHeight = 310;
-
       setViewBox({
         x: lot.x + lot.width / 2 - targetWidth / 2,
         y: lot.y + lot.height / 2 - targetHeight / 2,
@@ -1576,7 +1485,6 @@
         height: targetHeight
       }, `Casa ${lot.number}`);
     }
-
 
     function createSvgElement(tag, attributes = {}) {
       const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -1586,10 +1494,8 @@
 
     function renderLots() {
       lotsLayer.innerHTML = '';
-
       lots.forEach((lot, index) => {
         lot.id = `lot-${index}`;
-
         const group = createSvgElement('g', {
           class: 'map-lot',
           tabindex: '0',
@@ -1597,7 +1503,6 @@
           'aria-label': `Casa ${lot.number}, ${lot.street}`,
           'data-lot-id': lot.id
         });
-
         const rect = createSvgElement('rect', {
           x: lot.x,
           y: lot.y,
@@ -1608,17 +1513,13 @@
           stroke: lot.stroke,
           'stroke-width': 0.8
         });
-
         const text = createSvgElement('text', {
           x: lot.x + lot.width / 2,
           y: lot.y + lot.height / 2 + 2.4,
           'text-anchor': 'middle'
         });
-
         text.textContent = lot.number;
-
         group.append(rect, text);
-
         group.addEventListener('click', () => selectLot(lot, group));
         group.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -1626,7 +1527,6 @@
             selectLot(lot, group);
           }
         });
-
         lotsLayer.appendChild(group);
       });
     }
@@ -1643,66 +1543,39 @@
     const goToFees = document.getElementById('goToFees');
 
     function selectLot(lot, element) {
-
-      // Si hago clic otra vez en la MISMA casa,
-      // quitar selección y regresar a la vista anterior.
       if (selectedLotId === lot.id) {
         clearSelection();
         return;
       }
-
-      // Guardamos la casa seleccionada.
       selectedLotId = lot.id;
-
-      document.querySelectorAll('.map-lot.selected')
-        .forEach(item => item.classList.remove('selected'));
-
+      document.querySelectorAll('.map-lot.selected').forEach(item => item.classList.remove('selected'));
       element.classList.add('selected');
-
       detailEmpty.hidden = true;
       detailGrid.classList.add('visible');
-
       detailTitle.textContent = `Casa ${lot.number}`;
       detailSubtitle.textContent = lot.section || lot.street;
       detailNumber.textContent = lot.number;
       detailStreet.textContent = lot.street;
-      detailResident.textContent =
-        lot.resident || 'Sin información cargada';
-
-      detailPayment.textContent =
-        lot.payment || 'Sin información cargada';
-
+      detailResident.textContent = lot.resident || 'Sin información cargada';
+      detailPayment.textContent = lot.payment || 'Sin información cargada';
       detailStatus.hidden = false;
       detailStatus.className = 'status-pill none';
-      detailStatus.textContent =
-        'Sin información de cuota';
-
-      goToFees.href =
-        `cuotas.html?casa=${encodeURIComponent(lot.number)}`;
-
+      detailStatus.textContent = 'Sin información de cuota';
+      goToFees.href = `cuotas.html?casa=${encodeURIComponent(lot.number)}`;
       zoomToLot(lot);
     }
 
     function clearSelection() {
       selectedLotId = null;
-      document.querySelectorAll('.map-lot.selected')
-        .forEach(item => item.classList.remove('selected'));
-
+      document.querySelectorAll('.map-lot.selected').forEach(item => item.classList.remove('selected'));
       detailTitle.textContent = 'Selecciona un lote';
-      detailSubtitle.textContent =
-        'Haz clic sobre una vivienda del croquis para consultar su ubicación.';
+      detailSubtitle.textContent = 'Haz clic sobre una vivienda del croquis para consultar su ubicación.';
       detailEmpty.hidden = false;
       detailGrid.classList.remove('visible');
       detailStatus.hidden = true;
-
       if (activeStreet) {
-        const matchingLots =
-          lots.filter(lot => lot.street === activeStreet);
-
-        setViewBox(
-          getLotsBounds(matchingLots, 34),
-          activeStreet
-        );
+        const matchingLots = lots.filter(lot => lot.street === activeStreet);
+        setViewBox(getLotsBounds(matchingLots, 34), activeStreet);
       } else {
         resetZoom();
       }
@@ -1721,80 +1594,56 @@
 
     function runSearch(query) {
       const normalized = normalizeText(query);
-
       if (!normalized) {
         searchResults.classList.remove('visible');
         searchResults.innerHTML = '';
         return;
       }
-
       const matches = lots
-        .filter(lot =>
-          normalizeText(`${lot.number} ${lot.street} ${lot.section}`).includes(normalized)
-        )
+        .filter(lot => normalizeText(`${lot.number} ${lot.street} ${lot.section}`).includes(normalized))
         .slice(0, 12);
-
       if (!matches.length) {
-        searchResults.innerHTML =
-          '<div style="padding:13px;color:#8a94a5;font-size:10px;text-align:center;">No se encontraron coincidencias.</div>';
+        searchResults.innerHTML = '<div style="padding:13px;color:#8a94a5;font-size:10px;text-align:center;">No se encontraron coincidencias.</div>';
         searchResults.classList.add('visible');
         return;
       }
-
       searchResults.innerHTML = matches.map(lot => `
       <button class="search-result" type="button" data-search-lot="${lot.id}">
         <strong>Casa ${lot.number}</strong>
         <span>${lot.street}</span>
       </button>
     `).join('');
-
       searchResults.classList.add('visible');
-
       searchResults.querySelectorAll('[data-search-lot]').forEach(button => {
         button.addEventListener('click', () => {
           const lot = lots.find(item => item.id === button.dataset.searchLot);
           const element = document.querySelector(`[data-lot-id="${button.dataset.searchLot}"]`);
-
           if (lot && element) {
             selectLot(lot, element);
             houseSearch.value = lot.number;
           }
-
           searchResults.classList.remove('visible');
         });
       });
     }
 
     houseSearch.addEventListener('input', event => runSearch(event.target.value));
-
     document.addEventListener('click', event => {
-      if (!event.target.closest('.map-search')) {
-        searchResults.classList.remove('visible');
-      }
+      if (!event.target.closest('.map-search')) searchResults.classList.remove('visible');
     });
-
-    document.getElementById('clearSelectionButton')
-      .addEventListener('click', clearSelection);
-
-    document.getElementById('zoomInButton')
-      .addEventListener('click', () => zoomBy(0.78));
-
-    document.getElementById('zoomOutButton')
-      .addEventListener('click', () => zoomBy(1.28));
-
-    document.getElementById('resetZoomButton')
-      .addEventListener('click', () => {
-        streetFilter.value = '';
-        activeStreet = '';
-        applyStreetFilter('');
-        clearSelection();
-      });
-
+    document.getElementById('clearSelectionButton').addEventListener('click', clearSelection);
+    document.getElementById('zoomInButton').addEventListener('click', () => zoomBy(0.78));
+    document.getElementById('zoomOutButton').addEventListener('click', () => zoomBy(1.28));
+    document.getElementById('resetZoomButton').addEventListener('click', () => {
+      streetFilter.value = '';
+      activeStreet = '';
+      applyStreetFilter('');
+      clearSelection();
+    });
     streetFilter.addEventListener('change', event => {
       clearSelection();
       applyStreetFilter(event.target.value);
     });
-
     clearStreetFilterButton.addEventListener('click', () => {
       streetFilter.value = '';
       applyStreetFilter('');
