@@ -249,7 +249,6 @@
   <div id="receiptContainer" class="receipt-hidden"></div>
   <div id="toast" class="toast"></div>
 
-  <!-- Modal para crear una cuota -->
   <div id="newQuotaModal" class="edit-modal" hidden aria-hidden="true">
     <div class="edit-modal-backdrop" onclick="cerrarModalNuevaCuota()"></div>
 
@@ -296,7 +295,6 @@
     </div>
   </div>
 
-  <!-- Modal de confirmación del modo edición -->
   <div id="saveChangesModal" class="edit-modal" hidden aria-hidden="true">
     <div class="edit-modal-backdrop" onclick="cerrarModalGuardado()"></div>
 
@@ -315,10 +313,7 @@
   </div>
 
   <script>
-    const API_BASE_URL =
-      location.hostname === 'localhost' || location.hostname === '127.0.0.1'
-        ? 'http://localhost:3000/api'
-        : 'https://api-misionjardines.listoenlinea.host/api';
+    const API_BASE_URL = 'https://api-misionjardines.listoenlinea.host/api';
 
     const token =
       localStorage.getItem('misionJardinesToken') ||
@@ -362,10 +357,7 @@
       try {
         result = await response.json();
       } catch {
-        result = {
-          ok: false,
-          message: 'El servidor devolvió una respuesta inválida'
-        };
+        result = { ok: false, message: 'El servidor devolvió una respuesta inválida' };
       }
 
       if (response.status === 401) {
@@ -412,11 +404,8 @@
       if (!value) return '';
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return '';
-
       return new Intl.DateTimeFormat('es-MX', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
+        year: 'numeric', month: '2-digit', day: '2-digit'
       }).format(date);
     }
 
@@ -424,7 +413,6 @@
       if (!value) return '';
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return '';
-
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
@@ -447,7 +435,6 @@
         { value: 'CHEQUE', label: 'Cheque' },
         { value: 'OTRO', label: 'Otro' }
       ];
-
       return formasPago
         .map(forma => `<option value="${forma.value}" ${forma.value === (formaActual || '') ? 'selected' : ''}>${forma.label}</option>`)
         .join('');
@@ -461,7 +448,6 @@
         { value: 'CANCELADO', label: 'Cancelado' },
         { value: 'CONDONADO', label: 'Condonado' }
       ];
-
       return estatus
         .map(item => `<option value="${item.value}" ${item.value === estatusActual ? 'selected' : ''}>${item.label}</option>`)
         .join('');
@@ -504,29 +490,21 @@
 
     function obtenerPropietario(cuota) {
       if (cuota.nombrePagador) return cuota.nombrePagador;
-
       const usuarios = cuota.casa?.usuarios || [];
       const principal = usuarios.find(usuario => usuario.esContactoPrincipal) || usuarios[0];
-
       if (!principal) return '';
-
-      return [
-        principal.nombre,
-        principal.apellidoPaterno,
-        principal.apellidoMaterno
-      ].filter(Boolean).join(' ');
+      return [principal.nombre, principal.apellidoPaterno, principal.apellidoMaterno]
+        .filter(Boolean).join(' ');
     }
 
     function obtenerCorreo(cuota) {
       if (cuota.correoDestino) return cuota.correoDestino;
-
       const usuarios = cuota.casa?.usuarios || [];
       const contacto =
         usuarios.find(usuario => usuario.esContactoPrincipal && usuario.recibeCorreosPago) ||
         usuarios.find(usuario => usuario.recibeCorreosPago) ||
         usuarios.find(usuario => usuario.esContactoPrincipal) ||
         usuarios[0];
-
       return contacto?.correo || cuota.casa?.correo || '';
     }
 
@@ -540,7 +518,6 @@
       const result = await apiRequest(`${API_BASE_URL}/auth/perfil`, {
         headers: authHeaders()
       });
-
       usuarioActual = result.usuario;
       aplicarPermisosVisuales(rolActual());
     }
@@ -557,11 +534,7 @@
         casas = [];
         return;
       }
-
-      const result = await apiRequest(`${API_BASE_URL}/casas`, {
-        headers: authHeaders()
-      });
-
+      const result = await apiRequest(`${API_BASE_URL}/casas`, { headers: authHeaders() });
       casas = result.casas || [];
       llenarSelectCasas();
     }
@@ -569,12 +542,10 @@
     function llenarSelectCasas() {
       const select = document.getElementById('newQuotaHouse');
       if (!select) return;
-
       const options = casas.map(casa => {
         const etiqueta = `${casa.calle || 'Sin calle'} · Casa ${casa.numero || 'S/N'}`;
         return `<option value="${Number(casa.id)}">${escapeHtml(etiqueta)}</option>`;
       }).join('');
-
       select.innerHTML = `<option value="">Selecciona una casa</option>${options}`;
     }
 
@@ -583,18 +554,10 @@
         `${API_BASE_URL}/cuotas?anio=${anioConsulta}&mes=${encodeURIComponent(mesConsulta)}`,
         { headers: authHeaders() }
       );
-
       cuotas = result.data || [];
-
-      if (!modoEdicion) {
-        cambiosPendientes = {};
-      }
-
+      if (!modoEdicion) cambiosPendientes = {};
       const periodo = document.getElementById('periodoCuotasLabel');
-      if (periodo) {
-        periodo.textContent = `Periodo: ${mesConsulta} ${anioConsulta}`;
-      }
-
+      if (periodo) periodo.textContent = `Periodo: ${mesConsulta} ${anioConsulta}`;
       llenarFiltroCalles();
       paginaActual = Math.min(paginaActual, Math.max(1, Math.ceil(cuotas.length / registrosPorPagina)));
       renderHouses();
@@ -604,17 +567,11 @@
     function llenarFiltroCalles() {
       const select = document.getElementById('filterStreet');
       const valorActual = select.value;
-
       const calles = [...new Set(
-        cuotas
-          .map(cuota => cuota.calleSnapshot || cuota.casa?.calle)
-          .filter(Boolean)
+        cuotas.map(cuota => cuota.calleSnapshot || cuota.casa?.calle).filter(Boolean)
       )].sort((a, b) => a.localeCompare(b, 'es'));
-
-      select.innerHTML =
-        '<option value="">Todas las calles</option>' +
+      select.innerHTML = '<option value="">Todas las calles</option>' +
         calles.map(calle => `<option value="${escapeHtml(calle)}">${escapeHtml(calle)}</option>`).join('');
-
       select.value = valorActual;
     }
 
@@ -623,7 +580,6 @@
       const house = document.getElementById('filterHouse').value.toLowerCase().trim();
       const street = document.getElementById('filterStreet').value;
       const status = document.getElementById('filterStatus').value;
-
       return cuotas.filter(cuota => {
         const propietario = obtenerPropietario(cuota);
         const correo = obtenerCorreo(cuota);
@@ -631,17 +587,11 @@
         const numero = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
         const calle = cuota.calleSnapshot || cuota.casa?.calle || '';
         const estatus = statusLabel(cuota.estatusPago);
-
-        const matchText =
-          !text ||
-          propietario.toLowerCase().includes(text) ||
-          correo.toLowerCase().includes(text) ||
-          telefono.toLowerCase().includes(text);
-
+        const matchText = !text || propietario.toLowerCase().includes(text) ||
+          correo.toLowerCase().includes(text) || telefono.toLowerCase().includes(text);
         const matchHouse = !house || String(numero).toLowerCase().includes(house);
         const matchStreet = !street || calle === street;
         const matchStatus = !status || estatus === status;
-
         return matchText && matchHouse && matchStreet && matchStatus;
       });
     }
@@ -655,12 +605,9 @@
       const datosFiltrados = getFilteredHouses();
       const totalRegistros = datosFiltrados.length;
       const totalPaginas = Math.max(1, Math.ceil(totalRegistros / registrosPorPagina));
-
       if (paginaActual > totalPaginas) paginaActual = totalPaginas;
-
       const inicio = (paginaActual - 1) * registrosPorPagina;
       const fin = inicio + registrosPorPagina;
-
       return {
         datosFiltrados,
         registrosPagina: datosFiltrados.slice(inicio, fin),
@@ -689,11 +636,7 @@
     function goToPage(page) {
       const { totalPaginas } = obtenerDatosPaginados();
       const nuevaPagina = Number(page);
-
-      if (!Number.isInteger(nuevaPagina) || nuevaPagina < 1 || nuevaPagina > totalPaginas || nuevaPagina === paginaActual) {
-        return;
-      }
-
+      if (!Number.isInteger(nuevaPagina) || nuevaPagina < 1 || nuevaPagina > totalPaginas || nuevaPagina === paginaActual) return;
       paginaActual = nuevaPagina;
       renderHouses();
       desplazarATabla();
@@ -706,15 +649,11 @@
     }
 
     function obtenerPaginasVisibles(actual, totalPaginas) {
-      if (totalPaginas <= 7) {
-        return Array.from({ length: totalPaginas }, (_, index) => index + 1);
-      }
-
+      if (totalPaginas <= 7) return Array.from({ length: totalPaginas }, (_, index) => index + 1);
       if (actual <= 4) return [1, 2, 3, 4, 5, '...', totalPaginas];
       if (actual >= totalPaginas - 3) {
         return [1, '...', totalPaginas - 4, totalPaginas - 3, totalPaginas - 2, totalPaginas - 1, totalPaginas];
       }
-
       return [1, '...', actual - 1, actual, actual + 1, '...', totalPaginas];
     }
 
@@ -723,43 +662,26 @@
       const paginationPages = document.getElementById('paginationPages');
       const previousButton = document.getElementById('previousPageButton');
       const nextButton = document.getElementById('nextPageButton');
-
       if (!paginationInfo || !paginationPages || !previousButton || !nextButton) return;
-
       const primerRegistro = totalRegistros === 0 ? 0 : inicio + 1;
       const ultimoRegistro = totalRegistros === 0 ? 0 : Math.min(fin, totalRegistros);
-
-      paginationInfo.textContent =
-        totalRegistros === 0
-          ? 'No hay cuotas para mostrar'
-          : `Mostrando ${primerRegistro}–${ultimoRegistro} de ${totalRegistros} cuotas`;
-
+      paginationInfo.textContent = totalRegistros === 0
+        ? 'No hay cuotas para mostrar'
+        : `Mostrando ${primerRegistro}–${ultimoRegistro} de ${totalRegistros} cuotas`;
       previousButton.disabled = paginaActual <= 1 || totalRegistros === 0;
       nextButton.disabled = paginaActual >= totalPaginas || totalRegistros === 0;
-
       if (totalRegistros === 0) {
         paginationPages.innerHTML = '';
         return;
       }
-
       paginationPages.innerHTML = obtenerPaginasVisibles(paginaActual, totalPaginas)
         .map(item => {
-          if (item === '...') {
-            return '<span class="pagination-ellipsis" aria-hidden="true">…</span>';
-          }
-
+          if (item === '...') return '<span class="pagination-ellipsis" aria-hidden="true">…</span>';
           const activa = item === paginaActual;
-          return `
-            <button
-              type="button"
-              class="pagination-page ${activa ? 'active' : ''}"
-              onclick="goToPage(${item})"
-              aria-label="Ir a la página ${item}"
-              aria-current="${activa ? 'page' : 'false'}"
-            >${item}</button>
-          `;
-        })
-        .join('');
+          return `<button type="button" class="pagination-page ${activa ? 'active' : ''}"
+            onclick="goToPage(${item})" aria-label="Ir a la página ${item}"
+            aria-current="${activa ? 'page' : 'false'}">${item}</button>`;
+        }).join('');
     }
 
     function obtenerCuotaPorId(cuotaId) {
@@ -769,22 +691,16 @@
     function obtenerValorActual(cuotaId, campo) {
       const cuota = obtenerCuotaPorId(cuotaId);
       if (!cuota) return '';
-
       if (Object.prototype.hasOwnProperty.call(cambiosPendientes[cuotaId] || {}, campo)) {
         return cambiosPendientes[cuotaId][campo];
       }
-
       return cuota[campo];
     }
 
     function registrarCambio(cuotaId, campo, valor) {
       const cuota = obtenerCuotaPorId(cuotaId);
       if (!cuota) return;
-
-      if (!cambiosPendientes[cuotaId]) {
-        cambiosPendientes[cuotaId] = {};
-      }
-
+      if (!cambiosPendientes[cuotaId]) cambiosPendientes[cuotaId] = {};
       cambiosPendientes[cuotaId][campo] = valor;
       actualizarEstadoBotonEdicion();
     }
@@ -803,20 +719,17 @@
 
     function registrarCambioEntero(cuotaId, campo, elemento) {
       const valor = Number(elemento.value);
-
       if (!Number.isInteger(valor) || valor < 0) {
         showToast('El valor debe ser un número entero mayor o igual a cero.');
         elemento.value = Math.round(Number(obtenerValorActual(cuotaId, campo) || 0));
         return;
       }
-
       registrarCambio(cuotaId, campo, valor);
     }
 
     function cantidadCuotasModificadas() {
       return Object.keys(cambiosPendientes)
-        .filter(cuotaId => Object.keys(cambiosPendientes[cuotaId]).length > 0)
-        .length;
+        .filter(cuotaId => Object.keys(cambiosPendientes[cuotaId]).length > 0).length;
     }
 
     function cantidadCamposModificados() {
@@ -827,17 +740,13 @@
     function actualizarEstadoBotonEdicion() {
       const boton = document.getElementById('editTableButton');
       if (!boton) return;
-
       if (!modoEdicion) {
         boton.textContent = '✏️ Editar tabla';
         boton.classList.remove('editing');
         return;
       }
-
       const totalCambios = cantidadCamposModificados();
-      boton.textContent = totalCambios > 0
-        ? `💾 Finalizar edición (${totalCambios})`
-        : '✓ Finalizar edición';
+      boton.textContent = totalCambios > 0 ? `💾 Finalizar edición (${totalCambios})` : '✓ Finalizar edición';
       boton.classList.add('editing');
     }
 
@@ -846,7 +755,6 @@
         showToast('No tienes permisos para editar cuotas.');
         return;
       }
-
       if (!modoEdicion) {
         modoEdicion = true;
         cambiosPendientes = {};
@@ -855,7 +763,6 @@
         showToast('Modo edición activado.');
         return;
       }
-
       if (cantidadCamposModificados() === 0) {
         modoEdicion = false;
         actualizarEstadoBotonEdicion();
@@ -863,7 +770,6 @@
         showToast('Modo edición desactivado.');
         return;
       }
-
       abrirModalGuardado();
     }
 
@@ -886,14 +792,11 @@
     function abrirModalGuardado() {
       const modal = document.getElementById('saveChangesModal');
       const resumen = document.getElementById('saveChangesSummary');
-
       if (!modal || !resumen) {
         showToast('No fue posible abrir la confirmación.');
         return;
       }
-
-      resumen.textContent =
-        `Se modificarán ${cantidadCamposModificados()} campo(s) en ${cantidadCuotasModificadas()} cuota(s).`;
+      resumen.textContent = `Se modificarán ${cantidadCamposModificados()} campo(s) en ${cantidadCuotasModificadas()} cuota(s).`;
       mostrarModal(modal);
     }
 
@@ -915,7 +818,6 @@
       const boton = document.getElementById('confirmSaveChangesButton');
       const cambios = Object.entries(cambiosPendientes)
         .filter(([, campos]) => Object.keys(campos).length > 0);
-
       if (!cambios.length) {
         cerrarModalGuardado();
         modoEdicion = false;
@@ -923,19 +825,14 @@
         renderHouses();
         return;
       }
-
       boton.disabled = true;
       boton.textContent = 'Guardando...';
-
       try {
         for (const [cuotaId, campos] of cambios) {
           await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}`, {
-            method: 'PATCH',
-            headers: authHeaders(true),
-            body: JSON.stringify(campos)
+            method: 'PATCH', headers: authHeaders(true), body: JSON.stringify(campos)
           });
         }
-
         cambiosPendientes = {};
         modoEdicion = false;
         cerrarModalGuardado();
@@ -956,14 +853,9 @@
       const { registrosPagina, totalRegistros, totalPaginas, inicio, fin } = obtenerDatosPaginados();
       const tbody = document.getElementById('housesTable');
       const tabla = document.getElementById('cuotasTable');
-
-      if (tabla) {
-        tabla.classList.toggle('modo-edicion', modoEdicion);
-      }
-
+      if (tabla) tabla.classList.toggle('modo-edicion', modoEdicion);
       tbody.innerHTML = '';
       const administrativo = esRolAdministrativo();
-
       if (!totalRegistros) {
         tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;">No se encontraron cuotas.</td></tr>';
         renderPagination(totalRegistros, totalPaginas, inicio, fin);
@@ -980,154 +872,45 @@
         const pagada = cuota.estatusPago === 'PAGADO';
         const camposDeshabilitados = !administrativo || !modoEdicion ? 'disabled' : '';
         const eliminarDeshabilitado = !puedeEliminarCuotas() || !modoEdicion ? 'disabled' : '';
-
         const reciboPdf = cuota.reciboPdfUrl
           ? `<a class="btn-secondary" href="${escapeHtml(cuota.reciboPdfUrl)}" target="_blank" rel="noopener noreferrer">Ver PDF</a>`
           : '<span>Sin PDF</span>';
-
         const accionesCorreo = administrativo && pagada && cuota.reciboPdfUrl
-          ? `
-              <div class="email-status-cell">
-                <strong>${obtenerTextoEnviado(cuota)}</strong>
-                <button type="button" class="btn-secondary" onclick="reenviarRecibo(${cuota.id})">Reenviar</button>
-              </div>
-            `
+          ? `<div class="email-status-cell"><strong>${obtenerTextoEnviado(cuota)}</strong>
+             <button type="button" class="btn-secondary" onclick="reenviarRecibo(${cuota.id})">Reenviar</button></div>`
           : `<strong>${obtenerTextoEnviado(cuota)}</strong>`;
 
         tr.innerHTML = `
-          <td>
-            <input
-              type="number"
-              min="2000"
-              max="2100"
-              step="1"
-              inputmode="numeric"
-              value="${Number(obtenerValorActual(cuota.id, 'anio') || cuota.anio)}"
-              ${camposDeshabilitados}
-              onchange="registrarCambioEntero(${cuota.id}, 'anio', this)"
-            >
-          </td>
-
-          <td>
-            <select
-              ${camposDeshabilitados}
-              onchange="registrarCambioSelect(${cuota.id}, 'mes', this)"
-            >
-              ${obtenerOpcionesMeses(obtenerValorActual(cuota.id, 'mes') || cuota.mes)}
-            </select>
-          </td>
-
-          <td>
-            <input type="text" value="${escapeHtml(casa)}" disabled title="La casa proviene del padrón de viviendas">
-          </td>
-
-          <td>
-            <input type="text" value="${escapeHtml(calle)}" disabled title="La calle proviene del padrón de viviendas">
-          </td>
-
-          <td>
-            <input
-              type="text"
-              maxlength="250"
-              value="${escapeHtml(obtenerValorActual(cuota.id, 'nombrePagador') ?? nombre)}"
-              ${camposDeshabilitados}
-              onchange="registrarCambioTexto(${cuota.id}, 'nombrePagador', this)"
-            >
-          </td>
-
-          <td>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              inputmode="numeric"
-              value="${Math.round(Number(
-                obtenerValorActual(cuota.id, 'montoPagado') ??
-                cuota.montoPagado ??
-                cuota.montoCuota ??
-                0
-              ))}"
-              ${camposDeshabilitados}
-              onchange="registrarCambioEntero(${cuota.id}, 'montoPagado', this)"
-            >
-          </td>
-
-          <td>
-            <select
-              ${camposDeshabilitados}
-              onchange="registrarCambioSelect(${cuota.id}, 'formaPago', this)"
-            >
-              ${obtenerOpcionesFormaPago(obtenerValorActual(cuota.id, 'formaPago') ?? cuota.formaPago)}
-            </select>
-          </td>
-
-          <td>
-            <input
-              type="text"
-              maxlength="150"
-              value="${escapeHtml(obtenerValorActual(cuota.id, 'referencia') ?? cuota.referencia ?? '')}"
-              ${camposDeshabilitados}
-              onchange="registrarCambioTexto(${cuota.id}, 'referencia', this)"
-            >
-          </td>
-
-          <td>
-            <input
-              type="date"
-              value="${formatDateForInput(obtenerValorActual(cuota.id, 'fechaPago') ?? cuota.fechaPago)}"
-              ${camposDeshabilitados}
-              onchange="registrarCambioFecha(${cuota.id}, this)"
-            >
-          </td>
-
-          <td>
-            ${administrativo
-              ? `
-                  <select
-                    class="status-select ${getStatusClass(cuota.estatusPago)}"
-                    ${camposDeshabilitados}
-                    onchange="cambiarEstatus(${cuota.id}, this.value)"
-                  >
-                    ${obtenerOpcionesEstatus(cuota.estatusPago)}
-                  </select>
-                `
-              : `<span class="status-select ${getStatusClass(cuota.estatusPago)}">${escapeHtml(statusLabel(cuota.estatusPago))}</span>`
-            }
-          </td>
-
-          <td>
-            <input type="text" value="${escapeHtml(cuota.folio || '')}" disabled title="El folio se genera automáticamente">
-          </td>
-
+          <td><input type="number" min="2000" max="2100" step="1" inputmode="numeric"
+            value="${Number(obtenerValorActual(cuota.id, 'anio') || cuota.anio)}" ${camposDeshabilitados}
+            onchange="registrarCambioEntero(${cuota.id}, 'anio', this)"></td>
+          <td><select ${camposDeshabilitados} onchange="registrarCambioSelect(${cuota.id}, 'mes', this)">
+            ${obtenerOpcionesMeses(obtenerValorActual(cuota.id, 'mes') || cuota.mes)}</select></td>
+          <td><input type="text" value="${escapeHtml(casa)}" disabled title="La casa proviene del padrón de viviendas"></td>
+          <td><input type="text" value="${escapeHtml(calle)}" disabled title="La calle proviene del padrón de viviendas"></td>
+          <td><input type="text" maxlength="250" value="${escapeHtml(obtenerValorActual(cuota.id, 'nombrePagador') ?? nombre)}"
+            ${camposDeshabilitados} onchange="registrarCambioTexto(${cuota.id}, 'nombrePagador', this)"></td>
+          <td><input type="number" min="0" step="1" inputmode="numeric"
+            value="${Math.round(Number(obtenerValorActual(cuota.id, 'montoPagado') ?? cuota.montoPagado ?? cuota.montoCuota ?? 0))}"
+            ${camposDeshabilitados} onchange="registrarCambioEntero(${cuota.id}, 'montoPagado', this)"></td>
+          <td><select ${camposDeshabilitados} onchange="registrarCambioSelect(${cuota.id}, 'formaPago', this)">
+            ${obtenerOpcionesFormaPago(obtenerValorActual(cuota.id, 'formaPago') ?? cuota.formaPago)}</select></td>
+          <td><input type="text" maxlength="150" value="${escapeHtml(obtenerValorActual(cuota.id, 'referencia') ?? cuota.referencia ?? '')}"
+            ${camposDeshabilitados} onchange="registrarCambioTexto(${cuota.id}, 'referencia', this)"></td>
+          <td><input type="date" value="${formatDateForInput(obtenerValorActual(cuota.id, 'fechaPago') ?? cuota.fechaPago)}"
+            ${camposDeshabilitados} onchange="registrarCambioFecha(${cuota.id}, this)"></td>
+          <td>${administrativo
+            ? `<select class="status-select ${getStatusClass(cuota.estatusPago)}" ${camposDeshabilitados}
+                onchange="cambiarEstatus(${cuota.id}, this.value)">${obtenerOpcionesEstatus(cuota.estatusPago)}</select>`
+            : `<span class="status-select ${getStatusClass(cuota.estatusPago)}">${escapeHtml(statusLabel(cuota.estatusPago))}</span>`}</td>
+          <td><input type="text" value="${escapeHtml(cuota.folio || '')}" disabled title="El folio se genera automáticamente"></td>
           <td>${reciboPdf}</td>
           <td>${accionesCorreo}</td>
-
-          <td>
-            <input
-              type="email"
-              maxlength="150"
-              value="${escapeHtml(obtenerValorActual(cuota.id, 'correoDestino') ?? email)}"
-              ${camposDeshabilitados}
-              onchange="registrarCambioTexto(${cuota.id}, 'correoDestino', this)"
-            >
-          </td>
-
-          <td>
-            ${puedeEliminarCuotas()
-              ? `
-                  <button
-                    type="button"
-                    class="btn-delete"
-                    onclick="eliminarCuota(${cuota.id})"
-                    title="Eliminar cuota"
-                    ${eliminarDeshabilitado}
-                  >Eliminar</button>
-                `
-              : '—'
-            }
-          </td>
-        `;
-
+          <td><input type="email" maxlength="150" value="${escapeHtml(obtenerValorActual(cuota.id, 'correoDestino') ?? email)}"
+            ${camposDeshabilitados} onchange="registrarCambioTexto(${cuota.id}, 'correoDestino', this)"></td>
+          <td>${puedeEliminarCuotas()
+            ? `<button type="button" class="btn-delete" onclick="eliminarCuota(${cuota.id})" title="Eliminar cuota" ${eliminarDeshabilitado}>Eliminar</button>`
+            : '—'}</td>`;
         tbody.appendChild(tr);
       });
 
@@ -1138,11 +921,8 @@
     async function actualizarCampo(cuotaId, campo, valor) {
       try {
         await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}`, {
-          method: 'PATCH',
-          headers: authHeaders(true),
-          body: JSON.stringify({ [campo]: valor })
+          method: 'PATCH', headers: authHeaders(true), body: JSON.stringify({ [campo]: valor })
         });
-
         const cuota = cuotas.find(item => Number(item.id) === Number(cuotaId));
         if (cuota) cuota[campo] = valor;
         showToast('Información actualizada.');
@@ -1157,26 +937,18 @@
         showToast('No tienes permisos para eliminar cuotas.');
         return;
       }
-
       const cuota = cuotas.find(item => Number(item.id) === Number(cuotaId));
       if (!cuota) {
         showToast('No se encontró la cuota.');
         return;
       }
-
       const casa = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
       const confirmacion = window.confirm(
         `¿Seguro que deseas eliminar la cuota de la casa ${casa}, correspondiente a ${cuota.mes} de ${cuota.anio}?`
       );
-
       if (!confirmacion) return;
-
       try {
-        await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}`, {
-          method: 'DELETE',
-          headers: authHeaders()
-        });
-
+        await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}`, { method: 'DELETE', headers: authHeaders() });
         showToast('Cuota eliminada correctamente.');
         await cargarCuotas();
       } catch (error) {
@@ -1186,13 +958,11 @@
 
     function abrirCorreoOutlook(cuota) {
       if (!cuota) return;
-
       const email = obtenerCorreo(cuota);
       if (!email) {
         showToast('El pago fue confirmado, pero la casa no tiene correo registrado.');
         return;
       }
-
       const casa = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
       const calle = cuota.calleSnapshot || cuota.casa?.calle || '';
       const nombre = obtenerPropietario(cuota);
@@ -1200,35 +970,18 @@
       const folio = cuota.folio || 'Sin folio';
       const referencia = cuota.referencia || 'Sin referencia';
       const recibo = cuota.reciboPdfUrl || 'El comprobante todavía no está disponible.';
-
       const subject = `Confirmación de pago - Casa ${casa} - Folio ${folio}`;
       const body = [
-        `Hola ${nombre || 'propietario'},`,
-        '',
-        'Le confirmamos que su pago de mantenimiento fue registrado correctamente.',
-        '',
-        `Casa: ${casa}`,
-        `Calle: ${calle}`,
-        `Periodo: ${cuota.mes} ${cuota.anio}`,
-        `Monto pagado: $${monto}`,
-        `Forma de pago: ${cuota.formaPago || 'No especificada'}`,
-        `Referencia: ${referencia}`,
-        `Folio: ${folio}`,
-        `Fecha de pago: ${formatDate(cuota.fechaPago)}`,
-        '',
-        'Puede consultar o descargar su comprobante PDF en el siguiente enlace:',
-        recibo,
-        '',
-        'Gracias.',
-        'Administración de Misión Jardines'
+        `Hola ${nombre || 'propietario'},`, '',
+        'Le confirmamos que su pago de mantenimiento fue registrado correctamente.', '',
+        `Casa: ${casa}`, `Calle: ${calle}`, `Periodo: ${cuota.mes} ${cuota.anio}`,
+        `Monto pagado: $${monto}`, `Forma de pago: ${cuota.formaPago || 'No especificada'}`,
+        `Referencia: ${referencia}`, `Folio: ${folio}`, `Fecha de pago: ${formatDate(cuota.fechaPago)}`, '',
+        'Puede consultar o descargar su comprobante PDF en el siguiente enlace:', recibo, '',
+        'Gracias.', 'Administración de Misión Jardines'
       ].join('\n');
-
-      const outlookUrl =
-        'https://outlook.office.com/mail/deeplink/compose' +
-        `?to=${encodeURIComponent(email)}` +
-        `&subject=${encodeURIComponent(subject)}` +
-        `&body=${encodeURIComponent(body)}`;
-
+      const outlookUrl = 'https://outlook.office.com/mail/deeplink/compose' +
+        `?to=${encodeURIComponent(email)}` + `&subject=${encodeURIComponent(subject)}` + `&body=${encodeURIComponent(body)}`;
       window.open(outlookUrl, '_blank', 'noopener');
     }
 
@@ -1238,7 +991,6 @@
         await cargarCuotas();
         return;
       }
-
       if (estatus !== 'PAGADO') {
         await actualizarCampo(cuotaId, 'estatusPago', estatus);
         const cuota = cuotas.find(item => Number(item.id) === Number(cuotaId));
@@ -1246,55 +998,28 @@
         renderHouses();
         return;
       }
-
       const cuota = cuotas.find(item => Number(item.id) === Number(cuotaId));
       if (!cuota) return;
-
-      const montoIngresado = prompt(
-        'Monto pagado:',
-        Number(cuota.montoPagado || cuota.montoCuota || 0)
-      );
-
-      if (montoIngresado === null) {
-        renderHouses();
-        return;
-      }
-
+      const montoIngresado = prompt('Monto pagado:', Number(cuota.montoPagado || cuota.montoCuota || 0));
+      if (montoIngresado === null) { renderHouses(); return; }
       const montoPagado = Number(montoIngresado);
       if (!Number.isFinite(montoPagado) || montoPagado <= 0) {
-        showToast('Ingresa un monto válido.');
-        renderHouses();
-        return;
+        showToast('Ingresa un monto válido.'); renderHouses(); return;
       }
-
       const formaPago = prompt(
         'Forma de pago: EFECTIVO, TRANSFERENCIA, DEPOSITO, TARJETA, CHEQUE u OTRO',
         cuota.formaPago || 'EFECTIVO'
       );
-
-      if (formaPago === null) {
-        renderHouses();
-        return;
-      }
-
+      if (formaPago === null) { renderHouses(); return; }
       const formaNormalizada = formaPago.trim().toUpperCase();
       const formasPermitidas = ['EFECTIVO', 'TRANSFERENCIA', 'DEPOSITO', 'TARJETA', 'CHEQUE', 'OTRO'];
-
       if (!formasPermitidas.includes(formaNormalizada)) {
-        showToast('La forma de pago no es válida.');
-        renderHouses();
-        return;
+        showToast('La forma de pago no es válida.'); renderHouses(); return;
       }
-
       const referencia = prompt('Referencia del pago:', cuota.referencia || '');
-      if (referencia === null) {
-        renderHouses();
-        return;
-      }
-
+      if (referencia === null) { renderHouses(); return; }
       try {
         showToast('Confirmando pago y generando recibo...');
-
         const result = await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}/confirmar`, {
           method: 'PATCH',
           headers: authHeaders(true),
@@ -1306,13 +1031,8 @@
             nombrePagador: obtenerPropietario(cuota)
           })
         });
-
         showToast(result.message);
-
-        if (result.data?.estatusPago === 'PAGADO') {
-          abrirCorreoOutlook(result.data);
-        }
-
+        if (result.data?.estatusPago === 'PAGADO') abrirCorreoOutlook(result.data);
         await cargarCuotas();
       } catch (error) {
         showToast(`Error: ${error.message}`);
@@ -1324,14 +1044,10 @@
       const cuota = cuotas.find(item => Number(item.id) === Number(cuotaId));
       const correo = prompt('Correo de destino:', obtenerCorreo(cuota));
       if (!correo) return;
-
       try {
         const result = await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}/reenviar`, {
-          method: 'POST',
-          headers: authHeaders(true),
-          body: JSON.stringify({ correoDestino: correo.trim() })
+          method: 'POST', headers: authHeaders(true), body: JSON.stringify({ correoDestino: correo.trim() })
         });
-
         showToast(result.message);
         await cargarCuotas();
       } catch (error) {
@@ -1343,10 +1059,8 @@
       const total = cuotas.length;
       const pagadas = cuotas.filter(cuota => cuota.estatusPago === 'PAGADO').length;
       const pendientes = cuotas.filter(cuota => cuota.estatusPago === 'PENDIENTE').length;
-      const ingresos = cuotas
-        .filter(cuota => cuota.estatusPago === 'PAGADO')
+      const ingresos = cuotas.filter(cuota => cuota.estatusPago === 'PAGADO')
         .reduce((totalIngresos, cuota) => totalIngresos + Number(cuota.montoPagado || 0), 0);
-
       document.getElementById('metricCasas').textContent = total;
       document.getElementById('metricPagadas').textContent = pagadas;
       document.getElementById('metricPendientes').textContent = pendientes;
@@ -1366,11 +1080,8 @@
       const toast = document.getElementById('toast');
       toast.textContent = message;
       toast.style.display = 'block';
-
       clearTimeout(window.cuotasToastTimer);
-      window.cuotasToastTimer = setTimeout(() => {
-        toast.style.display = 'none';
-      }, 4500);
+      window.cuotasToastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4500);
     }
 
     function prepararFormularioNuevaCuota() {
@@ -1386,15 +1097,10 @@
         showToast('No tienes permisos para crear cuotas.');
         return;
       }
-
       try {
-        if (!casas.length) {
-          await cargarCasas();
-        }
-
+        if (!casas.length) await cargarCasas();
         prepararFormularioNuevaCuota();
-        const modal = document.getElementById('newQuotaModal');
-        mostrarModal(modal);
+        mostrarModal(document.getElementById('newQuotaModal'));
       } catch (error) {
         showToast(`No fue posible cargar el padrón: ${error.message}`);
       }
@@ -1410,50 +1116,23 @@
         showToast('No tienes permisos para crear cuotas.');
         return;
       }
-
       const casaId = Number(document.getElementById('newQuotaHouse').value);
       const anio = Number(document.getElementById('newQuotaYear').value);
       const mes = normalizarTexto(document.getElementById('newQuotaMonth').value);
       const montoCuota = Number(document.getElementById('newQuotaAmount').value);
       const observaciones = document.getElementById('newQuotaObservations').value.trim();
       const boton = document.getElementById('createQuotaButton');
-
-      if (!casaId) {
-        showToast('Selecciona una casa.');
-        return;
-      }
-
-      if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) {
-        showToast('Ingresa un año válido.');
-        return;
-      }
-
-      if (!MESES.includes(mes)) {
-        showToast('Selecciona un mes válido.');
-        return;
-      }
-
-      if (!Number.isFinite(montoCuota) || montoCuota < 0) {
-        showToast('Ingresa un monto válido.');
-        return;
-      }
-
+      if (!casaId) { showToast('Selecciona una casa.'); return; }
+      if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) { showToast('Ingresa un año válido.'); return; }
+      if (!MESES.includes(mes)) { showToast('Selecciona un mes válido.'); return; }
+      if (!Number.isFinite(montoCuota) || montoCuota < 0) { showToast('Ingresa un monto válido.'); return; }
       boton.disabled = true;
       boton.textContent = 'Creando...';
-
       try {
         await apiRequest(`${API_BASE_URL}/cuotas`, {
-          method: 'POST',
-          headers: authHeaders(true),
-          body: JSON.stringify({
-            casaId,
-            anio,
-            mes,
-            montoCuota,
-            observaciones: observaciones || null
-          })
+          method: 'POST', headers: authHeaders(true),
+          body: JSON.stringify({ casaId, anio, mes, montoCuota, observaciones: observaciones || null })
         });
-
         anioConsulta = anio;
         mesConsulta = mes;
         paginaActual = 1;
@@ -1470,12 +1149,10 @@
 
     function exportExcel() {
       const datos = getFilteredHouses();
-
       if (!datos.length) {
         showToast('No hay cuotas para exportar con los filtros actuales.');
         return;
       }
-
       const rows = datos.map(cuota => ({
         'Año': Number(cuota.anio),
         'Mes': cuota.mes || '',
@@ -1494,14 +1171,12 @@
         'Email': obtenerCorreo(cuota),
         'Observaciones': cuota.observaciones || ''
       }));
-
       const worksheet = XLSX.utils.json_to_sheet(rows);
       worksheet['!cols'] = [
         { wch: 8 }, { wch: 14 }, { wch: 12 }, { wch: 24 }, { wch: 28 },
         { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 16 },
         { wch: 16 }, { wch: 16 }, { wch: 36 }, { wch: 16 }, { wch: 30 }, { wch: 32 }
       ];
-
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Cuotas');
       XLSX.writeFile(workbook, `cuotas_${mesConsulta.toLowerCase()}_${anioConsulta}.xlsx`);
@@ -1510,21 +1185,17 @@
 
     function obtenerCampoExcel(fila, nombres) {
       const claves = Object.keys(fila);
-
       for (const nombre of nombres) {
         const objetivo = normalizarTexto(nombre);
         const clave = claves.find(item => normalizarTexto(item) === objetivo);
         if (clave !== undefined) return fila[clave];
       }
-
       return '';
     }
 
     function numeroDesdeExcel(value) {
       if (typeof value === 'number') return value;
-      const limpio = String(value ?? '')
-        .replace(/[$,\s]/g, '')
-        .trim();
+      const limpio = String(value ?? '').replace(/[$,\s]/g, '').trim();
       return limpio === '' ? NaN : Number(limpio);
     }
 
@@ -1533,122 +1204,68 @@
       const calle = obtenerCampoExcel(fila, ['Calle']);
       const numeroNormalizado = normalizarTexto(numero);
       const calleNormalizada = normalizarTexto(calle);
-
-      if (!numeroNormalizado) {
-        throw new Error('Falta la columna Casa o el número de casa.');
-      }
-
+      if (!numeroNormalizado) throw new Error('Falta la columna Casa o el número de casa.');
       const coincidencias = casas.filter(casa => {
         const coincideNumero = normalizarTexto(casa.numero) === numeroNormalizado;
         const coincideCalle = !calleNormalizada || normalizarTexto(casa.calle) === calleNormalizada;
         return coincideNumero && coincideCalle;
       });
-
       if (coincidencias.length === 1) return coincidencias[0];
-
       if (coincidencias.length === 0) {
         throw new Error(`No se encontró la casa ${numero}${calle ? ` en ${calle}` : ''}.`);
       }
-
       throw new Error(`La casa ${numero} aparece en más de una calle; agrega la columna Calle.`);
     }
 
     async function importExcel(event) {
       const input = event.target;
       const file = input.files?.[0];
-
       if (!file) return;
-
       if (!puedeCrearCuotas()) {
         showToast('No tienes permisos para importar cuotas.');
         input.value = '';
         return;
       }
-
       const boton = document.getElementById('importExcelButton');
       boton.disabled = true;
       boton.textContent = 'Importando...';
-
       try {
-        if (!casas.length) {
-          await cargarCasas();
-        }
-
+        if (!casas.length) await cargarCasas();
         const data = await file.arrayBuffer();
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
-
-        if (!firstSheetName) {
-          throw new Error('El archivo no contiene hojas.');
-        }
-
+        if (!firstSheetName) throw new Error('El archivo no contiene hojas.');
         const filas = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
-          defval: '',
-          raw: false
+          defval: '', raw: false
         }).filter(fila => Object.values(fila).some(valor => String(valor).trim() !== ''));
-
-        if (!filas.length) {
-          throw new Error('El archivo no contiene registros para importar.');
-        }
-
-        const confirmar = window.confirm(
-          `Se intentarán importar ${filas.length} cuota(s). ¿Deseas continuar?`
-        );
-
+        if (!filas.length) throw new Error('El archivo no contiene registros para importar.');
+        const confirmar = window.confirm(`Se intentarán importar ${filas.length} cuota(s). ¿Deseas continuar?`);
         if (!confirmar) return;
-
         let creadas = 0;
         const errores = [];
-
         for (let index = 0; index < filas.length; index += 1) {
           const fila = filas[index];
-
           try {
             const casa = buscarCasaParaImportar(fila);
             const anio = numeroDesdeExcel(obtenerCampoExcel(fila, ['Año', 'Anio']));
             const mes = normalizarTexto(obtenerCampoExcel(fila, ['Mes']));
-            const montoCuota = numeroDesdeExcel(
-              obtenerCampoExcel(fila, ['Monto Cuota', 'Monto', 'montoCuota'])
-            );
-            const observaciones = String(
-              obtenerCampoExcel(fila, ['Observaciones']) || ''
-            ).trim();
-
-            if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) {
-              throw new Error('Año inválido.');
-            }
-
-            if (!MESES.includes(mes)) {
-              throw new Error('Mes inválido.');
-            }
-
-            if (!Number.isFinite(montoCuota) || montoCuota < 0) {
-              throw new Error('Monto de cuota inválido.');
-            }
-
+            const montoCuota = numeroDesdeExcel(obtenerCampoExcel(fila, ['Monto Cuota', 'Monto', 'montoCuota']));
+            const observaciones = String(obtenerCampoExcel(fila, ['Observaciones']) || '').trim();
+            if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) throw new Error('Año inválido.');
+            if (!MESES.includes(mes)) throw new Error('Mes inválido.');
+            if (!Number.isFinite(montoCuota) || montoCuota < 0) throw new Error('Monto de cuota inválido.');
             await apiRequest(`${API_BASE_URL}/cuotas`, {
-              method: 'POST',
-              headers: authHeaders(true),
-              body: JSON.stringify({
-                casaId: casa.id,
-                anio,
-                mes,
-                montoCuota,
-                observaciones: observaciones || null
-              })
+              method: 'POST', headers: authHeaders(true),
+              body: JSON.stringify({ casaId: casa.id, anio, mes, montoCuota, observaciones: observaciones || null })
             });
-
             creadas += 1;
           } catch (error) {
             errores.push(`Fila ${index + 2}: ${error.message}`);
           }
         }
-
         await cargarCuotas();
-
         const resumen = `Importación terminada: ${creadas} creada(s), ${errores.length} con error.`;
         showToast(resumen);
-
         if (errores.length) {
           console.warn('Errores de importación de cuotas:', errores);
           window.alert(`${resumen}\n\n${errores.slice(0, 8).join('\n')}${errores.length > 8 ? '\n…' : ''}`);
@@ -1664,10 +1281,8 @@
 
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
-
       const newQuotaModal = document.getElementById('newQuotaModal');
       const saveChangesModal = document.getElementById('saveChangesModal');
-
       if (newQuotaModal && !newQuotaModal.hidden) cerrarModalNuevaCuota();
       if (saveChangesModal && !saveChangesModal.hidden) cerrarModalGuardado();
     });
@@ -1675,11 +1290,7 @@
     async function iniciarPagina() {
       try {
         await validarSesion();
-
-        if (puedeCrearCuotas()) {
-          await cargarCasas();
-        }
-
+        if (puedeCrearCuotas()) await cargarCasas();
         await cargarCuotas();
       } catch (error) {
         console.error(error);
