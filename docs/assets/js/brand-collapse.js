@@ -1,0 +1,130 @@
+(() => {
+  const initBrandCollapse = () => {
+    const nav = document.querySelector('header nav');
+    const brand = nav?.querySelector('.brand');
+
+    if (!nav || !brand || nav.dataset.brandCollapseReady === 'true') return;
+    nav.dataset.brandCollapseReady = 'true';
+
+    const style = document.createElement('style');
+    style.id = 'brandCollapseStyles';
+    style.textContent = `
+      header nav.brand-collapse-nav {
+        position: relative;
+      }
+
+      .brand-collapse-tab {
+        width: 32px;
+        height: 42px;
+        flex: 0 0 32px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 0 12px 12px 0;
+        color: var(--text, #f4f7fb);
+        background: rgba(255,255,255,.08);
+        box-shadow: 0 8px 22px rgba(0,0,0,.16);
+        cursor: pointer;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1;
+        transition: background .2s ease, border-color .2s ease, transform .2s ease;
+      }
+
+      .brand-collapse-tab:hover {
+        background: rgba(255,255,255,.13);
+        border-color: rgba(94,234,212,.30);
+        transform: translateX(1px);
+      }
+
+      .brand-collapse-tab:focus-visible {
+        outline: 3px solid rgba(94,234,212,.30);
+        outline-offset: 2px;
+      }
+
+      header nav.brand-collapse-nav .brand {
+        max-width: 620px;
+        opacity: 1;
+        transform: translateX(0);
+        overflow: hidden;
+        white-space: nowrap;
+        transition:
+          max-width .28s ease,
+          opacity .2s ease,
+          transform .28s ease,
+          margin .28s ease;
+      }
+
+      header nav.brand-collapse-nav.brand-is-collapsed .brand {
+        max-width: 0 !important;
+        margin: 0 !important;
+        opacity: 0;
+        transform: translateX(-24px);
+        pointer-events: none;
+      }
+
+      header nav.brand-collapse-nav.brand-is-collapsed {
+        justify-content: flex-start;
+      }
+
+      header nav.brand-collapse-nav.brand-is-collapsed .menu {
+        margin-left: auto;
+      }
+
+      @media (max-width: 700px) {
+        .brand-collapse-tab {
+          width: 30px;
+          height: 38px;
+          flex-basis: 30px;
+          font-size: 22px;
+        }
+
+        header nav.brand-collapse-nav .brand {
+          max-width: calc(100vw - 100px);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    nav.classList.add('brand-collapse-nav');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'brand-collapse-tab';
+    button.setAttribute('aria-label', 'Ocultar bloque de Misión Jardines');
+    button.setAttribute('aria-expanded', 'true');
+    button.title = 'Ocultar / mostrar encabezado';
+
+    const setCollapsed = (collapsed) => {
+      nav.classList.toggle('brand-is-collapsed', collapsed);
+      button.textContent = collapsed ? '›' : '‹';
+      button.setAttribute('aria-expanded', String(!collapsed));
+      button.setAttribute(
+        'aria-label',
+        collapsed ? 'Mostrar bloque de Misión Jardines' : 'Ocultar bloque de Misión Jardines'
+      );
+      try {
+        localStorage.setItem('misionJardinesBrandCollapsed', collapsed ? '1' : '0');
+      } catch (_) {}
+    };
+
+    let initialCollapsed = false;
+    try {
+      initialCollapsed = localStorage.getItem('misionJardinesBrandCollapsed') === '1';
+    } catch (_) {}
+
+    nav.insertBefore(button, brand);
+    button.addEventListener('click', () => {
+      setCollapsed(!nav.classList.contains('brand-is-collapsed'));
+    });
+
+    setCollapsed(initialCollapsed);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBrandCollapse, { once: true });
+  } else {
+    initBrandCollapse();
+  }
+})();
