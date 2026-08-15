@@ -135,13 +135,13 @@
         display: grid;
         place-items: center;
         padding: 0;
-        border: 1px solid rgba(255,255,255,.13);
+        border: 1px solid rgba(250,204,21,.48);
         border-left: 0;
         border-radius: 0 12px 12px 0;
-        color: var(--text, #f4f7fb);
-        background: rgba(7,17,31,.94);
+        color: var(--warning, #facc15);
+        background: rgba(250,204,21,.12);
         backdrop-filter: blur(18px);
-        box-shadow: 7px 4px 20px rgba(0,0,0,.20);
+        box-shadow: 7px 4px 20px rgba(0,0,0,.20), 0 0 18px rgba(250,204,21,.10);
         cursor: pointer;
         font-size: 25px;
         font-weight: 800;
@@ -150,17 +150,19 @@
           left var(--portal-sidebar-transition),
           background .2s ease,
           border-color .2s ease,
+          color .2s ease,
           transform .2s ease;
       }
 
       .portal-sidebar-tab:hover {
-        background: rgba(17,34,55,.98);
-        border-color: rgba(94,234,212,.34);
+        color: #fde68a;
+        background: rgba(250,204,21,.20);
+        border-color: rgba(250,204,21,.72);
         transform: translateX(1px);
       }
 
       .portal-sidebar-tab:focus-visible {
-        outline: 3px solid rgba(94,234,212,.30);
+        outline: 3px solid rgba(250,204,21,.38);
         outline-offset: 2px;
       }
 
