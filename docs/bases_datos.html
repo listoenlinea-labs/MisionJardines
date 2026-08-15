@@ -620,6 +620,8 @@
     </footer>
 
     <script>
+        const API_URL = 'https://api-misionjardines.listoenlinea.host/api';
+
         const token =
             localStorage.getItem('misionJardinesToken') ||
             sessionStorage.getItem('misionJardinesToken');
@@ -631,7 +633,7 @@
         async function validarSesion() {
             try {
                 const response = await fetch(
-                    'http://localhost:3000/api/auth/perfil',
+                    `${API_URL}/auth/perfil`,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`
