@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'scripts/unify-sidebar-module.sh'
+      - '.github/workflows/unify-sidebar-module.yml'
 
 permissions:
   contents: write
