@@ -7,7 +7,7 @@
     if (document.querySelector('link[data-mj-premium]')) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'assets/css/premium.css?v=20260828-1';
+    link.href = 'assets/css/premium.css?v=20260828-2';
     link.dataset.mjPremium = 'true';
     document.head.appendChild(link);
   };

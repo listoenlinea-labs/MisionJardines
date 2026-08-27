@@ -266,3 +266,112 @@ body.mj-shell > .hero.mj-module-heading p { max-width:720px; color:var(--mj-mute
 }
 
 @media(prefers-reduced-motion:reduce){body.mj-shell > header.mj-sidebar,.mj-sidebar-backdrop{transition:none}}
+
+/* =========================================================
+   CAPA FINAL: neutraliza reglas heredadas con !important
+   ========================================================= */
+body.page-index.mj-shell > .hero.hero-dashboard {
+  width: 100% !important;
+  max-width: 1500px !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: 28px 30px 0 !important;
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+  align-items: initial !important;
+}
+
+body.page-index.mj-shell .hero-dashboard > .hero-copy { display: none !important; }
+body.page-index.mj-shell .mj-dashboard-heading {
+  width: 100% !important;
+  margin: 0 0 22px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 24px !important;
+}
+body.page-index.mj-shell .mj-dashboard-heading > div:first-child { min-width: 0 !important; }
+body.page-index.mj-shell .hero-dashboard .mj-dashboard-heading h1 {
+  max-width: none !important;
+  margin: 5px 0 3px !important;
+  font-size: 27px !important;
+  line-height: 1.1 !important;
+  letter-spacing: -.04em !important;
+  white-space: normal !important;
+}
+body.page-index.mj-shell .mj-dashboard-heading p { margin: 0 !important; font-size: 11px !important; }
+body.page-index.mj-shell .community-dashboard {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+body.page-index.mj-shell .dashboard-metrics {
+  width: 100% !important;
+  margin: 0 0 14px !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+body.page-index.mj-shell .dashboard-metric {
+  min-width: 0 !important;
+  min-height: 102px !important;
+  padding: 18px !important;
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: 13px !important;
+}
+body.page-index.mj-shell .dashboard-body {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: minmax(340px, 1.18fr) minmax(310px, .9fr) minmax(220px, .62fr) !important;
+  gap: 12px !important;
+}
+body.page-index.mj-shell .dashboard-side {
+  width: auto !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto 1fr !important;
+  gap: 12px !important;
+}
+
+body.mj-shell .mj-sidebar .menu a {
+  padding: 9px 11px 9px 40px !important;
+  color: #667188 !important;
+  background: transparent !important;
+  border-radius: 10px !important;
+  font-size: 11.5px !important;
+  transform: none !important;
+}
+body.mj-shell .mj-sidebar .menu a:hover { color: var(--mj-ink) !important; background: #f7f8fb !important; }
+body.mj-shell .mj-sidebar .menu a.active { color: var(--mj-orange-dark) !important; background: linear-gradient(90deg,#fff0e2,#fff8f2) !important; box-shadow: none !important; }
+body.mj-shell .mj-sidebar .mj-menu-icon { left: 13px !important; }
+body.mj-shell > .mj-mobile-nav { display: none !important; }
+
+@media (max-width: 1180px) {
+  body.page-index.mj-shell .dashboard-body { grid-template-columns: minmax(320px, 1.15fr) minmax(290px, .85fr) !important; }
+  body.page-index.mj-shell .dashboard-side { grid-column: 1 / -1 !important; grid-template-columns: 1fr 1fr !important; grid-template-rows: none !important; }
+}
+
+@media (max-width: 920px) {
+  body.page-index.mj-shell > .hero.hero-dashboard { padding: 22px 15px 0 !important; }
+  body.page-index.mj-shell .mj-dashboard-heading { align-items: flex-start !important; }
+  body.page-index.mj-shell .dashboard-metrics { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  body.page-index.mj-shell .dashboard-body { grid-template-columns: 1fr !important; }
+  body.page-index.mj-shell .dashboard-side { grid-column: auto !important; grid-template-columns: 1fr 1fr !important; }
+  body.mj-shell > .mj-mobile-nav { display: grid !important; }
+}
+
+@media (max-width: 560px) {
+  body.page-index.mj-shell .hero-dashboard .mj-dashboard-heading h1 { font-size: 24px !important; }
+  body.page-index.mj-shell .dashboard-metrics { display: flex !important; grid-template-columns: none !important; }
+  body.page-index.mj-shell .dashboard-side { grid-template-columns: 1fr !important; }
+}
