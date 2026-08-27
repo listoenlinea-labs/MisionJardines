@@ -232,3 +232,5 @@ jobs:
           git add -A docs .github/workflows/fix-sidebar-uniformity.yml
           git commit -m "Igualar menu lateral de inicio con el resto"
           git push
+
+# trigger
