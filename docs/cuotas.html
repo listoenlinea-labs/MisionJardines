@@ -12,272 +12,239 @@
 </head>
 
 <body class="page-cuotas">
-  <main class="cuotas-shell">
-    <div class="cuotas-topbar">
-      <div class="cuotas-topbar-title">
-        <span>ADMINISTRACIÓN Y FINANZAS</span>
-        <strong>Cuotas del fraccionamiento</strong>
-      </div>
 
-      <div class="cuotas-topbar-actions">
-        <div class="cuotas-online-status">
-          <i></i>
-          Operación normal
+  <header>
+    <nav>
+      <div class="brand">
+        <div class="logo">
+          <img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines">
         </div>
 
-        <button class="btn-secondary cuotas-export-top" type="button" onclick="exportExcel()">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 3v12"></path>
-            <path d="m7 10 5 5 5-5"></path>
-            <path d="M5 21h14"></path>
-          </svg>
+        <div>
+          <div style="font-size:2rem;font-weight:900;">Misión Jardines</div>
+          <small style="font-size:1.1rem;">Administración de cuotas</small>
+        </div>
+      </div>
+
+      <div class="menu">
+        <a href="index.html">Inicio</a>
+        <a class="active" href="cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">Cuotas</a>
+        <a href="bases_datos.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO">Base de Datos</a>
+        <a href="mapa.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">Mapa</a>
+        <a href="visitas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO">Visitas</a>
+        <a href="seguridad.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD">Seguridad</a>
+        <a href="calendario.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO">Calendario</a>
+        <a href="reportes.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO">Reportes</a>
+        <a href="directorio.html" data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO">Directorio</a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="badge">Control de mantenimiento vecinal</div>
+    <h1>Cuotas de <span>Misión Jardines</span></h1>
+    <p>
+      Panel para administrar casas, propietarios, cuotas, estatus de pago,
+      folios, referencias y comprobantes generados con plantilla local.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="grid">
+      <div class="card metric">
+        <small>Casas registradas</small>
+        <strong id="metricCasas">0</strong>
+        <div class="hint">Total en padrón</div>
+      </div>
+
+      <div class="card metric">
+        <small>Pagadas</small>
+        <strong id="metricPagadas">0</strong>
+        <div class="hint">Cuotas al corriente</div>
+      </div>
+
+      <div class="card metric">
+        <small>Pendientes</small>
+        <strong id="metricPendientes">0</strong>
+        <div class="hint">Requieren seguimiento</div>
+      </div>
+
+      <div class="card metric">
+        <small>Monto recaudado</small>
+        <strong id="metricIngresos">$0</strong>
+        <div class="hint">Pagos registrados</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <div>
+        <h2>Filtros</h2>
+        <p>Busca por propietario, casa, calle o estatus.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="filters">
+        <div>
+          <label>Buscar propietario, correo o teléfono</label>
+          <input id="filterText" placeholder="Ej. Juan Pérez" oninput="aplicarFiltros()">
+        </div>
+
+        <div>
+          <label>Casa</label>
+          <input id="filterHouse" placeholder="Ej. 12" oninput="aplicarFiltros()">
+        </div>
+
+        <div>
+          <label>Calle</label>
+          <select id="filterStreet" onchange="aplicarFiltros()">
+            <option value="">Todas las calles</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Estatus</label>
+          <select id="filterStatus" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+            <option value="Pagado">Pagado</option>
+            <option value="Pago parcial">Pago parcial</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Cancelado">Cancelado</option>
+            <option value="Condonado">Condonado</option>
+          </select>
+        </div>
+
+        <button class="btn-secondary" type="button" onclick="clearFilters()">Limpiar</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <div>
+        <h2>Tabla de cuotas</h2>
+        <p id="periodoCuotasLabel">Periodo: JULIO 2026</p>
+      </div>
+
+      <div class="actions">
+        <input
+          id="excelInput"
+          type="file"
+          accept=".xlsx,.xls"
+          style="display:none"
+          onchange="importExcel(event)"
+        >
+
+        <button
+          id="importExcelButton"
+          class="btn-secondary"
+          type="button"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR"
+          onclick="document.getElementById('excelInput').click()"
+        >
+          Importar Excel
+        </button>
+
+        <button class="btn-secondary" type="button" onclick="exportExcel()">
           Exportar Excel
+        </button>
+
+        <button
+          id="editTableButton"
+          class="btn-edit-table"
+          type="button"
+          onclick="alternarModoEdicion()"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA"
+        >
+          ✏️ Editar tabla
+        </button>
+
+        <button
+          id="addQuotaButton"
+          class="btn-primary"
+          type="button"
+          data-roles="SUPER_ADMIN,ADMINISTRADOR"
+          onclick="abrirModalNuevaCuota()"
+        >
+          + Agregar cuota
         </button>
       </div>
     </div>
 
-    <section class="cuotas-hero">
-      <div class="cuotas-hero-copy">
-        <span class="cuotas-eyebrow">CONTROL MENSUAL</span>
-        <h1>Cuotas claras, comunidad al día.</h1>
-        <p>
-          Revisa pagos, identifica pendientes y administra cada movimiento
-          del fraccionamiento desde una sola vista.
-        </p>
+    <div class="card">
+      <div class="table-wrap">
+        <table id="cuotasTable" class="cuotas-table">
+          <thead>
+            <tr>
+              <th>Año</th>
+              <th>Mes</th>
+              <th>Casa</th>
+              <th>Calle</th>
+              <th>Nombre</th>
+              <th>Monto</th>
+              <th>Forma de Pago</th>
+              <th>Referencia</th>
+              <th>Fecha de Pago</th>
+              <th>Estatus</th>
+              <th>Folio</th>
+              <th>Recibo PDF</th>
+              <th>Enviado (Sí/No)</th>
+              <th>Email</th>
+              <th>Eliminar</th>
+            </tr>
+          </thead>
+          <tbody id="housesTable"></tbody>
+        </table>
       </div>
 
-      <div class="cuotas-period-card">
-        <div class="cuotas-period-icon">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="16" rx="3"></rect>
-            <path d="M8 3v4M16 3v4M3 10h18"></path>
-          </svg>
-        </div>
-        <div>
-          <span>Periodo activo</span>
-          <strong id="periodoCuotasHero">JULIO 2026</strong>
-        </div>
-      </div>
-    </section>
+      <div class="table-pagination">
+        <div id="paginationInfo" class="pagination-info">Mostrando 0 cuotas</div>
 
-    <section class="cuotas-metrics-section">
-      <div class="cuotas-metrics-grid">
-        <article class="cuotas-metric cuotas-metric-homes">
-          <div class="cuotas-metric-icon">
+        <div class="pagination-controls" role="navigation" aria-label="Paginación de cuotas">
+          <button
+            type="button"
+            class="pagination-arrow"
+            id="previousPageButton"
+            onclick="previousPage()"
+            aria-label="Ir a la página anterior"
+            title="Página anterior"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m3 10 9-7 9 7v10H3Z"></path>
-              <path d="M9 20v-6h6v6"></path>
+              <path d="M15 18l-6-6 6-6"></path>
             </svg>
-          </div>
-          <div class="cuotas-metric-content">
-            <small>Casas registradas</small>
-            <strong id="metricCasas">0</strong>
-            <span>Total en padrón</span>
-          </div>
-        </article>
+          </button>
 
-        <article class="cuotas-metric cuotas-metric-paid">
-          <div class="cuotas-metric-icon">
+          <div id="paginationPages" class="pagination-pages"></div>
+
+          <button
+            type="button"
+            class="pagination-arrow"
+            id="nextPageButton"
+            onclick="nextPage()"
+            aria-label="Ir a la página siguiente"
+            title="Página siguiente"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
-              <path d="M3 10h18M7 15h3"></path>
+              <path d="M9 18l6-6-6-6"></path>
             </svg>
-          </div>
-          <div class="cuotas-metric-content">
-            <small>Pagadas</small>
-            <strong id="metricPagadas">0</strong>
-            <span>Cuotas al corriente</span>
-          </div>
-        </article>
-
-        <article class="cuotas-metric cuotas-metric-pending">
-          <div class="cuotas-metric-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9Z"></path>
-              <path d="M12 8v5M12 16h.01"></path>
-            </svg>
-          </div>
-          <div class="cuotas-metric-content">
-            <small>Pendientes</small>
-            <strong id="metricPendientes">0</strong>
-            <span>Requieren seguimiento</span>
-          </div>
-        </article>
-
-        <article class="cuotas-metric cuotas-metric-income">
-          <div class="cuotas-metric-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path>
-            </svg>
-          </div>
-          <div class="cuotas-metric-content">
-            <small>Monto recaudado</small>
-            <strong id="metricIngresos">$0</strong>
-            <span>Pagos registrados</span>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section class="cuotas-filter-section">
-      <div class="cuotas-section-heading">
-        <div>
-          <span class="cuotas-eyebrow">CONSULTA RÁPIDA</span>
-          <h2>Encuentra una cuota</h2>
-          <p>Busca por residente, casa, calle o estado de pago.</p>
-        </div>
-      </div>
-
-      <div class="cuotas-filter-card">
-        <div class="filters cuotas-filters">
-          <div class="cuotas-filter-search">
-            <label for="filterText">Buscar residente, correo o teléfono</label>
-            <div class="cuotas-input-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="11" cy="11" r="6"></circle>
-                <path d="m16 16 5 5"></path>
-              </svg>
-              <input id="filterText" placeholder="Ej. Juan Pérez" oninput="aplicarFiltros()">
-            </div>
-          </div>
-
-          <div>
-            <label for="filterHouse">Casa</label>
-            <input id="filterHouse" placeholder="Ej. 12" oninput="aplicarFiltros()">
-          </div>
-
-          <div>
-            <label for="filterStreet">Calle</label>
-            <select id="filterStreet" onchange="aplicarFiltros()">
-              <option value="">Todas las calles</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="filterStatus">Estatus</label>
-            <select id="filterStatus" onchange="aplicarFiltros()">
-              <option value="">Todos los estados</option>
-              <option value="Pagado">Pagado</option>
-              <option value="Pago parcial">Pago parcial</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="Cancelado">Cancelado</option>
-              <option value="Condonado">Condonado</option>
-            </select>
-          </div>
-
-          <button class="btn-secondary cuotas-clear-button" type="button" onclick="clearFilters()">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 4v5h5"></path>
-              <path d="M20 20v-5h-5"></path>
-              <path d="M6.3 9a7 7 0 0 1 11.4-2.5L20 9"></path>
-              <path d="M17.7 15a7 7 0 0 1-11.4 2.5L4 15"></path>
-            </svg>
-            Limpiar
           </button>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="cuotas-table-section">
-      <div class="cuotas-table-heading">
-        <div>
-          <span class="cuotas-eyebrow">REGISTRO OPERATIVO</span>
-          <h2>Tabla de cuotas</h2>
-          <p id="periodoCuotasLabel">Periodo: JULIO 2026</p>
-        </div>
+  <footer>
+    <div>
+      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
+    </div>
 
-        <div class="actions cuotas-actions">
-          <input id="excelInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
-
-          <button id="importExcelButton" class="btn-secondary" type="button" data-roles="SUPER_ADMIN,ADMINISTRADOR"
-            onclick="document.getElementById('excelInput').click()">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 21V9"></path>
-              <path d="m7 14 5-5 5 5"></path>
-              <path d="M5 3h14v18H5z"></path>
-            </svg>
-            Importar Excel
-          </button>
-
-          <button id="editTableButton" class="btn-edit-table" type="button" onclick="alternarModoEdicion()"
-            data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10Z"></path>
-              <path d="m14 7 3 3"></path>
-            </svg>
-            Editar tabla
-          </button>
-
-          <button id="addQuotaButton" class="btn-primary" type="button" data-roles="SUPER_ADMIN,ADMINISTRADOR"
-            onclick="abrirModalNuevaCuota()">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5v14M5 12h14"></path>
-            </svg>
-            Agregar cuota
-          </button>
-        </div>
-      </div>
-
-      <div class="cuotas-table-card">
-        <div class="table-wrap">
-          <table id="cuotasTable" class="cuotas-table">
-            <thead>
-              <tr>
-                <th>Año</th>
-                <th>Mes</th>
-                <th>Casa</th>
-                <th>Calle</th>
-                <th>Nombre</th>
-                <th>Monto</th>
-                <th>Forma de Pago</th>
-                <th>Referencia</th>
-                <th>Fecha de Pago</th>
-                <th>Estatus</th>
-                <th>Folio</th>
-                <th>Recibo PDF</th>
-                <th>Enviado (Sí/No)</th>
-                <th>Email</th>
-                <th>Eliminar</th>
-              </tr>
-            </thead>
-            <tbody id="housesTable"></tbody>
-          </table>
-        </div>
-
-        <div class="table-pagination">
-          <div id="paginationInfo" class="pagination-info">Mostrando 0 cuotas</div>
-
-          <div class="pagination-controls" role="navigation" aria-label="Paginación de cuotas">
-            <button type="button" class="pagination-arrow" id="previousPageButton" onclick="previousPage()"
-              aria-label="Ir a la página anterior" title="Página anterior">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M15 18l-6-6 6-6"></path>
-              </svg>
-            </button>
-
-            <div id="paginationPages" class="pagination-pages"></div>
-
-            <button type="button" class="pagination-arrow" id="nextPageButton" onclick="nextPage()"
-              aria-label="Ir a la página siguiente" title="Página siguiente">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 18l6-6-6-6"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <footer class="cuotas-footer">
-      <div>Misión Jardines Residencial · Zapopan, Jalisco</div>
-      <div class="powered-by">
-        Plataforma desarrollada por
-        <a href="https://listoenlinea.com" target="_blank" rel="noopener noreferrer">
-          ListoEnLinea.com
-        </a>
-      </div>
-    </footer>
-  </main>
+    <div class="powered-by">
+      Plataforma desarrollada por
+      <a href="https://listoenlinea.com" target="_blank" rel="noopener noreferrer">ListoEnLinea.com</a>
+    </div>
+  </footer>
 
   <div id="receiptContainer" class="receipt-hidden"></div>
   <div id="toast" class="toast"></div>
@@ -323,8 +290,7 @@
 
       <div class="edit-modal-actions" style="margin-top:20px;">
         <button type="button" class="btn-secondary" onclick="cerrarModalNuevaCuota()">Cancelar</button>
-        <button id="createQuotaButton" type="button" class="btn-primary" onclick="crearNuevaCuota()">Crear
-          cuota</button>
+        <button id="createQuotaButton" type="button" class="btn-primary" onclick="crearNuevaCuota()">Crear cuota</button>
       </div>
     </div>
   </div>
@@ -341,8 +307,7 @@
       <div class="edit-modal-actions">
         <button type="button" class="btn-secondary" onclick="cerrarModalGuardado()">Seguir editando</button>
         <button type="button" class="btn-discard" onclick="descartarCambios()">Descartar cambios</button>
-        <button id="confirmSaveChangesButton" type="button" class="btn-primary"
-          onclick="guardarCambiosPendientes()">Guardar cambios</button>
+        <button id="confirmSaveChangesButton" type="button" class="btn-primary" onclick="guardarCambiosPendientes()">Guardar cambios</button>
       </div>
     </div>
   </div>
@@ -525,6 +490,11 @@
 
     function obtenerPropietario(cuota) {
       if (cuota.nombrePagador) return cuota.nombrePagador;
+      const condominos = cuota.casa?.condominos || [];
+      const nombresCondominos = condominos
+        .map(condomino => condomino.nombreCompleto)
+        .filter(Boolean);
+      if (nombresCondominos.length) return nombresCondominos.join(' / ');
       const usuarios = cuota.casa?.usuarios || [];
       const principal = usuarios.find(usuario => usuario.esContactoPrincipal) || usuarios[0];
       if (!principal) return '';
@@ -534,6 +504,9 @@
 
     function obtenerCorreo(cuota) {
       if (cuota.correoDestino) return cuota.correoDestino;
+      const condominos = cuota.casa?.condominos || [];
+      const condominoContacto = condominos.find(condomino => condomino.correo);
+      if (condominoContacto?.correo) return condominoContacto.correo;
       const usuarios = cuota.casa?.usuarios || [];
       const contacto =
         usuarios.find(usuario => usuario.esContactoPrincipal && usuario.recibeCorreosPago) ||
@@ -544,9 +517,24 @@
     }
 
     function obtenerTelefono(cuota) {
+      const condominos = cuota.casa?.condominos || [];
+      const condominoContacto = condominos.find(condomino => condomino.telefono);
+      if (condominoContacto?.telefono) return condominoContacto.telefono;
       const usuarios = cuota.casa?.usuarios || [];
       const contacto = usuarios.find(usuario => usuario.esContactoPrincipal) || usuarios[0];
       return contacto?.telefono || cuota.casa?.telefono || cuota.casa?.telefonoPrincipal || '';
+    }
+
+    function obtenerTextoCondominos(cuota) {
+      return (cuota.casa?.condominos || [])
+        .flatMap(condomino => [
+          condomino.nombreCompleto,
+          condomino.correo,
+          condomino.telefono
+        ])
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
     }
 
     async function validarSesion() {
@@ -619,11 +607,13 @@
         const propietario = obtenerPropietario(cuota);
         const correo = obtenerCorreo(cuota);
         const telefono = obtenerTelefono(cuota);
+        const textoCondominos = obtenerTextoCondominos(cuota);
         const numero = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
         const calle = cuota.calleSnapshot || cuota.casa?.calle || '';
         const estatus = statusLabel(cuota.estatusPago);
         const matchText = !text || propietario.toLowerCase().includes(text) ||
-          correo.toLowerCase().includes(text) || telefono.toLowerCase().includes(text);
+          correo.toLowerCase().includes(text) || telefono.toLowerCase().includes(text) ||
+          textoCondominos.includes(text);
         const matchHouse = !house || String(numero).toLowerCase().includes(house);
         const matchStreet = !street || calle === street;
         const matchStatus = !status || estatus === status;
@@ -1335,7 +1325,8 @@
 
     iniciarPagina();
   </script>
-  <script src="assets/js/site-sidebar.js?v=1"></script>
+
+  <script src="assets/js/brand-collapse.js?v=1"></script>
 </body>
 
 </html>
