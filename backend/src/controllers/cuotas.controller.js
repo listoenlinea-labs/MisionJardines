@@ -563,6 +563,155 @@ async function actualizarCuota(req, res) {
     }
 }
 
+function prepararCambiosCuota(cuota, datos = {}) {
+    const camposPermitidos = [
+        'anio', 'mes', 'montoCuota', 'montoPagado', 'formaPago',
+        'referencia', 'fechaPago', 'estatusPago', 'correoDestino',
+        'nombrePagador', 'observaciones', 'controles', 'tipoPago'
+    ];
+    const cambios = {};
+
+    for (const campo of camposPermitidos) {
+        if (Object.prototype.hasOwnProperty.call(datos, campo)) {
+            cambios[campo] = datos[campo];
+        }
+    }
+
+    if (!Object.keys(cambios).length) {
+        const error = new Error('No se enviaron campos para actualizar');
+        error.status = 400;
+        throw error;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cambios, 'anio')) {
+        cambios.anio = Number(cambios.anio);
+        if (!Number.isInteger(cambios.anio) || cambios.anio < 2000 || cambios.anio > 2100) {
+            const error = new Error('El año debe ser un número entre 2000 y 2100');
+            error.status = 400;
+            throw error;
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cambios, 'mes')) {
+        cambios.mes = String(cambios.mes || '').trim().toUpperCase();
+        if (!MESES.includes(cambios.mes)) {
+            const error = new Error('El mes seleccionado no es válido');
+            error.status = 400;
+            throw error;
+        }
+    }
+
+    for (const campo of ['montoCuota', 'montoPagado']) {
+        if (Object.prototype.hasOwnProperty.call(cambios, campo)) {
+            cambios[campo] = Number(cambios[campo]);
+            if (!Number.isFinite(cambios[campo]) || cambios[campo] < 0) {
+                const error = new Error('Los montos deben ser números mayores o iguales a cero');
+                error.status = 400;
+                throw error;
+            }
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cambios, 'formaPago')) {
+        const formas = ['EFECTIVO', 'TRANSFERENCIA', 'DEPOSITO', 'TARJETA', 'CHEQUE', 'OTRO'];
+        if (cambios.formaPago !== null && !formas.includes(cambios.formaPago)) {
+            const error = new Error('La forma de pago no es válida');
+            error.status = 400;
+            throw error;
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cambios, 'fechaPago')) {
+        if (cambios.fechaPago === null || cambios.fechaPago === '') {
+            cambios.fechaPago = null;
+        } else {
+            const fecha = new Date(`${cambios.fechaPago}T12:00:00`);
+            if (Number.isNaN(fecha.getTime())) {
+                const error = new Error('La fecha de pago no es válida');
+                error.status = 400;
+                throw error;
+            }
+            cambios.fechaPago = fecha;
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(cambios, 'estatusPago')) {
+        const estatus = ['PENDIENTE', 'PAGO_PARCIAL', 'CANCELADO', 'CONDONADO'];
+        if (!estatus.includes(cambios.estatusPago)) {
+            const error = new Error('El estatus no puede asignarse directamente');
+            error.status = 400;
+            throw error;
+        }
+    }
+
+    if ('montoCuota' in cambios || 'montoPagado' in cambios) {
+        cambios.saldoPendiente = Math.max(
+            Number(cambios.montoCuota ?? cuota.montoCuota) -
+            Number(cambios.montoPagado ?? cuota.montoPagado),
+            0
+        );
+    }
+
+    return cambios;
+}
+
+async function actualizarCuotasLote(req, res) {
+    const operaciones = Array.isArray(req.body?.operaciones) ? req.body.operaciones : [];
+    if (!operaciones.length || operaciones.length > 500) {
+        return res.status(400).json({
+            ok: false,
+            message: 'Envía entre 1 y 500 cuotas para guardar'
+        });
+    }
+
+    const ids = operaciones.map(item => Number(item.id));
+    if (ids.some(id => !Number.isInteger(id) || id <= 0) || new Set(ids).size !== ids.length) {
+        return res.status(400).json({ ok: false, message: 'La lista contiene identificadores inválidos o repetidos' });
+    }
+
+    const transaction = await sequelize.transaction();
+    try {
+        const cuotas = await Cuota.findAll({
+            where: { id: { [Op.in]: ids } },
+            transaction,
+            lock: transaction.LOCK.UPDATE
+        });
+        const porId = new Map(cuotas.map(cuota => [Number(cuota.id), cuota]));
+        if (porId.size !== ids.length) {
+            const error = new Error('Una o más cuotas ya no existen');
+            error.status = 404;
+            throw error;
+        }
+
+        for (const operacion of operaciones) {
+            const cuota = porId.get(Number(operacion.id));
+            if (operacion.version && cuota.actualizadoEn) {
+                const esperada = new Date(operacion.version).getTime();
+                const actual = new Date(cuota.actualizadoEn).getTime();
+                if (Number.isFinite(esperada) && Number.isFinite(actual) && esperada !== actual) {
+                    const error = new Error(`La cuota ${cuota.id} fue modificada por otra persona. Recarga antes de guardar.`);
+                    error.status = 409;
+                    throw error;
+                }
+            }
+            await cuota.update(prepararCambiosCuota(cuota, operacion.cambios), { transaction });
+        }
+
+        await transaction.commit();
+        return res.json({ ok: true, message: `${operaciones.length} cuota(s) guardada(s)`, total: operaciones.length });
+    } catch (error) {
+        await transaction.rollback();
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ ok: false, message: 'Una casa ya tiene una cuota para ese periodo' });
+        }
+        console.error('Error al actualizar cuotas en lote:', error);
+        return res.status(error.status || 500).json({
+            ok: false,
+            message: error.status ? error.message : 'No fue posible guardar las cuotas'
+        });
+    }
+}
+
 async function confirmarPago(req, res) {
     const transaction =
         await sequelize.transaction();
@@ -955,6 +1104,7 @@ module.exports = {
     listarCuotas,
     crearCuota,
     actualizarCuota,
+    actualizarCuotasLote,
     confirmarPago,
     reenviarRecibo,
     eliminarCuota
