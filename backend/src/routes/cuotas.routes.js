@@ -4,6 +4,7 @@ const {
     listarCuotas,
     crearCuota,
     actualizarCuota,
+    actualizarCuotasLote,
     confirmarPago,
     reenviarRecibo,
     eliminarCuota
@@ -39,6 +40,16 @@ router.post(
         'ADMINISTRADOR'
     ),
     crearCuota
+);
+
+router.patch(
+    '/lote',
+    autorizarRoles(
+        'SUPER_ADMIN',
+        'ADMINISTRADOR',
+        'MESA_DIRECTIVA'
+    ),
+    actualizarCuotasLote
 );
 
 router.patch(
