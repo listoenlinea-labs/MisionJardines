@@ -7839,3 +7839,841 @@ body.modal-open {
   }
 
 }
+
+/* =========================================================
+   CUOTAS · DISEÑO PREMIUM FINAL
+   Únicamente afecta a cuotas.html
+   ========================================================= */
+
+.page-cuotas {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(232, 221, 249, .62), transparent 27%),
+    radial-gradient(circle at 16% 40%, rgba(255, 239, 228, .48), transparent 22%),
+    #fbfafc !important;
+  color: #27324a !important;
+}
+
+.page-cuotas *,
+.page-cuotas *::before,
+.page-cuotas *::after {
+  box-sizing: border-box;
+}
+
+.page-cuotas .cuotas-shell {
+  width: min(1320px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 0 0 42px;
+}
+
+.page-cuotas .cuotas-topbar {
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid #ebe8f1;
+}
+
+.page-cuotas .cuotas-topbar-title {
+  display: grid;
+  gap: 3px;
+}
+
+.page-cuotas .cuotas-topbar-title span,
+.page-cuotas .cuotas-eyebrow {
+  display: block;
+  color: #9b84bd;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  line-height: 1.2;
+}
+
+.page-cuotas .cuotas-topbar-title strong {
+  color: #30384d;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.page-cuotas .cuotas-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-cuotas .cuotas-online-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border: 1px solid #dceee3;
+  border-radius: 999px;
+  color: #398557;
+  background: #f4fbf6;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.page-cuotas .cuotas-online-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #25ad62;
+  box-shadow: 0 0 0 4px rgba(37, 173, 98, .10);
+}
+
+.page-cuotas .cuotas-export-top,
+.page-cuotas .cuotas-actions .btn-secondary,
+.page-cuotas .cuotas-actions .btn-edit-table,
+.page-cuotas .cuotas-actions .btn-primary,
+.page-cuotas .cuotas-clear-button {
+  min-height: 40px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 !important;
+  padding: 0 15px !important;
+  border-radius: 11px !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.page-cuotas .cuotas-export-top svg,
+.page-cuotas .cuotas-actions svg,
+.page-cuotas .cuotas-clear-button svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.page-cuotas .cuotas-export-top svg path,
+.page-cuotas .cuotas-actions svg path,
+.page-cuotas .cuotas-clear-button svg path {
+  fill: none !important;
+}
+
+.page-cuotas .cuotas-export-top:hover,
+.page-cuotas .cuotas-actions button:hover,
+.page-cuotas .cuotas-clear-button:hover {
+  transform: translateY(-1px);
+}
+
+.page-cuotas .cuotas-export-top,
+.page-cuotas .cuotas-actions .btn-secondary,
+.page-cuotas .cuotas-clear-button {
+  border: 1px solid #e2d9ed !important;
+  color: #78618f !important;
+  background: #fff !important;
+}
+
+.page-cuotas .cuotas-export-top:hover,
+.page-cuotas .cuotas-actions .btn-secondary:hover,
+.page-cuotas .cuotas-clear-button:hover {
+  border-color: #c9afd9 !important;
+  background: #fcfaff !important;
+  box-shadow: 0 8px 18px rgba(134, 105, 163, .10) !important;
+}
+
+.page-cuotas .cuotas-actions .btn-edit-table {
+  border: 1px solid #ddcaef !important;
+  color: #8a67ac !important;
+  background: #f9f5fe !important;
+}
+
+.page-cuotas .cuotas-actions .btn-edit-table:hover {
+  border-color: #c39cde !important;
+  background: #f2e8fc !important;
+  box-shadow: 0 8px 18px rgba(150, 104, 184, .13) !important;
+}
+
+.page-cuotas .cuotas-actions .btn-primary {
+  border: 1px solid #e88327 !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #f19039, #e97916) !important;
+  box-shadow: 0 9px 18px rgba(229, 121, 22, .21) !important;
+}
+
+.page-cuotas .cuotas-actions .btn-primary:hover {
+  background: linear-gradient(135deg, #f59b49, #e56e0c) !important;
+  box-shadow: 0 11px 22px rgba(229, 121, 22, .27) !important;
+}
+
+.page-cuotas .cuotas-hero {
+  min-height: 186px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin: 0 0 18px !important;
+  padding: 33px 38px;
+  overflow: hidden;
+  border: 1px solid #e5ddef;
+  border-radius: 23px;
+  background:
+    radial-gradient(circle at 97% 10%, rgba(255, 207, 146, .37), transparent 24%),
+    radial-gradient(circle at 84% 96%, rgba(194, 218, 245, .36), transparent 30%),
+    linear-gradient(105deg, #fff7f3, #fff 52%, #f4effb);
+  box-shadow: 0 14px 35px rgba(48, 56, 77, .055);
+}
+
+.page-cuotas .cuotas-hero-copy {
+  max-width: 680px;
+}
+
+.page-cuotas .cuotas-hero .cuotas-eyebrow {
+  margin-bottom: 10px;
+  color: #a981bd;
+}
+
+.page-cuotas .cuotas-hero h1 {
+  margin: 0 !important;
+  color: #30374d !important;
+  font-size: clamp(30px, 3vw, 43px) !important;
+  font-weight: 800 !important;
+  line-height: 1.09 !important;
+  letter-spacing: -.048em !important;
+}
+
+.page-cuotas .cuotas-hero p {
+  max-width: 570px;
+  margin: 12px 0 0 !important;
+  color: #778196 !important;
+  font-size: 14px !important;
+  font-weight: 500;
+  line-height: 1.65 !important;
+}
+
+.page-cuotas .cuotas-period-card {
+  min-width: 185px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px;
+  border: 1px solid #e8dfef;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .72);
+  box-shadow: 0 8px 20px rgba(95, 78, 121, .05);
+}
+
+.page-cuotas .cuotas-period-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #9a73ba;
+  background: #f1eafb;
+}
+
+.page-cuotas .cuotas-period-icon svg {
+  width: 19px !important;
+  height: 19px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.page-cuotas .cuotas-period-icon svg path,
+.page-cuotas .cuotas-period-icon svg rect {
+  fill: none !important;
+}
+
+.page-cuotas .cuotas-period-card span,
+.page-cuotas .cuotas-period-card strong {
+  display: block;
+}
+
+.page-cuotas .cuotas-period-card span {
+  margin-bottom: 3px;
+  color: #9097a8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.page-cuotas .cuotas-period-card strong {
+  color: #3b4359;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.page-cuotas .cuotas-metrics-section {
+  margin-bottom: 31px;
+}
+
+.page-cuotas .cuotas-metrics-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 15px !important;
+}
+
+.page-cuotas .cuotas-metric {
+  min-height: 128px;
+  display: flex !important;
+  align-items: center;
+  gap: 15px;
+  padding: 19px !important;
+  border: 1px solid #e6e8ef !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  box-shadow: 0 10px 25px rgba(44, 53, 76, .045) !important;
+}
+
+.page-cuotas .cuotas-metric-icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+}
+
+.page-cuotas .cuotas-metric-icon svg {
+  width: 24px !important;
+  height: 24px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.85 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.page-cuotas .cuotas-metric-icon svg path,
+.page-cuotas .cuotas-metric-icon svg rect {
+  fill: none !important;
+}
+
+.page-cuotas .cuotas-metric-content {
+  min-width: 0;
+}
+
+.page-cuotas .cuotas-metric-content small,
+.page-cuotas .cuotas-metric-content strong,
+.page-cuotas .cuotas-metric-content span {
+  display: block;
+}
+
+.page-cuotas .cuotas-metric-content small {
+  margin-bottom: 4px;
+  color: #768196;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.page-cuotas .cuotas-metric-content strong {
+  color: #2e374d;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.035em;
+}
+
+.page-cuotas .cuotas-metric-content span {
+  margin-top: 5px;
+  color: #a0a8b7;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.page-cuotas .cuotas-metric-homes {
+  border-color: #dceaf8 !important;
+  background: linear-gradient(135deg, #f8fcff, #eef7fd) !important;
+}
+
+.page-cuotas .cuotas-metric-homes .cuotas-metric-icon {
+  color: #4d9bd1;
+  background: #e4f3fc;
+}
+
+.page-cuotas .cuotas-metric-paid {
+  border-color: #d9ecdf !important;
+  background: linear-gradient(135deg, #fbfefa, #eef9f1) !important;
+}
+
+.page-cuotas .cuotas-metric-paid .cuotas-metric-icon {
+  color: #4baf73;
+  background: #e1f4e7;
+}
+
+.page-cuotas .cuotas-metric-pending {
+  border-color: #f2e0c7 !important;
+  background: linear-gradient(135deg, #fffdf8, #fff5e8) !important;
+}
+
+.page-cuotas .cuotas-metric-pending .cuotas-metric-icon {
+  color: #e99a45;
+  background: #ffecd5;
+}
+
+.page-cuotas .cuotas-metric-income {
+  border-color: #e6d9f0 !important;
+  background: linear-gradient(135deg, #fefcff, #f5effb) !important;
+}
+
+.page-cuotas .cuotas-metric-income .cuotas-metric-icon {
+  color: #a27abb;
+  background: #eee4f7;
+}
+
+.page-cuotas .cuotas-filter-section,
+.page-cuotas .cuotas-table-section {
+  margin-top: 0;
+  margin-bottom: 32px;
+}
+
+.page-cuotas .cuotas-section-heading,
+.page-cuotas .cuotas-table-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 14px;
+}
+
+.page-cuotas .cuotas-section-heading h2,
+.page-cuotas .cuotas-table-heading h2 {
+  margin: 4px 0 0 !important;
+  color: #30394f !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  letter-spacing: -.025em;
+}
+
+.page-cuotas .cuotas-section-heading p,
+.page-cuotas .cuotas-table-heading p {
+  margin: 6px 0 0 !important;
+  color: #8791a4 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+.page-cuotas .cuotas-filter-card,
+.page-cuotas .cuotas-table-card {
+  border: 1px solid #e6e8ef;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 12px 30px rgba(43, 51, 73, .045);
+}
+
+.page-cuotas .cuotas-filter-card {
+  padding: 20px;
+}
+
+.page-cuotas .cuotas-filters {
+  display: grid !important;
+  grid-template-columns: 2fr 1fr 1.15fr 1.15fr auto !important;
+  align-items: end;
+  gap: 13px !important;
+}
+
+.page-cuotas .cuotas-filters>div {
+  min-width: 0;
+}
+
+.page-cuotas .cuotas-filters label {
+  display: block !important;
+  margin: 0 0 7px !important;
+  color: #727e92 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+.page-cuotas .cuotas-filters input,
+.page-cuotas .cuotas-filters select {
+  width: 100% !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  border: 1px solid #dde2eb !important;
+  border-radius: 10px !important;
+  outline: none;
+  color: #3c465d !important;
+  background: #fcfdff !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+}
+
+.page-cuotas .cuotas-filters input:focus,
+.page-cuotas .cuotas-filters select:focus {
+  border-color: #ba99d1 !important;
+  box-shadow: 0 0 0 3px rgba(177, 137, 201, .13) !important;
+}
+
+.page-cuotas .cuotas-input-icon {
+  position: relative;
+}
+
+.page-cuotas .cuotas-input-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+  position: absolute;
+  top: 13px;
+  left: 12px;
+  z-index: 1;
+  fill: none !important;
+  stroke: #a4adbd !important;
+  stroke-width: 1.8 !important;
+}
+
+.page-cuotas .cuotas-input-icon svg path,
+.page-cuotas .cuotas-input-icon svg circle {
+  fill: none !important;
+}
+
+.page-cuotas .cuotas-input-icon input {
+  padding-left: 37px !important;
+}
+
+.page-cuotas .cuotas-clear-button {
+  height: 42px;
+  min-width: 112px;
+}
+
+.page-cuotas .cuotas-actions {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px !important;
+}
+
+.page-cuotas .cuotas-table-card {
+  overflow: hidden;
+}
+
+.page-cuotas .cuotas-table-card .table-wrap {
+  overflow: auto !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table {
+  min-width: 2150px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background: #fff !important;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table th {
+  height: 50px;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #e6e8ef !important;
+  color: #83748e !important;
+  background: #faf8fc !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .055em;
+  text-align: left !important;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table td {
+  height: 64px;
+  padding: 10px 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #edf0f4 !important;
+  color: #445069 !important;
+  background: #fff !important;
+  font-size: 12px !important;
+  vertical-align: middle !important;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table tbody tr:nth-child(even) td {
+  background: #fdfcff !important;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table tbody tr:hover td {
+  background: #faf7fd !important;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table td input,
+.page-cuotas .cuotas-table-card .cuotas-table td select {
+  min-height: 38px !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  color: #455168 !important;
+  background: transparent !important;
+  font-size: 12px !important;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table td input:focus,
+.page-cuotas .cuotas-table-card .cuotas-table td select:focus {
+  border-color: #c7a8dc !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(178, 139, 203, .13) !important;
+}
+
+.page-cuotas .cuotas-table-card .cuotas-table td input[readonly] {
+  color: #5f6b81 !important;
+  background: #f3f5f8 !important;
+}
+
+.page-cuotas .table-pagination {
+  min-height: 74px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  padding: 14px 20px !important;
+  border-top: 1px solid #edf0f4;
+  background: #fff;
+}
+
+.page-cuotas .pagination-info {
+  color: #8a94a6 !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+.page-cuotas .pagination-controls,
+.page-cuotas .pagination-pages {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.page-cuotas .pagination-page,
+.page-cuotas .pagination-arrow {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid #e0e4eb !important;
+  border-radius: 10px !important;
+  color: #647088 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.page-cuotas .pagination-page.active {
+  border-color: #aa82c6 !important;
+  color: #fff !important;
+  background: #a77fc2 !important;
+  box-shadow: 0 6px 13px rgba(167, 127, 194, .22) !important;
+}
+
+.page-cuotas .pagination-page:hover,
+.page-cuotas .pagination-arrow:hover {
+  border-color: #c8adda !important;
+  color: #8d67aa !important;
+  background: #fcf9ff !important;
+  transform: none !important;
+}
+
+.page-cuotas .cuotas-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0 0 !important;
+  padding: 22px 0 0 !important;
+  border-top: 1px solid #e9e8ef !important;
+  color: #99a1b0 !important;
+  font-size: 11px !important;
+  text-align: left !important;
+}
+
+.page-cuotas .cuotas-footer .powered-by,
+.page-cuotas .cuotas-footer .powered-by a {
+  color: #99a1b0 !important;
+}
+
+.page-cuotas .cuotas-footer .powered-by a {
+  color: #9b79b4 !important;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (max-width: 1280px) {
+  .page-cuotas .cuotas-shell {
+    width: min(1160px, calc(100% - 46px));
+  }
+
+  .page-cuotas .cuotas-filters {
+    grid-template-columns: 1.7fr 1fr 1fr 1fr !important;
+  }
+
+  .page-cuotas .cuotas-clear-button {
+    grid-column: span 4;
+    width: 100%;
+  }
+}
+
+@media (max-width: 1040px) {
+  .page-cuotas .cuotas-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .page-cuotas .cuotas-topbar {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .page-cuotas .cuotas-shell {
+    width: min(100% - 28px, 680px);
+    padding-top: 72px;
+  }
+
+  .page-cuotas .cuotas-topbar {
+    min-height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 0 18px;
+  }
+
+  .page-cuotas .cuotas-topbar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .page-cuotas .cuotas-hero {
+    min-height: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 27px 24px;
+  }
+
+  .page-cuotas .cuotas-period-card {
+    width: 100%;
+  }
+
+  .page-cuotas .cuotas-filters {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .page-cuotas .cuotas-filter-search,
+  .page-cuotas .cuotas-clear-button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-cuotas .cuotas-topbar-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-cuotas .cuotas-online-status,
+  .page-cuotas .cuotas-export-top {
+    justify-content: center;
+  }
+
+  .page-cuotas .cuotas-metrics-grid,
+  .page-cuotas .cuotas-filters {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-cuotas .cuotas-metric {
+    min-height: 110px;
+  }
+
+  .page-cuotas .cuotas-table-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .page-cuotas .cuotas-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .page-cuotas .cuotas-actions button {
+    flex: 1 1 auto;
+  }
+
+  .page-cuotas .table-pagination,
+  .page-cuotas .cuotas-footer {
+    align-items: center !important;
+    flex-direction: column;
+    text-align: center !important;
+  }
+}
+
+/* Corrección final de layout para cuotas.html */
+body.page-cuotas {
+  display: block !important;
+  place-items: initial !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+body.page-cuotas .cuotas-shell {
+  min-width: 0 !important;
+  max-width: none;
+}
+
+body.page-cuotas .cuotas-filter-section,
+body.page-cuotas .cuotas-table-section,
+body.page-cuotas .cuotas-table-card {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Acentos naranjas para Cuotas */
+.page-cuotas .cuotas-topbar-title span,
+.page-cuotas .cuotas-eyebrow {
+  color: #d97706 !important;
+}
+
+.page-cuotas .cuotas-export-top {
+  border-color: #f3d4ad !important;
+  color: #d97706 !important;
+  background: #fff8ef !important;
+}
+
+.page-cuotas .cuotas-export-top:hover {
+  border-color: #e9ad68 !important;
+  color: #b95f05 !important;
+  background: #fff0dd !important;
+}
+
+/* Acciones y paginación en naranja */
+.page-cuotas .cuotas-actions .btn-edit-table {
+  border-color: #f3d4ad !important;
+  color: #d97706 !important;
+  background: #fff8ef !important;
+}
+
+.page-cuotas .cuotas-actions .btn-edit-table:hover {
+  border-color: #e9ad68 !important;
+  color: #b95f05 !important;
+  background: #fff0dd !important;
+}
+
+.page-cuotas .pagination-page.active {
+  border-color: #d97706 !important;
+  background: #d97706 !important;
+  box-shadow: 0 6px 13px rgba(217, 119, 6, .22) !important;
+}
+
+.page-cuotas .pagination-page:hover,
+.page-cuotas .pagination-arrow:hover {
+  border-color: #efbd86 !important;
+  color: #d97706 !important;
+  background: #fff8ef !important;
+}
