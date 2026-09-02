@@ -9,6 +9,21 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    .page-cuotas .cuotas-online-status.is-offline {
+      color: #9a4d00;
+      background: #fff4e8;
+      border-color: #ffd3aa;
+    }
+    .page-cuotas .cuotas-online-status.is-offline i {
+      background: #f28a2a;
+      box-shadow: 0 0 0 4px rgba(242, 138, 42, .14);
+    }
+    .page-cuotas #saveNowButton:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 
 <body class="page-cuotas">
@@ -20,9 +35,9 @@
       </div>
 
       <div class="cuotas-topbar-actions">
-        <div class="cuotas-online-status">
+        <div id="connectionStatus" class="cuotas-online-status" role="status" aria-live="polite">
           <i></i>
-          Operación normal
+          <span>Operación normal</span>
         </div>
 
         <button class="btn-secondary cuotas-export-top" type="button" onclick="exportExcel()">
@@ -208,6 +223,16 @@
             Editar tabla
           </button>
 
+          <button id="saveNowButton" class="btn-secondary" type="button"
+            data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA"
+            onclick="guardarCambiosPendientes({ manual: true })" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 3h12l2 2v16H5z"></path>
+              <path d="M8 3v6h8V3M8 21v-7h8v7"></path>
+            </svg>
+            Guardar ahora
+          </button>
+
           <button id="addQuotaButton" class="btn-primary" type="button" data-roles="SUPER_ADMIN,ADMINISTRADOR"
             onclick="abrirModalNuevaCuota()">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -342,7 +367,7 @@
         <button type="button" class="btn-secondary" onclick="cerrarModalGuardado()">Seguir editando</button>
         <button type="button" class="btn-discard" onclick="descartarCambios()">Descartar cambios</button>
         <button id="confirmSaveChangesButton" type="button" class="btn-primary"
-          onclick="guardarCambiosPendientes()">Guardar cambios</button>
+          onclick="guardarCambiosPendientes({ manual: true })">Guardar cambios</button>
       </div>
     </div>
   </div>
@@ -366,6 +391,10 @@
     let registrosPorPagina = 5;
     let modoEdicion = false;
     let cambiosPendientes = {};
+    let cuotasNuevasPendientes = [];
+    let guardandoCambios = false;
+    let temporizadorBorrador = null;
+    let intervaloAutoguardado = null;
     let anioConsulta = 2026;
     let mesConsulta = 'JULIO';
 
@@ -763,6 +792,7 @@
       if (!cambiosPendientes[cuotaId]) cambiosPendientes[cuotaId] = {};
       cambiosPendientes[cuotaId][campo] = valor;
       actualizarEstadoBotonEdicion();
+      programarGuardadoBorrador();
     }
 
     function registrarCambioTexto(cuotaId, campo, elemento) {
@@ -799,13 +829,20 @@
 
     function actualizarEstadoBotonEdicion() {
       const boton = document.getElementById('editTableButton');
+      const guardar = document.getElementById('saveNowButton');
       if (!boton) return;
+      const totalCambios = cantidadCamposModificados() + cuotasNuevasPendientes.length;
+      if (guardar) {
+        guardar.disabled = totalCambios === 0 || guardandoCambios;
+        guardar.textContent = guardandoCambios
+          ? 'Guardando...'
+          : totalCambios > 0 ? `Guardar ahora (${totalCambios})` : 'Guardar ahora';
+      }
       if (!modoEdicion) {
         boton.textContent = '✏️ Editar tabla';
         boton.classList.remove('editing');
         return;
       }
-      const totalCambios = cantidadCamposModificados();
       boton.textContent = totalCambios > 0 ? `💾 Finalizar edición (${totalCambios})` : '✓ Finalizar edición';
       boton.classList.add('editing');
     }
@@ -867,45 +904,143 @@
 
     function descartarCambios() {
       cambiosPendientes = {};
+      cuotasNuevasPendientes = [];
       modoEdicion = false;
+      eliminarBorradorLocal();
       cerrarModalGuardado();
       actualizarEstadoBotonEdicion();
       renderHouses();
       showToast('Los cambios fueron descartados.');
     }
 
-    async function guardarCambiosPendientes() {
+    function claveBorrador() {
+      return `mision-jardines:cuotas:borrador:${usuarioActual?.id || 'sesion'}`;
+    }
+
+    function programarGuardadoBorrador() {
+      clearTimeout(temporizadorBorrador);
+      temporizadorBorrador = setTimeout(guardarBorradorLocal, 250);
+    }
+
+    function guardarBorradorLocal() {
+      const tieneCambios = cantidadCamposModificados() > 0 || cuotasNuevasPendientes.length > 0;
+      if (!tieneCambios) {
+        eliminarBorradorLocal();
+        return;
+      }
+      localStorage.setItem(claveBorrador(), JSON.stringify({
+        cambiosPendientes,
+        cuotasNuevasPendientes,
+        guardadoEn: new Date().toISOString()
+      }));
+      actualizarEstadoConexion();
+    }
+
+    function eliminarBorradorLocal() {
+      localStorage.removeItem(claveBorrador());
+    }
+
+    function restaurarBorradorLocal() {
+      const contenido = localStorage.getItem(claveBorrador());
+      if (!contenido) return false;
+      try {
+        const borrador = JSON.parse(contenido);
+        cambiosPendientes = borrador.cambiosPendientes || {};
+        cuotasNuevasPendientes = Array.isArray(borrador.cuotasNuevasPendientes)
+          ? borrador.cuotasNuevasPendientes : [];
+        if (cantidadCamposModificados() || cuotasNuevasPendientes.length) {
+          modoEdicion = true;
+          showToast('Recuperamos cambios que estaban pendientes de guardar.');
+          return true;
+        }
+      } catch (error) {
+        console.warn('No fue posible restaurar el borrador de cuotas:', error);
+        eliminarBorradorLocal();
+      }
+      return false;
+    }
+
+    function actualizarEstadoConexion(mensaje) {
+      const estado = document.getElementById('connectionStatus');
+      if (!estado) return;
+      const pendientes = cantidadCamposModificados() + cuotasNuevasPendientes.length;
+      estado.classList.toggle('is-offline', !navigator.onLine);
+      const texto = estado.querySelector('span');
+      if (texto) texto.textContent = mensaje || (!navigator.onLine
+        ? `Sin internet${pendientes ? ` · ${pendientes} pendiente(s)` : ''}`
+        : pendientes ? `${pendientes} cambio(s) sin guardar` : 'Operación normal');
+    }
+
+    async function sincronizarCuotasNuevas() {
+      while (cuotasNuevasPendientes.length) {
+        const pendiente = cuotasNuevasPendientes[0];
+        await apiRequest(`${API_BASE_URL}/cuotas`, {
+          method: 'POST', headers: authHeaders(true), body: JSON.stringify(pendiente)
+        });
+        cuotasNuevasPendientes.shift();
+        guardarBorradorLocal();
+      }
+    }
+
+    async function guardarCambiosPendientes(opciones = {}) {
+      const manual = Boolean(opciones.manual);
       const boton = document.getElementById('confirmSaveChangesButton');
       const cambios = Object.entries(cambiosPendientes)
         .filter(([, campos]) => Object.keys(campos).length > 0);
-      if (!cambios.length) {
-        cerrarModalGuardado();
-        modoEdicion = false;
+      if (!cambios.length && !cuotasNuevasPendientes.length) {
+        if (manual) cerrarModalGuardado();
+        if (manual) modoEdicion = false;
         actualizarEstadoBotonEdicion();
         renderHouses();
         return;
       }
-      boton.disabled = true;
-      boton.textContent = 'Guardando...';
+      if (guardandoCambios) return;
+      if (!navigator.onLine) {
+        guardarBorradorLocal();
+        cerrarModalGuardado();
+        showToast('Sin internet: los cambios quedaron protegidos en este dispositivo y se enviarán al reconectar.');
+        return;
+      }
+      guardandoCambios = true;
+      if (boton) {
+        boton.disabled = true;
+        boton.textContent = 'Guardando...';
+      }
+      actualizarEstadoBotonEdicion();
+      actualizarEstadoConexion('Guardando cambios...');
       try {
-        for (const [cuotaId, campos] of cambios) {
-          await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}`, {
-            method: 'PATCH', headers: authHeaders(true), body: JSON.stringify(campos)
+        await sincronizarCuotasNuevas();
+        if (cambios.length) {
+          await apiRequest(`${API_BASE_URL}/cuotas/lote`, {
+            method: 'PATCH', headers: authHeaders(true), body: JSON.stringify({
+              operaciones: cambios.map(([cuotaId, campos]) => ({
+                id: Number(cuotaId),
+                version: obtenerCuotaPorId(cuotaId)?.actualizadoEn || null,
+                cambios: campos
+              }))
+            })
           });
         }
         cambiosPendientes = {};
-        modoEdicion = false;
-        cerrarModalGuardado();
+        eliminarBorradorLocal();
+        if (manual) modoEdicion = false;
+        if (manual) cerrarModalGuardado();
         actualizarEstadoBotonEdicion();
         await cargarCuotas();
-        showToast('Los cambios se guardaron correctamente.');
+        showToast(manual ? 'Los cambios se guardaron correctamente.' : 'Autoguardado completado.');
       } catch (error) {
+        guardarBorradorLocal();
         showToast(`No fue posible guardar: ${error.message}`);
         modoEdicion = true;
         renderHouses();
       } finally {
-        boton.disabled = false;
-        boton.textContent = 'Guardar cambios';
+        guardandoCambios = false;
+        if (boton) {
+          boton.disabled = false;
+          boton.textContent = 'Guardar cambios';
+        }
+        actualizarEstadoBotonEdicion();
+        actualizarEstadoConexion();
       }
     }
 
@@ -1189,9 +1324,25 @@
       boton.disabled = true;
       boton.textContent = 'Creando...';
       try {
+        const nuevaCuota = {
+          casaId, anio, mes, montoCuota,
+          observaciones: observaciones || null
+        };
+        if (!navigator.onLine) {
+          const repetida = cuotasNuevasPendientes.some(item =>
+            Number(item.casaId) === casaId && Number(item.anio) === anio && item.mes === mes
+          );
+          if (repetida) throw new Error('Esa cuota ya está en la cola de sincronización.');
+          cuotasNuevasPendientes.push(nuevaCuota);
+          guardarBorradorLocal();
+          cerrarModalNuevaCuota();
+          actualizarEstadoBotonEdicion();
+          showToast('Sin internet: la nueva cuota quedó en cola y se creará al reconectar.');
+          return;
+        }
         await apiRequest(`${API_BASE_URL}/cuotas`, {
           method: 'POST', headers: authHeaders(true),
-          body: JSON.stringify({ casaId, anio, mes, montoCuota, observaciones: observaciones || null })
+          body: JSON.stringify(nuevaCuota)
         });
         anioConsulta = anio;
         mesConsulta = mes;
@@ -1352,6 +1503,28 @@
         await validarSesion();
         if (puedeCrearCuotas()) await cargarCasas();
         await cargarCuotas();
+        restaurarBorradorLocal();
+        renderHouses();
+        actualizarEstadoBotonEdicion();
+        actualizarEstadoConexion();
+
+        window.addEventListener('offline', () => {
+          guardarBorradorLocal();
+          actualizarEstadoConexion();
+          showToast('Se perdió la conexión. Tus cambios seguirán protegidos en este dispositivo.');
+        });
+        window.addEventListener('online', async () => {
+          actualizarEstadoConexion('Conexión recuperada · sincronizando...');
+          showToast('Conexión recuperada. Sincronizando cambios pendientes...');
+          await guardarCambiosPendientes({ automatico: true });
+        });
+        window.addEventListener('beforeunload', guardarBorradorLocal);
+
+        intervaloAutoguardado = window.setInterval(() => {
+          if (cantidadCamposModificados() || cuotasNuevasPendientes.length) {
+            guardarCambiosPendientes({ automatico: true });
+          }
+        }, 5 * 60 * 1000);
       } catch (error) {
         console.error(error);
         showToast(`Error: ${error.message}`);
