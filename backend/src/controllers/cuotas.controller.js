@@ -6,7 +6,8 @@ const sequelize = require('../config/database');
 const {
     Cuota,
     Casa,
-    Usuario
+    Usuario,
+    Condomino
 } = require('../models');
 
 const {
@@ -81,6 +82,21 @@ function obtenerInclude() {
                         'telefono',
                         'esContactoPrincipal',
                         'recibeCorreosPago'
+                    ]
+                },
+                {
+                    model: Condomino,
+                    as: 'condominos',
+                    required: false,
+                    where: {
+                        activo: true
+                    },
+                    attributes: [
+                        'id',
+                        'nombreCompleto',
+                        'telefono',
+                        'correo',
+                        'fechaRegistro'
                     ]
                 }
             ]
@@ -200,7 +216,23 @@ async function crearCuota(req, res) {
             });
         }
 
-        const casa = await Casa.findByPk(casaId);
+        const casa = await Casa.findByPk(casaId, {
+            include: [
+                {
+                    model: Condomino,
+                    as: 'condominos',
+                    required: false,
+                    where: {
+                        activo: true
+                    },
+                    attributes: [
+                        'id',
+                        'nombreCompleto',
+                        'correo'
+                    ]
+                }
+            ]
+        });
 
         if (!casa) {
             return res.status(404).json({
@@ -208,6 +240,11 @@ async function crearCuota(req, res) {
                 message: 'Casa no encontrada'
             });
         }
+
+        const condominoContacto =
+            casa.condominos?.find(
+                condomino => condomino.correo
+            ) || casa.condominos?.[0];
 
         const cuota = await Cuota.create({
             casaId,
@@ -224,7 +261,9 @@ async function crearCuota(req, res) {
             calleSnapshot:
                 casa.calle,
             correoDestino:
-                casa.correo,
+                condominoContacto?.correo ||
+                casa.correo ||
+                null,
             observaciones:
                 observaciones || null
         });
@@ -608,12 +647,19 @@ async function confirmarPago(req, res) {
                     usuario.recibeCorreosPago
             );
 
+        const condominoContacto =
+            cuota.casa?.condominos?.find(
+                condomino => condomino.correo
+            ) ||
+            cuota.casa?.condominos?.[0];
+
         const correoDestino =
             req.body.correoDestino ||
             cuota.correoDestino ||
             contactoPrincipal?.correo ||
-            cuota.casa?.correo
-        null;
+            condominoContacto?.correo ||
+            cuota.casa?.correo ||
+            null;
 
         await cuota.update(
             {
@@ -651,7 +697,9 @@ async function confirmarPago(req, res) {
                             ]
                                 .filter(Boolean)
                                 .join(' ')
-                            : null
+                            : condominoContacto?.nombreCompleto ||
+                              cuota.casa?.nombre ||
+                              null
                     ),
                 confirmadoPorUsuarioId:
                     req.usuario.usuarioId,

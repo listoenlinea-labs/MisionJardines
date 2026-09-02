@@ -525,6 +525,11 @@
 
     function obtenerPropietario(cuota) {
       if (cuota.nombrePagador) return cuota.nombrePagador;
+      const condominos = cuota.casa?.condominos || [];
+      const nombresCondominos = condominos
+        .map(condomino => condomino.nombreCompleto)
+        .filter(Boolean);
+      if (nombresCondominos.length) return nombresCondominos.join(' / ');
       const usuarios = cuota.casa?.usuarios || [];
       const principal = usuarios.find(usuario => usuario.esContactoPrincipal) || usuarios[0];
       if (!principal) return '';
@@ -534,6 +539,9 @@
 
     function obtenerCorreo(cuota) {
       if (cuota.correoDestino) return cuota.correoDestino;
+      const condominos = cuota.casa?.condominos || [];
+      const condominoContacto = condominos.find(condomino => condomino.correo);
+      if (condominoContacto?.correo) return condominoContacto.correo;
       const usuarios = cuota.casa?.usuarios || [];
       const contacto =
         usuarios.find(usuario => usuario.esContactoPrincipal && usuario.recibeCorreosPago) ||
@@ -544,9 +552,24 @@
     }
 
     function obtenerTelefono(cuota) {
+      const condominos = cuota.casa?.condominos || [];
+      const condominoContacto = condominos.find(condomino => condomino.telefono);
+      if (condominoContacto?.telefono) return condominoContacto.telefono;
       const usuarios = cuota.casa?.usuarios || [];
       const contacto = usuarios.find(usuario => usuario.esContactoPrincipal) || usuarios[0];
       return contacto?.telefono || cuota.casa?.telefono || cuota.casa?.telefonoPrincipal || '';
+    }
+
+    function obtenerTextoCondominos(cuota) {
+      return (cuota.casa?.condominos || [])
+        .flatMap(condomino => [
+          condomino.nombreCompleto,
+          condomino.correo,
+          condomino.telefono
+        ])
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
     }
 
     async function validarSesion() {
@@ -619,11 +642,13 @@
         const propietario = obtenerPropietario(cuota);
         const correo = obtenerCorreo(cuota);
         const telefono = obtenerTelefono(cuota);
+        const textoCondominos = obtenerTextoCondominos(cuota);
         const numero = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
         const calle = cuota.calleSnapshot || cuota.casa?.calle || '';
         const estatus = statusLabel(cuota.estatusPago);
         const matchText = !text || propietario.toLowerCase().includes(text) ||
-          correo.toLowerCase().includes(text) || telefono.toLowerCase().includes(text);
+          correo.toLowerCase().includes(text) || telefono.toLowerCase().includes(text) ||
+          textoCondominos.includes(text);
         const matchHouse = !house || String(numero).toLowerCase().includes(house);
         const matchStreet = !street || calle === street;
         const matchStatus = !status || estatus === status;

@@ -1,4 +1,4 @@
-const { Casa } = require('../models');
+const { Casa, Condomino } = require('../models');
 
 const obtenerCasas = async (req, res) => {
     try {
@@ -14,6 +14,24 @@ const obtenerCasas = async (req, res) => {
                 'telefono',
                 'correo',
                 'observaciones'
+            ],
+
+            include: [
+                {
+                    model: Condomino,
+                    as: 'condominos',
+                    required: false,
+                    where: {
+                        activo: true
+                    },
+                    attributes: [
+                        'id',
+                        'nombreCompleto',
+                        'telefono',
+                        'correo',
+                        'fechaRegistro'
+                    ]
+                }
             ],
 
             order: [
