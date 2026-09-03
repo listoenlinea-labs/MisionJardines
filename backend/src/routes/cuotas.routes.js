@@ -7,6 +7,7 @@ const {
     actualizarCuotasLote,
     confirmarPago,
     reenviarRecibo,
+    enviarRecibosLote,
     eliminarCuota
 } = require('../controllers/cuotas.controller');
 
@@ -70,6 +71,16 @@ router.patch(
         'MESA_DIRECTIVA'
     ),
     confirmarPago
+);
+
+router.post(
+    '/recibos/enviar-lote',
+    autorizarRoles(
+        'SUPER_ADMIN',
+        'ADMINISTRADOR',
+        'MESA_DIRECTIVA'
+    ),
+    enviarRecibosLote
 );
 
 router.post(
