@@ -599,60 +599,6 @@
             line-height: 1.45
         }
 
-        .session-preview {
-            display: none;
-            margin-top: 15px;
-            padding: 13px;
-            border: 1px solid #dfe8f4;
-            border-radius: 13px;
-            background: #f7faff
-        }
-
-        .session-preview.visible {
-            display: block;
-            animation: messageIn .22s ease-out
-        }
-
-        .session-preview small {
-            display: block;
-            margin-bottom: 7px;
-            color: #7f8799;
-            font-size: 9px;
-            font-weight: 800;
-            text-transform: uppercase
-        }
-
-        .session-user {
-            display: flex;
-            align-items: center;
-            gap: 10px
-        }
-
-        .session-avatar {
-            width: 38px;
-            height: 38px;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-            color: #fff;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            font-size: 13px;
-            font-weight: 900
-        }
-
-        .session-user strong {
-            display: block;
-            color: #33394b;
-            font-size: 11px
-        }
-
-        .session-user span {
-            display: block;
-            margin-top: 2px;
-            color: #858b9b;
-            font-size: 9px
-        }
-
         .login-security {
             display: flex;
             align-items: center;
@@ -893,11 +839,6 @@
                             <p id="messageText"></p>
                         </div>
                     </div>
-                    <div class="session-preview" id="sessionPreview"><small>Sesión autenticada correctamente</small>
-                        <div class="session-user"><span class="session-avatar" id="sessionAvatar">MJ</span>
-                            <div><strong id="sessionName"></strong><span id="sessionDetails"></span></div>
-                        </div>
-                    </div>
                 </form>
                 <div class="login-security"><span>●</span>Conexión protegida con autenticación segura</div>
             </div>
@@ -905,7 +846,7 @@
     </main>
     <script>
         const API_URL = 'https://api-misionjardines.listoenlinea.host/api';
-        const loginForm = document.getElementById("loginForm"), correoInput = document.getElementById("correo"), contrasenaInput = document.getElementById("contrasena"), passwordToggle = document.getElementById("passwordToggle"), loginButton = document.getElementById("loginButton"), buttonText = document.getElementById("buttonText"), loginMessage = document.getElementById("loginMessage"), messageIcon = document.getElementById("messageIcon"), messageTitle = document.getElementById("messageTitle"), messageText = document.getElementById("messageText"), sessionPreview = document.getElementById("sessionPreview"), sessionAvatar = document.getElementById("sessionAvatar"), sessionName = document.getElementById("sessionName"), sessionDetails = document.getElementById("sessionDetails");
+        const loginForm = document.getElementById("loginForm"), correoInput = document.getElementById("correo"), contrasenaInput = document.getElementById("contrasena"), passwordToggle = document.getElementById("passwordToggle"), loginButton = document.getElementById("loginButton"), buttonText = document.getElementById("buttonText"), loginMessage = document.getElementById("loginMessage"), messageIcon = document.getElementById("messageIcon"), messageTitle = document.getElementById("messageTitle"), messageText = document.getElementById("messageText");
         const iconoOjoCerrado = `
     <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M3 3l18 18"></path>
@@ -951,13 +892,12 @@
             }
         });
         function mostrarMensaje(tipo, titulo, texto) { loginMessage.className = `login-message visible ${tipo}`; messageIcon.textContent = tipo === "success" ? "✓" : "!"; messageTitle.textContent = titulo; messageText.textContent = texto }
-        function limpiarMensaje() { loginMessage.className = "login-message"; sessionPreview.classList.remove("visible") }
+        function limpiarMensaje() { loginMessage.className = "login-message" }
         function activarCarga() { loginButton.disabled = true; loginButton.classList.add("loading"); buttonText.textContent = "Verificando acceso..." }
         function detenerCarga() { loginButton.disabled = false; loginButton.classList.remove("loading"); buttonText.textContent = "Ingresar al portal" }
-        function obtenerIniciales(usuario) { const nombre = usuario?.nombre?.trim() || "", apellido = usuario?.apellidoPaterno?.trim() || ""; return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase() || "MJ" }
         loginForm.addEventListener("submit", async event => {
             event.preventDefault(); limpiarMensaje(); const correo = correoInput.value.trim().toLowerCase(), contrasena = contrasenaInput.value; if (!correo || !contrasena) { mostrarMensaje("error", "Faltan datos", "Escribe tu correo y contraseña para continuar."); return } activarCarga(); try {
-                const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo, contrasena }) }); const result = await response.json(); if (!response.ok || !result.ok) throw new Error(result.message || "No fue posible iniciar sesión."); const storage = document.getElementById("recordarme").checked ? localStorage : sessionStorage; storage.setItem("misionJardinesToken", result.token); storage.setItem("misionJardinesUsuario", JSON.stringify(result.usuario)); mostrarMensaje("success", "Inicio de sesión correcto", "Tus credenciales fueron validadas y el token JWT se guardó correctamente."); const usuario = result.usuario, nombreCompleto = [usuario.nombre, usuario.apellidoPaterno].filter(Boolean).join(" "); sessionAvatar.textContent = obtenerIniciales(usuario); sessionName.textContent = nombreCompleto || usuario.correo; sessionDetails.textContent = `${usuario.rol?.nombre || "Usuario"} · ${usuario.casa?.codigoCasa || "Sin casa"}`; sessionPreview.classList.add("visible"); buttonText.textContent = "Acceso autorizado";
+                const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo, contrasena }) }); const result = await response.json(); if (!response.ok || !result.ok) throw new Error(result.message || "No fue posible iniciar sesión."); const storage = document.getElementById("recordarme").checked ? localStorage : sessionStorage; storage.setItem("misionJardinesToken", result.token); storage.setItem("misionJardinesUsuario", JSON.stringify(result.usuario)); mostrarMensaje("success", "Inicio de sesión correcto", "Acceso autorizado. Preparando tu portal…"); buttonText.textContent = "Acceso autorizado";
                 setTimeout(() => {
                     window.location.href = "index.html";
                 }, 1200);

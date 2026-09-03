@@ -12,7 +12,8 @@
     calendar: '<svg class="mj-side-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"></path></svg>',
     directory: '<svg class="mj-side-icon" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"></path><path d="M8 2v4M16 2v4M8 11h8M8 15h5"></path></svg>',
     shield: '<svg class="mj-side-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="M12 8v4M12 16h.01"></path></svg>',
-    headset: '<svg class="mj-side-icon" viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M18 19h1a2 2 0 0 0 2-2v-3h-3v5ZM6 19H5a2 2 0 0 1-2-2v-3h3v5ZM18 19c0 2-2 3-6 3"></path></svg>'
+    headset: '<svg class="mj-side-icon" viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M18 19h1a2 2 0 0 0 2-2v-3h-3v5ZM6 19H5a2 2 0 0 1-2-2v-3h3v5ZM18 19c0 2-2 3-6 3"></path></svg>',
+    logout: '<svg class="mj-side-icon" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"></path></svg>'
   };
 
   const groups = [
@@ -94,6 +95,11 @@
           <p>Soporte disponible<br>Lun - Vie 9:00 - 18:00</p>
           <a href="mailto:soluciones@listoenlinea.com">Contactar soporte</a>
         </div>
+
+        <button class="mj-side-logout" type="button">
+          ${icons.logout}
+          <span>Cerrar sesión</span>
+        </button>
       </div>
     `;
   }
@@ -405,6 +411,47 @@
         text-decoration: none !important;
       }
 
+      .mj-shared-sidebar .mj-side-logout {
+        width: calc(100% - 2px) !important;
+        min-height: 40px !important;
+        flex: 0 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 9px !important;
+        margin: 10px 1px 0 !important;
+        padding: 9px 14px !important;
+        border: 1px solid #f2d5bb !important;
+        border-radius: 10px !important;
+        color: #bd5d0b !important;
+        background: #fff8f2 !important;
+        box-shadow: none !important;
+        font-family: inherit !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        line-height: 1.2 !important;
+        cursor: pointer !important;
+        transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease !important;
+      }
+
+      .mj-shared-sidebar .mj-side-logout:hover {
+        color: #fff !important;
+        background: var(--mj-side-orange) !important;
+        border-color: var(--mj-side-orange) !important;
+        transform: translateY(-1px) !important;
+      }
+
+      .mj-shared-sidebar .mj-side-logout:focus-visible {
+        outline: 3px solid rgba(249,115,22,.22) !important;
+        outline-offset: 2px !important;
+      }
+
+      .mj-shared-sidebar .mj-side-logout .mj-side-icon {
+        width: 17px !important;
+        height: 17px !important;
+        min-width: 17px !important;
+      }
+
       .mj-side-tab {
         width: 34px !important;
         height: 46px !important;
@@ -527,6 +574,15 @@
 
     const sidebar = createSidebar();
     applyPermissions(sidebar);
+
+    sidebar.querySelector('.mj-side-logout')?.addEventListener('click', () => {
+      localStorage.removeItem('misionJardinesToken');
+      localStorage.removeItem('misionJardinesUsuario');
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem('misionJardinesToken');
+      sessionStorage.removeItem('misionJardinesUsuario');
+      window.location.replace('login.html');
+    });
 
     document.querySelector('.mj-side-tab')?.remove();
 
