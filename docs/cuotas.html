@@ -16,10 +16,12 @@
       background: #fff4e8;
       border-color: #ffd3aa;
     }
+
     .page-cuotas .cuotas-online-status.is-offline i {
       background: #f28a2a;
       box-shadow: 0 0 0 4px rgba(242, 138, 42, .14);
     }
+
     .page-cuotas #saveNowButton:disabled {
       opacity: .55;
       cursor: not-allowed;
@@ -225,8 +227,8 @@
           </button>
 
           <button id="saveNowButton" class="btn-secondary" type="button"
-            data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA"
-            onclick="guardarCambiosPendientes({ manual: true })" disabled>
+            data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA" onclick="guardarCambiosPendientes({ manual: true })"
+            disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 3h12l2 2v16H5z"></path>
               <path d="M8 3v6h8V3M8 21v-7h8v7"></path>
@@ -1610,10 +1612,11 @@
           pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 }
         });
         resumen.columns = [
-          { width: 18 }, { width: 18 }, { width: 3 }, { width: 18 }, { width: 18 },
-          { width: 3 }, { width: 18 }, { width: 18 }, { width: 3 }, { width: 20 }, { width: 20 }
+          { width: 18 }, { width: 18 }, { width: 8 }, { width: 18 }, { width: 18 },
+          { width: 3 }, { width: 18 }, { width: 18 }, { width: 3 }, { width: 20 },
+          { width: 20 }, { width: 18 }, { width: 18 }
         ];
-        resumen.mergeCells('A1:K2');
+        resumen.mergeCells('A1:M2');
         resumen.getCell('A1').value = 'MISIÓN JARDINES · REPORTE EJECUTIVO DE CUOTAS';
         resumen.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#27324A') } };
         resumen.getCell('A1').font = { name: 'Aptos Display', size: 22, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1680,16 +1683,19 @@
         const graficaCumplimiento = workbook.addImage({ base64: crearGraficaCumplimiento(metricas), extension: 'png' });
         resumen.addImage(graficaCumplimiento, { tl: { col: 5.2, row: 8.5 }, ext: { width: 610, height: 265 } });
         const graficaCalles = workbook.addImage({ base64: crearGraficaCalles(analisisCalles), extension: 'png' });
-        resumen.addImage(graficaCalles, { tl: { col: 0, row: 18 }, ext: { width: 700, height: 305 } });
+        resumen.addImage(graficaCalles, {
+          tl: { col: 0, row: 18 },
+          ext: { width: 610, height: 305 }
+        });
 
-        resumen.getCell('H20').value = 'LECTURA EJECUTIVA';
-        resumen.getCell('H20').font = { name: 'Aptos Display', size: 14, bold: true, color: { argb: colorArgb('#27324A') } };
-        resumen.mergeCells('H21:K21');
-        resumen.getCell('H21').value = metricas.cumplimiento >= 0.9 ? 'Cobranza saludable' : metricas.cumplimiento >= 0.75 ? 'Cobranza en seguimiento' : 'Cobranza que requiere atención';
-        resumen.getCell('H21').font = { name: 'Aptos Display', size: 17, bold: true, color: { argb: colorArgb(metricas.cumplimiento >= 0.9 ? '#248453' : metricas.cumplimiento >= 0.75 ? '#D96B0B' : '#C44E52') } };
-        resumen.mergeCells('H22:K25');
-        resumen.getCell('H22').value = `${metricas.pagadas} viviendas están al corriente y ${metricas.pendientes + metricas.parciales} requieren seguimiento. Se ha recuperado ${(metricas.recuperacion * 100).toFixed(1)}% del monto esperado, con un saldo pendiente de $${money(metricas.saldo)}.`;
-        resumen.getCell('H22').alignment = { vertical: 'top', wrapText: true };
+        resumen.getCell('J20').value = 'LECTURA EJECUTIVA';
+        resumen.getCell('J20').font = { name: 'Aptos Display', size: 14, bold: true, color: { argb: colorArgb('#27324A') } };
+        resumen.mergeCells('J21:M21');
+        resumen.getCell('J21').value = metricas.cumplimiento >= 0.9 ? 'Cobranza saludable' : metricas.cumplimiento >= 0.75 ? 'Cobranza en seguimiento' : 'Cobranza que requiere atención';
+        resumen.getCell('J21').font = { name: 'Aptos Display', size: 17, bold: true, color: { argb: colorArgb(metricas.cumplimiento >= 0.9 ? '#248453' : metricas.cumplimiento >= 0.75 ? '#D96B0B' : '#C44E52') } };
+        resumen.mergeCells('J22:M25');
+        resumen.getCell('J22').value = `${metricas.pagadas} viviendas están al corriente y ${metricas.pendientes + metricas.parciales} requieren seguimiento. Se ha recuperado ${(metricas.recuperacion * 100).toFixed(1)}% del monto esperado, con un saldo pendiente de $${money(metricas.saldo)}.`;
+        resumen.getCell('J22').alignment = { vertical: 'top', wrapText: true };
         resumen.getCell('H22').font = { name: 'Aptos', size: 11, color: { argb: colorArgb('#58637A') } };
         resumen.mergeCells('H27:K28');
         resumen.getCell('H27').value = `Filtros aplicados: ${document.getElementById('filterText').value.trim() || 'sin búsqueda'} · Casa: ${document.getElementById('filterHouse').value.trim() || 'todas'} · Calle: ${document.getElementById('filterStreet').value || 'todas'} · Estatus: ${document.getElementById('filterStatus').value || 'todos'}`;
