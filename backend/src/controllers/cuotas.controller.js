@@ -1,4 +1,3 @@
-const path = require('path');
 const { Op } = require('sequelize');
 
 const sequelize = require('../config/database');
@@ -882,66 +881,46 @@ async function confirmarPago(req, res) {
             });
         }
 
-        const pdf = await generarReciboPdf(
-            cuotaConfirmada
-        );
-
-        const reciboUrl =
-            `${process.env.APP_BASE_URL}/recibos/${encodeURIComponent(
-                pdf.nombreArchivo
-            )}`;
-
-        await cuotaConfirmada.update({
-            reciboPdfUrl: reciboUrl
-        });
-
         let resultadoCorreo = {
             enviado: false,
             motivo: 'No se intentó enviar el correo'
         };
+        let reciboGenerado = false;
 
-        if (!cuotaConfirmada.correoDestino) {
+        try {
+            if (cuotaConfirmada.correoEnviado) {
+                const pdf = await prepararRecibo(
+                    cuotaConfirmada
+                );
+                reciboGenerado = true;
+                resultadoCorreo = {
+                    enviado: true,
+                    motivo:
+                        'El recibo ya había sido enviado',
+                    reciboUrl: pdf.reciboUrl
+                };
+            } else {
+                resultadoCorreo =
+                    await enviarReciboCuota(
+                        cuotaConfirmada,
+                        cuotaConfirmada.correoDestino
+                    );
+                reciboGenerado = Boolean(
+                    resultadoCorreo.reciboUrl
+                );
+            }
+        } catch (reciboError) {
+            console.error(
+                'El pago se confirmó, pero el recibo quedó pendiente:',
+                reciboError
+            );
+
             resultadoCorreo = {
                 enviado: false,
-                motivo: 'La vivienda no tiene correo registrado'
+                motivo:
+                    reciboError.message ||
+                    'No fue posible generar o enviar el recibo'
             };
-        } else if (cuotaConfirmada.correoEnviado) {
-            resultadoCorreo = {
-                enviado: true,
-                motivo: 'El recibo ya había sido enviado'
-            };
-        } else {
-            try {
-                resultadoCorreo =
-                    await enviarReciboPorCorreo({
-                        destinatario:
-                            cuotaConfirmada.correoDestino,
-                        cuota:
-                            cuotaConfirmada,
-                        rutaArchivo:
-                            pdf.rutaArchivo,
-                        reciboUrl
-                    });
-
-                if (resultadoCorreo.enviado) {
-                    await cuotaConfirmada.update({
-                        correoEnviado: true,
-                        fechaEnvioCorreo: new Date()
-                    });
-                }
-            } catch (emailError) {
-                console.error(
-                    'El pago se confirmó, pero falló el correo:',
-                    emailError
-                );
-
-                resultadoCorreo = {
-                    enviado: false,
-                    motivo:
-                        emailError.message ||
-                        'No fue posible enviar el correo'
-                };
-            }
         }
 
         return res.json({
@@ -949,7 +928,9 @@ async function confirmarPago(req, res) {
             message:
                 resultadoCorreo.enviado
                     ? 'Pago confirmado, recibo generado y correo enviado'
-                    : 'Pago confirmado y recibo generado, pero no se envió correo',
+                    : reciboGenerado
+                        ? 'Pago confirmado y recibo generado; el correo quedó pendiente'
+                        : 'Pago confirmado; el recibo quedó pendiente y puede reintentarse',
             correo: resultadoCorreo,
             data: cuotaConfirmada
         });
@@ -978,6 +959,181 @@ async function confirmarPago(req, res) {
     }
 }
 
+function construirUrlRecibo(nombreArchivo) {
+    const appBaseUrl = String(
+        process.env.APP_BASE_URL || ''
+    ).replace(/\/$/, '');
+
+    if (!appBaseUrl) {
+        const error = new Error(
+            'Falta la variable APP_BASE_URL para publicar los recibos'
+        );
+        error.status = 500;
+        throw error;
+    }
+
+    return `${appBaseUrl}/recibos/${encodeURIComponent(
+        nombreArchivo
+    )}`;
+}
+
+async function prepararRecibo(cuota) {
+    if (
+        !cuota ||
+        cuota.estatusPago !== 'PAGADO'
+    ) {
+        const error = new Error(
+            'La cuota todavía no está pagada'
+        );
+        error.status = 409;
+        throw error;
+    }
+
+    if (!cuota.folio) {
+        const transaction =
+            await sequelize.transaction();
+
+        try {
+            const cuotaBloqueada =
+                await Cuota.findByPk(
+                    cuota.id,
+                    {
+                        transaction,
+                        lock:
+                            transaction.LOCK.UPDATE
+                    }
+                );
+
+            if (!cuotaBloqueada) {
+                const error = new Error(
+                    'La cuota ya no existe'
+                );
+                error.status = 404;
+                throw error;
+            }
+
+            if (!cuotaBloqueada.folio) {
+                const folio =
+                    await generarSiguienteFolio(
+                        cuotaBloqueada.anio,
+                        transaction
+                    );
+
+                await cuotaBloqueada.update(
+                    {
+                        folio,
+                        fechaConfirmacion:
+                            cuotaBloqueada.fechaConfirmacion ||
+                            cuotaBloqueada.fechaPago ||
+                            new Date()
+                    },
+                    {
+                        transaction
+                    }
+                );
+            }
+
+            await transaction.commit();
+            cuota.set({
+                folio:
+                    cuotaBloqueada.folio,
+                fechaConfirmacion:
+                    cuotaBloqueada.fechaConfirmacion
+            });
+        } catch (error) {
+            if (!transaction.finished) {
+                await transaction.rollback();
+            }
+            throw error;
+        }
+    }
+
+    /*
+     * Se regenera usando el mismo folio. Esto recupera automáticamente
+     * archivos eliminados y mantiene el formato vigente del recibo.
+     */
+    const pdf = await generarReciboPdf(cuota);
+    const reciboUrl = construirUrlRecibo(
+        pdf.nombreArchivo
+    );
+
+    if (cuota.reciboPdfUrl !== reciboUrl) {
+        await cuota.update({
+            reciboPdfUrl: reciboUrl
+        });
+    }
+
+    return {
+        ...pdf,
+        reciboUrl
+    };
+}
+
+async function enviarReciboCuota(
+    cuota,
+    correoSolicitado
+) {
+    const usuarioContacto =
+        cuota.casa?.usuarios?.find(
+            usuario =>
+                usuario.esContactoPrincipal &&
+                usuario.recibeCorreosPago
+        ) ||
+        cuota.casa?.usuarios?.find(
+            usuario => usuario.recibeCorreosPago
+        ) ||
+        cuota.casa?.usuarios?.find(
+            usuario => usuario.esContactoPrincipal
+        ) ||
+        cuota.casa?.usuarios?.[0];
+
+    const condominoContacto =
+        cuota.casa?.condominos?.find(
+            condomino => condomino.correo
+        );
+
+    const correoDestino = String(
+        correoSolicitado ||
+        cuota.correoDestino ||
+        usuarioContacto?.correo ||
+        condominoContacto?.correo ||
+        cuota.casa?.correo ||
+        ''
+    ).trim();
+
+    const pdf = await prepararRecibo(cuota);
+
+    if (!correoDestino) {
+        return {
+            enviado: false,
+            motivo:
+                'La vivienda no tiene correo registrado',
+            reciboUrl: pdf.reciboUrl
+        };
+    }
+    const resultado = await enviarReciboPorCorreo({
+        destinatario: correoDestino,
+        cuota,
+        rutaArchivo: pdf.rutaArchivo,
+        reciboUrl: pdf.reciboUrl
+    });
+
+    if (resultado.enviado) {
+        await cuota.update({
+            correoDestino,
+            reciboPdfUrl: pdf.reciboUrl,
+            correoEnviado: true,
+            fechaEnvioCorreo: new Date()
+        });
+    }
+
+    return {
+        ...resultado,
+        reciboUrl: pdf.reciboUrl,
+        correoDestino
+    };
+}
+
 async function reenviarRecibo(req, res) {
     try {
         const cuota = await Cuota.findByPk(
@@ -989,8 +1145,7 @@ async function reenviarRecibo(req, res) {
 
         if (
             !cuota ||
-            cuota.estatusPago !== 'PAGADO' ||
-            !cuota.folio
+            cuota.estatusPago !== 'PAGADO'
         ) {
             return res.status(409).json({
                 ok: false,
@@ -999,43 +1154,22 @@ async function reenviarRecibo(req, res) {
             });
         }
 
-        const nombreArchivo =
-            `Recibo_${cuota.folio}.pdf`;
-
-        const rutaArchivo = path.resolve(
-            process.cwd(),
-            'storage',
-            'recibos',
-            nombreArchivo
-        );
-
         const correoDestino =
             req.body.correoDestino ||
             cuota.correoDestino;
 
-        const resultado =
-            await enviarReciboPorCorreo({
-                destinatario:
-                    correoDestino,
-                cuota,
-                rutaArchivo,
-                reciboUrl:
-                    cuota.reciboPdfUrl
-            });
-
-        if (resultado.enviado) {
-            await cuota.update({
-                correoDestino,
-                correoEnviado: true,
-                fechaEnvioCorreo:
-                    new Date()
-            });
-        }
+        const resultado = await enviarReciboCuota(
+            cuota,
+            correoDestino
+        );
 
         return res.json({
             ok: true,
             message:
-                'Recibo enviado nuevamente',
+                resultado.enviado
+                    ? 'Recibo enviado correctamente'
+                    : resultado.motivo,
+            correo: resultado,
             data: cuota
         });
     } catch (error) {
@@ -1050,6 +1184,147 @@ async function reenviarRecibo(req, res) {
                 'No fue posible reenviar el recibo',
             error:
                 process.env.NODE_ENV === 'development'
+                    ? error.message
+                    : undefined
+        });
+    }
+}
+
+async function enviarRecibosLote(req, res) {
+    const ids = Array.isArray(req.body?.ids)
+        ? req.body.ids.map(Number)
+        : [];
+
+    if (
+        !ids.length ||
+        ids.length > 500 ||
+        ids.some(
+            id =>
+                !Number.isInteger(id) ||
+                id <= 0
+        ) ||
+        new Set(ids).size !== ids.length
+    ) {
+        return res.status(400).json({
+            ok: false,
+            message:
+                'Selecciona entre 1 y 500 cuotas pagadas sin repetir'
+        });
+    }
+
+    try {
+        const cuotas = await Cuota.findAll({
+            where: {
+                id: {
+                    [Op.in]: ids
+                },
+                estatusPago: 'PAGADO'
+            },
+            include: obtenerInclude(),
+            order: [
+                ['calleSnapshot', 'ASC'],
+                ['numeroCasaSnapshot', 'ASC']
+            ]
+        });
+
+        const cuotasPorId = new Map(
+            cuotas.map(
+                cuota => [
+                    Number(cuota.id),
+                    cuota
+                ]
+            )
+        );
+        const resultados = [];
+
+        /*
+         * Envío secuencial intencional: evita que el proveedor SMTP
+         * bloquee una ráfaga grande y permite reportar cada resultado.
+         */
+        for (const id of ids) {
+            const cuota = cuotasPorId.get(id);
+
+            if (!cuota) {
+                resultados.push({
+                    id,
+                    enviado: false,
+                    motivo:
+                        'La cuota no existe o no está pagada'
+                });
+                continue;
+            }
+
+            try {
+                const resultado =
+                    await enviarReciboCuota(
+                        cuota,
+                        cuota.correoDestino
+                    );
+
+                resultados.push({
+                    id,
+                    folio: cuota.folio,
+                    casa:
+                        cuota.numeroCasaSnapshot ||
+                        cuota.casa?.numero ||
+                        '',
+                    correo:
+                        resultado.correoDestino ||
+                        cuota.correoDestino ||
+                        null,
+                    enviado:
+                        resultado.enviado,
+                    motivo:
+                        resultado.motivo ||
+                        null
+                });
+            } catch (error) {
+                console.error(
+                    `Error al enviar recibo de cuota ${id}:`,
+                    error
+                );
+
+                resultados.push({
+                    id,
+                    folio: cuota.folio,
+                    enviado: false,
+                    motivo:
+                        error.message ||
+                        'No fue posible enviar el recibo'
+                });
+            }
+        }
+
+        const enviados = resultados.filter(
+            resultado => resultado.enviado
+        ).length;
+        const fallidos =
+            resultados.length - enviados;
+
+        return res.json({
+            ok: true,
+            message:
+                `Proceso terminado: ${enviados} enviado(s) y ${fallidos} pendiente(s)`,
+            resumen: {
+                solicitados: ids.length,
+                enviados,
+                fallidos
+            },
+            resultados
+        });
+    } catch (error) {
+        console.error(
+            'Error al enviar recibos en lote:',
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            message:
+                'No fue posible procesar el envío masivo de recibos',
+            error:
+                process.env.NODE_ENV ===
+                    'development'
                     ? error.message
                     : undefined
         });
@@ -1107,5 +1382,6 @@ module.exports = {
     actualizarCuotasLote,
     confirmarPago,
     reenviarRecibo,
+    enviarRecibosLote,
     eliminarCuota
 };
