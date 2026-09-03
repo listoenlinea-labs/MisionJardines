@@ -7,6 +7,7 @@
   <title>Cuotas | Misión Jardines</title>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <link rel="stylesheet" href="assets/css/style.css" />
   <style>
@@ -40,13 +41,13 @@
           <span>Operación normal</span>
         </div>
 
-        <button class="btn-secondary cuotas-export-top" type="button" onclick="exportExcel()">
+        <button id="exportReportButton" class="btn-secondary cuotas-export-top" type="button" onclick="exportExcel()">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3v12"></path>
             <path d="m7 10 5 5 5-5"></path>
             <path d="M5 21h14"></path>
           </svg>
-          Exportar Excel
+          Exportar reporte
         </button>
       </div>
     </div>
@@ -1358,40 +1359,480 @@
       }
     }
 
-    function exportExcel() {
+    function colorArgb(hex) {
+      return `FF${String(hex).replace('#', '').toUpperCase()}`;
+    }
+
+    function estiloCeldaKpi(celda, colorFondo, colorTexto = '#27324A') {
+      celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb(colorFondo) } };
+      celda.font = { name: 'Aptos Display', size: 20, bold: true, color: { argb: colorArgb(colorTexto) } };
+      celda.alignment = { vertical: 'middle', horizontal: 'center' };
+      celda.border = {
+        top: { style: 'thin', color: { argb: colorArgb('#E3E7EF') } },
+        left: { style: 'thin', color: { argb: colorArgb('#E3E7EF') } },
+        bottom: { style: 'thin', color: { argb: colorArgb('#E3E7EF') } },
+        right: { style: 'thin', color: { argb: colorArgb('#E3E7EF') } }
+      };
+    }
+
+    function estilizarEncabezadoTabla(fila) {
+      fila.height = 25;
+      fila.eachCell(celda => {
+        celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#F28A2A') } };
+        celda.font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        celda.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        celda.border = { bottom: { style: 'medium', color: { argb: colorArgb('#D96B0B') } } };
+      });
+    }
+
+    function crearGraficaCumplimiento(metricas) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 900;
+      canvas.height = 390;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#27324A';
+      ctx.font = '700 27px Arial';
+      ctx.fillText('Cumplimiento de cuotas', 34, 45);
+      ctx.fillStyle = '#7A8499';
+      ctx.font = '16px Arial';
+      ctx.fillText('Distribución del periodo exportado', 34, 72);
+
+      const valores = [metricas.pagadas, metricas.parciales, metricas.pendientes, metricas.condonadas, metricas.canceladas];
+      const colores = ['#40AE72', '#F1B94E', '#F28A2A', '#9B84BD', '#B8C0CE'];
+      const etiquetas = ['Pagadas', 'Pago parcial', 'Pendientes', 'Condonadas', 'Canceladas'];
+      const total = Math.max(valores.reduce((suma, valor) => suma + valor, 0), 1);
+      let angulo = -Math.PI / 2;
+      valores.forEach((valor, index) => {
+        if (!valor) return;
+        const siguiente = angulo + (valor / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(205, 230, 112, angulo, siguiente);
+        ctx.arc(205, 230, 67, siguiente, angulo, true);
+        ctx.closePath();
+        ctx.fillStyle = colores[index];
+        ctx.fill();
+        angulo = siguiente;
+      });
+      ctx.fillStyle = '#27324A';
+      ctx.textAlign = 'center';
+      ctx.font = '700 32px Arial';
+      ctx.fillText(`${Math.round(metricas.cumplimiento * 100)}%`, 205, 226);
+      ctx.fillStyle = '#7A8499';
+      ctx.font = '14px Arial';
+      ctx.fillText('cumplimiento', 205, 250);
+      ctx.textAlign = 'left';
+
+      etiquetas.forEach((etiqueta, index) => {
+        const y = 125 + index * 48;
+        ctx.fillStyle = colores[index];
+        ctx.beginPath();
+        ctx.roundRect(410, y - 15, 22, 22, 6);
+        ctx.fill();
+        ctx.fillStyle = '#46516A';
+        ctx.font = '16px Arial';
+        ctx.fillText(etiqueta, 448, y + 2);
+        ctx.fillStyle = '#27324A';
+        ctx.font = '700 17px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${valores[index]}  ·  ${((valores[index] / total) * 100).toFixed(1)}%`, 840, y + 2);
+        ctx.textAlign = 'left';
+      });
+      return canvas.toDataURL('image/png');
+    }
+
+    function crearGraficaCalles(analisisCalles) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1000;
+      canvas.height = 430;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#27324A';
+      ctx.font = '700 27px Arial';
+      ctx.fillText('Cumplimiento por calle', 32, 43);
+      ctx.fillStyle = '#7A8499';
+      ctx.font = '16px Arial';
+      ctx.fillText('Calles con mayor número de viviendas en el reporte', 32, 70);
+      const top = [...analisisCalles].sort((a, b) => b.total - a.total).slice(0, 8);
+      const maximo = Math.max(...top.map(item => item.total), 1);
+      top.forEach((item, index) => {
+        const y = 108 + index * 38;
+        const ancho = (item.total / maximo) * 510;
+        const anchoPagado = item.total ? (item.pagadas / item.total) * ancho : 0;
+        ctx.fillStyle = '#46516A';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(String(item.calle).slice(0, 27), 245, y + 17);
+        ctx.fillStyle = '#F1F3F7';
+        ctx.beginPath();
+        ctx.roundRect(265, y, 510, 22, 7);
+        ctx.fill();
+        ctx.fillStyle = '#F4C08D';
+        ctx.beginPath();
+        ctx.roundRect(265, y, ancho, 22, 7);
+        ctx.fill();
+        if (anchoPagado) {
+          ctx.fillStyle = '#40AE72';
+          ctx.beginPath();
+          ctx.roundRect(265, y, anchoPagado, 22, 7);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#27324A';
+        ctx.font = '700 14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${item.pagadas}/${item.total} · ${Math.round(item.cumplimiento * 100)}%`, 795, y + 17);
+      });
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#40AE72';
+      ctx.fillRect(265, 405, 18, 8);
+      ctx.fillStyle = '#68738A';
+      ctx.font = '13px Arial';
+      ctx.fillText('Pagadas', 291, 414);
+      ctx.fillStyle = '#F4C08D';
+      ctx.fillRect(380, 405, 18, 8);
+      ctx.fillStyle = '#68738A';
+      ctx.fillText('No pagadas', 406, 414);
+      return canvas.toDataURL('image/png');
+    }
+
+    async function exportExcel() {
+      const boton = document.getElementById('exportReportButton');
+      const contenidoOriginal = boton?.innerHTML || '';
+      if (!navigator.onLine) {
+        showToast('Necesitas conexión para asegurar que el reporte use los datos más recientes.');
+        return;
+      }
+      if (cantidadCamposModificados() || cuotasNuevasPendientes.length) {
+        showToast('Guarda primero los cambios pendientes para generar un reporte consistente.');
+        return;
+      }
       const datos = getFilteredHouses();
       if (!datos.length) {
         showToast('No hay cuotas para exportar con los filtros actuales.');
         return;
       }
-      const rows = datos.map(cuota => ({
-        'Año': Number(cuota.anio),
-        'Mes': cuota.mes || '',
-        'Casa': cuota.numeroCasaSnapshot || cuota.casa?.numero || '',
-        'Calle': cuota.calleSnapshot || cuota.casa?.calle || '',
-        'Nombre': obtenerPropietario(cuota),
-        'Monto Cuota': Number(cuota.montoCuota || 0),
-        'Monto Pagado': Number(cuota.montoPagado || 0),
-        'Forma de Pago': cuota.formaPago || '',
-        'Referencia': cuota.referencia || '',
-        'Fecha de Pago': formatDate(cuota.fechaPago),
-        'Estatus': statusLabel(cuota.estatusPago),
-        'Folio': cuota.folio || '',
-        'Recibo PDF': cuota.reciboPdfUrl || '',
-        'Enviado (Si/No)': cuota.correoEnviado ? 'Si' : 'No',
-        'Email': obtenerCorreo(cuota),
-        'Observaciones': cuota.observaciones || ''
-      }));
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      worksheet['!cols'] = [
-        { wch: 8 }, { wch: 14 }, { wch: 12 }, { wch: 24 }, { wch: 28 },
-        { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 16 },
-        { wch: 16 }, { wch: 16 }, { wch: 36 }, { wch: 16 }, { wch: 30 }, { wch: 32 }
-      ];
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Cuotas');
-      XLSX.writeFile(workbook, `cuotas_${mesConsulta.toLowerCase()}_${anioConsulta}.xlsx`);
-      showToast('Excel exportado correctamente.');
+      if (typeof ExcelJS === 'undefined') {
+        showToast('No se pudo cargar el generador del reporte. Actualiza la página e intenta de nuevo.');
+        return;
+      }
+
+      if (boton) {
+        boton.disabled = true;
+        boton.textContent = 'Generando reporte...';
+      }
+      showToast('Preparando reporte ejecutivo...');
+
+      try {
+        const filas = datos.map(cuota => {
+          const estatus = cuota.estatusPago || 'PENDIENTE';
+          const montoCuota = Number(cuota.montoCuota || 0);
+          const montoPagado = Number(cuota.montoPagado || 0);
+          const noExigible = ['CANCELADO', 'CONDONADO'].includes(estatus);
+          return {
+            anio: Number(cuota.anio),
+            mes: cuota.mes || '',
+            casa: cuota.numeroCasaSnapshot || cuota.casa?.numero || '',
+            calle: cuota.calleSnapshot || cuota.casa?.calle || 'Sin calle',
+            nombre: obtenerPropietario(cuota) || 'Sin nombre registrado',
+            montoCuota,
+            montoPagado,
+            saldoPendiente: noExigible ? 0 : Math.max(montoCuota - montoPagado, 0),
+            formaPago: cuota.formaPago || 'Sin registrar',
+            referencia: cuota.referencia || '',
+            fechaPago: cuota.fechaPago ? new Date(cuota.fechaPago) : null,
+            estatus: statusLabel(estatus),
+            estatusCodigo: estatus,
+            folio: cuota.folio || '',
+            recibo: cuota.reciboPdfUrl || '',
+            enviado: cuota.correoEnviado ? 'Sí' : 'No',
+            email: obtenerCorreo(cuota),
+            telefono: obtenerTelefono(cuota),
+            observaciones: cuota.observaciones || ''
+          };
+        });
+
+        const metricas = {
+          total: filas.length,
+          pagadas: filas.filter(fila => fila.estatusCodigo === 'PAGADO').length,
+          parciales: filas.filter(fila => fila.estatusCodigo === 'PAGO_PARCIAL').length,
+          pendientes: filas.filter(fila => fila.estatusCodigo === 'PENDIENTE').length,
+          condonadas: filas.filter(fila => fila.estatusCodigo === 'CONDONADO').length,
+          canceladas: filas.filter(fila => fila.estatusCodigo === 'CANCELADO').length,
+          esperado: filas.filter(fila => !['CANCELADO', 'CONDONADO'].includes(fila.estatusCodigo))
+            .reduce((suma, fila) => suma + fila.montoCuota, 0),
+          recaudado: filas.reduce((suma, fila) => suma + fila.montoPagado, 0),
+          saldo: filas.reduce((suma, fila) => suma + fila.saldoPendiente, 0)
+        };
+        const exigibles = metricas.total - metricas.condonadas - metricas.canceladas;
+        metricas.cumplimiento = exigibles ? metricas.pagadas / exigibles : 0;
+        metricas.recuperacion = metricas.esperado ? metricas.recaudado / metricas.esperado : 0;
+
+        const mapaCalles = new Map();
+        filas.forEach(fila => {
+          const actual = mapaCalles.get(fila.calle) || {
+            calle: fila.calle, total: 0, pagadas: 0, parciales: 0, pendientes: 0,
+            esperado: 0, recaudado: 0, saldo: 0
+          };
+          actual.total += 1;
+          actual.pagadas += fila.estatusCodigo === 'PAGADO' ? 1 : 0;
+          actual.parciales += fila.estatusCodigo === 'PAGO_PARCIAL' ? 1 : 0;
+          actual.pendientes += fila.estatusCodigo === 'PENDIENTE' ? 1 : 0;
+          if (!['CANCELADO', 'CONDONADO'].includes(fila.estatusCodigo)) actual.esperado += fila.montoCuota;
+          actual.recaudado += fila.montoPagado;
+          actual.saldo += fila.saldoPendiente;
+          mapaCalles.set(fila.calle, actual);
+        });
+        const analisisCalles = [...mapaCalles.values()]
+          .map(item => ({ ...item, cumplimiento: item.total ? item.pagadas / item.total : 0 }))
+          .sort((a, b) => a.calle.localeCompare(b.calle, 'es'));
+
+        const mapaFormas = new Map();
+        filas.filter(fila => fila.montoPagado > 0).forEach(fila => {
+          const actual = mapaFormas.get(fila.formaPago) || { forma: fila.formaPago, operaciones: 0, monto: 0 };
+          actual.operaciones += 1;
+          actual.monto += fila.montoPagado;
+          mapaFormas.set(fila.formaPago, actual);
+        });
+        const formasPago = [...mapaFormas.values()].sort((a, b) => b.monto - a.monto);
+
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Misión Jardines · ListoEnLinea.com';
+        workbook.lastModifiedBy = usuarioActual?.nombre || 'Administración Misión Jardines';
+        workbook.created = new Date();
+        workbook.modified = new Date();
+        workbook.calcProperties.fullCalcOnLoad = true;
+        workbook.calcProperties.forceFullCalc = true;
+
+        const resumen = workbook.addWorksheet('Resumen Ejecutivo', {
+          views: [{ showGridLines: false }],
+          pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 }
+        });
+        resumen.columns = [
+          { width: 18 }, { width: 18 }, { width: 3 }, { width: 18 }, { width: 18 },
+          { width: 3 }, { width: 18 }, { width: 18 }, { width: 3 }, { width: 20 }, { width: 20 }
+        ];
+        resumen.mergeCells('A1:K2');
+        resumen.getCell('A1').value = 'MISIÓN JARDINES · REPORTE EJECUTIVO DE CUOTAS';
+        resumen.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#27324A') } };
+        resumen.getCell('A1').font = { name: 'Aptos Display', size: 22, bold: true, color: { argb: 'FFFFFFFF' } };
+        resumen.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
+        resumen.getRow(1).height = 28;
+        resumen.getRow(2).height = 18;
+        resumen.mergeCells('A3:H3');
+        resumen.getCell('A3').value = `Periodo: ${mesConsulta} ${anioConsulta} · ${filas.length} cuotas incluidas`;
+        resumen.getCell('A3').font = { name: 'Aptos', size: 11, color: { argb: colorArgb('#68738A') } };
+        resumen.mergeCells('I3:K3');
+        resumen.getCell('I3').value = `Generado: ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())}`;
+        resumen.getCell('I3').alignment = { horizontal: 'right' };
+        resumen.getCell('I3').font = { name: 'Aptos', size: 10, italic: true, color: { argb: colorArgb('#7A8499') } };
+
+        const kpis = [
+          { tituloRango: 'A5:B5', valorRango: 'A6:B7', titulo: 'CUOTAS INCLUIDAS', formula: '=ROWS(TablaCuotas[Casa])', resultado: metricas.total, fondo: '#EAF6FD', formato: '#,##0' },
+          { tituloRango: 'D5:E5', valorRango: 'D6:E7', titulo: 'CUMPLIMIENTO', formula: '=IFERROR(COUNTIF(TablaCuotas[Estatus],"Pagado")/(ROWS(TablaCuotas[Casa])-COUNTIF(TablaCuotas[Estatus],"Condonado")-COUNTIF(TablaCuotas[Estatus],"Cancelado")),0)', resultado: metricas.cumplimiento, fondo: '#EAF8EF', formato: '0.0%' },
+          { tituloRango: 'G5:H5', valorRango: 'G6:H7', titulo: 'TOTAL RECAUDADO', formula: '=SUM(TablaCuotas[Monto Pagado])', resultado: metricas.recaudado, fondo: '#FFF5E9', formato: '"$"#,##0.00' },
+          { tituloRango: 'J5:K5', valorRango: 'J6:K7', titulo: 'SALDO PENDIENTE', formula: '=SUM(TablaCuotas[Saldo Pendiente])', resultado: metricas.saldo, fondo: '#F4EEFB', formato: '"$"#,##0.00' }
+        ];
+        kpis.forEach(kpi => {
+          resumen.mergeCells(kpi.tituloRango);
+          resumen.mergeCells(kpi.valorRango);
+          const titulo = resumen.getCell(kpi.tituloRango.split(':')[0]);
+          titulo.value = kpi.titulo;
+          titulo.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb(kpi.fondo) } };
+          titulo.font = { name: 'Aptos', size: 9, bold: true, color: { argb: colorArgb('#68738A') } };
+          titulo.alignment = { vertical: 'bottom', horizontal: 'center' };
+          const celda = resumen.getCell(kpi.valorRango.split(':')[0]);
+          celda.value = { formula: kpi.formula.slice(1), result: kpi.resultado };
+          celda.numFmt = kpi.formato;
+          estiloCeldaKpi(celda, kpi.fondo);
+        });
+        resumen.getCell('A4').value = 'INDICADORES CLAVE';
+        resumen.getCell('A4').font = { name: 'Aptos', size: 9, bold: true, color: { argb: colorArgb('#D96B0B') } };
+        resumen.mergeCells('A9:E9');
+        resumen.getCell('A9').value = 'ESTADO DE LA COBRANZA';
+        resumen.getCell('A9').font = { name: 'Aptos Display', size: 14, bold: true, color: { argb: colorArgb('#27324A') } };
+        resumen.getRow(10).values = ['Estatus', 'Viviendas', '% del total', 'Monto pagado', 'Saldo'];
+        estilizarEncabezadoTabla(resumen.getRow(10));
+        const estados = [
+          ['Pagado', metricas.pagadas, metricas.total ? metricas.pagadas / metricas.total : 0],
+          ['Pago parcial', metricas.parciales, metricas.total ? metricas.parciales / metricas.total : 0],
+          ['Pendiente', metricas.pendientes, metricas.total ? metricas.pendientes / metricas.total : 0],
+          ['Condonado', metricas.condonadas, metricas.total ? metricas.condonadas / metricas.total : 0],
+          ['Cancelado', metricas.canceladas, metricas.total ? metricas.canceladas / metricas.total : 0]
+        ];
+        estados.forEach((estado, index) => {
+          const row = 11 + index;
+          const filasEstado = filas.filter(fila => fila.estatus === estado[0]);
+          resumen.getRow(row).values = [
+            estado[0], estado[1], estado[2],
+            filasEstado.reduce((suma, fila) => suma + fila.montoPagado, 0),
+            filasEstado.reduce((suma, fila) => suma + fila.saldoPendiente, 0)
+          ];
+          resumen.getCell(`C${row}`).numFmt = '0.0%';
+          resumen.getCell(`D${row}`).numFmt = '"$"#,##0.00';
+          resumen.getCell(`E${row}`).numFmt = '"$"#,##0.00';
+        });
+        resumen.getCell('A17').value = 'Definición: cumplimiento = cuotas PAGADAS ÷ cuotas exigibles. Las canceladas y condonadas no forman parte del denominador.';
+        resumen.mergeCells('A17:K17');
+        resumen.getCell('A17').font = { name: 'Aptos', size: 9, italic: true, color: { argb: colorArgb('#68738A') } };
+
+        const graficaCumplimiento = workbook.addImage({ base64: crearGraficaCumplimiento(metricas), extension: 'png' });
+        resumen.addImage(graficaCumplimiento, { tl: { col: 5.2, row: 8.5 }, ext: { width: 610, height: 265 } });
+        const graficaCalles = workbook.addImage({ base64: crearGraficaCalles(analisisCalles), extension: 'png' });
+        resumen.addImage(graficaCalles, { tl: { col: 0, row: 18 }, ext: { width: 700, height: 305 } });
+
+        resumen.getCell('H20').value = 'LECTURA EJECUTIVA';
+        resumen.getCell('H20').font = { name: 'Aptos Display', size: 14, bold: true, color: { argb: colorArgb('#27324A') } };
+        resumen.mergeCells('H21:K21');
+        resumen.getCell('H21').value = metricas.cumplimiento >= 0.9 ? 'Cobranza saludable' : metricas.cumplimiento >= 0.75 ? 'Cobranza en seguimiento' : 'Cobranza que requiere atención';
+        resumen.getCell('H21').font = { name: 'Aptos Display', size: 17, bold: true, color: { argb: colorArgb(metricas.cumplimiento >= 0.9 ? '#248453' : metricas.cumplimiento >= 0.75 ? '#D96B0B' : '#C44E52') } };
+        resumen.mergeCells('H22:K25');
+        resumen.getCell('H22').value = `${metricas.pagadas} viviendas están al corriente y ${metricas.pendientes + metricas.parciales} requieren seguimiento. Se ha recuperado ${(metricas.recuperacion * 100).toFixed(1)}% del monto esperado, con un saldo pendiente de $${money(metricas.saldo)}.`;
+        resumen.getCell('H22').alignment = { vertical: 'top', wrapText: true };
+        resumen.getCell('H22').font = { name: 'Aptos', size: 11, color: { argb: colorArgb('#58637A') } };
+        resumen.mergeCells('H27:K28');
+        resumen.getCell('H27').value = `Filtros aplicados: ${document.getElementById('filterText').value.trim() || 'sin búsqueda'} · Casa: ${document.getElementById('filterHouse').value.trim() || 'todas'} · Calle: ${document.getElementById('filterStreet').value || 'todas'} · Estatus: ${document.getElementById('filterStatus').value || 'todos'}`;
+        resumen.getCell('H27').alignment = { wrapText: true, vertical: 'top' };
+        resumen.getCell('H27').font = { name: 'Aptos', size: 9, italic: true, color: { argb: colorArgb('#7A8499') } };
+
+        const calleSheet = workbook.addWorksheet('Análisis por calle', { views: [{ state: 'frozen', ySplit: 4, showGridLines: false }] });
+        calleSheet.mergeCells('A1:H2');
+        calleSheet.getCell('A1').value = 'ANÁLISIS DE COBRANZA POR CALLE';
+        calleSheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#27324A') } };
+        calleSheet.getCell('A1').font = { name: 'Aptos Display', size: 20, bold: true, color: { argb: 'FFFFFFFF' } };
+        calleSheet.getCell('A1').alignment = { vertical: 'middle' };
+        calleSheet.getRow(4).values = ['Calle', 'Cuotas', 'Pagadas', 'Pago parcial', 'Pendientes', 'Cumplimiento', 'Recaudado', 'Saldo pendiente'];
+        estilizarEncabezadoTabla(calleSheet.getRow(4));
+        analisisCalles.forEach((item, index) => {
+          const row = 5 + index;
+          calleSheet.getRow(row).values = [item.calle, item.total, item.pagadas, item.parciales, item.pendientes, item.cumplimiento, item.recaudado, item.saldo];
+          calleSheet.getCell(`F${row}`).numFmt = '0.0%';
+          calleSheet.getCell(`G${row}`).numFmt = '"$"#,##0.00';
+          calleSheet.getCell(`H${row}`).numFmt = '"$"#,##0.00';
+        });
+        calleSheet.columns = [{ width: 30 }, { width: 12 }, { width: 12 }, { width: 16 }, { width: 14 }, { width: 16 }, { width: 18 }, { width: 18 }];
+        calleSheet.autoFilter = { from: 'A4', to: `H${4 + analisisCalles.length}` };
+        if (analisisCalles.length) {
+          calleSheet.addConditionalFormatting({
+            ref: `F5:F${4 + analisisCalles.length}`,
+            rules: [{ type: 'colorScale', cfvo: [{ type: 'min' }, { type: 'percentile', value: 50 }, { type: 'max' }], color: [{ argb: colorArgb('#FCE8E8') }, { argb: colorArgb('#FFF2D6') }, { argb: colorArgb('#DCF3E5') }] }]
+          });
+        }
+
+        const pagosSheet = workbook.addWorksheet('Pagadas', { views: [{ state: 'frozen', ySplit: 4, showGridLines: false }] });
+        const pendientesSheet = workbook.addWorksheet('Pendientes', { views: [{ state: 'frozen', ySplit: 4, showGridLines: false }] });
+        const columnasSeguimiento = [
+          { name: 'Casa', key: 'casa', width: 12 }, { name: 'Calle', key: 'calle', width: 28 },
+          { name: 'Residente', key: 'nombre', width: 34 }, { name: 'Estatus', key: 'estatus', width: 16 },
+          { name: 'Cuota', key: 'montoCuota', width: 15 }, { name: 'Pagado', key: 'montoPagado', width: 15 },
+          { name: 'Saldo', key: 'saldoPendiente', width: 15 }, { name: 'Forma de pago', key: 'formaPago', width: 18 },
+          { name: 'Fecha de pago', key: 'fechaPago', width: 17 }, { name: 'Folio', key: 'folio', width: 18 },
+          { name: 'Email', key: 'email', width: 32 }, { name: 'Teléfono', key: 'telefono', width: 18 },
+          { name: 'Observaciones', key: 'observaciones', width: 38 }
+        ];
+        function prepararHojaSeguimiento(sheet, titulo, color, registros, nombreTabla) {
+          sheet.mergeCells('A1:M2');
+          sheet.getCell('A1').value = titulo;
+          sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb(color) } };
+          sheet.getCell('A1').font = { name: 'Aptos Display', size: 20, bold: true, color: { argb: 'FFFFFFFF' } };
+          sheet.getCell('A1').alignment = { vertical: 'middle' };
+          sheet.addTable({
+            name: nombreTabla, ref: 'A4', headerRow: true, totalsRow: false,
+            style: { theme: 'TableStyleMedium2', showRowStripes: true },
+            columns: columnasSeguimiento.map(columna => ({ name: columna.name, filterButton: true })),
+            rows: registros.map(fila => columnasSeguimiento.map(columna => fila[columna.key] ?? ''))
+          });
+          columnasSeguimiento.forEach((columna, index) => { sheet.getColumn(index + 1).width = columna.width; });
+          estilizarEncabezadoTabla(sheet.getRow(4));
+          const ultima = 4 + Math.max(registros.length, 1);
+          ['E', 'F', 'G'].forEach(letra => { sheet.getColumn(letra).numFmt = '"$"#,##0.00'; });
+          sheet.getColumn('I').numFmt = 'dd/mm/yyyy';
+          sheet.getRows(5, Math.max(registros.length, 1)).forEach(row => { row.height = 21; row.alignment = { vertical: 'middle' }; });
+          if (registros.length) {
+            sheet.addConditionalFormatting({
+              ref: `D5:D${ultima}`,
+              rules: [
+                { type: 'containsText', operator: 'containsText', text: 'Pagado', style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#DCF3E5') } }, font: { color: { argb: colorArgb('#248453') }, bold: true } } },
+                { type: 'containsText', operator: 'containsText', text: 'Pendiente', style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#FFF0E1') } }, font: { color: { argb: colorArgb('#B85D0C') }, bold: true } } }
+              ]
+            });
+          }
+          sheet.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+        }
+        prepararHojaSeguimiento(pagosSheet, 'VIVIENDAS AL CORRIENTE', '#248453', filas.filter(fila => fila.estatusCodigo === 'PAGADO'), 'TablaPagadas');
+        prepararHojaSeguimiento(pendientesSheet, 'SEGUIMIENTO DE CUOTAS PENDIENTES', '#D96B0B', filas.filter(fila => ['PENDIENTE', 'PAGO_PARCIAL'].includes(fila.estatusCodigo)), 'TablaPendientes');
+
+        const formasSheet = workbook.addWorksheet('Formas de pago', { views: [{ state: 'frozen', ySplit: 4, showGridLines: false }] });
+        formasSheet.mergeCells('A1:D2');
+        formasSheet.getCell('A1').value = 'ANÁLISIS POR FORMA DE PAGO';
+        formasSheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#27324A') } };
+        formasSheet.getCell('A1').font = { name: 'Aptos Display', size: 20, bold: true, color: { argb: 'FFFFFFFF' } };
+        formasSheet.getRow(4).values = ['Forma de pago', 'Operaciones', 'Monto recaudado', '% del monto'];
+        estilizarEncabezadoTabla(formasSheet.getRow(4));
+        formasPago.forEach((item, index) => {
+          const row = 5 + index;
+          formasSheet.getRow(row).values = [item.forma, item.operaciones, item.monto, metricas.recaudado ? item.monto / metricas.recaudado : 0];
+          formasSheet.getCell(`C${row}`).numFmt = '"$"#,##0.00';
+          formasSheet.getCell(`D${row}`).numFmt = '0.0%';
+        });
+        formasSheet.columns = [{ width: 24 }, { width: 16 }, { width: 22 }, { width: 18 }];
+
+        const datosSheet = workbook.addWorksheet('Datos', { views: [{ state: 'frozen', ySplit: 1, xSplit: 4, showGridLines: false }] });
+        const columnasDatos = [
+          ['Año', 'anio'], ['Mes', 'mes'], ['Casa', 'casa'], ['Calle', 'calle'], ['Residente', 'nombre'],
+          ['Monto Cuota', 'montoCuota'], ['Monto Pagado', 'montoPagado'], ['Saldo Pendiente', 'saldoPendiente'],
+          ['Forma de Pago', 'formaPago'], ['Referencia', 'referencia'], ['Fecha de Pago', 'fechaPago'], ['Estatus', 'estatus'],
+          ['Folio', 'folio'], ['Recibo PDF', 'recibo'], ['Correo enviado', 'enviado'], ['Email', 'email'],
+          ['Teléfono', 'telefono'], ['Observaciones', 'observaciones']
+        ];
+        datosSheet.addTable({
+          name: 'TablaCuotas', ref: 'A1', headerRow: true, totalsRow: false,
+          style: { theme: 'TableStyleMedium2', showRowStripes: true },
+          columns: columnasDatos.map(([name]) => ({ name, filterButton: true })),
+          rows: filas.map(fila => columnasDatos.map(([, key]) => fila[key] ?? ''))
+        });
+        estilizarEncabezadoTabla(datosSheet.getRow(1));
+        [10, 14, 12, 28, 36, 16, 16, 18, 18, 20, 17, 16, 18, 42, 16, 34, 18, 42]
+          .forEach((width, index) => { datosSheet.getColumn(index + 1).width = width; });
+        ['F', 'G', 'H'].forEach(letra => { datosSheet.getColumn(letra).numFmt = '"$"#,##0.00'; });
+        datosSheet.getColumn('K').numFmt = 'dd/mm/yyyy';
+        datosSheet.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+        if (filas.length) {
+          datosSheet.addConditionalFormatting({
+            ref: `L2:L${filas.length + 1}`,
+            rules: [
+              { type: 'containsText', operator: 'containsText', text: 'Pagado', style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#DCF3E5') } }, font: { color: { argb: colorArgb('#248453') }, bold: true } } },
+              { type: 'containsText', operator: 'containsText', text: 'Pendiente', style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#FFF0E1') } }, font: { color: { argb: colorArgb('#B85D0C') }, bold: true } } }
+            ]
+          });
+        }
+
+        workbook.worksheets.forEach(sheet => {
+          sheet.properties.defaultRowHeight = 20;
+          sheet.headerFooter.oddFooter = '&LMisión Jardines Residencial&CReporte confidencial&RListoEnLinea.com';
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = `Reporte_Ejecutivo_Cuotas_Mision_Jardines_${mesConsulta}_${anioConsulta}.xlsx`;
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        URL.revokeObjectURL(url);
+        showToast('Reporte ejecutivo exportado correctamente.');
+      } catch (error) {
+        console.error('Error al generar reporte ejecutivo:', error);
+        showToast(`No fue posible generar el reporte: ${error.message}`);
+      } finally {
+        if (boton) {
+          boton.disabled = false;
+          boton.innerHTML = contenidoOriginal;
+        }
+      }
     }
 
     function obtenerCampoExcel(fila, nombres) {
