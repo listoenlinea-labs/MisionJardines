@@ -7334,7 +7334,8 @@ body.modal-open {
   position: relative !important;
   z-index: 2 !important;
 
-  width: min(520px, 100%) !important;
+  width: min(1240px, calc(100vw - 64px)) !important;
+  max-width: 1240px !important;
   max-height: calc(100vh - 48px) !important;
   overflow-y: auto !important;
 
