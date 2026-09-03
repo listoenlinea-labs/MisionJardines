@@ -24,6 +24,184 @@
       opacity: .55;
       cursor: not-allowed;
     }
+    .page-cuotas .cuotas-feature-modal .edit-modal-dialog {
+      width: min(960px, calc(100vw - 32px));
+      max-width: 960px;
+      padding: 0;
+      overflow: hidden;
+      text-align: left;
+      border: 1px solid #ebe5ef;
+      box-shadow: 0 28px 80px rgba(42, 48, 69, .24);
+    }
+    .page-cuotas .feature-modal-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 24px 28px 20px;
+      background: linear-gradient(135deg, #fff8f2 0%, #f8f4fc 55%, #eef8fb 100%);
+      border-bottom: 1px solid #ece7f0;
+    }
+    .page-cuotas .feature-modal-header h3 {
+      margin: 5px 0 5px;
+      color: #27324a;
+      font-size: 23px;
+    }
+    .page-cuotas .feature-modal-header p {
+      margin: 0;
+      color: #707a90;
+    }
+    .page-cuotas .feature-modal-eyebrow {
+      color: #d96b0b;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+    }
+    .page-cuotas .feature-modal-close {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      border: 1px solid #e1dce7;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .86);
+      color: #667086;
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .page-cuotas .feature-modal-body {
+      padding: 22px 28px 26px;
+      background: #fff;
+    }
+    .page-cuotas .receipt-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .page-cuotas .receipt-summary-card {
+      padding: 14px 16px;
+      border: 1px solid #e5e8ef;
+      border-radius: 14px;
+      background: #fbfcfe;
+    }
+    .page-cuotas .receipt-summary-card span {
+      display: block;
+      color: #7b8497;
+      font-size: 11px;
+      margin-bottom: 5px;
+    }
+    .page-cuotas .receipt-summary-card strong {
+      color: #27324a;
+      font-size: 20px;
+    }
+    .page-cuotas .receipt-list-wrap {
+      max-height: 390px;
+      overflow: auto;
+      border: 1px solid #e2e6ed;
+      border-radius: 14px;
+    }
+    .page-cuotas .receipt-list {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    .page-cuotas .receipt-list th,
+    .page-cuotas .receipt-list td {
+      padding: 11px 13px;
+      border-bottom: 1px solid #edf0f4;
+      font-size: 12px;
+      text-align: left;
+    }
+    .page-cuotas .receipt-list th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: #6a7388;
+      background: #f7f8fb;
+      font-size: 10px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .page-cuotas .receipt-list tr:last-child td {
+      border-bottom: 0;
+    }
+    .page-cuotas .receipt-email-missing {
+      color: #c05d16;
+      font-weight: 700;
+    }
+    .page-cuotas .feature-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .page-cuotas .feature-modal-progress {
+      margin-right: auto;
+      color: #6e788d;
+      font-size: 12px;
+    }
+    .page-cuotas .analytics-tabs {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      margin-bottom: 18px;
+      border: 1px solid #e4dfeb;
+      border-radius: 12px;
+      background: #f8f6fa;
+    }
+    .page-cuotas .analytics-tab {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #697389;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .page-cuotas .analytics-tab.active {
+      color: #c45d08;
+      background: #fff;
+      box-shadow: 0 4px 14px rgba(62, 53, 74, .1);
+    }
+    .page-cuotas .analytics-panel {
+      min-height: 385px;
+      padding: 12px;
+      border: 1px solid #e7e9ef;
+      border-radius: 16px;
+      background: #fff;
+    }
+    .page-cuotas .analytics-panel[hidden] {
+      display: none !important;
+    }
+    .page-cuotas .analytics-panel img {
+      display: block;
+      width: 100%;
+      max-height: 410px;
+      object-fit: contain;
+    }
+    .page-cuotas .btn-receipt-row {
+      white-space: nowrap;
+    }
+    @media (max-width: 720px) {
+      .page-cuotas .receipt-summary-grid {
+        grid-template-columns: 1fr;
+      }
+      .page-cuotas .feature-modal-header,
+      .page-cuotas .feature-modal-body {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+      .page-cuotas .feature-modal-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .page-cuotas .feature-modal-progress {
+        margin-right: 0;
+      }
+      .page-cuotas .feature-modal-actions button {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 
@@ -205,6 +383,22 @@
         <div class="actions cuotas-actions">
           <input id="excelInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
 
+          <button id="analyticsButton" class="btn-secondary" type="button" onclick="abrirModalAnalisis()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path>
+            </svg>
+            Ver análisis
+          </button>
+
+          <button id="bulkReceiptButton" class="btn-secondary" type="button"
+            data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA" onclick="abrirModalRecibos()" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 4h16v16H4z"></path>
+              <path d="m4 7 8 6 8-6"></path>
+            </svg>
+            Enviar recibos de pago
+          </button>
+
           <button id="importExcelButton" class="btn-secondary" type="button" data-roles="SUPER_ADMIN,ADMINISTRADOR"
             onclick="document.getElementById('excelInput').click()">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -373,6 +567,77 @@
     </div>
   </div>
 
+  <div id="bulkReceiptModal" class="edit-modal cuotas-feature-modal" hidden aria-hidden="true">
+    <div class="edit-modal-backdrop" onclick="cerrarModalRecibos()"></div>
+    <div class="edit-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="bulkReceiptTitle">
+      <div class="feature-modal-header">
+        <div>
+          <span class="feature-modal-eyebrow">COBRANZA CONFIRMADA</span>
+          <h3 id="bulkReceiptTitle">Enviar recibos de pago</h3>
+          <p>Selecciona las viviendas pagadas que recibirán su comprobante oficial.</p>
+        </div>
+        <button class="feature-modal-close" type="button" onclick="cerrarModalRecibos()" aria-label="Cerrar">×</button>
+      </div>
+      <div class="feature-modal-body">
+        <div class="receipt-summary-grid">
+          <div class="receipt-summary-card"><span>Cuotas pagadas</span><strong id="receiptPaidCount">0</strong></div>
+          <div class="receipt-summary-card"><span>Con correo disponible</span><strong id="receiptEmailCount">0</strong></div>
+          <div class="receipt-summary-card"><span>Enviadas anteriormente</span><strong id="receiptSentCount">0</strong></div>
+        </div>
+        <div class="receipt-list-wrap">
+          <table class="receipt-list">
+            <thead>
+              <tr>
+                <th><input id="receiptSelectAll" type="checkbox" onchange="seleccionarTodosRecibos(this.checked)" checked></th>
+                <th>Casa</th>
+                <th>Residente</th>
+                <th>Correo</th>
+                <th>Folio</th>
+                <th>Último envío</th>
+              </tr>
+            </thead>
+            <tbody id="receiptRecipientsBody"></tbody>
+          </table>
+        </div>
+        <div class="feature-modal-actions">
+          <span id="receiptSendProgress" class="feature-modal-progress">Selecciona los recibos que deseas enviar.</span>
+          <button type="button" class="btn-secondary" onclick="cerrarModalRecibos()">Cancelar</button>
+          <button id="sendSelectedReceiptsButton" type="button" class="btn-primary" onclick="enviarRecibosSeleccionados()">
+            Enviar seleccionados
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="analyticsModal" class="edit-modal cuotas-feature-modal" hidden aria-hidden="true">
+    <div class="edit-modal-backdrop" onclick="cerrarModalAnalisis()"></div>
+    <div class="edit-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyticsTitle">
+      <div class="feature-modal-header">
+        <div>
+          <span class="feature-modal-eyebrow">PANORAMA DE COBRANZA</span>
+          <h3 id="analyticsTitle">Análisis de cumplimiento</h3>
+          <p id="analyticsPeriodLabel">Consulta visual del periodo activo.</p>
+        </div>
+        <button class="feature-modal-close" type="button" onclick="cerrarModalAnalisis()" aria-label="Cerrar">×</button>
+      </div>
+      <div class="feature-modal-body">
+        <div class="analytics-tabs" role="tablist" aria-label="Gráficas de cumplimiento">
+          <button id="analyticsGeneralTab" class="analytics-tab active" type="button" role="tab"
+            aria-selected="true" onclick="mostrarPestanaAnalisis('general')">Cumplimiento de cuotas</button>
+          <button id="analyticsStreetTab" class="analytics-tab" type="button" role="tab"
+            aria-selected="false" onclick="mostrarPestanaAnalisis('calles')">Cumplimiento por calle</button>
+        </div>
+        <div id="analyticsGeneralPanel" class="analytics-panel" role="tabpanel">
+          <img id="analyticsGeneralImage" alt="Gráfica de cumplimiento de cuotas">
+        </div>
+        <div id="analyticsStreetPanel" class="analytics-panel" role="tabpanel" hidden>
+          <img id="analyticsStreetImage" alt="Gráfica de cumplimiento por calle">
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_BASE_URL = 'https://api-misionjardines.listoenlinea.host/api';
 
@@ -394,6 +659,7 @@
     let cambiosPendientes = {};
     let cuotasNuevasPendientes = [];
     let guardandoCambios = false;
+    let enviandoRecibos = false;
     let temporizadorBorrador = null;
     let intervaloAutoguardado = null;
     let anioConsulta = 2026;
@@ -914,6 +1180,210 @@
       showToast('Los cambios fueron descartados.');
     }
 
+    function obtenerCuotasPagadas() {
+      return cuotas.filter(cuota => cuota.estatusPago === 'PAGADO');
+    }
+
+    function actualizarBotonRecibos() {
+      const boton = document.getElementById('bulkReceiptButton');
+      if (!boton) return;
+      const total = obtenerCuotasPagadas().length;
+      boton.disabled = total === 0 || enviandoRecibos;
+      boton.title = total
+        ? `Enviar recibos de ${total} cuota(s) pagada(s)`
+        : 'Se habilitará cuando exista al menos una cuota pagada';
+    }
+
+    function abrirModalRecibos() {
+      if (!esRolAdministrativo()) {
+        showToast('No tienes permisos para enviar recibos.');
+        return;
+      }
+      const pagadas = obtenerCuotasPagadas();
+      if (!pagadas.length) {
+        showToast('Todavía no hay cuotas pagadas en este periodo.');
+        return;
+      }
+      const tbody = document.getElementById('receiptRecipientsBody');
+      document.getElementById('receiptPaidCount').textContent = pagadas.length;
+      document.getElementById('receiptEmailCount').textContent = pagadas.filter(obtenerCorreo).length;
+      document.getElementById('receiptSentCount').textContent = pagadas.filter(cuota => cuota.correoEnviado).length;
+      document.getElementById('receiptSelectAll').checked = true;
+      document.getElementById('receiptSendProgress').textContent =
+        `${pagadas.filter(obtenerCorreo).length} recibo(s) listos para enviar.`;
+      tbody.innerHTML = pagadas.map(cuota => {
+        const correo = obtenerCorreo(cuota);
+        const casa = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
+        return `<tr>
+          <td><input class="receipt-recipient-check" type="checkbox" value="${Number(cuota.id)}"
+            ${correo ? 'checked' : 'disabled'} aria-label="Seleccionar casa ${escapeHtml(casa)}"></td>
+          <td><strong>${escapeHtml(casa)}</strong><br><small>${escapeHtml(cuota.calleSnapshot || cuota.casa?.calle || '')}</small></td>
+          <td>${escapeHtml(obtenerPropietario(cuota))}</td>
+          <td class="${correo ? '' : 'receipt-email-missing'}">${escapeHtml(correo || 'Sin correo registrado')}</td>
+          <td>${escapeHtml(cuota.folio || 'Se generará al enviar')}</td>
+          <td>${cuota.fechaEnvioCorreo ? escapeHtml(formatDate(cuota.fechaEnvioCorreo)) : 'No enviado'}</td>
+        </tr>`;
+      }).join('');
+      actualizarContadorSeleccionados();
+      mostrarModal(document.getElementById('bulkReceiptModal'));
+    }
+
+    function cerrarModalRecibos() {
+      if (enviandoRecibos) return;
+      const modal = document.getElementById('bulkReceiptModal');
+      if (modal) ocultarModal(modal);
+    }
+
+    function seleccionarTodosRecibos(seleccionado) {
+      document.querySelectorAll('.receipt-recipient-check:not(:disabled)').forEach(checkbox => {
+        checkbox.checked = seleccionado;
+      });
+      actualizarContadorSeleccionados();
+    }
+
+    function obtenerIdsRecibosSeleccionados() {
+      return [...document.querySelectorAll('.receipt-recipient-check:checked:not(:disabled)')]
+        .map(checkbox => Number(checkbox.value))
+        .filter(Number.isInteger);
+    }
+
+    function actualizarContadorSeleccionados() {
+      const seleccionados = obtenerIdsRecibosSeleccionados().length;
+      const disponibles = document.querySelectorAll('.receipt-recipient-check:not(:disabled)').length;
+      const boton = document.getElementById('sendSelectedReceiptsButton');
+      const progreso = document.getElementById('receiptSendProgress');
+      if (boton) {
+        boton.disabled = seleccionados === 0 || enviandoRecibos;
+        boton.textContent = seleccionados === disponibles && disponibles > 0
+          ? `Enviar todos (${seleccionados})`
+          : seleccionados
+            ? `Enviar seleccionados (${seleccionados})`
+            : 'Selecciona al menos uno';
+      }
+      if (progreso && !enviandoRecibos) {
+        progreso.textContent = `${seleccionados} recibo(s) seleccionado(s).`;
+      }
+    }
+
+    document.addEventListener('change', event => {
+      if (event.target.classList?.contains('receipt-recipient-check')) {
+        actualizarContadorSeleccionados();
+      }
+    });
+
+    async function enviarRecibosSeleccionados() {
+      const ids = obtenerIdsRecibosSeleccionados();
+      if (!ids.length || enviandoRecibos) return;
+      const confirmacion = window.confirm(
+        `Se enviarán ${ids.length} recibo(s) por correo. Los comprobantes se regenerarán con su mismo folio. ¿Deseas continuar?`
+      );
+      if (!confirmacion) return;
+      enviandoRecibos = true;
+      const boton = document.getElementById('sendSelectedReceiptsButton');
+      const progreso = document.getElementById('receiptSendProgress');
+      boton.disabled = true;
+      boton.textContent = 'Enviando...';
+      progreso.textContent = 'Generando comprobantes y enviando correos. No cierres esta ventana.';
+      actualizarBotonRecibos();
+      try {
+        const tamanoLote = 10;
+        const resultados = [];
+
+        for (let inicio = 0; inicio < ids.length; inicio += tamanoLote) {
+          const lote = ids.slice(inicio, inicio + tamanoLote);
+          progreso.textContent =
+            `Procesando ${Math.min(inicio + lote.length, ids.length)} de ${ids.length} recibos...`;
+
+          const result = await apiRequest(`${API_BASE_URL}/cuotas/recibos/enviar-lote`, {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({ ids: lote })
+          });
+
+          resultados.push(...(result.resultados || []));
+        }
+
+        const enviados = resultados.filter(item => item.enviado).length;
+        const fallidos = resultados.length - enviados;
+        progreso.textContent = `${enviados} enviado(s) · ${fallidos} pendiente(s).`;
+        showToast(`Proceso terminado: ${enviados} enviado(s) y ${fallidos} pendiente(s).`);
+        await cargarCuotas();
+        if (!fallidos) {
+          enviandoRecibos = false;
+          cerrarModalRecibos();
+        } else {
+          const errores = resultados
+            .filter(item => !item.enviado)
+            .map(item => `Cuota ${item.id}: ${item.motivo}`)
+            .slice(0, 10);
+          window.alert(`Algunos recibos requieren atención:\n\n${errores.join('\n')}`);
+        }
+      } catch (error) {
+        progreso.textContent = `El envío se detuvo: ${error.message}`;
+        showToast(`No fue posible enviar los recibos: ${error.message}`);
+      } finally {
+        enviandoRecibos = false;
+        actualizarBotonRecibos();
+        actualizarContadorSeleccionados();
+      }
+    }
+
+    function obtenerAnaliticaActual() {
+      const datos = getFilteredHouses();
+      const metricas = {
+        total: datos.length,
+        pagadas: datos.filter(cuota => cuota.estatusPago === 'PAGADO').length,
+        parciales: datos.filter(cuota => cuota.estatusPago === 'PAGO_PARCIAL').length,
+        pendientes: datos.filter(cuota => cuota.estatusPago === 'PENDIENTE').length,
+        condonadas: datos.filter(cuota => cuota.estatusPago === 'CONDONADO').length,
+        canceladas: datos.filter(cuota => cuota.estatusPago === 'CANCELADO').length
+      };
+      const exigibles = metricas.total - metricas.condonadas - metricas.canceladas;
+      metricas.cumplimiento = exigibles ? metricas.pagadas / exigibles : 0;
+      const calles = new Map();
+      datos.forEach(cuota => {
+        const calle = cuota.calleSnapshot || cuota.casa?.calle || 'Sin calle';
+        const actual = calles.get(calle) || { calle, total: 0, pagadas: 0 };
+        actual.total += 1;
+        actual.pagadas += cuota.estatusPago === 'PAGADO' ? 1 : 0;
+        calles.set(calle, actual);
+      });
+      const analisisCalles = [...calles.values()].map(item => ({
+        ...item,
+        cumplimiento: item.total ? item.pagadas / item.total : 0
+      }));
+      return { datos, metricas, analisisCalles };
+    }
+
+    function abrirModalAnalisis() {
+      const { datos, metricas, analisisCalles } = obtenerAnaliticaActual();
+      if (!datos.length) {
+        showToast('No hay cuotas para analizar con los filtros actuales.');
+        return;
+      }
+      document.getElementById('analyticsPeriodLabel').textContent =
+        `${mesConsulta} ${anioConsulta} · ${datos.length} cuota(s) según los filtros actuales`;
+      document.getElementById('analyticsGeneralImage').src = crearGraficaCumplimiento(metricas);
+      document.getElementById('analyticsStreetImage').src = crearGraficaCalles(analisisCalles);
+      mostrarPestanaAnalisis('general');
+      mostrarModal(document.getElementById('analyticsModal'));
+    }
+
+    function cerrarModalAnalisis() {
+      const modal = document.getElementById('analyticsModal');
+      if (modal) ocultarModal(modal);
+    }
+
+    function mostrarPestanaAnalisis(pestana) {
+      const general = pestana === 'general';
+      document.getElementById('analyticsGeneralPanel').hidden = !general;
+      document.getElementById('analyticsStreetPanel').hidden = general;
+      document.getElementById('analyticsGeneralTab').classList.toggle('active', general);
+      document.getElementById('analyticsStreetTab').classList.toggle('active', !general);
+      document.getElementById('analyticsGeneralTab').setAttribute('aria-selected', String(general));
+      document.getElementById('analyticsStreetTab').setAttribute('aria-selected', String(!general));
+    }
+
     function claveBorrador() {
       return `mision-jardines:cuotas:borrador:${usuarioActual?.id || 'sesion'}`;
     }
@@ -1071,9 +1541,13 @@
         const reciboPdf = cuota.reciboPdfUrl
           ? `<a class="btn-secondary" href="${escapeHtml(cuota.reciboPdfUrl)}" target="_blank" rel="noopener noreferrer">Ver PDF</a>`
           : '<span>Sin PDF</span>';
-        const accionesCorreo = administrativo && pagada && cuota.reciboPdfUrl
+        const accionesCorreo = administrativo
           ? `<div class="email-status-cell"><strong>${obtenerTextoEnviado(cuota)}</strong>
-             <button type="button" class="btn-secondary" onclick="reenviarRecibo(${cuota.id})">Reenviar</button></div>`
+             <button type="button" class="btn-secondary btn-receipt-row"
+               onclick="enviarReciboIndividual(${cuota.id})" ${pagada ? '' : 'disabled'}
+               title="${pagada ? 'Generar y enviar el recibo de esta cuota' : 'Disponible únicamente para cuotas pagadas'}">
+               Enviar recibo
+             </button></div>`
           : `<strong>${obtenerTextoEnviado(cuota)}</strong>`;
 
         tr.innerHTML = `
@@ -1152,35 +1626,6 @@
       }
     }
 
-    function abrirCorreoOutlook(cuota) {
-      if (!cuota) return;
-      const email = obtenerCorreo(cuota);
-      if (!email) {
-        showToast('El pago fue confirmado, pero la casa no tiene correo registrado.');
-        return;
-      }
-      const casa = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
-      const calle = cuota.calleSnapshot || cuota.casa?.calle || '';
-      const nombre = obtenerPropietario(cuota);
-      const monto = Math.round(Number(cuota.montoPagado || 0));
-      const folio = cuota.folio || 'Sin folio';
-      const referencia = cuota.referencia || 'Sin referencia';
-      const recibo = cuota.reciboPdfUrl || 'El comprobante todavía no está disponible.';
-      const subject = `Confirmación de pago - Casa ${casa} - Folio ${folio}`;
-      const body = [
-        `Hola ${nombre || 'propietario'},`, '',
-        'Le confirmamos que su pago de mantenimiento fue registrado correctamente.', '',
-        `Casa: ${casa}`, `Calle: ${calle}`, `Periodo: ${cuota.mes} ${cuota.anio}`,
-        `Monto pagado: $${monto}`, `Forma de pago: ${cuota.formaPago || 'No especificada'}`,
-        `Referencia: ${referencia}`, `Folio: ${folio}`, `Fecha de pago: ${formatDate(cuota.fechaPago)}`, '',
-        'Puede consultar o descargar su comprobante PDF en el siguiente enlace:', recibo, '',
-        'Gracias.', 'Administración de Misión Jardines'
-      ].join('\n');
-      const outlookUrl = 'https://outlook.office.com/mail/deeplink/compose' +
-        `?to=${encodeURIComponent(email)}` + `&subject=${encodeURIComponent(subject)}` + `&body=${encodeURIComponent(body)}`;
-      window.open(outlookUrl, '_blank', 'noopener');
-    }
-
     async function cambiarEstatus(cuotaId, estatus) {
       if (!modoEdicion) {
         showToast('Activa primero el modo edición.');
@@ -1228,7 +1673,6 @@
           })
         });
         showToast(result.message);
-        if (result.data?.estatusPago === 'PAGADO') abrirCorreoOutlook(result.data);
         await cargarCuotas();
       } catch (error) {
         showToast(`Error: ${error.message}`);
@@ -1236,13 +1680,25 @@
       }
     }
 
-    async function reenviarRecibo(cuotaId) {
+    async function enviarReciboIndividual(cuotaId) {
       const cuota = cuotas.find(item => Number(item.id) === Number(cuotaId));
-      const correo = prompt('Correo de destino:', obtenerCorreo(cuota));
-      if (!correo) return;
+      if (!cuota || cuota.estatusPago !== 'PAGADO') {
+        showToast('El recibo solo puede enviarse cuando la cuota está pagada.');
+        return;
+      }
+      const correo = obtenerCorreo(cuota);
+      if (!correo) {
+        showToast('La vivienda no tiene un correo registrado. Agrégalo antes de enviar.');
+        return;
+      }
+      const confirmacion = window.confirm(
+        `Se enviará el recibo de la casa ${cuota.numeroCasaSnapshot || cuota.casa?.numero || ''} a ${correo}. ¿Deseas continuar?`
+      );
+      if (!confirmacion) return;
       try {
+        showToast('Generando y enviando recibo...');
         const result = await apiRequest(`${API_BASE_URL}/cuotas/${cuotaId}/reenviar`, {
-          method: 'POST', headers: authHeaders(true), body: JSON.stringify({ correoDestino: correo.trim() })
+          method: 'POST', headers: authHeaders(true), body: JSON.stringify({ correoDestino: correo })
         });
         showToast(result.message);
         await cargarCuotas();
@@ -1261,6 +1717,7 @@
       document.getElementById('metricPagadas').textContent = pagadas;
       document.getElementById('metricPendientes').textContent = pendientes;
       document.getElementById('metricIngresos').textContent = `$${money(ingresos)}`;
+      actualizarBotonRecibos();
     }
 
     function clearFilters() {
@@ -1610,10 +2067,11 @@
           pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 }
         });
         resumen.columns = [
-          { width: 18 }, { width: 18 }, { width: 3 }, { width: 18 }, { width: 18 },
-          { width: 3 }, { width: 18 }, { width: 18 }, { width: 3 }, { width: 20 }, { width: 20 }
+          { width: 18 }, { width: 18 }, { width: 8 }, { width: 18 }, { width: 18 },
+          { width: 3 }, { width: 18 }, { width: 18 }, { width: 3 }, { width: 20 },
+          { width: 20 }, { width: 18 }, { width: 18 }
         ];
-        resumen.mergeCells('A1:K2');
+        resumen.mergeCells('A1:M2');
         resumen.getCell('A1').value = 'MISIÓN JARDINES · REPORTE EJECUTIVO DE CUOTAS';
         resumen.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorArgb('#27324A') } };
         resumen.getCell('A1').font = { name: 'Aptos Display', size: 22, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1680,21 +2138,21 @@
         const graficaCumplimiento = workbook.addImage({ base64: crearGraficaCumplimiento(metricas), extension: 'png' });
         resumen.addImage(graficaCumplimiento, { tl: { col: 5.2, row: 8.5 }, ext: { width: 610, height: 265 } });
         const graficaCalles = workbook.addImage({ base64: crearGraficaCalles(analisisCalles), extension: 'png' });
-        resumen.addImage(graficaCalles, { tl: { col: 0, row: 18 }, ext: { width: 700, height: 305 } });
+        resumen.addImage(graficaCalles, { tl: { col: 0, row: 18 }, ext: { width: 610, height: 305 } });
 
-        resumen.getCell('H20').value = 'LECTURA EJECUTIVA';
-        resumen.getCell('H20').font = { name: 'Aptos Display', size: 14, bold: true, color: { argb: colorArgb('#27324A') } };
-        resumen.mergeCells('H21:K21');
-        resumen.getCell('H21').value = metricas.cumplimiento >= 0.9 ? 'Cobranza saludable' : metricas.cumplimiento >= 0.75 ? 'Cobranza en seguimiento' : 'Cobranza que requiere atención';
-        resumen.getCell('H21').font = { name: 'Aptos Display', size: 17, bold: true, color: { argb: colorArgb(metricas.cumplimiento >= 0.9 ? '#248453' : metricas.cumplimiento >= 0.75 ? '#D96B0B' : '#C44E52') } };
-        resumen.mergeCells('H22:K25');
-        resumen.getCell('H22').value = `${metricas.pagadas} viviendas están al corriente y ${metricas.pendientes + metricas.parciales} requieren seguimiento. Se ha recuperado ${(metricas.recuperacion * 100).toFixed(1)}% del monto esperado, con un saldo pendiente de $${money(metricas.saldo)}.`;
-        resumen.getCell('H22').alignment = { vertical: 'top', wrapText: true };
-        resumen.getCell('H22').font = { name: 'Aptos', size: 11, color: { argb: colorArgb('#58637A') } };
-        resumen.mergeCells('H27:K28');
-        resumen.getCell('H27').value = `Filtros aplicados: ${document.getElementById('filterText').value.trim() || 'sin búsqueda'} · Casa: ${document.getElementById('filterHouse').value.trim() || 'todas'} · Calle: ${document.getElementById('filterStreet').value || 'todas'} · Estatus: ${document.getElementById('filterStatus').value || 'todos'}`;
-        resumen.getCell('H27').alignment = { wrapText: true, vertical: 'top' };
-        resumen.getCell('H27').font = { name: 'Aptos', size: 9, italic: true, color: { argb: colorArgb('#7A8499') } };
+        resumen.getCell('J20').value = 'LECTURA EJECUTIVA';
+        resumen.getCell('J20').font = { name: 'Aptos Display', size: 14, bold: true, color: { argb: colorArgb('#27324A') } };
+        resumen.mergeCells('J21:M21');
+        resumen.getCell('J21').value = metricas.cumplimiento >= 0.9 ? 'Cobranza saludable' : metricas.cumplimiento >= 0.75 ? 'Cobranza en seguimiento' : 'Cobranza que requiere atención';
+        resumen.getCell('J21').font = { name: 'Aptos Display', size: 17, bold: true, color: { argb: colorArgb(metricas.cumplimiento >= 0.9 ? '#248453' : metricas.cumplimiento >= 0.75 ? '#D96B0B' : '#C44E52') } };
+        resumen.mergeCells('J22:M25');
+        resumen.getCell('J22').value = `${metricas.pagadas} viviendas están al corriente y ${metricas.pendientes + metricas.parciales} requieren seguimiento. Se ha recuperado ${(metricas.recuperacion * 100).toFixed(1)}% del monto esperado, con un saldo pendiente de $${money(metricas.saldo)}.`;
+        resumen.getCell('J22').alignment = { vertical: 'top', wrapText: true };
+        resumen.getCell('J22').font = { name: 'Aptos', size: 11, color: { argb: colorArgb('#58637A') } };
+        resumen.mergeCells('J27:M28');
+        resumen.getCell('J27').value = `Filtros aplicados: ${document.getElementById('filterText').value.trim() || 'sin búsqueda'} · Casa: ${document.getElementById('filterHouse').value.trim() || 'todas'} · Calle: ${document.getElementById('filterStreet').value || 'todas'} · Estatus: ${document.getElementById('filterStatus').value || 'todos'}`;
+        resumen.getCell('J27').alignment = { wrapText: true, vertical: 'top' };
+        resumen.getCell('J27').font = { name: 'Aptos', size: 9, italic: true, color: { argb: colorArgb('#7A8499') } };
 
         const calleSheet = workbook.addWorksheet('Análisis por calle', { views: [{ state: 'frozen', ySplit: 4, showGridLines: false }] });
         calleSheet.mergeCells('A1:H2');
@@ -1935,8 +2393,12 @@
       if (event.key !== 'Escape') return;
       const newQuotaModal = document.getElementById('newQuotaModal');
       const saveChangesModal = document.getElementById('saveChangesModal');
+      const bulkReceiptModal = document.getElementById('bulkReceiptModal');
+      const analyticsModal = document.getElementById('analyticsModal');
       if (newQuotaModal && !newQuotaModal.hidden) cerrarModalNuevaCuota();
       if (saveChangesModal && !saveChangesModal.hidden) cerrarModalGuardado();
+      if (bulkReceiptModal && !bulkReceiptModal.hidden) cerrarModalRecibos();
+      if (analyticsModal && !analyticsModal.hidden) cerrarModalAnalisis();
     });
 
     async function iniciarPagina() {
