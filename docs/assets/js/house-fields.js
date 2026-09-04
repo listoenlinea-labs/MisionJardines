@@ -60,7 +60,7 @@
     }
     const match = text.match(/^([A-Z]{2})[-\s]?(.*)$/i);
     if (match && PREFIXES[match[1].toUpperCase()]) {
-      return { street: PREFIXES[match[1].toUpperCase()], number: match[2].replace(/^0+/, '') };
+      return { street: PREFIXES[match[1].toUpperCase()], number: match[2] };
     }
     return { street: '', number: text };
   }
@@ -185,6 +185,55 @@
     document.querySelectorAll('[onclick*="addVisit"]').forEach((button) => button.addEventListener('click', sync, true));
   }
 
+  function enhanceResidentHouse() {
+    const box = document.getElementById('userHouseBox');
+    const original = document.getElementById('currentUserHouse');
+    if (!box || !original || document.getElementById('currentUserStreetSplit')) return;
+    const initial = splitAddress(original.value);
+    const street = streetSelect('currentUserStreetSplit');
+    const number = numberInput('currentUserNumberSplit');
+    street.value = initial.street;
+    number.value = initial.number;
+    original.type = 'hidden';
+    original.previousElementSibling?.remove();
+    box.prepend(field('Mi calle', street), field('Mi número', number));
+    const sync = () => {
+      const prefix = Object.entries(PREFIXES).find(([, value]) => value === street.value)?.[0];
+      original.value = prefix && number.value.trim()
+        ? `${prefix}-${number.value.trim().padStart(3, '0')}`
+        : combine(street.value, number.value.trim());
+      if (typeof window.applyRole === 'function') window.applyRole();
+    };
+    street.addEventListener('change', sync);
+    number.addEventListener('input', sync);
+    sync();
+  }
+
+  function enhanceResidentVisitModal() {
+    const original = document.getElementById('modalVisitorHouse');
+    if (!original || document.getElementById('modalVisitorStreetSplit')) return;
+    const street = document.createElement('input');
+    street.id = 'modalVisitorStreetSplit';
+    street.readOnly = true;
+    const number = document.createElement('input');
+    number.id = 'modalVisitorNumberSplit';
+    number.readOnly = true;
+    const wrapper = original.parentElement;
+    original.type = 'hidden';
+    wrapper.querySelector('label')?.remove();
+    wrapper.before(field('Calle destino', street));
+    wrapper.prepend(document.createElement('label'));
+    wrapper.querySelector('label').textContent = 'Número de casa';
+    wrapper.appendChild(number);
+    document.querySelectorAll('[onclick*="openVisitModal"]').forEach((button) => button.addEventListener('click', () => {
+      const value = combine(document.getElementById('currentUserStreetSplit')?.value, document.getElementById('currentUserNumberSplit')?.value);
+      original.value = value;
+      const address = splitAddress(value);
+      street.value = address.street;
+      number.value = address.number;
+    }, true));
+  }
+
   function enhanceVisitFilters() {
     const text = document.getElementById('filterText');
     const tbody = document.getElementById('visitsTable');
@@ -206,7 +255,12 @@
     const page = location.pathname.split('/').pop();
     if (page === 'bases_datos.html') enhanceDatabases();
     if (page === 'reportes.html') { enhanceReportForm(); enhanceReportFilters(); }
-    if (page === 'visitas.html') { enhanceVisitForm(); enhanceVisitFilters(); }
+    if (page === 'visitas.html') {
+      enhanceResidentHouse();
+      enhanceVisitForm();
+      enhanceResidentVisitModal();
+      enhanceVisitFilters();
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
