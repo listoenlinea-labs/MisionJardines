@@ -11,6 +11,7 @@ const cuotasRoutes = require('./routes/cuotas.routes');
 const callesRoutes = require('./routes/calles.routes');
 const eventosRoutes = require('./routes/eventos.routes');
 const accesosRoutes = require('./routes/accesos.routes');
+const visitasRoutes = require('./routes/visitas.routes');
 require('./models');
 
 const app = express();
@@ -121,6 +122,7 @@ app.use('/api/cuotas', cuotasRoutes);
 app.use('/api/calles', callesRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/accesos', accesosRoutes);
+app.use('/api/visitas', visitasRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
