@@ -5,6 +5,7 @@ const Cuota = require('./Cuota');
 const FolioConsecutivo = require('./FolioConsecutivo');
 const Evento = require('./Evento');
 const Condomino = require('./Condomino');
+const Acceso = require('./Acceso');
 
 /*
  * Casa 1 --- N Usuarios
@@ -74,6 +75,29 @@ Cuota.belongsTo(Usuario, {
     as: 'confirmadoPor'
 });
 
+/*
+ * Casa 1 --- N Accesos de seguridad
+ */
+Casa.hasMany(Acceso, {
+    foreignKey: 'casaId',
+    as: 'accesos'
+});
+
+Acceso.belongsTo(Casa, {
+    foreignKey: 'casaId',
+    as: 'casa'
+});
+
+Usuario.hasMany(Acceso, {
+    foreignKey: 'registradoPorUsuarioId',
+    as: 'accesosRegistrados'
+});
+
+Acceso.belongsTo(Usuario, {
+    foreignKey: 'registradoPorUsuarioId',
+    as: 'registradoPor'
+});
+
 module.exports = {
     Casa,
     Rol,
@@ -81,5 +105,6 @@ module.exports = {
     Cuota,
     FolioConsecutivo,
     Evento,
-    Condomino
+    Condomino,
+    Acceso
 };
