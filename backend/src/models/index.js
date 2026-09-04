@@ -6,6 +6,7 @@ const FolioConsecutivo = require('./FolioConsecutivo');
 const Evento = require('./Evento');
 const Condomino = require('./Condomino');
 const Acceso = require('./Acceso');
+const PermisoAcceso = require('./PermisoAcceso');
 
 /*
  * Casa 1 --- N Usuarios
@@ -98,6 +99,19 @@ Acceso.belongsTo(Usuario, {
     as: 'registradoPor'
 });
 
+/*
+ * Casa 1 --- 1 Configuración de accesos físicos
+ */
+Casa.hasOne(PermisoAcceso, {
+    foreignKey: 'casaId',
+    as: 'permisosAcceso'
+});
+
+PermisoAcceso.belongsTo(Casa, {
+    foreignKey: 'casaId',
+    as: 'casa'
+});
+
 module.exports = {
     Casa,
     Rol,
@@ -106,5 +120,6 @@ module.exports = {
     FolioConsecutivo,
     Evento,
     Condomino,
-    Acceso
+    Acceso,
+    PermisoAcceso
 };
