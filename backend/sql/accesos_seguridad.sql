@@ -26,3 +26,22 @@ CREATE TABLE IF NOT EXISTS accesos_seguridad (
     CONSTRAINT fk_accesos_salida_por FOREIGN KEY (salida_registrada_por_usuario_id)
         REFERENCES usuarios(id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS permisos_acceso_vivienda (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    casa_id INT UNSIGNED NOT NULL,
+    pluma TINYINT(1) NOT NULL DEFAULT 1,
+    porton_1 TINYINT(1) NOT NULL DEFAULT 1,
+    porton_2 TINYINT(1) NOT NULL DEFAULT 1,
+    porton_3 TINYINT(1) NOT NULL DEFAULT 1,
+    actualizado_por_usuario_id BIGINT UNSIGNED NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_permisos_acceso_casa (casa_id),
+    CONSTRAINT fk_permisos_acceso_casa FOREIGN KEY (casa_id)
+        REFERENCES direcciones(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_permisos_acceso_usuario FOREIGN KEY (actualizado_por_usuario_id)
+        REFERENCES usuarios(id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
