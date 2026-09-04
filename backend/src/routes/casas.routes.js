@@ -1,7 +1,8 @@
 const express = require('express');
 
 const {
-    obtenerCasas
+    obtenerCasas,
+    actualizarAccesosCasa
 } = require('../controllers/casas.controller');
 
 const {
@@ -24,6 +25,18 @@ router.get(
         'SEGURIDAD'
     ),
     obtenerCasas
+);
+
+router.patch(
+    '/:id/accesos',
+    autenticarToken,
+    autorizarRoles(
+        'SUPER_ADMIN',
+        'ADMINISTRADOR',
+        'MESA_DIRECTIVA',
+        'SEGURIDAD'
+    ),
+    actualizarAccesosCasa
 );
 
 module.exports = router;
