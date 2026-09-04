@@ -1,4 +1,5 @@
 const { Sequelize } = require('sequelize');
+const { MYSQL_TIME_ZONE } = require('./timezone');
 
 const requiredEnvironmentVariables = [
     'DB_HOST',
@@ -22,6 +23,9 @@ const sequelize = new Sequelize(
         host: process.env.DB_HOST,
         port: Number(process.env.DB_PORT),
         dialect: 'mysql',
+
+        // Todas las fechas escritas y leídas por la aplicación usan México central.
+        timezone: MYSQL_TIME_ZONE,
 
         logging:
             process.env.NODE_ENV === 'development'
