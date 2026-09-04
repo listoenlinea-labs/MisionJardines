@@ -369,15 +369,15 @@
           </div>
 
           <div>
-            <label for="filterHouse">Casa</label>
-            <input id="filterHouse" placeholder="Ej. 12" oninput="aplicarFiltros()">
-          </div>
-
-          <div>
             <label for="filterStreet">Calle</label>
             <select id="filterStreet" onchange="aplicarFiltros()">
               <option value="">Todas las calles</option>
             </select>
+          </div>
+
+          <div>
+            <label for="filterHouse">Número de casa</label>
+            <input id="filterHouse" placeholder="Ej. 12" inputmode="numeric" oninput="aplicarFiltros()">
           </div>
 
           <div>
@@ -544,11 +544,19 @@
       <p>Selecciona una casa del padrón y registra el periodo de la nueva cuota.</p>
 
       <div class="form-grid" style="margin-top:18px;text-align:left;">
-        <div>
-          <label for="newQuotaHouse">Casa</label>
-          <select id="newQuotaHouse">
-            <option value="">Selecciona una casa</option>
-          </select>
+        <div class="two">
+          <div>
+            <label for="newQuotaStreet">Calle</label>
+            <select id="newQuotaStreet" onchange="llenarNumerosCasas()">
+              <option value="">Selecciona una calle</option>
+            </select>
+          </div>
+          <div>
+            <label for="newQuotaHouse">Número de casa</label>
+            <select id="newQuotaHouse" disabled>
+              <option value="">Primero selecciona una calle</option>
+            </select>
+          </div>
         </div>
 
         <div class="two">
@@ -931,13 +939,27 @@
     }
 
     function llenarSelectCasas() {
-      const select = document.getElementById('newQuotaHouse');
-      if (!select) return;
-      const options = casas.map(casa => {
-        const etiqueta = `${casa.calle || 'Sin calle'} · Casa ${casa.numero || 'S/N'}`;
-        return `<option value="${Number(casa.id)}">${escapeHtml(etiqueta)}</option>`;
-      }).join('');
-      select.innerHTML = `<option value="">Selecciona una casa</option>${options}`;
+      const streetSelect = document.getElementById('newQuotaStreet');
+      if (!streetSelect) return;
+      const calles = [...new Set(casas.map(casa => String(casa.calle || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+      streetSelect.innerHTML = '<option value="">Selecciona una calle</option>' +
+        calles.map(calle => `<option value="${escapeHtml(calle)}">${escapeHtml(calle)}</option>`).join('');
+      llenarNumerosCasas();
+    }
+
+    function llenarNumerosCasas() {
+      const street = document.getElementById('newQuotaStreet')?.value || '';
+      const houseSelect = document.getElementById('newQuotaHouse');
+      if (!houseSelect) return;
+      const disponibles = casas
+        .filter(casa => String(casa.calle || '') === street)
+        .sort((a, b) => String(a.numero || '').localeCompare(String(b.numero || ''), 'es', { numeric: true }));
+      houseSelect.disabled = !street;
+      houseSelect.innerHTML = street
+        ? '<option value="">Selecciona un número</option>' +
+          disponibles.map(casa => `<option value="${Number(casa.id)}">${escapeHtml(casa.numero || 'S/N')}</option>`).join('')
+        : '<option value="">Primero selecciona una calle</option>';
     }
 
     async function cargarCuotas() {
@@ -1779,7 +1801,8 @@
       document.getElementById('newQuotaMonth').innerHTML = obtenerOpcionesMeses(mesConsulta);
       document.getElementById('newQuotaAmount').value = '';
       document.getElementById('newQuotaObservations').value = '';
-      document.getElementById('newQuotaHouse').value = '';
+      document.getElementById('newQuotaStreet').value = '';
+      llenarNumerosCasas();
     }
 
     async function abrirModalNuevaCuota() {
@@ -1812,7 +1835,8 @@
       const montoCuota = Number(document.getElementById('newQuotaAmount').value);
       const observaciones = document.getElementById('newQuotaObservations').value.trim();
       const boton = document.getElementById('createQuotaButton');
-      if (!casaId) { showToast('Selecciona una casa.'); return; }
+      if (!document.getElementById('newQuotaStreet').value) { showToast('Selecciona una calle.'); return; }
+      if (!casaId) { showToast('Selecciona el número de casa.'); return; }
       if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) { showToast('Ingresa un año válido.'); return; }
       if (!MESES.includes(mes)) { showToast('Selecciona un mes válido.'); return; }
       if (!Number.isFinite(montoCuota) || montoCuota < 0) { showToast('Ingresa un monto válido.'); return; }
@@ -2443,6 +2467,11 @@
         await validarSesion();
         if (puedeCrearCuotas()) await cargarCasas();
         await cargarCuotas();
+        const parametros = new URLSearchParams(window.location.search);
+        const calleInicial = parametros.get('calle');
+        const numeroInicial = parametros.get('numero') || parametros.get('casa');
+        if (calleInicial) document.getElementById('filterStreet').value = calleInicial;
+        if (numeroInicial) document.getElementById('filterHouse').value = numeroInicial;
         restaurarBorradorLocal();
         renderHouses();
         actualizarEstadoBotonEdicion();

@@ -568,6 +568,13 @@
 
     injectStyles();
 
+    if (['bases_datos.html', 'reportes.html', 'visitas.html'].includes(currentPage())) {
+      const houseFieldsScript = document.createElement('script');
+      houseFieldsScript.src = 'assets/js/house-fields.js?v=1';
+      houseFieldsScript.defer = true;
+      document.body.appendChild(houseFieldsScript);
+    }
+
     if (!body.classList.contains('mj-home')) {
       document.querySelector('body > header')?.remove();
     }
