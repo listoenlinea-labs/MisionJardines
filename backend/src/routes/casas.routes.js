@@ -20,7 +20,8 @@ router.get(
     autorizarRoles(
         'SUPER_ADMIN',
         'ADMINISTRADOR',
-        'MESA_DIRECTIVA'
+        'MESA_DIRECTIVA',
+        'SEGURIDAD'
     ),
     obtenerCasas
 );
