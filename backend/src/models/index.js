@@ -7,6 +7,7 @@ const Evento = require('./Evento');
 const Condomino = require('./Condomino');
 const Acceso = require('./Acceso');
 const PermisoAcceso = require('./PermisoAcceso');
+const Visita = require('./Visita');
 
 /*
  * Casa 1 --- N Usuarios
@@ -112,6 +113,19 @@ PermisoAcceso.belongsTo(Casa, {
     as: 'casa'
 });
 
+/*
+ * Casa 1 --- N Visitas programadas
+ */
+Casa.hasMany(Visita, {
+    foreignKey: 'casaId',
+    as: 'visitasProgramadas'
+});
+
+Visita.belongsTo(Casa, {
+    foreignKey: 'casaId',
+    as: 'casa'
+});
+
 module.exports = {
     Casa,
     Rol,
@@ -121,5 +135,6 @@ module.exports = {
     Evento,
     Condomino,
     Acceso,
-    PermisoAcceso
+    PermisoAcceso,
+    Visita
 };
