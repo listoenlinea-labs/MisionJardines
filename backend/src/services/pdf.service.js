@@ -20,7 +20,8 @@ function formatearFecha(fecha) {
         {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric'
+            year: 'numeric',
+            timeZone: 'America/Mexico_City'
         }
     ).format(new Date(fecha));
 }
