@@ -4974,14 +4974,7 @@ h1 span {
 }
 
 .metric::before {
-  content: "";
-  position: absolute;
-  top: -22px;
-  right: -22px;
-  width: 82px;
-  height: 82px;
-  border-radius: 50%;
-  background: rgba(113, 87, 217, .07);
+  display: none;
 }
 
 .metric small,
