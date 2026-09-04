@@ -3,24 +3,29 @@ const { Casa, Condomino, PermisoAcceso } = require('../models');
 const obtenerCasas = async (req, res) => {
     try {
         const esSeguridad = req.usuario.rol === 'SEGURIDAD';
+
         const include = [
             {
                 model: PermisoAcceso,
                 as: 'permisosAcceso',
                 required: false,
                 attributes: ['pluma', 'porton1', 'porton2', 'porton3']
-            }
-        ];
-
-        if (!esSeguridad) {
-            include.push({
+            },
+            {
                 model: Condomino,
                 as: 'condominos',
                 required: false,
                 where: { activo: true },
-                attributes: ['id', 'nombreCompleto', 'telefono', 'correo', 'fechaRegistro']
-            });
-        }
+                attributes: [
+                    'id',
+                    'nombreCompleto',
+                    'telefono',
+                    'correo',
+                    'fechaRegistro',
+                    'activo'
+                ]
+            }
+        ];
 
         const casas = await Casa.findAll({
             attributes: esSeguridad

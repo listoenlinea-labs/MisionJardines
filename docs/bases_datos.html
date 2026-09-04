@@ -1,682 +1,76 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bases de datos | Misión Jardines</title>
-    <link rel="stylesheet" href="assets/css/style.css" />
-
-    <style>
-        .page-bases-datos .database-summary {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
-        }
-
-        .page-bases-datos .database-summary .metric {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .page-bases-datos .database-summary .metric::after {
-            content: "";
-            position: absolute;
-            width: 110px;
-            height: 110px;
-            right: -35px;
-            top: -35px;
-            border-radius: 50%;
-            background: rgba(94, 234, 212, .08);
-        }
-
-        .page-bases-datos .database-list {
-            display: grid;
-            gap: 18px;
-        }
-
-        .page-bases-datos .database-panel {
-            background: rgba(255, 255, 255, .075);
-            border: 1px solid rgba(255, 255, 255, .11);
-            border-radius: var(--radius);
-            box-shadow: 0 15px 45px rgba(0, 0, 0, .20);
-            backdrop-filter: blur(12px);
-            overflow: hidden;
-        }
-
-        .page-bases-datos .database-panel[open] {
-            border-color: rgba(94, 234, 212, .28);
-        }
-
-        .page-bases-datos .database-panel summary {
-            list-style: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 18px;
-            padding: 22px;
-            user-select: none;
-        }
-
-        .page-bases-datos .database-panel summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .page-bases-datos .database-panel-title {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            min-width: 0;
-        }
-
-        .page-bases-datos .database-panel-icon {
-            width: 52px;
-            height: 52px;
-            flex: 0 0 52px;
-            border-radius: 17px;
-            display: grid;
-            place-items: center;
-            font-size: 25px;
-            background: linear-gradient(135deg, rgba(94, 234, 212, .18), rgba(96, 165, 250, .18));
-            border: 1px solid rgba(255, 255, 255, .1);
-        }
-
-        .page-bases-datos .database-panel-copy {
-            min-width: 0;
-        }
-
-        .page-bases-datos .database-panel-copy strong {
-            display: block;
-            font-size: 20px;
-            color: var(--text);
-            margin-bottom: 5px;
-        }
-
-        .page-bases-datos .database-panel-copy span {
-            display: block;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.45;
-        }
-
-        .page-bases-datos .database-panel-meta {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            flex-shrink: 0;
-        }
-
-        .page-bases-datos .database-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 84px;
-            padding: 8px 12px;
-            border-radius: 999px;
-            background: rgba(94, 234, 212, .12);
-            border: 1px solid rgba(94, 234, 212, .26);
-            color: #bcfff6;
-            font-size: 12px;
-            font-weight: 900;
-        }
-
-        .page-bases-datos .database-chevron {
-            width: 38px;
-            height: 38px;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, .08);
-            color: var(--text);
-            font-size: 20px;
-            transition: transform .25s ease, background .25s ease;
-        }
-
-        .page-bases-datos .database-panel[open] .database-chevron {
-            transform: rotate(180deg);
-            background: rgba(94, 234, 212, .13);
-        }
-
-        .page-bases-datos .database-content {
-            padding: 0 22px 22px;
-            border-top: 1px solid rgba(255, 255, 255, .08);
-        }
-
-        .page-bases-datos .database-toolbar {
-            display: grid;
-            grid-template-columns: minmax(220px, 1.5fr) minmax(180px, .8fr) auto;
-            gap: 12px;
-            align-items: end;
-            padding: 20px 0;
-        }
-
-        .page-bases-datos .database-toolbar-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .page-bases-datos .database-table td,
-        .page-bases-datos .database-table th {
-            vertical-align: middle;
-        }
-
-        .page-bases-datos .database-table tbody tr:hover {
-            background: rgba(255, 255, 255, .035);
-        }
-
-        .page-bases-datos .boolean-chip,
-        .page-bases-datos .payment-chip,
-        .page-bases-datos .fine-chip {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 82px;
-            padding: 7px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 900;
-            white-space: nowrap;
-        }
-
-        .page-bases-datos .boolean-chip.yes,
-        .page-bases-datos .payment-chip.paid {
-            background: rgba(74, 222, 128, .16);
-            color: #86efac;
-            border: 1px solid rgba(74, 222, 128, .28);
-        }
-
-        .page-bases-datos .boolean-chip.no,
-        .page-bases-datos .payment-chip.pending,
-        .page-bases-datos .fine-chip.active {
-            background: rgba(251, 113, 133, .16);
-            color: #fda4af;
-            border: 1px solid rgba(251, 113, 133, .28);
-        }
-
-        .page-bases-datos .fine-chip.none {
-            background: rgba(96, 165, 250, .14);
-            color: #bfdbfe;
-            border: 1px solid rgba(96, 165, 250, .24);
-        }
-
-        .page-bases-datos .database-empty-note {
-            padding-top: 14px;
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        @media(max-width: 1000px) {
-            .page-bases-datos .database-summary {
-                grid-template-columns: 1fr;
-            }
-
-            .page-bases-datos .database-toolbar {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .page-bases-datos .database-toolbar-actions {
-                grid-column: 1 / -1;
-                justify-content: flex-start;
-            }
-        }
-
-        @media(max-width: 700px) {
-            .page-bases-datos .database-panel summary {
-                align-items: flex-start;
-                padding: 18px;
-            }
-
-            .page-bases-datos .database-panel-meta {
-                gap: 8px;
-            }
-
-            .page-bases-datos .database-count {
-                display: none;
-            }
-
-            .page-bases-datos .database-content {
-                padding: 0 18px 18px;
-            }
-
-            .page-bases-datos .database-toolbar {
-                grid-template-columns: 1fr;
-            }
-
-            .page-bases-datos .database-toolbar-actions {
-                grid-column: auto;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Residentes | Misión Jardines</title>
+  <style>
+    :root{color-scheme:light}*{box-sizing:border-box}body.residents-page{--o:#ef7d0b;--os:#fff3e6;--ink:#20283d;--muted:#71809a;--line:#e2e7ef;margin:0;min-height:100vh;background:radial-gradient(circle at 92% 2%,#f2ecff 0,transparent 30%),#fafbff;color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.residents-page button,.residents-page input,.residents-page select{font:inherit}.residents-page svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.res-shell{width:min(1320px,calc(100% - 44px));margin:auto;padding:25px 0 68px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--line)}.kicker,.eyebrow{display:block;color:#d76500;font-size:10px;font-weight:900;letter-spacing:.11em;text-transform:uppercase}.topline strong{display:block;margin-top:5px;font-size:14px}.top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.online{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid #d8ebdf;border-radius:999px;color:#277849;background:#f2fbf5;font-size:11px;font-weight:800}.online:before{content:"";width:8px;height:8px;border-radius:50%;background:#2daf69;box-shadow:0 0 0 4px rgba(45,175,105,.12)}.online.error{color:#a74747;border-color:#f0cccc;background:#fff5f5}.online.error:before{background:#e25a5a;box-shadow:0 0 0 4px rgba(226,90,90,.12)}.hero{display:flex;align-items:center;justify-content:space-between;gap:28px;margin:24px 0 16px;padding:32px 36px;border:1px solid #eaded6;border-radius:23px;background:linear-gradient(118deg,#fff9f3,#fff 50%,#f1f5ff);box-shadow:0 15px 38px rgba(49,57,79,.055)}.hero-copy{max-width:760px}.hero h1{margin:9px 0;color:var(--ink);font-size:clamp(30px,3.5vw,45px);line-height:1.04;letter-spacing:-.045em}.hero h1 span{color:var(--o)}.hero p{margin:0;color:var(--muted);font-size:13px;line-height:1.65}.source-card{min-width:210px;padding:17px;border:1px solid #e9e2f4;border-radius:17px;background:rgba(255,255,255,.9)}.source-card small{color:var(--muted);font-size:10px;font-weight:750}.source-card strong{display:block;margin-top:7px;font-size:14px}.source-card span{display:block;margin-top:5px;color:#8791a4;font-size:9px;line-height:1.45}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:18px}.metric{display:flex;align-items:center;gap:13px;min-height:100px;padding:17px;border:1px solid var(--line);border-radius:17px;box-shadow:0 9px 24px rgba(49,57,79,.04)}.metric:nth-child(1){background:#eef8ff;border-color:#d5e9f7}.metric:nth-child(2){background:#effaf3;border-color:#d4eadc}.metric:nth-child(3){background:#fff8ea;border-color:#f0dfbc}.metric:nth-child(4){background:#f7f2ff;border-color:#e6daf4}.metric-icon{display:grid;place-items:center;width:45px;height:45px;flex:0 0 45px;border-radius:13px;color:var(--o);background:rgba(255,255,255,.82)}.metric small{color:var(--muted);font-size:10px;font-weight:750}.metric strong{display:block;margin:3px 0;font-size:23px}.metric span{color:#8994a7;font-size:9px}.panel{margin-top:15px;border:1px solid var(--line);border-radius:19px;background:#fff;box-shadow:0 11px 30px rgba(49,57,79,.05)}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:21px 21px 0}.panel-head h2{margin:4px 0 3px;font-size:20px}.panel-head p{margin:0;color:var(--muted);font-size:10px}.filters{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(160px,.75fr) minmax(120px,.55fr) minmax(150px,.7fr) auto;gap:9px;align-items:end;padding:18px 21px}.residents-page label{display:block;margin-bottom:6px;color:#59657a;font-size:10px;font-weight:800}.residents-page input,.residents-page select{width:100%;min-height:41px;padding:9px 11px;border:1px solid #dce3ed;border-radius:10px;color:#263148;background:#fff;font-size:10px;outline:0}.residents-page input:focus,.residents-page select:focus{border-color:#ed9c4d;box-shadow:0 0 0 4px rgba(239,125,11,.09)}.search{position:relative}.search svg{position:absolute;left:11px;bottom:10px;width:18px;height:18px;color:#9aa4b5}.search input{padding-left:36px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:9px 14px;border:1px solid #dfe4ec;border-radius:10px;color:#5d6880;background:#fff;font-size:10px;font-weight:850;cursor:pointer}.btn:hover{border-color:#efb579;background:#fffaf6}.btn-primary{color:#fff;border-color:var(--o);background:linear-gradient(135deg,#f58b1c,#e87100);box-shadow:0 7px 18px rgba(232,113,0,.17)}.btn svg{width:17px;height:17px}.table-card{padding:0 21px 21px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}.residents-page table{width:100%;min-width:980px;border-collapse:collapse}.residents-page th{padding:11px 12px;color:#7d718b;background:#faf8fc;font-size:9px;letter-spacing:.05em;text-align:left;text-transform:uppercase}.residents-page td{padding:12px;border-top:1px solid #e8ebf1;color:#3c485e;font-size:10px;vertical-align:middle}.residents-page tbody tr:hover{background:#fffaf6}.resident{display:flex;align-items:center;gap:10px}.avatar{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:10px;color:#bd5b00;background:var(--os);font-weight:900}.resident b{display:block;color:#28334b;font-size:11px}.resident small{display:block;margin-top:2px;color:#8c97a9;font-size:9px}.contact{color:#47617f;text-decoration:none;font-weight:700}.contact:hover{color:var(--o);text-decoration:underline}.chip{display:inline-flex;padding:6px 8px;border-radius:999px;color:#277849;background:#eaf8ef;font-size:9px;font-weight:850}.empty{padding:44px 20px!important;text-align:center;color:#8893a5!important}.pagination{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:14px 2px 0;color:#7a8598;font-size:10px}.pages{display:flex;align-items:center;gap:6px}.page-btn{display:grid;place-items:center;min-width:32px;height:32px;padding:0 8px;border:1px solid #e0e5ed;border-radius:9px;color:#667187;background:#fff;font-size:10px;font-weight:800;cursor:pointer}.page-btn.active{color:#fff;border-color:var(--o);background:var(--o)}.page-btn:disabled{opacity:.42;cursor:not-allowed}.footer{display:flex;justify-content:space-between;gap:18px;margin-top:25px;padding-top:18px;border-top:1px solid var(--line);color:#8a94a6;font-size:9px}.footer a{color:#d76500;text-decoration:none;font-weight:800}.toast{position:fixed;right:24px;bottom:24px;z-index:5000;display:none;max-width:360px;padding:12px 16px;border-radius:12px;color:#fff;background:#29344b;box-shadow:0 16px 40px rgba(27,37,55,.2);font-size:11px;font-weight:700}@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.res-shell{width:min(100% - 28px,1320px);padding-top:18px}.topline,.hero,.footer{align-items:flex-start;flex-direction:column}.hero{padding:25px 22px}.source-card{width:100%;min-width:0}.metrics,.filters{grid-template-columns:1fr}.panel-head{padding:18px 18px 0}.filters{padding:16px 18px}.table-card{padding:0 18px 18px}.pagination{align-items:flex-start;flex-direction:column}}
+  </style>
 </head>
+<body class="residents-page">
+  <main class="res-shell">
+    <div class="topline">
+      <div><span class="kicker">PADRÓN RESIDENCIAL</span><strong>Directorio de residentes</strong></div>
+      <div class="top-actions"><div id="connectionStatus" class="online" role="status">Conectado al padrón</div><button class="btn" type="button" onclick="loadResidents(true)"><svg viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5"></path><path d="M6.1 9A7 7 0 0 1 18 6l2 5M4 13l2 5a7 7 0 0 0 11.9-3"></path></svg>Actualizar</button></div>
+    </div>
 
-<body class="page-bases-datos">
-<section class="hero">
-        <div class="badge">🗃️ Información centralizada del fraccionamiento</div>
-        <h1>Bases de datos de <span>Misión Jardines</span></h1>
-        <p>
-            Consulta de forma ordenada el padrón de domicilios, los vehículos registrados y las rentas de la Casa Club.
-            Cada módulo se puede desplegar únicamente cuando sea necesario.
-        </p>
+    <section class="hero">
+      <div class="hero-copy"><span class="eyebrow">COMUNIDAD</span><h1>Residentes del <span>fraccionamiento.</span></h1><p>Consulta el padrón general de condóminos, su vivienda y sus medios de contacto desde una vista clara para administración y seguridad.</p></div>
+      <div class="source-card"><small>FUENTE DE INFORMACIÓN</small><strong>Tabla condominos</strong><span>Se muestran únicamente registros activos vinculados a una vivienda.</span></div>
     </section>
 
-    <section class="section">
-        <div class="database-summary">
-            <article class="card metric">
-                <small>Direcciones registradas</small>
-                <strong>96</strong>
-                <div class="hint">Padrón general de viviendas</div>
-            </article>
-
-            <article class="card metric">
-                <small>Vehículos registrados</small>
-                <strong>143</strong>
-                <div class="hint">Automóviles vinculados a una casa</div>
-            </article>
-
-            <article class="card metric">
-                <small>Rentas Casa Club</small>
-                <strong>12</strong>
-                <div class="hint">Reservaciones del mes actual</div>
-            </article>
-        </div>
+    <section class="metrics">
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path></svg></div><div><small>Residentes activos</small><strong id="metricResidents">0</strong><span>Personas en padrón</span></div></article>
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3Z"></path><path d="M9 20v-6h6v6"></path></svg></div><div><small>Viviendas ocupadas</small><strong id="metricHomes">0</strong><span>Casas con condóminos</span></div></article>
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.7 2.6a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.8.3 1.7.6 2.6.7a2 2 0 0 1 2 2.3Z"></path></svg></div><div><small>Con teléfono</small><strong id="metricPhones">0</strong><span>Contacto telefónico</span></div></article>
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg></div><div><small>Con correo</small><strong id="metricEmails">0</strong><span>Contacto por email</span></div></article>
     </section>
 
-    <section class="section">
-        <div class="section-title">
-            <div>
-                <h2>Registros disponibles</h2>
-                <p>Abre solo la tabla que deseas consultar para mantener la pantalla limpia y cómoda.</p>
-            </div>
-        </div>
-
-        <div class="database-list">
-
-            <details class="database-panel" open>
-                <summary>
-                    <div class="database-panel-title">
-                        <div class="database-panel-icon">🏠</div>
-                        <div class="database-panel-copy">
-                            <strong>Direcciones</strong>
-                            <span>Padrón de casas, propietarios y medios de contacto.</span>
-                        </div>
-                    </div>
-
-                    <div class="database-panel-meta">
-                        <span class="database-count">96 registros</span>
-                        <span class="database-chevron">⌄</span>
-                    </div>
-                </summary>
-
-                <div class="database-content">
-                    <div class="database-toolbar">
-                        <div>
-                            <label for="searchAddresses">Buscar</label>
-                            <input id="searchAddresses" type="search"
-                                placeholder="Casa, calle, propietario, teléfono o correo"
-                                oninput="filterTable('addressesTable', this.value)">
-                        </div>
-
-                        <div>
-                            <label for="addressStreet">Calle</label>
-                            <select id="addressStreet" onchange="filterTableByStreet('addressesTable', this.value)">
-                                <option value="">Todas las calles</option>
-                                <option>Misión Jardines</option>
-                                <option>Misión Gardenias</option>
-                                <option>Misión Jazmines</option>
-                                <option>Misión Rosas</option>
-                            </select>
-                        </div>
-
-                        <div class="database-toolbar-actions">
-                            <button class="btn-secondary" type="button">Exportar Excel</button>
-                            <button class="btn-primary" type="button">+ Agregar dirección</button>
-                        </div>
-                    </div>
-
-                    <div class="table-wrap">
-                        <table id="addressesTable" class="database-table">
-                            <thead>
-                                <tr>
-                                    <th>Casa</th>
-                                    <th>Calle</th>
-                                    <th>Número</th>
-                                    <th>Propietario</th>
-                                    <th>En renta</th>
-                                    <th>Teléfono</th>
-                                    <th>Correo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>MJ-001</td>
-                                    <td>Misión Jardines</td>
-                                    <td>12</td>
-                                    <td>Alejandro Ramírez</td>
-                                    <td><span class="boolean-chip no">No</span></td>
-                                    <td>33 1234 5678</td>
-                                    <td>alejandro@email.com</td>
-                                </tr>
-                                <tr>
-                                    <td>MG-014</td>
-                                    <td>Misión Gardenias</td>
-                                    <td>28</td>
-                                    <td>Mariana López</td>
-                                    <td><span class="boolean-chip yes">Sí</span></td>
-                                    <td>33 9876 4521</td>
-                                    <td>mariana@email.com</td>
-                                </tr>
-                                <tr>
-                                    <td>MZ-021</td>
-                                    <td>Misión Jazmines</td>
-                                    <td>41</td>
-                                    <td>Fernando Ortega</td>
-                                    <td><span class="boolean-chip no">No</span></td>
-                                    <td>33 4567 8821</td>
-                                    <td>fernando@email.com</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="database-empty-note">Los datos mostrados son de ejemplo y después podrán venir desde tu
-                        API.</p>
-                </div>
-            </details>
-
-            <details class="database-panel">
-                <summary>
-                    <div class="database-panel-title">
-                        <div class="database-panel-icon">🚙</div>
-                        <div class="database-panel-copy">
-                            <strong>Vehículos</strong>
-                            <span>Control de vehículos vinculados con cada domicilio.</span>
-                        </div>
-                    </div>
-
-                    <div class="database-panel-meta">
-                        <span class="database-count">143 registros</span>
-                        <span class="database-chevron">⌄</span>
-                    </div>
-                </summary>
-
-                <div class="database-content">
-                    <div class="database-toolbar">
-                        <div>
-                            <label for="searchVehicles">Buscar</label>
-                            <input id="searchVehicles" type="search"
-                                placeholder="Casa, propietario, placas, teléfono o correo"
-                                oninput="filterTable('vehiclesTable', this.value)">
-                        </div>
-
-                        <div>
-                            <label for="vehicleStreet">Calle</label>
-                            <select id="vehicleStreet" onchange="filterTableByStreet('vehiclesTable', this.value)">
-                                <option value="">Todas las calles</option>
-                                <option>Misión Jardines</option>
-                                <option>Misión Gardenias</option>
-                                <option>Misión Jazmines</option>
-                                <option>Misión Rosas</option>
-                            </select>
-                        </div>
-
-                        <div class="database-toolbar-actions">
-                            <button class="btn-secondary" type="button">Exportar Excel</button>
-                            <button class="btn-primary" type="button">+ Agregar vehículo</button>
-                        </div>
-                    </div>
-
-                    <div class="table-wrap">
-                        <table id="vehiclesTable" class="database-table">
-                            <thead>
-                                <tr>
-                                    <th>Casa</th>
-                                    <th>Calle</th>
-                                    <th>Número</th>
-                                    <th>Propietario</th>
-                                    <th>Placas</th>
-                                    <th>Teléfono</th>
-                                    <th>Correo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>MJ-001</td>
-                                    <td>Misión Jardines</td>
-                                    <td>12</td>
-                                    <td>Alejandro Ramírez</td>
-                                    <td>JKS-42-18</td>
-                                    <td>33 1234 5678</td>
-                                    <td>alejandro@email.com</td>
-                                </tr>
-                                <tr>
-                                    <td>MG-014</td>
-                                    <td>Misión Gardenias</td>
-                                    <td>28</td>
-                                    <td>Mariana López</td>
-                                    <td>JRP-91-25</td>
-                                    <td>33 9876 4521</td>
-                                    <td>mariana@email.com</td>
-                                </tr>
-                                <tr>
-                                    <td>MZ-021</td>
-                                    <td>Misión Jazmines</td>
-                                    <td>41</td>
-                                    <td>Fernando Ortega</td>
-                                    <td>JTE-73-04</td>
-                                    <td>33 4567 8821</td>
-                                    <td>fernando@email.com</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="database-empty-note">Una casa puede tener uno o varios vehículos registrados.</p>
-                </div>
-            </details>
-
-            <details class="database-panel">
-                <summary>
-                    <div class="database-panel-title">
-                        <div class="database-panel-icon">🎉</div>
-                        <div class="database-panel-copy">
-                            <strong>Renta de Casa Club</strong>
-                            <span>Reservaciones, pagos y multas relacionadas con el uso de la Casa Club.</span>
-                        </div>
-                    </div>
-
-                    <div class="database-panel-meta">
-                        <span class="database-count">12 registros</span>
-                        <span class="database-chevron">⌄</span>
-                    </div>
-                </summary>
-
-                <div class="database-content">
-                    <div class="database-toolbar">
-                        <div>
-                            <label for="searchClubhouse">Buscar</label>
-                            <input id="searchClubhouse" type="search"
-                                placeholder="Casa, propietario, fecha, teléfono o correo"
-                                oninput="filterTable('clubhouseTable', this.value)">
-                        </div>
-
-                        <div>
-                            <label for="clubhouseStatus">Estatus de pago</label>
-                            <select id="clubhouseStatus" onchange="filterTable('clubhouseTable', this.value)">
-                                <option value="">Todos</option>
-                                <option>Pagado</option>
-                                <option>Pendiente</option>
-                            </select>
-                        </div>
-
-                        <div class="database-toolbar-actions">
-                            <button class="btn-secondary" type="button">Exportar Excel</button>
-                            <button class="btn-primary" type="button">+ Nueva renta</button>
-                        </div>
-                    </div>
-
-                    <div class="table-wrap">
-                        <table id="clubhouseTable" class="database-table">
-                            <thead>
-                                <tr>
-                                    <th>Casa</th>
-                                    <th>Calle</th>
-                                    <th>Número</th>
-                                    <th>Propietario</th>
-                                    <th>Fecha de la renta</th>
-                                    <th>Teléfono</th>
-                                    <th>Correo</th>
-                                    <th>Pagado</th>
-                                    <th>Multas</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>MJ-001</td>
-                                    <td>Misión Jardines</td>
-                                    <td>12</td>
-                                    <td>Alejandro Ramírez</td>
-                                    <td>15/08/2026</td>
-                                    <td>33 1234 5678</td>
-                                    <td>alejandro@email.com</td>
-                                    <td><span class="payment-chip paid">Pagado</span></td>
-                                    <td><span class="fine-chip none">Sin multas</span></td>
-                                </tr>
-                                <tr>
-                                    <td>MG-014</td>
-                                    <td>Misión Gardenias</td>
-                                    <td>28</td>
-                                    <td>Mariana López</td>
-                                    <td>22/08/2026</td>
-                                    <td>33 9876 4521</td>
-                                    <td>mariana@email.com</td>
-                                    <td><span class="payment-chip pending">Pendiente</span></td>
-                                    <td><span class="fine-chip none">Sin multas</span></td>
-                                </tr>
-                                <tr>
-                                    <td>MZ-021</td>
-                                    <td>Misión Jazmines</td>
-                                    <td>41</td>
-                                    <td>Fernando Ortega</td>
-                                    <td>03/09/2026</td>
-                                    <td>33 4567 8821</td>
-                                    <td>fernando@email.com</td>
-                                    <td><span class="payment-chip paid">Pagado</span></td>
-                                    <td><span class="fine-chip active">$500</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="database-empty-note">Las multas pueden representar daños, limpieza adicional o
-                        incumplimiento de horario.</p>
-                </div>
-            </details>
-
-        </div>
+    <section class="panel">
+      <div class="panel-head"><div><span class="eyebrow">CONSULTA RÁPIDA</span><h2>Padrón de residentes</h2><p>Busca por nombre, contacto, calle o número de vivienda.</p></div><button class="btn btn-primary" type="button" onclick="exportResidents()"><svg viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>Exportar CSV</button></div>
+      <div class="filters">
+        <div class="search"><label for="filterText">Buscar residente o contacto</label><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 5 5"></path></svg><input id="filterText" placeholder="Nombre, teléfono o correo" oninput="applyFilters()"></div>
+        <div><label for="filterStreet">Calle</label><select id="filterStreet" onchange="applyFilters()"><option value="">Todas las calles</option></select></div>
+        <div><label for="filterNumber">Número</label><input id="filterNumber" placeholder="Ej. 101" oninput="applyFilters()"></div>
+        <div><label for="filterContact">Datos de contacto</label><select id="filterContact" onchange="applyFilters()"><option value="">Todos</option><option value="phone">Con teléfono</option><option value="no-phone">Sin teléfono</option><option value="email">Con correo</option><option value="no-email">Sin correo</option></select></div>
+        <button class="btn" type="button" onclick="clearFilters()">Limpiar</button>
+      </div>
+      <div class="table-card">
+        <div class="table-wrap"><table><thead><tr><th>Residente</th><th>Calle</th><th>Número</th><th>Teléfono</th><th>Correo</th><th>Fecha de registro</th><th>Estado</th></tr></thead><tbody id="residentsTable"><tr><td class="empty" colspan="7">Cargando padrón…</td></tr></tbody></table></div>
+        <div class="pagination"><span id="paginationInfo">Mostrando 0 residentes</span><div id="paginationControls" class="pages"></div></div>
+      </div>
     </section>
 
-    <footer>
-        <div>
-            Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del
-            fraccionamiento.
-        </div>
-
-        <div class="powered-by">
-            Plataforma desarrollada por
-            <a href="https://listoenlinea.com" target="_blank" rel="noopener noreferrer">ListoEnLinea.com</a>
-        </div>
-    </footer>
-
-    <script>
-        const API_URL = 'https://api-misionjardines.listoenlinea.host/api';
-
-        const token =
-            localStorage.getItem('misionJardinesToken') ||
-            sessionStorage.getItem('misionJardinesToken');
-
-        if (!token) {
-            window.location.replace('login.html');
-        }
-
-        async function validarSesion() {
-            try {
-                const response = await fetch(
-                    `${API_URL}/auth/perfil`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    }
-                );
-
-                const result = await response.json();
-
-                if (!response.ok || !result.ok) {
-                    throw new Error(result.message || 'Sesión inválida');
-                }
-
-                aplicarPermisosVisuales(result.usuario.rol?.nombre);
-            } catch (error) {
-                localStorage.removeItem('misionJardinesToken');
-                localStorage.removeItem('misionJardinesUsuario');
-                sessionStorage.removeItem('misionJardinesToken');
-                sessionStorage.removeItem('misionJardinesUsuario');
-                window.location.replace('login.html');
-            }
-        }
-
-        function aplicarPermisosVisuales(rol) {
-            document.querySelectorAll('[data-roles]').forEach((elemento) => {
-                const rolesPermitidos = elemento.dataset.roles
-                    .split(',')
-                    .map((item) => item.trim());
-
-                elemento.hidden = !rolesPermitidos.includes(rol);
-            });
-        }
-
-        function normalizeText(value) {
-            return String(value || '')
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .toLowerCase()
-                .trim();
-        }
-
-        function filterTable(tableId, query) {
-            const table = document.getElementById(tableId);
-
-            if (!table) {
-                return;
-            }
-
-            const normalizedQuery = normalizeText(query);
-
-            table.querySelectorAll('tbody tr').forEach((row) => {
-                const rowText = normalizeText(row.textContent);
-                row.hidden = normalizedQuery !== '' && !rowText.includes(normalizedQuery);
-            });
-        }
-
-        function filterTableByStreet(tableId, street) {
-            const table = document.getElementById(tableId);
-
-            if (!table) {
-                return;
-            }
-
-            const normalizedStreet = normalizeText(street);
-
-            table.querySelectorAll('tbody tr').forEach((row) => {
-                const streetCell = row.cells[1];
-                const rowStreet = normalizeText(streetCell?.textContent);
-                row.hidden = normalizedStreet !== '' && rowStreet !== normalizedStreet;
-            });
-        }
-
-        validarSesion();
-    </script>
-  <script src="assets/js/site-sidebar.js?v=1"></script>
+    <footer class="footer"><span>Misión Jardines Residencial · Zapopan, Jalisco</span><span>Plataforma desarrollada por <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a></span></footer>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script>
+    const API_URL='https://api-misionjardines.listoenlinea.host/api';
+    const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+    const PAGE_SIZE=12; let residents=[],filteredResidents=[],page=1;
+    if(!token) location.replace('login.html');
+    const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    function toast(m){const e=document.getElementById('toast');e.textContent=m;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3000)}
+    function connection(m,error=false){const e=document.getElementById('connectionStatus');e.textContent=m;e.classList.toggle('error',error)}
+    function clearSession(){['misionJardinesToken','misionJardinesUsuario'].forEach(k=>{localStorage.removeItem(k);sessionStorage.removeItem(k)})}
+    async function api(path){const r=await fetch(API_URL+path,{headers:{Authorization:`Bearer ${token}`}});let d={};try{d=await r.json()}catch(_){ }if(r.status===401){clearSession();location.replace('login.html');throw Error('Sesión expirada')}if(!r.ok||d.ok===false)throw Error(d.message||'No fue posible consultar el padrón');return d}
+    function flatten(casas){return(casas||[]).flatMap(casa=>(Array.isArray(casa.condominos)?casa.condominos:[]).map(c=>({id:c.id,name:c.nombreCompleto||'Sin nombre',phone:c.telefono||'',email:c.correo||'',date:c.fechaRegistro||'',active:c.activo!==false,houseId:casa.id,street:casa.calle||'',number:casa.numero||''})))}
+    function fillStreets(){const s=document.getElementById('filterStreet'),selected=s.value,streets=[...new Set(residents.map(x=>x.street).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));s.innerHTML='<option value="">Todas las calles</option>'+streets.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');if(streets.includes(selected))s.value=selected}
+    function metrics(){metricResidents.textContent=residents.length;metricHomes.textContent=new Set(residents.map(x=>x.houseId)).size;metricPhones.textContent=residents.filter(x=>x.phone).length;metricEmails.textContent=residents.filter(x=>x.email).length}
+    function initials(n){return String(n||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]?.toUpperCase()).join('')||'R'}
+    function formatDate(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'short',year:'numeric'}).format(d)}
+    function link(type,v){if(!v)return'—';const safe=esc(v);return type==='phone'?`<a class="contact" href="tel:${safe.replace(/\s+/g,'')}">${safe}</a>`:`<a class="contact" href="mailto:${safe}">${safe}</a>`}
+    function applyFilters(reset=true){const q=norm(filterText.value),street=norm(filterStreet.value),num=norm(filterNumber.value),contact=filterContact.value;filteredResidents=residents.filter(x=>(!q||norm(`${x.name} ${x.phone} ${x.email}`).includes(q))&&(!street||norm(x.street)===street)&&(!num||norm(x.number).includes(num))&&(!contact||(contact==='phone'&&x.phone)||(contact==='no-phone'&&!x.phone)||(contact==='email'&&x.email)||(contact==='no-email'&&!x.email)));if(reset)page=1;render()}
+    function render(){const total=Math.max(1,Math.ceil(filteredResidents.length/PAGE_SIZE));page=Math.min(page,total);const start=(page-1)*PAGE_SIZE,items=filteredResidents.slice(start,start+PAGE_SIZE);residentsTable.innerHTML=items.length?items.map(x=>`<tr><td><div class="resident"><span class="avatar">${esc(initials(x.name))}</span><div><b>${esc(x.name)}</b><small>ID ${esc(x.id)}</small></div></div></td><td>${esc(x.street||'—')}</td><td><strong>${esc(x.number||'—')}</strong></td><td>${link('phone',x.phone)}</td><td>${link('email',x.email)}</td><td>${esc(formatDate(x.date))}</td><td><span class="chip">${x.active?'Activo':'Inactivo'}</span></td></tr>`).join(''):'<tr><td class="empty" colspan="7">No se encontraron residentes con los filtros seleccionados.</td></tr>';const from=filteredResidents.length?start+1:0,to=Math.min(start+PAGE_SIZE,filteredResidents.length);paginationInfo.textContent=`Mostrando ${from}-${to} de ${filteredResidents.length} residentes`;let h=`<button class="page-btn" onclick="go(${page-1})" ${page===1?'disabled':''}>‹</button>`;for(let p=1;p<=total;p++)if(p===1||p===total||Math.abs(p-page)<=1)h+=`<button class="page-btn ${p===page?'active':''}" onclick="go(${p})">${p}</button>`;h+=`<button class="page-btn" onclick="go(${page+1})" ${page===total?'disabled':''}>›</button>`;paginationControls.innerHTML=h}
+    function go(p){const total=Math.max(1,Math.ceil(filteredResidents.length/PAGE_SIZE));page=Math.min(Math.max(p,1),total);render()}
+    function clearFilters(){filterText.value='';filterStreet.value='';filterNumber.value='';filterContact.value='';applyFilters()}
+    function exportResidents(){if(!filteredResidents.length)return toast('No hay residentes para exportar.');const rows=[['Nombre','Calle','Número','Teléfono','Correo','Fecha de registro'],...filteredResidents.map(x=>[x.name,x.street,x.number,x.phone,x.email,formatDate(x.date)])],csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`residentes-mision-jardines-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url)}
+    async function validate(){try{const d=await api('/auth/perfil'),role=d.usuario?.rol?.nombre||d.usuario?.rol;const allowed=['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA','SEGURIDAD'];if(!allowed.includes(role)){toast('Tu perfil no tiene acceso al padrón completo.');setTimeout(()=>location.replace('index.html'),1000);return false}return true}catch(e){console.error(e);return false}}
+    async function loadResidents(manual=false){connection('Consultando padrón…');try{if(!(await validate()))return;const d=await api('/casas');residents=flatten(d.casas);fillStreets();metrics();applyFilters();connection('Conectado al padrón');if(manual)toast('Padrón actualizado.')}catch(e){console.error(e);residents=[];filteredResidents=[];metrics();render();connection('No se pudo cargar el padrón',true);toast(e.message||'No fue posible cargar residentes.')}}
+    loadResidents();
+  </script>
+  <script src="assets/js/site-sidebar.js?v=2"></script>
 </body>
-
 </html>

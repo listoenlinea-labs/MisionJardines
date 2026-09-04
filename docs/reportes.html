@@ -1,547 +1,103 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Reportes | Misión Jardines</title>
-  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    :root{color-scheme:light}*{box-sizing:border-box}body.reports-page{--o:#ef7d0b;--os:#fff3e6;--ink:#20283d;--muted:#71809a;--line:#e2e7ef;--green:#2fa868;--red:#d95862;margin:0;min-height:100vh;background:radial-gradient(circle at 92% 2%,#f2ecff 0,transparent 30%),#fafbff;color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.reports-page button,.reports-page input,.reports-page select,.reports-page textarea{font:inherit}.reports-page svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.rep-shell{width:min(1320px,calc(100% - 44px));margin:auto;padding:25px 0 68px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--line)}.kicker,.eyebrow{display:block;color:#d76500;font-size:10px;font-weight:900;letter-spacing:.11em;text-transform:uppercase}.topline strong{display:block;margin-top:5px;font-size:14px}.top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.local-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid #e8dfca;border-radius:999px;color:#7d6530;background:#fffaf0;font-size:10px;font-weight:800}.local-pill:before{content:"";width:8px;height:8px;border-radius:50%;background:#e7b43b;box-shadow:0 0 0 4px rgba(231,180,59,.12)}.hero{display:flex;align-items:center;justify-content:space-between;gap:28px;margin:24px 0 16px;padding:32px 36px;border:1px solid #eaded6;border-radius:23px;background:linear-gradient(118deg,#fff9f3,#fff 50%,#f1f5ff);box-shadow:0 15px 38px rgba(49,57,79,.055)}.hero-copy{max-width:760px}.hero h1{margin:9px 0;color:var(--ink);font-size:clamp(30px,3.5vw,45px);line-height:1.04;letter-spacing:-.045em}.hero h1 span{color:var(--o)}.hero p{margin:0;color:var(--muted);font-size:13px;line-height:1.65}.hero-card{min-width:215px;padding:17px;border:1px solid #e9e2f4;border-radius:17px;background:rgba(255,255,255,.9)}.hero-card small{color:var(--muted);font-size:10px;font-weight:750}.hero-card strong{display:block;margin-top:7px;font-size:14px}.hero-card span{display:block;margin-top:5px;color:#8791a4;font-size:9px;line-height:1.45}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:18px}.metric{display:flex;align-items:center;gap:13px;min-height:100px;padding:17px;border:1px solid var(--line);border-radius:17px;box-shadow:0 9px 24px rgba(49,57,79,.04)}.metric:nth-child(1){background:#fff8ea;border-color:#f0dfbc}.metric:nth-child(2){background:#eef8ff;border-color:#d5e9f7}.metric:nth-child(3){background:#effaf3;border-color:#d4eadc}.metric:nth-child(4){background:#fff1f2;border-color:#f0d1d5}.metric-icon{display:grid;place-items:center;width:45px;height:45px;flex:0 0 45px;border-radius:13px;color:var(--o);background:rgba(255,255,255,.82)}.metric small{color:var(--muted);font-size:10px;font-weight:750}.metric strong{display:block;margin:3px 0;font-size:23px}.metric span{color:#8994a7;font-size:9px}.panel{margin-top:15px;border:1px solid var(--line);border-radius:19px;background:#fff;box-shadow:0 11px 30px rgba(49,57,79,.05)}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:21px 21px 0}.panel-head h2{margin:4px 0 3px;font-size:20px}.panel-head p{margin:0;color:var(--muted);font-size:10px}.filters{display:grid;grid-template-columns:minmax(230px,1.4fr) repeat(3,minmax(145px,.65fr)) auto;gap:9px;align-items:end;padding:18px 21px}.reports-page label{display:block;margin-bottom:6px;color:#59657a;font-size:10px;font-weight:800}.reports-page input,.reports-page select,.reports-page textarea{width:100%;min-height:41px;padding:9px 11px;border:1px solid #dce3ed;border-radius:10px;color:#263148;background:#fff;font-size:10px;outline:0}.reports-page textarea{min-height:90px;resize:vertical}.reports-page input:focus,.reports-page select:focus,.reports-page textarea:focus{border-color:#ed9c4d;box-shadow:0 0 0 4px rgba(239,125,11,.09)}.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:9px 14px;border:1px solid #dfe4ec;border-radius:10px;color:#5d6880;background:#fff;font-size:10px;font-weight:850;cursor:pointer}.btn:hover{border-color:#efb579;background:#fffaf6}.btn-primary{color:#fff;border-color:var(--o);background:linear-gradient(135deg,#f58b1c,#e87100);box-shadow:0 7px 18px rgba(232,113,0,.17)}.btn-danger{color:#b94452;border-color:#f1cdd2;background:#fff5f6}.btn svg{width:17px;height:17px}.table-card{padding:0 21px 21px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}.reports-page table{width:100%;min-width:1120px;border-collapse:collapse}.reports-page th{padding:11px 12px;color:#7d718b;background:#faf8fc;font-size:9px;letter-spacing:.05em;text-align:left;text-transform:uppercase}.reports-page td{padding:12px;border-top:1px solid #e8ebf1;color:#3c485e;font-size:10px;vertical-align:middle}.reports-page tbody tr:hover{background:#fffaf6}.folio{font-weight:900;color:#35415a}.report-type{display:flex;align-items:center;gap:8px;font-weight:750}.type-dot{width:8px;height:8px;border-radius:50%;background:#ef7d0b}.priority{display:inline-flex;align-items:center;gap:6px}.priority:before{content:"";width:7px;height:7px;border-radius:50%;background:#82a7c8}.priority.high:before{background:#df5864}.priority.medium:before{background:#e9ae32}.status{display:inline-flex;padding:6px 8px;border-radius:999px;font-size:9px;font-weight:850;white-space:nowrap}.status.open{color:#9a6a12;background:#fff4d9}.status.process{color:#2d6e9c;background:#eaf5fd}.status.resolved{color:#277849;background:#eaf8ef}.status.rejected{color:#a34b55;background:#fff0f2}.status-select{min-height:32px!important;padding:5px 8px!important;border-radius:9px!important;font-size:9px!important;font-weight:800!important}.description{max-width:280px;line-height:1.45}.photo-btn{min-height:30px;padding:5px 8px}.empty{padding:44px 20px!important;text-align:center;color:#8893a5!important}.footer{display:flex;justify-content:space-between;gap:18px;margin-top:25px;padding-top:18px;border-top:1px solid var(--line);color:#8a94a6;font-size:9px}.footer a{color:#d76500;text-decoration:none;font-weight:800}.modal[hidden]{display:none!important}.modal{position:fixed;inset:0;z-index:4000;display:grid;place-items:center;padding:22px;background:rgba(27,35,51,.62);backdrop-filter:blur(7px)}.modal-box{width:min(880px,100%);max-height:calc(100vh - 44px);overflow:auto;border:1px solid rgba(255,255,255,.7);border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(20,27,42,.3)}.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:21px 23px;border-bottom:1px solid var(--line);background:linear-gradient(110deg,#fffaf5,#f5f7ff)}.modal-head h2{margin:4px 0;font-size:22px}.modal-head p{margin:0;color:var(--muted);font-size:10px}.close{display:grid;place-items:center;width:38px;height:38px;padding:0;border:1px solid #dfe4ec;border-radius:11px;color:#606b80;background:#fff;font-size:20px;cursor:pointer}.modal-body{padding:21px 23px}.type-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:18px}.type-card{min-height:75px;padding:12px;border:1px solid #e1e6ed;border-radius:13px;color:#5b667b;background:#fff;cursor:pointer;text-align:left}.type-card:hover,.type-card.active{color:#ac5807;border-color:#efb374;background:#fff8f1}.type-card b{display:block;font-size:11px}.type-card small{display:block;margin-top:4px;color:#8791a4;font-size:8px;line-height:1.4}.form-grid{display:grid;gap:12px}.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.photo-preview{display:grid;place-items:center;min-height:90px;margin-top:8px;padding:10px;border:1px dashed #d8dfe8;border-radius:11px;color:#929bab;background:#fafbfc;font-size:9px;text-align:center}.photo-preview img{max-width:100%;max-height:220px;border-radius:9px}.modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:15px 23px;border-top:1px solid var(--line);background:#fbfcfe}.toast{position:fixed;right:24px;bottom:24px;z-index:5000;display:none;max-width:360px;padding:12px 16px;border-radius:12px;color:#fff;background:#29344b;box-shadow:0 16px 40px rgba(27,37,55,.2);font-size:11px;font-weight:700}.photo-view{position:fixed;inset:0;z-index:4500;display:grid;place-items:center;padding:25px;background:rgba(20,27,40,.82)}.photo-view[hidden]{display:none}.photo-view img{max-width:min(900px,92vw);max-height:82vh;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35)}@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}.type-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.rep-shell{width:min(100% - 28px,1320px);padding-top:18px}.topline,.hero,.footer{align-items:flex-start;flex-direction:column}.hero{padding:25px 22px}.hero-card{width:100%;min-width:0}.metrics,.filters,.form-row,.type-grid{grid-template-columns:1fr}.panel-head{padding:18px 18px 0;flex-direction:column}.filters{padding:16px 18px}.table-card{padding:0 18px 18px}.modal{padding:10px}.modal-body{padding:18px}.modal-head{padding:18px}.modal-foot{padding:13px 18px}}
+  </style>
 </head>
+<body class="reports-page">
+  <main class="rep-shell">
+    <div class="topline">
+      <div><span class="kicker">ATENCIÓN VECINAL</span><strong>Reportes e incidencias</strong></div>
+      <div class="top-actions"><div class="local-pill">Datos guardados en este dispositivo</div><button class="btn btn-primary" onclick="openModal()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Nuevo reporte</button></div>
+    </div>
 
-<body class="page-reportes">
-<section class="hero">
-    <div class="badge">📝 Atención y seguimiento vecinal</div>
-    <h1>Reportes de <span>Misión Jardines</span></h1>
-    <p>
-      Módulo para registrar reportes de mantenimiento, alumbrado, fugas, limpieza,
-      vialidades, áreas comunes y seguimiento administrativo del fraccionamiento.
-    </p>
-  </section>
+    <section class="hero">
+      <div class="hero-copy"><span class="eyebrow">COMUNIDAD</span><h1>Reporta, da seguimiento <span>y resuelve.</span></h1><p>Registra incidencias del fraccionamiento como luminarias descompuestas, fugas, basura, problemas de seguridad o mascotas perdidas, y consulta su avance desde una sola vista.</p></div>
+      <div class="hero-card"><small>FLUJO DE ATENCIÓN</small><strong>Registro → seguimiento → cierre</strong><span>Administración, mantenimiento y seguridad pueden actualizar el estado de las incidencias.</span></div>
+    </section>
 
-  <section class="section">
-    <div class="grid">
-      <div class="card metric">
-        <small>Reportes abiertos</small>
-        <strong id="metricAbiertos">0</strong>
-        <div class="hint">Pendientes de atender</div>
+    <section class="metrics">
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6M12 17h.01"></path></svg></div><div><small>Reportes abiertos</small><strong id="metricOpen">0</strong><span>Pendientes de revisar</span></div></article>
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"></path><path d="M12 7v5l3 2M16 3h5v5"></path></svg></div><div><small>En proceso</small><strong id="metricProcess">0</strong><span>Con atención activa</span></div></article>
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 3 3 5-6"></path></svg></div><div><small>Resueltos</small><strong id="metricResolved">0</strong><span>Incidencias cerradas</span></div></article>
+      <article class="metric"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M12 3 2 21h20Z"></path><path d="M12 9v5M12 18h.01"></path></svg></div><div><small>Alta prioridad</small><strong id="metricHigh">0</strong><span>Requieren atención rápida</span></div></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><span class="eyebrow">BITÁCORA</span><h2>Reportes de la comunidad</h2><p>Consulta incidencias por tipo, prioridad o estatus.</p></div><button class="btn btn-primary" onclick="openModal()">+ Registrar incidencia</button></div>
+      <div class="filters">
+        <div><label for="filterText">Buscar</label><input id="filterText" placeholder="Folio, ubicación, casa o persona" oninput="renderReports()"></div>
+        <div><label for="filterType">Tipo</label><select id="filterType" onchange="renderReports()"><option value="">Todos</option></select></div>
+        <div><label for="filterPriority">Prioridad</label><select id="filterPriority" onchange="renderReports()"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option></select></div>
+        <div><label for="filterStatus">Estatus</label><select id="filterStatus" onchange="renderReports()"><option value="">Todos</option><option>Abierto</option><option>En proceso</option><option>Resuelto</option><option>Rechazado</option></select></div>
+        <button class="btn" onclick="clearFilters()">Limpiar</button>
       </div>
+      <div class="table-card"><div class="table-wrap"><table><thead><tr><th>Folio</th><th>Fecha</th><th>Tipo</th><th>Casa</th><th>Ubicación</th><th>Reportado por</th><th>Prioridad</th><th>Área</th><th>Estatus</th><th>Descripción</th><th>Evidencia</th><th>Acción</th></tr></thead><tbody id="reportsTable"></tbody></table></div></div>
+    </section>
 
-      <div class="card metric">
-        <small>En proceso</small>
-        <strong id="metricProceso">0</strong>
-        <div class="hint">Con seguimiento activo</div>
-      </div>
+    <footer class="footer"><span>Misión Jardines Residencial · Zapopan, Jalisco</span><span>Plataforma desarrollada por <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a></span></footer>
+  </main>
 
-      <div class="card metric">
-        <small>Resueltos</small>
-        <strong id="metricResueltos">0</strong>
-        <div class="hint">Cerrados correctamente</div>
+  <section id="reportModal" class="modal" hidden aria-modal="true" role="dialog">
+    <div class="modal-box">
+      <div class="modal-head"><div><span class="eyebrow">NUEVA INCIDENCIA</span><h2>Registrar reporte</h2><p>Agrega ubicación, descripción y evidencia para facilitar la atención.</p></div><button class="close" onclick="closeModal()" aria-label="Cerrar">×</button></div>
+      <div class="modal-body">
+        <input id="reportType" type="hidden" value="Alumbrado">
+        <div id="typeGrid" class="type-grid"></div>
+        <div class="form-grid">
+          <div class="form-row"><div><label for="reportStreet">Calle</label><select id="reportStreet"></select></div><div><label for="reportNumber">Número de casa</label><input id="reportNumber" placeholder="Ej. 101"></div></div>
+          <div class="form-row"><div><label for="reportedBy">Reportado por</label><input id="reportedBy" placeholder="Nombre del residente"></div><div><label for="reportLocation">Ubicación / referencia</label><input id="reportLocation" placeholder="Ej. frente al parque"></div></div>
+          <div class="form-row"><div><label for="reportPriority">Prioridad</label><select id="reportPriority"><option>Baja</option><option selected>Media</option><option>Alta</option></select></div><div><label for="responsibleArea">Canalizar a</label><select id="responsibleArea"><option>Administración</option><option>Mantenimiento</option><option>Seguridad</option><option>Jardinería</option><option>Proveedor externo</option></select></div></div>
+          <div><label for="reportDescription">Descripción</label><textarea id="reportDescription" placeholder="Describe qué ocurrió y qué se necesita atender..."></textarea></div>
+          <div><label for="reportPhoto">Foto o evidencia</label><input id="reportPhoto" type="file" accept="image/*" onchange="previewPhoto(event)"><div id="photoPreview" class="photo-preview">Puedes adjuntar una fotografía del problema.</div></div>
+        </div>
       </div>
-
-      <div class="card metric">
-        <small>Alta prioridad</small>
-        <strong id="metricAlta">0</strong>
-        <div class="hint">Requieren atención rápida</div>
-      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="addReport()">Registrar reporte</button></div>
     </div>
   </section>
-
-  <section class="section">
-    <div class="layout">
-      <div>
-        <div class="card">
-          <div class="section-title">
-            <div>
-              <h2>Nuevo reporte</h2>
-              <p>Selecciona el tipo de problema y registra los detalles.</p>
-            </div>
-          </div>
-
-          <div class="type-grid">
-            <div class="type-card active" onclick="selectType(this,'Alumbrado')">
-              <strong>💡 Alumbrado</strong>
-              <span>Luminarias fundidas, zonas oscuras o fallas eléctricas.</span>
-            </div>
-
-            <div class="type-card" onclick="selectType(this,'Agua / Fuga')">
-              <strong>💧 Agua / Fuga</strong>
-              <span>Fugas, baja presión, charcos o tuberías visibles.</span>
-            </div>
-
-            <div class="type-card" onclick="selectType(this,'Vialidad')">
-              <strong>🚧 Vialidad</strong>
-              <span>Baches, banquetas dañadas, señalización o accesos.</span>
-            </div>
-
-            <div class="type-card" onclick="selectType(this,'Limpieza')">
-              <strong>🧹 Limpieza</strong>
-              <span>Basura, maleza, escombro o áreas comunes sucias.</span>
-            </div>
-
-            <div class="type-card" onclick="selectType(this,'Jardinería')">
-              <strong>🌳 Jardinería</strong>
-              <span>Poda, riego, árboles, jardineras o área común.</span>
-            </div>
-
-            <div class="type-card" onclick="selectType(this,'Otro')">
-              <strong>📌 Otro</strong>
-              <span>Reportes generales que no entren en otra categoría.</span>
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <input id="reportType" type="hidden" value="Alumbrado">
-
-            <div class="two">
-              <div>
-                <label>Casa / Lote</label>
-                <input id="reportHouse" placeholder="Ej. MJ-001">
-              </div>
-
-              <div>
-                <label>Reportado por</label>
-                <input id="reportedBy" placeholder="Ej. Laura Gómez">
-              </div>
-            </div>
-
-            <div>
-              <label>Ubicación del problema</label>
-              <input id="reportLocation" placeholder="Ej. Misión Jardines frente a casa 101">
-            </div>
-
-            <div class="two">
-              <div>
-                <label>Prioridad</label>
-                <select id="reportPriority">
-                  <option>Baja</option>
-                  <option>Media</option>
-                  <option>Alta</option>
-                </select>
-              </div>
-
-              <div>
-                <label>Área responsable</label>
-                <select id="responsibleArea">
-                  <option>Administración</option>
-                  <option>Mantenimiento</option>
-                  <option>Seguridad</option>
-                  <option>Jardinería</option>
-                  <option>Proveedor externo</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label>Descripción</label>
-              <textarea id="reportDescription" placeholder="Describe claramente el problema..."></textarea>
-            </div>
-
-            <div>
-              <label>Foto del reporte</label>
-              <input id="reportPhoto" type="file" accept="image/*" onchange="previewPhoto(event)">
-              <div class="photo-preview" id="photoPreview">
-                Sin imagen cargada
-              </div>
-            </div>
-
-            <div class="actions">
-              <button class="btn-primary" onclick="addReport()">Registrar reporte</button>
-              <button class="btn-secondary" onclick="clearReportForm()">Limpiar</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:24px">
-          <div class="section-title">
-            <div>
-              <h2>Seguimiento sugerido</h2>
-              <p>Guía para priorizar y atender reportes.</p>
-            </div>
-          </div>
-
-          <div class="timeline">
-            <div class="timeline-item">
-              <div class="timeline-dot">1</div>
-              <div>
-                <strong>Registro del reporte</strong>
-                <p>El vecino o administración documenta el problema con ubicación, prioridad y evidencia.</p>
-              </div>
-            </div>
-
-            <div class="timeline-item">
-              <div class="timeline-dot">2</div>
-              <div>
-                <strong>Revisión por administración</strong>
-                <p>Se valida si corresponde a mantenimiento interno, seguridad o proveedor externo.</p>
-              </div>
-            </div>
-
-            <div class="timeline-item">
-              <div class="timeline-dot">3</div>
-              <div>
-                <strong>Atención y cierre</strong>
-                <p>Una vez resuelto, se cambia el estatus a Resuelto y queda registro en la bitácora.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="section-title">
-          <div>
-            <h2>Bitácora de reportes</h2>
-            <p>Consulta, filtra y cambia el estado de los reportes registrados.</p>
-          </div>
-        </div>
-
-        <div class="filters">
-          <div>
-            <label>Buscar reporte, ubicación, casa o persona</label>
-            <input id="filterText" placeholder="Ej. fuga, MJ-001, luminaria" oninput="renderReports()">
-          </div>
-
-          <div>
-            <label>Prioridad</label>
-            <select id="filterPriority" onchange="renderReports()">
-              <option value="">Todas</option>
-              <option>Baja</option>
-              <option>Media</option>
-              <option>Alta</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Estatus</label>
-            <select id="filterStatus" onchange="renderReports()">
-              <option value="">Todos</option>
-              <option>Abierto</option>
-              <option>En proceso</option>
-              <option>Resuelto</option>
-              <option>Rechazado</option>
-            </select>
-          </div>
-
-          <button class="btn-secondary" onclick="clearFilters()">Limpiar</button>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Folio</th>
-                <th>Fecha</th>
-                <th>Tipo</th>
-                <th>Casa</th>
-                <th>Ubicación</th>
-                <th>Reportado por</th>
-                <th>Prioridad</th>
-                <th>Responsable</th>
-                <th>Estatus</th>
-                <th>Descripción</th>
-                <th>Evidencia</th>
-                <th>Eliminar</th>
-              </tr>
-            </thead>
-            <tbody id="reportsTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    <div>
-      Misión Jardines © 2026 — Portal vecinal para organización, comunicación y administración del fraccionamiento.
-    </div>
-
-    <div class="powered-by">
-      Plataforma desarrollada por
-      <a href="https://listoenlinea.com" target="_blank">
-        ListoEnLinea.com
-      </a>
-    </div>
-  </footer>
-
-
+  <div id="photoView" class="photo-view" hidden onclick="this.hidden=true"><img id="photoViewImg" alt="Evidencia del reporte"></div>
   <div id="toast" class="toast"></div>
 
   <script>
-    const STORAGE_KEY = "mision_jardines_reportes";
-
-    let selectedPhoto = "";
-
-    let reports = [
-      {
-        folio: "REP-1001",
-        date: "2026-06-04 18:20",
-        type: "Alumbrado",
-        house: "MJ-001",
-        location: "Misión Jardines frente a casa 101",
-        reportedBy: "Laura Gómez",
-        priority: "Alta",
-        area: "Mantenimiento",
-        status: "En proceso",
-        description: "Luminaria parpadeando y zona oscura por la noche.",
-        photo: ""
-      },
-      {
-        folio: "REP-1002",
-        date: "2026-06-03 09:15",
-        type: "Jardinería",
-        house: "MG-002",
-        location: "Área común",
-        reportedBy: "Martín Pérez",
-        priority: "Media",
-        area: "Jardinería",
-        status: "Abierto",
-        description: "Se requiere poda y limpieza de maleza cerca del jardín.",
-        photo: ""
-      }
-    ];
-
-    function loadData() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) reports = JSON.parse(saved);
-    }
-
-    function saveData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
-    }
-
-    function showToast(message) {
-      const toast = document.getElementById("toast");
-      toast.textContent = message;
-      toast.style.display = "block";
-      setTimeout(() => toast.style.display = "none", 3200);
-    }
-
-    function nowText() {
-      const d = new Date();
-      const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mi = String(d.getMinutes()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-    }
-
-    function generateFolio() {
-      return "REP-" + String(Date.now()).slice(-6);
-    }
-
-    function selectType(element, type) {
-      document.querySelectorAll(".type-card").forEach(card => card.classList.remove("active"));
-      element.classList.add("active");
-      document.getElementById("reportType").value = type;
-    }
-
-    function previewPhoto(event) {
-      const file = event.target.files[0];
-      const preview = document.getElementById("photoPreview");
-
-      if (!file) {
-        selectedPhoto = "";
-        preview.textContent = "Sin imagen cargada";
-        return;
-      }
-
-      const reader = new FileReader();
-
-      reader.onload = function (e) {
-        selectedPhoto = e.target.result;
-        preview.innerHTML = `<img src="${selectedPhoto}" alt="Evidencia del reporte">`;
-      };
-
-      reader.readAsDataURL(file);
-    }
-
-    function priorityClass(priority) {
-      if (priority === "Alta") return "p-alta";
-      if (priority === "Media") return "p-media";
-      return "p-baja";
-    }
-
-    function statusClass(status) {
-      if (status === "En proceso") return "en-proceso";
-      if (status === "Resuelto") return "resuelto";
-      if (status === "Rechazado") return "rechazado";
-      return "abierto";
-    }
-
-    function addReport() {
-      const report = {
-        folio: generateFolio(),
-        date: nowText(),
-        type: document.getElementById("reportType").value,
-        house: document.getElementById("reportHouse").value.trim().toUpperCase(),
-        location: document.getElementById("reportLocation").value.trim(),
-        reportedBy: document.getElementById("reportedBy").value.trim(),
-        priority: document.getElementById("reportPriority").value,
-        area: document.getElementById("responsibleArea").value,
-        status: "Abierto",
-        description: document.getElementById("reportDescription").value.trim(),
-        photo: selectedPhoto
-      };
-
-      if (!report.house || !report.location || !report.reportedBy || !report.description) {
-        showToast("Completa casa, ubicación, reportado por y descripción.");
-        return;
-      }
-
-      reports.unshift(report);
-      saveData();
-      renderReports();
-      clearReportForm();
-      showToast("Reporte registrado correctamente.");
-    }
-
-    function clearReportForm() {
-      document.getElementById("reportHouse").value = "";
-      document.getElementById("reportedBy").value = "";
-      document.getElementById("reportLocation").value = "";
-      document.getElementById("reportPriority").value = "Baja";
-      document.getElementById("responsibleArea").value = "Administración";
-      document.getElementById("reportDescription").value = "";
-      document.getElementById("reportPhoto").value = "";
-      document.getElementById("photoPreview").textContent = "Sin imagen cargada";
-      selectedPhoto = "";
-
-      document.querySelectorAll(".type-card").forEach(card => card.classList.remove("active"));
-      document.querySelector(".type-card").classList.add("active");
-      document.getElementById("reportType").value = "Alumbrado";
-    }
-
-    function getFilteredReports() {
-      const text = document.getElementById("filterText").value.toLowerCase().trim();
-      const priority = document.getElementById("filterPriority").value;
-      const status = document.getElementById("filterStatus").value;
-
-      return reports.filter(r => {
-        const matchText =
-          !text ||
-          String(r.type).toLowerCase().includes(text) ||
-          String(r.location).toLowerCase().includes(text) ||
-          String(r.reportedBy).toLowerCase().includes(text) ||
-          String(r.house).toLowerCase().includes(text) ||
-          String(r.folio).toLowerCase().includes(text);
-
-        const matchPriority = !priority || r.priority === priority;
-        const matchStatus = !status || r.status === status;
-
-        return matchText && matchPriority && matchStatus;
-      });
-    }
-
-    function renderReports() {
-      const tbody = document.getElementById("reportsTable");
-      tbody.innerHTML = "";
-
-      getFilteredReports().forEach(r => {
-        const index = reports.indexOf(r);
-        const tr = document.createElement("tr");
-
-        tr.innerHTML = `
-        <td><strong>${r.folio}</strong></td>
-        <td>${r.date}</td>
-        <td>${r.type}</td>
-        <td>${r.house}</td>
-        <td>${r.location}</td>
-        <td>${r.reportedBy}</td>
-        <td><span class="priority ${priorityClass(r.priority)}"></span>${r.priority}</td>
-        <td>${r.area}</td>
-        <td>
-          <select class="status-select ${statusClass(r.status)}" onchange="changeStatus(${index}, this.value)">
-            <option ${r.status === "Abierto" ? "selected" : ""}>Abierto</option>
-            <option ${r.status === "En proceso" ? "selected" : ""}>En proceso</option>
-            <option ${r.status === "Resuelto" ? "selected" : ""}>Resuelto</option>
-            <option ${r.status === "Rechazado" ? "selected" : ""}>Rechazado</option>
-          </select>
-        </td>
-        <td>${r.description}</td>
-        <td>
-          ${r.photo
-            ? `<button class="btn-secondary" onclick="viewPhoto(${index})">Ver foto</button>`
-            : "-"
-          }
-        </td>
-        <td><button class="btn-danger" onclick="deleteReport(${index})">Eliminar</button></td>
-      `;
-
-        tbody.appendChild(tr);
-      });
-
-      updateMetrics();
-    }
-
-    function viewPhoto(index) {
-      const r = reports[index];
-
-      if (!r.photo) {
-        showToast("Este reporte no tiene evidencia.");
-        return;
-      }
-
-      const win = window.open("", "_blank");
-      win.document.write(`
-      <html>
-        <head>
-          <title>Evidencia ${r.folio}</title>
-          <link rel="stylesheet" href="assets/css/style.css" />
-        </head>
-
-        <body>
-          <div class="box">
-            <h1>${r.folio}</h1>
-            <p>${r.type} · ${r.location}</p>
-            <img src="${r.photo}" alt="Evidencia">
-          </div>
-        </body>
-      </html>
-    `);
-
-      win.document.close();
-    }
-
-    function changeStatus(index, status) {
-      reports[index].status = status;
-      saveData();
-      renderReports();
-    }
-
-    function deleteReport(index) {
-      if (!confirm("¿Seguro que deseas eliminar este reporte?")) return;
-      reports.splice(index, 1);
-      saveData();
-      renderReports();
-      showToast("Reporte eliminado.");
-    }
-
-    function clearFilters() {
-      document.getElementById("filterText").value = "";
-      document.getElementById("filterPriority").value = "";
-      document.getElementById("filterStatus").value = "";
-      renderReports();
-    }
-
-    function updateMetrics() {
-      document.getElementById("metricAbiertos").textContent =
-        reports.filter(r => r.status === "Abierto").length;
-
-      document.getElementById("metricProceso").textContent =
-        reports.filter(r => r.status === "En proceso").length;
-
-      document.getElementById("metricResueltos").textContent =
-        reports.filter(r => r.status === "Resuelto").length;
-
-      document.getElementById("metricAlta").textContent =
-        reports.filter(r => r.priority === "Alta" && r.status !== "Resuelto").length;
-    }
-
-    loadData();
-    renderReports();
+    const API_URL='https://api-misionjardines.listoenlinea.host/api',STORAGE_KEY='mision_jardines_reportes';
+    const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+    const TYPES=[['Alumbrado','💡','Luminarias o zonas oscuras'],['Agua / Fuga','💧','Fugas, presión o tuberías'],['Vialidad','🚧','Baches, banquetas o accesos'],['Limpieza','🧹','Basura, maleza o escombro'],['Jardinería','🌳','Poda, riego y áreas verdes'],['Mascota perdida','🐾','Mascotas extraviadas o encontradas'],['Seguridad','🛡️','Situaciones que requieren vigilancia'],['Otro','📌','Cualquier otra incidencia']];
+    const STREETS=['Misión Jardines','Misión Gardenias','Misión Magnolias','Misión Rosas','Misión de los Lirios','Av. Valle de México','Avenida Guadalajara','Atotonilco'];
+    const MANAGERS=['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA','MANTENIMIENTO','SEGURIDAD'];
+    let selectedPhoto='',currentUser=null,canManage=false,reports=[{folio:'REP-1001',date:'2026-06-04 18:20',type:'Alumbrado',house:'Misión Jardines · 101',location:'Frente a casa 101',reportedBy:'Laura Gómez',priority:'Alta',area:'Mantenimiento',status:'En proceso',description:'Luminaria parpadeando y zona oscura por la noche.',photo:''},{folio:'REP-1002',date:'2026-06-03 09:15',type:'Jardinería',house:'Misión Gardenias · 28',location:'Área común',reportedBy:'Martín Pérez',priority:'Media',area:'Jardinería',status:'Abierto',description:'Se requiere poda y limpieza de maleza cerca del jardín.',photo:''}];
+    if(!token)location.replace('login.html');
+    const $=id=>document.getElementById(id),esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'),norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3000)}
+    function loadData(){try{const saved=localStorage.getItem(STORAGE_KEY);if(saved)reports=JSON.parse(saved)}catch(e){console.warn(e)}}
+    function saveData(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(reports))}catch(e){toast('No fue posible guardar. La imagen puede ser demasiado grande.')}}
+    function nowText(){const d=new Date(),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`}
+    function generateFolio(){return'REP-'+String(Date.now()).slice(-6)}
+    function setupForm(){reportStreet.innerHTML='<option value="">Selecciona una calle</option>'+STREETS.map(s=>`<option>${esc(s)}</option>`).join('');filterType.innerHTML='<option value="">Todos</option>'+TYPES.map(([t])=>`<option>${esc(t)}</option>`).join('');typeGrid.innerHTML=TYPES.map(([t,i,d],n)=>`<button type="button" class="type-card ${n===0?'active':''}" data-type="${esc(t)}" onclick="selectType(this,'${esc(t).replaceAll("'",'&#039;')}')"><b>${i} ${esc(t)}</b><small>${esc(d)}</small></button>`).join('')}
+    function selectType(el,type){document.querySelectorAll('.type-card').forEach(x=>x.classList.remove('active'));el.classList.add('active');reportType.value=type}
+    function openModal(){reportModal.hidden=false;setTimeout(()=>reportStreet.focus(),0)}
+    function closeModal(){reportModal.hidden=true}
+    function previewPhoto(event){const file=event.target.files[0];if(!file){selectedPhoto='';photoPreview.textContent='Puedes adjuntar una fotografía del problema.';return}if(file.size>2.5*1024*1024){event.target.value='';toast('La imagen debe pesar menos de 2.5 MB.');return}const reader=new FileReader();reader.onload=e=>{selectedPhoto=e.target.result;photoPreview.innerHTML=`<img src="${selectedPhoto}" alt="Vista previa">`};reader.readAsDataURL(file)}
+    function clearForm(){reportStreet.value='';reportNumber.value='';reportLocation.value='';reportPriority.value='Media';responsibleArea.value='Administración';reportDescription.value='';reportPhoto.value='';selectedPhoto='';photoPreview.textContent='Puedes adjuntar una fotografía del problema.';document.querySelectorAll('.type-card').forEach((x,i)=>x.classList.toggle('active',i===0));reportType.value='Alumbrado';prefillUser()}
+    function prefillUser(){if(!currentUser)return;const name=[currentUser.nombre,currentUser.apellidoPaterno,currentUser.apellidoMaterno].filter(Boolean).join(' ');if(name)reportedBy.value=name;const casa=currentUser.casa;if(casa){if(STREETS.includes(casa.calle))reportStreet.value=casa.calle;if(casa.numero)reportNumber.value=casa.numero}}
+    function addReport(){const street=reportStreet.value,number=reportNumber.value.trim(),description=reportDescription.value.trim(),who=reportedBy.value.trim(),locationText=reportLocation.value.trim();if(!street||!number||!who||!locationText||!description)return toast('Completa calle, número, reportado por, ubicación y descripción.');reports.unshift({folio:generateFolio(),date:nowText(),type:reportType.value,house:`${street} · ${number}`,location:locationText,reportedBy:who,priority:reportPriority.value,area:responsibleArea.value,status:'Abierto',description,photo:selectedPhoto});saveData();renderReports();closeModal();clearForm();toast('Reporte registrado correctamente.')}
+    function statusClass(s){return s==='En proceso'?'process':s==='Resuelto'?'resolved':s==='Rechazado'?'rejected':'open'}
+    function priorityClass(p){return p==='Alta'?'high':p==='Media'?'medium':''}
+    function filtered(){const q=norm(filterText.value),type=filterType.value,priority=filterPriority.value,status=filterStatus.value;return reports.map((r,index)=>({...r,index})).filter(r=>(!q||norm(`${r.folio} ${r.type} ${r.house} ${r.location} ${r.reportedBy} ${r.description}`).includes(q))&&(!type||r.type===type)&&(!priority||r.priority===priority)&&(!status||r.status===status))}
+    function renderReports(){const rows=filtered();reportsTable.innerHTML=rows.length?rows.map(r=>`<tr><td class="folio">${esc(r.folio)}</td><td>${esc(r.date)}</td><td><span class="report-type"><i class="type-dot"></i>${esc(r.type)}</span></td><td>${esc(r.house)}</td><td>${esc(r.location)}</td><td>${esc(r.reportedBy)}</td><td><span class="priority ${priorityClass(r.priority)}">${esc(r.priority)}</span></td><td>${esc(r.area)}</td><td>${canManage?`<select class="status-select" onchange="changeStatus(${r.index},this.value)"><option ${r.status==='Abierto'?'selected':''}>Abierto</option><option ${r.status==='En proceso'?'selected':''}>En proceso</option><option ${r.status==='Resuelto'?'selected':''}>Resuelto</option><option ${r.status==='Rechazado'?'selected':''}>Rechazado</option></select>`:`<span class="status ${statusClass(r.status)}">${esc(r.status)}</span>`}</td><td class="description">${esc(r.description)}</td><td>${r.photo?`<button class="btn photo-btn" onclick="viewPhoto(${r.index})">Ver foto</button>`:'—'}</td><td>${canManage?`<button class="btn btn-danger photo-btn" onclick="deleteReport(${r.index})">Eliminar</button>`:'—'}</td></tr>`).join(''):'<tr><td class="empty" colspan="12">No hay reportes que coincidan con los filtros.</td></tr>';updateMetrics()}
+    function updateMetrics(){metricOpen.textContent=reports.filter(r=>r.status==='Abierto').length;metricProcess.textContent=reports.filter(r=>r.status==='En proceso').length;metricResolved.textContent=reports.filter(r=>r.status==='Resuelto').length;metricHigh.textContent=reports.filter(r=>r.priority==='Alta'&&r.status!=='Resuelto').length}
+    function changeStatus(index,status){if(!canManage)return;reports[index].status=status;saveData();renderReports();toast('Estatus actualizado.')}
+    function deleteReport(index){if(!canManage||!confirm('¿Eliminar este reporte?'))return;reports.splice(index,1);saveData();renderReports();toast('Reporte eliminado.')}
+    function viewPhoto(index){if(!reports[index]?.photo)return toast('Este reporte no tiene evidencia.');photoViewImg.src=reports[index].photo;photoView.hidden=false}
+    function clearFilters(){filterText.value='';filterType.value='';filterPriority.value='';filterStatus.value='';renderReports()}
+    function clearSession(){['misionJardinesToken','misionJardinesUsuario'].forEach(k=>{localStorage.removeItem(k);sessionStorage.removeItem(k)})}
+    async function validate(){try{const r=await fetch(`${API_URL}/auth/perfil`,{headers:{Authorization:`Bearer ${token}`}}),d=await r.json();if(!r.ok||!d.ok)throw Error(d.message||'Sesión inválida');currentUser=d.usuario;const role=currentUser?.rol?.nombre||currentUser?.rol;canManage=MANAGERS.includes(role);prefillUser()}catch(e){console.error(e);clearSession();location.replace('login.html')}}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!photoView.hidden)photoView.hidden=true;else if(!reportModal.hidden)closeModal()}});
+    setupForm();loadData();renderReports();validate();
   </script>
-  <script src="assets/js/site-sidebar.js?v=1"></script>
+  <script src="assets/js/site-sidebar.js?v=2"></script>
 </body>
-
 </html>
