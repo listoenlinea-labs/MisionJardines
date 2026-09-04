@@ -26,6 +26,28 @@
     .toLowerCase()
     .trim();
 
+  function injectStyles() {
+    if (document.getElementById('mj-house-fields-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'mj-house-fields-styles';
+    style.textContent = `
+      .page-bases-datos .database-toolbar { grid-template-columns: minmax(190px,1.25fr) minmax(155px,.8fr) minmax(115px,.55fr) auto; }
+      .page-reportes .filters, .page-visitas .filters { grid-template-columns: repeat(5,minmax(120px,1fr)) auto; }
+      #userHouseBox { gap: 10px; }
+      @media (max-width: 980px) {
+        .page-bases-datos .database-toolbar,
+        .page-reportes .filters,
+        .page-visitas .filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      }
+      @media (max-width: 620px) {
+        .page-bases-datos .database-toolbar,
+        .page-reportes .filters,
+        .page-visitas .filters { grid-template-columns: 1fr; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function field(label, control) {
     const wrapper = document.createElement('div');
     const caption = document.createElement('label');
@@ -252,6 +274,7 @@
   }
 
   function init() {
+    injectStyles();
     const page = location.pathname.split('/').pop();
     if (page === 'bases_datos.html') enhanceDatabases();
     if (page === 'reportes.html') { enhanceReportForm(); enhanceReportFilters(); }
