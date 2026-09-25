@@ -7,7 +7,7 @@
   const allowedLinks = () => [...document.querySelectorAll('.mj-side-link:not([hidden])')].map(link => ({ name: link.textContent.trim(), href: link.getAttribute('href') }));
   const style = document.createElement('style');
   style.textContent = `
-    body.mj-home.mj-shared-sidebar-enabled .topbar{padding-left:27px}body.mj-home.mj-shared-sidebar-enabled #searchForm{width:clamp(310px,34vw,600px);margin-left:0;background:#fff;border-color:#dce4ec;box-shadow:0 7px 22px rgba(23,32,51,.06);cursor:text}
+    body.mj-home.mj-shared-sidebar-enabled .topbar{padding-left:27px}body.mj-home.mj-shared-sidebar-enabled #searchForm{width:clamp(310px,34vw,600px);margin-left:18px;background:#fff;border-color:#dce4ec;box-shadow:0 7px 22px rgba(23,32,51,.06);cursor:text}
     #searchForm:focus-within{border-color:#f4a75e;box-shadow:0 0 0 3px rgba(249,115,22,.12)}
     .mj-search-launch{position:fixed;z-index:91;top:14px;left:calc(var(--mj-side-width) + 61px);height:46px;width:clamp(240px,30vw,470px);padding:0 17px;border:1px solid #dce4ec;border-radius:12px;background:#fff;box-shadow:0 8px 28px rgba(23,32,51,.075);color:#68778e;font:500 13px Inter,system-ui,sans-serif;text-align:left;cursor:pointer}
     body.mj-shared-sidebar-collapsed .mj-search-launch{left:61px}.mj-search-launch:hover{border-color:#efa667;color:#172033}
@@ -23,7 +23,7 @@
   backdrop.id = 'mjGlobalSearchDialog';
   backdrop.className = 'mj-search-backdrop';
   backdrop.hidden = true;
-  backdrop.innerHTML = `<section class="mj-search-panel" role="dialog" aria-modal="true" aria-label="Búsqueda global"><div class="mj-search-head"><span aria-hidden="true">⌕</span><input type="search" aria-label="Buscar en Misión Jardines" placeholder="Busca una página, residente, domicilio, cuota o visita…" autocomplete="off"><button type="button" aria-label="Cerrar búsqueda">Esc</button></div><div class="mj-search-results" role="listbox"></div><div class="mj-search-foot">Escribe para buscar · ↑ ↓ para elegir · Enter para abrir</div></section>`;
+  backdrop.innerHTML = `<section class="mj-search-panel" role="dialog" aria-modal="true" aria-label="Búsqueda global"><div class="mj-search-head"><span aria-hidden="true">⌕</span><input type="search" aria-label="Buscar en Misión Jardines" placeholder="Busca páginas, domicilios, residentes, pagos, visitas…" autocomplete="off"><button type="button" aria-label="Cerrar búsqueda">Esc</button></div><div class="mj-search-results" role="listbox"></div><div class="mj-search-foot">Escribe para buscar · ↑ ↓ para elegir · Enter para abrir</div></section>`;
   document.body.appendChild(backdrop);
   const input = backdrop.querySelector('input');
   const results = backdrop.querySelector('.mj-search-results');
@@ -31,7 +31,7 @@
   if (!headerInput) {
     const launcher = document.createElement('button');
     launcher.type = 'button'; launcher.className = 'mj-search-launch';
-    launcher.textContent = '⌕  Buscar en Misión Jardines…    ⌘ K';
+    launcher.textContent = '⌕  Buscar en Misión Jardines…    Ctrl K';
     launcher.addEventListener('click', () => open());
     document.body.appendChild(launcher);
   }
@@ -42,13 +42,17 @@
   const section = (label, entries) => entries.length ? `<div class="mj-search-section">${escape(label)}</div>${entries.join('')}` : '';
   const address = row => `${row.calle || row.casa?.calle || ''} ${row.numero || row.casa?.numero || ''}`.trim();
   function render(q, data) {
-    const links = allowedLinks().filter(link => !q || norm(link.name).includes(norm(q)) || (norm(q).includes('cita') && link.name === 'Visitas') || (norm(q).includes('domicilio') && link.name === 'Conmutador'));
+    const aliases = { Visitas: ['cita', 'visitante'], Mapa: ['casa', 'domicilio', 'calle'], Cuotas: ['adeudo', 'mantenimiento'], Pagos: ['transferencia', 'recibo'], Conmutador: ['llamar', 'telefono'], Seguridad: ['acceso', 'placa'], Calendario: ['agenda', 'evento', 'asamblea'] };
+    const links = allowedLinks().filter(link => !q || norm(link.name).includes(norm(q)) || (aliases[link.name] || []).some(alias => norm(q).includes(alias)));
     const nav = links.map(link => entry(link.href, link.name, 'Ir a la sección'));
-    const houses = (data.casas || []).map(x => entry(`conmutador.html?calle=${encodeURIComponent(x.calle)}&numero=${encodeURIComponent(x.numero)}`, `Casa ${address(x)}`, 'Abrir domicilio en el conmutador'));
+    const houses = (data.casas || []).map(x => entry(`mapa.html?calle=${encodeURIComponent(x.calle)}&numero=${encodeURIComponent(x.numero)}`, `Casa ${address(x)}`, 'Abrir domicilio en Mapa'));
     const residents = (data.residentes || []).map(x => entry(`bases_datos.html?buscar=${encodeURIComponent(x.nombreCompleto)}`, x.nombreCompleto, `Residente · ${address(x)}`));
     const fees = (data.cuotas || []).map(x => entry(`cuotas.html?calle=${encodeURIComponent(x.casa?.calle || '')}&numero=${encodeURIComponent(x.casa?.numero || '')}`, `Cuota ${x.mes} ${x.anio}`, `${address(x)} · ${x.estatusPago}`));
     const visits = (data.visitas || []).map(x => entry(`visitas.html?buscar=${encodeURIComponent(x.codigo)}`, x.nombreVisitante, `Visita ${x.codigo} · ${address(x)}`));
-    results.innerHTML = section('Páginas', nav) + section('Domicilios', houses) + section('Residentes', residents) + section('Cuotas', fees) + section('Visitas', visits) || `<p class="mj-search-empty">No hay resultados para «${escape(q)}». Prueba con un nombre, calle, número o folio.</p>`;
+    const access = (data.accesos || []).map(x => entry(`seguridad.html?buscar=${encodeURIComponent(x.nombre || x.placas || '')}`, x.nombre, `Acceso · ${address(x)}`));
+    const events = (data.eventos || []).map(x => entry(`calendario.html?fecha=${encodeURIComponent(new Date(x.fechaInicio).toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' }))}`, x.titulo, `Evento · ${x.ubicacion || 'Misión Jardines'}`));
+    const payments = (data.pagos || []).map(x => entry(`pagos.html?folio=${encodeURIComponent(x.folioReporte)}`, x.folioReporte, `Pago reportado · ${x.concepto || x.estatus}`));
+    results.innerHTML = section('Páginas', nav) + section('Domicilios', houses) + section('Residentes', residents) + section('Cuotas', fees) + section('Visitas', visits) + section('Accesos', access) + section('Eventos', events) + section('Pagos reportados', payments) || `<p class="mj-search-empty">No hay resultados para «${escape(q)}». Prueba con un nombre, calle, número o folio.</p>`;
     selected = 0; rows()[0]?.classList.add('mj-active');
   }
   async function search() {
@@ -66,6 +70,7 @@
       if (response.status === 401) { location.replace('login.html'); return; }
       if (!response.ok || data.ok === false) throw Error(data.message || 'Error de conexión');
       render(q, data);
+      if (data.partial) results.insertAdjacentHTML('beforeend', '<p class="mj-search-empty">Algunos registros no están disponibles en este momento.</p>');
     } catch (error) {
       if (error.name !== 'AbortError' && request === serial) { render(q, {}); results.insertAdjacentHTML('beforeend', `<p class="mj-search-empty">${escape(error.message)}. Puedes abrir una sección desde la lista.</p>`); }
     }

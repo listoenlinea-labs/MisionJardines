@@ -116,6 +116,13 @@
       @media(max-width:1370px){:root{--mj-side-width:224px}}@media(max-width:820px){:root{--mj-side-width:min(280px,calc(100vw - 55px))}body.mj-shared-sidebar-enabled{padding-left:0!important}body.page-calendario.mj-shared-sidebar-enabled{width:100vw!important;max-width:100vw!important;padding-left:0!important;padding-right:0!important}.mj-shared-sidebar{box-shadow:20px 0 50px rgba(15,23,42,.18)!important}.mj-side-tab{top:14px!important;height:42px!important}.mj-account-top,body.mj-home .profile-wrap{display:none!important}}@media(prefers-reduced-motion:reduce){body.mj-shared-sidebar-enabled,.mj-shared-sidebar,.mj-side-tab{transition:none!important}}
     `;
     document.head.appendChild(style);
+    if (!document.getElementById('mjAppDesign')) {
+      const theme = document.createElement('link');
+      theme.id = 'mjAppDesign';
+      theme.rel = 'stylesheet';
+      theme.href = 'assets/css/app-design.css?v=20260926';
+      document.head.appendChild(theme);
+    }
   }
 
   function createSidebar() {
