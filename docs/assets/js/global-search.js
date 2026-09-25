@@ -71,7 +71,7 @@
     }
   }
   function open(value = '') { previous = document.activeElement; backdrop.hidden = false; input.value = value; render(value, {}); input.focus(); if (value.trim().length >= 2) search(); }
-  function close() { backdrop.hidden = true; ++serial; controller?.abort(); clearTimeout(timeout); previous?.focus?.(); }
+  function close() { backdrop.hidden = true; ++serial; controller?.abort(); clearTimeout(timeout); input.blur(); if (previous && previous !== headerInput) previous.focus?.(); }
   input.addEventListener('input', () => { clearTimeout(timeout); render(input.value.trim(), {}); timeout = setTimeout(search, 250); });
   input.addEventListener('keydown', event => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); choose(selected + (event.key === 'ArrowDown' ? 1 : -1)); }
