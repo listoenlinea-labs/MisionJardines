@@ -1639,6 +1639,20 @@
     populateStreetFilter();
     visibleLotsCount.textContent = lots.length;
     resetZoom();
+    const linkedHouse = new URLSearchParams(location.search);
+    const linkedStreet = linkedHouse.get('calle');
+    const linkedNumber = linkedHouse.get('numero');
+    if (linkedStreet && [...streetFilter.options].some(option => option.value === linkedStreet)) {
+      streetFilter.value = linkedStreet;
+      applyStreetFilter(linkedStreet);
+    }
+    if (linkedNumber) {
+      houseSearch.value = linkedNumber;
+      const match = lots.find(lot => (!linkedStreet || normalizeText(lot.street) === normalizeText(linkedStreet)) && normalizeText(lot.number) === normalizeText(linkedNumber));
+      const element = match && document.querySelector(`[data-lot-id="${match.id}"]`);
+      if (match && element) selectLot(match, element);
+      else runSearch(linkedNumber);
+    }
     validarSesion();
   </script>
   <script src="assets/js/site-sidebar.js?v=1"></script>

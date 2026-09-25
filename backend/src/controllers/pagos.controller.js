@@ -54,9 +54,11 @@ async function listarMisPagos(req, res) {
             });
         }
 
+        const folioBuscado = typeof req.query.folio === 'string' ? req.query.folio.trim().slice(0, 60) : '';
         const pagos = await PagoReportado.findAll({
             where: {
-                casaId: req.usuario.casaId
+                casaId: req.usuario.casaId,
+                ...(folioBuscado && { folioReporte: folioBuscado })
             },
             attributes: {
                 exclude: ['comprobanteData', 'textoOcr']
