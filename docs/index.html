@@ -770,95 +770,18 @@
         <button class="icon-button" id="menuButton" type="button" aria-label="Ocultar o mostrar menú"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
         <form class="search" id="searchForm"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="globalSearch" type="search" placeholder="Buscar residentes, casas, visitas, reportes..." aria-label="Buscar"><span class="shortcut">⌘ K</span></form>
         <div class="topbar-spacer"></div>
-        <div class="operation-status"><i></i>Operación normal</div>
+        <div class="operation-status"><i></i>Consultando datos</div>
         <div class="notification-wrap">
-          <button class="icon-button notification-button" id="notificationButton" type="button" aria-label="Notificaciones"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg><span class="notification-badge">3</span></button>
-          <div class="dropdown notification-dropdown" id="notificationMenu" hidden><div class="dropdown-title">Notificaciones recientes</div><div class="notice-mini"><i></i><div><strong>Visita autorizada</strong><span>Casa 18 · Juan Pérez · hace 5 min</span></div></div><div class="notice-mini"><i></i><div><strong>Pago confirmado</strong><span>Casa 12 · $1,250.00 · hace 18 min</span></div></div><div class="notice-mini"><i></i><div><strong>Reporte actualizado</strong><span>Luminaria · Casa 7 · hace 1 h</span></div></div></div>
+          <button class="icon-button notification-button" id="notificationButton" type="button" aria-label="Notificaciones"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg><span class="notification-badge" hidden></span></button>
+          <div class="dropdown notification-dropdown" id="notificationMenu" hidden><div class="dropdown-title">Próximos eventos</div><div class="notice-mini">Consultando agenda…</div></div>
         </div>
         <div class="profile-wrap">
-          <button class="profile-button" id="profileButton" type="button"><span class="avatar js-initials">VR</span><span class="profile-copy"><strong class="js-fullname">Vladimir Rodríguez</strong><span class="js-role">Administrador</span></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg></button>
+          <button class="profile-button" id="profileButton" type="button"><span class="avatar js-initials">MJ</span><span class="profile-copy"><strong class="js-fullname">Mi cuenta</strong><span class="js-role">Usuario</span></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg></button>
           <div class="dropdown" id="profileMenu" hidden><button class="logout-button" id="logoutButton" type="button">Cerrar sesión</button></div>
         </div>
       </header>
 
-      <main class="dashboard">
-        <section class="welcome-row">
-          <div class="welcome-copy"><h1>Buenos días, <span class="js-firstname">Vladimir</span> 👋</h1><p>Esto es lo que ocurre hoy en Misión Jardines</p></div>
-          <div class="quick-actions">
-            <a class="action-button primary" href="visitas.html"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6M22 11h-6"></path></svg>Registrar visita</a>
-            <a class="action-button" href="cuotas.html"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M7 15h3"></path></svg>Agregar pago</a>
-            <a class="action-button" href="reportes.html"><svg viewBox="0 0 24 24"><path d="m3 11 18-5-5 18-3-8-10-5Z"></path><path d="m13 16 3-3"></path></svg>Crear aviso</a>
-          </div>
-        </section>
-
-        <section class="kpi-grid" aria-label="Indicadores principales">
-          <article class="card kpi-card"><div class="kpi-icon green"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M7 15h3"></path></svg></div><div class="kpi-copy"><span>Cuotas al corriente</span><strong>84%</strong><small class="positive"><b>↑ 6%</b> vs. mayo</small></div><svg class="sparkline" viewBox="0 0 75 43"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12b76a" stop-opacity=".2"/><stop offset="1" stop-color="#12b76a" stop-opacity="0"/></linearGradient></defs><path d="M3 34 13 19 24 25 35 14 47 26 57 18 66 11 72 4V42H3Z" fill="url(#sg)"/><polyline points="3,34 13,19 24,25 35,14 47,26 57,18 66,11 72,4" fill="none" stroke="#0a9b53" stroke-width="1.7"/><circle cx="72" cy="4" r="2" fill="#0a9b53"/></svg></article>
-          <article class="card kpi-card"><div class="kpi-icon orange"><svg viewBox="0 0 24 24"><path d="M5 17h14M7 17v2M17 17v2M5 17l-1-4 2-6h12l2 6-1 4M7 13h.01M17 13h.01M7 7l1-3h8l1 3"></path></svg></div><div class="kpi-copy"><span>Visitas hoy</span><strong>12</strong><small>4 programadas</small></div><svg class="sparkline" viewBox="0 0 75 43"><path d="M3 33 11 32 17 21 25 27 35 18 44 25 54 19 63 8 72 12V42H3Z" fill="#fff4e8"/><polyline points="3,33 11,32 17,21 25,27 35,18 44,25 54,19 63,8 72,12" fill="none" stroke="#f97316" stroke-width="1.7"/><circle cx="72" cy="12" r="2" fill="#f97316"/></svg></article>
-          <article class="card kpi-card"><div class="kpi-icon red"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="M12 8v4M12 16h.01"></path></svg></div><div class="kpi-copy"><span>Reportes abiertos</span><strong>3</strong><small>2 atendidos</small></div><svg class="sparkline" viewBox="0 0 75 43"><path d="M3 33 15 30 26 23 36 27 48 19 57 8 67 10 72 15V42H3Z" fill="#fff0f0"/><polyline points="3,33 15,30 26,23 36,27 48,19 57,8 67,10 72,15" fill="none" stroke="#f04438" stroke-width="1.7"/><circle cx="72" cy="15" r="2" fill="#f04438"/></svg></article>
-          <article class="card kpi-card"><div class="kpi-icon blue"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><div class="kpi-copy"><span>Residentes</span><strong>235</strong><small>Casas registradas</small></div><svg class="sparkline" viewBox="0 0 75 43"><path d="M3 34 14 34 25 27 35 31 45 22 55 19 64 11 72 14V42H3Z" fill="#eef5ff"/><polyline points="3,34 14,34 25,27 35,31 45,22 55,19 64,11 72,14" fill="none" stroke="#3478df" stroke-width="1.7"/><circle cx="72" cy="14" r="2" fill="#3478df"/></svg></article>
-        </section>
-
-        <section class="main-grid">
-          <article class="card map-panel">
-            <div class="panel-head"><h2>Actividad en la comunidad</h2><a class="select-button" href="mapa.html">Vista general <span>⌄</span></a></div>
-            <div class="community-map">
-              <svg viewBox="0 0 620 300" preserveAspectRatio="none" aria-label="Mapa ilustrativo de Misión Jardines">
-                <rect width="620" height="300" fill="#eef1f2"/>
-                <g fill="#dbead6"><path d="M0 0h116l29 43-22 58-58 23L0 93Z"/><path d="M374 0h105l-11 55-66 16-49-24Z"/><path d="M511 0h109v116l-74 18-42-61Z"/><path d="M0 190l74-24 57 24-12 110H0Z"/><path d="M397 207l92-19 131 26v86H381Z"/></g>
-                <g fill="none" stroke="#fff" stroke-width="16" opacity=".98"><path d="M-10 142C91 133 118 70 211 71s113 47 180 62 143 5 239-26"/><path d="M-6 252c80-25 146-20 220-17s139 25 208 12 127-72 208-80"/><path d="M77-8c6 61 35 106 57 143s9 108 0 173"/><path d="M289-10c-24 62-29 119-8 166s-6 92-28 153"/><path d="M491-10c-12 59-29 116-2 164s23 94 1 154"/></g>
-                <g fill="none" stroke="#d9dde2" stroke-width="2"><path d="M-10 142C91 133 118 70 211 71s113 47 180 62 143 5 239-26"/><path d="M-6 252c80-25 146-20 220-17s139 25 208 12 127-72 208-80"/><path d="M77-8c6 61 35 106 57 143s9 108 0 173"/><path d="M289-10c-24 62-29 119-8 166s-6 92-28 153"/><path d="M491-10c-12 59-29 116-2 164s23 94 1 154"/></g>
-                <g fill="#f7f8f9" stroke="#e0e4e7" stroke-width="1"><path d="M150 8h75l-16 48h-66Z"/><path d="M232 10h48l-12 45h-45Z"/><path d="M93 29h40l16 29-27 23Z"/><path d="M161 88h70l30 41-85 7Z"/><path d="M314 26h54l17 44-71 7Z"/><path d="M399 77h66l15 39-74 4Z"/><path d="M518 140h83l-18 51-63-9Z"/><path d="M174 153h82l8 57-89 5Z"/><path d="M305 165h70l31 48-93 17Z"/><path d="M19 152h71l27 32-77 34Z"/></g>
-                <g fill="#a9cda4" opacity=".85"><circle cx="22" cy="40" r="9"/><circle cx="50" cy="56" r="12"/><circle cx="115" cy="11" r="10"/><circle cx="111" cy="109" r="10"/><circle cx="438" cy="30" r="11"/><circle cx="531" cy="64" r="12"/><circle cx="586" cy="42" r="8"/><circle cx="54" cy="214" r="12"/><circle cx="92" cy="272" r="9"/><circle cx="445" cy="268" r="12"/><circle cx="566" cy="244" r="9"/></g>
-              </svg>
-              <span class="map-marker m1"><svg viewBox="0 0 24 24"><path d="M5 17h14M7 17v2M17 17v2M5 17l-1-4 2-6h12l2 6-1 4M7 13h.01M17 13h.01"></path></svg></span>
-              <span class="map-marker m2"><svg viewBox="0 0 24 24"><path d="M5 17h14M7 17v2M17 17v2M5 17l-1-4 2-6h12l2 6-1 4M7 13h.01M17 13h.01"></path></svg></span>
-              <span class="map-marker m3"><svg viewBox="0 0 24 24"><path d="M5 17h14M7 17v2M17 17v2M5 17l-1-4 2-6h12l2 6-1 4M7 13h.01M17 13h.01"></path></svg></span>
-              <span class="map-marker shield"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg></span>
-              <span class="map-marker alert">!</span><span class="map-point"></span>
-              <div class="map-controls"><button type="button" aria-label="Acercar">+</button><button type="button" aria-label="Alejar">−</button><button type="button" aria-label="Centrar">⌾</button></div>
-            </div>
-            <div class="map-legend"><span class="legend-item"><i class="legend-dot" style="background:#0a9b53"></i>Visita en curso</span><span class="legend-item"><i class="legend-dot" style="background:#f97316"></i>Reporte abierto</span><span class="legend-item"><i class="legend-dot" style="background:#4a83db"></i>Punto de acceso</span><span class="legend-item"><i class="legend-dot" style="background:#cde2ca"></i>Áreas comunes</span></div>
-          </article>
-
-          <article class="card collection-panel">
-            <div class="panel-head"><h2>Recaudación de cuotas</h2><button class="select-button" type="button">Este mes <span>⌄</span></button></div>
-            <div class="collection-body"><div class="collection-total">Total recaudado</div><div class="collection-amount"><strong>$60,750.00</strong><span>↑ 12% <small style="color:#728096">vs. mayo</small></span></div>
-              <svg class="chart" viewBox="0 0 400 250" preserveAspectRatio="none" aria-label="Gráfica de recaudación">
-                <defs><linearGradient id="chartArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f97316" stop-opacity=".18"/><stop offset="1" stop-color="#f97316" stop-opacity="0"/></linearGradient></defs>
-                <g stroke="#e8ebef" stroke-width="1"><path d="M43 22H390M43 68H390M43 114H390M43 160H390M43 206H390"/><path d="M43 22V206M128 22V206M215 22V206M303 22V206M390 22V206" stroke-dasharray="2 4"/></g>
-                <g fill="#7d8798" font-size="9"><text x="0" y="25">$80k</text><text x="0" y="71">$60k</text><text x="0" y="117">$40k</text><text x="0" y="163">$20k</text><text x="10" y="209">$0</text><text x="43" y="230">01 May</text><text x="117" y="230">08 May</text><text x="203" y="230">15 May</text><text x="289" y="230">22 May</text><text x="357" y="230">31 May</text></g>
-                <path d="M43 188C75 176 75 159 105 159S138 145 166 145s32-20 58-20 36-22 62-22 27-18 52-18 32-3 52-25V206H43Z" fill="url(#chartArea)"/>
-                <path d="M43 197C76 190 83 180 108 174s43-23 70-24 37-15 62-14 37-18 60-13 40-24 90-25" fill="none" stroke="#b9c0c9" stroke-width="2" stroke-dasharray="4 4"/>
-                <path d="M43 188C75 176 75 159 105 159S138 145 166 145s32-20 58-20 36-22 62-22 27-18 52-18 32-3 52-25" fill="none" stroke="#f97316" stroke-width="2"/>
-                <g fill="#f97316"><circle cx="105" cy="159" r="3"/><circle cx="166" cy="145" r="3"/><circle cx="224" cy="125" r="3"/><circle cx="286" cy="103" r="3"/><circle cx="338" cy="85" r="3"/><circle cx="390" cy="60" r="3"/></g>
-              </svg>
-              <div class="chart-legend"><span><i style="border-top-style:dashed"></i>Mayo 2025</span><span class="current"><i></i>Mayo 2026</span></div>
-            </div>
-          </article>
-
-          <div class="right-stack">
-            <article class="card activity-panel"><div class="panel-head"><h2>Actividad reciente</h2><a class="activity-link" href="reportes.html">Ver todas</a></div><div class="activity-list">
-              <div class="activity-row"><i style="background:#0a9b53"></i><span class="activity-icon" style="color:#078944;background:#edf8f1"><svg viewBox="0 0 24 24"><path d="M5 17h14M7 17v2M17 17v2M5 17l-1-4 2-6h12l2 6-1 4"></path></svg></span><span class="activity-copy"><strong>Visita autorizada</strong><span>Casa 18 · Juan Pérez</span></span><span class="activity-time">Hace 5 min</span></div>
-              <div class="activity-row"><i style="background:#f97316"></i><span class="activity-icon" style="color:#078944;background:#edf8f1;font-weight:800">$</span><span class="activity-copy"><strong>Pago confirmado</strong><span>Casa 12 · $1,250.00</span></span><span class="activity-time">Hace 18 min</span></div>
-              <div class="activity-row"><i style="background:#f04438"></i><span class="activity-icon" style="color:#f04438;background:#fff0f0"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg></span><span class="activity-copy"><strong>Reporte actualizado</strong><span>Luminaria · Casa 7</span></span><span class="activity-time">Hace 1 h</span></div>
-              <div class="activity-row"><i style="background:#0a9b53"></i><span class="activity-icon" style="color:#078944;background:#edf8f1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M5 21a7 7 0 0 1 14 0M16 17h5M18.5 14.5V19.5"></path></svg></span><span class="activity-copy"><strong>Nuevo residente</strong><span>Casa 21 · Ana López</span></span><span class="activity-time">Hace 2 h</span></div>
-              <div class="activity-row"><i style="background:#3478df"></i><span class="activity-icon" style="color:#3478df;background:#eef5ff"><svg viewBox="0 0 24 24"><path d="m3 11 18-5-5 18-3-8-10-5Z"></path></svg></span><span class="activity-copy"><strong>Aviso publicado</strong><span>Mantenimiento programado</span></span><span class="activity-time">Hace 3 h</span></div>
-            </div></article>
-            <article class="card event-panel"><h2>Próximo evento</h2><div class="event-content"><span class="event-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"></path></svg></span><span class="event-copy"><strong>Asamblea vecinal</strong><span>Viernes 7 de junio, 7:00 p. m.</span><span>Casa club Misión Jardines</span></span></div></article>
-          </div>
-        </section>
-
-        <section class="bottom-grid">
-          <article class="card important-card" id="importantCard"><span class="important-icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg></span><div class="important-copy"><strong>Aviso importante</strong><p>Mantenimiento programado en el acceso principal el sábado 7 de junio de 8:00 a 12:00 hrs.</p><a href="reportes.html">Ver aviso completo</a></div><button class="dismiss" id="dismissImportant" type="button" aria-label="Cerrar aviso">×</button></article>
-          <article class="card summary-card">
-            <div class="summary-item"><span class="summary-icon" style="color:#078944;background:#edf8f1"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"></path><path d="M5 10v10h14V10M9 20v-6h6v6"></path></svg></span><span class="summary-copy"><span>Casas registradas</span><strong>235</strong><small>Total en padrón</small></span></div>
-            <div class="summary-item"><span class="summary-icon" style="color:#f97316;background:#fff4ea"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M15 8.5c-.7-.7-1.7-1-3-1-1.7 0-3 1-3 2.2 0 3.3 6 1.3 6 4.6 0 1.2-1.3 2.2-3 2.2-1.3 0-2.4-.4-3-1M12 5v14"></path></svg></span><span class="summary-copy"><span>Pendientes de pago</span><strong>34</strong><small>Casas con adeudo</small></span></div>
-            <div class="summary-item"><span class="summary-icon" style="color:#3478df;background:#eef5ff"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2Z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg></span><span class="summary-copy"><span>Monto pendiente</span><strong>$9,840.00</strong><small>Total por cobrar</small></span></div>
-          </article>
-          <article class="card details-card"><a class="details-button" href="calendario.html">Ver detalles</a></article>
-        </section>
-        <footer class="page-footer"><div><span>Misión Jardines Residencial · Zapopan, Jalisco</span><span>© 2026 Todos los derechos reservados.</span></div></footer>
-      </main>
+      <main class="dashboard"><div style="padding:32px;color:#69778d">Consultando datos del fraccionamiento…</div></main>
     </div>
   </div>
 
@@ -888,29 +811,10 @@
     notificationButton.addEventListener('click', (event) => { event.stopPropagation(); const opening = notificationMenu.hidden; closeDropdowns(notificationMenu); notificationMenu.hidden = !opening; });
     profileButton.addEventListener('click', (event) => { event.stopPropagation(); const opening = profileMenu.hidden; closeDropdowns(profileMenu); profileMenu.hidden = !opening; });
     document.addEventListener('click', () => closeDropdowns());
-    document.getElementById('dismissImportant').addEventListener('click', () => document.getElementById('importantCard').remove());
 
     document.getElementById('logoutButton').addEventListener('click', () => {
       ['misionJardinesToken', 'misionJardinesUsuario'].forEach((key) => { localStorage.removeItem(key); sessionStorage.removeItem(key); });
       window.location.replace('login.html');
-    });
-
-    const searchRoutes = [
-      { words: ['cuota', 'pago', 'adeudo'], url: 'cuotas.html' },
-      { words: ['residente', 'casa', 'base'], url: 'bases_datos.html' },
-      { words: ['visita', 'visitante', 'placa'], url: 'visitas.html' },
-      { words: ['reporte', 'aviso', 'incidencia'], url: 'reportes.html' },
-      { words: ['mapa', 'calle'], url: 'mapa.html' },
-      { words: ['evento', 'calendario', 'asamblea'], url: 'calendario.html' },
-      { words: ['seguridad', 'acceso'], url: 'seguridad.html' },
-      { words: ['directorio', 'contacto'], url: 'directorio.html' }
-    ];
-
-    document.getElementById('searchForm').addEventListener('submit', (event) => {
-      event.preventDefault();
-      const query = document.getElementById('globalSearch').value.trim().toLowerCase();
-      const match = searchRoutes.find((route) => route.words.some((word) => query.includes(word)));
-      if (match) window.location.href = match.url;
     });
 
     document.addEventListener('keydown', (event) => {
@@ -926,7 +830,7 @@
     }
 
     function displayName(user) {
-      return user?.nombreCompleto || user?.nombre_completo || [user?.nombre, user?.apellidoPaterno || user?.apellido_paterno].filter(Boolean).join(' ') || user?.nombre || user?.email?.split('@')[0] || 'Vladimir Rodríguez';
+      return user?.nombreCompleto || user?.nombre_completo || [user?.nombre, user?.apellidoPaterno || user?.apellido_paterno].filter(Boolean).join(' ') || user?.nombre || user?.email?.split('@')[0] || 'Mi cuenta';
     }
 
     function displayRole(user) {
