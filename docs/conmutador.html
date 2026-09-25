@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conmutador | Misión Jardines</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;color:#172033;background:radial-gradient(circle at 97% 4%,#fff3e8,transparent 28%),#f7f9fc;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .content{max-width:1310px;margin:auto;padding:108px 36px 70px}.eyebrow{color:#b85b10;font-size:11px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.hero{display:flex;justify-content:space-between;align-items:end;gap:22px;margin-bottom:24px}.hero h1{margin:9px 0 10px;font-size:clamp(31px,4vw,49px);letter-spacing:-.05em}.hero p{max-width:640px;margin:0;color:#69778d;line-height:1.6}.hero-mark{display:grid;place-items:center;flex:0 0 64px;width:64px;height:64px;border-radius:18px;color:#bc6315;background:#fff1e4;font-size:30px}
+    .finder,.result{border:1px solid #e1e7f0;border-radius:19px;background:#fff;box-shadow:0 12px 35px rgba(26,42,68,.05)}.finder{padding:26px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(130px,.7fr) auto;align-items:end;gap:15px}.field label{display:block;margin-bottom:8px;color:#435168;font-size:12px;font-weight:750}.field input{width:100%;height:49px;padding:0 15px;border:1px solid #d9e2ed;border-radius:11px;background:#fff;color:#172033;font:inherit;outline:0}.field input:focus{border-color:#ef8a2d;box-shadow:0 0 0 3px #fff0df}.finder button{height:49px;padding:0 23px;border:0;border-radius:11px;color:#fff;background:#e9780d;font:750 14px inherit;cursor:pointer}.finder button:hover{background:#c9650b}.hint{margin:13px 2px 25px;color:#75839a;font-size:12px}
+    .results-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}.results-head h2{margin:0;font-size:19px}.results-head span{color:#6e7b90;font-size:12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.result{padding:22px}.result-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:17px;border-bottom:1px solid #edf0f5}.result-top strong{font-size:19px;letter-spacing:-.02em}.result-top span{padding:7px 10px;border-radius:999px;background:#edf8f1;color:#24754b;font-size:10px;font-weight:750}.person{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 0;border-bottom:1px solid #eff2f5}.person:last-child{border-bottom:0;padding-bottom:0}.person strong{display:block;font-size:13px}.person small{display:block;margin-top:5px;color:#778499;font-size:11px}.call{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:104px;padding:9px 11px;border:1px solid #f2c49d;border-radius:9px;color:#a45110;background:#fff8f0;font-size:12px;font-weight:750;text-decoration:none;white-space:nowrap}.call:hover{color:#fff;background:#d97113}.no-phone{color:#a2acb9;font-size:11px}.empty{grid-column:1/-1;padding:36px;border:1px dashed #d5dee8;border-radius:15px;background:#fff;color:#6d7a90;text-align:center}.error{color:#b42318;background:#fff5f4;border-color:#f5d3ce}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}@media(max-width:650px){.content{padding:93px 18px 55px}.finder{grid-template-columns:1fr;padding:19px}.hero-mark{display:none}.finder button{width:100%}.person{align-items:flex-start;flex-direction:column}.call{align-self:flex-start}}
+  </style>
+</head>
+<body>
+  <main class="content">
+    <div class="hero"><div><span class="eyebrow">Control de acceso · Datos en vivo</span><h1>Conmutador</h1><p>Localiza un domicilio por calle y número para contactar a los residentes registrados antes de autorizar una visita.</p></div><div class="hero-mark" aria-hidden="true">☎</div></div>
+    <form class="finder" id="finder"><div class="field"><label for="street">Calle</label><input id="street" maxlength="80" autocomplete="street-address" placeholder="Escribe el nombre de la calle"></div><div class="field"><label for="number">Número de casa</label><input id="number" maxlength="20" inputmode="text" placeholder="Ej. 164"></div><button type="submit">Buscar domicilio</button></form>
+    <p class="hint">Escribe la calle, el número o ambos. Los teléfonos se muestran únicamente al personal autorizado.</p>
+    <div class="results-head"><h2>Directorio de domicilios</h2><span id="count">Consulta el padrón para comenzar</span></div><div id="results" class="grid" aria-live="polite"><div class="empty">Escribe una calle o número y pulsa “Buscar domicilio”.</div></div>
+  </main>
+  <script>
+    (() => {
+      const API = 'https://api-misionjardines.listoenlinea.host/api';
+      const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
+      if (!token) { location.replace('login.html'); return; }
+      const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const phone = value => String(value || '').replace(/[^0-9+]/g, '');
+      const results = document.getElementById('results');
+      const count = document.getElementById('count');
+      async function search() {
+        const calle = document.getElementById('street').value.trim();
+        const numero = document.getElementById('number').value.trim();
+        if (!calle && !numero) { results.innerHTML = '<div class="empty">Escribe al menos una calle o un número.</div>'; return; }
+        count.textContent = 'Consultando la base de datos…'; results.innerHTML = '<div class="empty">Buscando domicilios…</div>';
+        try {
+          const params = new URLSearchParams({ calle, numero });
+          const response = await fetch(`${API}/busqueda/conmutador?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+          const data = await response.json();
+          if (response.status === 401) { location.replace('login.html'); return; }
+          if (!response.ok || data.ok === false) throw Error(data.message || 'No fue posible consultar el padrón');
+          count.textContent = `${data.casas.length} ${data.casas.length === 1 ? 'domicilio encontrado' : 'domicilios encontrados'}`;
+          results.innerHTML = data.casas.length ? data.casas.map(casa => {
+            const people = (casa.condominos || []).map(person => ({ name: person.nombreCompleto, phone: person.telefono, label: 'Residente' }));
+            if (casa.telefono && !people.some(person => person.phone === casa.telefono)) people.push({ name: 'Teléfono del domicilio', phone: casa.telefono, label: 'Contacto de la vivienda' });
+            return `<article class="result"><div class="result-top"><strong>${esc(casa.calle)} · ${esc(casa.numero)}</strong><span>${people.length} ${people.length === 1 ? 'contacto' : 'contactos'}</span></div>${people.length ? people.map(person => `<div class="person"><div><strong>${esc(person.name)}</strong><small>${esc(person.label)}${person.phone ? ' · ' + esc(person.phone) : ''}</small></div>${phone(person.phone) ? `<a class="call" href="tel:${esc(phone(person.phone))}" aria-label="Llamar a ${esc(person.name)}">☎ Llamar</a>` : '<span class="no-phone">Sin teléfono registrado</span>'}</div>`).join('') : '<div class="person"><span class="no-phone">Este domicilio no tiene contactos registrados.</span></div>'}</article>`;
+          }).join('') : '<div class="empty">No encontramos domicilios con esos datos. Revisa la calle y el número.</div>';
+        } catch (error) { count.textContent = 'Consulta no disponible'; results.innerHTML = `<div class="empty error">${esc(error.message)}. Inténtalo de nuevo.</div>`; }
+      }
+      document.getElementById('finder').addEventListener('submit', e => { e.preventDefault(); search(); });
+      const params = new URLSearchParams(location.search);
+      document.getElementById('street').value = params.get('calle') || '';
+      document.getElementById('number').value = params.get('numero') || '';
+      if (params.get('calle') || params.get('numero')) search();
+    })();
+  </script>
+  <script src="assets/js/site-sidebar.js?v=20260925"></script>
+</body>
+</html>

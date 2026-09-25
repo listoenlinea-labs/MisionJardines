@@ -14,6 +14,7 @@ const accesosRoutes = require('./routes/accesos.routes');
 const visitasRoutes = require('./routes/visitas.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const pagosRoutes = require('./routes/pagos.routes');
+const busquedaRoutes = require('./routes/busqueda.routes');
 require('./models');
 
 const app = express();
@@ -127,6 +128,7 @@ app.use('/api/accesos', accesosRoutes);
 app.use('/api/visitas', visitasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/pagos', pagosRoutes);
+app.use('/api/busqueda', busquedaRoutes);
 
 app.use((req, res) => {
     res.status(404).json({

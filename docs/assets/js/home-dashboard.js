@@ -265,33 +265,12 @@
     }
   }
 
-  function makeSearchFunctional() {
-    const input = document.querySelector('.search input');
-    if (!input || input.dataset.liveReady) return;
-    input.dataset.liveReady = '1';
-    input.placeholder = 'Ir a cuotas, visitas, residentes, mapa…';
-    const destinations = [
-      ['inicio', 'index.html'], ['cuotas', 'cuotas.html'], ['residentes', 'bases_datos.html'],
-      ['mapa', 'mapa.html'], ['visitas', 'visitas.html'], ['reportes', 'reportes.html'],
-      ['anuncios', 'anuncios.html'], ['calendario', 'calendario.html'], ['directorio', 'directorio.html'],
-      ['seguridad', 'seguridad.html'], ['cuenta', 'cuenta.html']
-    ];
-    input.addEventListener('keydown', event => {
-      if (event.key !== 'Enter') return;
-      const query = input.value.trim().toLowerCase();
-      if (!query) return;
-      const match = destinations.find(([label]) => label.includes(query) || query.includes(label));
-      if (match) location.href = match[1];
-    });
-  }
-
   async function load() {
     if (!token) {
       location.replace('login.html');
       return;
     }
     renderLoading();
-    makeSearchFunctional();
     try {
       const response = await fetch(`${API_URL}/dashboard`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -334,7 +313,6 @@
 
   function init() {
     injectStyles();
-    makeSearchFunctional();
     load();
   }
 
