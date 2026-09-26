@@ -15,6 +15,7 @@ const visitasRoutes = require('./routes/visitas.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const pagosRoutes = require('./routes/pagos.routes');
 const busquedaRoutes = require('./routes/busqueda.routes');
+const vozRoutes = require('./routes/voz.routes');
 require('./models');
 
 const app = express();
@@ -129,6 +130,7 @@ app.use('/api/visitas', visitasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/busqueda', busquedaRoutes);
+app.use('/api/voz', vozRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
