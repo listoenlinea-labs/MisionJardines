@@ -213,7 +213,7 @@
     loadHomeDashboard();
     if (page() !== 'login.html' && !document.querySelector('script[data-mj-global-search]')) {
       const search = document.createElement('script');
-      search.src = 'assets/js/global-search.js?v=20260925';
+      search.src = 'assets/js/global-search.js?v=20260926b';
       search.dataset.mjGlobalSearch = 'true';
       document.body.appendChild(search);
     }
