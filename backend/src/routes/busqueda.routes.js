@@ -81,7 +81,7 @@ router.get('/conmutador', autorizarRoles(...personnel), async (req, res) => {
     const casas = await Casa.findAll({
       attributes: ['id', 'calle', 'numero'],
       where: { ...(calle && { calle: { [Op.like]: like(calle) } }), ...(numero && { numero: { [Op.like]: like(numero) } }) },
-      include: [{ model: Condomino, as: 'condominos', where: { activo: true }, required: false, attributes: ['nombreCompleto', 'telefono'] }],
+      include: [{ model: Condomino, as: 'condominos', where: { activo: true }, required: false, attributes: ['id', 'nombreCompleto', 'telefono'] }],
       limit: 40,
       order: [['calle', 'ASC'], ['numero', 'ASC']]
     });
