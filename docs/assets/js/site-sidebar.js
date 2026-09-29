@@ -14,6 +14,7 @@
     directory: svg('<path d="M4 4h16v16H4z"></path><path d="M8 2v4M16 2v4M8 11h8M8 15h5"></path>'),
     phone: svg('<path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.5 3a2 2 0 0 1-.6 1.8L7.2 10a16 16 0 0 0 6.8 6.8l1.5-1.8a2 2 0 0 1 1.8-.6l3 .5a2 2 0 0 1 1.7 2Z"></path>'),
     shield: svg('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="M12 8v4M12 16h.01"></path>'),
+    connection: svg('<path d="M8 12h8M12 8v8"></path><rect x="3" y="4" width="18" height="16" rx="3"></rect>'),
     account: svg('<circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path>'),
     headset: svg('<path d="M4 14a8 8 0 0 1 16 0M18 19h1a2 2 0 0 0 2-2v-3h-3v5ZM6 19H5a2 2 0 0 1-2-2v-3h3v5ZM18 19c0 2-2 3-6 3"></path>'),
     logout: svg('<path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"></path>')
@@ -34,7 +35,8 @@
       { page: 'directorio.html', label: 'Directorio', icon: 'directory', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO' }
     ]},
     { label: 'Administración', items: [
-      { page: 'seguridad.html', label: 'Seguridad', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD' }
+      { page: 'seguridad.html', label: 'Seguridad', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD' },
+      { page: 'conexion.html', label: 'Conexión', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR' }
     ]}
   ];
 
