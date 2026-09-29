@@ -323,7 +323,7 @@
 
     .page-seguridad-v2 .camera-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 11px
     }
 
@@ -1235,12 +1235,8 @@
     const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
     const INCIDENT_KEY = 'mision_jardines_seguridad_incidentes';
 
-    // CONEXIÓN DE CÁMARAS: pega la URL y usa type "iframe" o "video".
-    const CAMERA_CONFIG = [
-      { name: 'Entrada principal', url: '', type: 'iframe' },
-      { name: 'Av. Valle de México', url: '', type: 'iframe' },
-      { name: 'Área común', url: '', type: 'iframe' },
-      { name: 'C. Atotonilco', url: '', type: 'iframe' }
+    let CAMERA_CONFIG = [
+      { name: 'Entrada Principal', url: '', type: 'iframe' }
     ];
     // CONEXIÓN DE PLUMA: agrega los endpoints del controlador físico.
     const GATE_API = { openUrl: '', closeUrl: '', headers: {} };
@@ -1254,7 +1250,41 @@
     async function api(url, options = {}) { const response = await fetch(url, options); let result = {}; try { result = await response.json() } catch { } if (response.status === 401) { localStorage.removeItem('misionJardinesToken'); sessionStorage.removeItem('misionJardinesToken'); location.replace('login.html'); throw new Error('La sesión expiró') } if (!response.ok || !result.ok) throw new Error(result.message || 'No fue posible completar la solicitud'); return result }
     function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' } function closeModal(el) { el.closest('.modal-shell').hidden = true; document.body.style.overflow = '' }
     function parseControls(raw) { try { const data = typeof raw === 'string' ? JSON.parse(raw) : raw || {}; return { pluma: data.pluma !== false, porton1: data.porton1 !== false, porton2: data.porton2 !== false, porton3: data.porton3 !== false } } catch { return { pluma: true, porton1: true, porton2: true, porton3: true } } }
-    function renderCameras() { $('cameraGrid').innerHTML = CAMERA_CONFIG.map((cam, index) => `<div class="camera">${cam.url ? (cam.type === 'video' ? `<video class="camera-media" src="${esc(cam.url)}" autoplay muted controls playsinline></video>` : `<iframe class="camera-media" src="${esc(cam.url)}" allow="autoplay; fullscreen" title="${esc(cam.name)}"></iframe>`) : `<div class="camera-empty"><div><svg viewBox="0 0 24 24"><path d="M15 10l4.5-2.5v9L15 14M3 6h12v12H3z"/></svg><b>Canal ${index + 1} listo</b><span>Agrega la URL en CAMERA_CONFIG</span></div></div>`}<div class="camera-label"><span>${esc(cam.name)}</span><i></i></div></div>`).join('') }
+    function renderCameras() {
+      const cameras = CAMERA_CONFIG.length ? CAMERA_CONFIG : [{ name: 'Entrada Principal', url: '', type: 'iframe' }];
+      $('cameraGrid').innerHTML = cameras.map((cam, index) => `<div class="camera">${cam.url ? (cam.type === 'video' ? `<video class="camera-media" src="${esc(cam.url)}" autoplay muted controls playsinline></video>` : `<iframe class="camera-media" src="${esc(cam.url)}" allow="autoplay; fullscreen" title="${esc(cam.name)}"></iframe>`) : `<div class="camera-empty"><div><svg viewBox="0 0 24 24"><path d="M15 10l4.5-2.5v9L15 14M3 6h12v12H3z"/></svg><b>Canal ${index + 1} listo</b><span>Configura la ruta del canal en Seguridad → Conexión</span></div></div>`}<div class="camera-label"><span>${esc(cam.name || ('Canal ' + (index + 1)))}</span><i></i></div></div>`).join('');
+    }
+
+    function buildCameraUrl(connection, channel) {
+      const route = String(channel?.ruta || '').trim();
+      if (!route) return '';
+      if (/^https?:\/\//i.test(route)) return route;
+      const host = String(connection?.host || '').trim();
+      if (!host) return route;
+      const protocol = String(connection?.configuracion?.protocolo || '').toUpperCase();
+      if (protocol === 'HTTP') {
+        const base = /^https?:\/\//i.test(host) ? host : 'http://' + host;
+        const port = connection?.puerto ? ':' + connection.puerto : '';
+        return base.replace(/\/$/, '') + port + (route.startsWith('/') ? route : '/' + route);
+      }
+      return route;
+    }
+
+    async function loadCameraConfig() {
+      try {
+        const result = await api(`${API_BASE_URL}/conexion/estado`, { headers: headers() });
+        const connection = (result.data || []).find(item => item.tipo === 'CAMARAS' && item.nombre === 'principal');
+        const channels = Array.isArray(connection?.configuracion?.canales) ? connection.configuracion.canales : [];
+        CAMERA_CONFIG = channels.length ? channels.map((channel, index) => ({
+          name: channel.nombre || ('Canal ' + (index + 1)),
+          url: buildCameraUrl(connection, channel),
+          type: String(connection?.configuracion?.protocolo || '').toUpperCase() === 'HTTP' ? 'iframe' : 'iframe'
+        })) : [{ name: 'Entrada Principal', url: '', type: 'iframe' }];
+      } catch (error) {
+        CAMERA_CONFIG = [{ name: 'Entrada Principal', url: '', type: 'iframe' }];
+      }
+      renderCameras();
+    }
     async function controlGate(action) { const url = action === 'open' ? GATE_API.openUrl : GATE_API.closeUrl; if (url) { try { await fetch(url, { method: 'POST', headers: GATE_API.headers }); toast(action === 'open' ? 'Pluma abierta.' : 'Pluma cerrada.') } catch { toast('No fue posible comunicarse con la pluma.'); return } } else toast('Control visual activo. Configura GATE_API para conectar la pluma física.'); $('gateScene').classList.toggle('open', action === 'open'); $('gateState').textContent = action === 'open' ? 'ABIERTA' : 'CERRADA' }
     function fillStreets() { const streets = [...new Set(houses.map(h => String(h.calle || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })); const options = streets.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join(''); $('accessStreet').innerHTML = '<option value="">Selecciona una calle</option>' + options; $('filterStreet').innerHTML = '<option value="">Todas las calles</option>' + options; $('houseAccessStreet').innerHTML = '<option value="">Todas las calles</option>' + options }
     function fillNumbers() { const street = $('accessStreet').value; const data = houses.filter(h => h.calle === street).sort((a, b) => String(a.numero).localeCompare(String(b.numero), 'es', { numeric: true })); $('accessHouse').disabled = !street; $('accessHouse').innerHTML = street ? '<option value="">Selecciona un número</option>' + data.map(h => `<option value="${Number(h.id)}">${esc(h.numero)}</option>`).join('') : '<option value="">Primero selecciona una calle</option>' }
@@ -1274,9 +1304,9 @@
     function saveIncident() { const item = { date: fmt(new Date()), type: $('incidentType').value, location: $('incidentLocation').value.trim(), reporter: $('incidentReporter').value.trim(), priority: $('incidentPriority').value, description: $('incidentDescription').value.trim() }; if (!item.location || !item.reporter || !item.description) { toast('Completa ubicación, reportado por y descripción.'); return } incidents.unshift(item); localStorage.setItem(INCIDENT_KEY, JSON.stringify(incidents));['incidentLocation', 'incidentReporter', 'incidentDescription'].forEach(id => $(id).value = ''); renderIncidents(); toast('Incidencia registrada.') }
     function setAdminContact() { $('adminName').textContent = ADMIN_CONTACT.name; $('adminSchedule').textContent = ADMIN_CONTACT.schedule; $('adminEmail').href = `mailto:${ADMIN_CONTACT.email}`; if (ADMIN_CONTACT.whatsapp) { $('adminWhatsapp').href = `https://wa.me/${ADMIN_CONTACT.whatsapp.replace(/\D/g, '')}`; $('adminWhatsapp').target = '_blank' } else { $('adminWhatsapp').href = '#'; $('adminWhatsapp').addEventListener('click', e => { e.preventDefault(); toast('Agrega el número en ADMIN_CONTACT.whatsapp.') }) } }
     document.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openModal(b.dataset.open))); document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b))); document.querySelectorAll('.modal-shell').forEach(m => m.addEventListener('click', e => { if (e.target === m) { m.hidden = true; document.body.style.overflow = '' } })); document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-shell:not([hidden])').forEach(m => { m.hidden = true; document.body.style.overflow = '' }) });
-    $('reloadCameras').addEventListener('click', renderCameras); $('openGate').addEventListener('click', () => controlGate('open')); $('closeGate').addEventListener('click', () => controlGate('close')); $('accessStreet').addEventListener('change', fillNumbers); $('accessForm').addEventListener('submit', saveAccess); $('clearAccess').addEventListener('click', () => { $('accessForm').reset(); fillNumbers() }); $('refreshAccess').addEventListener('click', loadAccesses);['filterText', 'filterHouse'].forEach(id => $(id).addEventListener('input', renderAccesses));['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).addEventListener('change', renderAccesses)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterHouse'].forEach(id => $(id).value = '');['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).value = ''); renderAccesses() }); $('houseAccessStreet').addEventListener('change', renderHouseAccess); $('houseAccessNumber').addEventListener('input', renderHouseAccess); $('clearHouseAccess').addEventListener('click', () => { $('houseAccessStreet').value = ''; $('houseAccessNumber').value = ''; renderHouseAccess() }); $('saveIncident').addEventListener('click', saveIncident);
+    $('reloadCameras').addEventListener('click', loadCameraConfig); $('openGate').addEventListener('click', () => controlGate('open')); $('closeGate').addEventListener('click', () => controlGate('close')); $('accessStreet').addEventListener('change', fillNumbers); $('accessForm').addEventListener('submit', saveAccess); $('clearAccess').addEventListener('click', () => { $('accessForm').reset(); fillNumbers() }); $('refreshAccess').addEventListener('click', loadAccesses);['filterText', 'filterHouse'].forEach(id => $(id).addEventListener('input', renderAccesses));['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).addEventListener('change', renderAccesses)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterHouse'].forEach(id => $(id).value = '');['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).value = ''); renderAccesses() }); $('houseAccessStreet').addEventListener('change', renderHouseAccess); $('houseAccessNumber').addEventListener('input', renderHouseAccess); $('clearHouseAccess').addEventListener('click', () => { $('houseAccessStreet').value = ''; $('houseAccessNumber').value = ''; renderHouseAccess() }); $('saveIncident').addEventListener('click', saveIncident);
     $('filterText').value = new URLSearchParams(location.search).get('buscar') || '';
-    $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); renderCameras(); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
+    $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); loadCameraConfig(); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
   <script src="assets/js/site-sidebar.js?v=1"></script>
 </body>
