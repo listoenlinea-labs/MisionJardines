@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Conexión | Seguridad | Misión Jardines</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f7f9fc;color:#1d2940;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .wrap{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:95px 0 70px}.eyebrow{color:#d96d08;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    h1{margin:8px 0 7px;font-size:clamp(32px,4vw,48px);letter-spacing:-.045em}.lead{max-width:820px;margin:0 0 25px;color:#71809a;font-size:13px;line-height:1.65}
+    .notice{margin-bottom:18px;padding:14px 16px;border:1px solid #f0dfc9;border-radius:13px;background:#fff9f2;color:#79552f;font-size:12px;line-height:1.55}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.card{border:1px solid #e1e7ef;border-radius:18px;background:#fff;box-shadow:0 10px 30px rgba(28,40,62,.05);overflow:hidden}
+    .head{padding:20px 21px 15px;border-bottom:1px solid #edf0f5;background:linear-gradient(130deg,#fffaf5,#fff)}.head h2{margin:5px 0 4px;font-size:19px}.head p{margin:0;color:#7d899d;font-size:10px;line-height:1.5}
+    .body{padding:18px 21px}.field{margin-bottom:12px}.row{display:grid;grid-template-columns:1fr 120px;gap:10px}.field label{display:block;margin-bottom:6px;color:#526077;font-size:10px;font-weight:800}
+    input,select,textarea{width:100%;min-height:41px;padding:9px 11px;border:1px solid #dce3ed;border-radius:10px;background:#fff;color:#263148;font:inherit;font-size:11px;outline:none}textarea{min-height:78px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:#ed9c4d;box-shadow:0 0 0 4px rgba(239,125,11,.09)}.switchline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding:11px;border:1px solid #e8ebf1;border-radius:11px;background:#fafbfd}
+    .switchline span{font-size:10px;color:#67748a}.switchline input{width:auto;min-height:auto}.actions{display:flex;gap:8px;margin-top:16px}.btn{min-height:40px;padding:9px 14px;border:1px solid #dfe4ec;border-radius:10px;background:#fff;color:#5d6880;font-size:10px;font-weight:850;cursor:pointer}.primary{flex:1;border-color:#ef7d0b;background:linear-gradient(135deg,#f58b1c,#e87100);color:#fff}
+    .status{margin-top:10px;min-height:18px;font-size:10px;color:#71809a}.ok{color:#277849}.err{color:#b94452}.secret-note{margin-top:5px;color:#8c97a8;font-size:9px;line-height:1.45}
+    .camera-list{display:grid;gap:8px;margin-top:8px}.camera-row{display:grid;grid-template-columns:1fr 1.25fr 90px;gap:7px}.camera-row input{min-width:0}.sub{margin:15px 0 9px;color:#36445a;font-size:11px;font-weight:850}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}.wrap{width:min(760px,calc(100% - 28px));padding-top:80px}}@media(max-width:560px){.row,.camera-row{grid-template-columns:1fr}.actions{flex-direction:column}.primary{flex:auto}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <span class="eyebrow">Seguridad · Integraciones</span>
+    <h1>Conexión</h1>
+    <p class="lead">Configura desde un solo lugar la comunicación con el controlador de plumas, las cámaras y la telefonía. Las contraseñas no se devuelven al navegador después de guardarse.</p>
+    <div class="notice"><strong>Importante:</strong> esta pantalla guarda los parámetros necesarios para las integraciones. La apertura física de la pluma, el video en vivo y la llamada desde la computadora requieren que el equipo local/gateway correspondiente esté instalado y accesible desde la red del fraccionamiento.</div>
+
+    <section class="grid">
+      <article class="card">
+        <div class="head"><span class="eyebrow">ZKTeco C3-200</span><h2>Control de plumas</h2><p>Datos del controlador TCP/IP y parámetros del agente local.</p></div>
+        <form class="body" data-form="PLUMAS">
+          <div class="switchline"><span>Integración habilitada</span><input name="activo" type="checkbox" checked></div>
+          <div class="field"><label>Nombre</label><input name="nombre" value="principal" readonly></div>
+          <div class="row"><div class="field"><label>IP / Host del C3-200 *</label><input name="host" placeholder="Ej. 192.168.1.201"></div><div class="field"><label>Puerto *</label><input name="puerto" type="number" min="1" max="65535" placeholder="4370"></div></div>
+          <div class="field"><label>Contraseña / clave de comunicación</label><input name="secreto" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"><div class="secret-note" data-secret-note></div></div>
+          <div class="row"><div class="field"><label>Puerta / relé entrada</label><input name="releEntrada" type="number" min="1" max="8" value="1"></div><div class="field"><label>Puerta / relé salida</label><input name="releSalida" type="number" min="1" max="8" value="2"></div></div>
+          <div class="field"><label>Duración del pulso (ms)</label><input name="pulsoMs" type="number" min="200" max="10000" value="1000"></div>
+          <div class="field"><label>Notas</label><textarea name="notas" placeholder="Ej. C3-200 dentro de caseta, entrada principal y salida..."></textarea></div>
+          <div class="actions"><button class="btn primary" type="submit">Guardar plumas</button></div><div class="status" data-status></div>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="head"><span class="eyebrow">CCTV / NVR</span><h2>Cámaras de seguridad</h2><p>IP, usuario, contraseña y canales de visualización.</p></div>
+        <form class="body" data-form="CAMARAS">
+          <div class="switchline"><span>Integración habilitada</span><input name="activo" type="checkbox" checked></div>
+          <div class="field"><label>Nombre</label><input name="nombre" value="principal" readonly></div>
+          <div class="row"><div class="field"><label>IP / Host del NVR o DVR *</label><input name="host" placeholder="Ej. 192.168.1.50"></div><div class="field"><label>Puerto web / API</label><input name="puerto" type="number" min="1" max="65535" placeholder="80"></div></div>
+          <div class="field"><label>Usuario</label><input name="usuario" autocomplete="username" placeholder="admin"></div>
+          <div class="field"><label>Contraseña</label><input name="secreto" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"><div class="secret-note" data-secret-note></div></div>
+          <div class="row"><div class="field"><label>Protocolo</label><select name="protocolo"><option value="RTSP">RTSP</option><option value="HTTP">HTTP / HTTPS</option><option value="ONVIF">ONVIF</option></select></div><div class="field"><label>Puerto RTSP</label><input name="rtspPort" type="number" min="1" max="65535" placeholder="554"></div></div>
+          <div class="sub">Canales</div>
+          <div class="camera-list">
+            <div class="camera-row"><input name="cam1Nombre" value="Entrada principal" placeholder="Nombre"><input name="cam1Ruta" placeholder="/Streaming/Channels/101 o URL"><input name="cam1Canal" value="1" placeholder="Canal"></div>
+            <div class="camera-row"><input name="cam2Nombre" value="Av. Valle de México" placeholder="Nombre"><input name="cam2Ruta" placeholder="/Streaming/Channels/201 o URL"><input name="cam2Canal" value="2" placeholder="Canal"></div>
+            <div class="camera-row"><input name="cam3Nombre" value="Área común" placeholder="Nombre"><input name="cam3Ruta" placeholder="Ruta / URL"><input name="cam3Canal" value="3" placeholder="Canal"></div>
+            <div class="camera-row"><input name="cam4Nombre" value="C. Atotonilco" placeholder="Nombre"><input name="cam4Ruta" placeholder="Ruta / URL"><input name="cam4Canal" value="4" placeholder="Canal"></div>
+          </div>
+          <div class="actions"><button class="btn primary" type="submit">Guardar cámaras</button></div><div class="status" data-status></div>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="head"><span class="eyebrow">Telmex / Telefonía</span><h2>Llamadas</h2><p>Parámetros del gateway o cuenta SIP que se usará desde la app.</p></div>
+        <form class="body" data-form="TELEFONIA">
+          <div class="switchline"><span>Integración habilitada</span><input name="activo" type="checkbox" checked></div>
+          <div class="field"><label>Nombre</label><input name="nombre" value="principal" readonly></div>
+          <div class="field"><label>Tipo de conexión</label><select name="tipoConexion"><option value="FXO_GATEWAY">Línea Telmex mediante gateway FXO</option><option value="SIP">Cuenta / troncal SIP</option><option value="PENDIENTE">Pendiente de identificar</option></select></div>
+          <div class="row"><div class="field"><label>IP / Host del gateway o servidor SIP</label><input name="host" placeholder="Ej. 192.168.1.60"></div><div class="field"><label>Puerto</label><input name="puerto" type="number" min="1" max="65535" placeholder="5060"></div></div>
+          <div class="field"><label>Usuario / extensión SIP</label><input name="usuario" autocomplete="username" placeholder="Ej. caseta o 101"></div>
+          <div class="field"><label>Contraseña SIP / gateway</label><input name="secreto" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"><div class="secret-note" data-secret-note></div></div>
+          <div class="row"><div class="field"><label>Número de la línea Telmex</label><input name="numeroLinea" inputmode="tel" placeholder="33XXXXXXXX"></div><div class="field"><label>Extensión de caseta</label><input name="extension" placeholder="101"></div></div>
+          <div class="field"><label>Transporte SIP</label><select name="transporte"><option>UDP</option><option>TCP</option><option>TLS</option></select></div>
+          <div class="field"><label>Notas del equipo</label><textarea name="notas" placeholder="Ej. El VTech está conectado a TEL1 del módem / roseta..."></textarea></div>
+          <div class="actions"><button class="btn primary" type="submit">Guardar telefonía</button></div><div class="status" data-status></div>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <script>
+  (() => {
+    const API='https://api-misionjardines.listoenlinea.host/api';
+    const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+    if(!token){location.replace('login.html');return;}
+    const userRaw=localStorage.getItem('misionJardinesUsuario')||sessionStorage.getItem('misionJardinesUsuario');
+    let role=''; try{const u=JSON.parse(userRaw||'{}'); role=u?.rol?.nombre||u?.rol||'';}catch(_){}
+    if(!['SUPER_ADMIN','ADMINISTRADOR'].includes(role)){location.replace('seguridad.html');return;}
+
+    const headers={'Content-Type':'application/json',Authorization:'Bearer '+token};
+    const qs=(form,n)=>form.querySelector('[name="'+n+'"]');
+    const setStatus=(form,msg,kind='')=>{const el=form.querySelector('[data-status]');el.textContent=msg;el.className='status '+kind;};
+    const val=(form,n)=>qs(form,n)?.value?.trim()||'';
+    const checked=(form,n)=>Boolean(qs(form,n)?.checked);
+
+    function fill(form,row){
+      if(!row)return;
+      ['host','puerto','usuario'].forEach(k=>{if(qs(form,k))qs(form,k).value=row[k]??'';});
+      if(qs(form,'activo'))qs(form,'activo').checked=row.activo!==false;
+      const c=row.configuracion||{};
+      Object.entries(c).forEach(([k,v])=>{if(qs(form,k)&&v!=null)qs(form,k).value=v;});
+      if(Array.isArray(c.canales)){
+        c.canales.forEach((cam,i)=>{const n=i+1;if(qs(form,'cam'+n+'Nombre'))qs(form,'cam'+n+'Nombre').value=cam.nombre||'';if(qs(form,'cam'+n+'Ruta'))qs(form,'cam'+n+'Ruta').value=cam.ruta||'';if(qs(form,'cam'+n+'Canal'))qs(form,'cam'+n+'Canal').value=cam.canal||'';});
+      }
+      const note=form.querySelector('[data-secret-note]');
+      if(note)note.textContent=row.tieneSecreto?'Hay una credencial guardada. Déjala vacía para conservarla.':'Todavía no hay una credencial guardada.';
+    }
+
+    async function load(){
+      try{
+        const r=await fetch(API+'/conexion',{headers:{Authorization:'Bearer '+token}});
+        const d=await r.json();
+        if(r.status===401){location.replace('login.html');return;}
+        if(!r.ok)throw Error(d.message||'No se pudo cargar la configuración');
+        document.querySelectorAll('[data-form]').forEach(form=>fill(form,(d.data||[]).find(x=>x.tipo===form.dataset.form&&x.nombre==='principal')));
+      }catch(e){document.querySelectorAll('[data-form]').forEach(f=>setStatus(f,e.message,'err'));}
+    }
+
+    function configFor(form){
+      const tipo=form.dataset.form;
+      if(tipo==='PLUMAS')return{releEntrada:val(form,'releEntrada'),releSalida:val(form,'releSalida'),pulsoMs:val(form,'pulsoMs'),notas:val(form,'notas')};
+      if(tipo==='CAMARAS')return{protocolo:val(form,'protocolo'),rtspPort:val(form,'rtspPort'),canales:[1,2,3,4].map(n=>({nombre:val(form,'cam'+n+'Nombre'),ruta:val(form,'cam'+n+'Ruta'),canal:val(form,'cam'+n+'Canal')}))};
+      return{tipoConexion:val(form,'tipoConexion'),numeroLinea:val(form,'numeroLinea'),extension:val(form,'extension'),transporte:val(form,'transporte'),notas:val(form,'notas')};
+    }
+
+    document.querySelectorAll('[data-form]').forEach(form=>form.addEventListener('submit',async e=>{
+      e.preventDefault(); setStatus(form,'Guardando…');
+      const body={nombre:'principal',activo:checked(form,'activo'),host:val(form,'host'),puerto:val(form,'puerto'),usuario:val(form,'usuario'),secreto:val(form,'secreto'),configuracion:configFor(form)};
+      try{
+        const r=await fetch(API+'/conexion/'+form.dataset.form,{method:'PUT',headers,body:JSON.stringify(body)});
+        const d=await r.json(); if(!r.ok)throw Error(d.message||'No se pudo guardar');
+        qs(form,'secreto').value=''; fill(form,d.data); setStatus(form,'Configuración guardada correctamente.','ok');
+      }catch(err){setStatus(form,err.message,'err');}
+    }));
+    load();
+  })();
+  </script>
+  <script src="assets/js/site-sidebar.js?v=20260929"></script>
+</body>
+</html>
