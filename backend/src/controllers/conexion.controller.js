@@ -67,6 +67,28 @@ async function obtenerEstadoIntegraciones(req, res) {
     }
 }
 
+async function eliminarConfiguracion(req, res) {
+    try {
+        const tipo = String(req.params.tipo || '').trim().toUpperCase();
+        const nombre = String(req.params.nombre || '').trim();
+
+        if (!TIPOS.has(tipo) || !nombre) {
+            return res.status(400).json({ ok: false, message: 'Configuración no válida' });
+        }
+
+        const row = await ConfiguracionConexion.findOne({ where: { tipo, nombre } });
+        if (!row) {
+            return res.status(404).json({ ok: false, message: 'Configuración no encontrada' });
+        }
+
+        await row.destroy();
+        return res.json({ ok: true, message: 'Configuración eliminada correctamente' });
+    } catch (error) {
+        console.error('Error al eliminar configuración de conexión:', error);
+        return res.status(500).json({ ok: false, message: 'No fue posible eliminar la configuración' });
+    }
+}
+
 async function guardarConfiguracion(req, res) {
     try {
         const tipo = String(req.params.tipo || '').trim().toUpperCase();
@@ -130,5 +152,6 @@ async function guardarConfiguracion(req, res) {
 module.exports = {
     obtenerConfiguraciones,
     obtenerEstadoIntegraciones,
-    guardarConfiguracion
+    guardarConfiguracion,
+    eliminarConfiguracion
 };
