@@ -43,12 +43,12 @@ const ConfiguracionConexion = sequelize.define('ConfiguracionConexion', {
         field: 'configuracion_json'
     },
     creadoPorUsuarioId: {
-        type: DataTypes.INTEGER.UNSIGNED,
+        type: DataTypes.BIGINT.UNSIGNED,
         allowNull: true,
         field: 'creado_por_usuario_id'
     },
     actualizadoPorUsuarioId: {
-        type: DataTypes.INTEGER.UNSIGNED,
+        type: DataTypes.BIGINT.UNSIGNED,
         allowNull: true,
         field: 'actualizado_por_usuario_id'
     }
