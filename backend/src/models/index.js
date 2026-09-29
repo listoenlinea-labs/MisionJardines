@@ -11,6 +11,7 @@ const Visita = require('./Visita');
 const VerificacionCuenta = require('./VerificacionCuenta');
 const SolicitudRol = require('./SolicitudRol');
 const PagoReportado = require('./PagoReportado');
+const ConfiguracionConexion = require('./ConfiguracionConexion');
 
 /*
  * Casa 1 --- N Usuarios
@@ -205,5 +206,6 @@ module.exports = {
     Visita,
     VerificacionCuenta,
     SolicitudRol,
-    PagoReportado
+    PagoReportado,
+    ConfiguracionConexion
 };
