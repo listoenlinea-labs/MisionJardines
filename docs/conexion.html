@@ -106,12 +106,13 @@
       const item=document.createElement('div');
       item.className='gate-item';
       item.dataset.gateRow='true';
+      item.dataset.gateId=gate.id || (crypto.randomUUID ? crypto.randomUUID() : ('pluma-'+Date.now()+'-'+index));
       const number=index+1;
       item.innerHTML=
         '<div class="gate-item-head"><span class="gate-item-title">'+escapeHtml(gate.nombre || (index===0?'Entrada Principal':'Pluma '+number))+'</span><button class="gate-remove" type="button">Eliminar</button></div>'+
         '<div class="field"><label>Nombre de la pluma</label><input data-gate-name value="'+escapeHtml(gate.nombre || (index===0?'Entrada Principal':'Pluma '+number))+'" placeholder="Ej. Entrada Principal"></div>'+
         '<div class="row"><div class="field"><label>IP / Host del controlador *</label><input data-gate-host value="'+escapeHtml(gate.host||'')+'" placeholder="Ej. 192.168.1.201"></div><div class="field"><label>Puerto *</label><input data-gate-port type="number" min="1" max="65535" value="'+escapeHtml(gate.puerto||'4370')+'"></div></div>'+
-        '<div class="field"><label>Contraseña / clave de comunicación</label><input data-gate-secret type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"></div>'+
+        '<div class="field"><label>Contraseña / clave de comunicación</label><input data-gate-secret type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"><div class="secret-note">'+(gate.tieneSecreto?'Hay una credencial guardada. Déjala vacía para conservarla.':'Todavía no hay una credencial guardada.')+'</div></div>'+
         '<div class="row"><div class="field"><label>Relé / puerta</label><input data-gate-relay type="number" min="1" max="8" value="'+escapeHtml(gate.rele||number)+'"></div><div class="field"><label>Duración del pulso (ms)</label><input data-gate-pulse type="number" min="200" max="10000" value="'+escapeHtml(gate.pulsoMs||'1000')+'"></div></div>'+
         '<div class="field"><label>Notas</label><textarea data-gate-notes placeholder="Ej. Acceso principal, carril de visitas...">'+escapeHtml(gate.notas||'')+'</textarea></div>';
       const nameInput=item.querySelector('[data-gate-name]');
@@ -138,6 +139,7 @@
 
     function gatesConfig(){
       return [...gateList.querySelectorAll('[data-gate-row]')].map((row,index)=>({
+        id:row.dataset.gateId,
         nombre:row.querySelector('[data-gate-name]').value.trim() || 'Pluma '+(index+1),
         host:row.querySelector('[data-gate-host]').value.trim(),
         puerto:row.querySelector('[data-gate-port]').value.trim(),
