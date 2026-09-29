@@ -64,18 +64,47 @@
       </article>
 
       <article class="card">
-        <div class="head"><span class="eyebrow">Telmex / Telefonía</span><h2>Llamadas</h2><p>Parámetros del gateway o cuenta SIP que se usará desde la app.</p></div>
+        <div class="head"><span class="eyebrow">Telmex · Línea residencial</span><h2>Llamadas</h2><p>Configuración para conservar la línea Telmex analógica y conectarla mediante un gateway FXO.</p></div>
         <form class="body" data-form="TELEFONIA">
           <div class="switchline"><span>Integración habilitada</span><input name="activo" type="checkbox" checked></div>
           <div class="field"><label>Nombre</label><input name="nombre" value="principal" readonly></div>
-          <div class="field"><label>Tipo de conexión</label><select name="tipoConexion"><option value="FXO_GATEWAY">Línea Telmex mediante gateway FXO</option><option value="SIP">Cuenta / troncal SIP</option><option value="PENDIENTE">Pendiente de identificar</option></select></div>
-          <div class="row"><div class="field"><label>IP / Host del gateway o servidor SIP</label><input name="host" placeholder="Ej. 192.168.1.60"></div><div class="field"><label>Puerto</label><input name="puerto" type="number" min="1" max="65535" placeholder="5060"></div></div>
-          <div class="field"><label>Usuario / extensión SIP</label><input name="usuario" autocomplete="username" placeholder="Ej. caseta o 101"></div>
+
+          <div class="notice" style="margin:0 0 14px">
+            <strong>Arquitectura:</strong> línea Telmex residencial → puerto TEL1/roseta → gateway FXO → red local → aplicación.
+            Telmex no necesita entregar usuario SIP; las credenciales SIP serán del gateway/PBX local.
+          </div>
+
+          <div class="field"><label>Tipo de conexión</label><input name="tipoConexion" value="TELMEX_FXO" readonly></div>
+
+          <div class="row">
+            <div class="field"><label>IP / Host del gateway FXO *</label><input name="host" placeholder="Ej. 192.168.1.60"></div>
+            <div class="field"><label>Puerto SIP *</label><input name="puerto" type="number" min="1" max="65535" placeholder="5060"></div>
+          </div>
+
+          <div class="row">
+            <div class="field"><label>Marca / modelo del gateway</label><input name="gatewayModelo" placeholder="Ej. Grandstream HT813"></div>
+            <div class="field"><label>Puerto FXO</label><input name="fxoPuerto" placeholder="FXO 1"></div>
+          </div>
+
+          <div class="field"><label>Origen de la línea Telmex</label><select name="origenLinea"><option value="TEL1_MODEM">Puerto TEL1 / PHONE1 del módem Telmex</option><option value="ROSETA">Roseta telefónica de pared</option><option value="OTRO">Otro</option></select></div>
+
+          <div class="field"><label>Usuario / extensión SIP local</label><input name="usuario" autocomplete="username" placeholder="Ej. caseta o 101"></div>
           <div class="field"><label>Contraseña SIP / gateway</label><input name="secreto" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"><div class="secret-note" data-secret-note></div></div>
-          <div class="row"><div class="field"><label>Número de la línea Telmex</label><input name="numeroLinea" inputmode="tel" placeholder="33XXXXXXXX"></div><div class="field"><label>Extensión de caseta</label><input name="extension" placeholder="101"></div></div>
-          <div class="field"><label>Transporte SIP</label><select name="transporte"><option>UDP</option><option>TCP</option><option>TLS</option></select></div>
-          <div class="field"><label>Notas del equipo</label><textarea name="notas" placeholder="Ej. El VTech está conectado a TEL1 del módem / roseta..."></textarea></div>
-          <div class="actions"><button class="btn primary" type="submit">Guardar telefonía</button></div><div class="status" data-status></div>
+
+          <div class="row">
+            <div class="field"><label>Número de la línea Telmex</label><input name="numeroLinea" inputmode="tel" placeholder="33XXXXXXXX"></div>
+            <div class="field"><label>Extensión de caseta</label><input name="extension" placeholder="101"></div>
+          </div>
+
+          <div class="row">
+            <div class="field"><label>Transporte SIP</label><select name="transporte"><option>UDP</option><option>TCP</option><option>TLS</option></select></div>
+            <div class="field"><label>Código de país</label><input name="codigoPais" value="+52"></div>
+          </div>
+
+          <div class="switchline"><span>Conservar teléfono VTech como respaldo</span><input name="vtechRespaldo" type="checkbox" checked></div>
+          <div class="field"><label>Notas del equipo / cableado</label><textarea name="notas" placeholder="Ej. TEL1 del módem → FXO 1 del gateway. VTech queda como respaldo..."></textarea></div>
+
+          <div class="actions"><button class="btn primary" type="submit">Guardar telefonía Telmex</button></div><div class="status" data-status></div>
         </form>
       </article>
     </section>
@@ -239,7 +268,18 @@
       const tipo=form.dataset.form;
       if(tipo==='PLUMAS')return{plumas:gatesConfig()};
       if(tipo==='CAMARAS')return{protocolo:val(form,'protocolo'),rtspPort:val(form,'rtspPort'),canales:cameraChannels()};
-      return{tipoConexion:val(form,'tipoConexion'),numeroLinea:val(form,'numeroLinea'),extension:val(form,'extension'),transporte:val(form,'transporte'),notas:val(form,'notas')};
+      return{
+        tipoConexion:'TELMEX_FXO',
+        gatewayModelo:val(form,'gatewayModelo'),
+        fxoPuerto:val(form,'fxoPuerto'),
+        origenLinea:val(form,'origenLinea'),
+        numeroLinea:val(form,'numeroLinea'),
+        extension:val(form,'extension'),
+        transporte:val(form,'transporte'),
+        codigoPais:val(form,'codigoPais') || '+52',
+        vtechRespaldo:checked(form,'vtechRespaldo'),
+        notas:val(form,'notas')
+      };
     }
 
     document.querySelectorAll('[data-form]').forEach(form=>form.addEventListener('submit',async e=>{
