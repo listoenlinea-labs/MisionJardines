@@ -17,8 +17,8 @@
     input:focus,select:focus,textarea:focus{border-color:#ed9c4d;box-shadow:0 0 0 4px rgba(239,125,11,.09)}.switchline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding:11px;border:1px solid #e8ebf1;border-radius:11px;background:#fafbfd}
     .switchline span{font-size:10px;color:#67748a}.switchline input{width:auto;min-height:auto}.actions{display:flex;gap:8px;margin-top:16px}.btn{min-height:40px;padding:9px 14px;border:1px solid #dfe4ec;border-radius:10px;background:#fff;color:#5d6880;font-size:10px;font-weight:850;cursor:pointer}.primary{flex:1;border-color:#ef7d0b;background:linear-gradient(135deg,#f58b1c,#e87100);color:#fff}
     .status{margin-top:10px;min-height:18px;font-size:10px;color:#71809a}.ok{color:#277849}.err{color:#b94452}.secret-note{margin-top:5px;color:#8c97a8;font-size:9px;line-height:1.45}
-    .camera-list{display:grid;gap:8px;margin-top:8px}.camera-row{display:grid;grid-template-columns:1fr 1.25fr 90px;gap:7px}.camera-row input{min-width:0}.sub{margin:15px 0 9px;color:#36445a;font-size:11px;font-weight:850}
-    @media(max-width:980px){.grid{grid-template-columns:1fr}.wrap{width:min(760px,calc(100% - 28px));padding-top:80px}}@media(max-width:560px){.row,.camera-row{grid-template-columns:1fr}.actions{flex-direction:column}.primary{flex:auto}}
+    .camera-list{display:grid;gap:8px;margin-top:8px}.camera-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) 76px 36px;gap:7px;align-items:center}.camera-row input{min-width:0}.camera-remove{width:36px;min-width:36px;height:41px;padding:0;border:1px solid #f2c9c9;border-radius:10px;background:#fff7f7;color:#b94b4b;font-size:18px;font-weight:800;cursor:pointer}.camera-remove:disabled{opacity:.35;cursor:not-allowed}.camera-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}.camera-count{color:#7d899d;font-size:9px}.camera-add{min-height:36px;padding:8px 12px;border:1px dashed #ef9e4f;border-radius:10px;background:#fff8f0;color:#b95b00;font-size:10px;font-weight:850;cursor:pointer}.sub{margin:15px 0 9px;color:#36445a;font-size:11px;font-weight:850}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}.wrap{width:min(760px,calc(100% - 28px));padding-top:80px}}@media(max-width:560px){.row{grid-template-columns:1fr}.camera-row{grid-template-columns:1fr}.camera-remove{width:100%}.camera-tools{align-items:stretch;flex-direction:column}.actions{flex-direction:column}.primary{flex:auto}}
   </style>
 </head>
 <body>
@@ -53,11 +53,10 @@
           <div class="field"><label>Contraseña</label><input name="secreto" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"><div class="secret-note" data-secret-note></div></div>
           <div class="row"><div class="field"><label>Protocolo</label><select name="protocolo"><option value="RTSP">RTSP</option><option value="HTTP">HTTP / HTTPS</option><option value="ONVIF">ONVIF</option></select></div><div class="field"><label>Puerto RTSP</label><input name="rtspPort" type="number" min="1" max="65535" placeholder="554"></div></div>
           <div class="sub">Canales</div>
-          <div class="camera-list">
-            <div class="camera-row"><input name="cam1Nombre" value="Entrada principal" placeholder="Nombre"><input name="cam1Ruta" placeholder="/Streaming/Channels/101 o URL"><input name="cam1Canal" value="1" placeholder="Canal"></div>
-            <div class="camera-row"><input name="cam2Nombre" value="Av. Valle de México" placeholder="Nombre"><input name="cam2Ruta" placeholder="/Streaming/Channels/201 o URL"><input name="cam2Canal" value="2" placeholder="Canal"></div>
-            <div class="camera-row"><input name="cam3Nombre" value="Área común" placeholder="Nombre"><input name="cam3Ruta" placeholder="Ruta / URL"><input name="cam3Canal" value="3" placeholder="Canal"></div>
-            <div class="camera-row"><input name="cam4Nombre" value="C. Atotonilco" placeholder="Nombre"><input name="cam4Ruta" placeholder="Ruta / URL"><input name="cam4Canal" value="4" placeholder="Canal"></div>
+          <div id="cameraList" class="camera-list"></div>
+          <div class="camera-tools">
+            <span id="cameraCount" class="camera-count">1 canal configurado</span>
+            <button id="addCameraChannel" class="camera-add" type="button">+ Agregar canal</button>
           </div>
           <div class="actions"><button class="btn primary" type="submit">Guardar cámaras</button></div><div class="status" data-status></div>
         </form>
@@ -95,6 +94,64 @@
     const setStatus=(form,msg,kind='')=>{const el=form.querySelector('[data-status]');el.textContent=msg;el.className='status '+kind;};
     const val=(form,n)=>qs(form,n)?.value?.trim()||'';
     const checked=(form,n)=>Boolean(qs(form,n)?.checked);
+    const cameraList=document.getElementById('cameraList');
+    const cameraCount=document.getElementById('cameraCount');
+    const MAX_CAMERAS=32;
+
+    function cameraChannelRow(channel={},index=0){
+      const row=document.createElement('div');
+      row.className='camera-row';
+      row.dataset.cameraRow='true';
+      const number=index+1;
+      row.innerHTML=
+        '<input data-camera-name placeholder="Nombre" value="'+escapeHtml(channel.nombre|| (index===0?'Entrada Principal':''))+'">'+
+        '<input data-camera-path placeholder="/Streaming/Channels/101 o URL" value="'+escapeHtml(channel.ruta||'')+'">'+
+        '<input data-camera-channel placeholder="Canal" value="'+escapeHtml(channel.canal||number)+'">'+
+        '<button class="camera-remove" type="button" title="Eliminar canal" aria-label="Eliminar canal">×</button>';
+      row.querySelector('.camera-remove').addEventListener('click',()=>{row.remove();renumberCameraRows();});
+      return row;
+    }
+
+    function escapeHtml(value){
+      return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function renumberCameraRows(){
+      const rows=[...cameraList.querySelectorAll('[data-camera-row]')];
+      if(!rows.length){cameraList.appendChild(cameraChannelRow({},0));return renumberCameraRows();}
+      rows.forEach((row,index)=>{
+        const channel=row.querySelector('[data-camera-channel]');
+        if(channel && !channel.value.trim()) channel.value=String(index+1);
+        row.querySelector('.camera-remove').disabled=rows.length===1;
+      });
+      cameraCount.textContent=rows.length+' '+(rows.length===1?'canal configurado':'canales configurados');
+      document.getElementById('addCameraChannel').disabled=rows.length>=MAX_CAMERAS;
+    }
+
+    function renderCameraChannels(channels){
+      cameraList.innerHTML='';
+      const source=Array.isArray(channels)&&channels.length?channels:[{nombre:'Entrada Principal',ruta:'',canal:'1'}];
+      source.forEach((channel,index)=>cameraList.appendChild(cameraChannelRow(channel,index)));
+      renumberCameraRows();
+    }
+
+    function cameraChannels(){
+      return [...cameraList.querySelectorAll('[data-camera-row]')].map((row,index)=>({
+        nombre:row.querySelector('[data-camera-name]').value.trim() || 'Canal '+(index+1),
+        ruta:row.querySelector('[data-camera-path]').value.trim(),
+        canal:row.querySelector('[data-camera-channel]').value.trim() || String(index+1)
+      }));
+    }
+
+    document.getElementById('addCameraChannel').addEventListener('click',()=>{
+      const count=cameraList.querySelectorAll('[data-camera-row]').length;
+      if(count>=MAX_CAMERAS)return;
+      cameraList.appendChild(cameraChannelRow({nombre:'',ruta:'',canal:String(count+1)},count));
+      renumberCameraRows();
+      const rows=cameraList.querySelectorAll('[data-camera-row]');
+      rows[rows.length-1]?.querySelector('[data-camera-name]')?.focus();
+    });
+    renderCameraChannels();
 
     function fill(form,row){
       if(!row)return;
@@ -102,9 +159,7 @@
       if(qs(form,'activo'))qs(form,'activo').checked=row.activo!==false;
       const c=row.configuracion||{};
       Object.entries(c).forEach(([k,v])=>{if(qs(form,k)&&v!=null)qs(form,k).value=v;});
-      if(Array.isArray(c.canales)){
-        c.canales.forEach((cam,i)=>{const n=i+1;if(qs(form,'cam'+n+'Nombre'))qs(form,'cam'+n+'Nombre').value=cam.nombre||'';if(qs(form,'cam'+n+'Ruta'))qs(form,'cam'+n+'Ruta').value=cam.ruta||'';if(qs(form,'cam'+n+'Canal'))qs(form,'cam'+n+'Canal').value=cam.canal||'';});
-      }
+      if(form.dataset.form==='CAMARAS') renderCameraChannels(c.canales);
       const note=form.querySelector('[data-secret-note]');
       if(note)note.textContent=row.tieneSecreto?'Hay una credencial guardada. Déjala vacía para conservarla.':'Todavía no hay una credencial guardada.';
     }
@@ -122,7 +177,7 @@
     function configFor(form){
       const tipo=form.dataset.form;
       if(tipo==='PLUMAS')return{releEntrada:val(form,'releEntrada'),releSalida:val(form,'releSalida'),pulsoMs:val(form,'pulsoMs'),notas:val(form,'notas')};
-      if(tipo==='CAMARAS')return{protocolo:val(form,'protocolo'),rtspPort:val(form,'rtspPort'),canales:[1,2,3,4].map(n=>({nombre:val(form,'cam'+n+'Nombre'),ruta:val(form,'cam'+n+'Ruta'),canal:val(form,'cam'+n+'Canal')}))};
+      if(tipo==='CAMARAS')return{protocolo:val(form,'protocolo'),rtspPort:val(form,'rtspPort'),canales:cameraChannels()};
       return{tipoConexion:val(form,'tipoConexion'),numeroLinea:val(form,'numeroLinea'),extension:val(form,'extension'),transporte:val(form,'transporte'),notas:val(form,'notas')};
     }
 
