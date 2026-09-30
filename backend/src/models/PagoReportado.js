@@ -123,6 +123,21 @@ const PagoReportado = sequelize.define(
             allowNull: true,
             field: 'recibo_pdf_url'
         },
+        reciboPdfData: {
+            type: DataTypes.BLOB('long'),
+            allowNull: true,
+            field: 'recibo_pdf_data'
+        },
+        reciboPdfNombre: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            field: 'recibo_pdf_nombre'
+        },
+        reciboPdfMime: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+            field: 'recibo_pdf_mime'
+        },
         fechaEmisionRecibo: {
             type: DataTypes.DATE,
             allowNull: true,
