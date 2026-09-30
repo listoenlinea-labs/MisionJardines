@@ -786,6 +786,315 @@
         height: 68vh;
       }
     }
+  
+    /* ===== Entorno en vivo: tráfico, incidencias y noticias ===== */
+    .page-mapa .live-environment{
+      margin-top:22px;
+    }
+    .page-mapa .live-environment-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+      margin-bottom:12px;
+    }
+    .page-mapa .live-environment-title small{
+      display:block;
+      color:var(--map-orange);
+      font-size:9px;
+      font-weight:900;
+      letter-spacing:.75px;
+      text-transform:uppercase;
+    }
+    .page-mapa .live-environment-title h2{
+      margin:4px 0 0;
+      color:#1f2b42;
+      font-size:22px;
+      letter-spacing:-.6px;
+    }
+    .page-mapa .environment-tabs{
+      display:inline-flex;
+      gap:4px;
+      padding:4px;
+      border:1px solid #e2e7ee;
+      border-radius:12px;
+      background:#f7f9fb;
+    }
+    .page-mapa .environment-tab{
+      min-height:34px;
+      padding:7px 11px;
+      border:0;
+      border-radius:9px;
+      color:#69768a;
+      background:transparent;
+      font:inherit;
+      font-size:9px;
+      font-weight:850;
+      cursor:pointer;
+    }
+    .page-mapa .environment-tab.active{
+      color:#a9560b;
+      background:#fff;
+      box-shadow:0 3px 10px rgba(45,56,74,.08);
+    }
+    .page-mapa .environment-scene{
+      min-height:510px;
+      perspective:1400px;
+    }
+    .page-mapa .environment-flipper{
+      position:relative;
+      min-height:510px;
+      transform-style:preserve-3d;
+      transition:transform .7s cubic-bezier(.2,.7,.2,1);
+    }
+    .page-mapa .environment-flipper.is-flipped{
+      transform:rotateY(180deg);
+    }
+    .page-mapa .environment-face{
+      position:absolute;
+      inset:0;
+      min-height:510px;
+      border:1px solid var(--map-line);
+      border-radius:20px;
+      background:#fff;
+      box-shadow:0 12px 35px rgba(44,57,78,.07);
+      backface-visibility:hidden;
+      overflow:hidden;
+    }
+    .page-mapa .environment-face.back{
+      transform:rotateY(180deg);
+    }
+    .page-mapa .traffic-layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.5fr) minmax(300px,.65fr);
+      min-height:510px;
+    }
+    .page-mapa .traffic-map-wrap{
+      position:relative;
+      min-height:510px;
+      background:#eef2f5;
+    }
+    .page-mapa #liveTrafficMap{
+      position:absolute;
+      inset:0;
+    }
+    .page-mapa .traffic-badge{
+      position:absolute;
+      z-index:4;
+      top:14px;
+      left:14px;
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      padding:8px 10px;
+      border:1px solid rgba(204,231,216,.95);
+      border-radius:999px;
+      color:#23704d;
+      background:rgba(247,253,249,.94);
+      box-shadow:0 5px 15px rgba(30,70,49,.08);
+      font-size:8px;
+      font-weight:900;
+      backdrop-filter:blur(8px);
+    }
+    .page-mapa .traffic-badge:before{
+      content:"";
+      width:7px;height:7px;border-radius:50%;
+      background:#2eaa70;
+      box-shadow:0 0 0 4px rgba(46,170,112,.12);
+    }
+    .page-mapa .traffic-placeholder{
+      position:absolute;
+      inset:0;
+      display:grid;
+      place-items:center;
+      padding:24px;
+      color:#6f7c90;
+      text-align:center;
+      font-size:11px;
+      line-height:1.55;
+      background:linear-gradient(135deg,#f6f8fb,#eef3f7);
+    }
+    .page-mapa .incident-panel{
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      border-left:1px solid #e7ebf0;
+      background:#fff;
+    }
+    .page-mapa .incident-head{
+      padding:17px;
+      border-bottom:1px solid #edf1f5;
+    }
+    .page-mapa .incident-head strong{
+      display:block;
+      color:#273247;
+      font-size:13px;
+    }
+    .page-mapa .incident-head span{
+      display:block;
+      margin-top:3px;
+      color:#8a94a6;
+      font-size:9px;
+    }
+    .page-mapa .incident-list{
+      display:grid;
+      gap:8px;
+      padding:12px;
+      max-height:438px;
+      overflow:auto;
+    }
+    .page-mapa .incident-item{
+      display:grid;
+      grid-template-columns:34px minmax(0,1fr);
+      gap:10px;
+      align-items:start;
+      padding:11px;
+      border:1px solid #e6eaf0;
+      border-radius:13px;
+      background:#fbfcfd;
+    }
+    .page-mapa .incident-icon{
+      width:34px;height:34px;
+      display:grid;place-items:center;
+      border-radius:10px;
+      color:#b35d0b;
+      background:#fff1e4;
+      font-size:15px;
+    }
+    .page-mapa .incident-item strong{
+      display:block;
+      color:#2e394d;
+      font-size:10px;
+      line-height:1.3;
+    }
+    .page-mapa .incident-item p{
+      margin:4px 0 0;
+      color:#7b879a;
+      font-size:8.5px;
+      line-height:1.4;
+    }
+    .page-mapa .incident-meta{
+      display:flex;
+      gap:5px;
+      flex-wrap:wrap;
+      margin-top:6px;
+    }
+    .page-mapa .incident-pill{
+      display:inline-flex;
+      padding:4px 6px;
+      border-radius:999px;
+      color:#687386;
+      background:#eef2f6;
+      font-size:7px;
+      font-weight:850;
+    }
+    .page-mapa .live-empty{
+      padding:28px 16px;
+      color:#8a94a6;
+      text-align:center;
+      font-size:9px;
+      line-height:1.55;
+    }
+    .page-mapa .news-face{
+      min-height:510px;
+      padding:18px;
+      background:
+        radial-gradient(circle at 90% 0%,rgba(240,224,255,.5),transparent 28%),
+        linear-gradient(180deg,#fff,#fbfcff);
+    }
+    .page-mapa .news-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:20px;
+      padding-bottom:14px;
+      border-bottom:1px solid #e8ecf1;
+    }
+    .page-mapa .news-head strong{
+      display:block;
+      color:#253147;
+      font-size:16px;
+    }
+    .page-mapa .news-head span{
+      display:block;
+      margin-top:4px;
+      color:#7d889a;
+      font-size:9px;
+    }
+    .page-mapa .news-live{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:7px 9px;
+      border-radius:999px;
+      color:#7d4da0;
+      background:#f6effb;
+      font-size:8px;
+      font-weight:900;
+    }
+    .page-mapa .news-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-top:14px;
+    }
+    .page-mapa .news-card{
+      min-width:0;
+      min-height:126px;
+      display:flex;
+      flex-direction:column;
+      padding:13px;
+      border:1px solid #e5e8ef;
+      border-radius:14px;
+      color:inherit;
+      background:rgba(255,255,255,.9);
+      box-shadow:0 7px 18px rgba(42,52,72,.045);
+      text-decoration:none;
+      transition:.18s ease;
+    }
+    .page-mapa .news-card:hover{
+      border-color:#e2c8ef;
+      transform:translateY(-2px);
+      box-shadow:0 11px 22px rgba(42,52,72,.075);
+    }
+    .page-mapa .news-card small{
+      color:#9a67b7;
+      font-size:7.5px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    .page-mapa .news-card strong{
+      display:-webkit-box;
+      margin-top:7px;
+      overflow:hidden;
+      color:#29354a;
+      font-size:10.5px;
+      line-height:1.4;
+      -webkit-line-clamp:3;
+      -webkit-box-orient:vertical;
+    }
+    .page-mapa .news-card span{
+      margin-top:auto;
+      padding-top:10px;
+      color:#8791a3;
+      font-size:8px;
+    }
+    @media(max-width:980px){
+      .page-mapa .traffic-layout{grid-template-columns:1fr}
+      .page-mapa .traffic-map-wrap{min-height:360px}
+      .page-mapa .incident-panel{border-left:0;border-top:1px solid #e7ebf0}
+      .page-mapa .incident-list{max-height:300px}
+      .page-mapa .news-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .page-mapa .environment-scene,.page-mapa .environment-flipper,.page-mapa .environment-face{min-height:700px}
+    }
+    @media(max-width:640px){
+      .page-mapa .live-environment-head{align-items:stretch;flex-direction:column}
+      .page-mapa .environment-tabs{width:100%;display:grid;grid-template-columns:1fr 1fr}
+      .page-mapa .news-grid{grid-template-columns:1fr}
+      .page-mapa .environment-scene,.page-mapa .environment-flipper,.page-mapa .environment-face{min-height:940px}
+    }
+
   </style>
 </head>
 
@@ -1041,6 +1350,58 @@
         </section>
       </aside>
     </section>
+
+    <section class="live-environment" aria-labelledby="liveEnvironmentTitle">
+      <div class="live-environment-head">
+        <div class="live-environment-title">
+          <small>Entorno en vivo</small>
+          <h2 id="liveEnvironmentTitle">Tráfico, incidencias y noticias cercanas</h2>
+        </div>
+        <div class="environment-tabs" role="tablist" aria-label="Entorno en vivo">
+          <button class="environment-tab active" type="button" data-environment-face="traffic">Tráfico e incidencias</button>
+          <button class="environment-tab" type="button" data-environment-face="news">Noticias cercanas</button>
+        </div>
+      </div>
+
+      <div class="environment-scene">
+        <div id="environmentFlipper" class="environment-flipper">
+          <article class="environment-face front">
+            <div class="traffic-layout">
+              <div class="traffic-map-wrap">
+                <div id="liveTrafficMap"></div>
+                <div class="traffic-badge">Tráfico actual</div>
+                <div id="trafficMapPlaceholder" class="traffic-placeholder">
+                  Preparando tráfico en tiempo real…
+                </div>
+              </div>
+              <aside class="incident-panel">
+                <div class="incident-head">
+                  <strong>Incidencias cercanas</strong>
+                  <span id="incidentUpdated">Consultando accidentes, obras y cierres en un radio aproximado de 5 km.</span>
+                </div>
+                <div id="incidentList" class="incident-list">
+                  <div class="live-empty">Consultando incidencias viales…</div>
+                </div>
+              </aside>
+            </div>
+          </article>
+
+          <article class="environment-face back news-face">
+            <div class="news-head">
+              <div>
+                <strong>Noticias de Guadalajara y Zapopan</strong>
+                <span id="newsUpdated">Cobertura reciente de medios en las últimas 24 horas.</span>
+              </div>
+              <div class="news-live">● Actualización en vivo</div>
+            </div>
+            <div id="newsGrid" class="news-grid">
+              <div class="live-empty">Consultando noticias locales…</div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer>
@@ -1655,6 +2016,127 @@
       if (match && element) selectLot(match, element);
       else runSearch(linkedNumber);
     }
+
+    async function entornoApi(path){
+      const response=await fetch(API_URL+path,{headers:{Authorization:'Bearer '+token}});
+      let data={};
+      try{data=await response.json()}catch{}
+      if(response.status===401||response.status===403){
+        window.location.replace('login.html');
+        throw new Error('Sesión no disponible');
+      }
+      if(!response.ok||data.ok===false)throw new Error(data.message||'No fue posible consultar el entorno');
+      return data;
+    }
+
+    function formatLiveTime(value){
+      if(!value)return 'Ahora';
+      const date=new Date(value);
+      if(Number.isNaN(date.getTime()))return 'Reciente';
+      return new Intl.DateTimeFormat('es-MX',{
+        day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',
+        timeZone:'America/Mexico_City'
+      }).format(date);
+    }
+
+    function incidentEmoji(category){
+      return ({1:'⚠',6:'↔',7:'⚠',8:'⛔',9:'🚧',11:'≈',14:'⚙'})[Number(category)]||'!';
+    }
+
+    async function loadGoogleMaps(key,address){
+      const placeholder=document.getElementById('trafficMapPlaceholder');
+      if(!key){
+        placeholder.innerHTML='Agrega <strong>GOOGLE_MAPS_BROWSER_API_KEY</strong> en Hostinger para mostrar la capa de tráfico de Google Maps.';
+        return;
+      }
+
+      if(!window.google?.maps){
+        await new Promise((resolve,reject)=>{
+          const script=document.createElement('script');
+          script.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&v=weekly';
+          script.async=true;
+          script.defer=true;
+          script.onload=resolve;
+          script.onerror=()=>reject(new Error('No se pudo cargar Google Maps'));
+          document.head.appendChild(script);
+        });
+      }
+
+      const geocoder=new google.maps.Geocoder();
+      const result=await geocoder.geocode({address});
+      const location=result.results?.[0]?.geometry?.location;
+      if(!location)throw new Error('No fue posible ubicar Misión Jardines');
+
+      const map=new google.maps.Map(document.getElementById('liveTrafficMap'),{
+        center:location,
+        zoom:14,
+        mapTypeControl:false,
+        streetViewControl:false,
+        fullscreenControl:true,
+        gestureHandling:'cooperative'
+      });
+      new google.maps.TrafficLayer({autoRefresh:true}).setMap(map);
+      new google.maps.Marker({
+        map,
+        position:location,
+        title:'Misión Jardines Fraccionamiento'
+      });
+      placeholder.style.display='none';
+    }
+
+    async function loadTrafficEnvironment(){
+      try{
+        const cfg=await entornoApi('/entorno/config');
+        await loadGoogleMaps(cfg.data?.googleMapsKey||'',cfg.data?.address||'Misión Jardines, Zapopan, Jalisco');
+      }catch(error){
+        document.getElementById('trafficMapPlaceholder').textContent=error.message;
+      }
+
+      try{
+        const result=await entornoApi('/entorno/incidencias');
+        const list=document.getElementById('incidentList');
+        if(!result.configured){
+          list.innerHTML='<div class="live-empty">'+String(result.message||'Fuente de incidencias no configurada.')+'</div>';
+          return;
+        }
+        document.getElementById('incidentUpdated').textContent='Actualizado '+formatLiveTime(result.updatedAt)+' · radio '+(result.radiusKm||5)+' km';
+        const items=result.data||[];
+        list.innerHTML=items.length?items.map(item=>{
+          const minutes=item.delaySeconds?Math.max(1,Math.round(item.delaySeconds/60)):0;
+          return '<div class="incident-item"><div class="incident-icon">'+incidentEmoji(item.category)+'</div><div><strong>'+String(item.description||item.type||'Incidente vial')+'</strong><p>'+String([item.from,item.to].filter(Boolean).join(' → ')||'Zona cercana al fraccionamiento')+'</p><div class="incident-meta"><span class="incident-pill">'+String(item.type||'Incidente')+'</span>'+(minutes?'<span class="incident-pill">+'+minutes+' min</span>':'')+'</div></div></div>';
+        }).join(''):'<div class="live-empty">No se reportan accidentes, obras o cierres relevantes en el área consultada.</div>';
+      }catch(error){
+        document.getElementById('incidentList').innerHTML='<div class="live-empty">'+error.message+'</div>';
+      }
+    }
+
+    async function loadLocalNews(){
+      try{
+        const result=await entornoApi('/entorno/noticias');
+        document.getElementById('newsUpdated').textContent='Actualizado '+formatLiveTime(result.updatedAt)+' · cobertura de las últimas 24 horas';
+        const items=result.data||[];
+        document.getElementById('newsGrid').innerHTML=items.length?items.map(item=>
+          '<a class="news-card" href="'+String(item.url||'#')+'" target="_blank" rel="noopener noreferrer"><small>'+String(item.domain||'Medio local')+'</small><strong>'+String(item.title||'Noticia local')+'</strong><span>'+formatLiveTime(item.seenDate)+'</span></a>'
+        ).join(''):'<div class="live-empty">No se encontraron noticias locales recientes en este momento.</div>';
+      }catch(error){
+        document.getElementById('newsGrid').innerHTML='<div class="live-empty">'+error.message+'</div>';
+      }
+    }
+
+    document.querySelectorAll('[data-environment-face]').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const showNews=button.dataset.environmentFace==='news';
+        document.getElementById('environmentFlipper').classList.toggle('is-flipped',showNews);
+        document.querySelectorAll('[data-environment-face]').forEach(item=>item.classList.toggle('active',item===button));
+        if(showNews&&!window.__mjNewsLoaded){
+          window.__mjNewsLoaded=true;
+          loadLocalNews();
+        }
+      });
+    });
+
+    loadTrafficEnvironment();
+
     validarSesion();
   </script>
   <script src="assets/js/site-sidebar.js?v=20261001"></script>
