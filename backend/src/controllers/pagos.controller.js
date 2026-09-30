@@ -40,8 +40,8 @@ function montoMantenimiento(fechaOperacion) {
     };
 }
 
-function conceptoMantenimiento(fechaOperacion) {
-    const date = new Date(String(fechaOperacion) + 'T12:00:00');
+function conceptoMantenimiento() {
+    const date = new Date();
     const month = new Intl.DateTimeFormat('es-MX', {
         month: 'long',
         timeZone: 'America/Mexico_City'
@@ -248,7 +248,7 @@ async function reportarPago(req, res) {
             if (!rule) return res.status(400).json({ ok: false, message: 'Fecha de operación no válida' });
             requerido = rule.total;
             recargo = rule.recargo;
-            concepto = conceptoMantenimiento(fechaOperacion);
+            concepto = conceptoMantenimiento();
         }
 
         if (!Number.isFinite(monto) || monto < requerido) {
@@ -259,7 +259,7 @@ async function reportarPago(req, res) {
         }
 
         transaction = await sequelize.transaction();
-        const year = Number(fechaOperacion.slice(0, 4)) || new Date().getFullYear();
+        const year = new Date().getFullYear();
         const folio = await generarSiguienteFolio(year, transaction);
         const now = new Date();
 
