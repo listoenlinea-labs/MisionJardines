@@ -11,7 +11,7 @@ const router = express.Router();
 const soloAdministracion = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR');
 const seguridad = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD');
 
-router.get('/', autenticarToken, soloAdministracion, obtenerConfiguraciones);
+router.get('/', autenticarToken, seguridad, obtenerConfiguraciones);
 router.get('/estado', autenticarToken, seguridad, obtenerEstadoIntegraciones);
 router.put('/:tipo', autenticarToken, soloAdministracion, guardarConfiguracion);
 

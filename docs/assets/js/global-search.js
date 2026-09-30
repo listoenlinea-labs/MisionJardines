@@ -4,7 +4,7 @@
   const token = () => localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const allowedLinks = () => [...document.querySelectorAll('.mj-side-link:not([hidden])')].map(link => ({ name: link.textContent.trim(), href: link.getAttribute('href') }));
+  const allowedLinks = () => [...document.querySelectorAll('.mj-side-link:not([hidden]):not([data-mj-denied])')].map(link => ({ name: link.textContent.trim(), href: link.getAttribute('href') }));
   const style = document.createElement('style');
   style.textContent = `
     body.mj-home.mj-shared-sidebar-enabled .topbar{padding-left:27px}body.mj-home.mj-shared-sidebar-enabled #searchForm{width:clamp(310px,34vw,600px);margin-left:18px;background:#fff;border-color:#dce4ec;box-shadow:0 7px 22px rgba(23,32,51,.06);cursor:text}

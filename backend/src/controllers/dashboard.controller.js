@@ -297,6 +297,14 @@ async function obtenerDashboard(req, res) {
         eventos: !errores.eventos
     };
 
+    if (req.usuario.rol === 'SEGURIDAD') {
+        return res.json({ok:true, generadoEn:new Date().toISOString(),
+            kpis:{visitas:{hoy:numero(visitas.total_hoy),programadas:numero(visitas.programadas),enCurso:numero(visitas.en_curso)},
+                accesos:{activos:numero(accesos.activos),entradasHoy:numero(accesos.entradas_hoy)},
+                residentes:{activos:numero(residentes.residentes_activos),viviendasOcupadas:numero(residentes.viviendas_ocupadas),viviendasTotales:numero(residentes.viviendas_totales)}},
+            actividad:actividad.filter(item => ['VISITA','ACCESO','RESIDENTE'].includes(item.tipo)),
+            fuentes:{visitas:fuentes.visitas,accesos:fuentes.accesos,residentes:fuentes.residentes}});
+    }
     return res.status(200).json({
         ok: true,
         generadoEn: new Date().toISOString(),

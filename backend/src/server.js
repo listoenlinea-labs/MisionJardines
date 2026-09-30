@@ -26,6 +26,7 @@ async function iniciarServidor() {
         );
 
         await asegurarEsquemaPagos();
+        await require('./services/roles-migration.service').aplicarMigracionRoles();
 
         app.listen(PORT, () => {
             console.log(
