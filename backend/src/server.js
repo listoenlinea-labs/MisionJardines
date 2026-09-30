@@ -12,6 +12,7 @@ require('dotenv').config({
 
 const app = require('./app');
 const sequelize = require('./config/database');
+const { asegurarEsquemaPagos } = require('./services/pagos-schema.service');
 
 const PORT =
     process.env.PORT || 3000;
@@ -23,6 +24,8 @@ async function iniciarServidor() {
         console.log(
             'Conexión con MySQL correcta'
         );
+
+        await asegurarEsquemaPagos();
 
         app.listen(PORT, () => {
             console.log(
