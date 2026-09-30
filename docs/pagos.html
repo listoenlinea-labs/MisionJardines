@@ -859,7 +859,25 @@
       $('extraList').innerHTML=extras.length?extras.map(x=>'<div class="extra'+(selectedExtra&&Number(selectedExtra.id)===Number(x.id)?' selected':'')+'" data-extra="'+Number(x.id)+'"><div><strong>'+esc(x.concepto)+'</strong><small>Cuota extraordinaria activa</small></div><b>'+money(x.monto)+'</b></div>').join(''):'<div class="empty">No hay cuotas extraordinarias activas.</div>';
     }
     function renderReceipts(items){
-      $('receiptList').innerHTML=items.length?items.map(p=>'<div class="receipt-item"><div><strong>'+esc(p.reciboFolio||p.folioReporte)+'</strong><p>'+esc(p.concepto)+'<br>'+esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus)+'">'+esc(({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus)+'</span><span class="pill">'+(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':'Mantenimiento')+'</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b>'+(p.reciboPdfUrl?'<a class="btn" target="_blank" rel="noopener" href="'+esc(p.reciboPdfUrl)+'">Ver / descargar PDF</a>':'<span class="hint">PDF pendiente</span>')+'</div></div>').join(''):'<div class="empty">Todavía no tienes recibos registrados.</div>';
+      $('receiptList').innerHTML=items.length?items.map(p=>'<div class="receipt-item"><div><strong>'+esc(p.reciboFolio||p.folioReporte)+'</strong><p>'+esc(p.concepto)+'<br>'+esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus)+'">'+esc(({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus)+'</span><span class="pill">'+(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':'Mantenimiento')+'</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b>'+(p.tieneReciboPdf?'<button class="btn" type="button" data-receipt-id="'+Number(p.id)+'">Ver / descargar PDF</button>':'<span class="hint">PDF pendiente</span>')+'</div></div>').join(''):'<div class="empty">Todavía no tienes recibos registrados.</div>';
+    }
+
+    async function openReceipt(id){
+      try{
+        const response=await fetch(API+'/pagos/'+Number(id)+'/recibo',{headers:headers()});
+        if(response.status===401){location.replace('login.html');return}
+        if(!response.ok){
+          let message='No fue posible abrir el recibo';
+          try{const data=await response.json();message=data.message||message}catch{}
+          throw Error(message);
+        }
+        const blob=await response.blob();
+        const url=URL.createObjectURL(blob);
+        window.open(url,'_blank','noopener');
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+      }catch(error){
+        toast(error.message);
+      }
     }
 
     function currentMonthName(){return new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'America/Mexico_City'}).format(new Date()).toUpperCase()}
@@ -919,6 +937,11 @@
         toast(err.message);
       }
     });
+    $('receiptList').addEventListener('click',event=>{
+      const button=event.target.closest('[data-receipt-id]');
+      if(!button)return;
+      openReceipt(button.dataset.receiptId);
+    });
     $('retryOcr').addEventListener('click',runOcr);
     $('operationDate').addEventListener('change',updatePaymentSummary);
     document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
@@ -926,7 +949,7 @@
 
     $('createExtra').addEventListener('click',async()=>{const concept=$('extraConcept').value.trim(),amount=Number($('extraAmount').value);if(!concept||!Number.isFinite(amount)||amount<=0)return toast('Captura concepto y monto válidos.');try{await api('/pagos/extraordinarias',{method:'POST',headers:headers(true),body:JSON.stringify({concepto:concept,monto:amount})});$('extraConcept').value='';$('extraAmount').value='';await loadExtras();toast('Cuota extraordinaria creada.')}catch(e){toast(e.message)}});
 
-    $('paymentForm').addEventListener('submit',async e=>{e.preventDefault();if(!proofData)return toast('Adjunta un comprobante.');if(paymentType==='EXTRAORDINARIO'&&!selectedExtra)return toast('Selecciona una cuota extraordinaria.');const amount=Number($('amount').value),required=Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g,''));if(!Number.isFinite(amount)||Math.abs(amount-required)>.009)return toast('El comprobante debe corresponder exactamente a '+money(required)+'.');const payload={tipoPago:paymentType,cuotaExtraordinariaId:selectedExtra?.id||null,folioOperacion:$('operationFolio').value.trim(),fechaOperacion:$('operationDate').value,horaOperacion:normalizeTime($('operationTime').value),monto:amount,comprobanteData:proofData,comprobanteNombre:proofMeta.name,comprobanteMime:proofMeta.mime,textoOcr:ocrText};const btn=$('submitPayment');btn.disabled=true;btn.textContent='Generando recibo…';try{const d=await api('/pagos',{method:'POST',headers:headers(true),body:JSON.stringify(payload)});toast('Pago reportado correctamente.');await loadReceipts();if(d.data?.reciboPdfUrl)window.open(d.data.reciboPdfUrl,'_blank','noopener');$('paymentForm').reset();$('previewBox').classList.remove('show');proofData='';ocrText='';selectedExtra=null;updatePaymentSummary()}catch(err){toast(err.message)}finally{btn.disabled=false;btn.textContent='Reportar pago y generar recibo'}});
+    $('paymentForm').addEventListener('submit',async e=>{e.preventDefault();if(!proofData)return toast('Adjunta un comprobante.');if(paymentType==='EXTRAORDINARIO'&&!selectedExtra)return toast('Selecciona una cuota extraordinaria.');const amount=Number($('amount').value),required=Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g,''));if(!Number.isFinite(amount)||Math.abs(amount-required)>.009)return toast('El comprobante debe corresponder exactamente a '+money(required)+'.');const payload={tipoPago:paymentType,cuotaExtraordinariaId:selectedExtra?.id||null,folioOperacion:$('operationFolio').value.trim(),fechaOperacion:$('operationDate').value,horaOperacion:normalizeTime($('operationTime').value),monto:amount,comprobanteData:proofData,comprobanteNombre:proofMeta.name,comprobanteMime:proofMeta.mime,textoOcr:ocrText};const btn=$('submitPayment');btn.disabled=true;btn.textContent='Generando recibo…';try{const d=await api('/pagos',{method:'POST',headers:headers(true),body:JSON.stringify(payload)});toast('Pago reportado correctamente.');await loadReceipts();if(d.data?.id&&d.data?.tieneReciboPdf)await openReceipt(d.data.id);$('paymentForm').reset();$('previewBox').classList.remove('show');proofData='';ocrText='';selectedExtra=null;updatePaymentSummary()}catch(err){toast(err.message)}finally{btn.disabled=false;btn.textContent='Reportar pago y generar recibo'}});
 
     document.querySelectorAll('[data-copy]').forEach(btn=>btn.addEventListener('click',async()=>{const value=$(btn.dataset.copy).textContent.trim();if(!value||value==='—')return;try{await navigator.clipboard.writeText(value);toast('Dato copiado.')}catch{toast('No fue posible copiar.')}}));
 

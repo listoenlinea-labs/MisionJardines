@@ -89,6 +89,21 @@ async function asegurarEsquemaPagos() {
         allowNull: true
     });
 
+    await ensureColumn(queryInterface, table, current, 'recibo_pdf_data', {
+        type: DataTypes.BLOB('long'),
+        allowNull: true
+    });
+
+    await ensureColumn(queryInterface, table, current, 'recibo_pdf_nombre', {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    });
+
+    await ensureColumn(queryInterface, table, current, 'recibo_pdf_mime', {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    });
+
     await ensureColumn(queryInterface, table, current, 'fecha_emision_recibo', {
         type: DataTypes.DATE,
         allowNull: true

@@ -39,30 +39,8 @@ function basePublicaBackend(req) {
     return protocol + '://' + host;
 }
 
-function construirUrlRecibo(req, fileName) {
-    return basePublicaBackend(req) + '/recibos/' + encodeURIComponent(fileName);
-}
-
-function normalizarUrlRecibo(req, url) {
-    if (!url) return null;
-
-    try {
-        const raw = String(url).trim();
-
-        // Corrige URLs históricas guardadas como /recibos/... o bajo GitHub Pages.
-        const pathMatch = raw.match(/\/recibos\/([^?#]+)/i);
-        if (pathMatch) {
-            return basePublicaBackend(req) + '/recibos/' + pathMatch[1];
-        }
-
-        if (/^https?:\/\//i.test(raw)) {
-            return raw;
-        }
-
-        return basePublicaBackend(req) + '/' + raw.replace(/^\/+/, '');
-    } catch {
-        return null;
-    }
+function construirUrlRecibo(req, pagoId) {
+    return basePublicaBackend(req) + '/api/pagos/' + pagoId + '/recibo';
 }
 
 function montoMantenimiento(fechaOperacion) {
@@ -94,8 +72,10 @@ function pagoSeguro(req, pago) {
     const data = pago.toJSON ? pago.toJSON() : { ...pago };
     delete data.comprobanteData;
     delete data.textoOcr;
+    delete data.reciboPdfData;
     data.tieneComprobante = true;
-    data.reciboPdfUrl = normalizarUrlRecibo(req, data.reciboPdfUrl);
+    data.tieneReciboPdf = Boolean(pago.reciboPdfData || data.reciboPdfNombre);
+    data.reciboPdfUrl = data.id ? construirUrlRecibo(req, data.id) : null;
     return data;
 }
 
@@ -147,7 +127,7 @@ async function listarMisPagos(req, res) {
                 attributes: ['id', 'concepto', 'monto']
             }],
             attributes: {
-                exclude: ['comprobanteData', 'textoOcr']
+                exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData']
             },
             order: [['creadoEn', 'DESC']],
             limit: 100
@@ -452,10 +432,13 @@ async function reportarPago(req, res) {
 
         try {
             const pdf = await generarReciboPagoReportado(pagoCompleto);
-            const reciboPdfUrl = construirUrlRecibo(req, pdf.fileName);
+            const reciboPdfUrl = construirUrlRecibo(req, pagoCompleto.id);
 
             await pagoCompleto.update({
                 reciboPdfUrl,
+                reciboPdfData: pdf.buffer,
+                reciboPdfNombre: pdf.fileName,
+                reciboPdfMime: pdf.mimeType,
                 actualizadoEn: new Date()
             });
         } catch (pdfError) {
@@ -490,11 +473,67 @@ async function reportarPago(req, res) {
     }
 }
 
+async function descargarRecibo(req, res) {
+    try {
+        const pago = await PagoReportado.findOne({
+            where: {
+                id: Number(req.params.id),
+                casaId: req.usuario.casaId
+            },
+            include: [{
+                model: CuotaExtraordinaria,
+                as: 'cuotaExtraordinaria',
+                required: false,
+                attributes: ['id', 'concepto', 'monto']
+            }]
+        });
+
+        if (!pago) {
+            return res.status(404).json({
+                ok: false,
+                message: 'Recibo no encontrado'
+            });
+        }
+
+        // Compatibilidad con recibos creados antes de guardar PDFs en MySQL:
+        // se regeneran una sola vez y quedan persistidos en la base de datos.
+        if (!pago.reciboPdfData) {
+            const pdf = await generarReciboPagoReportado(pago);
+            await pago.update({
+                reciboPdfData: pdf.buffer,
+                reciboPdfNombre: pdf.fileName,
+                reciboPdfMime: pdf.mimeType,
+                reciboPdfUrl: construirUrlRecibo(req, pago.id),
+                actualizadoEn: new Date()
+            });
+        }
+
+        const fileName = pago.reciboPdfNombre ||
+            ('Recibo_' + (pago.reciboFolio || pago.id) + '.pdf');
+
+        res.setHeader('Content-Type', pago.reciboPdfMime || 'application/pdf');
+        res.setHeader(
+            'Content-Disposition',
+            'inline; filename="' + fileName.replace(/"/g, '') + '"'
+        );
+        res.setHeader('Cache-Control', 'private, max-age=300');
+
+        return res.send(pago.reciboPdfData);
+    } catch (error) {
+        console.error('Error al descargar recibo PDF:', error);
+        return res.status(500).json({
+            ok: false,
+            message: 'No fue posible abrir el recibo'
+        });
+    }
+}
+
 module.exports = {
     obtenerConfiguracion,
     listarMisPagos,
     listarCuotasExtraordinarias,
     crearCuotaExtraordinaria,
     desactivarCuotaExtraordinaria,
-    reportarPago
+    reportarPago,
+    descargarRecibo
 };

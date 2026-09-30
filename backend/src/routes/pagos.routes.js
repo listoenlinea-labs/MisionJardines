@@ -5,7 +5,8 @@ const {
     listarCuotasExtraordinarias,
     crearCuotaExtraordinaria,
     desactivarCuotaExtraordinaria,
-    reportarPago
+    reportarPago,
+    descargarRecibo
 } = require('../controllers/pagos.controller');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
@@ -23,6 +24,7 @@ const soloAdministracion = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR');
 
 router.get('/config', lecturaPagos, obtenerConfiguracion);
 router.get('/mios', lecturaPagos, listarMisPagos);
+router.get('/:id/recibo', lecturaPagos, descargarRecibo);
 router.get('/extraordinarias', lecturaPagos, listarCuotasExtraordinarias);
 router.post('/extraordinarias', soloAdministracion, crearCuotaExtraordinaria);
 router.patch('/extraordinarias/:id/archivar', soloAdministracion, desactivarCuotaExtraordinaria);
