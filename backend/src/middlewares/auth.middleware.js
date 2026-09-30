@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Usuario, Rol } = require('../models');
-const { canAccess } = require('../../../docs/assets/js/permissions');
+const { canAccess } = require('../config/permissions');
 const modules = { casas:'bases_datos.html', cuotas:'cuotas.html', eventos:'calendario.html', accesos:'seguridad.html', visitas:'visitas.html', dashboard:'index.html', pagos:'pagos.html', conexion:'conexion.html' };
 
 async function autenticarToken(req, res, next) {
