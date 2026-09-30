@@ -12,6 +12,7 @@ const VerificacionCuenta = require('./VerificacionCuenta');
 const SolicitudRol = require('./SolicitudRol');
 const PagoReportado = require('./PagoReportado');
 const ConfiguracionConexion = require('./ConfiguracionConexion');
+const CuotaExtraordinaria = require('./CuotaExtraordinaria');
 
 /*
  * Casa 1 --- N Usuarios
@@ -193,6 +194,16 @@ PagoReportado.belongsTo(Usuario, {
     as: 'validadoPor'
 });
 
+CuotaExtraordinaria.hasMany(PagoReportado, {
+    foreignKey: 'cuotaExtraordinariaId',
+    as: 'pagosReportados'
+});
+
+PagoReportado.belongsTo(CuotaExtraordinaria, {
+    foreignKey: 'cuotaExtraordinariaId',
+    as: 'cuotaExtraordinaria'
+});
+
 module.exports = {
     Casa,
     Rol,
@@ -207,5 +218,6 @@ module.exports = {
     VerificacionCuenta,
     SolicitudRol,
     PagoReportado,
-    ConfiguracionConexion
+    ConfiguracionConexion,
+    CuotaExtraordinaria
 };
