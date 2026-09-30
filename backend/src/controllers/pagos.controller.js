@@ -251,10 +251,89 @@ async function reportarPago(req, res) {
             concepto = conceptoMantenimiento();
         }
 
-        if (!Number.isFinite(monto) || monto < requerido) {
+        if (!Number.isFinite(monto) || Math.abs(monto - requerido) > 0.009) {
             return res.status(400).json({
                 ok: false,
-                message: 'El monto mínimo requerido para este pago es $' + requerido.toFixed(2) + ' MXN'
+                message: 'El comprobante debe corresponder exactamente a 
+
+        transaction = await sequelize.transaction();
+        const year = new Date().getFullYear();
+        const folio = await generarSiguienteFolio(year, transaction);
+        const now = new Date();
+
+        const pago = await PagoReportado.create({
+            casaId,
+            usuarioId,
+            tipoPago,
+            cuotaExtraordinariaId: cuotaExtraordinaria?.id || null,
+            folioReporte: folio,
+            folioOperacion,
+            fechaOperacion,
+            horaOperacion: horaOperacion.length === 5 ? horaOperacion + ':00' : horaOperacion,
+            concepto,
+            monto,
+            montoRequerido: requerido,
+            recargo,
+            calleSnapshot: casa.calle,
+            numeroCasaSnapshot: casa.numero,
+            nombreReportante: nombreCompleto(usuario) || 'Residente',
+            comprobanteData,
+            comprobanteNombre: comprobanteNombre || null,
+            comprobanteMime: comprobanteMime || 'image/jpeg',
+            textoOcr: textoOcr || null,
+            estatus: 'PENDIENTE_VALIDACION',
+            reciboFolio: folio,
+            fechaEmisionRecibo: now
+        }, { transaction });
+
+        await transaction.commit();
+        transaction = null;
+
+        const pagoCompleto = await PagoReportado.findByPk(pago.id, {
+            include: [{
+                model: CuotaExtraordinaria,
+                as: 'cuotaExtraordinaria',
+                required: false,
+                attributes: ['id', 'concepto', 'monto']
+            }]
+        });
+
+        try {
+            const pdf = await generarReciboPagoReportado(pagoCompleto);
+            const reciboPdfUrl = construirUrlRecibo(pdf.fileName);
+            await pagoCompleto.update({ reciboPdfUrl, actualizadoEn: new Date() });
+        } catch (pdfError) {
+            console.error('Pago guardado; error al generar recibo:', pdfError);
+        }
+
+        return res.status(201).json({
+            ok: true,
+            message: 'Pago reportado y recibo generado',
+            data: pagoSeguro(pagoCompleto)
+        });
+    } catch (error) {
+        if (transaction && !transaction.finished) await transaction.rollback();
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ ok: false, message: 'Este comprobante ya fue registrado' });
+        }
+        console.error('Error al reportar pago:', error);
+        return res.status(500).json({
+            ok: false,
+            message: 'No fue posible registrar el comprobante de pago',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+}
+
+module.exports = {
+    obtenerConfiguracion,
+    listarMisPagos,
+    listarCuotasExtraordinarias,
+    crearCuotaExtraordinaria,
+    desactivarCuotaExtraordinaria,
+    reportarPago
+};
+ + requerido.toFixed(2) + ' MXN para este concepto'
             });
         }
 
