@@ -1,6 +1,6 @@
 const { DataTypes, QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { CuotaExtraordinaria, PagoReportado } = require('../models');
+const { CuotaExtraordinaria, PagoReportado, FolioConsecutivo } = require('../models');
 
 async function hasConstraint(tableName, constraintName) {
     const rows = await sequelize.query(
@@ -39,6 +39,7 @@ async function asegurarEsquemaPagos() {
     // sync() sin alter NO borra datos ni modifica tablas existentes; solamente crea
     // las que falten. El orden importa porque pagos_reportados puede referenciar
     // cuotas_extraordinarias.
+    await FolioConsecutivo.sync();
     await CuotaExtraordinaria.sync();
     await PagoReportado.sync();
 
@@ -115,6 +116,7 @@ async function asegurarEsquemaPagos() {
         console.log('[Pagos] Restricción heredada chk_pago_monto eliminada');
     }
 
+    console.log('[Pagos] Tabla folios_consecutivos verificada');
     console.log('[Pagos] Esquema de pagos verificado');
 }
 
