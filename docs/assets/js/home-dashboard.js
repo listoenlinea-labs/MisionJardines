@@ -207,6 +207,14 @@
       <footer class="hl-footer"><span>Actualizado: ${formatWhen(data.generadoEn)}</span><span>Fuentes: cuotas · visitas_programadas · accesos_seguridad · condominos · direcciones · eventos</span></footer>
     `;
 
+    if (currentRole() === 'SEGURIDAD') {
+      container.querySelector('.hl-kpis > article')?.remove();
+      container.querySelectorAll('.hl-collection,.hl-events').forEach(el => el.remove());
+      const note = container.querySelector('.hl-activity .hl-data-note span:last-child');
+      if (note) note.textContent = 'Visitas, accesos y altas recientes.';
+      const footer = container.querySelector('.hl-footer span:last-child');
+      if (footer) footer.textContent = 'Información operativa de seguridad';
+    }
     document.getElementById('hlRefresh')?.addEventListener('click', load);
   }
 

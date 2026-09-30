@@ -10,12 +10,14 @@ const app = express();
 app.use('/api/busqueda', router);
 
 async function request(path, role, casaId) {
+  const previous = models.Usuario.findByPk;
+  models.Usuario.findByPk = async () => ({id:1,casaId,rolId:1,estatus:'ACTIVO',rol:{nombre:role,activo:true}});
   const server = app.listen(0);
   try {
     const token = jwt.sign({ rol: role, casaId, usuarioId: 1 }, process.env.JWT_SECRET);
     const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`, { headers: { Authorization: `Bearer ${token}` } });
     return { status: response.status, body: await response.json() };
-  } finally { await new Promise(resolve => server.close(resolve)); }
+  } finally { models.Usuario.findByPk = previous; await new Promise(resolve => server.close(resolve)); }
 }
 
 test('el guardia busca domicilios y residentes sin consultar cuotas', async t => {
@@ -52,7 +54,7 @@ test('la búsqueda financiera del residente queda limitada a su casa', async t =
   models.Evento.findAll = async options => { eventWhere = options.where; return []; };
   const { status } = await request('/api/busqueda?q=Jardines', 'CONDOMINO', 17);
   assert.equal(status, 200);
-  assert.deepEqual(scopes.sort(), [17, 17, 17]);
+  assert.deepEqual(scopes.sort(), [17, 17]);
   assert.equal(eventWhere[Op.and][0][Op.or][1].casaId, 17);
 });
 
@@ -81,5 +83,5 @@ test('el enlace a un pago conserva el filtro de vivienda del usuario', async t =
   let payload;
   await listarMisPagos({ usuario: { casaId: 17 }, query: { folio: 'MJ-2026-42' } }, { json(value) { payload = value; return this; } });
   assert.equal(payload.ok, true);
-  assert.deepEqual(options.where, { casaId: 17, folioReporte: 'MJ-2026-42' });
+  assert.deepEqual(options.where, { casaId: 17, reciboFolio: 'MJ-2026-42' });
 });

@@ -72,7 +72,7 @@
     const active = raw === 'reporte.html' ? 'reportes.html' : raw;
     const nav = groups.map(group => {
       const links = group.items.map(item => {
-        const roles = item.roles ? ` data-roles="${item.roles}"` : '';
+        const roles = ` data-roles="${['SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD','CONDOMINO','MESA_DIRECTIVA','MANTENIMIENTO'].filter(r => MJPermissions.canAccess(r,item.page)).join(',')}"`;
         return `<a class="mj-side-link${item.page === active ? ' active' : ''}" href="${item.page}"${roles}>${icons[item.icon]}<span>${item.label}</span></a>`;
       }).join('');
       return `<div class="mj-side-group">${group.label ? `<div class="mj-side-label">${group.label}</div>` : ''}${links}</div>`;
@@ -186,13 +186,14 @@
   function loadHomeDashboard() {
     if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
-    script.src = 'assets/js/home-dashboard.js?v=20260908';
+    script.src = 'assets/js/home-dashboard.js?v=20260930';
     script.defer = true;
     script.dataset.mjHomeDashboard = 'true';
     document.body.appendChild(script);
   }
 
-  function init() {
+  async function init() {
+    if (window.MJAccessReady && !await window.MJAccessReady) return;
     const body = document.body;
     if (!body || body.dataset.sharedSidebarReady === 'true') return;
     body.dataset.sharedSidebarReady = 'true';
@@ -215,7 +216,7 @@
     loadHomeDashboard();
     if (page() !== 'login.html' && !document.querySelector('script[data-mj-global-search]')) {
       const search = document.createElement('script');
-      search.src = 'assets/js/global-search.js?v=20260926b';
+      search.src = 'assets/js/global-search.js?v=20260930';
       search.dataset.mjGlobalSearch = 'true';
       document.body.appendChild(search);
     }

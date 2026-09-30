@@ -2,6 +2,8 @@
 <html lang="es">
 
 <head>
+  <script src="assets/js/permissions.js?v=20260930"></script>
+  <script src="assets/js/page-access.js?v=20260930"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seguridad | Misión Jardines</title>
@@ -1308,7 +1310,7 @@
     $('filterText').value = new URLSearchParams(location.search).get('buscar') || '';
     $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); loadCameraConfig(); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
-  <script src="assets/js/site-sidebar.js?v=1"></script>
+  <script src="assets/js/site-sidebar.js?v=20260930"></script>
 </body>
 
 </html>

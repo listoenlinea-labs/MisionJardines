@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
       queries.push(Cuota.findAll({ attributes: ['id', 'anio', 'mes', 'estatusPago', 'nombrePagador'], where, include: [house], limit: 5, order: [['anio', 'DESC'], ['id', 'DESC']] }).then(rows => { result.cuotas = rows; }));
       if (req.usuario.casaId) queries.push(PagoReportado.findAll({ attributes: ['id', 'folioReporte', 'folioOperacion', 'concepto', 'estatus'], where: { casaId: req.usuario.casaId, ...fields(term, ['folioReporte', 'folioOperacion', 'concepto', 'estatus', 'calleSnapshot', 'numeroCasaSnapshot']) }, limit: 5, order: [['creadoEn', 'DESC']] }).then(rows => { result.pagos = rows; }));
     }
-    if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD', 'CONDOMINO'].includes(role)) {
+    if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) {
       const where = fields(term, ['nombreVisitante', 'codigo', 'placas', 'autorizadoPor', 'estatus', 'telefono']);
       if (/^\d{4}-\d{2}-\d{2}$/.test(q)) where[Op.or].push({ fechaProgramada: q });
       if (role === 'CONDOMINO') {
