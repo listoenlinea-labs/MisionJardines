@@ -84,7 +84,7 @@ const corsOptions = {
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Casa-Id'],
     optionsSuccessStatus: 204
 };
 
@@ -131,6 +131,7 @@ app.get('/api/health/database', async (req, res) => {
     }
 });
 
+app.use('/api/viviendas', require('./routes/viviendas.routes'));
 app.use('/api/casas', casasRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/cuotas', cuotasRoutes);

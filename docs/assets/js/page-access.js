@@ -1,4 +1,20 @@
 (() => {
+  // Capture house context per document so changing it never retargets an in-flight payment.
+  const selected = sessionStorage.getItem('mjCasaSeleccionada');
+  const nativeFetch = window.fetch.bind(window);
+  const api = new URL(window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api');
+  const currentPage = location.pathname.split('/').pop();
+  window.fetch = (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : input,location.href);
+    if (url.origin === api.origin && url.pathname.startsWith(api.pathname+'/') && selected &&
+        !(['viviendas.html','cuenta.html'].includes(currentPage) && url.pathname.endsWith('/auth/perfil'))) {
+      const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+      headers.set('X-Casa-Id',selected); init = {...init,headers};
+    }
+    return nativeFetch(input,init);
+  };
+})();
+(() => {
   const style = document.createElement('style');
   style.textContent = 'html:not([data-mj-authorized]) body{visibility:hidden!important}[data-mj-denied]{display:none!important}';
   document.head.appendChild(style);
@@ -8,6 +24,9 @@
     if (!token) { location.replace('login.html'); return false; }
     try {
       const response = await fetch((window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api') + '/auth/perfil', {headers:{Authorization:'Bearer '+token}});
+      if (response.status === 403 && sessionStorage.getItem('mjCasaSeleccionada') && !['cuenta.html','viviendas.html'].includes(page)) {
+        sessionStorage.removeItem('mjCasaSeleccionada'); location.replace('viviendas.html'); return false;
+      }
       if (!response.ok) throw new Error('No fue posible verificar tu sesión.');
       const data = await response.json();
       const user = data.usuario;

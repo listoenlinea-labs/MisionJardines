@@ -26,6 +26,7 @@ async function iniciarServidor() {
         );
 
         await asegurarEsquemaPagos();
+        await require('./services/viviendas-schema.service').asegurarViviendas();
         try {
             await require('./services/roles-migration.service').aplicarMigracionRoles();
         } catch (error) {
