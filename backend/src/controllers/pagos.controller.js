@@ -14,7 +14,9 @@ const DIA_LIMITE = 10;
 
 function nombreCompleto(usuario) {
     return [usuario?.nombre, usuario?.apellidoPaterno, usuario?.apellidoMaterno]
-        .filter(Boolean).join(' ').trim();
+        .filter(Boolean)
+        .join(' ')
+        .trim();
 }
 
 function limpiarTexto(value, max = 300) {
@@ -31,7 +33,9 @@ function montoMantenimiento(fechaOperacion) {
     const match = String(fechaOperacion || '').match(/^\d{4}-\d{2}-(\d{2})$/);
     const day = match ? Number(match[1]) : NaN;
     if (!Number.isInteger(day)) return null;
+
     const late = day > DIA_LIMITE;
+
     return {
         base: BASE_MANTENIMIENTO,
         recargo: late ? RECARGO_TARDIO : 0,
@@ -46,6 +50,7 @@ function conceptoMantenimiento() {
         month: 'long',
         timeZone: 'America/Mexico_City'
     }).format(date).toUpperCase();
+
     return 'Pago de mantenimiento correspondiente al mes de ' + month;
 }
 
@@ -83,10 +88,16 @@ async function obtenerConfiguracion(req, res) {
 async function listarMisPagos(req, res) {
     try {
         if (!req.usuario.casaId) {
-            return res.status(400).json({ ok: false, message: 'Tu usuario no tiene una vivienda asignada' });
+            return res.status(400).json({
+                ok: false,
+                message: 'Tu usuario no tiene una vivienda asignada'
+            });
         }
 
-        const folio = typeof req.query.folio === 'string' ? req.query.folio.trim().slice(0, 60) : '';
+        const folio = typeof req.query.folio === 'string'
+            ? req.query.folio.trim().slice(0, 60)
+            : '';
+
         const pagos = await PagoReportado.findAll({
             where: {
                 casaId: req.usuario.casaId,
@@ -98,18 +109,26 @@ async function listarMisPagos(req, res) {
                 required: false,
                 attributes: ['id', 'concepto', 'monto']
             }],
-            attributes: { exclude: ['comprobanteData', 'textoOcr'] },
+            attributes: {
+                exclude: ['comprobanteData', 'textoOcr']
+            },
             order: [['creadoEn', 'DESC']],
             limit: 100
         });
 
-        return res.json({ ok: true, total: pagos.length, data: pagos });
+        return res.json({
+            ok: true,
+            total: pagos.length,
+            data: pagos
+        });
     } catch (error) {
         console.error('Error al listar pagos reportados:', error);
         return res.status(500).json({
             ok: false,
             message: 'No fue posible consultar tus recibos',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: process.env.NODE_ENV === 'development'
+                ? error.message
+                : undefined
         });
     }
 }
@@ -120,10 +139,14 @@ async function listarCuotasExtraordinarias(req, res) {
             where: { activo: true },
             order: [['creadoEn', 'DESC']]
         });
+
         return res.json({ ok: true, data });
     } catch (error) {
         console.error('Error al listar cuotas extraordinarias:', error);
-        return res.status(500).json({ ok: false, message: 'No fue posible consultar las cuotas extraordinarias' });
+        return res.status(500).json({
+            ok: false,
+            message: 'No fue posible consultar las cuotas extraordinarias'
+        });
     }
 }
 
@@ -133,10 +156,17 @@ async function crearCuotaExtraordinaria(req, res) {
         const monto = Number(req.body.monto);
 
         if (!concepto) {
-            return res.status(400).json({ ok: false, message: 'El concepto es obligatorio' });
+            return res.status(400).json({
+                ok: false,
+                message: 'El concepto es obligatorio'
+            });
         }
+
         if (!Number.isFinite(monto) || monto <= 0) {
-            return res.status(400).json({ ok: false, message: 'El monto debe ser mayor que cero' });
+            return res.status(400).json({
+                ok: false,
+                message: 'El monto debe ser mayor que cero'
+            });
         }
 
         const cuota = await CuotaExtraordinaria.create({
@@ -153,35 +183,63 @@ async function crearCuotaExtraordinaria(req, res) {
         });
     } catch (error) {
         console.error('Error al crear cuota extraordinaria:', error);
-        return res.status(500).json({ ok: false, message: 'No fue posible crear la cuota extraordinaria' });
+        return res.status(500).json({
+            ok: false,
+            message: 'No fue posible crear la cuota extraordinaria'
+        });
     }
 }
 
 async function desactivarCuotaExtraordinaria(req, res) {
     try {
         const cuota = await CuotaExtraordinaria.findByPk(req.params.id);
-        if (!cuota) return res.status(404).json({ ok: false, message: 'Cuota extraordinaria no encontrada' });
-        await cuota.update({ activo: false, actualizadoEn: new Date() });
-        return res.json({ ok: true, message: 'Cuota extraordinaria archivada' });
+
+        if (!cuota) {
+            return res.status(404).json({
+                ok: false,
+                message: 'Cuota extraordinaria no encontrada'
+            });
+        }
+
+        await cuota.update({
+            activo: false,
+            actualizadoEn: new Date()
+        });
+
+        return res.json({
+            ok: true,
+            message: 'Cuota extraordinaria archivada'
+        });
     } catch (error) {
         console.error('Error al archivar cuota extraordinaria:', error);
-        return res.status(500).json({ ok: false, message: 'No fue posible archivar la cuota extraordinaria' });
+        return res.status(500).json({
+            ok: false,
+            message: 'No fue posible archivar la cuota extraordinaria'
+        });
     }
 }
 
 async function reportarPago(req, res) {
     let transaction;
+
     try {
         const casaId = Number(req.usuario.casaId);
         const usuarioId = Number(req.usuario.usuarioId);
 
         if (!casaId || !usuarioId) {
-            return res.status(400).json({ ok: false, message: 'Tu sesión no tiene una vivienda asociada' });
+            return res.status(400).json({
+                ok: false,
+                message: 'Tu sesión no tiene una vivienda asociada'
+            });
         }
 
         const tipoPago = String(req.body.tipoPago || 'MANTENIMIENTO').toUpperCase();
+
         if (!['MANTENIMIENTO', 'EXTRAORDINARIO'].includes(tipoPago)) {
-            return res.status(400).json({ ok: false, message: 'Tipo de pago no válido' });
+            return res.status(400).json({
+                ok: false,
+                message: 'Tipo de pago no válido'
+            });
         }
 
         const folioOperacion = limpiarTexto(req.body.folioOperacion, 180);
@@ -194,36 +252,66 @@ async function reportarPago(req, res) {
         const comprobanteMime = limpiarTexto(req.body.comprobanteMime, 100);
 
         if (!folioOperacion || !fechaOperacion || !horaOperacion) {
-            return res.status(400).json({ ok: false, message: 'Folio, fecha y hora de operación son obligatorios' });
+            return res.status(400).json({
+                ok: false,
+                message: 'Folio, fecha y hora de operación son obligatorios'
+            });
         }
+
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaOperacion)) {
-            return res.status(400).json({ ok: false, message: 'La fecha de operación no es válida' });
+            return res.status(400).json({
+                ok: false,
+                message: 'La fecha de operación no es válida'
+            });
         }
+
         if (!/^\d{2}:\d{2}(:\d{2})?$/.test(horaOperacion)) {
-            return res.status(400).json({ ok: false, message: 'La hora de operación no es válida' });
+            return res.status(400).json({
+                ok: false,
+                message: 'La hora de operación no es válida'
+            });
         }
+
         if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(comprobanteData)) {
             return res.status(400).json({
                 ok: false,
                 message: 'Adjunta una imagen o PDF válido; los PDF se procesan como imagen de su primera página'
             });
         }
+
         if (comprobanteData.length > 1500000) {
-            return res.status(413).json({ ok: false, message: 'El comprobante procesado es demasiado grande' });
+            return res.status(413).json({
+                ok: false,
+                message: 'El comprobante procesado es demasiado grande'
+            });
         }
 
-        const existente = await PagoReportado.findOne({ where: { folioOperacion } });
+        const existente = await PagoReportado.findOne({
+            where: { folioOperacion }
+        });
+
         if (existente) {
-            return res.status(409).json({ ok: false, message: 'Ese folio de operación ya fue reportado' });
+            return res.status(409).json({
+                ok: false,
+                message: 'Ese folio de operación ya fue reportado'
+            });
         }
 
         const [casa, usuario] = await Promise.all([
-            Casa.findByPk(casaId, { attributes: ['id', 'calle', 'numero'] }),
+            Casa.findByPk(casaId, {
+                attributes: ['id', 'calle', 'numero']
+            }),
             Usuario.findByPk(usuarioId, {
                 attributes: ['id', 'nombre', 'apellidoPaterno', 'apellidoMaterno']
             })
         ]);
-        if (!casa) return res.status(404).json({ ok: false, message: 'No fue posible localizar tu vivienda' });
+
+        if (!casa) {
+            return res.status(404).json({
+                ok: false,
+                message: 'No fue posible localizar tu vivienda'
+            });
+        }
 
         let cuotaExtraordinaria = null;
         let requerido;
@@ -232,20 +320,40 @@ async function reportarPago(req, res) {
 
         if (tipoPago === 'EXTRAORDINARIO') {
             const extraId = Number(req.body.cuotaExtraordinariaId);
+
             if (!Number.isInteger(extraId) || extraId <= 0) {
-                return res.status(400).json({ ok: false, message: 'Selecciona una cuota extraordinaria' });
+                return res.status(400).json({
+                    ok: false,
+                    message: 'Selecciona una cuota extraordinaria'
+                });
             }
+
             cuotaExtraordinaria = await CuotaExtraordinaria.findOne({
-                where: { id: extraId, activo: true }
+                where: {
+                    id: extraId,
+                    activo: true
+                }
             });
+
             if (!cuotaExtraordinaria) {
-                return res.status(404).json({ ok: false, message: 'La cuota extraordinaria ya no está disponible' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'La cuota extraordinaria ya no está disponible'
+                });
             }
+
             requerido = Number(cuotaExtraordinaria.monto);
             concepto = 'Pago extraordinario correspondiente a ' + cuotaExtraordinaria.concepto;
         } else {
             const rule = montoMantenimiento(fechaOperacion);
-            if (!rule) return res.status(400).json({ ok: false, message: 'Fecha de operación no válida' });
+
+            if (!rule) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'Fecha de operación no válida'
+                });
+            }
+
             requerido = rule.total;
             recargo = rule.recargo;
             concepto = conceptoMantenimiento();
@@ -254,90 +362,14 @@ async function reportarPago(req, res) {
         if (!Number.isFinite(monto) || Math.abs(monto - requerido) > 0.009) {
             return res.status(400).json({
                 ok: false,
-                message: 'El comprobante debe corresponder exactamente a 
-
-        transaction = await sequelize.transaction();
-        const year = new Date().getFullYear();
-        const folio = await generarSiguienteFolio(year, transaction);
-        const now = new Date();
-
-        const pago = await PagoReportado.create({
-            casaId,
-            usuarioId,
-            tipoPago,
-            cuotaExtraordinariaId: cuotaExtraordinaria?.id || null,
-            folioReporte: folio,
-            folioOperacion,
-            fechaOperacion,
-            horaOperacion: horaOperacion.length === 5 ? horaOperacion + ':00' : horaOperacion,
-            concepto,
-            monto,
-            montoRequerido: requerido,
-            recargo,
-            calleSnapshot: casa.calle,
-            numeroCasaSnapshot: casa.numero,
-            nombreReportante: nombreCompleto(usuario) || 'Residente',
-            comprobanteData,
-            comprobanteNombre: comprobanteNombre || null,
-            comprobanteMime: comprobanteMime || 'image/jpeg',
-            textoOcr: textoOcr || null,
-            estatus: 'PENDIENTE_VALIDACION',
-            reciboFolio: folio,
-            fechaEmisionRecibo: now
-        }, { transaction });
-
-        await transaction.commit();
-        transaction = null;
-
-        const pagoCompleto = await PagoReportado.findByPk(pago.id, {
-            include: [{
-                model: CuotaExtraordinaria,
-                as: 'cuotaExtraordinaria',
-                required: false,
-                attributes: ['id', 'concepto', 'monto']
-            }]
-        });
-
-        try {
-            const pdf = await generarReciboPagoReportado(pagoCompleto);
-            const reciboPdfUrl = construirUrlRecibo(pdf.fileName);
-            await pagoCompleto.update({ reciboPdfUrl, actualizadoEn: new Date() });
-        } catch (pdfError) {
-            console.error('Pago guardado; error al generar recibo:', pdfError);
-        }
-
-        return res.status(201).json({
-            ok: true,
-            message: 'Pago reportado y recibo generado',
-            data: pagoSeguro(pagoCompleto)
-        });
-    } catch (error) {
-        if (transaction && !transaction.finished) await transaction.rollback();
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(409).json({ ok: false, message: 'Este comprobante ya fue registrado' });
-        }
-        console.error('Error al reportar pago:', error);
-        return res.status(500).json({
-            ok: false,
-            message: 'No fue posible registrar el comprobante de pago',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-}
-
-module.exports = {
-    obtenerConfiguracion,
-    listarMisPagos,
-    listarCuotasExtraordinarias,
-    crearCuotaExtraordinaria,
-    desactivarCuotaExtraordinaria,
-    reportarPago
-};
- + requerido.toFixed(2) + ' MXN para este concepto'
+                message: 'El comprobante debe corresponder exactamente a $' +
+                    requerido.toFixed(2) +
+                    ' MXN para este concepto'
             });
         }
 
         transaction = await sequelize.transaction();
+
         const year = new Date().getFullYear();
         const folio = await generarSiguienteFolio(year, transaction);
         const now = new Date();
@@ -350,7 +382,9 @@ module.exports = {
             folioReporte: folio,
             folioOperacion,
             fechaOperacion,
-            horaOperacion: horaOperacion.length === 5 ? horaOperacion + ':00' : horaOperacion,
+            horaOperacion: horaOperacion.length === 5
+                ? horaOperacion + ':00'
+                : horaOperacion,
             concepto,
             monto,
             montoRequerido: requerido,
@@ -382,7 +416,11 @@ module.exports = {
         try {
             const pdf = await generarReciboPagoReportado(pagoCompleto);
             const reciboPdfUrl = construirUrlRecibo(pdf.fileName);
-            await pagoCompleto.update({ reciboPdfUrl, actualizadoEn: new Date() });
+
+            await pagoCompleto.update({
+                reciboPdfUrl,
+                actualizadoEn: new Date()
+            });
         } catch (pdfError) {
             console.error('Pago guardado; error al generar recibo:', pdfError);
         }
@@ -393,15 +431,24 @@ module.exports = {
             data: pagoSeguro(pagoCompleto)
         });
     } catch (error) {
-        if (transaction && !transaction.finished) await transaction.rollback();
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(409).json({ ok: false, message: 'Este comprobante ya fue registrado' });
+        if (transaction && !transaction.finished) {
+            await transaction.rollback();
         }
+
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({
+                ok: false,
+                message: 'Este comprobante ya fue registrado'
+            });
+        }
+
         console.error('Error al reportar pago:', error);
         return res.status(500).json({
             ok: false,
             message: 'No fue posible registrar el comprobante de pago',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: process.env.NODE_ENV === 'development'
+                ? error.message
+                : undefined
         });
     }
 }
