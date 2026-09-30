@@ -53,12 +53,9 @@ function paymentConcept(pago) {
 
 function generarReciboPagoReportado(pago) {
     return new Promise((resolve, reject) => {
-        const storagePath = path.resolve(process.cwd(), 'storage', 'recibos');
-        fs.mkdirSync(storagePath, { recursive: true });
-
         const folio = pago.reciboFolio || pago.folioReporte;
         const fileName = 'Recibo_' + folio + '.pdf';
-        const filePath = path.join(storagePath, fileName);
+        const chunks = [];
         const doc = new PDFDocument({
             size: 'LETTER',
             margins: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -70,8 +67,15 @@ function generarReciboPagoReportado(pago) {
                     : 'Recibo de pago de mantenimiento'
             }
         });
-        const stream = fs.createWriteStream(filePath);
-        doc.pipe(stream);
+        doc.on('data', chunk => chunks.push(chunk));
+        doc.on('error', reject);
+        doc.on('end', () => {
+            resolve({
+                fileName,
+                mimeType: 'application/pdf',
+                buffer: Buffer.concat(chunks)
+            });
+        });
 
         doc.rect(11, 15, 590, 762).lineWidth(0.6).strokeColor('#B9B9B9').stroke();
         doc.rect(24, 70, 564, 707).lineWidth(1).strokeColor('#222222').stroke();
@@ -146,9 +150,6 @@ function generarReciboPagoReportado(pago) {
             );
 
         doc.end();
-        stream.on('finish', () => resolve({ filePath, fileName }));
-        stream.on('error', reject);
-        doc.on('error', reject);
     });
 }
 
