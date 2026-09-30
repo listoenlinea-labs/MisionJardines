@@ -181,13 +181,13 @@
       $('receiptList').innerHTML=items.length?items.map(p=>'<div class="receipt-item"><div><strong>'+esc(p.reciboFolio||p.folioReporte)+'</strong><p>'+esc(p.concepto)+'<br>'+esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus)+'">'+esc(({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus)+'</span><span class="pill">'+(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':'Mantenimiento')+'</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b>'+(p.reciboPdfUrl?'<a class="btn" target="_blank" rel="noopener" href="'+esc(p.reciboPdfUrl)+'">Ver / descargar PDF</a>':'<span class="hint">PDF pendiente</span>')+'</div></div>').join(''):'<div class="empty">Todavía no tienes recibos registrados.</div>';
     }
 
-    function monthName(dateValue){if(!dateValue)return '';const d=new Date(dateValue+'T12:00:00');return new Intl.DateTimeFormat('es-MX',{month:'long'}).format(d).toUpperCase()}
+    function currentMonthName(){return new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'America/Mexico_City'}).format(new Date()).toUpperCase()}
     function updatePaymentSummary(){
       const date=$('operationDate').value;
       if(paymentType==='EXTRAORDINARIO'){
         const amount=Number(selectedExtra?.monto||0);$('summaryBase').textContent=selectedExtra?money(amount):'Selecciona una cuota';$('summaryLate').textContent=money(0);$('lateRow').hidden=true;$('summaryTotal').textContent=money(amount);$('amount').min=amount||1;$('officialConcept').value=selectedExtra?'Pago extraordinario correspondiente a '+selectedExtra.concepto:'Selecciona una cuota extraordinaria';return;
       }
-      const base=Number(config?.mantenimiento?.montoBase||300);const limit=Number(config?.mantenimiento?.diaLimite||10);const lateFee=Number(config?.mantenimiento?.recargoTardio||50);const day=date?Number(date.slice(-2)):0;const late=day>limit;const total=base+(late?lateFee:0);$('lateRow').hidden=false;$('summaryBase').textContent=money(base);$('summaryLate').textContent=money(late?lateFee:0);$('lateRow').classList.toggle('late',late);$('summaryTotal').textContent=money(total);$('ruleAmount').textContent=money(total);$('amount').min=total;$('officialConcept').value=date?'Pago de mantenimiento correspondiente al mes de '+monthName(date):'Selecciona la fecha del depósito';
+      const base=Number(config?.mantenimiento?.montoBase||300);const limit=Number(config?.mantenimiento?.diaLimite||10);const lateFee=Number(config?.mantenimiento?.recargoTardio||50);const day=date?Number(date.slice(-2)):0;const late=day>limit;const total=base+(late?lateFee:0);$('lateRow').hidden=false;$('summaryBase').textContent=money(base);$('summaryLate').textContent=money(late?lateFee:0);$('lateRow').classList.toggle('late',late);$('summaryTotal').textContent=money(total);$('ruleAmount').textContent=money(total);$('amount').min=total;$('officialConcept').value='Pago de mantenimiento correspondiente al mes de '+currentMonthName();
     }
 
     function setTab(type){
