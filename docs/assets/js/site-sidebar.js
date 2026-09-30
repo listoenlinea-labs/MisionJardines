@@ -186,7 +186,7 @@
   function loadHomeDashboard() {
     if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
-    script.src = 'assets/js/home-dashboard.js?v=20260930';
+    script.src = 'assets/js/home-dashboard.js?v=20260930b';
     script.defer = true;
     script.dataset.mjHomeDashboard = 'true';
     document.body.appendChild(script);
