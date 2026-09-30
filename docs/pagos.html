@@ -818,8 +818,39 @@
     const money=v=>Number(v||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2});
     const role=()=>{try{const raw=localStorage.getItem('misionJardinesUsuario')||sessionStorage.getItem('misionJardinesUsuario');const u=JSON.parse(raw||'{}');return u?.rol?.nombre||u?.rol||''}catch{return ''}}
     const fullName=u=>[u?.nombre,u?.apellidoPaterno,u?.apellidoMaterno].filter(Boolean).join(' ').trim()||'Residente';
+    function storedUser(){
+      try{
+        return JSON.parse(
+          localStorage.getItem('misionJardinesUsuario')||
+          sessionStorage.getItem('misionJardinesUsuario')||
+          '{}'
+        );
+      }catch{return {}}
+    }
+    function paintProfile(user){
+      if(!user)return false;
+      const house=user.casa||null;
+      $('residentName').textContent=fullName(user);
+      if(house){
+        $('houseText').textContent=(house.calle||'')+' · Casa '+(house.numero||'');
+        $('residentStreet').value=house.calle||'';
+        $('residentNumber').value=house.numero||'';
+        return Boolean(house.calle||house.numero);
+      }
+      return false;
+    }
 
-    async function loadProfile(){const d=await api('/auth/perfil',{headers:headers()});profile=d.usuario;const house=profile?.casa;if(!house)throw Error('Tu usuario no tiene vivienda asociada');$('residentName').textContent=fullName(profile);$('houseText').textContent=(house.calle||'')+' · Casa '+(house.numero||'');$('residentStreet').value=house.calle||'';$('residentNumber').value=house.numero||''}
+    async function loadProfile(){
+      // Pintar de inmediato con la información guardada al iniciar sesión,
+      // para que Calle y Número no dependan de otras llamadas de Pagos.
+      const cached=storedUser();
+      paintProfile(cached);
+
+      const d=await api('/auth/perfil',{headers:headers()});
+      profile=d.usuario;
+      const painted=paintProfile(profile);
+      if(!painted)throw Error('Tu usuario no tiene vivienda asociada');
+    }
     async function loadConfig(){const d=await api('/pagos/config',{headers:headers()});config=d.data||{};$('bankName').textContent=config.banco||'Cuenta por configurar';$('bankHolder').textContent=config.titular||'—';$('bankAccount').textContent=config.cuenta||'—';$('bankClabe').textContent=config.clabe||'—';$('bankReference').textContent=config.referencia||'Usa tu calle y número de casa';$('legalTitle').textContent=config.legal?.titulo||'Fundamento y aviso de cuotas';$('legalText').textContent=config.legal?.texto||'Pendiente de contenido legal.';updatePaymentSummary()}
     async function loadExtras(){try{const d=await api('/pagos/extraordinarias',{headers:headers()});extras=d.data||[];renderExtras()}catch(e){$('extraList').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
     async function loadReceipts(){try{const d=await api('/pagos/mios',{headers:headers()});renderReceipts(d.data||[])}catch(e){$('receiptList').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
@@ -901,7 +932,21 @@
 
     async function init(){
       $('adminExtraBox').hidden=!['SUPER_ADMIN','ADMINISTRADOR'].includes(role());
-      try{await Promise.all([loadProfile(),loadConfig(),loadExtras(),loadReceipts()]);$('apiStatus').textContent='Conectado';setTab('MANTENIMIENTO')}catch(e){$('apiStatus').textContent='Revisar conexión';toast(e.message)}
+
+      // Mostrar el domicilio desde la sesión incluso antes de consultar el API.
+      paintProfile(storedUser());
+
+      try{
+        await Promise.all([loadProfile(),loadConfig()]);
+        $('apiStatus').textContent='Conectado';
+      }catch(e){
+        $('apiStatus').textContent='Revisar conexión';
+        toast(e.message);
+      }
+
+      // Estas consultas no deben impedir que la vivienda y la cuenta se pinten.
+      await Promise.allSettled([loadExtras(),loadReceipts()]);
+      setTab('MANTENIMIENTO');
     }
     init();
   </script>
