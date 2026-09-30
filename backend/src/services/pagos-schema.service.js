@@ -1,6 +1,6 @@
 const { DataTypes, QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { CuotaExtraordinaria } = require('../models');
+const { CuotaExtraordinaria, PagoReportado } = require('../models');
 
 async function hasConstraint(tableName, constraintName) {
     const rows = await sequelize.query(
@@ -35,8 +35,12 @@ async function ensureIndex(queryInterface, table, indexName, fields, unique = fa
 async function asegurarEsquemaPagos() {
     const queryInterface = sequelize.getQueryInterface();
 
-    // Crear la tabla si todavía no existe. sync() sin alter no modifica tablas existentes.
+    // Crear primero las tablas base del módulo si todavía no existen.
+    // sync() sin alter NO borra datos ni modifica tablas existentes; solamente crea
+    // las que falten. El orden importa porque pagos_reportados puede referenciar
+    // cuotas_extraordinarias.
     await CuotaExtraordinaria.sync();
+    await PagoReportado.sync();
 
     const table = 'pagos_reportados';
     const current = await queryInterface.describeTable(table);
