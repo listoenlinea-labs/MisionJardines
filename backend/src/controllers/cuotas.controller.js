@@ -68,6 +68,7 @@ function obtenerInclude() {
                 {
                     model: Usuario,
                     as: 'usuarios',
+                    through: {where:{activo:true},attributes:['tipo']},
                     required: false,
                     where: {
                         estatus: 'ACTIVO'
@@ -787,7 +788,7 @@ async function confirmarPago(req, res) {
         const contactoPrincipal =
             cuota.casa?.usuarios?.find(
                 usuario =>
-                    usuario.esContactoPrincipal &&
+                    usuario.UsuarioCasa?.tipo === 'RESPONSABLE' &&
                     usuario.recibeCorreosPago
             ) ||
             cuota.casa?.usuarios?.find(
@@ -1076,14 +1077,14 @@ async function enviarReciboCuota(
     const usuarioContacto =
         cuota.casa?.usuarios?.find(
             usuario =>
-                usuario.esContactoPrincipal &&
+                usuario.UsuarioCasa?.tipo === 'RESPONSABLE' &&
                 usuario.recibeCorreosPago
         ) ||
         cuota.casa?.usuarios?.find(
             usuario => usuario.recibeCorreosPago
         ) ||
         cuota.casa?.usuarios?.find(
-            usuario => usuario.esContactoPrincipal
+            usuario => usuario.UsuarioCasa?.tipo === 'RESPONSABLE'
         ) ||
         cuota.casa?.usuarios?.[0];
 

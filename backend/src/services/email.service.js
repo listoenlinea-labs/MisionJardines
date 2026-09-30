@@ -254,7 +254,18 @@ async function enviarCodigoVerificacion({
     return { enviado: true };
 }
 
+async function enviarInvitacionCasa({destinatario,token,casa}) {
+    const base = process.env.FRONTEND_APP_URL || 'https://listoenlinea-labs.github.io/MisionJardines';
+    const url = base.replace(/\/$/,'') + '/invitacion.html#' + token;
+    await enviarConReintento(crearTransportador(), {
+        from: {name:process.env.SMTP_FROM_NAME || 'Misión Jardines',address:process.env.SMTP_FROM_EMAIL},
+        to:destinatario, subject:'Invitación a tu vivienda · Misión Jardines',
+        text:`Te invitaron a la vivienda ${casa.calle} ${casa.numero}. Acepta con este enlace: ${url}\nVence en 72 horas. Si ya tienes cuenta, inicia sesión con este correo. Si no, puedes crearla desde el enlace.`
+    });
+}
+
 module.exports = {
+    enviarInvitacionCasa,
     enviarReciboPorCorreo,
     enviarCodigoVerificacion,
     validarConfiguracionSmtp

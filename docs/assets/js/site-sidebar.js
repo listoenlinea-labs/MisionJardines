@@ -21,7 +21,7 @@
   };
 
   const groups = [
-    { label: '', items: [{ page: 'index.html', label: 'Inicio', icon: 'home' }] },
+    { label: '', items: [{ page: 'index.html', label: 'Inicio', icon: 'home' },{page:'viviendas.html',label:'Mis viviendas',icon:'residents'}] },
     { label: 'Comunidad', items: [
       { page: 'cuotas.html', label: 'Cuotas', icon: 'payment', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO' },
       { page: 'pagos.html', label: 'Pagos', icon: 'payment', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO' },
@@ -179,7 +179,7 @@
 
   function logout() {
     ['misionJardinesToken', 'misionJardinesUsuario', STORAGE_KEY].forEach(key => localStorage.removeItem(key));
-    ['misionJardinesToken', 'misionJardinesUsuario'].forEach(key => sessionStorage.removeItem(key));
+    ['misionJardinesToken', 'misionJardinesUsuario','mjCasaSeleccionada'].forEach(key => sessionStorage.removeItem(key));
     location.replace('login.html');
   }
 
@@ -202,6 +202,25 @@
     if (!body.classList.contains('mj-home')) document.querySelector('body > header')?.remove();
     const aside = createSidebar();
     createTopAccount();
+    const houseBox=document.createElement('div');
+    houseBox.style.cssText='padding:10px 12px;border-bottom:1px solid #e4e8ef';
+    houseBox.innerHTML='<label style="font-size:11px;font-weight:700">Vivienda seleccionada<select aria-label="Vivienda seleccionada" style="width:100%;margin-top:6px;padding:7px;border:1px solid #ddd;border-radius:7px"></select></label>';
+    aside.querySelector('.mj-side-community').after(houseBox);
+    const selector=houseBox.querySelector('select'); selector.disabled=true;
+    try {
+      const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+      const response=await fetch((window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api')+'/viviendas/mias',{headers:{Authorization:'Bearer '+token}});
+      const data=await response.json(); if(!response.ok||!data.ok)throw Error();
+      const links=data.viviendas||[];
+      for(const link of links){const option=document.createElement('option');option.value=link.casaId;option.textContent=link.casa.calle+' '+link.casa.numero;selector.append(option);}
+      const selected=sessionStorage.getItem('mjCasaSeleccionada');
+      if(links.some(l=>String(l.casaId)===selected))selector.value=selected;
+      else if(selected && !['viviendas.html','cuenta.html'].includes(page())) {sessionStorage.removeItem('mjCasaSeleccionada');location.replace('viviendas.html');return;}
+      if(!links.length){const option=document.createElement('option');option.textContent='Sin vivienda vinculada';selector.append(option);}
+      selector.disabled=links.length<2;
+      selector.addEventListener('change',()=>{sessionStorage.setItem('mjCasaSeleccionada',selector.value);location.reload();});
+    } catch (_) {const option=document.createElement('option');option.textContent='Consulta Mis viviendas';selector.append(option);}
+
     permissions(aside);
     aside.querySelector('.mj-side-logout')?.addEventListener('click', logout);
 

@@ -1,0 +1,22 @@
+(async()=>{
+ if(!await window.MJAccessReady)return;
+ const $=id=>document.getElementById(id),apiBase=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
+ const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+ let isAdmin=false,houseId=null;
+ const message=text=>{$('message').textContent=text;$('message').hidden=false;};
+ async function api(path,method='GET',body){const r=await fetch(apiBase+'/viviendas'+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.message||'No fue posible completar la solicitud');return d;}
+ function button(text,action){const b=document.createElement('button');b.textContent=text;b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){message(e.message);}finally{b.disabled=false;}};return b;}
+ async function openHouse(id,label){houseId=id;$('members').hidden=false;$('houseTitle').textContent=label;$('memberRows').replaceChildren();$('pending').replaceChildren();
+ const data=await api('/'+id+'/miembros');
+ for(const link of data.miembros){const tr=document.createElement('tr');for(const text of [link.usuario.nombre+' '+link.usuario.apellidoPaterno,link.usuario.correo,link.tipo+(link.activo?'':' · Desvinculado')]){const td=document.createElement('td');td.textContent=text;tr.append(td);}const actions=document.createElement('td');
+ if(isAdmin){actions.append(button(link.activo?'Desvincular':'Reactivar',async()=>{if(!confirm('¿Actualizar la vinculación de esta persona?'))return;await api('/'+id+'/miembros/'+link.usuarioId,'PATCH',{tipo:link.tipo,activo:!link.activo});await openHouse(id,label);}));actions.append(button(link.tipo==='RESPONSABLE'?'Cambiar a miembro':'Nombrar responsable',async()=>{await api('/'+id+'/miembros/'+link.usuarioId,'PATCH',{tipo:link.tipo==='RESPONSABLE'?'MIEMBRO':'RESPONSABLE',activo:!!link.activo});await openHouse(id,label);}));}tr.append(actions);$('memberRows').append(tr);}
+ for(const inv of data.invitaciones){const row=document.createElement('p');row.textContent=inv.correo+' · '+inv.tipo+' · '+(new Date(inv.expiraEn)>new Date()?'Vence ':'Venció ')+new Date(inv.expiraEn).toLocaleString();if(isAdmin||inv.tipo==='MIEMBRO')row.append(button('Revocar',async()=>{await api('/invitaciones/'+inv.id,'DELETE');await openHouse(id,label);}));$('pending').append(row);}
+ }
+ try{const data=await api('/mias');isAdmin=data.administrador;$('admin').hidden=!isAdmin;$('linkExisting').hidden=!isAdmin;$('memberType').querySelector('[value="RESPONSABLE"]').hidden=!isAdmin;
+ if(!data.viviendas.length)$('houses').textContent='Aún no tienes viviendas vinculadas. Acepta una invitación o contacta a Administración.';
+ for(const link of data.viviendas){const card=document.createElement('div'),title=document.createElement('h3'),label=link.casa.calle+' '+link.casa.numero;title.textContent=label;card.append(title);const type=document.createElement('p');type.textContent=link.tipo;card.append(type);card.append(button('Seleccionar vivienda',async()=>{sessionStorage.setItem('mjCasaSeleccionada',String(link.casaId));location.href=MJPermissions.canAccess(window.MJVerifiedRole,'pagos.html')?'pagos.html':'cuenta.html';}));if(isAdmin||link.tipo==='RESPONSABLE')card.append(button('Gestionar miembros',()=>openHouse(link.casaId,label)));$('houses').append(card);}
+ if(isAdmin){const d=await api('/administracion/casas');for(const casa of d.casas){const o=document.createElement('option');o.value=casa.id;o.textContent=casa.calle+' '+casa.numero;$('adminHouse').append(o);}$('adminHouse').onchange=()=>{if($('adminHouse').value)openHouse($('adminHouse').value,$('adminHouse').selectedOptions[0].textContent).catch(e=>message(e.message));};}
+ }catch(e){message(e.message);}
+ $('inviteForm').onsubmit=async event=>{event.preventDefault();const b=event.submitter;b.disabled=true;try{const d=await api('/'+houseId+'/invitaciones','POST',{correo:$('email').value,tipo:$('memberType').value});message(d.message);await openHouse(houseId,$('houseTitle').textContent);}catch(e){message(e.message);}finally{b.disabled=false;}};
+ $('linkExisting').onclick=async()=>{try{const d=await api('/'+houseId+'/miembros','POST',{correo:$('email').value,tipo:$('memberType').value});message(d.message);await openHouse(houseId,$('houseTitle').textContent);}catch(e){message(e.message);}};
+})();

@@ -11,13 +11,15 @@ app.use('/api/busqueda', router);
 
 async function request(path, role, casaId) {
   const previous = models.Usuario.findByPk;
+  const oldMembership = models.UsuarioCasa.findOne;
+  models.UsuarioCasa.findOne=async()=>casaId?({casaId}):null;
   models.Usuario.findByPk = async () => ({id:1,casaId,rolId:1,estatus:'ACTIVO',rol:{nombre:role,activo:true}});
   const server = app.listen(0);
   try {
     const token = jwt.sign({ rol: role, casaId, usuarioId: 1 }, process.env.JWT_SECRET);
     const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`, { headers: { Authorization: `Bearer ${token}` } });
     return { status: response.status, body: await response.json() };
-  } finally { models.Usuario.findByPk = previous; await new Promise(resolve => server.close(resolve)); }
+  } finally { models.Usuario.findByPk = previous; models.UsuarioCasa.findOne=oldMembership; await new Promise(resolve => server.close(resolve)); }
 }
 
 test('el guardia busca domicilios y residentes sin consultar cuotas', async t => {

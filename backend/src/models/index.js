@@ -22,7 +22,7 @@ const CuotaExtraordinaria = require('./CuotaExtraordinaria');
  */
 Casa.hasMany(Usuario, {
     foreignKey: 'casaId',
-    as: 'usuarios'
+    as: 'usuariosLegado'
 });
 
 Usuario.belongsTo(Casa, {
@@ -204,7 +204,17 @@ PagoReportado.belongsTo(CuotaExtraordinaria, {
     as: 'cuotaExtraordinaria'
 });
 
+const UsuarioCasa = require('./UsuarioCasa');
+const InvitacionCasa = require('./InvitacionCasa');
+const HistorialVinculo = require('./HistorialVinculo');
+UsuarioCasa.belongsTo(Usuario,{foreignKey:'usuarioId',as:'usuario'});
+UsuarioCasa.belongsTo(Casa,{foreignKey:'casaId',as:'casa'});
+Usuario.hasMany(UsuarioCasa,{foreignKey:'usuarioId',as:'viviendas'});
+Casa.hasMany(UsuarioCasa,{foreignKey:'casaId',as:'miembros'});
+Casa.belongsToMany(Usuario,{through:UsuarioCasa,foreignKey:'casaId',otherKey:'usuarioId',as:'usuarios'});
+InvitacionCasa.belongsTo(Casa,{foreignKey:'casaId',as:'casa'});
 module.exports = {
+    UsuarioCasa, InvitacionCasa, HistorialVinculo,
     Casa,
     Rol,
     Usuario,

@@ -7,12 +7,12 @@
     MESA_DIRECTIVA: ['index.html','cuotas.html','pagos.html','bases_datos.html','conmutador.html','anuncios.html','calendario.html','directorio.html'],
     MANTENIMIENTO: ['index.html','reportes.html','reporte.html','anuncios.html','calendario.html','directorio.html']
   };
-  const pages = [...new Set([...security,...resident,'cuenta.html'])];
+  const pages = [...new Set([...security,...resident,'cuenta.html','viviendas.html'])];
   function canAccess(role, page) {
     if (!pages.includes(page)) return false;
     if (admins.includes(role)) return true;
     const allowed = role === 'SEGURIDAD' ? security : role === 'CONDOMINO' ? resident : legacy[role];
-    return !!allowed && (page === 'cuenta.html' || allowed.includes(page));
+    return !!allowed && (['cuenta.html','viviendas.html'].includes(page) || allowed.includes(page));
   }
   const policy = { admins, pages, canAccess, landing: role => role === 'CONDOMINO' ? 'cuotas.html' : 'index.html' };
   if (typeof module !== 'undefined' && module.exports) module.exports = policy;

@@ -2,16 +2,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 Object.assign(process.env,{DB_HOST:'localhost',DB_PORT:'3306',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'unused',JWT_SECRET:'test-secret'});
 const jwt = require('jsonwebtoken');
-const {Usuario} = require('../src/models');
+const {Usuario,UsuarioCasa} = require('../src/models');
 const {autenticarToken} = require('../src/middlewares/auth.middleware');
 async function check(role,baseUrl, options={}) {
   const previous = Usuario.findByPk;
+  const oldMembership=UsuarioCasa.findOne;
+  UsuarioCasa.findOne=async()=>({casaId:7});
   Usuario.findByPk = async () => options.missing ? null : ({id:1,casaId:7,rolId:2,estatus:options.status||'ACTIVO',rol:{nombre:role,activo:true}});
   const req = {baseUrl,headers:{authorization:'Bearer '+jwt.sign({usuarioId:1,rol:'SUPER_ADMIN',casaId:99},process.env.JWT_SECRET)}};
   let status = 200, nextCalled = false;
   const res = {status(code){status=code;return this;},json(){return this;}};
   try { await autenticarToken(req,res,()=>{nextCalled=true;}); return {status,nextCalled,user:req.usuario}; }
-  finally { Usuario.findByPk=previous; }
+  finally { Usuario.findByPk=previous; UsuarioCasa.findOne=oldMembership; }
 }
 test('old administrator JWT cannot bypass current security permissions',async()=>{
   assert.equal((await check('SEGURIDAD','/api/cuotas')).status,403);
