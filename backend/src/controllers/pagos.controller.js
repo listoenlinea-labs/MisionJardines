@@ -480,13 +480,12 @@ async function descargarRecibo(req, res) {
                 id: Number(req.params.id),
                 casaId: req.usuario.casaId
             },
-            attributes: [
-                'id',
-                'reciboFolio',
-                'reciboPdfData',
-                'reciboPdfNombre',
-                'reciboPdfMime'
-            ]
+            include: [{
+                model: CuotaExtraordinaria,
+                as: 'cuotaExtraordinaria',
+                required: false,
+                attributes: ['id', 'concepto', 'monto']
+            }]
         });
 
         if (!pago) {
@@ -496,10 +495,16 @@ async function descargarRecibo(req, res) {
             });
         }
 
+        // Compatibilidad con recibos creados antes de guardar PDFs en MySQL:
+        // se regeneran una sola vez y quedan persistidos en la base de datos.
         if (!pago.reciboPdfData) {
-            return res.status(404).json({
-                ok: false,
-                message: 'El PDF de este recibo todavía no está disponible'
+            const pdf = await generarReciboPagoReportado(pago);
+            await pago.update({
+                reciboPdfData: pdf.buffer,
+                reciboPdfNombre: pdf.fileName,
+                reciboPdfMime: pdf.mimeType,
+                reciboPdfUrl: construirUrlRecibo(req, pago.id),
+                actualizadoEn: new Date()
             });
         }
 
