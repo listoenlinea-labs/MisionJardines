@@ -2017,6 +2017,18 @@
       else runSearch(linkedNumber);
     }
 
+    function liveEscape(value){
+      return String(value??'').replace(/[&<>"']/g,char=>({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      })[char]);
+    }
+    function safeExternalUrl(value){
+      try{
+        const url=new URL(String(value||''));
+        return ['http:','https:'].includes(url.protocol)?url.href:'#';
+      }catch{return '#'}
+    }
+
     async function entornoApi(path){
       const response=await fetch(API_URL+path,{headers:{Authorization:'Bearer '+token}});
       let data={};
@@ -2096,17 +2108,17 @@
         const result=await entornoApi('/entorno/incidencias');
         const list=document.getElementById('incidentList');
         if(!result.configured){
-          list.innerHTML='<div class="live-empty">'+String(result.message||'Fuente de incidencias no configurada.')+'</div>';
+          list.innerHTML='<div class="live-empty">'+liveEscape(result.message||'Fuente de incidencias no configurada.')+'</div>';
           return;
         }
         document.getElementById('incidentUpdated').textContent='Actualizado '+formatLiveTime(result.updatedAt)+' · radio '+(result.radiusKm||5)+' km';
         const items=result.data||[];
         list.innerHTML=items.length?items.map(item=>{
           const minutes=item.delaySeconds?Math.max(1,Math.round(item.delaySeconds/60)):0;
-          return '<div class="incident-item"><div class="incident-icon">'+incidentEmoji(item.category)+'</div><div><strong>'+String(item.description||item.type||'Incidente vial')+'</strong><p>'+String([item.from,item.to].filter(Boolean).join(' → ')||'Zona cercana al fraccionamiento')+'</p><div class="incident-meta"><span class="incident-pill">'+String(item.type||'Incidente')+'</span>'+(minutes?'<span class="incident-pill">+'+minutes+' min</span>':'')+'</div></div></div>';
+          return '<div class="incident-item"><div class="incident-icon">'+incidentEmoji(item.category)+'</div><div><strong>'+liveEscape(item.description||item.type||'Incidente vial')+'</strong><p>'+liveEscape([item.from,item.to].filter(Boolean).join(' → ')||'Zona cercana al fraccionamiento')+'</p><div class="incident-meta"><span class="incident-pill">'+liveEscape(item.type||'Incidente')+'</span>'+(minutes?'<span class="incident-pill">+'+minutes+' min</span>':'')+'</div></div></div>';
         }).join(''):'<div class="live-empty">No se reportan accidentes, obras o cierres relevantes en el área consultada.</div>';
       }catch(error){
-        document.getElementById('incidentList').innerHTML='<div class="live-empty">'+error.message+'</div>';
+        document.getElementById('incidentList').innerHTML='<div class="live-empty">'+liveEscape(error.message)+'</div>';
       }
     }
 
@@ -2116,10 +2128,10 @@
         document.getElementById('newsUpdated').textContent='Actualizado '+formatLiveTime(result.updatedAt)+' · cobertura de las últimas 24 horas';
         const items=result.data||[];
         document.getElementById('newsGrid').innerHTML=items.length?items.map(item=>
-          '<a class="news-card" href="'+String(item.url||'#')+'" target="_blank" rel="noopener noreferrer"><small>'+String(item.domain||'Medio local')+'</small><strong>'+String(item.title||'Noticia local')+'</strong><span>'+formatLiveTime(item.seenDate)+'</span></a>'
+          '<a class="news-card" href="'+liveEscape(safeExternalUrl(item.url))+'" target="_blank" rel="noopener noreferrer"><small>'+liveEscape(item.domain||'Medio local')+'</small><strong>'+liveEscape(item.title||'Noticia local')+'</strong><span>'+liveEscape(formatLiveTime(item.seenDate))+'</span></a>'
         ).join(''):'<div class="live-empty">No se encontraron noticias locales recientes en este momento.</div>';
       }catch(error){
-        document.getElementById('newsGrid').innerHTML='<div class="live-empty">'+error.message+'</div>';
+        document.getElementById('newsGrid').innerHTML='<div class="live-empty">'+liveEscape(error.message)+'</div>';
       }
     }
 
