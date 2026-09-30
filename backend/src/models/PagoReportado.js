@@ -19,6 +19,17 @@ const PagoReportado = sequelize.define(
             allowNull: false,
             field: 'usuario_id'
         },
+        tipoPago: {
+            type: DataTypes.ENUM('MANTENIMIENTO', 'EXTRAORDINARIO'),
+            allowNull: false,
+            defaultValue: 'MANTENIMIENTO',
+            field: 'tipo_pago'
+        },
+        cuotaExtraordinariaId: {
+            type: DataTypes.BIGINT.UNSIGNED,
+            allowNull: true,
+            field: 'cuota_extraordinaria_id'
+        },
         folioReporte: {
             type: DataTypes.STRING(60),
             allowNull: false,
@@ -49,6 +60,18 @@ const PagoReportado = sequelize.define(
             type: DataTypes.DECIMAL(12, 2),
             allowNull: false
         },
+        montoRequerido: {
+            type: DataTypes.DECIMAL(12, 2),
+            allowNull: false,
+            defaultValue: 300,
+            field: 'monto_requerido'
+        },
+        recargo: {
+            type: DataTypes.DECIMAL(12, 2),
+            allowNull: false,
+            defaultValue: 0,
+            field: 'recargo'
+        },
         calleSnapshot: {
             type: DataTypes.STRING(120),
             allowNull: false,
@@ -69,6 +92,16 @@ const PagoReportado = sequelize.define(
             allowNull: false,
             field: 'comprobante_data'
         },
+        comprobanteNombre: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            field: 'comprobante_nombre'
+        },
+        comprobanteMime: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+            field: 'comprobante_mime'
+        },
         textoOcr: {
             type: DataTypes.TEXT,
             allowNull: true,
@@ -78,6 +111,22 @@ const PagoReportado = sequelize.define(
             type: DataTypes.ENUM('PENDIENTE_VALIDACION', 'VALIDADO', 'RECHAZADO'),
             allowNull: false,
             defaultValue: 'PENDIENTE_VALIDACION'
+        },
+        reciboFolio: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+            unique: true,
+            field: 'recibo_folio'
+        },
+        reciboPdfUrl: {
+            type: DataTypes.STRING(500),
+            allowNull: true,
+            field: 'recibo_pdf_url'
+        },
+        fechaEmisionRecibo: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            field: 'fecha_emision_recibo'
         },
         observacionesRevision: {
             type: DataTypes.STRING(600),
