@@ -364,43 +364,61 @@
     .upload{
       display:block;
       margin-top:12px;
-      padding:20px 16px;
-      border:1.5px dashed #e9b77c;
-      border-radius:16px;
+      padding:24px 18px;
+      border:1.5px dashed #e8b57a;
+      border-radius:18px;
       background:linear-gradient(180deg,#fffaf6 0%,#fffdfb 100%);
       text-align:center;
       cursor:pointer;
-      transition:.18s ease
+      transition:.2s ease
     }
     .upload:hover{
-      border-color:#e5a55d;
+      border-color:#e09b4d;
       background:#fff7ef;
-      transform:translateY(-1px)
+      transform:translateY(-1px);
+      box-shadow:0 8px 22px rgba(224,155,77,.08)
     }
     .upload input{display:none}
     .upload-icon{
+      position:relative;
       display:grid;
       place-items:center;
-      width:42px;
-      height:42px;
-      margin:0 auto 8px;
-      border:1px solid #f2dfca;
-      border-radius:13px;
-      color:#e47e17;
-      background:#fff;
-      font-size:20px;
-      box-shadow:0 6px 15px rgba(226,126,28,.08)
+      width:58px;
+      height:58px;
+      margin:0 auto 12px;
+      border:1px solid #f2d8bb;
+      border-radius:18px;
+      color:#e4831f;
+      background:linear-gradient(180deg,#ffffff 0%,#fff7ef 100%);
+      box-shadow:0 10px 24px rgba(228,131,31,.12),inset 0 1px 0 rgba(255,255,255,.9)
+    }
+    .upload-icon::before{
+      content:"";
+      position:absolute;
+      inset:7px;
+      z-index:0;
+      border-radius:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,245,235,.9) 100%)
+    }
+    .upload-icon svg{
+      position:relative;
+      z-index:1;
+      display:block;
+      width:28px;
+      height:28px
     }
     .upload strong{
       display:block;
-      color:#293751;
-      font-size:12px
+      color:#24324d;
+      font-size:13px;
+      font-weight:800
     }
-    .upload span{
+    .upload>span:last-child{
       display:block;
-      margin-top:4px;
-      color:#8490a2;
-      font-size:8px
+      margin-top:5px;
+      color:#8a96a8;
+      font-size:9px;
+      line-height:1.45
     }
 
     .preview{
@@ -731,9 +749,14 @@
 
         <label class="upload" for="proofInput">
           <input id="proofInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment">
-          <span class="upload-icon">↥</span>
-          <strong>Subir comprobante</strong>
-          <span>JPG, PNG, WEBP o PDF. En PDF se procesa la primera página.</span>
+          <span class="upload-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M14 3H8.8C7.12 3 6.28 3 5.638 3.327C5.072 3.615 4.615 4.072 4.327 4.638C4 5.28 4 6.12 4 7.8V16.2C4 17.88 4 18.72 4.327 19.362C4.615 19.928 5.072 20.385 5.638 20.673C6.28 21 7.12 21 8.8 21H15.2C16.88 21 17.72 21 18.362 20.673C18.928 20.385 19.385 19.928 19.673 19.362C20 18.72 20 17.88 20 16.2V9M14 3L20 9M14 3V9H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 16V10.5M12 10.5L9.75 12.75M12 10.5L14.25 12.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <strong>Subir comprobante bancario</strong>
+          <span>Arrastra tu archivo aquí o haz clic para seleccionarlo. JPG, PNG, WEBP o PDF.</span>
         </label>
 
         <div id="previewBox" class="preview">
