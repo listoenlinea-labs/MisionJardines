@@ -23,10 +23,46 @@ function limpiarTexto(value, max = 300) {
     return String(value || '').trim().slice(0, max);
 }
 
-function construirUrlRecibo(fileName) {
-    const base = String(process.env.APP_BASE_URL || '').replace(/\/$/, '');
-    if (!base) return '/recibos/' + encodeURIComponent(fileName);
-    return base + '/recibos/' + encodeURIComponent(fileName);
+function basePublicaBackend(req) {
+    const configured = String(process.env.APP_BASE_URL || '').trim().replace(/\/$/, '');
+    if (configured) {
+        return configured;
+    }
+
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+        .split(',')[0]
+        .trim();
+
+    const protocol = forwardedProto || req.protocol || 'https';
+    const host = req.get('host');
+
+    return protocol + '://' + host;
+}
+
+function construirUrlRecibo(req, fileName) {
+    return basePublicaBackend(req) + '/recibos/' + encodeURIComponent(fileName);
+}
+
+function normalizarUrlRecibo(req, url) {
+    if (!url) return null;
+
+    try {
+        const raw = String(url).trim();
+
+        // Corrige URLs históricas guardadas como /recibos/... o bajo GitHub Pages.
+        const pathMatch = raw.match(/\/recibos\/([^?#]+)/i);
+        if (pathMatch) {
+            return basePublicaBackend(req) + '/recibos/' + pathMatch[1];
+        }
+
+        if (/^https?:\/\//i.test(raw)) {
+            return raw;
+        }
+
+        return basePublicaBackend(req) + '/' + raw.replace(/^\/+/, '');
+    } catch {
+        return null;
+    }
 }
 
 function montoMantenimiento(fechaOperacion) {
@@ -54,11 +90,12 @@ function conceptoMantenimiento() {
     return 'Pago de mantenimiento correspondiente al mes de ' + month;
 }
 
-function pagoSeguro(pago) {
+function pagoSeguro(req, pago) {
     const data = pago.toJSON ? pago.toJSON() : { ...pago };
     delete data.comprobanteData;
     delete data.textoOcr;
     data.tieneComprobante = true;
+    data.reciboPdfUrl = normalizarUrlRecibo(req, data.reciboPdfUrl);
     return data;
 }
 
@@ -119,7 +156,7 @@ async function listarMisPagos(req, res) {
         return res.json({
             ok: true,
             total: pagos.length,
-            data: pagos
+            data: pagos.map(pago => pagoSeguro(req, pago))
         });
     } catch (error) {
         console.error('Error al listar pagos reportados:', error);
@@ -415,7 +452,7 @@ async function reportarPago(req, res) {
 
         try {
             const pdf = await generarReciboPagoReportado(pagoCompleto);
-            const reciboPdfUrl = construirUrlRecibo(pdf.fileName);
+            const reciboPdfUrl = construirUrlRecibo(req, pdf.fileName);
 
             await pagoCompleto.update({
                 reciboPdfUrl,
@@ -428,7 +465,7 @@ async function reportarPago(req, res) {
         return res.status(201).json({
             ok: true,
             message: 'Pago reportado y recibo generado',
-            data: pagoSeguro(pagoCompleto)
+            data: pagoSeguro(req, pagoCompleto)
         });
     } catch (error) {
         if (transaction && !transaction.finished) {
