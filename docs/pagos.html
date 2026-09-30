@@ -832,6 +832,17 @@
     }
 
     function currentMonthName(){return new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'America/Mexico_City'}).format(new Date()).toUpperCase()}
+    function currentMexicoTime(){
+      const parts=new Intl.DateTimeFormat('en-GB',{
+        timeZone:'America/Mexico_City',
+        hour:'2-digit',
+        minute:'2-digit',
+        second:'2-digit',
+        hour12:false
+      }).formatToParts(new Date());
+      const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+      return values.hour+':'+values.minute+':'+values.second;
+    }
     function updatePaymentSummary(){
       const date=$('operationDate').value;
       if(paymentType==='EXTRAORDINARIO'){
@@ -854,7 +865,23 @@
     function extract(text){const lines=String(text||'').replace(/\r/g,'').split('\n').map(x=>x.trim()).filter(Boolean);const all=lines.join(' ');let folio='';for(const re of [/(?:folio|clave\s+de\s+rastreo|operaci[oó]n|movimiento|referencia)\s*[:#-]?\s*([A-Z0-9-]{5,})/i]){const m=all.match(re);if(m){folio=m[1];break}}const dm=all.match(/\b(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}|\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4})\b/);const tm=all.match(/\b([01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\b/);let amount='';const am=all.match(/(?:monto|importe|total|cantidad)\s*(?:pagad[oa])?\s*[:$ ]+\s*\$?\s*([0-9][0-9.,]*)/i);if(am)amount=normalizeAmount(am[1]);if(!amount){const values=[...all.matchAll(/\$\s*([0-9][0-9.,]*)/g)].map(m=>Number(normalizeAmount(m[1]))).filter(Number.isFinite);if(values.length)amount=Math.max(...values).toFixed(2)}return{folio,date:dm?normalizeDate(dm[1]):'',time:tm?tm[0]:'',amount}}
     async function runOcr(){if(!proofData)return toast('Primero adjunta un comprobante.');if(!window.Tesseract)return toast('El lector automático no está disponible.');$('retryOcr').disabled=true;$('ocrState').textContent='Leyendo comprobante…';$('ocrBar').style.width='5%';try{const result=await Tesseract.recognize(proofData,'spa+eng',{logger:m=>{if(m.status==='recognizing text'){$('ocrBar').style.width=Math.round((m.progress||0)*100)+'%';$('ocrState').textContent='Leyendo texto… '+Math.round((m.progress||0)*100)+'%'}}});ocrText=result?.data?.text||'';const f=extract(ocrText);if(f.folio)$('operationFolio').value=f.folio;if(f.date)$('operationDate').value=f.date;if(f.time)$('operationTime').value=f.time;if(f.amount)$('amount').value=f.amount;updatePaymentSummary();$('ocrBar').style.width='100%';$('ocrState').textContent='Lectura terminada. Revisa los datos antes de enviar.';toast('Comprobante leído automáticamente.')}catch(e){console.error(e);$('ocrState').textContent='No fue posible leer automáticamente. Puedes completar los campos manualmente.'}finally{$('retryOcr').disabled=false}}
 
-    $('proofInput').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{proofMeta={name:file.name||'comprobante',mime:file.type||''};proofData=file.type==='application/pdf'?await pdfToData(file):await imageToData(file);$('proofPreview').src=proofData;$('fileName').textContent=file.name;$('previewBox').classList.add('show');ocrText='';await runOcr()}catch(err){proofData='';toast(err.message)}});
+    $('proofInput').addEventListener('change',async e=>{
+      const file=e.target.files?.[0];
+      if(!file)return;
+      try{
+        $('operationTime').value=currentMexicoTime();
+        proofMeta={name:file.name||'comprobante',mime:file.type||''};
+        proofData=file.type==='application/pdf'?await pdfToData(file):await imageToData(file);
+        $('proofPreview').src=proofData;
+        $('fileName').textContent=file.name;
+        $('previewBox').classList.add('show');
+        ocrText='';
+        await runOcr();
+      }catch(err){
+        proofData='';
+        toast(err.message);
+      }
+    });
     $('retryOcr').addEventListener('click',runOcr);
     $('operationDate').addEventListener('change',updatePaymentSummary);
     document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
