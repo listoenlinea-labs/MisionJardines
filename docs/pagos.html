@@ -579,29 +579,50 @@
 
     .receipt-list{
       display:grid;
-      gap:8px;
-      margin-top:11px
+      gap:10px;
+      margin-top:12px
     }
     .receipt-item{
       display:grid;
       grid-template-columns:minmax(0,1fr) auto;
-      gap:10px;
-      padding:11px 12px;
-      border:1px solid #e3e8ee;
-      border-radius:12px;
-      background:#fff
+      gap:16px;
+      align-items:center;
+      padding:15px 16px;
+      border:1px solid #e2e7ef;
+      border-radius:16px;
+      background:linear-gradient(180deg,#ffffff 0%,#fffdfb 100%);
+      box-shadow:0 7px 18px rgba(34,48,72,.045);
+      transition:.18s ease
     }
-    .receipt-item strong{font-size:10px}
-    .receipt-item p{margin:4px 0 0;font-size:9px;line-height:1.4}
+    .receipt-item:hover{
+      border-color:#e8d4bf;
+      box-shadow:0 10px 24px rgba(34,48,72,.07);
+      transform:translateY(-1px)
+    }
+    .receipt-main{min-width:0}
+    .receipt-main strong{
+      display:block;
+      color:#17243d;
+      font-size:11px;
+      letter-spacing:.01em
+    }
+    .receipt-main p{
+      margin:5px 0 0;
+      color:#748198;
+      font-size:9px;
+      line-height:1.45
+    }
     .receipt-meta{
       display:flex;
       flex-wrap:wrap;
       gap:5px;
-      margin-top:6px
+      margin-top:8px
     }
     .pill{
       display:inline-flex;
-      padding:4px 7px;
+      align-items:center;
+      min-height:20px;
+      padding:4px 8px;
       border-radius:999px;
       color:#667488;
       background:#f1f4f8;
@@ -611,13 +632,53 @@
     .pill.PENDIENTE_VALIDACION{color:#91610f;background:#fff2d9}
     .pill.VALIDADO{color:#23744a;background:#e8f8ee}
     .pill.RECHAZADO{color:#a84651;background:#fff0f2}
-    .receipt-side{text-align:right}
+    .receipt-side{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:9px;
+      text-align:right
+    }
     .receipt-side b{
       display:block;
-      color:#2b7550;
-      font-size:12px
+      color:#278257;
+      font-size:15px;
+      line-height:1
     }
-    .receipt-side a{margin-top:6px}
+    .receipt-view-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+      min-height:38px;
+      padding:9px 13px;
+      border:1px solid #ead3ba;
+      border-radius:11px;
+      color:#9a520f;
+      background:linear-gradient(180deg,#fffaf5 0%,#fff1e4 100%);
+      box-shadow:0 6px 14px rgba(224,129,35,.08);
+      font:inherit;
+      font-size:9px;
+      font-weight:850;
+      cursor:pointer;
+      transition:.18s ease
+    }
+    .receipt-view-btn:hover{
+      border-color:#e5b77f;
+      background:linear-gradient(180deg,#fff7ef 0%,#ffe7cf 100%);
+      transform:translateY(-1px);
+      box-shadow:0 9px 18px rgba(224,129,35,.13)
+    }
+    .receipt-view-btn svg{
+      width:16px;
+      height:16px;
+      flex:0 0 16px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:1.8;
+      stroke-linecap:round;
+      stroke-linejoin:round
+    }
 
     .empty{
       padding:18px;
@@ -660,7 +721,8 @@
       .form-row,.admin-grid{grid-template-columns:1fr}
       .bank-row{grid-template-columns:68px minmax(0,1fr) auto}
       .receipt-item{grid-template-columns:1fr}
-      .receipt-side{text-align:left}
+      .receipt-side{align-items:flex-start;text-align:left}
+      .receipt-view-btn{width:100%}
       .preview.show{grid-template-columns:68px minmax(0,1fr)}
       .preview img{width:68px;height:60px}
       .actions{display:grid;grid-template-columns:1fr}
@@ -859,7 +921,7 @@
       $('extraList').innerHTML=extras.length?extras.map(x=>'<div class="extra'+(selectedExtra&&Number(selectedExtra.id)===Number(x.id)?' selected':'')+'" data-extra="'+Number(x.id)+'"><div><strong>'+esc(x.concepto)+'</strong><small>Cuota extraordinaria activa</small></div><b>'+money(x.monto)+'</b></div>').join(''):'<div class="empty">No hay cuotas extraordinarias activas.</div>';
     }
     function renderReceipts(items){
-      $('receiptList').innerHTML=items.length?items.map(p=>'<div class="receipt-item"><div><strong>'+esc(p.reciboFolio||p.folioReporte)+'</strong><p>'+esc(p.concepto)+'<br>'+esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus)+'">'+esc(({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus)+'</span><span class="pill">'+(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':'Mantenimiento')+'</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b>'+(p.id?'<button class="btn" type="button" data-receipt-id="'+Number(p.id)+'">Ver recibo</button>':'<span class="hint">Recibo no disponible</span>')+'</div></div>').join(''):'<div class="empty">Todavía no tienes recibos registrados.</div>';
+      $('receiptList').innerHTML=items.length?items.map(p=>'<div class="receipt-item"><div class="receipt-main"><strong>'+esc(p.reciboFolio||p.folioReporte)+'</strong><p>'+esc(p.concepto)+'<br>'+esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus)+'">'+esc(({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus)+'</span><span class="pill">'+(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':'Mantenimiento')+'</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b>'+(p.id?'<button class="receipt-view-btn" type="button" data-receipt-id="'+Number(p.id)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path><path d="M14 2v5h5"></path><path d="M9 13h6M9 17h4"></path></svg><span>Ver recibo</span></button>':'<span class="hint">Recibo no disponible</span>')+'</div></div>').join(''):'<div class="empty">Todavía no tienes recibos registrados.</div>';
     }
 
     async function openReceipt(id){
