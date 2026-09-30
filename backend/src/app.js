@@ -93,7 +93,7 @@ app.use(cors(corsOptions));
 // Responder explícitamente los preflight antes del rate-limit y de las rutas.
 // Esto evita que un POST JSON con Authorization sea rechazado antes de llegar
 // a /api/pagos.
-app.options('*', cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 app.use(
     '/api',
