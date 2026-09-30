@@ -46,43 +46,54 @@ app.use(
 
 const allowedOrigins = [
     process.env.FRONTEND_URL,
-
     'https://listoenlinea-labs.github.io',
-
     'http://127.0.0.1:3000',
     'http://localhost:3000',
-
     'http://127.0.0.1:8080',
     'http://localhost:8080',
-
     'http://127.0.0.1:5050',
     'http://localhost:5050',
-
     'http://127.0.0.1:5500',
     'http://localhost:5500'
-].filter(Boolean);
+]
+    .filter(Boolean)
+    .map(origin => String(origin).trim().replace(/\/$/, ''));
 
-app.use(
-    cors({
-        origin(origin, callback) {
-            if (!origin) {
-                return callback(null, true);
-            }
+function corsOriginAllowed(origin) {
+    if (!origin) return true;
 
-            if (allowedOrigins.includes(origin)) {
-                return callback(null, true);
-            }
+    const normalized = String(origin).trim().replace(/\/$/, '');
 
-            console.error('Origen bloqueado por CORS:', origin);
+    if (allowedOrigins.includes(normalized)) {
+        return true;
+    }
 
-            return callback(
-                new Error('Origen no permitido por CORS')
-            );
-        },
+    // El frontend oficial vive en GitHub Pages. El Origin del navegador no
+    // incluye la ruta /MisionJardines, solamente el host.
+    return /^https:\/\/listoenlinea-labs\.github\.io$/i.test(normalized);
+}
 
-        credentials: true
-    })
-);
+const corsOptions = {
+    origin(origin, callback) {
+        if (corsOriginAllowed(origin)) {
+            return callback(null, true);
+        }
+
+        console.error('Origen bloqueado por CORS:', origin);
+        return callback(new Error('Origen no permitido por CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin'],
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+
+// Responder explícitamente los preflight antes del rate-limit y de las rutas.
+// Esto evita que un POST JSON con Authorization sea rechazado antes de llegar
+// a /api/pagos.
+app.options(/.*/, cors(corsOptions));
 
 app.use(
     '/api',
