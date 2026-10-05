@@ -77,7 +77,7 @@
           <div class="field"><label>Nombre</label><input name="nombre" value="principal" readonly></div>
 
           <div class="notice" style="margin:0 0 14px">
-            <strong>Flujo:</strong> conmutador → teléfono del padrón → WhatsApp Desktop/Web → llamada del guardia.
+            <strong>Flujo:</strong> conmutador → teléfono del padrón → aplicación WhatsApp Desktop → llamada del guardia.
             No requiere FXO, SIP, PBX, Twilio ni acceso al módem Telmex.
           </div>
 
@@ -85,12 +85,12 @@
           <div class="field">
             <label>Número autorizado de WhatsApp de caseta</label>
             <input name="numeroAutorizado" value="3337278609" readonly>
-            <div class="secret-note">Esta es la única cuenta autorizada operativamente para el conmutador. WhatsApp Desktop/Web debe permanecer vinculado a esta cuenta.</div>
+            <div class="secret-note">Esta es la única cuenta autorizada operativamente para el conmutador. La aplicación WhatsApp para Windows debe permanecer vinculada a esta cuenta.</div>
           </div>
           <div class="field">
             <label>Modo de apertura</label>
             <select name="modoApertura">
-              <option value="WA_ME">WhatsApp Desktop / WhatsApp Web</option>
+              <option value="WHATSAPP_PROTOCOL">Aplicación WhatsApp Desktop únicamente</option>
             </select>
           </div>
           <div class="switchline"><span>Ocultar teléfonos del padrón en el conmutador</span><input name="ocultarTelefonos" type="checkbox" checked disabled></div>
@@ -274,7 +274,7 @@
       return{
         tipoConexion:'WHATSAPP_CASETA',
         numeroAutorizado:'3337278609',
-        modoApertura:val(form,'modoApertura') || 'WA_ME',
+        modoApertura:val(form,'modoApertura') || 'WHATSAPP_PROTOCOL',
         ocultarTelefonos:true,
         notas:val(form,'notas')
       };
