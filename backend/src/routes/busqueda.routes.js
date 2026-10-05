@@ -82,7 +82,7 @@ const IMPORT_TABLE = 'condominos_importacion';
 let importColumnsPromise = null;
 
 function quoteIdentifier(value) {
-  return '\`' + String(value).replace(/\`/g, '\`\`') + '\`';
+  return '`' + String(value).replace(/`/g, '``') + '`';
 }
 
 async function importColumns() {
@@ -148,7 +148,7 @@ router.get('/conmutador/telefono', autorizarRoles(...personnel), async (req, res
       .map((_, index) => quoteIdentifier(streetColumn) + ' LIKE :street' + index)
       .join(' OR ');
 
-    const replacements = { numero, numeroLike: '%' + numero + '%' };
+    const replacements = { numero };
     config.streetLikes.forEach((value, index) => { replacements['street' + index] = value; });
 
     const sql =
@@ -157,7 +157,7 @@ router.get('/conmutador/telefono', autorizarRoles(...personnel), async (req, res
       'WHERE (' + streetSql + ') ' +
       'AND (' +
       'TRIM(CAST(' + quoteIdentifier(numberColumn) + ' AS CHAR)) = :numero ' +
-      'OR CAST(' + quoteIdentifier(numberColumn) + ' AS CHAR) LIKE :numeroLike' +
+      'OR CAST(' + quoteIdentifier(numberColumn) + ' AS CHAR) REGEXP CONCAT(\'(^|[^0-9])\', :numero, \'([^0-9]|$)\')' +
       ') ' +
       'AND ' + quoteIdentifier(phoneColumn) + ' IS NOT NULL ' +
       'AND TRIM(CAST(' + quoteIdentifier(phoneColumn) + ' AS CHAR)) <> \'\'' +
