@@ -84,7 +84,7 @@
       <div>
         <span class="eyebrow">Control de acceso · Conmutador de caseta</span>
         <h1>Conmutador</h1>
-        <p>Selecciona la calle y después la casa. No se muestran nombres ni teléfonos en pantalla; al elegir el domicilio se prepara la llamada automáticamente.</p>
+        <p>Selecciona la calle y después la casa. No se muestran nombres ni teléfonos en el conmutador; al elegir el domicilio se abre WhatsApp con el residente correcto.</p>
       </div>
       <div class="heading-icon" aria-hidden="true">☎</div>
     </div>
@@ -98,8 +98,8 @@
       <div id="houseGrid" class="house-grid" aria-live="polite"></div>
     </section>
 
-    <div id="callStatus" class="statusbar">Consultando la configuración de telefonía de caseta…</div>
-    <p class="privacy-note">La cuadrícula muestra únicamente la calle y el número de casa. La información personal permanece oculta para el guardia.</p>
+    <div id="callStatus" class="statusbar">Preparando WhatsApp de caseta…</div>
+    <p class="privacy-note">Cuenta autorizada de caseta: <strong>33••••8609</strong>. La cuadrícula no muestra nombres ni teléfonos; WhatsApp puede mostrar la identidad del contacto dentro de su propia interfaz.</p>
   </main>
 
   <div id="phoneChoiceModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="phoneChoiceTitle">
@@ -142,9 +142,8 @@
         }
       ];
 
+      const AUTHORIZED_WHATSAPP_NUMBER = '3337278609';
       let activeSection = sections[0];
-      let telephonyConfig = null;
-      let telephonyReady = false;
       let pendingPhones = [];
       let requestNumber = 0;
 
@@ -234,39 +233,47 @@
         byId('phoneChoiceModal').classList.remove('show');
       }
 
-      async function dialFromCaseta(number) {
-        if (!number) return;
-        const agentUrl = String(telephonyConfig && telephonyConfig.configuracion && telephonyConfig.configuracion.agenteLocalUrl || '').trim();
+      function normalizeWhatsAppNumber(number) {
+        let digits = String(number || '').replace(/\D/g, '');
+        if (digits.length === 13 && digits.startsWith('521')) digits = '52' + digits.slice(3);
+        if (digits.length === 10) digits = '52' + digits;
+        return /^52\d{10}$/.test(digits) ? digits : '';
+      }
 
-        if (!telephonyReady || !agentUrl) {
-          setStatus('Teléfono localizado. Falta enlazar el agente local de caseta para ejecutar la llamada física desde la aplicación.', 'error');
+      function openWhatsApp(number, preparedWindow = null) {
+        const destination = normalizeWhatsAppNumber(number);
+        if (!destination) {
+          try { if (preparedWindow && !preparedWindow.closed) preparedWindow.close(); } catch (_) {}
+          setStatus('El teléfono registrado no tiene un formato válido para WhatsApp en México.', 'error');
           return;
         }
 
-        setStatus('Enviando llamada al agente de caseta…');
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
+        const url = 'https://wa.me/' + destination;
+        let target = preparedWindow;
 
         try {
-          const response = await fetch(agentUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accion: 'marcar', numero: number, origen: 'MisionJardines-Conmutador' }),
-            signal: controller.signal
-          });
-          if (!response.ok) throw Error('El agente local respondió con error ' + response.status);
-          setStatus('Llamada enviada a la línea de caseta.', 'ok');
-        } catch (error) {
-          setStatus(error.name === 'AbortError'
-            ? 'El agente local no respondió a tiempo. Revisa su conexión.'
-            : 'No fue posible iniciar la llamada desde caseta: ' + error.message, 'error');
-        } finally {
-          clearTimeout(timeout);
+          if (!target || target.closed) target = window.open('', 'mj-whatsapp-caseta');
+          if (!target) {
+            setStatus('El navegador bloqueó WhatsApp. Habilita ventanas emergentes para este sitio e intenta de nuevo.', 'error');
+            return;
+          }
+          target.opener = null;
+          target.location.replace(url);
+          setStatus('WhatsApp abierto. En el chat pulsa el ícono de teléfono para iniciar la llamada desde la cuenta autorizada 33••••8609.', 'ok');
+        } catch (_) {
+          setStatus('No fue posible abrir WhatsApp. Verifica que WhatsApp Web o WhatsApp para Windows esté disponible.', 'error');
         }
       }
 
       async function selectHouse(button, house) {
         const currentRequest = ++requestNumber;
+        const preparedWindow = window.open('', 'mj-whatsapp-caseta');
+        if (preparedWindow) {
+          try {
+            preparedWindow.document.title = 'Misión Jardines · WhatsApp';
+            preparedWindow.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Preparando WhatsApp…</p>';
+          } catch (_) {}
+        }
         document.querySelectorAll('.house-btn').forEach(item => { item.disabled = true; });
         setStatus('Buscando el teléfono registrado para este domicilio…');
 
@@ -280,18 +287,21 @@
 
           const phones = Array.isArray(data.telefonos) ? data.telefonos.filter(Boolean).slice(0, 2) : [];
           if (!phones.length) {
+            try { if (preparedWindow && !preparedWindow.closed) preparedWindow.close(); } catch (_) {}
             setStatus('Este domicilio no tiene un teléfono registrado en el padrón.', 'error');
             return;
           }
 
           if (phones.length > 1) {
-            setStatus('Este domicilio tiene dos teléfonos. Elige A o B para marcar.');
+            try { if (preparedWindow && !preparedWindow.closed) preparedWindow.close(); } catch (_) {}
+            setStatus('Este domicilio tiene dos teléfonos. Elige A o B para abrir WhatsApp.');
             openPhoneChoice(phones);
             return;
           }
 
-          await dialFromCaseta(phones[0]);
+          openWhatsApp(phones[0], preparedWindow);
         } catch (error) {
+          try { if (preparedWindow && !preparedWindow.closed) preparedWindow.close(); } catch (_) {}
           if (currentRequest === requestNumber) setStatus(error.message, 'error');
         } finally {
           if (currentRequest === requestNumber) {
@@ -300,34 +310,15 @@
         }
       }
 
-      async function loadTelephony() {
-        try {
-          const data = await api('/conexion/estado');
-          telephonyConfig = (data.data || []).find(item => item.tipo === 'TELEFONIA' && item.nombre === 'principal') || null;
-          const config = telephonyConfig && telephonyConfig.configuracion || {};
-          telephonyReady = Boolean(
-            telephonyConfig &&
-            telephonyConfig.configurado &&
-            config.tipoConexion === 'TELMEX_FXO' &&
-            String(config.agenteLocalUrl || '').trim()
-          );
-
-          if (telephonyReady) {
-            setStatus('Telefonía de caseta lista. Al seleccionar una casa se enviará la llamada automáticamente.', 'ok');
-          } else {
-            setStatus('La cuadrícula y el padrón están listos. Para marcar desde la app configura también la URL del agente local en Seguridad → Conexión → Llamadas.');
-          }
-        } catch (error) {
-          telephonyReady = false;
-          setStatus('No fue posible consultar la configuración de telefonía.', 'error');
-        }
+      function markWhatsAppReady() {
+        setStatus('WhatsApp de caseta listo. Usa únicamente la cuenta autorizada 33••••8609.', 'ok');
       }
 
       document.querySelectorAll('[data-phone-choice]').forEach(button => {
         button.addEventListener('click', async () => {
           const selected = pendingPhones[Number(button.dataset.phoneChoice)];
           closePhoneChoice();
-          if (selected) await dialFromCaseta(selected);
+          if (selected) openWhatsApp(selected);
         });
       });
       byId('closePhoneChoice').addEventListener('click', closePhoneChoice);
@@ -340,7 +331,7 @@
 
       renderTabs();
       renderHouses();
-      loadTelephony();
+      markWhatsAppReady();
     })();
   </script>
   <script src="assets/js/site-sidebar.js?v=20261001"></script>
