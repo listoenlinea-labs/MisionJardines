@@ -59,8 +59,13 @@ try {
 $allowedNames = @(
     'Llamada de voz',
     'Llamar',
+    'Iniciar llamada',
+    'Llamada',
     'Voice call',
+    'Voice Call',
     'Audio call',
+    'Audio Call',
+    'Start call',
     'Call'
 )
 
