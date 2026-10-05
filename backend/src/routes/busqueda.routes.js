@@ -1,5 +1,6 @@
 const express = require('express');
-const { Op } = require('sequelize');
+const { Op, QueryTypes } = require('sequelize');
+const sequelize = require('../config/database');
 const { Casa, Condomino, Cuota, Visita, Acceso, Evento, PagoReportado } = require('../models');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
@@ -60,6 +61,131 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error de búsqueda global:', error);
     return res.status(500).json({ ok: false, message: 'No fue posible buscar en este momento' });
+  }
+});
+
+
+const CONMUTADOR_GROUPS = {
+  Gardenias: { streetLikes: ['%Gardenias%'] },
+  Magnolias: { streetLikes: ['%Magnolias%'] },
+  Lirios: { streetLikes: ['%Lirios%'] },
+  Rosas: { streetLikes: ['%Rosas%'] },
+  'Jardines 1': { streetLikes: ['%Jardínes%', '%Jardines%'] },
+  'Jardines 2': { streetLikes: ['%Jardínes%', '%Jardines%'] },
+  'Jardines 3': { streetLikes: ['%Jardínes%', '%Jardines%'] },
+  'Valle de México': { streetLikes: ['%Valle de México%', '%Valle de Mexico%'] },
+  Atotonilco: { streetLikes: ['%Atotonilco%'] },
+  Guadalajara: { streetLikes: ['%Guadalajara%'] }
+};
+
+const IMPORT_TABLE = 'condominos_importacion';
+let importColumnsPromise = null;
+
+function quoteIdentifier(value) {
+  return '`' + String(value).replace(/`/g, '``') + '`';
+}
+
+async function importColumns() {
+  if (!importColumnsPromise) {
+    importColumnsPromise = sequelize.query(
+      'SHOW COLUMNS FROM ' + quoteIdentifier(IMPORT_TABLE),
+      { type: QueryTypes.SELECT }
+    ).then(rows => rows.map(row => String(row.Field)));
+  }
+  return importColumnsPromise;
+}
+
+function findColumn(columns, candidates) {
+  const lower = new Map(columns.map(column => [column.toLowerCase(), column]));
+  for (const candidate of candidates) {
+    const found = lower.get(candidate.toLowerCase());
+    if (found) return found;
+  }
+  return null;
+}
+
+function normalizePhoneParts(value) {
+  return String(value || '')
+    .split('/')
+    .map(part => part.replace(/[^\d+]/g, ''))
+    .map(part => {
+      const plus = part.startsWith('+');
+      const digits = part.replace(/\D/g, '');
+      return digits ? (plus ? '+' : '') + digits : '';
+    })
+    .filter(Boolean);
+}
+
+router.get('/conmutador/telefono', autorizarRoles(...personnel), async (req, res) => {
+  const grupo = normalize(req.query.grupo);
+  const numero = normalize(req.query.numero);
+  const config = CONMUTADOR_GROUPS[grupo];
+
+  if (!config || !numero) {
+    return res.status(400).json({ ok: false, message: 'Domicilio no válido' });
+  }
+
+  try {
+    const columns = await importColumns();
+    const phoneColumn = findColumn(columns, ['telefono', 'teléfono', 'telefono1', 'tel']);
+    const streetColumn = findColumn(columns, ['calle', 'direccion', 'dirección', 'domicilio']);
+    const numberColumn = findColumn(columns, ['numero', 'número', 'casa', 'numero_casa', 'num_casa', 'no_casa']);
+
+    if (!phoneColumn || !streetColumn || !numberColumn) {
+      console.error('condominos_importacion no contiene las columnas esperadas', {
+        phoneColumn,
+        streetColumn,
+        numberColumn,
+        columns
+      });
+      return res.status(500).json({
+        ok: false,
+        message: 'El padrón importado no tiene la estructura necesaria para el conmutador'
+      });
+    }
+
+    const streetSql = config.streetLikes
+      .map((_, index) => quoteIdentifier(streetColumn) + ' LIKE :street' + index)
+      .join(' OR ');
+
+    const replacements = { numero };
+    config.streetLikes.forEach((value, index) => { replacements['street' + index] = value; });
+
+    const sql =
+      'SELECT ' + quoteIdentifier(phoneColumn) + ' AS telefono ' +
+      'FROM ' + quoteIdentifier(IMPORT_TABLE) + ' ' +
+      'WHERE (' + streetSql + ') ' +
+      'AND (' +
+      'TRIM(CAST(' + quoteIdentifier(numberColumn) + ' AS CHAR)) = :numero ' +
+      'OR CAST(' + quoteIdentifier(numberColumn) + ' AS CHAR) REGEXP CONCAT(\'(^|[^0-9])\', :numero, \'([^0-9]|$)\')' +
+      ') ' +
+      'AND ' + quoteIdentifier(phoneColumn) + ' IS NOT NULL ' +
+      'AND TRIM(CAST(' + quoteIdentifier(phoneColumn) + ' AS CHAR)) <> \'\'' +
+      ' LIMIT 12';
+
+    const rows = await sequelize.query(sql, {
+      replacements,
+      type: QueryTypes.SELECT
+    });
+
+    const telefonos = [...new Set(
+      rows.flatMap(row => normalizePhoneParts(row.telefono))
+    )].slice(0, 2);
+
+    return res.json({
+      ok: true,
+      grupo,
+      numero,
+      telefonos,
+      multiples: telefonos.length > 1
+    });
+  } catch (error) {
+    importColumnsPromise = null;
+    console.error('Error al consultar teléfono del conmutador:', error);
+    return res.status(500).json({
+      ok: false,
+      message: 'No fue posible consultar el teléfono de este domicilio'
+    });
   }
 });
 

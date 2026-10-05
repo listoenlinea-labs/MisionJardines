@@ -98,6 +98,12 @@
             <div class="field"><label>Extensión de caseta</label><input name="extension" placeholder="101"></div>
           </div>
 
+          <div class="field">
+            <label>URL del agente local de caseta</label>
+            <input name="agenteLocalUrl" inputmode="url" placeholder="Ej. http://192.168.1.70:8787/llamar">
+            <div class="secret-note">La aplicación enviará aquí la orden de marcación cuando el guardia seleccione una casa.</div>
+          </div>
+
           <div class="row">
             <div class="field"><label>Transporte SIP</label><select name="transporte"><option>UDP</option><option>TCP</option><option>TLS</option></select></div>
             <div class="field"><label>Código de país</label><input name="codigoPais" value="+52"></div>
@@ -284,6 +290,7 @@
         origenLinea:val(form,'origenLinea'),
         numeroLinea:val(form,'numeroLinea'),
         extension:val(form,'extension'),
+        agenteLocalUrl:val(form,'agenteLocalUrl'),
         transporte:val(form,'transporte'),
         codigoPais:val(form,'codigoPais') || '+52',
         vtechRespaldo:checked(form,'vtechRespaldo'),
