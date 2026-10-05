@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Conmutador | Misión Jardines</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f5f7fa;color:#1b2a3d;font-family:Inter,Segoe UI,Arial,sans-serif}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:14px 22px;border-bottom:1px solid #e5e8ed;background:#fff}
+.brand{font-weight:900}.logout{border:1px solid #efcfb1;border-radius:10px;padding:9px 12px;background:#fff8f2;color:#b75a08;font-weight:800;cursor:pointer}
+.wrap{width:min(1220px,calc(100% - 32px));margin:0 auto;padding:42px 0 60px}
+.eyebrow{color:#b65a09;font-size:11px;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
+h1{margin:8px 0 7px;font-size:clamp(36px,4vw,50px);letter-spacing:-.05em}
+.lead{margin:0 0 24px;color:#617086;font-size:14px}
+.panel{overflow:hidden;border:1px solid #dfe5ec;border-radius:18px;background:#fff;box-shadow:0 14px 38px rgba(20,40,60,.045)}
+.tabs{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));border-bottom:1px solid #e2e6ec;background:#f8fafc}
+.tab{min-height:58px;border:0;border-right:1px solid #e4e8ee;background:#f8fafc;color:#5f6e83;font-size:12px;font-weight:850;cursor:pointer}
+.tab:last-child{border-right:0}.tab.active{color:#a84f05;background:#fff;box-shadow:inset 0 -3px #e67a13}
+.head{display:flex;justify-content:space-between;align-items:center;padding:22px 24px 8px}.head h2{margin:0;font-size:20px}.head span{color:#7b889b;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:11px;padding:14px 24px 26px}
+.house{min-height:78px;border:1px solid #dce3eb;border-radius:13px;background:linear-gradient(180deg,#fff,#fafbfd);color:#27374e;font-size:20px;font-weight:900;cursor:pointer}
+.house:hover{border-color:#e8a15e}.house:disabled{opacity:.55;cursor:wait}.house.commerce{border-color:#eac99f;background:linear-gradient(180deg,#fffaf4,#fff2e4)}
+.badge{display:block;margin-top:4px;color:#b45a0a;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.ext small{display:block;margin-bottom:5px;color:#6d7b8e;font-size:10px}
+.status{margin-top:14px;padding:12px 14px;border:1px solid #e2e7ef;border-radius:12px;background:#fff;color:#68768c;font-size:12px}
+.status.ok{border-color:#d7eadf;background:#f4fbf6;color:#277849}.status.error{border-color:#efd1cd;background:#fff8f7;color:#ad3f37}
+.modal{position:fixed;inset:0;z-index:50;display:none;place-items:center;padding:20px;background:rgba(20,30,44,.42)}.modal.show{display:grid}
+.box{width:min(360px,100%);padding:22px;border-radius:18px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.2)}
+.box h3{margin:0 0 8px}.box p{color:#758196;font-size:12px}.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}.choice{min-height:70px;border:1px solid #e5c39f;border-radius:14px;background:#fff7ef;color:#a65008;font-size:25px;font-weight:950;cursor:pointer}
+.close{width:100%;margin-top:12px;min-height:40px;border:1px solid #dfe4ea;border-radius:10px;background:#fff;cursor:pointer}
+@media(max-width:900px){.tabs{display:flex;overflow-x:auto}.tab{min-width:120px;flex:0 0 auto}.grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}}
+@media(max-width:560px){.wrap{width:min(100% - 20px,520px);padding-top:28px}.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:12px 14px 20px}.head{padding:18px 14px 6px}.house{min-height:70px}.ext{grid-column:span 3}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">Misión Jardines · Conmutador</div><button class="logout" id="logout">Cerrar sesión</button></header>
+<main class="wrap">
+  <span class="eyebrow">Control de acceso · Padrón actualizado</span>
+  <h1>Conmutador</h1>
+  <p class="lead">Selecciona una calle y después la casa. El guardia no verá nombres ni teléfonos.</p>
+  <section class="panel">
+    <div id="tabs" class="tabs"></div>
+    <div class="head"><h2 id="streetTitle">Gardenias</h2><span id="houseCount">32 domicilios</span></div>
+    <div id="grid" class="grid"></div>
+  </section>
+  <div id="status" class="status">Verificando sesión…</div>
+</main>
+<div id="modal" class="modal">
+  <div class="box">
+    <h3>¿A cuál deseas llamar?</h3>
+    <p>Este domicilio tiene dos números registrados. Elige A o B.</p>
+    <div class="choices"><button class="choice" data-i="0">A</button><button class="choice" data-i="1">B</button></div>
+    <button class="close" id="close">Cancelar</button>
+  </div>
+</div>
+<script>
+const API='/api';
+const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+if(!token){location.replace('login.html')}
+const range=n=>Array.from({length:n},(_,i)=>({number:String(i+1)}));
+const list=s=>s.split(',').map(x=>({number:x.trim()}));
+const sections=[
+{key:'Gardenias',houses:range(32)},{key:'Magnolias',houses:range(32)},{key:'Lirios',houses:range(39)},{key:'Rosas',houses:range(42)},
+{key:'Jardines 1',houses:list('116,120,124,125,128,129,132,133,136,137,141,142,144,145,148,149,152,153,156,157,160,161,164,165,168,169,173,177,181,185')},
+{key:'Jardines 2',houses:list('201,205,209,213,217,221,233,237,241,245,249,253,257,269,273,277,281,285,289')},
+{key:'Jardines 3',houses:list('307,311,315,319,323,327,328,331,332,335,336,339,340,343,344,347,348,351,352,355,356,359,360,363,364,367,368,371,372,375,376,379,380,384,388')},
+{key:'Exterior',houses:[{number:'3614',label:'Valle de México',lookup:'Valle de México'},{number:'752',label:'Atotonilco',lookup:'Atotonilco'},{number:'707',label:'Guadalajara',lookup:'Guadalajara'}]}
+];
+let active=sections[0],phones=[];
+const tabs=document.getElementById('tabs'),grid=document.getElementById('grid'),status=document.getElementById('status'),modal=document.getElementById('modal');
+function msg(t,k=''){status.className='status'+(k?' '+k:'');status.textContent=t}
+async function call(path){const r=await fetch(API+path,{headers:{Authorization:'Bearer '+token}});let d={};try{d=await r.json()}catch{}if(r.status===401){localStorage.removeItem('misionJardinesToken');location.replace('login.html');throw Error('Sesión vencida')}if(!r.ok||d.ok===false)throw Error(d.message||'Error');return d}
+function commerce(k,n){return(k==='Gardenias'&&n==='28')||(k==='Lirios'&&n==='32')}
+function drawTabs(){tabs.innerHTML='';sections.forEach(s=>{const b=document.createElement('button');b.className='tab'+(s.key===active.key?' active':'');b.textContent=s.key;b.onclick=()=>{active=s;drawTabs();draw()};tabs.appendChild(b)})}
+function draw(){document.getElementById('streetTitle').textContent=active.key;document.getElementById('houseCount').textContent=active.houses.length+' domicilios';grid.innerHTML='';active.houses.forEach(h=>{const b=document.createElement('button');b.className='house'+(commerce(active.key,h.number)?' commerce':'')+(active.key==='Exterior'?' ext':'');if(h.label){const sm=document.createElement('small');sm.textContent=h.label;b.appendChild(sm)}const sp=document.createElement('span');sp.textContent=h.number;b.appendChild(sp);if(commerce(active.key,h.number)){const bd=document.createElement('span');bd.className='badge';bd.textContent='Comercio';b.appendChild(bd)}b.onclick=()=>selectHouse(h);grid.appendChild(b)})}
+async function selectHouse(h){document.querySelectorAll('.house').forEach(x=>x.disabled=true);msg('Buscando teléfono registrado…');try{const p=new URLSearchParams({grupo:h.lookup||active.key,numero:h.number});const d=await call('/busqueda/conmutador/telefono?'+p);phones=(d.telefonos||[]).filter(Boolean).slice(0,2);if(!phones.length){msg('Este domicilio no tiene teléfono registrado.','error')}else if(phones.length>1){msg('Hay dos teléfonos registrados. Elige A o B.');modal.classList.add('show')}else{await dial(phones[0])}}catch(e){msg(e.message,'error')}finally{document.querySelectorAll('.house').forEach(x=>x.disabled=false)}}
+async function dial(number){try{const d=await call('/conexion/estado');const t=(d.data||[]).find(x=>x.tipo==='TELEFONIA'&&x.nombre==='principal');const url=t?.configuracion?.agenteLocalUrl||'';if(!url){msg('Teléfono localizado. Falta configurar el agente local de caseta para realizar la llamada.','error');return}const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion:'marcar',numero,origen:'MisionJardines-Conmutador'})});if(!r.ok)throw Error('El agente local respondió con error '+r.status);msg('Llamada enviada a la línea de caseta.','ok')}catch(e){msg('No fue posible iniciar la llamada: '+e.message,'error')}}
+document.querySelectorAll('.choice').forEach(b=>b.onclick=async()=>{const n=phones[Number(b.dataset.i)];modal.classList.remove('show');if(n)await dial(n)});
+document.getElementById('close').onclick=()=>modal.classList.remove('show');
+document.getElementById('logout').onclick=()=>{localStorage.removeItem('misionJardinesToken');localStorage.removeItem('misionJardinesUsuario');location.replace('login.html')};
+(async()=>{try{await call('/auth/perfil');msg('Sesión verificada. Selecciona una casa.','ok');drawTabs();draw()}catch(e){}})();
+</script>
+</body>
+</html>
