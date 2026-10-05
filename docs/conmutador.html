@@ -3,113 +3,339 @@
 <head>
   <script src="assets/js/permissions.js?v=20261001"></script>
   <script src="assets/js/page-access.js?v=20261001"></script>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Conmutador | Misión Jardines</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;color:#1b2a3d;background:#f5f7fa;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    .content{width:min(1160px,calc(100% - 64px));margin:0 auto;padding:110px 0 75px}.eyebrow{color:#b65a09;font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:28px}.heading h1{margin:8px 0 7px;font-size:clamp(32px,3.5vw,44px);letter-spacing:-.05em;line-height:1.12}.heading p{margin:0;color:#617086;font-size:14px;line-height:1.5}.heading-icon{width:62px;height:62px;flex:0 0 62px;display:grid;place-items:center;border:1px solid #f4dfc9;border-radius:18px;color:#c6670c;background:#fff4e9;font-size:28px}
-    .panel{border:1px solid #dfe5ec;border-radius:18px;background:#fff;box-shadow:0 14px 38px rgba(20,40,60,.045)}.finder{display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(150px,.8fr) auto;gap:17px;align-items:end;padding:27px}.field label{display:block;margin:0 0 8px;color:#39495f;font-size:12px;font-weight:750}.field select{width:100%;height:48px;padding:0 12px;border:1px solid #d4dce6;border-radius:10px;background:#fff;color:#24344a;font-size:14px;font-weight:600;outline:0;cursor:pointer}.field select:focus{border-color:#e48124;box-shadow:0 0 0 3px rgba(233,120,13,.12)}.field select:disabled{background:#f4f6f8;color:#8995a3}.finder button{height:48px;padding:0 23px;border:0;border-radius:10px;color:#fff;background:#db700c;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}.finder button:hover{background:#b95909}.finder button:disabled{opacity:.6;cursor:wait}.finder-note{margin:0;padding:0 27px 24px;color:#708097;font-size:12px}.result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:31px 2px 15px}.result-head h2{margin:0;font-size:18px;letter-spacing:-.02em}.result-head span{color:#778599;font-size:12px}
-    .list{display:grid;gap:14px}.house{padding:0 24px}.house-title{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 0;border-bottom:1px solid #e9edf2}.house-title strong{font-size:16px}.house-title small{color:#7c8796;font-size:12px}.person{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,170px) auto;align-items:center;gap:18px;padding:15px 0;border-bottom:1px solid #eef1f5}.person:last-child{border:0}.person strong{min-width:0;overflow-wrap:anywhere;font-size:14px}.person .number{color:#34465d;font-size:13px;font-weight:650}.call{display:inline-flex;align-items:center;justify-content:center;min-width:125px;min-height:37px;padding:7px 13px;border:1px solid #eec69f;border-radius:9px;color:#a8520a;background:#fff7ee;font-size:12px;font-weight:750;text-decoration:none;cursor:pointer}.call:hover{color:#fff;background:#d77113}.call:disabled{opacity:.5;cursor:not-allowed;color:#8a735e;background:#f5f1ed}.telephony-status{margin:0 0 18px;padding:11px 14px;border:1px solid #e2e7ef;border-radius:11px;background:#fff;color:#68768c;font-size:11px}.telephony-status.ok{border-color:#d7eadf;background:#f4fbf6;color:#277849}.telephony-status.warn{border-color:#f0dfc9;background:#fff9f2;color:#8a5c2d}.muted{color:#9ba6b3;font-size:12px}.empty{padding:36px 24px;color:#718096;text-align:center;font-size:13px;line-height:1.6}.error{border-color:#f0ceca;color:#ad3631;background:#fff9f8}
-    @media(max-width:820px){.finder{grid-template-columns:1fr 1fr}.finder button{grid-column:1/-1}.content{width:min(100% - 32px,700px);padding-top:95px}}@media(max-width:520px){.finder{grid-template-columns:1fr;padding:20px}.finder button{grid-column:auto}.finder-note{padding:0 20px 20px}.heading-icon{display:none}.house{padding:0 16px}.house-title{align-items:start;flex-direction:column;gap:4px}.person{grid-template-columns:1fr auto;gap:7px}.person .number{grid-row:2}.call{grid-column:2;grid-row:1/3}}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;color:#1b2a3d;background:#f5f7fa;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button{font:inherit}
+    .content{width:min(1220px,calc(100% - 56px));margin:0 auto;padding:102px 0 72px}
+    .eyebrow{color:#b65a09;font-size:11px;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
+    .heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}
+    .heading h1{margin:8px 0 7px;font-size:clamp(34px,3.8vw,48px);letter-spacing:-.05em;line-height:1.05}
+    .heading p{max-width:760px;margin:0;color:#617086;font-size:14px;line-height:1.55}
+    .heading-icon{width:62px;height:62px;flex:0 0 62px;display:grid;place-items:center;border:1px solid #f4dfc9;border-radius:18px;color:#c6670c;background:#fff4e9;font-size:28px}
+    .panel{border:1px solid #dfe5ec;border-radius:19px;background:#fff;box-shadow:0 14px 38px rgba(20,40,60,.045)}
+    .switchboard{overflow:hidden}
+    .street-tabs{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:0;border-bottom:1px solid #dfe5ec;background:#f8fafc}
+    .street-tab{min-height:58px;padding:10px 8px;border:0;border-right:1px solid #e4e8ee;color:#5f6e83;background:#f8fafc;font-size:12px;font-weight:850;cursor:pointer;transition:.16s ease}
+    .street-tab:last-child{border-right:0}
+    .street-tab:hover{color:#a84f05;background:#fff8f1}
+    .street-tab.active{position:relative;color:#a84f05;background:#fff}
+    .street-tab.active:after{content:"";position:absolute;left:18%;right:18%;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#e67a13}
+    .board-head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 25px 10px}
+    .board-head h2{margin:0;color:#23334a;font-size:20px;letter-spacing:-.025em}
+    .board-head span{color:#7b889b;font-size:12px}
+    .house-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:11px;padding:14px 25px 27px}
+    .house-btn{position:relative;min-height:78px;padding:10px;border:1px solid #dce3eb;border-radius:13px;color:#27374e;background:linear-gradient(180deg,#fff 0%,#fafbfd 100%);font-size:20px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(35,52,75,.035);transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
+    .house-btn:hover{transform:translateY(-1px);border-color:#e8a15e;box-shadow:0 8px 20px rgba(214,112,17,.1)}
+    .house-btn:active{transform:translateY(0)}
+    .house-btn:disabled{opacity:.58;cursor:wait;transform:none}
+    .house-btn.commerce{border-color:#eac99f;background:linear-gradient(180deg,#fffaf4 0%,#fff2e4 100%)}
+    .commerce-badge{display:block;margin-top:4px;color:#b45a0a;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .house-btn.exterior{min-height:92px;font-size:18px}
+    .house-btn.exterior small{display:block;margin-bottom:5px;color:#68788e;font-size:10px;font-weight:850;line-height:1.25}
+    .statusbar{display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 14px;border:1px solid #e2e7ef;border-radius:12px;background:#fff;color:#68768c;font-size:12px;line-height:1.45}
+    .statusbar:before{content:"";width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#d59a55;box-shadow:0 0 0 4px rgba(213,154,85,.12)}
+    .statusbar.ok{border-color:#d7eadf;background:#f4fbf6;color:#277849}
+    .statusbar.ok:before{background:#35a867;box-shadow:0 0 0 4px rgba(53,168,103,.12)}
+    .statusbar.error{border-color:#efd1cd;background:#fff8f7;color:#ad3f37}
+    .statusbar.error:before{background:#cf5b50;box-shadow:0 0 0 4px rgba(207,91,80,.12)}
+    .privacy-note{margin:12px 3px 0;color:#8490a1;font-size:11px;line-height:1.5}
+    .modal-backdrop{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(23,34,50,.42);backdrop-filter:blur(3px)}
+    .modal-backdrop.show{display:flex}
+    .choice-modal{width:min(360px,100%);padding:22px;border:1px solid #e5e8ed;border-radius:20px;background:#fff;box-shadow:0 26px 70px rgba(17,30,48,.22)}
+    .choice-modal h3{margin:4px 0 7px;font-size:20px;letter-spacing:-.03em}
+    .choice-modal p{margin:0;color:#748196;font-size:12px;line-height:1.55}
+    .choice-buttons{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+    .choice{min-height:72px;border:1px solid #e5c39f;border-radius:14px;color:#a65008;background:#fff7ef;font-size:25px;font-weight:950;cursor:pointer}
+    .choice:hover{color:#fff;background:#d96e0b}
+    .modal-close{width:100%;min-height:40px;margin-top:12px;border:1px solid #dfe4ea;border-radius:11px;color:#647187;background:#fff;font-size:11px;font-weight:800;cursor:pointer}
+    @media(max-width:980px){
+      .content{width:min(100% - 30px,820px);padding-top:88px}
+      .street-tabs{display:flex;overflow-x:auto;scrollbar-width:thin}
+      .street-tab{min-width:122px;flex:0 0 auto}
+      .house-grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}
+    }
+    @media(max-width:560px){
+      .content{width:min(100% - 20px,520px);padding-top:78px}
+      .heading{align-items:flex-start;margin-bottom:18px}
+      .heading-icon{display:none}
+      .heading h1{font-size:36px}
+      .heading p{font-size:13px}
+      .street-tab{min-width:112px;min-height:54px;font-size:11px}
+      .board-head{align-items:flex-start;flex-direction:column;gap:4px;padding:18px 16px 8px}
+      .house-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:12px 16px 20px}
+      .house-btn{min-height:70px;font-size:18px;border-radius:12px}
+      .house-btn.exterior{grid-column:span 3;min-height:76px}
+      .statusbar{margin-top:12px}
+    }
   </style>
 </head>
 <body>
   <main class="content">
-    <div class="heading"><div><span class="eyebrow">Control de acceso · Padrón actualizado</span><h1>Conmutador</h1><p>Encuentra el domicilio y llama al residente antes de permitir el acceso.</p></div><div class="heading-icon" aria-hidden="true">☎</div></div>
-    <form class="panel finder" id="finder"><div class="field"><label for="street">Calle</label><select id="street" required><option value="">Cargando calles…</option></select></div><div class="field"><label for="number">Número de casa</label><select id="number" disabled><option value="">Selecciona una calle</option></select></div><button id="findButton" type="submit">Buscar residente</button></form>
-    <p class="finder-note">Selecciona una calle para ver sus casas o añade un número para encontrar un domicilio específico.</p>
-    <div id="telephonyStatus" class="telephony-status warn">Consultando la configuración de telefonía de caseta…</div>
-    <div class="result-head"><h2>Residentes registrados</h2><span id="count" aria-live="polite">Selecciona un domicilio</span></div><div id="results" class="list" aria-live="polite"><div class="panel empty">Los nombres y teléfonos aparecerán aquí después de buscar.</div></div>
+    <div class="heading">
+      <div>
+        <span class="eyebrow">Control de acceso · Conmutador de caseta</span>
+        <h1>Conmutador</h1>
+        <p>Selecciona la calle y después la casa. No se muestran nombres ni teléfonos en pantalla; al elegir el domicilio se prepara la llamada automáticamente.</p>
+      </div>
+      <div class="heading-icon" aria-hidden="true">☎</div>
+    </div>
+
+    <section class="panel switchboard" aria-label="Conmutador por calles">
+      <div id="streetTabs" class="street-tabs" role="tablist" aria-label="Calles"></div>
+      <div class="board-head">
+        <h2 id="streetTitle">Gardenias</h2>
+        <span id="houseCount">32 domicilios</span>
+      </div>
+      <div id="houseGrid" class="house-grid" aria-live="polite"></div>
+    </section>
+
+    <div id="callStatus" class="statusbar">Consultando la configuración de telefonía de caseta…</div>
+    <p class="privacy-note">La cuadrícula muestra únicamente la calle y el número de casa. La información personal permanece oculta para el guardia.</p>
   </main>
+
+  <div id="phoneChoiceModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="phoneChoiceTitle">
+    <div class="choice-modal">
+      <span class="eyebrow">DOS TELÉFONOS REGISTRADOS</span>
+      <h3 id="phoneChoiceTitle">¿A cuál deseas llamar?</h3>
+      <p>Este domicilio tiene dos números separados por “/” en el padrón. Elige A o B.</p>
+      <div class="choice-buttons">
+        <button class="choice" type="button" data-phone-choice="0">A</button>
+        <button class="choice" type="button" data-phone-choice="1">B</button>
+      </div>
+      <button id="closePhoneChoice" class="modal-close" type="button">Cancelar</button>
+    </div>
+  </div>
+
   <script>
     (() => {
       const API = 'https://api-misionjardines.listoenlinea.host/api';
       const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
       if (!token) { location.replace('login.html'); return; }
-      const $ = id => document.getElementById(id);
-      const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-      const dial = value => String(value || '').replace(/[^+0-9]/g, '');
-      let addresses = [], request = 0, telephonyReady = false, telephonyConfig = null;
-      async function api(path, options = {}) {
-        const response = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }, ...options });
-        const data = await response.json();
+
+      const byId = id => document.getElementById(id);
+      const range = amount => Array.from({ length: amount }, (_, index) => ({ number: String(index + 1) }));
+      const fromList = value => value.split(',').map(number => ({ number: number.trim() })).filter(item => item.number);
+      const sections = [
+        { key: 'Gardenias', houses: range(32) },
+        { key: 'Magnolias', houses: range(32) },
+        { key: 'Lirios', houses: range(39) },
+        { key: 'Rosas', houses: range(42) },
+        { key: 'Jardines 1', houses: fromList('116,120,124,125,128,129,132,133,136,137,141,142,144,145,148,149,152,153,156,157,160,161,164,165,168,169,173,177,181,185') },
+        { key: 'Jardines 2', houses: fromList('201,205,209,213,217,221,233,237,241,245,249,253,257,269,273,277,281,285,289') },
+        { key: 'Jardines 3', houses: fromList('307,311,315,319,323,327,328,331,332,335,336,339,340,343,344,347,348,351,352,355,356,359,360,363,364,367,368,371,372,375,376,379,380,384,388') },
+        {
+          key: 'Exterior',
+          houses: [
+            { number: '3614', label: 'Valle de México', lookup: 'Valle de México' },
+            { number: '752', label: 'Atotonilco', lookup: 'Atotonilco' },
+            { number: '707', label: 'Guadalajara', lookup: 'Guadalajara' }
+          ]
+        }
+      ];
+
+      let activeSection = sections[0];
+      let telephonyConfig = null;
+      let telephonyReady = false;
+      let pendingPhones = [];
+      let requestNumber = 0;
+
+      function setStatus(message, kind) {
+        const status = byId('callStatus');
+        status.className = 'statusbar' + (kind ? ' ' + kind : '');
+        status.textContent = message;
+      }
+
+      async function api(path) {
+        const response = await fetch(API + path, { headers: { Authorization: 'Bearer ' + token } });
+        let data = {};
+        try { data = await response.json(); } catch (_) {}
         if (response.status === 401) { location.replace('login.html'); throw Error('La sesión expiró'); }
         if (!response.ok || data.ok === false) throw Error(data.message || 'No fue posible consultar el padrón');
         return data;
       }
-      function numbers() {
-        const street = $('street').value;
-        const values = [...new Set(addresses.filter(h => h.calle === street).map(h => h.numero))].sort((a,b) => a.localeCompare(b, 'es', { numeric: true }));
-        $('number').innerHTML = '<option value="">Todas las casas de la calle</option>' + values.map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
-        $('number').disabled = !street;
+
+      function isCommerce(sectionKey, number) {
+        return (sectionKey === 'Gardenias' && number === '28') || (sectionKey === 'Lirios' && number === '32');
       }
-      function render(casas) {
-        $('count').textContent = `${casas.length} ${casas.length === 1 ? 'domicilio' : 'domicilios'} encontrado${casas.length === 1 ? '' : 's'}`;
-        $('results').innerHTML = casas.length ? casas.map(casa => {
-          const people = casa.condominos || [];
-          return `<section class="panel house"><div class="house-title"><strong>${esc(casa.calle)} · Casa ${esc(casa.numero)}</strong><small>${people.length} ${people.length === 1 ? 'residente' : 'residentes'}</small></div>${people.length ? people.map(person => `<div class="person"><strong>${esc(person.nombreCompleto)}</strong><span class="number">${esc(person.telefono || 'Sin teléfono registrado')}</span>${dial(person.telefono) ? `<button class="call" type="button" data-call-number="${esc(dial(person.telefono))}" data-call-name="${esc(person.nombreCompleto)}" ${telephonyReady ? '' : 'disabled'}>☎ Llamar desde caseta</button>` : '<span class="muted">Sin llamada</span>'}</div>`).join('') : '<div class="empty">No hay residentes activos registrados en esta casa.</div>'}</section>`;
-        }).join('') : '<div class="panel empty">No encontramos residentes para ese domicilio. Comprueba la calle y el número.</div>';
+
+      function renderTabs() {
+        const tabs = byId('streetTabs');
+        tabs.innerHTML = '';
+        sections.forEach(section => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'street-tab' + (section.key === activeSection.key ? ' active' : '');
+          button.textContent = section.key;
+          button.setAttribute('role', 'tab');
+          button.setAttribute('aria-selected', section.key === activeSection.key ? 'true' : 'false');
+          button.addEventListener('click', () => {
+            activeSection = section;
+            renderTabs();
+            renderHouses();
+          });
+          tabs.appendChild(button);
+        });
       }
-      async function search(event) {
-        event?.preventDefault();
-        if (!$('street').value) return;
-        const current = ++request;
-        $('findButton').disabled = true;
-        $('count').textContent = 'Consultando el padrón…'; $('results').innerHTML = '<div class="panel empty">Buscando residentes…</div>';
+
+      function renderHouses() {
+        byId('streetTitle').textContent = activeSection.key;
+        byId('houseCount').textContent = activeSection.houses.length + (activeSection.houses.length === 1 ? ' domicilio' : ' domicilios');
+        const grid = byId('houseGrid');
+        grid.innerHTML = '';
+
+        activeSection.houses.forEach(house => {
+          const button = document.createElement('button');
+          const commerce = isCommerce(activeSection.key, house.number);
+          button.type = 'button';
+          button.className = 'house-btn' + (commerce ? ' commerce' : '') + (activeSection.key === 'Exterior' ? ' exterior' : '');
+          button.dataset.houseNumber = house.number;
+          button.dataset.lookup = house.lookup || activeSection.key;
+
+          if (activeSection.key === 'Exterior') {
+            const label = document.createElement('small');
+            label.textContent = house.label;
+            button.appendChild(label);
+          }
+
+          const number = document.createElement('span');
+          number.textContent = house.number;
+          button.appendChild(number);
+
+          if (commerce) {
+            const badge = document.createElement('span');
+            badge.className = 'commerce-badge';
+            badge.textContent = 'Comercio';
+            button.appendChild(badge);
+          }
+
+          button.setAttribute('aria-label', (house.label ? house.label + ' ' : activeSection.key + ' casa ') + house.number + (commerce ? ', comercio' : ''));
+          button.addEventListener('click', () => selectHouse(button, house));
+          grid.appendChild(button);
+        });
+      }
+
+      function openPhoneChoice(phones) {
+        pendingPhones = phones.slice(0, 2);
+        byId('phoneChoiceModal').classList.add('show');
+        document.querySelector('[data-phone-choice="0"]').focus();
+      }
+
+      function closePhoneChoice() {
+        pendingPhones = [];
+        byId('phoneChoiceModal').classList.remove('show');
+      }
+
+      async function dialFromCaseta(number) {
+        if (!number) return;
+        const agentUrl = String(telephonyConfig && telephonyConfig.configuracion && telephonyConfig.configuracion.agenteLocalUrl || '').trim();
+
+        if (!telephonyReady || !agentUrl) {
+          setStatus('Teléfono localizado. Falta enlazar el agente local de caseta para ejecutar la llamada física desde la aplicación.', 'error');
+          return;
+        }
+
+        setStatus('Enviando llamada al agente de caseta…');
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+
         try {
-          const params = new URLSearchParams({ calle: $('street').value, numero: $('number').value });
-          const data = await api(`/busqueda/conmutador?${params}`);
-          if (current === request) render(data.casas || []);
+          const response = await fetch(agentUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accion: 'marcar', numero: number, origen: 'MisionJardines-Conmutador' }),
+            signal: controller.signal
+          });
+          if (!response.ok) throw Error('El agente local respondió con error ' + response.status);
+          setStatus('Llamada enviada a la línea de caseta.', 'ok');
         } catch (error) {
-          if (current === request) { $('count').textContent = 'Consulta no disponible'; $('results').innerHTML = `<div class="panel empty error">${esc(error.message)}</div>`; }
-        } finally { if (current === request) $('findButton').disabled = false; }
+          setStatus(error.name === 'AbortError'
+            ? 'El agente local no respondió a tiempo. Revisa su conexión.'
+            : 'No fue posible iniciar la llamada desde caseta: ' + error.message, 'error');
+        } finally {
+          clearTimeout(timeout);
+        }
       }
+
+      async function selectHouse(button, house) {
+        const currentRequest = ++requestNumber;
+        document.querySelectorAll('.house-btn').forEach(item => { item.disabled = true; });
+        setStatus('Buscando el teléfono registrado para este domicilio…');
+
+        try {
+          const params = new URLSearchParams({
+            grupo: house.lookup || activeSection.key,
+            numero: house.number
+          });
+          const data = await api('/busqueda/conmutador/telefono?' + params.toString());
+          if (currentRequest !== requestNumber) return;
+
+          const phones = Array.isArray(data.telefonos) ? data.telefonos.filter(Boolean).slice(0, 2) : [];
+          if (!phones.length) {
+            setStatus('Este domicilio no tiene un teléfono registrado en el padrón.', 'error');
+            return;
+          }
+
+          if (phones.length > 1) {
+            setStatus('Este domicilio tiene dos teléfonos. Elige A o B para marcar.');
+            openPhoneChoice(phones);
+            return;
+          }
+
+          await dialFromCaseta(phones[0]);
+        } catch (error) {
+          if (currentRequest === requestNumber) setStatus(error.message, 'error');
+        } finally {
+          if (currentRequest === requestNumber) {
+            document.querySelectorAll('.house-btn').forEach(item => { item.disabled = false; });
+          }
+        }
+      }
+
       async function loadTelephony() {
         try {
           const data = await api('/conexion/estado');
           telephonyConfig = (data.data || []).find(item => item.tipo === 'TELEFONIA' && item.nombre === 'principal') || null;
+          const config = telephonyConfig && telephonyConfig.configuracion || {};
           telephonyReady = Boolean(
             telephonyConfig &&
             telephonyConfig.configurado &&
-            telephonyConfig.configuracion?.tipoConexion === 'TELMEX_FXO'
+            config.tipoConexion === 'TELMEX_FXO' &&
+            String(config.agenteLocalUrl || '').trim()
           );
-          const status = $('telephonyStatus');
+
           if (telephonyReady) {
-            status.className = 'telephony-status ok';
-            status.textContent = 'Telefonía Telmex configurada mediante gateway FXO. La marcación desde la app quedará habilitada al instalar y enlazar el agente local de caseta.';
+            setStatus('Telefonía de caseta lista. Al seleccionar una casa se enviará la llamada automáticamente.', 'ok');
           } else {
-            status.className = 'telephony-status warn';
-            status.textContent = 'Telefonía de caseta pendiente. Configúrala en Seguridad → Conexión → Llamadas.';
+            setStatus('La cuadrícula y el padrón están listos. Para marcar desde la app configura también la URL del agente local en Seguridad → Conexión → Llamadas.');
           }
         } catch (error) {
           telephonyReady = false;
-          $('telephonyStatus').className = 'telephony-status warn';
-          $('telephonyStatus').textContent = 'No fue posible consultar la configuración de telefonía.';
+          setStatus('No fue posible consultar la configuración de telefonía.', 'error');
         }
       }
 
-      $('results').addEventListener('click', event => {
-        const button = event.target.closest('[data-call-number]');
-        if (!button) return;
-        if (!telephonyReady) return;
-        const name = button.dataset.callName || 'residente';
-        alert('La línea Telmex y el gateway FXO están configurados para ' + name + '. El siguiente paso es instalar el agente local que ejecutará la llamada física desde caseta.');
+      document.querySelectorAll('[data-phone-choice]').forEach(button => {
+        button.addEventListener('click', async () => {
+          const selected = pendingPhones[Number(button.dataset.phoneChoice)];
+          closePhoneChoice();
+          if (selected) await dialFromCaseta(selected);
+        });
+      });
+      byId('closePhoneChoice').addEventListener('click', closePhoneChoice);
+      byId('phoneChoiceModal').addEventListener('click', event => {
+        if (event.target === byId('phoneChoiceModal')) closePhoneChoice();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closePhoneChoice();
       });
 
-      $('finder').addEventListener('submit', search);
-      $('street').addEventListener('change', () => { numbers(); $('count').textContent = 'Selecciona una casa o busca toda la calle'; $('results').innerHTML = '<div class="panel empty">Pulsa «Buscar residente» para consultar los contactos.</div>'; });
-      $('number').addEventListener('change', () => { if ($('number').value) search(); });
-      (async () => {
-        await loadTelephony();
-        try {
-          const data = await api('/busqueda/conmutador/opciones');
-          addresses = data.casas || [];
-          const streets = [...new Set(addresses.map(h => h.calle))].sort((a,b) => a.localeCompare(b, 'es'));
-          $('street').innerHTML = '<option value="">Selecciona una calle</option>' + streets.map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
-          const params = new URLSearchParams(location.search);
-          if (streets.includes(params.get('calle'))) { $('street').value = params.get('calle'); numbers(); $('number').value = params.get('numero') || ''; search(); }
-        } catch (error) { $('street').innerHTML = '<option value="">No fue posible cargar calles</option>'; $('count').textContent = error.message; }
-      })();
+      renderTabs();
+      renderHouses();
+      loadTelephony();
     })();
   </script>
   <script src="assets/js/site-sidebar.js?v=20261001"></script>
