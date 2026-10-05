@@ -71,53 +71,36 @@
       </article>
 
       <article class="card">
-        <div class="head"><span class="eyebrow">Telmex · Línea residencial</span><h2>Llamadas</h2><p>Configuración para conservar la línea Telmex analógica y conectarla mediante un gateway FXO.</p></div>
+        <div class="head"><span class="eyebrow">WhatsApp · Caseta</span><h2>Llamadas</h2><p>Conmutador conectado a la cuenta exclusiva de WhatsApp de la caseta.</p></div>
         <form class="body" data-form="TELEFONIA">
           <div class="switchline"><span>Integración habilitada</span><input name="activo" type="checkbox" checked></div>
           <div class="field"><label>Nombre</label><input name="nombre" value="principal" readonly></div>
 
           <div class="notice" style="margin:0 0 14px">
-            <strong>Arquitectura:</strong> línea Telmex residencial → puerto TEL1/roseta → gateway FXO → red local → aplicación.
-            Telmex no necesita entregar usuario SIP; las credenciales SIP serán del gateway/PBX local.
+            <strong>Flujo:</strong> conmutador → teléfono del padrón → WhatsApp Desktop/Web → llamada del guardia.
+            No requiere FXO, SIP, PBX, Twilio ni acceso al módem Telmex.
           </div>
 
-          <div class="field"><label>Tipo de conexión</label><input name="tipoConexion" value="TELMEX_FXO" readonly></div>
-
-          <div class="row">
-            <div class="field"><label>IP / Host del gateway FXO *</label><input name="host" placeholder="Ej. 192.168.1.60"></div>
-            <div class="field"><label>Puerto SIP *</label><input name="puerto" type="number" min="1" max="65535" placeholder="5060"></div>
-          </div>
-
-          <div class="row">
-            <div class="field"><label>Marca / modelo del gateway</label><input name="gatewayModelo" placeholder="Ej. Grandstream HT813"></div>
-            <div class="field"><label>Puerto FXO</label><input name="fxoPuerto" placeholder="FXO 1"></div>
-          </div>
-
-          <div class="field"><label>Origen de la línea Telmex</label><select name="origenLinea"><option value="TEL1_MODEM">Puerto TEL1 / PHONE1 del módem Telmex</option><option value="ROSETA">Roseta telefónica de pared</option><option value="OTRO">Otro</option></select></div>
-
-          <div class="field"><label>Usuario / extensión SIP local</label><input name="usuario" autocomplete="username" placeholder="Ej. caseta o 101"></div>
-          <div class="field"><label>Contraseña SIP / gateway</label><input name="secreto" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"><div class="secret-note" data-secret-note></div></div>
-
-          <div class="row">
-            <div class="field"><label>Número de la línea Telmex</label><input name="numeroLinea" inputmode="tel" placeholder="33XXXXXXXX"></div>
-            <div class="field"><label>Extensión de caseta</label><input name="extension" placeholder="101"></div>
-          </div>
-
+          <div class="field"><label>Tipo de conexión</label><input name="tipoConexion" value="WHATSAPP_CASETA" readonly></div>
           <div class="field">
-            <label>URL del agente local de caseta</label>
-            <input name="agenteLocalUrl" inputmode="url" placeholder="Ej. http://192.168.1.70:8787/llamar">
-            <div class="secret-note">La aplicación enviará aquí la orden de marcación cuando el guardia seleccione una casa.</div>
+            <label>Número autorizado de WhatsApp de caseta</label>
+            <input name="numeroAutorizado" value="3337278609" readonly>
+            <div class="secret-note">Esta es la única cuenta autorizada operativamente para el conmutador. WhatsApp Desktop/Web debe permanecer vinculado a esta cuenta.</div>
+          </div>
+          <div class="field">
+            <label>Modo de apertura</label>
+            <select name="modoApertura">
+              <option value="WA_ME">WhatsApp Desktop / WhatsApp Web</option>
+            </select>
+          </div>
+          <div class="switchline"><span>Ocultar teléfonos del padrón en el conmutador</span><input name="ocultarTelefonos" type="checkbox" checked disabled></div>
+          <div class="field"><label>Notas</label><textarea name="notas" placeholder="Ej. Cuenta exclusiva de caseta vinculada en la PC..."></textarea></div>
+
+          <div class="notice" style="margin:14px 0 0">
+            <strong>Importante:</strong> una página web no puede consultar qué número está conectado actualmente en WhatsApp ni presionar por sí sola el botón de llamada. Para mantener la restricción, la PC de caseta debe tener vinculada únicamente la cuenta 3337278609.
           </div>
 
-          <div class="row">
-            <div class="field"><label>Transporte SIP</label><select name="transporte"><option>UDP</option><option>TCP</option><option>TLS</option></select></div>
-            <div class="field"><label>Código de país</label><input name="codigoPais" value="+52"></div>
-          </div>
-
-          <div class="switchline"><span>Conservar teléfono VTech como respaldo</span><input name="vtechRespaldo" type="checkbox" checked></div>
-          <div class="field"><label>Notas del equipo / cableado</label><textarea name="notas" placeholder="Ej. TEL1 del módem → FXO 1 del gateway. VTech queda como respaldo..."></textarea></div>
-
-          <div class="actions"><button class="btn primary" type="submit">Guardar telefonía Telmex</button></div><div class="status" data-status></div>
+          <div class="actions"><button class="btn primary" type="submit">Guardar WhatsApp de caseta</button></div><div class="status" data-status></div>
         </form>
       </article>
     </section>
@@ -289,16 +272,10 @@
       if(tipo==='PLUMAS')return{plumas:gatesConfig()};
       if(tipo==='CAMARAS')return{protocolo:val(form,'protocolo'),rtspPort:val(form,'rtspPort'),canales:cameraChannels()};
       return{
-        tipoConexion:'TELMEX_FXO',
-        gatewayModelo:val(form,'gatewayModelo'),
-        fxoPuerto:val(form,'fxoPuerto'),
-        origenLinea:val(form,'origenLinea'),
-        numeroLinea:val(form,'numeroLinea'),
-        extension:val(form,'extension'),
-        agenteLocalUrl:val(form,'agenteLocalUrl'),
-        transporte:val(form,'transporte'),
-        codigoPais:val(form,'codigoPais') || '+52',
-        vtechRespaldo:checked(form,'vtechRespaldo'),
+        tipoConexion:'WHATSAPP_CASETA',
+        numeroAutorizado:'3337278609',
+        modoApertura:val(form,'modoApertura') || 'WA_ME',
+        ocultarTelefonos:true,
         notas:val(form,'notas')
       };
     }
