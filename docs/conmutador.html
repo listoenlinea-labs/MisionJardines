@@ -248,7 +248,7 @@
           return;
         }
 
-        const url = 'https://wa.me/' + destination;
+        const url = 'whatsapp://send?phone=' + destination;
         let target = preparedWindow;
 
         try {
@@ -259,9 +259,9 @@
           }
           target.opener = null;
           target.location.replace(url);
-          setStatus('WhatsApp abierto. En el chat pulsa el ícono de teléfono para iniciar la llamada desde la cuenta autorizada 33••••8609.', 'ok');
+          setStatus('Abriendo la aplicación de WhatsApp. En el chat pulsa el ícono de teléfono para iniciar la llamada desde la cuenta autorizada 33••••8609.', 'ok');
         } catch (_) {
-          setStatus('No fue posible abrir WhatsApp. Verifica que WhatsApp Web o WhatsApp para Windows esté disponible.', 'error');
+          setStatus('No fue posible abrir la aplicación de WhatsApp. Verifica que WhatsApp para Windows esté instalado y vinculado.', 'error');
         }
       }
 
