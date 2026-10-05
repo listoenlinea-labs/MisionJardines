@@ -26,6 +26,12 @@ async function iniciarServidor() {
         );
 
         await asegurarEsquemaPagos();
+        try {
+            await require('./models/AgenteCaseta').sync();
+            await require('./models/OrdenCaseta').sync();
+        } catch (error) {
+            console.error('Integración de caseta pendiente: no se crearon las tablas:', error.message);
+        }
         await require('./services/viviendas-schema.service').asegurarViviendas();
         try {
             await require('./services/roles-migration.service').aplicarMigracionRoles();
