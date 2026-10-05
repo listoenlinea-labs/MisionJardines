@@ -248,7 +248,7 @@
           return;
         }
 
-        const url = 'whatsapp://send?phone=' + destination;
+        const url = 'misionjardines-call://call?phone=' + destination;
         let target = preparedWindow;
 
         try {
@@ -259,9 +259,10 @@
           }
           target.opener = null;
           target.location.replace(url);
-          setStatus('Abriendo la aplicación de WhatsApp. En el chat pulsa el ícono de teléfono para iniciar la llamada desde la cuenta autorizada 33••••8609.', 'ok');
+          setStatus('Enviando la llamada a WhatsApp Desktop desde la cuenta autorizada 33••••8609…', 'ok');
+          setTimeout(() => { try { if (target && !target.closed) target.close(); } catch (_) {} }, 1800);
         } catch (_) {
-          setStatus('No fue posible abrir la aplicación de WhatsApp. Verifica que WhatsApp para Windows esté instalado y vinculado.', 'error');
+          setStatus('No fue posible iniciar el agente de llamadas. Verifica que el agente Misión Jardines y WhatsApp para Windows estén instalados.', 'error');
         }
       }
 
@@ -311,7 +312,7 @@
       }
 
       function markWhatsAppReady() {
-        setStatus('WhatsApp de caseta listo. Usa únicamente la cuenta autorizada 33••••8609.', 'ok');
+        setStatus('Conmutador listo. Al seleccionar una casa se abrirá WhatsApp Desktop y se intentará iniciar la llamada automáticamente.', 'ok');
       }
 
       document.querySelectorAll('[data-phone-choice]').forEach(button => {
