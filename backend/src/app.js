@@ -24,6 +24,15 @@ app.set('trust proxy', 1);
 
 app.disable('x-powered-by');
 
+// Fallback de emergencia para servir el frontend directamente desde Hostinger.
+// Esto evita depender de GitHub Pages cuando Actions tiene retrasos y mantiene
+// disponible la misma carpeta /docs que se publica normalmente en Pages.
+const frontendDir = path.resolve(__dirname, '..', '..', 'docs');
+app.use(express.static(frontendDir, {
+    fallthrough: true,
+    index: 'index.html'
+}));
+
 app.use(helmet());
 
 app.use(express.json({
