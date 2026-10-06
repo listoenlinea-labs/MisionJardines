@@ -8,21 +8,11 @@ const operar=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD');
 
 r.get('/estado',autenticarToken,operar,c.estado);
 r.get('/tarjetas',autenticarToken,admin,c.inventario);
-r.post('/inventario',autenticarToken,admin,c.importarLectura);
+r.get('/viviendas',autenticarToken,admin,c.viviendas);
+r.post('/sincronizar',autenticarToken,admin,c.sincronizar);
 r.post('/simular-corte',autenticarToken,admin,c.simular);
-
-r.post('/accesos/sincronizar',autenticarToken,admin,c.solicitarSincronizacion);
+r.patch('/tarjetas/:id/bloqueo',autenticarToken,admin,c.bloquear);
 r.patch('/tarjetas/:id/vigencia',autenticarToken,admin,c.actualizarVigencia);
-r.patch('/tarjetas/:id/vivienda',autenticarToken,admin,c.vincularCasa);
-r.get('/accesos/comandos/:id',autenticarToken,admin,c.estadoAccesoComando);
-
-r.post('/pluma/comandos',autenticarToken,operar,c.solicitarPluma);
-r.get('/pluma/comandos/:id',autenticarToken,operar,c.estadoComando);
-
-r.post('/gateway/heartbeat',c.requireGateway,c.heartbeat);
-r.get('/gateway/comandos/siguiente',c.requireGateway,c.siguienteComando);
-r.post('/gateway/comandos/:id/finalizar',c.requireGateway,c.finalizarComando);
-r.get('/gateway/accesos/siguiente',c.requireGateway,c.siguienteAcceso);
-r.post('/gateway/accesos/:id/finalizar',c.requireGateway,c.finalizarAcceso);
+r.post('/pluma',autenticarToken,operar,c.pluma);
 
 module.exports=r;
