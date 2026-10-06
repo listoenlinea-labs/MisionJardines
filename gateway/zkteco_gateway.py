@@ -12,7 +12,7 @@ TOKEN=os.getenv("ZK_GATEWAY_TOKEN","").strip()
 HOST=os.getenv("ZKTECO_HOST","192.168.1.201").strip()
 PORT=int(os.getenv("ZKTECO_PORT","4370"))
 PASSWORD=os.getenv("ZKTECO_COMM_PASSWORD","").strip() or None
-POLL_SECONDS=max(1,int(os.getenv("ZK_GATEWAY_POLL_SECONDS","2")))
+POLL_SECONDS=max(3,int(os.getenv("ZK_GATEWAY_POLL_SECONDS","3")))
 
 if not TOKEN:
     raise SystemExit("Falta ZK_GATEWAY_TOKEN")
