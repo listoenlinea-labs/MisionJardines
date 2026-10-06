@@ -6,6 +6,7 @@ const {
   setHouseBlocked,
   setCardHouse,
   createTagForHouse,
+  addExistingTagToController,
   operateGate,
   dashboard,
   writeUserValidity
@@ -76,6 +77,14 @@ async function crearTarjeta(req,res){
     res.status(201).json({ok:true,message:'TAG creado y autorizado en el C3-200',data});
   }catch(error){res.status(502).json({ok:false,message:error.message||'No fue posible crear el TAG en ZKTeco'});}
 }
+async function agregarExistenteC3(req,res){
+  try{
+    const data=await addExistingTagToController(req.params.id);
+    res.json({ok:true,message:'TAG agregado y autorizado en el C3-200',data});
+  }catch(error){
+    res.status(502).json({ok:false,message:error.message||'No fue posible agregar el TAG al C3-200'});
+  }
+}
 async function importarMdb(req,res){
   try{
     const importacion=await importZkAccessMdb(req.body);
@@ -97,4 +106,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,agregarExistenteC3,importarMdb,actualizarVigencia,pluma,viviendas,simular};
