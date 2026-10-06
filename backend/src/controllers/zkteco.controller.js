@@ -13,6 +13,7 @@ const {
 }=require('../services/zkteco-direct.service');
 const {simularCorte}=require('../services/zkteco-read.service');
 const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
+const {isPullSdkBridgeConfigured}=require('../services/zkteco-pullsdk-bridge.service');
 
 async function estado(req,res){
   try{
@@ -22,6 +23,7 @@ async function estado(req,res){
       modelo:'C3-200',
       modo:'DIRECT',
       conexionDirecta:true,
+      escrituraUsuarios:isPullSdkBridgeConfigured()?'PULLSDK':'NO_CONFIGURADA',
       tarjetas:await ZkTarjeta.count()
     }});
   }catch(error){
