@@ -8,6 +8,8 @@ const {
 const { generarSiguienteFolio } = require('../services/folios.service');
 const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.service');
 
+const vigenciaService = require('../services/vigencia-mantenimiento.service');
+const { centavos } = require('../services/vigencia-calculo');
 const BASE_MANTENIMIENTO = 300;
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
@@ -59,13 +61,7 @@ function montoMantenimiento(fechaOperacion) {
 }
 
 function conceptoMantenimiento() {
-    const date = new Date();
-    const month = new Intl.DateTimeFormat('es-MX', {
-        month: 'long',
-        timeZone: 'America/Mexico_City'
-    }).format(date).toUpperCase();
-
-    return 'Pago de mantenimiento correspondiente al mes de ' + month;
+    return 'Pago de mantenimiento (abono o mensualidades)';
 }
 
 function pagoSeguro(req, pago) {
@@ -130,7 +126,7 @@ async function listarMisPagos(req, res) {
                 exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData']
             },
             order: [['creadoEn', 'DESC']],
-            limit: 100
+            limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] }
         });
 
         return res.json({
@@ -262,7 +258,7 @@ async function reportarPago(req, res) {
         const folioOperacion = limpiarTexto(req.body.folioOperacion, 180);
         const fechaOperacion = limpiarTexto(req.body.fechaOperacion, 10);
         const horaOperacion = limpiarTexto(req.body.horaOperacion, 8);
-        const monto = Number(req.body.monto);
+        const monto = centavos(req.body.monto) / 100;
         const comprobanteData = String(req.body.comprobanteData || '');
         const textoOcr = limpiarTexto(req.body.textoOcr, 12000);
         const comprobanteNombre = limpiarTexto(req.body.comprobanteNombre, 255);
@@ -376,12 +372,10 @@ async function reportarPago(req, res) {
             concepto = conceptoMantenimiento();
         }
 
-        if (!Number.isFinite(monto) || Math.abs(monto - requerido) > 0.009) {
+        if (!Number.isFinite(monto) || monto <= 0 || (tipoPago === 'EXTRAORDINARIO' && Math.abs(monto - requerido) > 0.009)) {
             return res.status(400).json({
                 ok: false,
-                message: 'El comprobante debe corresponder exactamente a $' +
-                    requerido.toFixed(2) +
-                    ' MXN para este concepto'
+                message: tipoPago === 'MANTENIMIENTO' ? 'El importe debe ser mayor que cero' : 'El comprobante debe corresponder exactamente a $' + requerido.toFixed(2) + ' MXN para este concepto'
             });
         }
 
@@ -405,7 +399,7 @@ async function reportarPago(req, res) {
             concepto,
             monto,
             montoRequerido: requerido,
-            recargo,
+            recargo: Math.min(recargo, monto),
             calleSnapshot: casa.calle,
             numeroCasaSnapshot: casa.numero,
             nombreReportante: nombreCompleto(usuario) || 'Residente',
@@ -463,9 +457,9 @@ async function reportarPago(req, res) {
         }
 
         console.error('Error al reportar pago:', error);
-        return res.status(500).json({
+        return res.status(error.status || 500).json({
             ok: false,
-            message: 'No fue posible registrar el comprobante de pago',
+            message: error.status ? error.message : 'No fue posible registrar el comprobante de pago',
             error: process.env.NODE_ENV === 'development'
                 ? error.message
                 : undefined
@@ -535,5 +529,58 @@ module.exports = {
     crearCuotaExtraordinaria,
     desactivarCuotaExtraordinaria,
     reportarPago,
-    descargarRecibo
+    descargarRecibo, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
 };
+
+async function obtenerVigencia(req, res) {
+    try {
+        if (!req.usuario.casaId) return res.status(400).json({ ok: false, message: 'Selecciona una vivienda' });
+        return res.json({ ok: true, data: vigenciaService.resumen(await vigenciaService.Vigencia.findByPk(req.usuario.casaId)) });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar la vigencia' }); }
+}
+async function inicializarVigencia(req, res) {
+    try {
+        const casaId = Number(req.params.casaId);
+        if (!Number.isSafeInteger(casaId) || casaId <= 0) throw Object.assign(new Error('Vivienda inválida'), { status: 400 });
+        const row = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, transaction =>
+            vigenciaService.inicializar(casaId, req.body.fechaFinal, BASE_MANTENIMIENTO, req.usuario.usuarioId, transaction));
+        return res.json({ ok: true, data: vigenciaService.resumen(row) });
+    } catch (error) { return res.status(error.status || 503).json({ ok: false, message: error.status ? error.message : 'No fue posible configurar la vigencia' }); }
+}
+async function listarPendientes(req, res) {
+    try {
+        const rows = await PagoReportado.findAll({ where: { estatus: 'PENDIENTE_VALIDACION' }, order: [['creadoEn', 'ASC']], limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] } });
+        return res.json({ ok: true, data: rows.map(row => pagoSeguro(req, row)) });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar los comprobantes pendientes' }); }
+}
+async function revisarPago(req, res) {
+    try {
+        if (!['VALIDADO', 'RECHAZADO'].includes(req.body.estatus)) throw Object.assign(new Error('Estado de revisión inválido'), { status: 400 });
+        const result = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            const pago = await PagoReportado.findByPk(req.params.id, { transaction, lock: transaction.LOCK.UPDATE });
+            if (!pago) throw Object.assign(new Error('Pago no encontrado'), { status: 404 });
+            if (pago.estatus !== 'PENDIENTE_VALIDACION') {
+                if (pago.estatus !== req.body.estatus) throw Object.assign(new Error('El pago ya tiene otra resolución'), { status: 409 });
+                return { pago: pagoSeguro(req, pago), vigencia: vigenciaService.resumen(await vigenciaService.Vigencia.findByPk(pago.casaId, { transaction })) };
+            }
+            const recargo = req.body.recargo === undefined ? pago.recargo : req.body.recargo;
+            if (centavos(recargo) > centavos(pago.monto)) throw Object.assign(new Error('El recargo no puede superar el pago'), { status: 400 });
+            if (pago.tipoPago === 'EXTRAORDINARIO' && centavos(recargo) !== 0) throw Object.assign(new Error('La cuota extraordinaria no lleva recargo de mantenimiento'), { status: 400 });
+            await pago.update({ estatus: req.body.estatus, recargo, validadoPorUsuarioId: req.usuario.usuarioId,
+                fechaValidacion: new Date(), actualizadoEn: new Date(), observacionesRevision: limpiarTexto(req.body.observaciones, 600) }, { transaction });
+            const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
+                ? await vigenciaService.actualizar(pago.casaId, req.usuario.usuarioId, transaction) : null;
+            return { pago: pagoSeguro(req, pago), vigencia };
+        });
+        return res.json({ ok: true, data: result });
+    } catch (error) { return res.status(error.status || 503).json({ ok: false, message: error.status ? error.message : 'No fue posible revisar el pago' }); }
+}
+
+async function obtenerComprobante(req, res) {
+    try {
+        const row = await PagoReportado.findByPk(req.params.id, { attributes: ['id', 'comprobanteData'] });
+        if (!row) return res.status(404).json({ ok: false, message: 'Comprobante no encontrado' });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ ok: true, data: { comprobanteData: row.comprobanteData } });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar el comprobante' }); }
+}
