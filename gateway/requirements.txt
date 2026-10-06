@@ -1,1 +1,1 @@
-zkaccess-c3==0.0.15
+pyzkaccess==1.2
