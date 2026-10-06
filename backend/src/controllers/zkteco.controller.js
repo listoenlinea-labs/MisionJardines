@@ -5,8 +5,9 @@ const ZkGateCommand=require('../models/ZkGateCommand');
 const ZkGatewayState=require('../models/ZkGatewayState');
 const {guardarInventario,simularCorte}=require('../services/zkteco-read.service');
 
-function parseOutputs(){
-  return String(process.env.ZKTECO_GATE_OUTPUTS||'')
+function parseOutputs(accion){
+  const envName=accion==='CERRAR'?'ZKTECO_GATE_CLOSE_OUTPUTS':'ZKTECO_GATE_OPEN_OUTPUTS';
+  return String(process.env[envName]||'')
     .split(',').map(v=>Number(v.trim())).filter(v=>Number.isInteger(v)&&v>=1&&v<=4);
 }
 function gatewayAuthorized(req){
@@ -28,7 +29,8 @@ async function estado(req,res){
     host:process.env.ZKTECO_HOST||'192.168.1.201',
     puerto:Number(process.env.ZKTECO_PORT||4370),
     modo:'GATEWAY',
-    salidas:parseOutputs(),
+    salidasAbrir:parseOutputs('ABRIR'),
+    salidasCerrar:parseOutputs('CERRAR'),
     gatewayOnline:online,
     dispositivoConectado:Boolean(gateway?.dispositivoConectado),
     ultimaSenal:gateway?.ultimaSenal||null,
@@ -54,8 +56,11 @@ async function simular(req,res){res.json({ok:true,data:await simularCorte(new Da
 async function solicitarPluma(req,res){
   const accion=String(req.body.accion||'').toUpperCase();
   if(!['ABRIR','CERRAR'].includes(accion))return res.status(400).json({ok:false,message:'Acción no válida'});
-  const salidas=parseOutputs();
-  if(!salidas.length)return res.status(503).json({ok:false,message:'Configura ZKTECO_GATE_OUTPUTS antes de operar la pluma'});
+  const salidas=parseOutputs(accion);
+  if(!salidas.length){
+    const variable=accion==='CERRAR'?'ZKTECO_GATE_CLOSE_OUTPUTS':'ZKTECO_GATE_OPEN_OUTPUTS';
+    return res.status(503).json({ok:false,message:`Configura ${variable} después de confirmar el cableado físico`});
+  }
   const gateway=await ZkGatewayState.findByPk('principal');
   const ultima=gateway?.ultimaSenal?new Date(gateway.ultimaSenal):null;
   if(!ultima||Date.now()-ultima.getTime()>45000)return res.status(503).json({ok:false,message:'Gateway local ZKTeco sin conexión'});
