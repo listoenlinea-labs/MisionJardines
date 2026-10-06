@@ -298,6 +298,28 @@ async function resolveDepartmentProfile(casaId,casa){
   };
 }
 
+const wait = ms => new Promise(resolve=>setTimeout(resolve,ms));
+
+async function readBackUserByCard(client,card,{attempts=6,delayMs=350}={}){
+  for(let attempt=1;attempt<=attempts;attempt++){
+    const rows=await client.getData('user');
+    const found=rows.find(r=>normalizeCardKey(r.CardNo)===card)||null;
+    if(found)return found;
+    if(attempt<attempts)await wait(delayMs);
+  }
+  return null;
+}
+
+async function readBackAuthorization(client,pin,{attempts=6,delayMs=350}={}){
+  for(let attempt=1;attempt<=attempts;attempt++){
+    const rows=await client.getData('userauthorize');
+    const found=rows.find(r=>String(r.Pin??'').trim()===String(pin).trim())||null;
+    if(found&&Number(found.AuthorizeDoorId||0)>0)return found;
+    if(attempt<attempts)await wait(delayMs);
+  }
+  return null;
+}
+
 async function provisionTagOnController({casa,requestedCard,displayName,start,end}){
   const card=canonicalCardNo(requestedCard);
   return withC3(async client=>{
@@ -305,50 +327,83 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
     const profile=await resolveAuthorizationProfile(client,casa.id);
 
     let created=ids.rows.find(r=>normalizeCardKey(r.CardNo)===card)||null;
+    let realPin=created?String(created.Pin??'').trim():'';
+
     if(!created){
+      const usedPins=new Set(ids.rows.map(r=>String(r.Pin??'').trim()).filter(Boolean));
+      // ZKAccess commonly uses the visible card number as the user PIN/ID.
+      // Prefer that convention when it is free; otherwise fall back to the next PIN.
+      const preferredPin=String(Number(card));
+      realPin=!usedPins.has(preferredPin)&&preferredPin!=='0'?preferredPin:String(ids.pin);
+      const safeName=String(displayName||'').slice(0,24);
+
+      // C3/PullSDK documents these as writable user fields. Do not send UID
+      // or SuperAuthorize during INSERT: some C3 firmware acknowledges the
+      // frame but silently ignores records containing non-enrolment fields.
       await client.setRecord('user',{
-        UID:ids.uid,
         CardNo:Number(card),
-        Pin:Number(ids.pin),
+        Pin:Number(realPin),
         Password:'',
         Group:1,
-        StartTime:toDateNumber(start),
-        EndTime:toDateNumber(end),
-        Name:displayName,
-        SuperAuthorize:0
+        Name:safeName
       });
 
-      const afterUser=await client.getData('user');
-      created=afterUser.find(r=>normalizeCardKey(r.CardNo)===card)||null;
+      created=await readBackUserByCard(client,card);
       if(!created){
-        throw new Error('El C3-200 no confirmó el alta del TAG. No se modificó el registro de la aplicación.');
+        // Retry once with the smallest valid payload. Older C3-200 firmware can
+        // reject optional fields while still returning a generic OK frame.
+        await client.setRecord('user',{
+          CardNo:Number(card),
+          Pin:Number(realPin)
+        });
+        created=await readBackUserByCard(client,card);
+      }
+
+      if(!created){
+        throw new Error(
+          'El C3-200 recibió la orden pero no creó el usuario. '+
+          'Se intentó alta normal y alta mínima (CardNo + Pin) y ninguna apareció al releer la tabla user.'
+        );
+      }
+
+      realPin=String(created.Pin??realPin).trim();
+
+      // Apply validity only after the base user exists. Pin acts as the record key.
+      try{
+        await client.setRecord('user',{
+          Pin:Number(realPin),
+          StartTime:toDateNumber(start),
+          EndTime:toDateNumber(end)
+        });
+      }catch(error){
+        console.warn('ZKTeco: usuario creado, pero no se pudo actualizar vigencia:',error.message);
       }
     }
 
-    const realPin=String(created.Pin??ids.pin).trim();
-    const authRows=await client.getData('userauthorize');
-    let auth=authRows.find(r=>String(r.Pin??'').trim()===realPin)||null;
+    if(!realPin)realPin=String(created.Pin??ids.pin).trim();
 
-    if(!auth||Number(auth.AuthorizeDoorId||0)===0){
+    let auth=await readBackAuthorization(client,realPin,{attempts:1,delayMs:0});
+    if(!auth){
       await client.setRecord('userauthorize',{
         Pin:Number(realPin),
-        AuthorizeTimezoneId:profile.timezoneId,
-        AuthorizeDoorId:profile.doorMask
+        AuthorizeTimezoneId:Number(profile.timezoneId||1),
+        AuthorizeDoorId:Number(profile.doorMask||3)
       });
-      const afterAuth=await client.getData('userauthorize');
-      auth=afterAuth.find(r=>String(r.Pin??'').trim()===realPin)||null;
+      auth=await readBackAuthorization(client,realPin);
     }
 
-    if(!auth||Number(auth.AuthorizeDoorId||0)===0){
-      throw new Error('El TAG existe en el C3-200 pero no quedó autorizado para abrir puertas.');
+    if(!auth){
+      throw new Error(
+        'El TAG ya existe en la tabla user del C3-200, pero el controlador no confirmó permisos de entrada/salida en userauthorize.'
+      );
     }
 
     return {
-      uid:Number(created.UID||ids.uid)||ids.uid,
+      uid:Number(created.UID||0)||null,
       pin:realPin,
       cardNo:String(created.CardNo??card),
-      timezoneId:Number(auth.AuthorizeTimezoneId||profile.timezoneId),
-      doorMask:Number(auth.AuthorizeDoorId||profile.doorMask)
+      timezoneId:Number(auth.AuthorizeTimezoneId||profile.timezoneId||1),
+      doorMask:Number(auth.AuthorizeDoorId||profile.doorMask||3)
     };
   });
 }
