@@ -136,9 +136,11 @@ function renderTagDetails(row){
       '<div><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
       '<div><b>Entrada + salida</b><div class="tag-meta">Puertas '+esc(tag.puertasAutorizadas||3)+'</div></div>'+
       '<div><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Vigencia final</div></div>'+
-      '<div class="tag-actions">'+(canAdmin&&tag.enControlador!==false?(tag.bloqueado?
-        '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>':
-        '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>'):'')+'</div></div>';
+      '<div class="tag-actions">'+(canAdmin?(tag.enControlador===false?
+        '<button class="btn mini primary" onclick="addTagToC3('+tag.id+',this)">Agregar en C3</button>':
+        (tag.bloqueado?
+          '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>':
+          '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>')):'')+'</div></div>';
   });
   const pending=unresolved.map(card=>
     '<div class="tag-item"><div><div class="tag-id">Número de tarjeta: '+esc(card)+'</div><div class="tag-meta">Registrado en la vivienda, pendiente de enlazar con el C3-200</div></div>'+
@@ -189,6 +191,21 @@ async function setTag(id,blocked,button){
   catch(e){toast(e.message)}finally{button.disabled=false}
 }
 window.setTag=setTag;
+async function addTagToC3(id,button){
+  if(!confirm('¿Agregar este TAG físicamente al C3-200 y autorizarlo para entrada/salida?'))return;
+  button.disabled=true;
+  try{
+    const r=await api('/zkteco/tarjetas/'+id+'/agregar-c3',{method:'POST',headers:headers(true)});
+    const real=r.data?.numeroTarjetaReal;
+    toast(real?r.message+' · Número de tarjeta: '+real:r.message);
+    await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){
+    toast(e.message);
+  }finally{
+    button.disabled=false;
+  }
+}
+window.addTagToC3=addTagToC3;
 let selectedHouseId=null;
 async function openTagModal(id){
   selectedHouseId=id;
