@@ -13,6 +13,7 @@ const SolicitudRol = require('./SolicitudRol');
 const PagoReportado = require('./PagoReportado');
 const ConfiguracionConexion = require('./ConfiguracionConexion');
 const CuotaExtraordinaria = require('./CuotaExtraordinaria');
+const ZkTarjeta = require('./ZkTarjeta');
 
 /*
  * Casa 1 --- N Usuarios
@@ -229,5 +230,6 @@ module.exports = {
     SolicitudRol,
     PagoReportado,
     ConfiguracionConexion,
-    CuotaExtraordinaria
+    CuotaExtraordinaria,
+    ZkTarjeta
 };
