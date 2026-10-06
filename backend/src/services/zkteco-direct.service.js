@@ -89,10 +89,15 @@ async function syncUsers(){
       if(key) byCard.set(key,Number(house.id));
     }
   }
-  const departmentReferences=await ZkTarjeta.findAll({
-    where:{departamentoId:{[Op.ne]:null},departamento:{[Op.ne]:null}},
-    attributes:['departamentoId','departamento','casaId']
-  });
+  const currentCards=await ZkTarjeta.findAll();
+  const existingByNormalized=new Map();
+  for(const item of currentCards){
+    const key=normalizeCardKey(item.numeroTarjeta);
+    if(key&&!existingByNormalized.has(key))existingByNormalized.set(key,item);
+  }
+  await ZkTarjeta.update({enControlador:false},{where:{}});
+
+  const departmentReferences=currentCards.filter(item=>item.departamentoId&&item.departamento);
   const byDepartmentId=new Map();
   for(const ref of departmentReferences){
     if(ref.departamentoId&&!byDepartmentId.has(Number(ref.departamentoId))){
@@ -109,12 +114,12 @@ async function syncUsers(){
     if(!card||card==='0') continue;
     const pin=String(row.Pin??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
-    const existing=await ZkTarjeta.findOne({where:{numeroTarjeta:card}});
+    const existing=existingByNormalized.get(normalizeCardKey(card))||null;
     const groupId=Number(row.Group||0)||null;
     const deptRef=groupId?byDepartmentId.get(groupId):null;
     const casaId=existing?.casaId??deptRef?.casaId??byCard.get(normalizeCardKey(card))??null;
     if(casaId) linked++;
-    await ZkTarjeta.upsert({
+    const values={
       numeroTarjeta:card,
       uidDispositivo:Number(row.UID||0)||null,
       pinDispositivo:pin,
@@ -129,8 +134,16 @@ async function syncUsers(){
       casaId,
       bloqueado:Boolean(fromDateNumber(row.EndTime) && fromDateNumber(row.EndTime) < new Date().toISOString().slice(0,10)),
       origen:existing?.origen||'ZKTECO',
+      enControlador:true,
       ultimaLectura:new Date()
-    });
+    };
+    if(existing){
+      await existing.update(values);
+      existingByNormalized.set(normalizeCardKey(card),existing);
+    }else{
+      const created=await ZkTarjeta.create(values);
+      existingByNormalized.set(normalizeCardKey(card),created);
+    }
     if(casaId){
       const house=houseById.get(Number(casaId));
       if(house){
@@ -195,9 +208,13 @@ async function setHouseBlocked(casaId,blocked){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('Vivienda no encontrada');
   const controls=normalizeTokens(casa.controles);
-  if(!controls.length) throw new Error('La vivienda no tiene controles registrados');
-  const tarjetas=await ZkTarjeta.findAll({where:{numeroTarjeta:{[Op.in]:controls}}});
-  if(!tarjetas.length) throw new Error('Sincroniza ZKTeco para relacionar los controles de esta vivienda');
+  let tarjetas=await ZkTarjeta.findAll({where:{casaId:Number(casa.id),enControlador:true}});
+  if(!tarjetas.length&&controls.length){
+    const all=await ZkTarjeta.findAll({where:{enControlador:true}});
+    const wanted=new Set(controls.map(normalizeCardKey));
+    tarjetas=all.filter(t=>wanted.has(normalizeCardKey(t.numeroTarjeta)));
+  }
+  if(!tarjetas.length) throw new Error('La vivienda no tiene controles activos en el C3-200');
   const results=[];
   for(const tarjeta of tarjetas){
     try{
@@ -354,6 +371,7 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
     fechaFin:end,
     bloqueado:false,
     origen:'APP',
+    enControlador:true,
     ultimaLectura:new Date()
   });
   await casa.update({controles:mergeControls(casa.controles,realCard,false)});
@@ -444,6 +462,7 @@ async function dashboard({calle,numero,buscar}={}){
           departamento:card.departamento,
           nombreDispositivo:card.nombreDispositivo,
           bloqueado:Boolean(card.bloqueado),
+          enControlador:Boolean(card.enControlador),
           puertasAutorizadas:card.puertasAutorizadas,
           fechaInicio:card.fechaInicio,
           fechaFin:card.fechaFin,
