@@ -298,52 +298,47 @@ async function resolveDepartmentProfile(casaId,casa){
   };
 }
 
-async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaFin}={}){
-  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
-  if(!casa) throw new Error('Vivienda no encontrada');
-
-  const requestedCard=String(numeroTarjeta||'').trim();
-  if(!requestedCard) throw new Error('Captura el número del TAG/control');
+async function provisionTagOnController({casa,requestedCard,displayName,start,end}){
   const card=canonicalCardNo(requestedCard);
-
-  if(await ZkTarjeta.findOne({where:{numeroTarjeta:card}})) throw new Error('Ese TAG/control ya existe');
-  const start=fechaInicio||new Date().toISOString().slice(0,10);
-  const end=fechaFin||'2099-12-31';
-  const departmentProfile=await resolveDepartmentProfile(casa.id,casa);
-  const displayName=String(nombre||departmentProfile.departamento).trim().slice(0,48);
-
-  const result=await withC3(async client=>{
+  return withC3(async client=>{
     const ids=await nextPanelIds(client);
-    if(ids.rows.some(r=>normalizeCardKey(r.CardNo)===card)) throw new Error('Ese TAG ya existe en el C3-200');
-
     const profile=await resolveAuthorizationProfile(client,casa.id);
 
-    await client.setRecord('user',{
-      UID:ids.uid,
-      CardNo:Number(card),
-      Pin:Number(ids.pin),
-      Password:'',
-      Group:1,
-      StartTime:toDateNumber(start),
-      EndTime:toDateNumber(end),
-      Name:displayName,
-      SuperAuthorize:0
-    });
+    let created=ids.rows.find(r=>normalizeCardKey(r.CardNo)===card)||null;
+    if(!created){
+      await client.setRecord('user',{
+        UID:ids.uid,
+        CardNo:Number(card),
+        Pin:Number(ids.pin),
+        Password:'',
+        Group:1,
+        StartTime:toDateNumber(start),
+        EndTime:toDateNumber(end),
+        Name:displayName,
+        SuperAuthorize:0
+      });
 
-    // Mandatory read-back: never report success until the controller itself returns the new CardNo.
-    const afterUser=await client.getData('user');
-    const created=afterUser.find(r=>normalizeCardKey(r.CardNo)===card);
-    if(!created) throw new Error('El C3-200 no confirmó el alta del TAG. No se guardó en la aplicación.');
+      const afterUser=await client.getData('user');
+      created=afterUser.find(r=>normalizeCardKey(r.CardNo)===card)||null;
+      if(!created){
+        throw new Error('El C3-200 no confirmó el alta del TAG. No se modificó el registro de la aplicación.');
+      }
+    }
 
     const realPin=String(created.Pin??ids.pin).trim();
-    await client.setRecord('userauthorize',{
-      Pin:Number(realPin),
-      AuthorizeTimezoneId:profile.timezoneId,
-      AuthorizeDoorId:profile.doorMask
-    });
+    const authRows=await client.getData('userauthorize');
+    let auth=authRows.find(r=>String(r.Pin??'').trim()===realPin)||null;
 
-    const afterAuth=await client.getData('userauthorize');
-    const auth=afterAuth.find(r=>String(r.Pin??'').trim()===realPin);
+    if(!auth||Number(auth.AuthorizeDoorId||0)===0){
+      await client.setRecord('userauthorize',{
+        Pin:Number(realPin),
+        AuthorizeTimezoneId:profile.timezoneId,
+        AuthorizeDoorId:profile.doorMask
+      });
+      const afterAuth=await client.getData('userauthorize');
+      auth=afterAuth.find(r=>String(r.Pin??'').trim()===realPin)||null;
+    }
+
     if(!auth||Number(auth.AuthorizeDoorId||0)===0){
       throw new Error('El TAG existe en el C3-200 pero no quedó autorizado para abrir puertas.');
     }
@@ -355,6 +350,33 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
       timezoneId:Number(auth.AuthorizeTimezoneId||profile.timezoneId),
       doorMask:Number(auth.AuthorizeDoorId||profile.doorMask)
     };
+  });
+}
+
+async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaFin}={}){
+  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
+  if(!casa) throw new Error('Vivienda no encontrada');
+
+  const requestedCard=String(numeroTarjeta||'').trim();
+  if(!requestedCard) throw new Error('Captura el número del TAG/control');
+  const card=canonicalCardNo(requestedCard);
+
+  const existing=await ZkTarjeta.findAll();
+  if(existing.some(item=>normalizeCardKey(item.numeroTarjeta)===card)){
+    throw new Error('Ese TAG/control ya existe en la aplicación');
+  }
+
+  const start=fechaInicio||new Date().toISOString().slice(0,10);
+  const end=fechaFin||'2099-12-31';
+  const departmentProfile=await resolveDepartmentProfile(casa.id,casa);
+  const displayName=String(nombre||departmentProfile.departamento).trim().slice(0,48);
+
+  const result=await provisionTagOnController({
+    casa,
+    requestedCard,
+    displayName,
+    start,
+    end
   });
 
   const realCard=canonicalCardNo(result.cardNo);
@@ -384,6 +406,64 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
     normalizado:requestedCard!==realCard
   };
 }
+
+async function addExistingTagToController(cardId){
+  const tarjeta=await ZkTarjeta.findByPk(cardId);
+  if(!tarjeta) throw new Error('Control no encontrado');
+  if(!tarjeta.casaId) throw new Error('El control todavía no está vinculado a una vivienda');
+
+  const casa=await Casa.findByPk(tarjeta.casaId,{attributes:['id','calle','numero','controles']});
+  if(!casa) throw new Error('La vivienda vinculada ya no existe');
+
+  const requestedCard=String(tarjeta.numeroTarjeta||'').trim();
+  if(!requestedCard) throw new Error('El control no tiene Número de tarjeta');
+  const start=tarjeta.fechaInicio||new Date().toISOString().slice(0,10);
+  const end=tarjeta.fechaFinOriginal||tarjeta.fechaFin||'2099-12-31';
+  const departmentProfile=await resolveDepartmentProfile(casa.id,casa);
+  const displayName=String(
+    tarjeta.departamento||
+    tarjeta.nombreDispositivo||
+    departmentProfile.departamento||
+    `${canonicalStreet(casa.calle)} ${casa.numero}`
+  ).trim().slice(0,48);
+
+  const result=await provisionTagOnController({
+    casa,
+    requestedCard,
+    displayName,
+    start,
+    end
+  });
+
+  const realCard=canonicalCardNo(result.cardNo);
+  await tarjeta.update({
+    numeroTarjeta:realCard,
+    uidDispositivo:result.uid,
+    pinDispositivo:result.pin,
+    nombreDispositivo:displayName,
+    departamentoId:tarjeta.departamentoId||departmentProfile.departamentoId,
+    departamento:tarjeta.departamento||departmentProfile.departamento,
+    puertasAutorizadas:result.doorMask,
+    timezoneId:result.timezoneId,
+    fechaInicio:start,
+    fechaFin:end,
+    bloqueado:false,
+    fechaFinOriginal:null,
+    origen:'APP',
+    enControlador:true,
+    ultimaLectura:new Date()
+  });
+
+  await casa.update({controles:mergeControls(casa.controles,realCard,false)});
+
+  return {
+    ...tarjeta.toJSON(),
+    numeroSolicitado:requestedCard,
+    numeroTarjetaReal:realCard,
+    normalizado:requestedCard!==realCard
+  };
+}
+
 async function operateGate(action){
   const envName=action==='CERRAR'?'ZKTECO_GATE_CLOSE_OUTPUTS':'ZKTECO_GATE_OPEN_OUTPUTS';
   let outputs=String(process.env[envName]||'').split(',').map(v=>Number(v.trim())).filter(v=>Number.isInteger(v)&&v>0);
@@ -519,4 +599,4 @@ async function dashboard({calle,numero}={}){
   return rows;
 }
 
-module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,operateGate,dashboard,writeUserValidity};
+module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,operateGate,dashboard,writeUserValidity};
