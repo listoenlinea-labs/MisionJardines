@@ -107,6 +107,31 @@ async function setCardBlocked(cardId,blocked){
   return tarjeta.reload();
 }
 
+async function setHouseBlocked(casaId,blocked){
+  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
+  if(!casa) throw new Error('Vivienda no encontrada');
+  const controls=normalizeTokens(casa.controles);
+  if(!controls.length) throw new Error('La vivienda no tiene controles registrados');
+  const tarjetas=await ZkTarjeta.findAll({where:{numeroTarjeta:{[Op.in]:controls}}});
+  if(!tarjetas.length) throw new Error('Sincroniza ZKTeco para relacionar los controles de esta vivienda');
+  const results=[];
+  for(const tarjeta of tarjetas){
+    try{
+      await setCardBlocked(tarjeta.id,blocked);
+      results.push({numeroTarjeta:tarjeta.numeroTarjeta,ok:true});
+    }catch(error){
+      results.push({numeroTarjeta:tarjeta.numeroTarjeta,ok:false,error:error.message});
+    }
+  }
+  const failed=results.filter(r=>!r.ok);
+  if(failed.length) {
+    const error=new Error(`Se actualizaron ${results.length-failed.length} de ${results.length} controles`);
+    error.results=results;
+    throw error;
+  }
+  return {casaId:casa.id,calle:casa.calle,numero:casa.numero,bloqueado:blocked,total:results.length,results};
+}
+
 async function operateGate(action){
   const envName=action==='CERRAR'?'ZKTECO_GATE_CLOSE_OUTPUTS':'ZKTECO_GATE_OPEN_OUTPUTS';
   let outputs=String(process.env[envName]||'').split(',').map(v=>Number(v.trim())).filter(v=>Number.isInteger(v)&&v>0);
@@ -155,4 +180,4 @@ async function dashboard({calle,numero,buscar}={}){
   return rows;
 }
 
-module.exports={testDirectConnection,syncUsers,setCardBlocked,operateGate,dashboard,writeUserValidity};
+module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,operateGate,dashboard,writeUserValidity};
