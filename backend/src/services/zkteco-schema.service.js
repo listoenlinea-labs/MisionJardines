@@ -15,6 +15,7 @@ async function asegurarEsquemaZkteco(){
   await add('puertas_autorizadas',{type:DataTypes.INTEGER.UNSIGNED,allowNull:true});
   await add('timezone_id',{type:DataTypes.INTEGER.UNSIGNED,allowNull:true});
   await add('origen',{type:DataTypes.ENUM('ZKTECO','APP'),allowNull:false,defaultValue:'ZKTECO'});
+  await add('en_controlador',{type:DataTypes.BOOLEAN,allowNull:false,defaultValue:false});
 }
 
 module.exports={asegurarEsquemaZkteco};
