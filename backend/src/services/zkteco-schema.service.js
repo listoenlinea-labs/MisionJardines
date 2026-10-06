@@ -10,6 +10,7 @@ async function asegurarEsquemaZkteco(){
   await add('bloqueado',{type:DataTypes.BOOLEAN,allowNull:false,defaultValue:false});
   await add('uid_dispositivo',{type:DataTypes.INTEGER.UNSIGNED,allowNull:true});
   await add('nombre_dispositivo',{type:DataTypes.STRING(150),allowNull:true});
+  await add('departamento_id',{type:DataTypes.INTEGER.UNSIGNED,allowNull:true});
   await add('grupo_dispositivo',{type:DataTypes.INTEGER.UNSIGNED,allowNull:true});
   await add('puertas_autorizadas',{type:DataTypes.INTEGER.UNSIGNED,allowNull:true});
   await add('timezone_id',{type:DataTypes.INTEGER.UNSIGNED,allowNull:true});
