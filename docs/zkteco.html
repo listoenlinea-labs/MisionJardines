@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico?v=20261005">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20261005">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png?v=20261005">
+  <script src="assets/js/permissions.js?v=20261001"></script>
+  <script src="assets/js/page-access.js?v=20261001"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ZKTeco | Misión Jardines</title>
+  <style>
+    :root{--ink:#172033;--muted:#738096;--line:#e4e8ef;--orange:#ef7d0b;--orange2:#f59d3d;--green:#128a4c;--red:#c74242;--soft:#f7f9fc;--shadow:0 14px 40px rgba(22,32,51,.06)}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#fbfcff 0,#f6f8fb 100%);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,select{font:inherit}.wrap{width:min(1480px,calc(100% - 42px));margin:0 auto;padding:92px 0 64px}
+    .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px;padding:28px 30px;border:1px solid #eadfd4;border-radius:24px;background:linear-gradient(120deg,#fff9f2,#fff 48%,#f1f6ff);box-shadow:var(--shadow)}
+    .eyebrow{color:#d96e07;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.hero h1{margin:6px 0 8px;font-size:clamp(30px,4vw,48px);letter-spacing:-.045em}.hero p{max-width:760px;margin:0;color:var(--muted);font-size:13px;line-height:1.65}
+    .status-pill{display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px solid #dde5ee;border-radius:999px;background:#fff;font-size:11px;font-weight:850}.status-pill i{width:9px;height:9px;border-radius:50%;background:#aeb7c4}.status-pill.ok{color:#166d42;border-color:#cfe8d9;background:#f3fbf6}.status-pill.ok i{background:#25b66a;box-shadow:0 0 0 4px rgba(37,182,106,.12)}.status-pill.err{color:#9f3d3d;border-color:#f0d2d2;background:#fff7f7}.status-pill.err i{background:#e15b5b}
+    .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px}.card{border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:var(--shadow)}.card-head{padding:20px 21px 14px;border-bottom:1px solid #edf0f4}.card-head h2{margin:5px 0 4px;font-size:18px}.card-head p{margin:0;color:var(--muted);font-size:10px;line-height:1.5}.card-body{padding:20px}
+    .device{display:grid;gap:11px}.device-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #f0f2f6;font-size:11px}.device-row:last-child{border-bottom:0}.device-row span{color:var(--muted)}.device-row strong{text-align:right}
+    .gate-visual{position:relative;height:185px;margin:16px 0 17px;border-radius:18px;background:linear-gradient(145deg,#edf3f6,#dfe8ed);overflow:hidden}.post{position:absolute;left:23%;bottom:34px;width:44px;height:70px;border-radius:12px;background:#31425b}.arm{position:absolute;left:calc(23% + 30px);bottom:94px;width:54%;height:14px;border-radius:8px;background:repeating-linear-gradient(90deg,#fff 0 27px,#ff7185 27px 50px);transform-origin:left center;transition:.28s}.gate-visual.open .arm{transform:rotate(-60deg)}.gate-label{position:absolute;right:14px;bottom:13px;padding:7px 10px;border-radius:999px;background:#fff0f2;color:#b84451;font-size:9px;font-weight:900}.gate-visual.open .gate-label{background:#e9f8ef;color:#277849}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.btn{min-height:42px;padding:10px 14px;border:1px solid #dde3ea;border-radius:11px;background:#fff;color:#4d596d;font-size:11px;font-weight:850;cursor:pointer}.btn:hover{transform:translateY(-1px)}.btn.primary{border-color:var(--orange);background:linear-gradient(135deg,#f58b1c,#e87100);color:#fff}.btn.danger{border-color:#f1caca;background:#fff7f7;color:#b64242}.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(150px,.7fr) minmax(120px,.55fr) auto auto;gap:10px;align-items:end;margin-bottom:14px}.field label{display:block;margin:0 0 6px;color:#5f6b80;font-size:9px;font-weight:850}.field input,.field select{width:100%;height:42px;padding:0 11px;border:1px solid #dce3eb;border-radius:10px;background:#fff;outline:none;font-size:11px}.field input:focus,.field select:focus{border-color:#ef9d50;box-shadow:0 0 0 4px rgba(239,125,11,.09)}
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.metric{padding:14px 15px;border:1px solid #e3e8ef;border-radius:14px;background:#fafbfd}.metric small{display:block;color:#7c8799;font-size:9px}.metric strong{display:block;margin-top:4px;font-size:22px}.metric.good{background:#f2fbf6;border-color:#d6eadf}.metric.bad{background:#fff6f6;border-color:#f0d8d8}
+    .table-wrap{overflow:auto;border:1px solid #e5eaf0;border-radius:14px}.table{width:100%;border-collapse:collapse;min-width:760px}.table th{padding:12px 14px;background:#f8fafc;color:#7a8699;font-size:9px;text-align:left;letter-spacing:.04em;text-transform:uppercase}.table td{padding:13px 14px;border-top:1px solid #edf0f4;font-size:11px;vertical-align:middle}.house{font-weight:850}.sub{display:block;margin-top:3px;color:#8893a4;font-size:9px}.status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:9px;font-weight:900}.status.on{color:#1d7648;background:#eaf8ef}.status.off{color:#aa4141;background:#fff0f0}.status.none{color:#6f7b8e;background:#eef1f5}.dot{width:6px;height:6px;border-radius:50%;background:currentColor}.row-actions{display:flex;gap:7px;flex-wrap:wrap}.mini{min-height:34px;padding:7px 10px;border-radius:9px;font-size:9px}.empty{padding:38px!important;text-align:center;color:#8a95a7}
+    .notice{margin-top:12px;padding:12px 14px;border:1px solid #f0dec9;border-radius:12px;background:#fff9f2;color:#7b5b38;font-size:10px;line-height:1.5}.toast{position:fixed;right:22px;bottom:22px;z-index:200;display:none;max-width:380px;padding:13px 15px;border-radius:12px;color:#fff;background:#263248;box-shadow:0 16px 35px rgba(0,0,0,.18);font-size:11px}
+    @media(max-width:1050px){.grid{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar .btn{width:100%}}@media(max-width:680px){.wrap{width:min(100% - 24px,1480px);padding-top:78px}.hero{align-items:flex-start;flex-direction:column}.toolbar{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div><span class="eyebrow">CONTROL DE ACCESO · ZKTECO C3-200</span><h1>Accesos y pluma</h1><p>Opera la pluma y administra bloqueos por calle y número desde una sola vista. La conexión se realiza de forma directa al controlador remoto configurado en Hostinger.</p></div>
+    <div id="connectionPill" class="status-pill"><i></i><span>Comprobando conexión…</span></div>
+  </section>
+
+  <section class="grid">
+    <aside class="card">
+      <div class="card-head"><span class="eyebrow">ACCESO PRINCIPAL</span><h2>Control de pluma</h2><p>Puerta 1 ENTRADA · Puerta 2 SALIDA</p></div>
+      <div class="card-body">
+        <div id="gateVisual" class="gate-visual"><div class="post"></div><div class="arm"></div><span id="gateLabel" class="gate-label">CERRADA</span></div>
+        <div class="actions"><button id="openGate" class="btn primary">Abrir pluma</button><button id="closeGate" class="btn danger">Cerrar pluma</button></div>
+        <div class="device" style="margin-top:18px">
+          <div class="device-row"><span>Controlador</span><strong id="deviceName">C3-200</strong></div>
+          <div class="device-row"><span>Conexión</span><strong id="deviceMode">Directa</strong></div>
+          <div class="device-row"><span>Puertas</span><strong id="deviceDoors">—</strong></div>
+          <div class="device-row"><span>Firmware</span><strong id="deviceFirmware">—</strong></div>
+          <div class="device-row"><span>Tarjetas sincronizadas</span><strong id="deviceCards">0</strong></div>
+        </div>
+        <div class="notice">El botón actúa sobre las salidas configuradas en Hostinger. La vista no muestra nombres de residentes; solo calle, número y estado de sus controles.</div>
+      </div>
+    </aside>
+
+    <section class="card">
+      <div class="card-head"><span class="eyebrow">VIVIENDAS Y CONTROLES</span><h2>Bloqueo por calle y número</h2><p>Busca una vivienda y habilita o bloquea todos sus controles relacionados.</p></div>
+      <div class="card-body">
+        <div class="metrics">
+          <div class="metric"><small>Viviendas visibles</small><strong id="mHouses">0</strong></div>
+          <div class="metric good"><small>Habilitadas</small><strong id="mEnabled">0</strong></div>
+          <div class="metric bad"><small>Bloqueadas</small><strong id="mBlocked">0</strong></div>
+        </div>
+        <div class="toolbar">
+          <div class="field"><label>BUSCAR</label><input id="search" placeholder="Calle, número o control"></div>
+          <div class="field"><label>CALLE</label><input id="street" placeholder="Ej. Gardenias"></div>
+          <div class="field"><label>NÚMERO</label><input id="houseNumber" placeholder="Ej. 11"></div>
+          <button id="applyFilters" class="btn">Buscar</button>
+          <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Calle</th><th>Número</th><th>Controles</th><th>Estado</th><th>Última lectura</th><th>Acción</th></tr></thead>
+            <tbody id="rows"><tr><td class="empty" colspan="6">Cargando viviendas…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </section>
+</main>
+<div id="toast" class="toast"></div>
+
+<script>
+const API='https://api-misionjardines.listoenlinea.host/api';
+const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+if(!token) location.replace('login.html');
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+const headers=(json=false)=>({Authorization:'Bearer '+token,...(json?{'Content-Type':'application/json'}:{})});
+let currentRows=[];
+function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(window.zkToast);window.zkToast=setTimeout(()=>$('toast').style.display='none',3500)}
+async function api(path,options={}){const r=await fetch(API+path,options);let j={};try{j=await r.json()}catch{}if(r.status===401){location.replace('login.html');throw Error('Sesión expirada')}if(!r.ok||!j.ok)throw Error(j.error||j.message||'No fue posible completar la solicitud');return j}
+function fmt(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'short'}).format(d)}
+async function loadStatus(){
+  try{
+    const r=await api('/zkteco/estado',{headers:headers()});
+    const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>Conectado al C3-200</span>';
+    $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceCards').textContent=d.tarjetas||0;
+  }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(e.message)}
+}
+function rowState(row){
+  if(!row.tarjetas.length)return{label:'Sin sincronizar',cls:'none',blocked:false};
+  const blocked=row.tarjetas.every(t=>t.bloqueado);
+  return blocked?{label:'Bloqueada',cls:'off',blocked:true}:{label:'Habilitada',cls:'on',blocked:false};
+}
+function render(){
+  const body=$('rows');let enabled=0,blocked=0;
+  if(!currentRows.length){body.innerHTML='<tr><td class="empty" colspan="6">No se encontraron viviendas.</td></tr>';$('mHouses').textContent=0;$('mEnabled').textContent=0;$('mBlocked').textContent=0;return}
+  body.innerHTML=currentRows.map(row=>{
+    const s=rowState(row); if(s.cls==='on')enabled++; if(s.cls==='off')blocked++;
+    const controls=row.controles?.length||0;
+    const last=row.tarjetas.map(t=>t.ultimaLectura).filter(Boolean).sort().at(-1);
+    return '<tr><td class="house">'+esc(row.calle)+'</td><td><b>'+esc(row.numero)+'</b></td><td><b>'+controls+'</b><span class="sub">'+(controls===1?'control registrado':'controles registrados')+'</span></td><td><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></td><td>'+fmt(last)+'</td><td><div class="row-actions">'+
+      (s.blocked?'<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Habilitar</button>':'<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear</button>')+
+      '</div></td></tr>';
+  }).join('');
+  $('mHouses').textContent=currentRows.length;$('mEnabled').textContent=enabled;$('mBlocked').textContent=blocked;
+}
+async function loadRows(){
+  const q=new URLSearchParams();if($('search').value.trim())q.set('buscar',$('search').value.trim());if($('street').value.trim())q.set('calle',$('street').value.trim());if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
+  const r=await api('/zkteco/viviendas?'+q.toString(),{headers:headers()});currentRows=r.data||[];render();
+}
+async function setHouse(id,blocked,button){
+  if(!confirm((blocked?'Bloquear':'Habilitar')+' todos los controles de esta vivienda en ZKTeco?'))return;
+  button.disabled=true;try{const r=await api('/zkteco/viviendas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});toast(r.message);await loadRows()}catch(e){toast(e.message)}finally{button.disabled=false}
+}
+window.setHouse=setHouse;
+async function operate(action){
+  const a=$('openGate'),c=$('closeGate');a.disabled=true;c.disabled=true;
+  try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(e.message)}finally{a.disabled=false;c.disabled=false}
+}
+$('openGate').onclick=()=>operate('ABRIR');$('closeGate').onclick=()=>operate('CERRAR');$('applyFilters').onclick=loadRows;
+$('sync').onclick=async()=>{const b=$('sync');b.disabled=true;try{toast('Sincronizando usuarios y controles…');const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});toast(r.message+' · '+(r.data?.procesados||0)+' controles');await Promise.all([loadStatus(),loadRows()])}catch(e){toast(e.message)}finally{b.disabled=false}};
+['search','street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
+Promise.all([loadStatus(),loadRows()]).catch(()=>{});
+</script>
+<script src="assets/js/site-sidebar.js?v=20261006"></script>
+</body>
+</html>
