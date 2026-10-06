@@ -31,6 +31,11 @@ const normalizeCardKey = value => {
   if(!digits) return raw.toLowerCase();
   return digits.replace(/^0+(?=\d)/,'');
 };
+const canonicalCardNo = value => {
+  const key=normalizeCardKey(value);
+  if(!/^\d+$/.test(key)) throw new Error('El número de TAG debe contener únicamente dígitos');
+  return key;
+};
 
 const normalizeStreetKey = value => String(value||'')
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -57,6 +62,19 @@ const canonicalOnlyHouse = (street,number) => {
   return true;
 };
 
+const normalizeDepartmentKey = (street,number) => {
+  const canonical=canonicalStreet(street);
+  return `${normalizeStreetKey(canonical)} ${String(number??'').trim().toLowerCase()}`.replace(/\s+/g,' ').trim();
+};
+
+const departmentMatchesHouse = (department,street,number) => {
+  const dept=String(department||'').trim();
+  if(!dept) return false;
+  const match=dept.match(/^(.*?)[\s-]+([0-9]+(?:\.[0-9]+)?)$/);
+  if(!match) return false;
+  return normalizeDepartmentKey(match[1],match[2])===normalizeDepartmentKey(street,number);
+};
+
 async function testDirectConnection(){
   const config=getDirectConfig();
   return withC3(async client=>({
@@ -76,6 +94,7 @@ async function syncUsers(){
     return {users,auth};
   });
   const houses=await Casa.findAll({attributes:['id','calle','numero','controles']});
+  const houseById=new Map(houses.map(h=>[Number(h.id),h]));
   const byCard=new Map();
   for(const house of houses){
     for(const token of normalizeTokens(house.controles)){
@@ -83,6 +102,14 @@ async function syncUsers(){
       if(key) byCard.set(key,Number(house.id));
     }
   }
+  const currentCards=await ZkTarjeta.findAll();
+  const existingByNormalized=new Map();
+  for(const item of currentCards){
+    const key=normalizeCardKey(item.numeroTarjeta);
+    if(key&&!existingByNormalized.has(key))existingByNormalized.set(key,item);
+  }
+  await ZkTarjeta.update({enControlador:false},{where:{}});
+
   const authByPin=new Map(payload.auth.map(row=>[String(row.Pin??'').trim(),row]));
   let processed=0,linked=0;
   for(const row of payload.users){
@@ -90,17 +117,18 @@ async function syncUsers(){
     if(!card||card==='0') continue;
     const pin=String(row.Pin??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
-    const existing=await ZkTarjeta.findOne({where:{numeroTarjeta:card}});
+    const existing=existingByNormalized.get(normalizeCardKey(card))||null;
+    const groupId=Number(row.Group||0)||null;
     const casaId=existing?.casaId??byCard.get(normalizeCardKey(card))??null;
     if(casaId) linked++;
-    await ZkTarjeta.upsert({
+    const values={
       numeroTarjeta:card,
       uidDispositivo:Number(row.UID||0)||null,
       pinDispositivo:pin,
       nombreDispositivo:String(row.Name??'').trim()||null,
       departamento:existing?.departamento||null,
       departamentoId:existing?.departamentoId||null,
-      grupoDispositivo:Number(row.Group||0)||null,
+      grupoDispositivo:groupId,
       puertasAutorizadas:Number(auth?.AuthorizeDoorId||0)||null,
       timezoneId:Number(auth?.AuthorizeTimezoneId||0)||null,
       fechaInicio:fromDateNumber(row.StartTime),
@@ -108,8 +136,25 @@ async function syncUsers(){
       casaId,
       bloqueado:Boolean(fromDateNumber(row.EndTime) && fromDateNumber(row.EndTime) < new Date().toISOString().slice(0,10)),
       origen:existing?.origen||'ZKTECO',
+      enControlador:true,
       ultimaLectura:new Date()
-    });
+    };
+    if(existing){
+      await existing.update(values);
+      existingByNormalized.set(normalizeCardKey(card),existing);
+    }else{
+      const created=await ZkTarjeta.create(values);
+      existingByNormalized.set(normalizeCardKey(card),created);
+    }
+    if(casaId){
+      const house=houseById.get(Number(casaId));
+      if(house){
+        const merged=mergeControls(house.controles,card,false);
+        if(String(house.controles||'')!==merged){
+          await house.update({controles:merged});
+        }
+      }
+    }
     processed++;
   }
   return {ok:true,totalPanel:payload.users.length,procesados:processed,vinculados:linked,autorizaciones:payload.auth.length};
@@ -165,9 +210,13 @@ async function setHouseBlocked(casaId,blocked){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('Vivienda no encontrada');
   const controls=normalizeTokens(casa.controles);
-  if(!controls.length) throw new Error('La vivienda no tiene controles registrados');
-  const tarjetas=await ZkTarjeta.findAll({where:{numeroTarjeta:{[Op.in]:controls}}});
-  if(!tarjetas.length) throw new Error('Sincroniza ZKTeco para relacionar los controles de esta vivienda');
+  let tarjetas=await ZkTarjeta.findAll({where:{casaId:Number(casa.id),enControlador:true}});
+  if(!tarjetas.length&&controls.length){
+    const all=await ZkTarjeta.findAll({where:{enControlador:true}});
+    const wanted=new Set(controls.map(normalizeCardKey));
+    tarjetas=all.filter(t=>wanted.has(normalizeCardKey(t.numeroTarjeta)));
+  }
+  if(!tarjetas.length) throw new Error('La vivienda no tiene controles activos en el C3-200');
   const results=[];
   for(const tarjeta of tarjetas){
     try{
@@ -215,18 +264,60 @@ async function nextPanelIds(client){
   return {uid:maxUid+1,pin:String(maxPin+1),rows};
 }
 
+async function resolveAuthorizationProfile(client,casaId){
+  const existing=await ZkTarjeta.findAll({
+    where:{casaId:Number(casaId),bloqueado:false},
+    order:[['ultimaLectura','DESC']]
+  });
+  const authRows=await client.getData('userauthorize');
+  for(const card of existing){
+    const pin=String(card.pinDispositivo||'').trim();
+    const auth=authRows.find(r=>String(r.Pin??'').trim()===pin);
+    if(auth){
+      return {
+        timezoneId:Number(auth.AuthorizeTimezoneId||1),
+        doorMask:Number(auth.AuthorizeDoorId||3)
+      };
+    }
+  }
+  const usable=authRows.find(r=>Number(r.AuthorizeDoorId||0)>0);
+  return {
+    timezoneId:Number(usable?.AuthorizeTimezoneId||1),
+    doorMask:Number(usable?.AuthorizeDoorId||3)
+  };
+}
+
+async function resolveDepartmentProfile(casaId,casa){
+  const reference=await ZkTarjeta.findOne({
+    where:{casaId:Number(casaId),departamentoId:{[Op.ne]:null}},
+    order:[['ultimaLectura','DESC']]
+  });
+  return {
+    departamentoId:Number(reference?.departamentoId||0)||null,
+    departamento:String(reference?.departamento||`${canonicalStreet(casa.calle)} ${casa.numero}`).trim()
+  };
+}
+
 async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaFin}={}){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('Vivienda no encontrada');
-  const card=String(numeroTarjeta||'').trim();
-  if(!card) throw new Error('Captura el número del TAG/control');
+
+  const requestedCard=String(numeroTarjeta||'').trim();
+  if(!requestedCard) throw new Error('Captura el número del TAG/control');
+  const card=canonicalCardNo(requestedCard);
+
   if(await ZkTarjeta.findOne({where:{numeroTarjeta:card}})) throw new Error('Ese TAG/control ya existe');
   const start=fechaInicio||new Date().toISOString().slice(0,10);
   const end=fechaFin||'2099-12-31';
-  const displayName=String(nombre||`${canonicalStreet(casa.calle)} ${casa.numero}`).trim().slice(0,48);
+  const departmentProfile=await resolveDepartmentProfile(casa.id,casa);
+  const displayName=String(nombre||departmentProfile.departamento).trim().slice(0,48);
+
   const result=await withC3(async client=>{
     const ids=await nextPanelIds(client);
-    if(ids.rows.some(r=>String(r.CardNo??'').trim()===card)) throw new Error('Ese TAG ya existe en el C3-200');
+    if(ids.rows.some(r=>normalizeCardKey(r.CardNo)===card)) throw new Error('Ese TAG ya existe en el C3-200');
+
+    const profile=await resolveAuthorizationProfile(client,casa.id);
+
     await client.setRecord('user',{
       UID:ids.uid,
       CardNo:Number(card),
@@ -238,31 +329,60 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
       Name:displayName,
       SuperAuthorize:0
     });
+
+    // Mandatory read-back: never report success until the controller itself returns the new CardNo.
+    const afterUser=await client.getData('user');
+    const created=afterUser.find(r=>normalizeCardKey(r.CardNo)===card);
+    if(!created) throw new Error('El C3-200 no confirmó el alta del TAG. No se guardó en la aplicación.');
+
+    const realPin=String(created.Pin??ids.pin).trim();
     await client.setRecord('userauthorize',{
-      Pin:Number(ids.pin),
-      AuthorizeTimezoneId:1,
-      AuthorizeDoorId:3
+      Pin:Number(realPin),
+      AuthorizeTimezoneId:profile.timezoneId,
+      AuthorizeDoorId:profile.doorMask
     });
-    return {uid:ids.uid,pin:ids.pin};
+
+    const afterAuth=await client.getData('userauthorize');
+    const auth=afterAuth.find(r=>String(r.Pin??'').trim()===realPin);
+    if(!auth||Number(auth.AuthorizeDoorId||0)===0){
+      throw new Error('El TAG existe en el C3-200 pero no quedó autorizado para abrir puertas.');
+    }
+
+    return {
+      uid:Number(created.UID||ids.uid)||ids.uid,
+      pin:realPin,
+      cardNo:String(created.CardNo??card),
+      timezoneId:Number(auth.AuthorizeTimezoneId||profile.timezoneId),
+      doorMask:Number(auth.AuthorizeDoorId||profile.doorMask)
+    };
   });
+
+  const realCard=canonicalCardNo(result.cardNo);
   const tarjeta=await ZkTarjeta.create({
     casaId:Number(casa.id),
     uidDispositivo:result.uid,
-    numeroTarjeta:card,
+    numeroTarjeta:realCard,
     pinDispositivo:result.pin,
     nombreDispositivo:displayName,
-    departamento:displayName,
+    departamentoId:departmentProfile.departamentoId,
+    departamento:departmentProfile.departamento,
     grupoDispositivo:1,
-    puertasAutorizadas:3,
-    timezoneId:1,
+    puertasAutorizadas:result.doorMask,
+    timezoneId:result.timezoneId,
     fechaInicio:start,
     fechaFin:end,
     bloqueado:false,
     origen:'APP',
+    enControlador:true,
     ultimaLectura:new Date()
   });
-  await casa.update({controles:mergeControls(casa.controles,card,false)});
-  return tarjeta;
+  await casa.update({controles:mergeControls(casa.controles,realCard,false)});
+  return {
+    ...tarjeta.toJSON(),
+    numeroSolicitado:requestedCard,
+    numeroTarjetaReal:realCard,
+    normalizado:requestedCard!==realCard
+  };
 }
 async function operateGate(action){
   const envName=action==='CERRAR'?'ZKTECO_GATE_CLOSE_OUTPUTS':'ZKTECO_GATE_OPEN_OUTPUTS';
@@ -280,27 +400,55 @@ async function operateGate(action){
   });
 }
 
-async function dashboard({calle,numero,buscar}={}){
-  const where={};
-  if(calle){
-    const canonical=canonicalStreet(calle);
-    const variants={
-      'Av. Atotonilco':['Atotonilco','Av Atotonilco','Av. Atotonilco','Avenida Atotonilco'],
-      'Av. Guadalajara':['Guadalajara','Av Guadalajara','Av. Guadalajara','Avenida Guadalajara'],
-      'Av. Valle de México':['Valle de México','Av Valle de México','Av. Valle de México','Avenida Valle de México']
-    };
-    where.calle=variants[canonical]
-      ? { [Op.or]: variants[canonical].map(v=>({[Op.like]:`%${v}%`})) }
-      : { [Op.like]: `%${calle}%` };
-  }
-  if(numero) where.numero={ [Op.like]: `%${numero}%` };
-  const houses=await Casa.findAll({
-    where,
-    attributes:['id','calle','numero','controles'],
-    order:[['calle','ASC'],['numero','ASC']],
-    limit:300
-  });
+async function dashboard({calle,numero}={}){
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
+  const searchByDepartment=Boolean(String(calle||'').trim()&&String(numero||'').trim());
+
+  let houses;
+  if(searchByDepartment){
+    // ZKAccess stores the address as one value in DEPARTMENTS.DEPTNAME,
+    // for example "GARDENIAS 21". Treat that field as the source of truth.
+    const matchedCards=cards.filter(card=>departmentMatchesHouse(card.departamento,calle,numero));
+    const houseIds=[...new Set(matchedCards.map(card=>Number(card.casaId)).filter(Boolean))];
+
+    if(houseIds.length){
+      houses=await Casa.findAll({
+        where:{id:{[Op.in]:houseIds}},
+        attributes:['id','calle','numero','controles'],
+        order:[['calle','ASC'],['numero','ASC']]
+      });
+    }else{
+      // If the department import has not linked casa_id yet, locate the one
+      // matching the same street/number so the UI can show "Pendiente de enlazar".
+      const candidates=await Casa.findAll({
+        where:{numero:String(numero).trim()},
+        attributes:['id','calle','numero','controles'],
+        order:[['calle','ASC'],['numero','ASC']]
+      });
+      houses=candidates.filter(h=>normalizeDepartmentKey(h.calle,h.numero)===normalizeDepartmentKey(calle,numero));
+    }
+  }else{
+    const where={};
+    if(calle){
+      const canonical=canonicalStreet(calle);
+      const variants={
+        'Av. Atotonilco':['Atotonilco','Av Atotonilco','Av. Atotonilco','Avenida Atotonilco'],
+        'Av. Guadalajara':['Guadalajara','Av Guadalajara','Av. Guadalajara','Avenida Guadalajara'],
+        'Av. Valle de México':['Valle de México','Av Valle de México','Av. Valle de México','Avenida Valle de México']
+      };
+      where.calle=variants[canonical]
+        ? { [Op.or]: variants[canonical].map(v=>({[Op.like]:`%${v}%`})) }
+        : { [Op.like]: `%${calle}%` };
+    }
+    if(numero) where.numero={ [Op.like]: `%${numero}%` };
+    houses=await Casa.findAll({
+      where,
+      attributes:['id','calle','numero','controles'],
+      order:[['calle','ASC'],['numero','ASC']],
+      limit:300
+    });
+  }
+
   const byNormalizedCard=new Map();
   const byHouse=new Map();
   for(const card of cards){
@@ -320,21 +468,37 @@ async function dashboard({calle,numero,buscar}={}){
       const matched=[];
       const seen=new Set();
 
+      // When street + house number are provided, only show cards whose
+      // ZKAccess Departamento actually matches that house.
+      const departmentCards=searchByDepartment
+        ? cards.filter(card=>departmentMatchesHouse(card.departamento,h.calle,h.numero))
+        : [];
+
+      for(const card of departmentCards){
+        if(!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+      }
       for(const rawCard of controls){
         const card=byNormalizedCard.get(normalizeCardKey(rawCard));
-        if(card&&!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+        if(card&&!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+          matched.push(card);seen.add(card.id);
+        }
       }
       for(const card of (byHouse.get(Number(h.id))||[])){
-        if(!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+        if(!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+          matched.push(card);seen.add(card.id);
+        }
       }
 
       const matchedKeys=new Set(matched.map(card=>normalizeCardKey(card.numeroTarjeta)));
-      const unresolved=controls.filter(raw=>!matchedKeys.has(normalizeCardKey(raw)));
+      const unresolved=searchByDepartment
+        ? []
+        : controls.filter(raw=>!matchedKeys.has(normalizeCardKey(raw)));
 
       return {
         id:h.id,
         calle:canonicalStreet(h.calle),
         numero:h.numero,
+        departamentoBusqueda:searchByDepartment?`${canonicalStreet(calle)} ${String(numero).trim()}`:null,
         controles:controls,
         controlesNoEnlazados:unresolved,
         tarjetas:matched.map(card=>({
@@ -344,6 +508,7 @@ async function dashboard({calle,numero,buscar}={}){
           departamento:card.departamento,
           nombreDispositivo:card.nombreDispositivo,
           bloqueado:Boolean(card.bloqueado),
+          enControlador:Boolean(card.enControlador),
           puertasAutorizadas:card.puertasAutorizadas,
           fechaInicio:card.fechaInicio,
           fechaFin:card.fechaFin,
@@ -351,11 +516,6 @@ async function dashboard({calle,numero,buscar}={}){
         }))
       };
     });
-  if(buscar){
-    const q=String(buscar).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    rows=rows.filter(r=>[r.calle,r.numero,...r.controles,...r.tarjetas.map(t=>t.departamento||'')]
-      .join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q));
-  }
   return rows;
 }
 
