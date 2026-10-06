@@ -1,0 +1,11 @@
+const express=require('express');
+const {autenticarToken}=require('../middlewares/auth.middleware');
+const {autorizarRoles}=require('../middlewares/roles.middleware');
+const c=require('../controllers/zkteco.controller');
+const r=express.Router();
+const admin=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA');
+r.get('/estado',autenticarToken,admin,c.estado);
+r.get('/tarjetas',autenticarToken,admin,c.inventario);
+r.post('/inventario',autenticarToken,admin,c.importarLectura);
+r.post('/simular-corte',autenticarToken,admin,c.simular);
+module.exports=r;
