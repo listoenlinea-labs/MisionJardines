@@ -8,7 +8,7 @@ const operar=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD');
 
 r.get('/estado',autenticarToken,operar,c.estado);
 r.get('/tarjetas',autenticarToken,admin,c.inventario);
-r.get('/viviendas',autenticarToken,admin,c.viviendas);
+r.get('/viviendas',autenticarToken,operar,c.viviendas);
 r.post('/sincronizar',autenticarToken,admin,c.sincronizar);
 r.post('/simular-corte',autenticarToken,admin,c.simular);
 r.patch('/tarjetas/:id/bloqueo',autenticarToken,admin,c.bloquear);
