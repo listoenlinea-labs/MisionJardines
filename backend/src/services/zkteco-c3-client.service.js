@@ -13,6 +13,9 @@ const COMMAND = {
 
 const REPLY_OK = 0xC8;
 const REPLY_ERROR = 0xC9;
+const PREPARE_DATA = 0x0D;
+const TRANSMIT_DATA = 0x0E;
+const FREE_DATA = 0x0F;
 const START = 0xAA;
 const END = 0x55;
 const VERSION = 0x01;
@@ -200,7 +203,9 @@ class C3Client {
       if (signed === -14) throw new Error('Contraseña de comunicación ZKTeco incorrecta');
       throw new Error(`El ZKTeco rechazó el comando (error ${signed})`);
     }
-    if (command !== REPLY_OK) throw new Error(`Respuesta ZKTeco inesperada: 0x${command.toString(16)}`);
+    if (![REPLY_OK, PREPARE_DATA, TRANSMIT_DATA, FREE_DATA].includes(command)) {
+      throw new Error(`Respuesta ZKTeco inesperada: 0x${command.toString(16)}`);
+    }
     return { command, payload, protocolVersion: packet[1] };
   }
 
@@ -219,14 +224,18 @@ class C3Client {
     return this._parsePacket(await this._readPacket());
   }
 
-  async _request(command, data) {
-    const response = await this._rawRequest(command, data);
+  _stripSessionPayload(response) {
     if (this.sessionLess) return response.payload;
     if (response.payload.length < 4) return Buffer.alloc(0);
 
     const sid = response.payload[0] + (response.payload[1] << 8);
     if (sid !== toU16(this.sessionId)) throw new Error('Sesión ZKTeco inválida');
     return response.payload.subarray(4);
+  }
+
+  async _request(command, data) {
+    const response = await this._rawRequest(command, data);
+    return this._stripSessionPayload(response);
   }
 
   async connect() {
@@ -336,8 +345,60 @@ class C3Client {
       0,
       0
     ]);
-    const payload = await this._request(COMMAND.GETDATA, request);
-    if (!payload.length || payload[0] !== cfg.index) throw new Error('El C3 devolvió una tabla inesperada');
+
+    const first = await this._rawRequest(COMMAND.GETDATA, request);
+    let payload = this._stripSessionPayload(first);
+
+    if (first.command === PREPARE_DATA) {
+      if (payload.length !== 17) throw new Error('Respuesta PREPARE_DATA inválida del ZKTeco');
+      const compressed = payload[0] !== 0;
+      const dataLength = payload.readUInt32LE(1);
+      const originalLength = payload.readUInt32LE(5);
+      const packageLength = payload.readUInt32LE(13);
+
+      if (compressed) {
+        throw new Error('El C3 devolvió datos comprimidos y este backend aún no los soporta');
+      }
+      if (!dataLength || !packageLength) {
+        throw new Error('El C3 devolvió metadatos de sincronización inválidos');
+      }
+
+      const chunks = [];
+      let offset = 0;
+      try {
+        while (offset < dataLength) {
+          const offsetPayload = Buffer.alloc(4);
+          offsetPayload.writeUInt32LE(offset, 0);
+          const response = await this._rawRequest(TRANSMIT_DATA, offsetPayload);
+          if (![TRANSMIT_DATA, REPLY_OK].includes(response.command)) {
+            throw new Error(`Respuesta de bloque inesperada: 0x${response.command.toString(16)}`);
+          }
+          const chunkPayload = this._stripSessionPayload(response);
+          if (chunkPayload.length < 4) throw new Error('Bloque ZKTeco incompleto');
+          const echoedOffset = chunkPayload.readUInt32LE(0);
+          if (echoedOffset !== offset) {
+            throw new Error(`Offset ZKTeco inválido: esperado ${offset}, recibido ${echoedOffset}`);
+          }
+          const chunk = chunkPayload.subarray(4);
+          if (!chunk.length) throw new Error('El C3 devolvió un bloque vacío');
+          chunks.push(chunk);
+          offset += chunk.length;
+        }
+      } finally {
+        try { await this._request(FREE_DATA); } catch (_) {}
+      }
+
+      payload = Buffer.concat(chunks).subarray(0, dataLength);
+      if (originalLength && payload.length !== originalLength && dataLength !== originalLength) {
+        throw new Error('Longitud final de datos ZKTeco inconsistente');
+      }
+    } else if (first.command !== REPLY_OK) {
+      throw new Error(`Respuesta GETDATA inesperada: 0x${first.command.toString(16)}`);
+    }
+
+    if (!payload.length || payload[0] !== cfg.index) {
+      throw new Error('El C3 devolvió una tabla inesperada');
+    }
 
     const fieldCount = payload[1];
     const indexes = [...payload.subarray(2, 2 + fieldCount)];
@@ -347,13 +408,18 @@ class C3Client {
     while (offset < payload.length) {
       const row = {};
       for (const fieldIndex of indexes) {
-        if (offset >= payload.length) break;
+        if (offset >= payload.length) {
+          throw new Error('Registro ZKTeco truncado');
+        }
         const size = payload[offset++];
+        if (offset + size > payload.length) {
+          throw new Error('Campo ZKTeco truncado');
+        }
         const raw = payload.subarray(offset, offset + size);
         offset += size;
         const field = cfg.fields.find(item => item.index === fieldIndex);
         if (!field) throw new Error(`Campo ZKTeco desconocido: ${fieldIndex}`);
-        if (field.type === 'i') {
+        if (field.type === 'i' || field.type === 'L') {
           let value = 0;
           for (let i = 0; i < raw.length; i += 1) value += raw[i] * (2 ** (8 * i));
           row[field.name] = value;
