@@ -27,6 +27,7 @@ async function iniciarServidor() {
 
         await asegurarEsquemaPagos();
         await require('./services/viviendas-schema.service').asegurarViviendas();
+        await require('./services/zkteco-schema.service').asegurarEsquemaZkteco();
         try {
             await require('./services/roles-migration.service').aplicarMigracionRoles();
         } catch (error) {
