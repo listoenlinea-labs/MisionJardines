@@ -4,6 +4,8 @@ const {
   syncUsers,
   setCardBlocked,
   setHouseBlocked,
+  setCardHouse,
+  createTagForHouse,
   operateGate,
   dashboard,
   writeUserValidity
@@ -59,6 +61,20 @@ async function bloquearVivienda(req,res){
     res.status(502).json({ok:false,message:error.message||'No fue posible modificar los controles de la vivienda',data:error.results||null});
   }
 }
+async function asignarTarjeta(req,res){
+  try{
+    const casaId=Number(req.body.casaId);
+    if(!Number.isInteger(casaId)||casaId<=0)return res.status(400).json({ok:false,message:'Vivienda inválida'});
+    const data=await setCardHouse(req.params.id,casaId);
+    res.json({ok:true,message:'Control asignado a la vivienda',data});
+  }catch(error){res.status(502).json({ok:false,message:error.message||'No fue posible asignar el control'});}
+}
+async function crearTarjeta(req,res){
+  try{
+    const data=await createTagForHouse(req.params.id,req.body||{});
+    res.status(201).json({ok:true,message:'TAG creado y autorizado en el C3-200',data});
+  }catch(error){res.status(502).json({ok:false,message:error.message||'No fue posible crear el TAG en ZKTeco'});}
+}
 async function pluma(req,res){
   const accion=String(req.body.accion||'').toUpperCase();
   if(!['ABRIR','CERRAR'].includes(accion))return res.status(400).json({ok:false,message:'Acción no válida'});
@@ -71,4 +87,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,actualizarVigencia,pluma,viviendas,simular};
+module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,actualizarVigencia,pluma,viviendas,simular};
