@@ -81,6 +81,7 @@ async function syncUsers(){
     return {users,auth};
   });
   const houses=await Casa.findAll({attributes:['id','calle','numero','controles']});
+  const houseById=new Map(houses.map(h=>[Number(h.id),h]));
   const byCard=new Map();
   for(const house of houses){
     for(const token of normalizeTokens(house.controles)){
@@ -130,6 +131,15 @@ async function syncUsers(){
       origen:existing?.origen||'ZKTECO',
       ultimaLectura:new Date()
     });
+    if(casaId){
+      const house=houseById.get(Number(casaId));
+      if(house){
+        const merged=mergeControls(house.controles,card,false);
+        if(String(house.controles||'')!==merged){
+          await house.update({controles:merged});
+        }
+      }
+    }
     processed++;
   }
   return {ok:true,totalPanel:payload.users.length,procesados:processed,vinculados:linked,autorizaciones:payload.auth.length};
