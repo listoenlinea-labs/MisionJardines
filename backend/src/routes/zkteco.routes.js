@@ -10,6 +10,7 @@ r.get('/estado',autenticarToken,operar,c.estado);
 r.get('/tarjetas',autenticarToken,admin,c.inventario);
 r.get('/viviendas',autenticarToken,operar,c.viviendas);
 r.post('/sincronizar',autenticarToken,admin,c.sincronizar);
+r.post('/importar-zkaccess',autenticarToken,admin,express.raw({type:'application/octet-stream',limit:'100mb'}),c.importarMdb);
 r.post('/simular-corte',autenticarToken,admin,c.simular);
 r.patch('/tarjetas/:id/bloqueo',autenticarToken,admin,c.bloquear);
 r.patch('/tarjetas/:id/vigencia',autenticarToken,admin,c.actualizarVigencia);
