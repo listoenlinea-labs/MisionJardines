@@ -88,6 +88,19 @@ async function syncUsers(){
       if(key) byCard.set(key,Number(house.id));
     }
   }
+  const departmentReferences=await ZkTarjeta.findAll({
+    where:{departamentoId:{[Op.ne]:null},departamento:{[Op.ne]:null}},
+    attributes:['departamentoId','departamento','casaId']
+  });
+  const byDepartmentId=new Map();
+  for(const ref of departmentReferences){
+    if(ref.departamentoId&&!byDepartmentId.has(Number(ref.departamentoId))){
+      byDepartmentId.set(Number(ref.departamentoId),{
+        departamento:ref.departamento,
+        casaId:ref.casaId?Number(ref.casaId):null
+      });
+    }
+  }
   const authByPin=new Map(payload.auth.map(row=>[String(row.Pin??'').trim(),row]));
   let processed=0,linked=0;
   for(const row of payload.users){
@@ -96,16 +109,18 @@ async function syncUsers(){
     const pin=String(row.Pin??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
     const existing=await ZkTarjeta.findOne({where:{numeroTarjeta:card}});
-    const casaId=existing?.casaId??byCard.get(normalizeCardKey(card))??null;
+    const groupId=Number(row.Group||0)||null;
+    const deptRef=groupId?byDepartmentId.get(groupId):null;
+    const casaId=existing?.casaId??deptRef?.casaId??byCard.get(normalizeCardKey(card))??null;
     if(casaId) linked++;
     await ZkTarjeta.upsert({
       numeroTarjeta:card,
       uidDispositivo:Number(row.UID||0)||null,
       pinDispositivo:pin,
       nombreDispositivo:String(row.Name??'').trim()||null,
-      departamento:existing?.departamento||null,
-      departamentoId:existing?.departamentoId||null,
-      grupoDispositivo:Number(row.Group||0)||null,
+      departamento:existing?.departamento||deptRef?.departamento||null,
+      departamentoId:existing?.departamentoId||groupId||null,
+      grupoDispositivo:groupId,
       puertasAutorizadas:Number(auth?.AuthorizeDoorId||0)||null,
       timezoneId:Number(auth?.AuthorizeTimezoneId||0)||null,
       fechaInicio:fromDateNumber(row.StartTime),
@@ -243,6 +258,17 @@ async function resolveAuthorizationProfile(client,casaId){
   };
 }
 
+async function resolveDepartmentProfile(casaId,casa){
+  const reference=await ZkTarjeta.findOne({
+    where:{casaId:Number(casaId),departamentoId:{[Op.ne]:null}},
+    order:[['ultimaLectura','DESC']]
+  });
+  return {
+    departamentoId:Number(reference?.departamentoId||reference?.grupoDispositivo||0)||null,
+    departamento:String(reference?.departamento||`${canonicalStreet(casa.calle)} ${casa.numero}`).trim()
+  };
+}
+
 async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaFin}={}){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('Vivienda no encontrada');
@@ -254,7 +280,8 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
   if(await ZkTarjeta.findOne({where:{numeroTarjeta:card}})) throw new Error('Ese TAG/control ya existe');
   const start=fechaInicio||new Date().toISOString().slice(0,10);
   const end=fechaFin||'2099-12-31';
-  const displayName=String(nombre||`${canonicalStreet(casa.calle)} ${casa.numero}`).trim().slice(0,48);
+  const departmentProfile=await resolveDepartmentProfile(casa.id,casa);
+  const displayName=String(nombre||departmentProfile.departamento).trim().slice(0,48);
 
   const result=await withC3(async client=>{
     const ids=await nextPanelIds(client);
@@ -267,7 +294,7 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
       CardNo:Number(card),
       Pin:Number(ids.pin),
       Password:'',
-      Group:1,
+      Group:departmentProfile.departamentoId||1,
       StartTime:toDateNumber(start),
       EndTime:toDateNumber(end),
       Name:displayName,
@@ -308,8 +335,9 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
     numeroTarjeta:realCard,
     pinDispositivo:result.pin,
     nombreDispositivo:displayName,
-    departamento:`${canonicalStreet(casa.calle)} ${casa.numero}`,
-    grupoDispositivo:1,
+    departamentoId:departmentProfile.departamentoId,
+    departamento:departmentProfile.departamento,
+    grupoDispositivo:departmentProfile.departamentoId||1,
     puertasAutorizadas:result.doorMask,
     timezoneId:result.timezoneId,
     fechaInicio:start,
