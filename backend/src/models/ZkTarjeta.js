@@ -18,6 +18,7 @@ const ZkTarjeta = sequelize.define('ZkTarjeta', {
   fechaFinOriginal: { type: DataTypes.DATEONLY, allowNull: true, field: 'fecha_fin_original' },
   bloqueado: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   origen: { type: DataTypes.ENUM('ZKTECO','APP'), allowNull: false, defaultValue: 'ZKTECO' },
+  enControlador: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'en_controlador' },
   ultimaLectura: { type: DataTypes.DATE, allowNull: true, field: 'ultima_lectura' }
 }, { tableName: 'zk_tarjetas', timestamps: false });
 
