@@ -110,16 +110,6 @@ async function syncUsers(){
   }
   await ZkTarjeta.update({enControlador:false},{where:{}});
 
-  const departmentReferences=currentCards.filter(item=>item.departamentoId&&item.departamento);
-  const byDepartmentId=new Map();
-  for(const ref of departmentReferences){
-    if(ref.departamentoId&&!byDepartmentId.has(Number(ref.departamentoId))){
-      byDepartmentId.set(Number(ref.departamentoId),{
-        departamento:ref.departamento,
-        casaId:ref.casaId?Number(ref.casaId):null
-      });
-    }
-  }
   const authByPin=new Map(payload.auth.map(row=>[String(row.Pin??'').trim(),row]));
   let processed=0,linked=0;
   for(const row of payload.users){
@@ -129,16 +119,15 @@ async function syncUsers(){
     const auth=pin?authByPin.get(pin):null;
     const existing=existingByNormalized.get(normalizeCardKey(card))||null;
     const groupId=Number(row.Group||0)||null;
-    const deptRef=groupId?byDepartmentId.get(groupId):null;
-    const casaId=existing?.casaId??deptRef?.casaId??byCard.get(normalizeCardKey(card))??null;
+    const casaId=existing?.casaId??byCard.get(normalizeCardKey(card))??null;
     if(casaId) linked++;
     const values={
       numeroTarjeta:card,
       uidDispositivo:Number(row.UID||0)||null,
       pinDispositivo:pin,
       nombreDispositivo:String(row.Name??'').trim()||null,
-      departamento:existing?.departamento||deptRef?.departamento||null,
-      departamentoId:existing?.departamentoId||groupId||null,
+      departamento:existing?.departamento||null,
+      departamentoId:existing?.departamentoId||null,
       grupoDispositivo:groupId,
       puertasAutorizadas:Number(auth?.AuthorizeDoorId||0)||null,
       timezoneId:Number(auth?.AuthorizeTimezoneId||0)||null,
@@ -304,7 +293,7 @@ async function resolveDepartmentProfile(casaId,casa){
     order:[['ultimaLectura','DESC']]
   });
   return {
-    departamentoId:Number(reference?.departamentoId||reference?.grupoDispositivo||0)||null,
+    departamentoId:Number(reference?.departamentoId||0)||null,
     departamento:String(reference?.departamento||`${canonicalStreet(casa.calle)} ${casa.numero}`).trim()
   };
 }
@@ -334,7 +323,7 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
       CardNo:Number(card),
       Pin:Number(ids.pin),
       Password:'',
-      Group:departmentProfile.departamentoId||1,
+      Group:1,
       StartTime:toDateNumber(start),
       EndTime:toDateNumber(end),
       Name:displayName,
@@ -377,7 +366,7 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
     nombreDispositivo:displayName,
     departamentoId:departmentProfile.departamentoId,
     departamento:departmentProfile.departamento,
-    grupoDispositivo:departmentProfile.departamentoId||1,
+    grupoDispositivo:1,
     puertasAutorizadas:result.doorMask,
     timezoneId:result.timezoneId,
     fechaInicio:start,
