@@ -11,6 +11,7 @@ const {
   writeUserValidity
 }=require('../services/zkteco-direct.service');
 const {simularCorte}=require('../services/zkteco-read.service');
+const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
 
 async function estado(req,res){
   try{
@@ -75,6 +76,14 @@ async function crearTarjeta(req,res){
     res.status(201).json({ok:true,message:'TAG creado y autorizado en el C3-200',data});
   }catch(error){res.status(502).json({ok:false,message:error.message||'No fue posible crear el TAG en ZKTeco'});}
 }
+async function importarMdb(req,res){
+  try{
+    const data=await importZkAccessMdb(req.body);
+    res.json({ok:true,message:'Base ZKAccess importada y vinculada por Departamento/Número de tarjeta',data});
+  }catch(error){
+    res.status(400).json({ok:false,message:'No fue posible importar la base ZKAccess',error:error.message});
+  }
+}
 async function pluma(req,res){
   const accion=String(req.body.accion||'').toUpperCase();
   if(!['ABRIR','CERRAR'].includes(accion))return res.status(400).json({ok:false,message:'Acción no válida'});
@@ -87,4 +96,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,actualizarVigencia,pluma,viviendas,simular};
+module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,importarMdb,actualizarVigencia,pluma,viviendas,simular};
