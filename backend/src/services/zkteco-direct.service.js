@@ -24,6 +24,14 @@ const normalizeTokens = raw => String(raw||'')
   .map(v=>v.trim())
   .filter(Boolean);
 
+const normalizeCardKey = value => {
+  const raw=String(value??'').trim();
+  if(!raw) return '';
+  const digits=raw.replace(/\D+/g,'');
+  if(!digits) return raw.toLowerCase();
+  return digits.replace(/^0+(?=\d)/,'');
+};
+
 const normalizeStreetKey = value => String(value||'')
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase()
@@ -70,7 +78,10 @@ async function syncUsers(){
   const houses=await Casa.findAll({attributes:['id','calle','numero','controles']});
   const byCard=new Map();
   for(const house of houses){
-    for(const token of normalizeTokens(house.controles)) byCard.set(token,Number(house.id));
+    for(const token of normalizeTokens(house.controles)){
+      const key=normalizeCardKey(token);
+      if(key) byCard.set(key,Number(house.id));
+    }
   }
   const authByPin=new Map(payload.auth.map(row=>[String(row.Pin??'').trim(),row]));
   let processed=0,linked=0;
@@ -80,7 +91,7 @@ async function syncUsers(){
     const pin=String(row.Pin??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
     const existing=await ZkTarjeta.findOne({where:{numeroTarjeta:card}});
-    const casaId=byCard.get(card)??existing?.casaId??null;
+    const casaId=byCard.get(normalizeCardKey(card))??existing?.casaId??null;
     if(casaId) linked++;
     await ZkTarjeta.upsert({
       numeroTarjeta:card,
@@ -289,19 +300,53 @@ async function dashboard({calle,numero,buscar}={}){
     limit:300
   });
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
-  const cardMap=new Map(cards.map(c=>[String(c.numeroTarjeta),c]));
+  const byNormalizedCard=new Map();
+  const byHouse=new Map();
+  for(const card of cards){
+    const key=normalizeCardKey(card.numeroTarjeta);
+    if(key) byNormalizedCard.set(key,card);
+    if(card.casaId){
+      const list=byHouse.get(Number(card.casaId))||[];
+      list.push(card);
+      byHouse.set(Number(card.casaId),list);
+    }
+  }
+
   let rows=houses
     .filter(h=>canonicalOnlyHouse(h.calle,h.numero))
     .map(h=>{
       const controls=normalizeTokens(h.controles);
-      const mapped=controls.map(card=>cardMap.get(card)).filter(Boolean);
+      const matched=[];
+      const seen=new Set();
+
+      for(const rawCard of controls){
+        const card=byNormalizedCard.get(normalizeCardKey(rawCard));
+        if(card&&!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+      }
+      for(const card of (byHouse.get(Number(h.id))||[])){
+        if(!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+      }
+
+      const matchedKeys=new Set(matched.map(card=>normalizeCardKey(card.numeroTarjeta)));
+      const unresolved=controls.filter(raw=>!matchedKeys.has(normalizeCardKey(raw)));
+
       return {
-        id:h.id,calle:canonicalStreet(h.calle),numero:h.numero,controles:controls,
-        tarjetas:mapped.map(c=>({
-          id:c.id,numeroTarjeta:c.numeroTarjeta,pin:c.pinDispositivo,
-          departamento:c.departamento,nombreDispositivo:c.nombreDispositivo,
-          bloqueado:Boolean(c.bloqueado),puertasAutorizadas:c.puertasAutorizadas,
-          fechaInicio:c.fechaInicio,fechaFin:c.fechaFin,ultimaLectura:c.ultimaLectura
+        id:h.id,
+        calle:canonicalStreet(h.calle),
+        numero:h.numero,
+        controles:controls,
+        controlesNoEnlazados:unresolved,
+        tarjetas:matched.map(card=>({
+          id:card.id,
+          numeroTarjeta:String(card.numeroTarjeta),
+          pin:card.pinDispositivo,
+          departamento:card.departamento,
+          nombreDispositivo:card.nombreDispositivo,
+          bloqueado:Boolean(card.bloqueado),
+          puertasAutorizadas:card.puertasAutorizadas,
+          fechaInicio:card.fechaInicio,
+          fechaFin:card.fechaFin,
+          ultimaLectura:card.ultimaLectura
         }))
       };
     });
