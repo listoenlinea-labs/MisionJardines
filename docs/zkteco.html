@@ -60,9 +60,8 @@
           <div class="metric bad"><small>Bloqueadas</small><strong id="mBlocked">0</strong></div>
         </div>
         <div class="toolbar">
-          <div class="field"><label>BUSCAR</label><input id="search" placeholder="Calle, número o control"></div>
           <div class="field"><label>CALLE</label><input id="street" placeholder="Ej. Gardenias"></div>
-          <div class="field"><label>NÚMERO</label><input id="houseNumber" placeholder="Ej. 11"></div>
+          <div class="field"><label>NÚMERO DE CASA</label><input id="houseNumber" placeholder="Ej. 11"></div>
           <button id="applyFilters" class="btn">Buscar</button>
           <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
         </div>
@@ -157,7 +156,9 @@ function toggleTags(id){const row=$('tags-'+id);if(row)row.hidden=!row.hidden}
 window.toggleTags=toggleTags;
 
 async function loadRows(){
-  const q=new URLSearchParams();if($('search').value.trim())q.set('buscar',$('search').value.trim());if($('street').value.trim())q.set('calle',$('street').value.trim());if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
+  const q=new URLSearchParams();
+  if($('street').value.trim())q.set('calle',$('street').value.trim());
+  if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
   const r=await api('/zkteco/viviendas?'+q.toString(),{headers:headers()});currentRows=r.data||[];render();
 }
 async function setHouse(id,blocked,button){
@@ -211,7 +212,7 @@ async function operate(action){
 }
 $('openGate').onclick=()=>operate('ABRIR');$('closeGate').onclick=()=>operate('CERRAR');$('applyFilters').onclick=loadRows;
 $('sync').onclick=async()=>{const b=$('sync');b.disabled=true;try{toast('Sincronizando usuarios y controles…');const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});toast(r.message+' · '+(r.data?.procesados||0)+' controles');await Promise.all([loadStatus(),loadRows()])}catch(e){toast(e.message)}finally{b.disabled=false}};
-['search','street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
+['street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
 if(!canAdmin)$('sync').style.display='none';
 Promise.all([loadStatus(),loadRows()]).catch(()=>{});
 </script>
