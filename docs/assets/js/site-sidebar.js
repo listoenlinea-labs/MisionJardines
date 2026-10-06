@@ -28,6 +28,7 @@
       { page: 'bases_datos.html', label: 'Residentes', icon: 'residents', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
       { page: 'mapa.html', label: 'Mapa', icon: 'map', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO' },
       { page: 'visitas.html', label: 'Visitas', icon: 'visits', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO' },
+      { page: 'zkteco.html', label: 'ZKTeco', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
       { page: 'conmutador.html', label: 'Conmutador', icon: 'phone', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
       { page: 'reportes.html', label: 'Reportes', icon: 'reports', roles: 'SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO' },
       { page: 'anuncios.html', label: 'Anuncios', icon: 'ads', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,SEGURIDAD,CONDOMINO' },
