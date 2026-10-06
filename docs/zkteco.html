@@ -60,9 +60,8 @@
           <div class="metric bad"><small>Bloqueadas</small><strong id="mBlocked">0</strong></div>
         </div>
         <div class="toolbar">
-          <div class="field"><label>BUSCAR</label><input id="search" placeholder="Calle, número o control"></div>
           <div class="field"><label>CALLE</label><input id="street" placeholder="Ej. Gardenias"></div>
-          <div class="field"><label>NÚMERO</label><input id="houseNumber" placeholder="Ej. 11"></div>
+          <div class="field"><label>NÚMERO DE CASA</label><input id="houseNumber" placeholder="Ej. 11"></div>
           <button id="applyFilters" class="btn">Buscar</button>
           <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
         </div>
@@ -122,24 +121,33 @@ function rowState(row){
 function tagState(tag){return tag.bloqueado?{label:'Bloqueado',cls:'off'}:{label:'Activo',cls:'on'}}
 function renderTagDetails(row){
   const tags=row.tarjetas||[];
-  const items=tags.length?tags.map(tag=>{
+  const unresolved=row.controlesNoEnlazados||[];
+  const synced=tags.map(tag=>{
     const s=tagState(tag);
-    return '<div class="tag-item"><div><div class="tag-id">TAG '+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.nombreDispositivo||tag.departamento||'Sin etiqueta')+'</div></div>'+
+    return '<div class="tag-item"><div><div class="tag-id">Número de tarjeta: '+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.departamento||tag.nombreDispositivo||'Sin etiqueta')+'</div></div>'+
       '<div><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
-      '<div><b>Puertas '+esc(tag.puertasAutorizadas||3)+'</b><div class="tag-meta">Entrada + salida</div></div>'+
+      '<div><b>Entrada + salida</b><div class="tag-meta">Puertas '+esc(tag.puertasAutorizadas||3)+'</div></div>'+
       '<div><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Vigencia final</div></div>'+
       '<div class="tag-actions">'+(canAdmin?(tag.bloqueado?
         '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>':
         '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>'):'')+'</div></div>';
-  }).join(''):'<div class="empty">Esta vivienda todavía no tiene TAGs sincronizados.</div>';
-  return '<div class="tag-panel"><div class="tag-list">'+items+'</div></div>';
+  });
+  const pending=unresolved.map(card=>
+    '<div class="tag-item"><div><div class="tag-id">Número de tarjeta: '+esc(card)+'</div><div class="tag-meta">Registrado en la vivienda, pendiente de enlazar con el C3-200</div></div>'+
+    '<div><span class="status none"><i class="dot"></i>Sin enlazar</span></div>'+
+    '<div><b>—</b><div class="tag-meta">Puertas</div></div>'+
+    '<div><b>—</b><div class="tag-meta">Vigencia</div></div>'+
+    '<div class="tag-actions"></div></div>'
+  );
+  const items=[...synced,...pending];
+  return '<div class="tag-panel"><div class="tag-list">'+(items.length?items.join(''):'<div class="empty">Esta vivienda todavía no tiene controles registrados.</div>')+'</div></div>';
 }
 function render(){
   const body=$('rows');let enabled=0,blocked=0;
   if(!currentRows.length){body.innerHTML='<tr><td class="empty" colspan="6">No se encontraron viviendas.</td></tr>';$('mHouses').textContent=0;$('mEnabled').textContent=0;$('mBlocked').textContent=0;return}
   body.innerHTML=currentRows.map(row=>{
     const s=rowState(row); if(s.cls==='on')enabled++; if(s.cls==='off')blocked++;
-    const controls=row.tarjetas?.length||row.controles?.length||0;
+    const controls=(row.tarjetas?.length||0)+(row.controlesNoEnlazados?.length||0);
     const last=(row.tarjetas||[]).map(t=>t.ultimaLectura).filter(Boolean).sort().at(-1);
     const main='<tr><td class="house">'+esc(row.calle)+'</td><td><b>'+esc(row.numero)+'</b></td>'+
       '<td><button class="link-btn" onclick="toggleTags('+row.id+')">'+controls+' '+(controls===1?'control':'controles')+' ▾</button></td>'+
@@ -157,7 +165,9 @@ function toggleTags(id){const row=$('tags-'+id);if(row)row.hidden=!row.hidden}
 window.toggleTags=toggleTags;
 
 async function loadRows(){
-  const q=new URLSearchParams();if($('search').value.trim())q.set('buscar',$('search').value.trim());if($('street').value.trim())q.set('calle',$('street').value.trim());if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
+  const q=new URLSearchParams();
+  if($('street').value.trim())q.set('calle',$('street').value.trim());
+  if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
   const r=await api('/zkteco/viviendas?'+q.toString(),{headers:headers()});currentRows=r.data||[];render();
 }
 async function setHouse(id,blocked,button){
@@ -211,7 +221,7 @@ async function operate(action){
 }
 $('openGate').onclick=()=>operate('ABRIR');$('closeGate').onclick=()=>operate('CERRAR');$('applyFilters').onclick=loadRows;
 $('sync').onclick=async()=>{const b=$('sync');b.disabled=true;try{toast('Sincronizando usuarios y controles…');const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});toast(r.message+' · '+(r.data?.procesados||0)+' controles');await Promise.all([loadStatus(),loadRows()])}catch(e){toast(e.message)}finally{b.disabled=false}};
-['search','street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
+['street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
 if(!canAdmin)$('sync').style.display='none';
 Promise.all([loadStatus(),loadRows()]).catch(()=>{});
 </script>
