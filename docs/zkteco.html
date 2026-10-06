@@ -23,8 +23,8 @@
     .toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(150px,.7fr) minmax(120px,.55fr) auto auto;gap:10px;align-items:end;margin-bottom:14px}.field label{display:block;margin:0 0 6px;color:#5f6b80;font-size:9px;font-weight:850}.field input,.field select{width:100%;height:42px;padding:0 11px;border:1px solid #dce3eb;border-radius:10px;background:#fff;outline:none;font-size:11px}.field input:focus,.field select:focus{border-color:#ef9d50;box-shadow:0 0 0 4px rgba(239,125,11,.09)}
     .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.metric{padding:14px 15px;border:1px solid #e3e8ef;border-radius:14px;background:#fafbfd}.metric small{display:block;color:#7c8799;font-size:9px}.metric strong{display:block;margin-top:4px;font-size:22px}.metric.good{background:#f2fbf6;border-color:#d6eadf}.metric.bad{background:#fff6f6;border-color:#f0d8d8}
     .table-wrap{overflow:auto;border:1px solid #e5eaf0;border-radius:14px}.table{width:100%;border-collapse:collapse;min-width:760px}.table th{padding:12px 14px;background:#f8fafc;color:#7a8699;font-size:9px;text-align:left;letter-spacing:.04em;text-transform:uppercase}.table td{padding:13px 14px;border-top:1px solid #edf0f4;font-size:11px;vertical-align:middle}.house{font-weight:850}.sub{display:block;margin-top:3px;color:#8893a4;font-size:9px}.status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:9px;font-weight:900}.status.on{color:#1d7648;background:#eaf8ef}.status.off{color:#aa4141;background:#fff0f0}.status.none{color:#6f7b8e;background:#eef1f5}.dot{width:6px;height:6px;border-radius:50%;background:currentColor}.row-actions{display:flex;gap:7px;flex-wrap:wrap}.mini{min-height:34px;padding:7px 10px;border-radius:9px;font-size:9px}.empty{padding:38px!important;text-align:center;color:#8a95a7}
-    .notice{margin-top:12px;padding:12px 14px;border:1px solid #f0dec9;border-radius:12px;background:#fff9f2;color:#7b5b38;font-size:10px;line-height:1.5}.toast{position:fixed;right:22px;bottom:22px;z-index:200;display:none;max-width:380px;padding:13px 15px;border-radius:12px;color:#fff;background:#263248;box-shadow:0 16px 35px rgba(0,0,0,.18);font-size:11px}
-    @media(max-width:1050px){.grid{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar .btn{width:100%}}@media(max-width:680px){.wrap{width:min(100% - 24px,1480px);padding-top:78px}.hero{align-items:flex-start;flex-direction:column}.toolbar{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}
+    .tag-panel{padding:12px;background:#f8fafc;border-radius:12px}.tag-list{display:grid;gap:8px}.tag-item{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(120px,.8fr) minmax(110px,.7fr) minmax(130px,.8fr) auto;gap:10px;align-items:center;padding:11px 12px;border:1px solid #e4e9ef;border-radius:11px;background:#fff}.tag-id{font-weight:900;font-size:11px}.tag-meta{color:#7e899a;font-size:9px;margin-top:3px}.tag-actions{display:flex;gap:6px;justify-content:flex-end}.link-btn{border:0;background:transparent;color:#d96e07;font-size:10px;font-weight:900;cursor:pointer}.modal-shell{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:20px;background:rgba(21,30,45,.48);backdrop-filter:blur(4px)}.modal-shell[hidden]{display:none}.modal-box{width:min(560px,100%);border:1px solid #e3e7ed;border-radius:20px;background:#fff;box-shadow:0 28px 70px rgba(0,0,0,.2);overflow:hidden}.modal-head{display:flex;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #edf0f4}.modal-head h3{margin:3px 0}.modal-body{padding:20px 22px}.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.modal-grid .wide{grid-column:1/-1}.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:15px 22px;border-top:1px solid #edf0f4;background:#fafbfd}.close{border:0;background:#f3f5f8;width:34px;height:34px;border-radius:9px;font-size:20px;cursor:pointer}.notice{margin-top:12px;padding:12px 14px;border:1px solid #f0dec9;border-radius:12px;background:#fff9f2;color:#7b5b38;font-size:10px;line-height:1.5}.toast{position:fixed;right:22px;bottom:22px;z-index:200;display:none;max-width:380px;padding:13px 15px;border-radius:12px;color:#fff;background:#263248;box-shadow:0 16px 35px rgba(0,0,0,.18);font-size:11px}
+    @media(max-width:900px){.tag-item{grid-template-columns:1fr 1fr}.tag-actions{justify-content:flex-start}.modal-grid{grid-template-columns:1fr}}@media(max-width:1050px){.grid{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar .btn{width:100%}}@media(max-width:680px){.wrap{width:min(100% - 24px,1480px);padding-top:78px}.hero{align-items:flex-start;flex-direction:column}.toolbar{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -68,7 +68,7 @@
         </div>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Calle</th><th>Número</th><th>Controles</th><th>Estado</th><th>Última lectura</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Calle</th><th>Número</th><th>Controles / TAGs</th><th>Estado</th><th>Última lectura</th><th>Acción</th></tr></thead>
             <tbody id="rows"><tr><td class="empty" colspan="6">Cargando viviendas…</td></tr></tbody>
           </table>
         </div>
@@ -76,6 +76,22 @@
     </section>
   </section>
 </main>
+<div id="tagModal" class="modal-shell" hidden>
+  <section class="modal-box">
+    <div class="modal-head"><div><span class="eyebrow">ZKTECO · CONTROL</span><h3>Agregar TAG a <span id="tagHouseLabel"></span></h3><p class="sub">Puedes vincular un TAG ya sincronizado o crear uno nuevo directamente en el C3-200.</p></div><button id="closeTagModal" class="close" type="button">×</button></div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="field wide"><label>TAG EXISTENTE SIN VIVIENDA</label><select id="existingTag"><option value="">— Crear un TAG nuevo —</option></select></div>
+        <div class="field wide"><label>NÚMERO DE TAG / TARJETA NUEVA</label><input id="newTagNumber" inputmode="numeric" placeholder="Ej. 5015731"></div>
+        <div class="field"><label>FECHA INICIAL</label><input id="newTagStart" type="date"></div>
+        <div class="field"><label>FECHA FINAL</label><input id="newTagEnd" type="date" value="2099-12-31"></div>
+        <div class="field wide"><label>ETIQUETA EN ZKTECO</label><input id="newTagName" maxlength="48" placeholder="Se autocompleta con calle y número"></div>
+      </div>
+      <div class="notice">El TAG nuevo se crea en la tabla de usuarios del C3-200 y se autoriza para ENTRADA + SALIDA. Después queda reflejado en la tabla espejo <b>zk_tarjetas</b>.</div>
+    </div>
+    <div class="modal-foot"><button id="cancelTag" class="btn" type="button">Cancelar</button><button id="saveTag" class="btn primary" type="button">Guardar control</button></div>
+  </section>
+</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -103,19 +119,43 @@ function rowState(row){
   const blocked=row.tarjetas.every(t=>t.bloqueado);
   return blocked?{label:'Bloqueada',cls:'off',blocked:true}:{label:'Habilitada',cls:'on',blocked:false};
 }
+function tagState(tag){return tag.bloqueado?{label:'Bloqueado',cls:'off'}:{label:'Activo',cls:'on'}}
+function renderTagDetails(row){
+  const tags=row.tarjetas||[];
+  const items=tags.length?tags.map(tag=>{
+    const s=tagState(tag);
+    return '<div class="tag-item"><div><div class="tag-id">TAG '+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.nombreDispositivo||tag.departamento||'Sin etiqueta')+'</div></div>'+
+      '<div><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
+      '<div><b>Puertas '+esc(tag.puertasAutorizadas||3)+'</b><div class="tag-meta">Entrada + salida</div></div>'+
+      '<div><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Vigencia final</div></div>'+
+      '<div class="tag-actions">'+(canAdmin?(tag.bloqueado?
+        '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>':
+        '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>'):'')+'</div></div>';
+  }).join(''):'<div class="empty">Esta vivienda todavía no tiene TAGs sincronizados.</div>';
+  return '<div class="tag-panel"><div class="tag-list">'+items+'</div></div>';
+}
 function render(){
   const body=$('rows');let enabled=0,blocked=0;
   if(!currentRows.length){body.innerHTML='<tr><td class="empty" colspan="6">No se encontraron viviendas.</td></tr>';$('mHouses').textContent=0;$('mEnabled').textContent=0;$('mBlocked').textContent=0;return}
   body.innerHTML=currentRows.map(row=>{
     const s=rowState(row); if(s.cls==='on')enabled++; if(s.cls==='off')blocked++;
-    const controls=row.controles?.length||0;
-    const last=row.tarjetas.map(t=>t.ultimaLectura).filter(Boolean).sort().at(-1);
-    return '<tr><td class="house">'+esc(row.calle)+'</td><td><b>'+esc(row.numero)+'</b></td><td><b>'+controls+'</b><span class="sub">'+(controls===1?'control registrado':'controles registrados')+'</span></td><td><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></td><td>'+fmt(last)+'</td><td><div class="row-actions">'+
-      (canAdmin?(s.blocked?'<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Habilitar</button>':'<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear</button>'):'<span class="sub">Solo consulta</span>')+
-      '</div></td></tr>';
+    const controls=row.tarjetas?.length||row.controles?.length||0;
+    const last=(row.tarjetas||[]).map(t=>t.ultimaLectura).filter(Boolean).sort().at(-1);
+    const main='<tr><td class="house">'+esc(row.calle)+'</td><td><b>'+esc(row.numero)+'</b></td>'+
+      '<td><button class="link-btn" onclick="toggleTags('+row.id+')">'+controls+' '+(controls===1?'control':'controles')+' ▾</button></td>'+
+      '<td><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></td><td>'+fmt(last)+'</td>'+
+      '<td><div class="row-actions">'+(canAdmin?
+        '<button class="btn mini" onclick="openTagModal('+row.id+')">+ TAG</button>'+
+        (s.blocked?'<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Activar todos</button>':'<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear todos</button>'):
+        '<span class="sub">Solo consulta</span>')+'</div></td></tr>';
+    const details='<tr id="tags-'+row.id+'" hidden><td colspan="6">'+renderTagDetails(row)+'</td></tr>';
+    return main+details;
   }).join('');
   $('mHouses').textContent=currentRows.length;$('mEnabled').textContent=enabled;$('mBlocked').textContent=blocked;
 }
+function toggleTags(id){const row=$('tags-'+id);if(row)row.hidden=!row.hidden}
+window.toggleTags=toggleTags;
+
 async function loadRows(){
   const q=new URLSearchParams();if($('search').value.trim())q.set('buscar',$('search').value.trim());if($('street').value.trim())q.set('calle',$('street').value.trim());if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
   const r=await api('/zkteco/viviendas?'+q.toString(),{headers:headers()});currentRows=r.data||[];render();
@@ -125,6 +165,46 @@ async function setHouse(id,blocked,button){
   button.disabled=true;try{const r=await api('/zkteco/viviendas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});toast(r.message);await loadRows()}catch(e){toast(e.message)}finally{button.disabled=false}
 }
 window.setHouse=setHouse;
+async function setTag(id,blocked,button){
+  button.disabled=true;
+  try{const r=await api('/zkteco/tarjetas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});toast(r.message);await loadRows()}
+  catch(e){toast(e.message)}finally{button.disabled=false}
+}
+window.setTag=setTag;
+let selectedHouseId=null;
+async function openTagModal(id){
+  selectedHouseId=id;
+  const row=currentRows.find(r=>Number(r.id)===Number(id));
+  $('tagHouseLabel').textContent=row?row.calle+' '+row.numero:'vivienda';
+  $('newTagNumber').value='';$('newTagName').value=row?row.calle+' '+row.numero:'';$('newTagStart').value=new Date().toISOString().slice(0,10);$('newTagEnd').value='2099-12-31';
+  try{
+    const inv=await api('/zkteco/tarjetas',{headers:headers()});
+    const free=(inv.data||[]).filter(t=>!t.casaId);
+    $('existingTag').innerHTML='<option value="">— Crear un TAG nuevo —</option>'+free.map(t=>'<option value="'+t.id+'">'+esc(t.numeroTarjeta)+' · '+esc(t.nombreDispositivo||t.departamento||'Sin etiqueta')+'</option>').join('');
+  }catch(e){$('existingTag').innerHTML='<option value="">— Crear un TAG nuevo —</option>'}
+  $('tagModal').hidden=false;
+}
+window.openTagModal=openTagModal;
+function closeTagModal(){$('tagModal').hidden=true;selectedHouseId=null}
+$('closeTagModal').onclick=closeTagModal;$('cancelTag').onclick=closeTagModal;
+$('existingTag').onchange=()=>{$('newTagNumber').disabled=Boolean($('existingTag').value)};
+$('saveTag').onclick=async()=>{
+  if(!selectedHouseId)return;
+  const b=$('saveTag');b.disabled=true;
+  try{
+    const existing=$('existingTag').value;
+    if(existing){
+      const r=await api('/zkteco/tarjetas/'+existing+'/vivienda',{method:'PATCH',headers:headers(true),body:JSON.stringify({casaId:selectedHouseId})});toast(r.message);
+    }else{
+      const numeroTarjeta=$('newTagNumber').value.trim();
+      if(!numeroTarjeta)throw Error('Captura el número del TAG/control');
+      const r=await api('/zkteco/viviendas/'+selectedHouseId+'/tarjetas',{method:'POST',headers:headers(true),body:JSON.stringify({
+        numeroTarjeta,nombre:$('newTagName').value.trim(),fechaInicio:$('newTagStart').value||null,fechaFin:$('newTagEnd').value||null
+      })});toast(r.message);
+    }
+    closeTagModal();await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){toast(e.message)}finally{b.disabled=false}
+};
 async function operate(action){
   const a=$('openGate'),c=$('closeGate');a.disabled=true;c.disabled=true;
   try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(e.message)}finally{a.disabled=false;c.disabled=false}
