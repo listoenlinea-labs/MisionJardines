@@ -1,10 +1,10 @@
 /* Shared page policy: browser navigation and server authorization. */
 (function(root) {
   const admins = ['SUPER_ADMIN', 'ADMINISTRADOR'];
-  const security = ['index.html','bases_datos.html','mapa.html','visitas.html','conmutador.html','reportes.html','reporte.html','seguridad.html','conexion.html'];
+  const security = ['index.html','bases_datos.html','mapa.html','visitas.html','zkteco.html','conmutador.html','reportes.html','reporte.html','seguridad.html','conexion.html'];
   const resident = ['cuotas.html','pagos.html','anuncios.html','calendario.html','directorio.html'];
   const legacy = {
-    MESA_DIRECTIVA: ['index.html','cuotas.html','pagos.html','bases_datos.html','conmutador.html','anuncios.html','calendario.html','directorio.html'],
+    MESA_DIRECTIVA: ['index.html','cuotas.html','pagos.html','bases_datos.html','zkteco.html','conmutador.html','anuncios.html','calendario.html','directorio.html'],
     MANTENIMIENTO: ['index.html','reportes.html','reporte.html','anuncios.html','calendario.html','directorio.html']
   };
   const pages = [...new Set([...security,...resident,'cuenta.html','viviendas.html'])];
