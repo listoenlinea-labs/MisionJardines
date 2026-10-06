@@ -1290,30 +1290,18 @@
       }
       renderCameras();
     }
-    async function waitGateCommand(id,action) {
-      for (let attempt=0; attempt<15; attempt++) {
-        await new Promise(resolve=>setTimeout(resolve,800));
-        const result=await api(`${API_BASE_URL}/zkteco/pluma/comandos/${id}`,{headers:headers()});
-        if(result.data.estatus==='COMPLETADO'){
-          $('gateScene').classList.toggle('open',action==='open');
-          $('gateState').textContent=action==='open'?'ABIERTA':'CERRADA';
-          toast(action==='open'?'Pluma accionada correctamente.':'Cierre enviado correctamente.');
-          return;
-        }
-        if(result.data.estatus==='ERROR') throw new Error(result.data.resultado?.message||'El controlador rechazó la operación');
-      }
-      toast('La orden fue enviada; esperando confirmación del gateway.');
-    }
     async function controlGate(action) {
       const openBtn=$('openGate'),closeBtn=$('closeGate');
       openBtn.disabled=true; closeBtn.disabled=true;
       $('gateState').textContent='ENVIANDO…';
       try{
-        const result=await api(`${API_BASE_URL}/zkteco/pluma/comandos`,{
+        await api(`${API_BASE_URL}/zkteco/pluma`,{
           method:'POST',headers:headers(true),
           body:JSON.stringify({accion:action==='open'?'ABRIR':'CERRAR'})
         });
-        await waitGateCommand(result.data.id,action);
+        $('gateScene').classList.toggle('open',action==='open');
+        $('gateState').textContent=action==='open'?'ABIERTA':'CERRADA';
+        toast(action==='open'?'Pluma accionada correctamente.':'Cierre enviado correctamente.');
       }catch(error){
         $('gateState').textContent='SIN CONEXIÓN';
         toast(error.message);
