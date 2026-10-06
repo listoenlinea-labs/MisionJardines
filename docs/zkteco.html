@@ -46,6 +46,7 @@
           <div class="device-row"><span>Conexión</span><strong id="deviceMode">Directa</strong></div>
           <div class="device-row"><span>Puertas</span><strong id="deviceDoors">—</strong></div>
           <div class="device-row"><span>Firmware</span><strong id="deviceFirmware">—</strong></div>
+          <div class="device-row"><span>Escritura de TAGs</span><strong id="deviceWriteMode">—</strong></div>
           <div class="device-row"><span>Tarjetas sincronizadas</span><strong id="deviceCards">0</strong></div>
         </div>
         <div class="notice">El botón actúa sobre las salidas configuradas en Hostinger. La vista no muestra nombres de residentes; solo calle, número y estado de sus controles.</div>
@@ -126,7 +127,7 @@ async function loadStatus(){
   try{
     const r=await api('/zkteco/estado',{headers:headers()});
     const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>Conectado al C3-200</span>';
-    $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceCards').textContent=d.tarjetas||0;
+    $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceWriteMode').textContent=d.escrituraUsuarios==='PULLSDK'?'Pull SDK oficial':'No configurada';$('deviceCards').textContent=d.tarjetas||0;
   }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(e.message)}
 }
 function rowState(row){
