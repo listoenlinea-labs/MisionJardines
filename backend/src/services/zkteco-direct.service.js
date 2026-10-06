@@ -94,7 +94,7 @@ async function syncUsers(){
       fechaInicio:fromDateNumber(row.StartTime),
       fechaFin:fromDateNumber(row.EndTime),
       casaId,
-      bloqueado:existing?.bloqueado??false,
+      bloqueado:Boolean(fromDateNumber(row.EndTime) && fromDateNumber(row.EndTime) < new Date().toISOString().slice(0,10)),
       origen:existing?.origen||'ZKTECO',
       ultimaLectura:new Date()
     });
@@ -132,6 +132,7 @@ async function setCardBlocked(cardId,blocked){
     await tarjeta.update({
       bloqueado:true,
       fechaInicio:currentStart||tarjeta.fechaInicio,
+      fechaFin:yesterday(),
       fechaFinOriginal:original,
       ultimaLectura:new Date()
     });
