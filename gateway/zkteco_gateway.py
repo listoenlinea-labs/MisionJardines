@@ -62,7 +62,9 @@ def execute(panel, command):
     pulse=max(1,min(30,int(command.get("pulsoSegundos",3))))
     if not outputs:
         raise RuntimeError("El comando no contiene salidas configuradas")
-    duration=pulse if action=="ABRIR" else 0
+    # Cada salida representa un contacto momentáneo del controlador de la pluma.
+    # La API cloud decide qué salida corresponde a ABRIR y cuál a CERRAR.
+    duration=pulse
     results=[]
     for output in outputs:
         if output<1 or output>panel.nr_of_locks:
