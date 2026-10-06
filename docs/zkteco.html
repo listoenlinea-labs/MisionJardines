@@ -24,6 +24,7 @@
     .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.metric{padding:14px 15px;border:1px solid #e3e8ef;border-radius:14px;background:#fafbfd}.metric small{display:block;color:#7c8799;font-size:9px}.metric strong{display:block;margin-top:4px;font-size:22px}.metric.good{background:#f2fbf6;border-color:#d6eadf}.metric.bad{background:#fff6f6;border-color:#f0d8d8}
     .table-wrap{overflow:auto;border:1px solid #e5eaf0;border-radius:14px}.table{width:100%;border-collapse:collapse;min-width:760px}.table th{padding:12px 14px;background:#f8fafc;color:#7a8699;font-size:9px;text-align:left;letter-spacing:.04em;text-transform:uppercase}.table td{padding:13px 14px;border-top:1px solid #edf0f4;font-size:11px;vertical-align:middle}.house{font-weight:850}.sub{display:block;margin-top:3px;color:#8893a4;font-size:9px}.status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:9px;font-weight:900}.status.on{color:#1d7648;background:#eaf8ef}.status.off{color:#aa4141;background:#fff0f0}.status.none{color:#6f7b8e;background:#eef1f5}.dot{width:6px;height:6px;border-radius:50%;background:currentColor}.row-actions{display:flex;gap:7px;flex-wrap:wrap}.mini{min-height:34px;padding:7px 10px;border-radius:9px;font-size:9px}.empty{padding:38px!important;text-align:center;color:#8a95a7}
     .tag-panel{padding:12px;background:#f8fafc;border-radius:12px}.tag-list{display:grid;gap:8px}.tag-item{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(120px,.8fr) minmax(110px,.7fr) minmax(130px,.8fr) auto;gap:10px;align-items:center;padding:11px 12px;border:1px solid #e4e9ef;border-radius:11px;background:#fff}.tag-id{font-weight:900;font-size:11px}.tag-meta{color:#7e899a;font-size:9px;margin-top:3px}.tag-actions{display:flex;gap:6px;justify-content:flex-end}.link-btn{border:0;background:transparent;color:#d96e07;font-size:10px;font-weight:900;cursor:pointer}.modal-shell{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:20px;background:rgba(21,30,45,.48);backdrop-filter:blur(4px)}.modal-shell[hidden]{display:none}.modal-box{width:min(560px,100%);border:1px solid #e3e7ed;border-radius:20px;background:#fff;box-shadow:0 28px 70px rgba(0,0,0,.2);overflow:hidden}.modal-head{display:flex;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #edf0f4}.modal-head h3{margin:3px 0}.modal-body{padding:20px 22px}.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.modal-grid .wide{grid-column:1/-1}.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:15px 22px;border-top:1px solid #edf0f4;background:#fafbfd}.close{border:0;background:#f3f5f8;width:34px;height:34px;border-radius:9px;font-size:20px;cursor:pointer}.notice{margin-top:12px;padding:12px 14px;border:1px solid #f0dec9;border-radius:12px;background:#fff9f2;color:#7b5b38;font-size:10px;line-height:1.5}.toast{position:fixed;right:22px;bottom:22px;z-index:200;display:none;max-width:380px;padding:13px 15px;border-radius:12px;color:#fff;background:#263248;box-shadow:0 16px 35px rgba(0,0,0,.18);font-size:11px}
+    .busy{position:fixed;inset:0;z-index:500;display:grid;place-items:center;background:rgba(248,250,252,.78);backdrop-filter:blur(5px)}.busy[hidden]{display:none}.busy-card{display:flex;align-items:center;gap:15px;min-width:290px;padding:18px 22px;border:1px solid #e4e9ef;border-radius:18px;background:#fff;box-shadow:0 22px 60px rgba(30,41,59,.16)}.spinner{width:34px;height:34px;border:4px solid #f1e4d6;border-top-color:#ef7d0b;border-radius:50%;animation:spin .78s linear infinite}.busy strong{display:block;font-size:12px}.busy span{display:block;margin-top:4px;color:#7c8799;font-size:10px}@keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:900px){.tag-item{grid-template-columns:1fr 1fr}.tag-actions{justify-content:flex-start}.modal-grid{grid-template-columns:1fr}}@media(max-width:1050px){.grid{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar .btn{width:100%}}@media(max-width:680px){.wrap{width:min(100% - 24px,1480px);padding-top:78px}.hero{align-items:flex-start;flex-direction:column}.toolbar{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}
   </style>
 </head>
@@ -91,6 +92,7 @@
     <div class="modal-foot"><button id="cancelTag" class="btn" type="button">Cancelar</button><button id="saveTag" class="btn primary" type="button">Guardar control</button></div>
   </section>
 </div>
+<div id="busy" class="busy" hidden><div class="busy-card"><div class="spinner"></div><div><strong id="busyTitle">Procesando…</strong><span id="busyText">No cierres esta ventana.</span></div></div></div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -104,6 +106,20 @@ let role='';try{const u=JSON.parse(localStorage.getItem('misionJardinesUsuario')
 const canAdmin=['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA'].includes(role);
 let currentRows=[];
 function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(window.zkToast);window.zkToast=setTimeout(()=>$('toast').style.display='none',3500)}
+let busyDepth=0;
+function showBusy(title,text){
+  busyDepth++;
+  $('busyTitle').textContent=title||'Procesando…';
+  $('busyText').textContent=text||'No cierres esta ventana.';
+  $('busy').hidden=false;
+  document.querySelectorAll('button').forEach(b=>{if(!b.dataset.prevDisabled)b.dataset.prevDisabled=b.disabled?'1':'0';b.disabled=true});
+}
+function hideBusy(){
+  busyDepth=Math.max(0,busyDepth-1);
+  if(busyDepth>0)return;
+  $('busy').hidden=true;
+  document.querySelectorAll('button').forEach(b=>{if(b.dataset.prevDisabled!==undefined){b.disabled=b.dataset.prevDisabled==='1';delete b.dataset.prevDisabled}});
+}
 async function api(path,options={}){const r=await fetch(API+path,options);let j={};try{j=await r.json()}catch{}if(r.status===401){location.replace('login.html');throw Error('Sesión expirada')}if(!r.ok||!j.ok)throw Error(j.error||j.message||'No fue posible completar la solicitud');return j}
 function fmt(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'short'}).format(d)}
 async function loadStatus(){
@@ -193,7 +209,7 @@ async function setTag(id,blocked,button){
 window.setTag=setTag;
 async function addTagToC3(id,button){
   if(!confirm('¿Agregar este TAG físicamente al C3-200 y autorizarlo para entrada/salida?'))return;
-  button.disabled=true;
+  showBusy('Agregando TAG al C3-200','Escribiendo usuario y permisos; después verificaremos el CardNo directamente en el controlador.');
   try{
     const r=await api('/zkteco/tarjetas/'+id+'/agregar-c3',{method:'POST',headers:headers(true)});
     const real=r.data?.numeroTarjetaReal;
@@ -202,7 +218,7 @@ async function addTagToC3(id,button){
   }catch(e){
     toast(e.message);
   }finally{
-    button.disabled=false;
+    hideBusy();
   }
 }
 window.addTagToC3=addTagToC3;
@@ -247,7 +263,15 @@ async function operate(action){
   try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(e.message)}finally{a.disabled=false;c.disabled=false}
 }
 $('openGate').onclick=()=>operate('ABRIR');$('closeGate').onclick=()=>operate('CERRAR');$('applyFilters').onclick=loadRows;
-$('sync').onclick=async()=>{const b=$('sync');b.disabled=true;try{toast('Sincronizando usuarios y controles…');const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});toast(r.message+' · '+(r.data?.procesados||0)+' controles');await Promise.all([loadStatus(),loadRows()])}catch(e){toast(e.message)}finally{b.disabled=false}};
+$('sync').onclick=async()=>{
+  showBusy('Sincronizando ZKTeco','Leyendo usuarios, números de tarjeta y permisos directamente del C3-200.');
+  try{
+    const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});
+    toast(r.message+' · '+(r.data?.procesados||0)+' controles');
+    await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){toast(e.message)}
+  finally{hideBusy()}
+};
 ['street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
 if(!canAdmin)$('sync').style.display='none';
 Promise.all([loadStatus(),loadRows()]).catch(()=>{});
