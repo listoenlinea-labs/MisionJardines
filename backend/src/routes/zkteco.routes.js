@@ -13,6 +13,7 @@ r.post('/sincronizar',autenticarToken,admin,c.sincronizar);
 r.post('/simular-corte',autenticarToken,admin,c.simular);
 r.patch('/tarjetas/:id/bloqueo',autenticarToken,admin,c.bloquear);
 r.patch('/tarjetas/:id/vigencia',autenticarToken,admin,c.actualizarVigencia);
+r.patch('/viviendas/:id/bloqueo',autenticarToken,admin,c.bloquearVivienda);
 r.post('/pluma',autenticarToken,operar,c.pluma);
 
 module.exports=r;
