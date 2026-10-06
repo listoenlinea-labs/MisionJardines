@@ -64,6 +64,8 @@
           <div class="field"><label>NÚMERO DE CASA</label><input id="houseNumber" placeholder="Ej. 11"></div>
           <button id="applyFilters" class="btn">Buscar</button>
           <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
+          <input id="mdbFile" type="file" accept=".mdb,.accdb" hidden>
+          <button id="importMdb" class="btn">Importar base ZKAccess</button>
         </div>
         <div class="table-wrap">
           <table class="table">
@@ -114,9 +116,12 @@ async function loadStatus(){
   }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(e.message)}
 }
 function rowState(row){
-  if(!row.tarjetas.length)return{label:'Sin sincronizar',cls:'none',blocked:false};
-  const blocked=row.tarjetas.every(t=>t.bloqueado);
-  return blocked?{label:'Bloqueada',cls:'off',blocked:true}:{label:'Habilitada',cls:'on',blocked:false};
+  if(row.tarjetas?.length){
+    const blocked=row.tarjetas.every(t=>t.bloqueado);
+    return blocked?{label:'Bloqueada',cls:'off',blocked:true}:{label:'Sincronizado',cls:'on',blocked:false};
+  }
+  if(row.controlesNoEnlazados?.length)return{label:'Pendiente de enlazar',cls:'none',blocked:false};
+  return{label:'Sin controles',cls:'none',blocked:false};
 }
 function tagState(tag){return tag.bloqueado?{label:'Bloqueado',cls:'off'}:{label:'Activo',cls:'on'}}
 function renderTagDetails(row){
@@ -220,9 +225,28 @@ async function operate(action){
   try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(e.message)}finally{a.disabled=false;c.disabled=false}
 }
 $('openGate').onclick=()=>operate('ABRIR');$('closeGate').onclick=()=>operate('CERRAR');$('applyFilters').onclick=loadRows;
+$('importMdb').onclick=()=>$('mdbFile').click();
+$('mdbFile').onchange=async()=>{
+  const file=$('mdbFile').files?.[0];
+  if(!file)return;
+  const b=$('importMdb');b.disabled=true;
+  try{
+    toast('Importando departamentos y números de tarjeta desde ZKAccess…');
+    const r=await fetch(API+'/zkteco/importar-zkaccess',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/octet-stream'},
+      body:await file.arrayBuffer()
+    });
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw Error(j.error||j.message||'No fue posible importar la base ZKAccess');
+    toast('Base ZKAccess vinculada · '+(j.data?.vinculados||0)+' tarjetas asociadas a viviendas');
+    await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){toast(e.message)}
+  finally{b.disabled=false;$('mdbFile').value=''}
+};
 $('sync').onclick=async()=>{const b=$('sync');b.disabled=true;try{toast('Sincronizando usuarios y controles…');const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});toast(r.message+' · '+(r.data?.procesados||0)+' controles');await Promise.all([loadStatus(),loadRows()])}catch(e){toast(e.message)}finally{b.disabled=false}};
 ['street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
-if(!canAdmin)$('sync').style.display='none';
+if(!canAdmin){$('sync').style.display='none';$('importMdb').style.display='none';}
 Promise.all([loadStatus(),loadRows()]).catch(()=>{});
 </script>
 <script src="assets/js/site-sidebar.js?v=20261006"></script>
