@@ -21,6 +21,9 @@ const {
     enviarReciboPorCorreo
 } = require('../services/email.service');
 
+const vigenciaService = require('../services/vigencia-mantenimiento.service');
+const { centavos } = require('../services/vigencia-calculo');
+
 const MESES = [
     'ENERO',
     'FEBRERO',
@@ -322,6 +325,7 @@ async function actualizarCuota(req, res) {
             'mes',
             'montoCuota',
             'montoPagado',
+            'recargo',
             'formaPago',
             'referencia',
             'fechaPago',
@@ -528,7 +532,12 @@ async function actualizarCuota(req, res) {
             );
         }
 
-        await cuota.update(cambios);
+        if (centavos(cambios.recargo ?? cuota.recargo ?? 0) > centavos(cambios.montoPagado ?? cuota.montoPagado)) throw Object.assign(new Error('Recargo superior al importe pagado'), { status: 400 });
+        await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            await cuota.update(cambios, { transaction });
+            if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
+                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
+        });
 
         return res.json({
             ok: true,
@@ -551,10 +560,10 @@ async function actualizarCuota(req, res) {
             error
         );
 
-        return res.status(500).json({
+        return res.status(error.status || 500).json({
             ok: false,
             message:
-                'No fue posible actualizar la cuota',
+                error.status ? error.message : 'No fue posible actualizar la cuota',
             error:
                 process.env.NODE_ENV === 'development'
                     ? error.message
@@ -565,7 +574,7 @@ async function actualizarCuota(req, res) {
 
 function prepararCambiosCuota(cuota, datos = {}) {
     const camposPermitidos = [
-        'anio', 'mes', 'montoCuota', 'montoPagado', 'formaPago',
+        'anio', 'mes', 'montoCuota', 'montoPagado', 'recargo', 'formaPago',
         'referencia', 'fechaPago', 'estatusPago', 'correoDestino',
         'nombrePagador', 'observaciones', 'controles', 'tipoPago'
     ];
@@ -601,7 +610,7 @@ function prepararCambiosCuota(cuota, datos = {}) {
         }
     }
 
-    for (const campo of ['montoCuota', 'montoPagado']) {
+    for (const campo of ['montoCuota', 'montoPagado', 'recargo']) {
         if (Object.prototype.hasOwnProperty.call(cambios, campo)) {
             cambios[campo] = Number(cambios[campo]);
             if (!Number.isFinite(cambios[campo]) || cambios[campo] < 0) {
@@ -669,7 +678,7 @@ async function actualizarCuotasLote(req, res) {
         return res.status(400).json({ ok: false, message: 'La lista contiene identificadores inválidos o repetidos' });
     }
 
-    const transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
     try {
         const cuotas = await Cuota.findAll({
             where: { id: { [Op.in]: ids } },
@@ -694,7 +703,11 @@ async function actualizarCuotasLote(req, res) {
                     throw error;
                 }
             }
-            await cuota.update(prepararCambiosCuota(cuota, operacion.cambios), { transaction });
+            const cambios = prepararCambiosCuota(cuota, operacion.cambios);
+            if (centavos(cambios.recargo ?? cuota.recargo ?? 0) > centavos(cambios.montoPagado ?? cuota.montoPagado)) throw Object.assign(new Error('Recargo superior al importe pagado'), { status: 400 });
+            await cuota.update(cambios, { transaction });
+            if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
+                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
         }
 
         await transaction.commit();
@@ -714,7 +727,7 @@ async function actualizarCuotasLote(req, res) {
 
 async function confirmarPago(req, res) {
     const transaction =
-        await sequelize.transaction();
+        await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
 
     try {
         const cuota = await Cuota.findByPk(
@@ -810,9 +823,12 @@ async function confirmarPago(req, res) {
             cuota.casa?.correo ||
             null;
 
+        const recargo = req.body.recargo ?? cuota.recargo ?? 0;
+        if (centavos(recargo) > centavos(montoPagado)) throw Object.assign(new Error('Recargo superior al importe pagado'), { status: 400 });
         await cuota.update(
             {
                 montoPagado,
+                recargo,
                 saldoPendiente: Math.max(
                     montoCuota - montoPagado,
                     0
@@ -860,6 +876,7 @@ async function confirmarPago(req, res) {
             }
         );
 
+        const vigenciaAcceso = await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
         await transaction.commit();
 
         const cuotaConfirmada =
@@ -878,6 +895,7 @@ async function confirmarPago(req, res) {
                 ok: true,
                 message:
                     'Pago parcial registrado',
+                vigenciaAcceso,
                 data: cuotaConfirmada
             });
         }
@@ -933,6 +951,7 @@ async function confirmarPago(req, res) {
                         ? 'Pago confirmado y recibo generado; el correo quedó pendiente'
                         : 'Pago confirmado; el recibo quedó pendiente y puede reintentarse',
             correo: resultadoCorreo,
+            vigenciaAcceso,
             data: cuotaConfirmada
         });
     } catch (error) {
@@ -948,10 +967,10 @@ async function confirmarPago(req, res) {
             error
         );
 
-        return res.status(500).json({
+        return res.status(error.status || 500).json({
             ok: false,
             message:
-                'No fue posible confirmar el pago',
+                error.status ? error.message : 'No fue posible confirmar el pago',
             error:
                 process.env.NODE_ENV === 'development'
                     ? error.message
@@ -992,7 +1011,7 @@ async function prepararRecibo(cuota) {
 
     if (!cuota.folio) {
         const transaction =
-            await sequelize.transaction();
+            await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
 
         try {
             const cuotaBloqueada =
@@ -1350,7 +1369,10 @@ async function eliminarCuota(
             });
         }
 
-        await cuota.destroy();
+        await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            await cuota.destroy({ transaction });
+            await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
+        });
 
         return res.json({
             ok: true,

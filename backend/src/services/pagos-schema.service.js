@@ -1,6 +1,6 @@
 const { DataTypes, QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { CuotaExtraordinaria, PagoReportado, FolioConsecutivo } = require('../models');
+const { Cuota, CuotaExtraordinaria, PagoReportado, FolioConsecutivo } = require('../models');
 
 async function hasConstraint(tableName, constraintName) {
     const rows = await sequelize.query(
@@ -132,6 +132,10 @@ async function asegurarEsquemaPagos() {
     }
 
     console.log('[Pagos] Tabla folios_consecutivos verificada');
+    await require('../models/VigenciaMantenimiento').sync();
+    await Cuota.sync();
+    const cuotaColumns = await queryInterface.describeTable('cuotas');
+    await ensureColumn(queryInterface, 'cuotas', cuotaColumns, 'recargo', { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 });
     console.log('[Pagos] Esquema de pagos verificado');
 }
 

@@ -64,6 +64,8 @@ const Cuota = sequelize.define(
             field: 'monto_cuota'
         },
 
+        recargo: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
+
         montoPagado: {
             type: DataTypes.DECIMAL(12, 2),
             allowNull: false,
