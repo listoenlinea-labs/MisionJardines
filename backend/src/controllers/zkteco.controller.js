@@ -78,8 +78,9 @@ async function crearTarjeta(req,res){
 }
 async function importarMdb(req,res){
   try{
-    const data=await importZkAccessMdb(req.body);
-    res.json({ok:true,message:'Base ZKAccess importada y vinculada por Departamento/Número de tarjeta',data});
+    const importacion=await importZkAccessMdb(req.body);
+    const sincronizacion=await syncUsers();
+    res.json({ok:true,message:'Base ZKAccess importada y C3-200 sincronizado',data:{...importacion,sincronizacion}});
   }catch(error){
     res.status(400).json({ok:false,message:'No fue posible importar la base ZKAccess',error:error.message});
   }
