@@ -175,7 +175,17 @@ async function operateGate(action){
 
 async function dashboard({calle,numero,buscar}={}){
   const where={};
-  if(calle) where.calle={ [Op.like]: `%${calle}%` };
+  if(calle){
+    const canonical=canonicalStreet(calle);
+    const variants={
+      'Av. Atotonilco':['Atotonilco','Av Atotonilco','Av. Atotonilco','Avenida Atotonilco'],
+      'Av. Guadalajara':['Guadalajara','Av Guadalajara','Av. Guadalajara','Avenida Guadalajara'],
+      'Av. Valle de México':['Valle de México','Av Valle de México','Av. Valle de México','Avenida Valle de México']
+    };
+    where.calle=variants[canonical]
+      ? { [Op.or]: variants[canonical].map(v=>({[Op.like]:`%${v}%`})) }
+      : { [Op.like]: `%${calle}%` };
+  }
   if(numero) where.numero={ [Op.like]: `%${numero}%` };
   const houses=await Casa.findAll({
     where,
