@@ -85,6 +85,8 @@ if(!token) location.replace('login.html');
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 const headers=(json=false)=>({Authorization:'Bearer '+token,...(json?{'Content-Type':'application/json'}:{})});
+let role='';try{const u=JSON.parse(localStorage.getItem('misionJardinesUsuario')||sessionStorage.getItem('misionJardinesUsuario')||'{}');role=u?.rol?.nombre||u?.rol||''}catch(_){}
+const canAdmin=['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA'].includes(role);
 let currentRows=[];
 function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(window.zkToast);window.zkToast=setTimeout(()=>$('toast').style.display='none',3500)}
 async function api(path,options={}){const r=await fetch(API+path,options);let j={};try{j=await r.json()}catch{}if(r.status===401){location.replace('login.html');throw Error('Sesión expirada')}if(!r.ok||!j.ok)throw Error(j.error||j.message||'No fue posible completar la solicitud');return j}
@@ -109,7 +111,7 @@ function render(){
     const controls=row.controles?.length||0;
     const last=row.tarjetas.map(t=>t.ultimaLectura).filter(Boolean).sort().at(-1);
     return '<tr><td class="house">'+esc(row.calle)+'</td><td><b>'+esc(row.numero)+'</b></td><td><b>'+controls+'</b><span class="sub">'+(controls===1?'control registrado':'controles registrados')+'</span></td><td><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></td><td>'+fmt(last)+'</td><td><div class="row-actions">'+
-      (s.blocked?'<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Habilitar</button>':'<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear</button>')+
+      (canAdmin?(s.blocked?'<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Habilitar</button>':'<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear</button>'):'<span class="sub">Solo consulta</span>')+
       '</div></td></tr>';
   }).join('');
   $('mHouses').textContent=currentRows.length;$('mEnabled').textContent=enabled;$('mBlocked').textContent=blocked;
@@ -130,6 +132,7 @@ async function operate(action){
 $('openGate').onclick=()=>operate('ABRIR');$('closeGate').onclick=()=>operate('CERRAR');$('applyFilters').onclick=loadRows;
 $('sync').onclick=async()=>{const b=$('sync');b.disabled=true;try{toast('Sincronizando usuarios y controles…');const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});toast(r.message+' · '+(r.data?.procesados||0)+' controles');await Promise.all([loadStatus(),loadRows()])}catch(e){toast(e.message)}finally{b.disabled=false}};
 ['search','street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
+if(!canAdmin)$('sync').style.display='none';
 Promise.all([loadStatus(),loadRows()]).catch(()=>{});
 </script>
 <script src="assets/js/site-sidebar.js?v=20261006"></script>
