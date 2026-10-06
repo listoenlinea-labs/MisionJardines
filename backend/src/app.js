@@ -111,7 +111,6 @@ app.use(
     rateLimit({
         windowMs: 15 * 60 * 1000,
         limit: 500,
-        skip: req => req.path.startsWith('/caseta/agente/'),
         standardHeaders: true,
         legacyHeaders: false
     })
@@ -155,7 +154,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/busqueda', busquedaRoutes);
 app.use('/api/conexion', conexionRoutes);
-app.use('/api/caseta', require('./routes/caseta.routes'));
 app.use('/api/entorno', entornoRoutes);
 
 app.use((req, res) => {

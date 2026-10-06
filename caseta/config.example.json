@@ -1,6 +1,0 @@
-{
-  "CASETA_API_URL": "https://api-misionjardines.listoenlinea.host/api/caseta",
-  "CASETA_AGENT_TOKEN": "REEMPLAZAR_POR_TOKEN_ALEATORIO",
-  "CASETA_MODE": "SIMULACION",
-  "CASETA_DATA_DIR": "C:\\MisionJardines\\caseta\\data"
-}
