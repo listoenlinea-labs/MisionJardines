@@ -78,7 +78,7 @@ function parseKv(buffer) {
 }
 
 function encodeField(type, value) {
-  if (type === 'i') {
+  if (type === 'i' || type === 'L') {
     let numeric = Number(value || 0);
     if (!Number.isFinite(numeric) || numeric < 0) numeric = 0;
     numeric = Math.trunc(numeric);
