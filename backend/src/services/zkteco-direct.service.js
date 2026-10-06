@@ -62,6 +62,19 @@ const canonicalOnlyHouse = (street,number) => {
   return true;
 };
 
+const normalizeDepartmentKey = (street,number) => {
+  const canonical=canonicalStreet(street);
+  return `${normalizeStreetKey(canonical)} ${String(number??'').trim().toLowerCase()}`.replace(/\s+/g,' ').trim();
+};
+
+const departmentMatchesHouse = (department,street,number) => {
+  const dept=String(department||'').trim();
+  if(!dept) return false;
+  const match=dept.match(/^(.*?)[\s-]+([0-9]+(?:\.[0-9]+)?)$/);
+  if(!match) return false;
+  return normalizeDepartmentKey(match[1],match[2])===normalizeDepartmentKey(street,number);
+};
+
 async function testDirectConnection(){
   const config=getDirectConfig();
   return withC3(async client=>({
@@ -398,27 +411,55 @@ async function operateGate(action){
   });
 }
 
-async function dashboard({calle,numero,buscar}={}){
-  const where={};
-  if(calle){
-    const canonical=canonicalStreet(calle);
-    const variants={
-      'Av. Atotonilco':['Atotonilco','Av Atotonilco','Av. Atotonilco','Avenida Atotonilco'],
-      'Av. Guadalajara':['Guadalajara','Av Guadalajara','Av. Guadalajara','Avenida Guadalajara'],
-      'Av. Valle de México':['Valle de México','Av Valle de México','Av. Valle de México','Avenida Valle de México']
-    };
-    where.calle=variants[canonical]
-      ? { [Op.or]: variants[canonical].map(v=>({[Op.like]:`%${v}%`})) }
-      : { [Op.like]: `%${calle}%` };
-  }
-  if(numero) where.numero={ [Op.like]: `%${numero}%` };
-  const houses=await Casa.findAll({
-    where,
-    attributes:['id','calle','numero','controles'],
-    order:[['calle','ASC'],['numero','ASC']],
-    limit:300
-  });
+async function dashboard({calle,numero}={}){
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
+  const searchByDepartment=Boolean(String(calle||'').trim()&&String(numero||'').trim());
+
+  let houses;
+  if(searchByDepartment){
+    // ZKAccess stores the address as one value in DEPARTMENTS.DEPTNAME,
+    // for example "GARDENIAS 21". Treat that field as the source of truth.
+    const matchedCards=cards.filter(card=>departmentMatchesHouse(card.departamento,calle,numero));
+    const houseIds=[...new Set(matchedCards.map(card=>Number(card.casaId)).filter(Boolean))];
+
+    if(houseIds.length){
+      houses=await Casa.findAll({
+        where:{id:{[Op.in]:houseIds}},
+        attributes:['id','calle','numero','controles'],
+        order:[['calle','ASC'],['numero','ASC']]
+      });
+    }else{
+      // If the department import has not linked casa_id yet, locate the one
+      // matching the same street/number so the UI can show "Pendiente de enlazar".
+      const candidates=await Casa.findAll({
+        where:{numero:String(numero).trim()},
+        attributes:['id','calle','numero','controles'],
+        order:[['calle','ASC'],['numero','ASC']]
+      });
+      houses=candidates.filter(h=>normalizeDepartmentKey(h.calle,h.numero)===normalizeDepartmentKey(calle,numero));
+    }
+  }else{
+    const where={};
+    if(calle){
+      const canonical=canonicalStreet(calle);
+      const variants={
+        'Av. Atotonilco':['Atotonilco','Av Atotonilco','Av. Atotonilco','Avenida Atotonilco'],
+        'Av. Guadalajara':['Guadalajara','Av Guadalajara','Av. Guadalajara','Avenida Guadalajara'],
+        'Av. Valle de México':['Valle de México','Av Valle de México','Av. Valle de México','Avenida Valle de México']
+      };
+      where.calle=variants[canonical]
+        ? { [Op.or]: variants[canonical].map(v=>({[Op.like]:`%${v}%`})) }
+        : { [Op.like]: `%${calle}%` };
+    }
+    if(numero) where.numero={ [Op.like]: `%${numero}%` };
+    houses=await Casa.findAll({
+      where,
+      attributes:['id','calle','numero','controles'],
+      order:[['calle','ASC'],['numero','ASC']],
+      limit:300
+    });
+  }
+
   const byNormalizedCard=new Map();
   const byHouse=new Map();
   for(const card of cards){
@@ -438,21 +479,37 @@ async function dashboard({calle,numero,buscar}={}){
       const matched=[];
       const seen=new Set();
 
+      // When street + house number are provided, only show cards whose
+      // ZKAccess Departamento actually matches that house.
+      const departmentCards=searchByDepartment
+        ? cards.filter(card=>departmentMatchesHouse(card.departamento,h.calle,h.numero))
+        : [];
+
+      for(const card of departmentCards){
+        if(!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+      }
       for(const rawCard of controls){
         const card=byNormalizedCard.get(normalizeCardKey(rawCard));
-        if(card&&!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+        if(card&&!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+          matched.push(card);seen.add(card.id);
+        }
       }
       for(const card of (byHouse.get(Number(h.id))||[])){
-        if(!seen.has(card.id)){matched.push(card);seen.add(card.id);}
+        if(!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+          matched.push(card);seen.add(card.id);
+        }
       }
 
       const matchedKeys=new Set(matched.map(card=>normalizeCardKey(card.numeroTarjeta)));
-      const unresolved=controls.filter(raw=>!matchedKeys.has(normalizeCardKey(raw)));
+      const unresolved=searchByDepartment
+        ? []
+        : controls.filter(raw=>!matchedKeys.has(normalizeCardKey(raw)));
 
       return {
         id:h.id,
         calle:canonicalStreet(h.calle),
         numero:h.numero,
+        departamentoBusqueda:searchByDepartment?`${canonicalStreet(calle)} ${String(numero).trim()}`:null,
         controles:controls,
         controlesNoEnlazados:unresolved,
         tarjetas:matched.map(card=>({
@@ -470,11 +527,6 @@ async function dashboard({calle,numero,buscar}={}){
         }))
       };
     });
-  if(buscar){
-    const q=String(buscar).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    rows=rows.filter(r=>[r.calle,r.numero,...r.controles,...r.tarjetas.map(t=>t.departamento||'')]
-      .join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q));
-  }
   return rows;
 }
 
