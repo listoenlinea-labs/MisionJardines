@@ -3,6 +3,7 @@ const {
   testDirectConnection,
   syncUsers,
   setCardBlocked,
+  setHouseBlocked,
   operateGate,
   dashboard,
   writeUserValidity
@@ -49,6 +50,15 @@ async function actualizarVigencia(req,res){
     res.json({ok:true,message:'Vigencia actualizada en el C3-200',data:tarjeta});
   }catch(error){res.status(502).json({ok:false,message:'No fue posible actualizar la vigencia',error:error.message});}
 }
+async function bloquearVivienda(req,res){
+  try{
+    const blocked=Boolean(req.body.bloqueado);
+    const data=await setHouseBlocked(req.params.id,blocked);
+    res.json({ok:true,message:blocked?'Vivienda bloqueada en ZKTeco':'Vivienda habilitada en ZKTeco',data});
+  }catch(error){
+    res.status(502).json({ok:false,message:error.message||'No fue posible modificar los controles de la vivienda',data:error.results||null});
+  }
+}
 async function pluma(req,res){
   const accion=String(req.body.accion||'').toUpperCase();
   if(!['ABRIR','CERRAR'].includes(accion))return res.status(400).json({ok:false,message:'Acción no válida'});
@@ -61,4 +71,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={estado,inventario,sincronizar,bloquear,actualizarVigencia,pluma,viviendas,simular};
+module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,actualizarVigencia,pluma,viviendas,simular};
