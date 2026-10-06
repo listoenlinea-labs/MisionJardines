@@ -91,14 +91,15 @@ async function syncUsers(){
     const pin=String(row.Pin??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
     const existing=await ZkTarjeta.findOne({where:{numeroTarjeta:card}});
-    const casaId=byCard.get(normalizeCardKey(card))??existing?.casaId??null;
+    const casaId=existing?.casaId??byCard.get(normalizeCardKey(card))??null;
     if(casaId) linked++;
     await ZkTarjeta.upsert({
       numeroTarjeta:card,
       uidDispositivo:Number(row.UID||0)||null,
       pinDispositivo:pin,
       nombreDispositivo:String(row.Name??'').trim()||null,
-      departamento:String(row.Name??'').trim()||null,
+      departamento:existing?.departamento||null,
+      departamentoId:existing?.departamentoId||null,
       grupoDispositivo:Number(row.Group||0)||null,
       puertasAutorizadas:Number(auth?.AuthorizeDoorId||0)||null,
       timezoneId:Number(auth?.AuthorizeTimezoneId||0)||null,
