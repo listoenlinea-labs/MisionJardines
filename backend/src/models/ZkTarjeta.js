@@ -9,6 +9,8 @@ const ZkTarjeta = sequelize.define('ZkTarjeta', {
   departamento: { type: DataTypes.STRING(150), allowNull: true },
   fechaInicio: { type: DataTypes.DATEONLY, allowNull: true, field: 'fecha_inicio' },
   fechaFin: { type: DataTypes.DATEONLY, allowNull: true, field: 'fecha_fin' },
+  fechaFinOriginal: { type: DataTypes.DATEONLY, allowNull: true, field: 'fecha_fin_original' },
+  bloqueado: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   ultimaLectura: { type: DataTypes.DATE, allowNull: true, field: 'ultima_lectura' }
 }, { tableName: 'zk_tarjetas', timestamps: false });
 
