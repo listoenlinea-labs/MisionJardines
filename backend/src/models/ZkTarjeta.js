@@ -8,6 +8,7 @@ const ZkTarjeta = sequelize.define('ZkTarjeta', {
   numeroTarjeta: { type: DataTypes.STRING(80), allowNull: false, unique: true, field: 'numero_tarjeta' },
   pinDispositivo: { type: DataTypes.STRING(80), allowNull: true, field: 'pin_dispositivo' },
   nombreDispositivo: { type: DataTypes.STRING(150), allowNull: true, field: 'nombre_dispositivo' },
+  departamentoId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, field: 'departamento_id' },
   departamento: { type: DataTypes.STRING(150), allowNull: true },
   grupoDispositivo: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, field: 'grupo_dispositivo' },
   puertasAutorizadas: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, field: 'puertas_autorizadas' },
