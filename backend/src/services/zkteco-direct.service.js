@@ -1,5 +1,10 @@
 const { Op } = require('sequelize');
 const { withC3, getDirectConfig } = require('./zkteco-c3-client.service');
+const {
+  isPullSdkBridgeConfigured,
+  provisionUser: provisionUserViaPullSdk,
+  setUserValidity: setUserValidityViaPullSdk
+} = require('./zkteco-pullsdk-bridge.service');
 const ZkTarjeta = require('../models/ZkTarjeta');
 const Casa = require('../models/Casa');
 
@@ -166,13 +171,29 @@ async function findPanelUserByCard(client,card){
 }
 
 async function writeUserValidity(card,fechaInicio,fechaFin){
-  return withC3(async client=>{
+  const current=await withC3(async client=>{
     const row=await findPanelUserByCard(client,card);
     if(!row) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
-    const values={...row,StartTime:toDateNumber(fechaInicio),EndTime:toDateNumber(fechaFin)};
-    await client.setRecord('user',values);
-    return {numeroTarjeta:String(card),fechaInicio,fechaFin};
+    return row;
   });
+
+  if(isPullSdkBridgeConfigured()){
+    await setUserValidityViaPullSdk({
+      pin:String(current.Pin??'').trim(),
+      cardNo:String(card),
+      startDate:fechaInicio,
+      endDate:fechaFin
+    });
+    // Verify against the physical controller, not the bridge response.
+    const verified=await withC3(client=>findPanelUserByCard(client,card));
+    if(!verified) throw new Error(`El PullSDK reportó la actualización, pero la tarjeta ${card} ya no aparece en el C3-200`);
+    return {numeroTarjeta:String(card),fechaInicio,fechaFin,writeMode:'PULLSDK'};
+  }
+
+  throw new Error(
+    'Este C3-200 permite lectura/control directo por TCP, pero no está aceptando escrituras de usuarios por el protocolo socket. '+
+    'Configura ZKTECO_PULLSDK_BRIDGE_URL para altas y cambios de vigencia mediante el Pull SDK oficial.'
+  );
 }
 
 async function setCardBlocked(cardId,blocked){
@@ -322,90 +343,72 @@ async function readBackAuthorization(client,pin,{attempts=6,delayMs=350}={}){
 
 async function provisionTagOnController({casa,requestedCard,displayName,start,end}){
   const card=canonicalCardNo(requestedCard);
-  return withC3(async client=>{
+
+  // Reads still go directly to the controller because that path is proven on this C3-200.
+  const state=await withC3(async client=>{
     const ids=await nextPanelIds(client);
     const profile=await resolveAuthorizationProfile(client,casa.id);
-
-    let created=ids.rows.find(r=>normalizeCardKey(r.CardNo)===card)||null;
-    let realPin=created?String(created.Pin??'').trim():'';
-
-    if(!created){
-      const usedPins=new Set(ids.rows.map(r=>String(r.Pin??'').trim()).filter(Boolean));
-      // ZKAccess commonly uses the visible card number as the user PIN/ID.
-      // Prefer that convention when it is free; otherwise fall back to the next PIN.
-      const preferredPin=String(Number(card));
-      realPin=!usedPins.has(preferredPin)&&preferredPin!=='0'?preferredPin:String(ids.pin);
-      const safeName=String(displayName||'').slice(0,24);
-
-      // C3/PullSDK documents these as writable user fields. Do not send UID
-      // or SuperAuthorize during INSERT: some C3 firmware acknowledges the
-      // frame but silently ignores records containing non-enrolment fields.
-      await client.setRecord('user',{
-        CardNo:Number(card),
-        Pin:Number(realPin),
-        Password:'',
-        Group:1,
-        Name:safeName
-      });
-
-      created=await readBackUserByCard(client,card);
-      if(!created){
-        // Retry once with the smallest valid payload. Older C3-200 firmware can
-        // reject optional fields while still returning a generic OK frame.
-        await client.setRecord('user',{
-          CardNo:Number(card),
-          Pin:Number(realPin)
-        });
-        created=await readBackUserByCard(client,card);
-      }
-
-      if(!created){
-        throw new Error(
-          'El C3-200 recibió la orden pero no creó el usuario. '+
-          'Se intentó alta normal y alta mínima (CardNo + Pin) y ninguna apareció al releer la tabla user.'
-        );
-      }
-
-      realPin=String(created.Pin??realPin).trim();
-
-      // Apply validity only after the base user exists. Pin acts as the record key.
-      try{
-        await client.setRecord('user',{
-          Pin:Number(realPin),
-          StartTime:toDateNumber(start),
-          EndTime:toDateNumber(end)
-        });
-      }catch(error){
-        console.warn('ZKTeco: usuario creado, pero no se pudo actualizar vigencia:',error.message);
-      }
-    }
-
-    if(!realPin)realPin=String(created.Pin??ids.pin).trim();
-
-    let auth=await readBackAuthorization(client,realPin,{attempts:1,delayMs:0});
-    if(!auth){
-      await client.setRecord('userauthorize',{
-        Pin:Number(realPin),
-        AuthorizeTimezoneId:Number(profile.timezoneId||1),
-        AuthorizeDoorId:Number(profile.doorMask||3)
-      });
-      auth=await readBackAuthorization(client,realPin);
-    }
-
-    if(!auth){
-      throw new Error(
-        'El TAG ya existe en la tabla user del C3-200, pero el controlador no confirmó permisos de entrada/salida en userauthorize.'
-      );
-    }
-
-    return {
-      uid:Number(created.UID||0)||null,
-      pin:realPin,
-      cardNo:String(created.CardNo??card),
-      timezoneId:Number(auth.AuthorizeTimezoneId||profile.timezoneId||1),
-      doorMask:Number(auth.AuthorizeDoorId||profile.doorMask||3)
-    };
+    const existing=ids.rows.find(r=>normalizeCardKey(r.CardNo)===card)||null;
+    return {ids,profile,existing};
   });
+
+  if(state.existing){
+    const pin=String(state.existing.Pin??'').trim();
+    return {
+      uid:Number(state.existing.UID||0)||null,
+      pin,
+      cardNo:String(state.existing.CardNo??card),
+      timezoneId:Number(state.profile.timezoneId||1),
+      doorMask:Number(state.profile.doorMask||3),
+      writeMode:'EXISTING'
+    };
+  }
+
+  if(!isPullSdkBridgeConfigured()){
+    throw new Error(
+      'El C3-200 sí está conectado y se puede leer/abrir la pluma, pero este firmware no acepta altas de usuarios por la escritura TCP directa. '+
+      'Para crear TAGs necesitas configurar el puente del Pull SDK oficial (ZKTECO_PULLSDK_BRIDGE_URL).'
+    );
+  }
+
+  const usedPins=new Set(state.ids.rows.map(r=>String(r.Pin??'').trim()).filter(Boolean));
+  const preferredPin=String(Number(card));
+  const pin=!usedPins.has(preferredPin)&&preferredPin!=='0'?preferredPin:String(state.ids.pin);
+  const profile=state.profile;
+
+  await provisionUserViaPullSdk({
+    cardNo:card,
+    pin,
+    name:String(displayName||'').slice(0,24),
+    startDate:start,
+    endDate:end,
+    doorMask:Number(profile.doorMask||3),
+    timezoneId:Number(profile.timezoneId||1)
+  });
+
+  // The official SDK call is not enough: prove the new record is now in the controller.
+  const created=await withC3(client=>readBackUserByCard(client,card,{attempts:8,delayMs:500}));
+  if(!created){
+    throw new Error(
+      'El Pull SDK respondió, pero el C3-200 no devolvió el nuevo CardNo al releer la tabla user. '+
+      'Revisa la respuesta/log del puente PullSDK.'
+    );
+  }
+
+  const realPin=String(created.Pin??pin).trim();
+  const auth=await withC3(client=>readBackAuthorization(client,realPin,{attempts:8,delayMs:500}));
+  if(!auth){
+    throw new Error('El usuario ya existe en el C3-200, pero userauthorize no confirmó acceso a las puertas.');
+  }
+
+  return {
+    uid:Number(created.UID||0)||null,
+    pin:realPin,
+    cardNo:String(created.CardNo??card),
+    timezoneId:Number(auth.AuthorizeTimezoneId||profile.timezoneId||1),
+    doorMask:Number(auth.AuthorizeDoorId||profile.doorMask||3),
+    writeMode:'PULLSDK'
+  };
 }
 
 async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaFin}={}){
