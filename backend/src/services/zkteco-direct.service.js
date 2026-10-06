@@ -24,6 +24,31 @@ const normalizeTokens = raw => String(raw||'')
   .map(v=>v.trim())
   .filter(Boolean);
 
+const normalizeStreetKey = value => String(value||'')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase()
+  .replace(/\bavenida\b/g,'av')
+  .replace(/\./g,'')
+  .replace(/\s+/g,' ')
+  .trim();
+
+const canonicalStreet = value => {
+  const key=normalizeStreetKey(value);
+  if(key==='atotonilco'||key==='av atotonilco') return 'Av. Atotonilco';
+  if(key==='guadalajara'||key==='av guadalajara') return 'Av. Guadalajara';
+  if(key==='valle de mexico'||key==='av valle de mexico') return 'Av. Valle de México';
+  return String(value||'').trim();
+};
+
+const canonicalOnlyHouse = (street,number) => {
+  const canonical=canonicalStreet(street);
+  const n=String(number??'').trim();
+  if(canonical==='Av. Atotonilco') return n==='752';
+  if(canonical==='Av. Guadalajara') return n==='707';
+  if(canonical==='Av. Valle de México') return n==='3614';
+  return true;
+};
+
 async function testDirectConnection(){
   const config=getDirectConfig();
   return withC3(async client=>({
@@ -150,7 +175,17 @@ async function operateGate(action){
 
 async function dashboard({calle,numero,buscar}={}){
   const where={};
-  if(calle) where.calle={ [Op.like]: `%${calle}%` };
+  if(calle){
+    const canonical=canonicalStreet(calle);
+    const variants={
+      'Av. Atotonilco':['Atotonilco','Av Atotonilco','Av. Atotonilco','Avenida Atotonilco'],
+      'Av. Guadalajara':['Guadalajara','Av Guadalajara','Av. Guadalajara','Avenida Guadalajara'],
+      'Av. Valle de México':['Valle de México','Av Valle de México','Av. Valle de México','Avenida Valle de México']
+    };
+    where.calle=variants[canonical]
+      ? { [Op.or]: variants[canonical].map(v=>({[Op.like]:`%${v}%`})) }
+      : { [Op.like]: `%${calle}%` };
+  }
   if(numero) where.numero={ [Op.like]: `%${numero}%` };
   const houses=await Casa.findAll({
     where,
@@ -160,22 +195,24 @@ async function dashboard({calle,numero,buscar}={}){
   });
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
   const cardMap=new Map(cards.map(c=>[String(c.numeroTarjeta),c]));
-  let rows=houses.map(h=>{
-    const controls=normalizeTokens(h.controles);
-    const mapped=controls.map(card=>cardMap.get(card)).filter(Boolean);
-    return {
-      id:h.id,calle:h.calle,numero:h.numero,controles:controls,
-      tarjetas:mapped.map(c=>({
-        id:c.id,numeroTarjeta:c.numeroTarjeta,pin:c.pinDispositivo,
-        departamento:c.departamento,bloqueado:Boolean(c.bloqueado),
-        fechaInicio:c.fechaInicio,fechaFin:c.fechaFin,ultimaLectura:c.ultimaLectura
-      }))
-    };
-  });
+  let rows=houses
+    .filter(h=>canonicalOnlyHouse(h.calle,h.numero))
+    .map(h=>{
+      const controls=normalizeTokens(h.controles);
+      const mapped=controls.map(card=>cardMap.get(card)).filter(Boolean);
+      return {
+        id:h.id,calle:canonicalStreet(h.calle),numero:h.numero,controles:controls,
+        tarjetas:mapped.map(c=>({
+          id:c.id,numeroTarjeta:c.numeroTarjeta,pin:c.pinDispositivo,
+          departamento:c.departamento,bloqueado:Boolean(c.bloqueado),
+          fechaInicio:c.fechaInicio,fechaFin:c.fechaFin,ultimaLectura:c.ultimaLectura
+        }))
+      };
+    });
   if(buscar){
-    const q=String(buscar).toLowerCase();
+    const q=String(buscar).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     rows=rows.filter(r=>[r.calle,r.numero,...r.controles,...r.tarjetas.map(t=>t.departamento||'')]
-      .join(' ').toLowerCase().includes(q));
+      .join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q));
   }
   return rows;
 }
