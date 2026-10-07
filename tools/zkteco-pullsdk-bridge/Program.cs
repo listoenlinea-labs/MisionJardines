@@ -202,13 +202,14 @@ app.MapPost("/api/users", async (HttpRequest req, UserProvisionRequest body) =>
     }
 });
 
-app.MapPost("/api/users/validity", (HttpRequest req, UserValidityRequest body) =>
+app.MapPost("/api/users/validity", async (HttpRequest req, UserValidityRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
+    await sdkGate.WaitAsync();
     int handle = 0;
     try
     {
-        handle = Connect();
+        handle = await ConnectAsync();
         try { Native.EnableDevice(handle, 0); } catch { }
 
         var start = Date8(body.startDate);
@@ -225,6 +226,7 @@ app.MapPost("/api/users/validity", (HttpRequest req, UserValidityRequest body) =
     }
     catch (Exception ex)
     {
+        Console.Error.WriteLine($"[PullSDK] /api/users/validity: {ex.Message}");
         return Results.Json(new { ok = false, error = ex.Message }, statusCode: 502);
     }
     finally
@@ -234,6 +236,8 @@ app.MapPost("/api/users/validity", (HttpRequest req, UserValidityRequest body) =
             try { Native.EnableDevice(handle, 1); } catch { }
             try { Native.Disconnect(handle); } catch { }
         }
+        await Task.Delay(300);
+        sdkGate.Release();
     }
 });
 
