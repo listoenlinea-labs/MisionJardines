@@ -50,23 +50,33 @@ static string EscapeValue(string? value)
         .Trim();
 }
 
-int Connect()
+async Task<int> ConnectAsync()
 {
-    var conn = Native.AllocZ(ConnString(), out var pin);
-    try
+    for (var attempt = 1; attempt <= 3; attempt++)
     {
-        var handle = Native.Connect(conn);
-        if (handle <= 0)
+        var conn = Native.AllocZ(ConnString(), out var pin);
+        try
         {
+            var handle = Native.Connect(conn);
+            if (handle > 0) return handle;
+
             var err = Native.PullLastError();
+            if (err == -107 && attempt < 3)
+            {
+                Console.WriteLine($"[PullSDK] Connect transitorio lastError=-107; reintento {attempt + 1}/3");
+                await Task.Delay(750 * attempt);
+                continue;
+            }
+
             throw new InvalidOperationException($"PullSDK Connect falló: handle={handle}, lastError={err}");
         }
-        return handle;
+        finally
+        {
+            if (pin.IsAllocated) pin.Free();
+        }
     }
-    finally
-    {
-        if (pin.IsAllocated) pin.Free();
-    }
+
+    throw new InvalidOperationException("PullSDK Connect falló después de varios intentos");
 }
 
 int SetData(int handle, string table, string data)
