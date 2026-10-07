@@ -224,6 +224,13 @@
           && (!pendingFilters.year || parts[0] === pendingFilters.year);
       });
     }
+    function paymentMonthLabel(value) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ''));
+      if (!match) return 'MES NO DISPONIBLE';
+      const month = Number(match[2]);
+      if (month < 1 || month > 12) return 'MES NO DISPONIBLE';
+      return ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'][month - 1] + ' ' + match[1];
+    }
     function renderPending() {
       const box = $('pendingPayments');
       box.replaceChildren();
@@ -239,7 +246,7 @@
         card.className = 'pending-mini-card';
         card.setAttribute('aria-label', 'Revisar comprobante de ' + p.calleSnapshot + ', casa ' + p.numeroCasaSnapshot);
         card.innerHTML = '<span class="pending-mini-details"><strong>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
-          '</strong><small>' + esc(p.fechaOperacion || 'Sin fecha') + ' · ' + esc(p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') +
+          '</strong><span class="pending-mini-month">Mes del depósito: <b>' + esc(paymentMonthLabel(p.fechaOperacion)) + '</b></span><small>' + esc(p.fechaOperacion || 'Sin fecha') + ' · ' + esc(p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') +
           '</small><small>Folio ' + esc(p.folioOperacion || '—') + '</small></span><span class="pending-mini-right"><b>' + money(p.monto) +
           '</b><span>Ver detalle ›</span></span>';
         card.addEventListener('click', () => openPendingDetail(p));
@@ -264,6 +271,7 @@
       fee.value = p.recargo || 0;
       fee.disabled = p.tipoPago !== 'MANTENIMIENTO';
       dialog.showModal();
+      dialog.scrollTop = 0;
       body.querySelectorAll('[data-detail-review]').forEach(button => button.addEventListener('click', async () => {
         if (!confirm(button.dataset.detailReview === 'VALIDADO' ? '¿Confirmas que verificaste este depósito en la cuenta bancaria?' : '¿Rechazar este comprobante?')) return;
         const buttons = body.querySelectorAll('[data-detail-review]');
