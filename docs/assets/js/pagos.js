@@ -262,7 +262,7 @@
         '<div class="pending-detail-meta"><div><small>Folio / operación</small><strong>' + esc(p.folioOperacion || '—') + '</strong></div>' +
         '<div><small>Fecha</small><strong>' + esc(p.fechaOperacion || '—') + '</strong></div>' +
         '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
-        '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario" hidden></div>' +
+        '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario, seleccionar para ampliar" role="button" tabindex="0" hidden><button type="button" class="pending-proof-zoom-button" id="pendingZoomButton" hidden>Ampliar fotografía ↗</button></div>' +
         '<div class="pending-fields"><div><label for="pendingFee">Recargo incluido</label><input id="pendingFee" type="number" min="0" step="0.01"></div>' +
         '<div><label for="pendingNotes">Observaciones de revisión</label><textarea id="pendingNotes" maxlength="600" rows="3" placeholder="Agrega una nota si es necesario"></textarea></div></div>' +
         '<div class="pending-detail-actions"><button type="button" class="btn btn-primary" data-detail-review="VALIDADO">Validar depósito</button>' +
@@ -293,6 +293,7 @@
         if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value)) {
           $('pendingProofImage').src = value;
           $('pendingProofImage').hidden = false;
+          $('pendingZoomButton').hidden = false;
           $('pendingProofStatus').hidden = true;
         } else { $('pendingProofStatus').textContent = 'Imagen no disponible.'; }
       } catch (e) { if (dialog.open && $('pendingProofStatus')) $('pendingProofStatus').textContent = e.message; }
@@ -327,6 +328,24 @@
       Object.keys(pendingFilters).forEach(key => pendingFilters[key] = '');
       renderPending();
     });
+    const photoZoom = $('pendingPhotoZoom');
+    const zoomProof = () => {
+      const img = $('pendingProofImage');
+      if (!img || img.hidden || !img.src || !$('pendingDetail').open) return;
+      $('pendingZoomImage').src = img.src;
+      photoZoom.showModal();
+    };
+    $('pendingDetailBody').addEventListener('click', event => {
+      if (event.target.closest('#pendingProofImage, #pendingZoomButton')) zoomProof();
+    });
+    $('pendingDetailBody').addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === ' ') && event.target.id === 'pendingProofImage') {
+        event.preventDefault(); zoomProof();
+      }
+    });
+    $('closePendingPhotoZoom').addEventListener('click', () => photoZoom.close());
+    photoZoom.addEventListener('click', event => { if (event.target === photoZoom) photoZoom.close(); });
+    photoZoom.addEventListener('close', () => { $('pendingZoomImage').removeAttribute('src'); });
     $('closePendingDetail').addEventListener('click', () => $('pendingDetail').close());
     async function loadAdministration() {
       if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role())) return;
