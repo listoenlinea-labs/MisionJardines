@@ -86,7 +86,7 @@
           <div class="field"><label>CALLE</label><input id="street" placeholder="Ej. Gardenias"></div>
           <div class="field"><label>NÚMERO DE CASA</label><input id="houseNumber" placeholder="Ej. 11"></div>
           <button id="applyFilters" class="btn">Buscar</button>
-          <button id="clearFilters" class="btn clear">Limpiar</button>
+          <button id="clearFilters" class="btn clear">Limpiar filtros</button>
           <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
         </div>
         <div id="rows" class="house-list"><div class="empty">Cargando viviendas…</div></div>
@@ -251,6 +251,10 @@ function renderPagination(){
   $('pageInfo').textContent=total
     ? 'Página '+page+' de '+totalPages+' · '+total+' viviendas'
     : 'Sin viviendas para mostrar';
+  if(!total){
+    $('paginationButtons').innerHTML='';
+    return;
+  }
   const pages=pageNumbers();
   let previous=null;
   const numbered=[];
@@ -305,19 +309,24 @@ async function refreshPage(page,{notify=false,reason}={}){
   const target=Math.max(1,Number(page)||1);
   currentPage=target;
   pageRefreshInFlight=true;
+  let synchronized=true;
+  let loaded=false;
   setPageSyncStatus(reason||('Actualizando página '+target+' con ZKTeco…'),true);
   try{
     try{
       await syncBeforePageLoad({notify});
     }catch(syncError){
+      synchronized=false;
       toast('No se pudo sincronizar antes de cargar la página: '+syncError.message,7000);
     }
     await loadRows();
+    loaded=true;
   }finally{
     pageRefreshInFlight=false;
-    setPageSyncStatus('Actualizado con ZKTeco');
+    const message=!loaded?'No se pudo actualizar la página':(synchronized?'Actualizado con ZKTeco':'Datos cargados · sincronización pendiente');
+    setPageSyncStatus(message,false);
     window.clearTimeout(window.zkPageSyncStatusTimer);
-    window.zkPageSyncStatusTimer=setTimeout(()=>setPageSyncStatus(''),2500);
+    window.zkPageSyncStatusTimer=setTimeout(()=>setPageSyncStatus(''),3500);
   }
 }
 async function goPage(page){
