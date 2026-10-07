@@ -50,6 +50,13 @@ static string EscapeValue(string? value)
         .Trim();
 }
 
+static bool IsTransientConnectError(int error)
+{
+    // -10053/-10054/-10060 are Windows socket abort/reset/timeout conditions.
+    // -107 is also seen transiently by this C3 when sessions are opened close together.
+    return error is -107 or -10053 or -10054 or -10060;
+}
+
 async Task<int> ConnectAsync()
 {
     for (var attempt = 1; attempt <= 3; attempt++)
@@ -61,10 +68,10 @@ async Task<int> ConnectAsync()
             if (handle > 0) return handle;
 
             var err = Native.PullLastError();
-            if (err == -107 && attempt < 3)
+            if (IsTransientConnectError(err) && attempt < 3)
             {
-                Console.WriteLine($"[PullSDK] Connect transitorio lastError=-107; reintento {attempt + 1}/3");
-                await Task.Delay(750 * attempt);
+                Console.WriteLine($"[PullSDK] Connect transitorio lastError={err}; reintento {attempt + 1}/3");
+                await Task.Delay(900 * attempt);
                 continue;
             }
 
