@@ -59,10 +59,19 @@ async function readAccessState(card) {
 
 async function writeAuthorizationDirect({ pin, authorized, doorMask, timezoneId }) {
   return withC3(async client => {
-    await client.setRecord('userauthorize', {
-      Pin: String(pin),
-      AuthorizeTimezoneId: Number(timezoneId),
-      AuthorizeDoorId: authorized ? Number(doorMask) : 0
+    if (authorized) {
+      // Captura Wireshark del PullSDK: 0x07 con Pin + timezone + door mask.
+      await client.putRecord('userauthorize', {
+        Pin: String(pin),
+        AuthorizeTimezoneId: Number(timezoneId),
+        AuthorizeDoorId: Number(doorMask)
+      });
+      return;
+    }
+
+    // Captura Wireshark del PullSDK: 0x09 con solamente Pin elimina la autorización.
+    await client.deleteRecord('userauthorize', {
+      Pin: String(pin)
     });
   });
 }
@@ -152,8 +161,8 @@ async function main() {
 
   console.log(
     authorized
-      ? '\nIntentando ACTIVAR directamente mediante SETDATA userauthorize...'
-      : '\nIntentando BLOQUEAR directamente dejando AuthorizeDoorId=0...'
+      ? '\nIntentando ACTIVAR directamente con PUTDATA 0x07 en userauthorize...'
+      : '\nIntentando BLOQUEAR directamente con DELETEDATA 0x09 en userauthorize...'
   );
 
   let writeError = null;
