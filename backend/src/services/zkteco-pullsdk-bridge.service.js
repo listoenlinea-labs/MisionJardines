@@ -1,4 +1,4 @@
-const DEFAULT_TIMEOUT_MS=15000;
+const DEFAULT_TIMEOUT_MS=30000;
 
 function getBridgeConfig(){
   const baseUrl=String(process.env.ZKTECO_PULLSDK_BRIDGE_URL||'').trim().replace(/\/$/,'');
