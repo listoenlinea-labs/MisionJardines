@@ -988,6 +988,38 @@
     .pending-detail-actions{justify-content:flex-end;margin-top:13px}
     @media(max-width:1000px){.admin-workspace{grid-template-columns:1fr!important}.pending-filter-bar{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:600px){.pending-payments{grid-template-columns:1fr!important}.pending-filter-bar{grid-template-columns:repeat(2,minmax(0,1fr))}.pending-filter-bar button{grid-column:1/-1}.pending-detail-meta{grid-template-columns:1fr}.pending-detail-actions{flex-wrap:wrap}.pending-detail-actions button{flex:1}}
+
+    /* Centro visual real: evita que reglas globales de dialog lo anclen a la esquina. */
+    #pendingDetail.pending-detail-dialog[open]{
+      position:fixed!important;inset:0!important;margin:auto!important;
+      width:min(760px,calc(100vw - 36px));max-width:calc(100vw - 36px);
+      max-height:min(790px,calc(100dvh - 42px));box-sizing:border-box;
+      padding:0;overflow-y:auto;overscroll-behavior:contain;
+      border:1px solid #e1e9ee;border-radius:22px;
+      background:linear-gradient(165deg,#fff 0%,#fcfdfa 100%);
+      box-shadow:0 28px 90px rgba(26,41,63,.25),0 4px 22px rgba(26,41,63,.07);
+    }
+    #pendingDetail .pending-detail-top{
+      position:sticky;top:0;z-index:2;padding:20px 23px 15px;
+      background:linear-gradient(100deg,#fff9f3,#f5fbf8 75%,#fff);
+      border-bottom:1px solid #e8eceb;
+    }
+    #pendingDetail .pending-detail-top h2{margin:0;color:#26344d;font-size:17px;letter-spacing:-.02em}
+    #pendingDetail .pending-detail-top button{display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border-radius:12px;background:#fff;border:1px solid #e6e9ee;color:#6b7890;font-size:22px;transition:background .15s}
+    #pendingDetail .pending-detail-top button:hover{background:#fff0eb;color:#a75329}
+    #pendingDetailBody{padding:19px 23px 24px}
+    #pendingDetail .pending-detail-heading{border:1px solid #e1ede6;background:#f3fbf6;font-size:13px}
+    #pendingDetail .pending-proof{background:#fafcfb}
+    #pendingDetail .pending-proof img{max-height:320px}
+    #pendingDetail .pending-detail-actions{position:sticky;bottom:-24px;z-index:1;padding:13px 0 0;background:linear-gradient(0deg,#fff 83%,#ffffffed)}
+    .pending-mini-month{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;margin:3px 0 1px;color:#6d7b8e;font-size:9px;font-weight:700}
+    .pending-mini-month b{color:#275a45;font-size:10px;font-weight:950;letter-spacing:.025em}
+    @media(max-width:600px){
+      #pendingDetail.pending-detail-dialog[open]{width:calc(100vw - 18px);max-width:calc(100vw - 18px);max-height:calc(100dvh - 24px);border-radius:16px}
+      #pendingDetail .pending-detail-top{padding:14px 15px}
+      #pendingDetailBody{padding:14px 15px 21px}
+      #pendingDetail .pending-proof img{max-height:36dvh}
+    }
 </style>
 </head>
 
@@ -1194,7 +1226,7 @@
   <div id="toast" class="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-  <script src="assets/js/pagos.js?v=20261007-compact"></script>
+  <script src="assets/js/pagos.js?v=20261007-centered-month"></script>
   <script src="assets/js/site-sidebar.js?v=20261001"></script>
 </body>
 
