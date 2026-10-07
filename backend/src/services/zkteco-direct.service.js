@@ -640,6 +640,135 @@ async function addExistingTagToController(cardId){
   };
 }
 
+async function findHouseByStreetNumber(street,number){
+  const requestedStreet=String(street||'').trim();
+  const requestedNumber=String(number||'').trim();
+  if(!requestedStreet||!requestedNumber) throw new Error('Captura calle y número de casa');
+
+  const candidates=await Casa.findAll({
+    where:{numero:requestedNumber},
+    attributes:['id','calle','numero','controles']
+  });
+  const wanted=normalizeStreetKey(canonicalStreet(requestedStreet));
+  const house=candidates.find(item=>normalizeStreetKey(canonicalStreet(item.calle))===wanted)||null;
+  if(!house) throw new Error(`No se encontró la vivienda ${requestedStreet} ${requestedNumber}`);
+  return house;
+}
+
+async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}={}){
+  const tarjeta=await ZkTarjeta.findByPk(cardId);
+  if(!tarjeta) throw new Error('Control no encontrado');
+
+  const oldCard=canonicalCardNo(tarjeta.numeroTarjeta);
+  const newCard=canonicalCardNo(numeroTarjeta||tarjeta.numeroTarjeta);
+  const start=String(fechaInicio||tarjeta.fechaInicio||new Date().toISOString().slice(0,10)).trim();
+  const end=String(fechaFin||tarjeta.fechaFinOriginal||tarjeta.fechaFin||'2099-12-31').trim();
+  if(start&&end&&start>end) throw new Error('La fecha inicial no puede ser posterior a la fecha final');
+
+  const targetHouse=(String(calle||'').trim()||String(numero||'').trim())
+    ? await findHouseByStreetNumber(calle,numero)
+    : await Casa.findByPk(tarjeta.casaId,{attributes:['id','calle','numero','controles']});
+  if(!targetHouse) throw new Error('La vivienda vinculada ya no existe');
+
+  const allCards=await ZkTarjeta.findAll({attributes:['id','numeroTarjeta']});
+  const duplicate=allCards.find(item=>Number(item.id)!==Number(tarjeta.id)&&normalizeCardKey(item.numeroTarjeta)===normalizeCardKey(newCard));
+  if(duplicate) throw new Error('El nuevo número de TAG ya existe en la aplicación');
+
+  const cardChanged=normalizeCardKey(oldCard)!==normalizeCardKey(newCard);
+  const houseChanged=Number(tarjeta.casaId||0)!==Number(targetHouse.id);
+  const currentPhysical=await withC3(client=>findPanelUserByCard(client,oldCard));
+  let controllerResult=null;
+
+  const departmentProfile=await resolveDepartmentProfile(targetHouse.id,targetHouse);
+  const displayName=String(departmentProfile.departamento||`${canonicalStreet(targetHouse.calle)} ${targetHouse.numero}`).trim().slice(0,48);
+
+  if(cardChanged){
+    const physicalNew=await withC3(client=>findPanelUserByCard(client,newCard));
+    if(physicalNew) throw new Error('El nuevo número de TAG ya existe físicamente en el C3-200');
+
+    if(currentPhysical||tarjeta.enControlador){
+      if(!isPullSdkBridgeConfigured()){
+        throw new Error('El puente Pull SDK no está configurado para cambiar el número del TAG');
+      }
+
+      controllerResult=await provisionTagOnController({
+        casa:targetHouse,
+        requestedCard:newCard,
+        displayName,
+        start,
+        end
+      });
+
+      if(currentPhysical){
+        const oldPin=String(currentPhysical.Pin??tarjeta.pinDispositivo??'').trim();
+        if(!oldPin) throw new Error('No fue posible determinar el Pin actual del TAG');
+
+        try{
+          await deleteUserViaPullSdk({pin:oldPin,cardNo:oldCard});
+          const stillOld=await withC3(client=>readBackUserByCard(client,oldCard,{attempts:8,delayMs:500}));
+          if(stillOld) throw new Error('El C3-200 todavía devuelve el número anterior después del cambio');
+        }catch(error){
+          // Keep the original TAG usable if the second half of the replacement fails.
+          try{
+            if(controllerResult?.pin) await deleteUserViaPullSdk({pin:controllerResult.pin,cardNo:newCard});
+          }catch(_){}
+          throw error;
+        }
+      }
+    }
+  }else if(currentPhysical){
+    const currentStart=fromDateNumber(currentPhysical.StartTime)||tarjeta.fechaInicio||null;
+    const currentEnd=fromDateNumber(currentPhysical.EndTime)||tarjeta.fechaFin||null;
+    if(String(currentStart||'')!==String(start||'')||String(currentEnd||'')!==String(end||'')){
+      await writeUserValidity(oldCard,start,end);
+    }
+  }
+
+  const oldHouse=tarjeta.casaId
+    ? await Casa.findByPk(tarjeta.casaId,{attributes:['id','controles']})
+    : null;
+
+  if(oldHouse){
+    const cleaned=removeControlNormalized(oldHouse.controles,oldCard);
+    if(Number(oldHouse.id)!==Number(targetHouse.id)||cardChanged){
+      await oldHouse.update({controles:cleaned});
+    }
+  }
+
+  const targetControls=mergeControls(
+    Number(oldHouse?.id)===Number(targetHouse.id)&&!cardChanged ? targetHouse.controles : removeControlNormalized(targetHouse.controles,oldCard),
+    newCard,
+    false
+  );
+  await targetHouse.update({controles:targetControls});
+
+  await tarjeta.update({
+    casaId:Number(targetHouse.id),
+    numeroTarjeta:newCard,
+    uidDispositivo:controllerResult?.uid??(cardChanged?null:tarjeta.uidDispositivo),
+    pinDispositivo:controllerResult?.pin??(cardChanged?null:tarjeta.pinDispositivo),
+    nombreDispositivo:displayName,
+    departamentoId:departmentProfile.departamentoId,
+    departamento:departmentProfile.departamento,
+    puertasAutorizadas:controllerResult?.doorMask??tarjeta.puertasAutorizadas,
+    timezoneId:controllerResult?.timezoneId??tarjeta.timezoneId,
+    fechaInicio:start||null,
+    fechaFin:end||null,
+    fechaFinOriginal:null,
+    bloqueado:false,
+    enControlador:controllerResult?true:Boolean(currentPhysical),
+    ultimaLectura:new Date()
+  });
+
+  return {
+    ...(await tarjeta.reload()).toJSON(),
+    numeroAnterior:oldCard,
+    numeroTarjetaReal:newCard,
+    numeroCambiado:cardChanged,
+    viviendaCambiada:houseChanged
+  };
+}
+
 async function removeTag(cardId){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Control no encontrado');
@@ -840,4 +969,4 @@ async function dashboard({calle,numero,pagina,limite}={}){
   };
 }
 
-module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,removeTag,operateGate,dashboard,writeUserValidity};
+module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,editTag,removeTag,operateGate,dashboard,writeUserValidity};

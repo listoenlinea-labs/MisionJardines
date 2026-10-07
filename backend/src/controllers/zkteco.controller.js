@@ -7,6 +7,7 @@ const {
   setCardHouse,
   createTagForHouse,
   addExistingTagToController,
+  editTag,
   removeTag,
   operateGate,
   dashboard,
@@ -15,6 +16,7 @@ const {
 const {simularCorte}=require('../services/zkteco-read.service');
 const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
 const {isPullSdkBridgeConfigured,testBridge,describeFetchError}=require('../services/zkteco-pullsdk-bridge.service');
+const {recordZkError,listZkErrors,exactError}=require('../services/zkteco-error-log.service');
 
 async function estado(req,res){
   try{
@@ -46,7 +48,10 @@ async function bloquear(req,res){
     const blocked=Boolean(req.body.bloqueado);
     const data=await setCardBlocked(req.params.id,blocked);
     res.json({ok:true,message:blocked?'Control bloqueado':'Control habilitado',data});
-  }catch(error){res.status(502).json({ok:false,message:'No fue posible modificar el control en ZKTeco',error:error.message});}
+  }catch(error){
+    await recordZkError(req,Boolean(req.body.bloqueado)?'BLOQUEAR_TAG':'ACTIVAR_TAG',error,{tarjetaId:req.params.id});
+    res.status(502).json({ok:false,message:'No fue posible modificar el control en ZKTeco',error:exactError(error)});
+  }
 }
 async function actualizarVigencia(req,res){
   try{
@@ -57,7 +62,13 @@ async function actualizarVigencia(req,res){
     await writeUserValidity(tarjeta.numeroTarjeta,fechaInicio,fechaFin);
     await tarjeta.update({fechaInicio,fechaFin,bloqueado:false,fechaFinOriginal:null,ultimaLectura:new Date()});
     res.json({ok:true,message:'Vigencia actualizada en el C3-200',data:tarjeta});
-  }catch(error){res.status(502).json({ok:false,message:'No fue posible actualizar la vigencia',error:error.message});}
+  }catch(error){
+    await recordZkError(req,'EDITAR_VIGENCIA_TAG',error,{
+      tarjetaId:req.params.id,
+      detalle:JSON.stringify({fechaInicio:req.body?.fechaInicio||null,fechaFin:req.body?.fechaFin||null})
+    });
+    res.status(502).json({ok:false,message:'No fue posible actualizar la vigencia',error:exactError(error)});
+  }
 }
 async function bloquearVivienda(req,res){
   try{
@@ -65,7 +76,11 @@ async function bloquearVivienda(req,res){
     const data=await setHouseBlocked(req.params.id,blocked);
     res.json({ok:true,message:blocked?'Vivienda bloqueada en ZKTeco':'Vivienda habilitada en ZKTeco',data});
   }catch(error){
-    res.status(502).json({ok:false,message:error.message||'No fue posible modificar los controles de la vivienda',data:error.results||null});
+    await recordZkError(req,Boolean(req.body.bloqueado)?'BLOQUEAR_VIVIENDA':'ACTIVAR_VIVIENDA',error,{
+      casaId:req.params.id,
+      detalle:error.results?JSON.stringify(error.results):null
+    });
+    res.status(502).json({ok:false,message:error.message||'No fue posible modificar los controles de la vivienda',error:exactError(error),data:error.results||null});
   }
 }
 async function asignarTarjeta(req,res){
@@ -74,20 +89,60 @@ async function asignarTarjeta(req,res){
     if(!Number.isInteger(casaId)||casaId<=0)return res.status(400).json({ok:false,message:'Vivienda inválida'});
     const data=await setCardHouse(req.params.id,casaId);
     res.json({ok:true,message:'Control asignado a la vivienda',data});
-  }catch(error){res.status(502).json({ok:false,message:error.message||'No fue posible asignar el control'});}
+  }catch(error){
+    await recordZkError(req,'ASIGNAR_TAG_VIVIENDA',error,{tarjetaId:req.params.id,casaId:req.body?.casaId});
+    res.status(502).json({ok:false,message:error.message||'No fue posible asignar el control',error:exactError(error)});
+  }
 }
 async function crearTarjeta(req,res){
   try{
     const data=await createTagForHouse(req.params.id,req.body||{});
     res.status(201).json({ok:true,message:'TAG creado y autorizado en el C3-200',data});
-  }catch(error){res.status(502).json({ok:false,message:error.message||'No fue posible crear el TAG en ZKTeco'});}
+  }catch(error){
+    await recordZkError(req,'CREAR_TAG',error,{
+      casaId:req.params.id,
+      numeroTarjeta:req.body?.numeroTarjeta,
+      detalle:JSON.stringify({fechaInicio:req.body?.fechaInicio||null,fechaFin:req.body?.fechaFin||null})
+    });
+    res.status(502).json({ok:false,message:error.message||'No fue posible crear el TAG en ZKTeco',error:exactError(error)});
+  }
 }
+async function editarTarjeta(req,res){
+  try{
+    const data=await editTag(req.params.id,req.body||{});
+    res.json({
+      ok:true,
+      message:data.numeroCambiado||data.viviendaCambiada
+        ? 'TAG actualizado en el C3-200 y en la vivienda'
+        : 'TAG actualizado correctamente',
+      data
+    });
+  }catch(error){
+    await recordZkError(req,'EDITAR_TAG',error,{
+      tarjetaId:req.params.id,
+      numeroTarjeta:req.body?.numeroTarjeta,
+      detalle:JSON.stringify({
+        calle:req.body?.calle||null,
+        numero:req.body?.numero||null,
+        fechaInicio:req.body?.fechaInicio||null,
+        fechaFin:req.body?.fechaFin||null
+      })
+    });
+    res.status(502).json({
+      ok:false,
+      message:error.message||'No fue posible editar el TAG',
+      error:exactError(error)
+    });
+  }
+}
+
 async function agregarExistenteC3(req,res){
   try{
     const data=await addExistingTagToController(req.params.id);
     res.json({ok:true,message:'TAG agregado y autorizado en el C3-200',data});
   }catch(error){
     const detail=describeFetchError(error);
+    await recordZkError(req,'AGREGAR_TAG_C3',error,{tarjetaId:req.params.id});
     console.error('Error agregando TAG al C3-200:',{
       detail,
       name:error?.name||null,
@@ -115,6 +170,7 @@ async function eliminarTarjeta(req,res){
     });
   }catch(error){
     const detail=describeFetchError(error);
+    await recordZkError(req,'ELIMINAR_TAG',error,{tarjetaId:req.params.id});
     console.error('Error eliminando TAG del C3-200:',{
       detail,
       name:error?.name||null,
@@ -129,6 +185,15 @@ async function eliminarTarjeta(req,res){
     });
   }
 }
+async function logs(req,res){
+  try{
+    const rows=await listZkErrors({limit:req.query.limit});
+    res.json({ok:true,total:rows.length,data:rows});
+  }catch(error){
+    res.status(500).json({ok:false,message:'No fue posible consultar los logs de ZKTeco',error:exactError(error)});
+  }
+}
+
 async function importarMdb(req,res){
   try{
     const importacion=await importZkAccessMdb(req.body);
@@ -150,4 +215,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,agregarExistenteC3,eliminarTarjeta,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};

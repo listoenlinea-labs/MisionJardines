@@ -1,8 +1,10 @@
 const { DataTypes }=require('sequelize');
 const ZkTarjeta=require('../models/ZkTarjeta');
+const ZkErrorLog=require('../models/ZkErrorLog');
 
 async function asegurarEsquemaZkteco(){
   await ZkTarjeta.sync();
+  await ZkErrorLog.sync();
   const qi=ZkTarjeta.sequelize.getQueryInterface();
   const desc=await qi.describeTable('zk_tarjetas');
   const add=async(name,definition)=>{if(!desc[name]) await qi.addColumn('zk_tarjetas',name,definition);};
