@@ -8,12 +8,14 @@ const operar=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD');
 
 r.get('/estado',autenticarToken,operar,c.estado);
 r.get('/tarjetas',autenticarToken,admin,c.inventario);
+r.get('/logs',autenticarToken,admin,c.logs);
 r.get('/viviendas',autenticarToken,operar,c.viviendas);
 r.post('/sincronizar',autenticarToken,admin,c.sincronizar);
 r.post('/importar-zkaccess',autenticarToken,admin,express.raw({type:'application/octet-stream',limit:'100mb'}),c.importarMdb);
 r.post('/simular-corte',autenticarToken,admin,c.simular);
 r.patch('/tarjetas/:id/bloqueo',autenticarToken,admin,c.bloquear);
 r.patch('/tarjetas/:id/vigencia',autenticarToken,admin,c.actualizarVigencia);
+r.patch('/tarjetas/:id',autenticarToken,admin,c.editarTarjeta);
 r.post('/tarjetas/:id/agregar-c3',autenticarToken,admin,c.agregarExistenteC3);
 r.delete('/tarjetas/:id',autenticarToken,admin,c.eliminarTarjeta);
 r.patch('/tarjetas/:id/vivienda',autenticarToken,admin,c.asignarTarjeta);
