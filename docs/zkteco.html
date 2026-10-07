@@ -35,30 +35,47 @@
 <body>
 <main class="wrap">
   <section class="hero">
-    <div><span class="eyebrow">CONTROL DE ACCESO · ZKTECO C3-200</span><h1>Accesos y pluma</h1><p>Opera la pluma y administra bloqueos por calle y número desde una sola vista. La conexión se realiza de forma directa al controlador remoto configurado en Hostinger.</p></div>
+    <div>
+      <span class="eyebrow">CONTROL DE ACCESO · ZKTECO C3-200</span>
+      <h1>Controles y TAGs</h1>
+      <p>Administra altas, bloqueos, eliminaciones y sincronización por vivienda. El control de la pluma queda disponible en una sección plegable para aprovechar mejor el espacio.</p>
+    </div>
     <div id="connectionPill" class="status-pill"><i></i><span>Comprobando conexión…</span></div>
   </section>
 
-  <section class="grid">
-    <aside class="card">
-      <div class="card-head"><span class="eyebrow">ACCESO PRINCIPAL</span><h2>Control de pluma</h2><p>Puerta 1 ENTRADA · Puerta 2 SALIDA</p></div>
-      <div class="card-body">
-        <div id="gateVisual" class="gate-visual"><div class="post"></div><div class="arm"></div><span id="gateLabel" class="gate-label">CERRADA</span></div>
-        <div class="actions"><button id="openGate" class="btn primary">Abrir pluma</button><button id="closeGate" class="btn danger">Cerrar pluma</button></div>
-        <div class="device" style="margin-top:18px">
-          <div class="device-row"><span>Controlador</span><strong id="deviceName">C3-200</strong></div>
-          <div class="device-row"><span>Conexión</span><strong id="deviceMode">Directa</strong></div>
-          <div class="device-row"><span>Puertas</span><strong id="deviceDoors">—</strong></div>
-          <div class="device-row"><span>Firmware</span><strong id="deviceFirmware">—</strong></div>
-          <div class="device-row"><span>Escritura de TAGs</span><strong id="deviceWriteMode">—</strong></div>
-          <div class="device-row"><span>Tarjetas sincronizadas</span><strong id="deviceCards">0</strong></div>
+  <section class="stack">
+    <details class="card gate-collapse">
+      <summary>
+        <div class="gate-summary-copy">
+          <span class="eyebrow">ACCESO PRINCIPAL</span>
+          <h2>Control de pluma</h2>
+          <p>Puerta 1 ENTRADA · Puerta 2 SALIDA · pulsa para mostrar controles</p>
         </div>
-        <div class="notice">El botón actúa sobre las salidas configuradas en Hostinger. La vista no muestra nombres de residentes; solo calle, número y estado de sus controles.</div>
+        <div class="gate-summary-meta"><span class="summary-copy">Oculto para priorizar los TAGs</span><span class="chevron">⌄</span></div>
+      </summary>
+      <div class="gate-content">
+        <div class="gate-controls">
+          <div id="gateVisual" class="gate-visual"><div class="post"></div><div class="arm"></div><span id="gateLabel" class="gate-label">CERRADA</span></div>
+          <div class="actions"><button id="openGate" class="btn primary">Abrir pluma</button><button id="closeGate" class="btn danger">Cerrar pluma</button></div>
+        </div>
+        <div>
+          <div class="device-card">
+            <div class="device">
+              <div class="device-row"><span>Controlador</span><strong id="deviceName">C3-200</strong></div>
+              <div class="device-row"><span>Conexión</span><strong id="deviceMode">Directa</strong></div>
+              <div class="device-row"><span>Puertas</span><strong id="deviceDoors">—</strong></div>
+              <div class="device-row"><span>Firmware</span><strong id="deviceFirmware">—</strong></div>
+              <div class="device-row"><span>Escritura de TAGs</span><strong id="deviceWriteMode">—</strong></div>
+              <div class="device-row"><span>Tarjetas sincronizadas</span><strong id="deviceCards">0</strong></div>
+            </div>
+          </div>
+          <div class="notice">La pluma permanece disponible sin ocupar espacio principal. Los controles de TAG se administran abajo y las eliminaciones requieren confirmación.</div>
+        </div>
       </div>
-    </aside>
+    </details>
 
     <section class="card">
-      <div class="card-head"><span class="eyebrow">VIVIENDAS Y CONTROLES</span><h2>Bloqueo por calle y número</h2><p>Busca una vivienda y habilita o bloquea todos sus controles relacionados.</p></div>
+      <div class="card-head"><span class="eyebrow">VIVIENDAS Y CONTROLES</span><h2>Administración de TAGs</h2><p>Busca por calle y casa, agrega controles, bloquea temporalmente o elimina definitivamente un TAG del C3-200.</p></div>
       <div class="card-body">
         <div class="metrics">
           <div class="metric"><small>Viviendas visibles</small><strong id="mHouses">0</strong></div>
@@ -71,12 +88,7 @@
           <button id="applyFilters" class="btn">Buscar</button>
           <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
         </div>
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th>Calle</th><th>Número</th><th>Controles / TAGs</th><th>Estado</th><th>Última lectura</th><th>Acción</th></tr></thead>
-            <tbody id="rows"><tr><td class="empty" colspan="6">Cargando viviendas…</td></tr></tbody>
-          </table>
-        </div>
+        <div id="rows" class="house-list"><div class="empty">Cargando viviendas…</div></div>
       </div>
     </section>
   </section>
