@@ -3,7 +3,8 @@ const { withC3, getDirectConfig } = require('./zkteco-c3-client.service');
 const {
   isPullSdkBridgeConfigured,
   provisionUser: provisionUserViaPullSdk,
-  setUserValidity: setUserValidityViaPullSdk
+  setUserValidity: setUserValidityViaPullSdk,
+  deleteUser: deleteUserViaPullSdk
 } = require('./zkteco-pullsdk-bridge.service');
 const ZkTarjeta = require('../models/ZkTarjeta');
 const Casa = require('../models/Casa');
@@ -324,6 +325,13 @@ function mergeControls(raw,card,remove=false){
   if(!remove&&!filtered.includes(String(card))) filtered.push(String(card));
   return filtered.join(', ');
 }
+
+function removeControlNormalized(raw,card){
+  const key=normalizeCardKey(card);
+  return normalizeTokens(raw)
+    .filter(value=>normalizeCardKey(value)!==key)
+    .join(', ');
+}
 async function setCardHouse(cardId,casaId){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Control no encontrado');
@@ -583,6 +591,53 @@ async function addExistingTagToController(cardId){
   };
 }
 
+async function removeTag(cardId){
+  const tarjeta=await ZkTarjeta.findByPk(cardId);
+  if(!tarjeta) throw new Error('Control no encontrado');
+
+  const requestedCard=String(tarjeta.numeroTarjeta||'').trim();
+  if(!requestedCard) throw new Error('El control no tiene Número de tarjeta');
+
+  const current=await withC3(client=>findPanelUserByCard(client,requestedCard));
+  let removedFromController=false;
+
+  if(current){
+    if(!isPullSdkBridgeConfigured()){
+      throw new Error('El TAG existe en el C3-200, pero el puente Pull SDK no está configurado para eliminarlo');
+    }
+
+    const pin=String(current.Pin??tarjeta.pinDispositivo??'').trim();
+    if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
+
+    await deleteUserViaPullSdk({
+      pin,
+      cardNo:canonicalCardNo(requestedCard)
+    });
+
+    const stillThere=await withC3(client=>readBackUserByCard(client,canonicalCardNo(requestedCard),{attempts:8,delayMs:500}));
+    if(stillThere){
+      throw new Error('El Pull SDK respondió, pero el TAG todavía aparece en la tabla user del C3-200');
+    }
+    removedFromController=true;
+  }
+
+  if(tarjeta.casaId){
+    const casa=await Casa.findByPk(tarjeta.casaId,{attributes:['id','controles']});
+    if(casa){
+      await casa.update({controles:removeControlNormalized(casa.controles,requestedCard)});
+    }
+  }
+
+  const data={
+    id:tarjeta.id,
+    numeroTarjeta:requestedCard,
+    casaId:tarjeta.casaId,
+    removedFromController
+  };
+  await tarjeta.destroy();
+  return data;
+}
+
 async function operateGate(action){
   const envName=action==='CERRAR'?'ZKTECO_GATE_CLOSE_OUTPUTS':'ZKTECO_GATE_OPEN_OUTPUTS';
   let outputs=String(process.env[envName]||'').split(',').map(v=>Number(v.trim())).filter(v=>Number.isInteger(v)&&v>0);
@@ -718,4 +773,4 @@ async function dashboard({calle,numero}={}){
   return rows;
 }
 
-module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,operateGate,dashboard,writeUserValidity};
+module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,removeTag,operateGate,dashboard,writeUserValidity};
