@@ -241,7 +241,9 @@ function renderTagDetails(row){
           ? '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>'
           : '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>');
     const adminActions=canAdmin
-      ? primaryAction+'<button class="btn mini ghost-danger" onclick="removeTag('+tag.id+',this)">Eliminar</button>'
+      ? '<button class="btn mini" onclick="openEditTagModal('+tag.id+')">Editar</button>'+
+        primaryAction+
+        '<button class="btn mini ghost-danger" onclick="removeTag('+tag.id+',this)">Eliminar</button>'
       : '';
     return '<div class="tag-item">'+
       '<div><span class="tag-label">TAG</span><div class="tag-id">'+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.departamento||tag.nombreDispositivo||'Sin etiqueta')+'</div></div>'+
