@@ -154,6 +154,7 @@ app.use('/api/visitas', visitasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/busqueda', busquedaRoutes);
+app.use('/api/telefonia', require('./routes/telefonia.routes'));
 app.use('/api/conexion', conexionRoutes);
 app.use('/api/entorno', entornoRoutes);
 app.use('/api/zkteco', zktecoRoutes);

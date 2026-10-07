@@ -1,0 +1,4 @@
+config/
+certs/
+.env
+client/node_modules/

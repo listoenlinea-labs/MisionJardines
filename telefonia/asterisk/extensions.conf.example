@@ -1,0 +1,18 @@
+[general]
+static=yes
+writeprotect=yes
+
+[caseta-saliente]
+; Solo números mexicanos de 10 dígitos. No hay prefijos internacionales ni extensiones arbitrarias.
+exten => _[2-9]XXXXXXXXX,1,NoOp(Llamada de caseta por FXO)
+ same => n,Set(GROUP(linea)=caseta-fxo)
+ same => n,GotoIf($[${GROUP_COUNT(caseta-fxo@linea)} > 1]?ocupado)
+ same => n,Dial(PJSIP/${EXTEN}@fxo-gateway,45,L(600000))
+ same => n,Hangup()
+ same => n(ocupado),Busy(2)
+ same => n,Hangup()
+
+[gateway-entrante]
+; No se permiten llamadas entrantes ni tránsito desde el FXO en esta versión.
+exten => _.,1,Hangup(21)
+exten => s,1,Hangup(21)
