@@ -1,0 +1,12 @@
+services:
+  pbx:
+    build: ./asterisk
+    restart: unless-stopped
+    # Linux: RTP y SIP usan las direcciones del servidor sin un NAT adicional de Docker.
+    network_mode: host
+    volumes:
+      - ./config/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./config/extensions.conf:/etc/asterisk/extensions.conf:ro
+      - ./config/http.conf:/etc/asterisk/http.conf:ro
+      - ./config/rtp.conf:/etc/asterisk/rtp.conf:ro
+      - ./certs:/etc/asterisk/keys:ro

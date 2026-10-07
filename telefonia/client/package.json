@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "scripts": { "build": "node build.cjs" },
+  "dependencies": {
+    "esbuild": "0.25.12",
+    "jssip": "3.10.1"
+  }
+}
