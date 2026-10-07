@@ -57,6 +57,12 @@ async function bridgeFetch(path,{method='POST',body}={}){
     let data={};
     try{data=await response.json()}catch(_){}
     if(!response.ok||data.ok===false){
+      if(response.status===404){
+        throw new Error(
+          'PullSDK bridge: HTTP 404 · el bridge en ejecución está desactualizado o no tiene el endpoint '+path+
+          '. Actualiza el repositorio, vuelve a publicar el bridge win-x86 y reinicia ZktecoPullSdkBridge.exe.'
+        );
+      }
       const detail=data.error||data.message||('HTTP '+response.status);
       throw new Error('PullSDK bridge: '+detail);
     }
