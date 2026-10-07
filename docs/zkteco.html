@@ -127,6 +127,10 @@ const headers=(json=false)=>({Authorization:'Bearer '+token,...(json?{'Content-T
 let role='';try{const u=JSON.parse(localStorage.getItem('misionJardinesUsuario')||sessionStorage.getItem('misionJardinesUsuario')||'{}');role=u?.rol?.nombre||u?.rol||''}catch(_){}
 const canAdmin=['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA'].includes(role);
 let currentRows=[];
+const PAGE_SIZE=15;
+let currentPage=1;
+let pagination={page:1,limit:PAGE_SIZE,total:0,totalPages:1,hasPrev:false,hasNext:false};
+let pageRefreshInFlight=false;
 function toast(message,duration=3500){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(window.zkToast);window.zkToast=setTimeout(()=>$('toast').style.display='none',duration)}
 let busyDepth=0;
 function showBusy(title,text){
@@ -202,7 +206,7 @@ function render(){
   const body=$('rows');let enabled=0,blocked=0;
   if(!currentRows.length){
     body.innerHTML='<div class="empty">No se encontraron viviendas.</div>';
-    $('mHouses').textContent=0;$('mEnabled').textContent=0;$('mBlocked').textContent=0;
+    $('mHouses').textContent=pagination.total||0;$('mEnabled').textContent=0;$('mBlocked').textContent=0;
     return;
   }
   const expandByDefault=currentRows.length<=4;
@@ -229,7 +233,42 @@ function render(){
       '<div id="tags-'+row.id+'"'+(expandByDefault?'':' hidden')+'>'+renderTagDetails(row)+'</div>'+
     '</article>';
   }).join('');
-  $('mHouses').textContent=currentRows.length;$('mEnabled').textContent=enabled;$('mBlocked').textContent=blocked;
+  $('mHouses').textContent=pagination.total||currentRows.length;$('mEnabled').textContent=enabled;$('mBlocked').textContent=blocked;
+}
+function pageNumbers(){
+  const total=Math.max(1,Number(pagination.totalPages||1));
+  const page=Math.min(total,Math.max(1,Number(pagination.page||1)));
+  if(total<=7)return Array.from({length:total},(_,i)=>i+1);
+  const values=new Set([1,total,page-1,page,page+1].filter(v=>v>=1&&v<=total));
+  if(page<=3){values.add(2);values.add(3);values.add(4);}
+  if(page>=total-2){values.add(total-1);values.add(total-2);values.add(total-3);}
+  return [...values].sort((a,b)=>a-b);
+}
+function renderPagination(){
+  const total=Number(pagination.total||0);
+  const page=Math.max(1,Number(pagination.page||1));
+  const totalPages=Math.max(1,Number(pagination.totalPages||1));
+  $('pageInfo').textContent=total
+    ? 'Página '+page+' de '+totalPages+' · '+total+' viviendas'
+    : 'Sin viviendas para mostrar';
+  const pages=pageNumbers();
+  let previous=null;
+  const numbered=[];
+  for(const value of pages){
+    if(previous!==null&&value-previous>1)numbered.push('<span class="page-ellipsis">…</span>');
+    numbered.push('<button class="page-btn '+(value===page?'active':'')+'" type="button" onclick="goPage('+value+')" '+(value===page?'aria-current="page"':'')+'>'+value+'</button>');
+    previous=value;
+  }
+  $('paginationButtons').innerHTML=
+    '<button class="page-btn" type="button" onclick="goPage('+(page-1)+')" '+(pagination.hasPrev?'':'disabled')+'>Anterior</button>'+
+    numbered.join('')+
+    '<button class="page-btn" type="button" onclick="goPage('+(page+1)+')" '+(pagination.hasNext?'':'disabled')+'>Siguiente</button>';
+}
+function setPageSyncStatus(message='',syncing=false){
+  const el=$('pageSyncStatus');
+  if(!el)return;
+  el.textContent=message;
+  el.classList.toggle('is-syncing',Boolean(syncing));
 }
 function toggleTags(id){
   const panel=$('tags-'+id);
@@ -244,7 +283,62 @@ async function loadRows(){
   const q=new URLSearchParams();
   if($('street').value.trim())q.set('calle',$('street').value.trim());
   if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
-  const r=await api('/zkteco/viviendas?'+q.toString(),{headers:headers()});currentRows=r.data||[];render();
+  q.set('pagina',String(currentPage));
+  q.set('limite',String(PAGE_SIZE));
+  const r=await api('/zkteco/viviendas?'+q.toString(),{headers:headers()});
+  const payload=r.data||{};
+  currentRows=Array.isArray(payload)?payload:(payload.rows||[]);
+  pagination=Array.isArray(payload)
+    ? {page:1,limit:PAGE_SIZE,total:payload.length,totalPages:1,hasPrev:false,hasNext:false}
+    : (payload.pagination||pagination);
+  currentPage=Number(pagination.page||currentPage||1);
+  render();
+  renderPagination();
+}
+async function syncBeforePageLoad({notify=false}={}){
+  if(!canAdmin)return null;
+  const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});
+  if(notify)toast(r.message+' · '+(r.data?.procesados||0)+' controles');
+  return r;
+}
+async function refreshPage(page,{notify=false,reason}={}){
+  const target=Math.max(1,Number(page)||1);
+  currentPage=target;
+  pageRefreshInFlight=true;
+  setPageSyncStatus(reason||('Actualizando página '+target+' con ZKTeco…'),true);
+  try{
+    try{
+      await syncBeforePageLoad({notify});
+    }catch(syncError){
+      toast('No se pudo sincronizar antes de cargar la página: '+syncError.message,7000);
+    }
+    await loadRows();
+  }finally{
+    pageRefreshInFlight=false;
+    setPageSyncStatus('Actualizado con ZKTeco');
+    window.clearTimeout(window.zkPageSyncStatusTimer);
+    window.zkPageSyncStatusTimer=setTimeout(()=>setPageSyncStatus(''),2500);
+  }
+}
+async function goPage(page){
+  const totalPages=Math.max(1,Number(pagination.totalPages||1));
+  const target=Math.min(totalPages,Math.max(1,Number(page)||1));
+  if(target===currentPage||pageRefreshInFlight)return;
+  await refreshPage(target,{reason:'Actualizando página '+target+' con ZKTeco…'});
+  document.querySelector('.house-list')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+window.goPage=goPage;
+async function applySearch(){
+  if(pageRefreshInFlight)return;
+  currentPage=1;
+  await refreshPage(1,{reason:'Buscando y actualizando resultados con ZKTeco…'});
+}
+async function clearFilters(){
+  if(pageRefreshInFlight)return;
+  $('street').value='';
+  $('houseNumber').value='';
+  currentPage=1;
+  await refreshPage(1,{reason:'Limpiando filtros y actualizando página 1…'});
 }
 async function setHouse(id,blocked,button){
   if(!confirm((blocked?'Bloquear':'Habilitar')+' todos los controles de esta vivienda en ZKTeco?'))return;
@@ -332,20 +426,31 @@ async function operate(action){
   const a=$('openGate'),c=$('closeGate');a.disabled=true;c.disabled=true;
   try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(e.message)}finally{a.disabled=false;c.disabled=false}
 }
-$('openGate').onclick=()=>operate('ABRIR');$('closeGate').onclick=()=>operate('CERRAR');$('applyFilters').onclick=loadRows;
+$('openGate').onclick=()=>operate('ABRIR');
+$('closeGate').onclick=()=>operate('CERRAR');
+$('applyFilters').onclick=applySearch;
+$('clearFilters').onclick=clearFilters;
 $('sync').onclick=async()=>{
+  if(pageRefreshInFlight)return;
   showBusy('Sincronizando ZKTeco','Leyendo usuarios, números de tarjeta y permisos directamente del C3-200.');
   try{
-    const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});
-    toast(r.message+' · '+(r.data?.procesados||0)+' controles');
-    await Promise.all([loadStatus(),loadRows()]);
+    await refreshPage(currentPage,{notify:true,reason:'Sincronizando esta página con ZKTeco…'});
+    await loadStatus();
   }catch(e){toast(e.message)}
   finally{hideBusy()}
 };
-['street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')loadRows()}));
+['street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')applySearch()}));
+const gateCollapse=$('gateCollapse');
+gateCollapse?.addEventListener('toggle',()=>{
+  $('gateCollapseLabel').textContent=gateCollapse.open?'Ocultar':'Mostrar';
+});
 if(!canAdmin)$('sync').style.display='none';
-Promise.all([loadStatus(),loadRows()]).catch(()=>{});
+(async()=>{
+  await loadStatus();
+  await refreshPage(1,{reason:'Actualizando página 1 con ZKTeco…'});
+})().catch(e=>toast(e.message,7000));
 setInterval(async()=>{
+  if(pageRefreshInFlight)return;
   try{await Promise.all([loadStatus(),loadRows()])}catch(_){}
 },30000);
 </script>
