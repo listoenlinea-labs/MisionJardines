@@ -3,6 +3,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
+var sdkGate = new SemaphoreSlim(1, 1);
 
 string Host() => Environment.GetEnvironmentVariable("ZKTECO_HOST")?.Trim()
                  ?? throw new InvalidOperationException("Falta ZKTECO_HOST");
@@ -49,23 +50,33 @@ static string EscapeValue(string? value)
         .Trim();
 }
 
-int Connect()
+async Task<int> ConnectAsync()
 {
-    var conn = Native.AllocZ(ConnString(), out var pin);
-    try
+    for (var attempt = 1; attempt <= 3; attempt++)
     {
-        var handle = Native.Connect(conn);
-        if (handle <= 0)
+        var conn = Native.AllocZ(ConnString(), out var pin);
+        try
         {
+            var handle = Native.Connect(conn);
+            if (handle > 0) return handle;
+
             var err = Native.PullLastError();
+            if (err == -107 && attempt < 3)
+            {
+                Console.WriteLine($"[PullSDK] Connect transitorio lastError=-107; reintento {attempt + 1}/3");
+                await Task.Delay(750 * attempt);
+                continue;
+            }
+
             throw new InvalidOperationException($"PullSDK Connect falló: handle={handle}, lastError={err}");
         }
-        return handle;
+        finally
+        {
+            if (pin.IsAllocated) pin.Free();
+        }
     }
-    finally
-    {
-        if (pin.IsAllocated) pin.Free();
-    }
+
+    throw new InvalidOperationException("PullSDK Connect falló después de varios intentos");
 }
 
 int SetData(int handle, string table, string data)
@@ -99,13 +110,14 @@ app.MapGet("/health/auth", (HttpRequest req) =>
     return Results.Ok(new { ok = true, authenticated = true });
 });
 
-app.MapGet("/health/controller", (HttpRequest req) =>
+app.MapGet("/health/controller", async (HttpRequest req) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
+    await sdkGate.WaitAsync();
     int handle = 0;
     try
     {
-        handle = Connect();
+        handle = await ConnectAsync();
         return Results.Ok(new
         {
             ok = true,
@@ -116,6 +128,7 @@ app.MapGet("/health/controller", (HttpRequest req) =>
     }
     catch (Exception ex)
     {
+        Console.Error.WriteLine($"[PullSDK] /health/controller: {ex.Message}");
         return Results.Json(new { ok = false, controller = false, error = ex.Message }, statusCode: 502);
     }
     finally
@@ -124,16 +137,20 @@ app.MapGet("/health/controller", (HttpRequest req) =>
         {
             try { Native.Disconnect(handle); } catch { }
         }
+        await Task.Delay(300);
+        sdkGate.Release();
     }
 });
 
-app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
+app.MapPost("/api/users", async (HttpRequest req, UserProvisionRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
+    await sdkGate.WaitAsync();
     int handle = 0;
+    var stage = "connect";
     try
     {
-        handle = Connect();
+        handle = await ConnectAsync();
         try { Native.EnableDevice(handle, 0); } catch { }
 
         var start = Date8(body.startDate);
@@ -151,10 +168,12 @@ app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
         if (!string.IsNullOrWhiteSpace(end)) fields.Add($"EndTime={end}");
 
         var userRow = string.Join("\t", fields) + "\r\n";
+        stage = "set-user";
         SetData(handle, "user", userRow);
 
         var authRow =
             $"Pin={EscapeValue(body.pin)}\tAuthorizeTimezoneId={Math.Max(1, body.timezoneId)}\tAuthorizeDoorId={Math.Max(1, body.doorMask)}\r\n";
+        stage = "set-userauthorize";
         SetData(handle, "userauthorize", authRow);
 
         return Results.Ok(new
@@ -168,7 +187,8 @@ app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
     }
     catch (Exception ex)
     {
-        return Results.Json(new { ok = false, error = ex.Message }, statusCode: 502);
+        Console.Error.WriteLine($"[PullSDK] /api/users falló en {stage}: {ex.Message}");
+        return Results.Json(new { ok = false, stage, error = ex.Message }, statusCode: 502);
     }
     finally
     {
@@ -177,16 +197,19 @@ app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
             try { Native.EnableDevice(handle, 1); } catch { }
             try { Native.Disconnect(handle); } catch { }
         }
+        await Task.Delay(300);
+        sdkGate.Release();
     }
 });
 
-app.MapPost("/api/users/validity", (HttpRequest req, UserValidityRequest body) =>
+app.MapPost("/api/users/validity", async (HttpRequest req, UserValidityRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
+    await sdkGate.WaitAsync();
     int handle = 0;
     try
     {
-        handle = Connect();
+        handle = await ConnectAsync();
         try { Native.EnableDevice(handle, 0); } catch { }
 
         var start = Date8(body.startDate);
@@ -203,6 +226,7 @@ app.MapPost("/api/users/validity", (HttpRequest req, UserValidityRequest body) =
     }
     catch (Exception ex)
     {
+        Console.Error.WriteLine($"[PullSDK] /api/users/validity: {ex.Message}");
         return Results.Json(new { ok = false, error = ex.Message }, statusCode: 502);
     }
     finally
@@ -212,6 +236,8 @@ app.MapPost("/api/users/validity", (HttpRequest req, UserValidityRequest body) =
             try { Native.EnableDevice(handle, 1); } catch { }
             try { Native.Disconnect(handle); } catch { }
         }
+        await Task.Delay(300);
+        sdkGate.Release();
     }
 });
 
