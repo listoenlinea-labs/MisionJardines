@@ -4,6 +4,7 @@ const {
   isPullSdkBridgeConfigured,
   provisionUser: provisionUserViaPullSdk,
   setUserValidity: setUserValidityViaPullSdk,
+  setUserAccess: setUserAccessViaPullSdk,
   deleteUser: deleteUserViaPullSdk
 } = require('./zkteco-pullsdk-bridge.service');
 const ZkTarjeta = require('../models/ZkTarjeta');
@@ -164,12 +165,19 @@ async function syncUsers(){
       departamento:existing?.departamento||null,
       departamentoId:existing?.departamentoId||null,
       grupoDispositivo:groupId,
-      puertasAutorizadas:Number(auth?.AuthorizeDoorId||0)||null,
-      timezoneId:Number(auth?.AuthorizeTimezoneId||0)||null,
+      // userauthorize is the physical source of truth for whether a TAG may open a door.
+      // When a TAG is blocked we remove that row, but keep the last known profile locally
+      // so it can be restored on activation.
+      puertasAutorizadas:auth
+        ? (Number(auth.AuthorizeDoorId||0)||null)
+        : (existing?.puertasAutorizadas||null),
+      timezoneId:auth
+        ? (Number(auth.AuthorizeTimezoneId||0)||null)
+        : (existing?.timezoneId||null),
       fechaInicio:fromDateNumber(row.StartTime),
       fechaFin:fromDateNumber(row.EndTime),
       casaId,
-      bloqueado:Boolean(fromDateNumber(row.EndTime) && fromDateNumber(row.EndTime) < new Date().toISOString().slice(0,10)),
+      bloqueado:!auth || Number(auth.AuthorizeDoorId||0)<=0,
       origen:existing?.origen||'ZKTECO',
       enControlador:true,
       ultimaLectura:new Date()
@@ -261,27 +269,98 @@ async function writeUserValidity(card,fechaInicio,fechaFin){
 async function setCardBlocked(cardId,blocked){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Tarjeta no encontrada');
-  const current=await withC3(client=>findPanelUserByCard(client,tarjeta.numeroTarjeta));
-  if(!current) throw new Error('La tarjeta no existe en el controlador');
 
-  const currentStart=fromDateNumber(current.StartTime);
-  const currentEnd=fromDateNumber(current.EndTime);
+  const state=await withC3(async client=>{
+    const current=await findPanelUserByCard(client,tarjeta.numeroTarjeta);
+    if(!current) return {current:null,auth:null};
+
+    let authRows=[];
+    try{authRows=await client.getData('userauthorize');}catch(_){}
+    const pin=String(current.Pin??tarjeta.pinDispositivo??'').trim();
+    const auth=authRows.find(row=>String(row.Pin??'').trim()===pin)||null;
+    return {current,auth};
+  });
+
+  if(!state.current) throw new Error('La tarjeta no existe en el controlador');
+
+  const pin=String(state.current.Pin??tarjeta.pinDispositivo??'').trim();
+  if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
+  if(!isPullSdkBridgeConfigured()) throw new Error('El puente Pull SDK no está configurado para modificar el acceso del TAG');
+
   if(blocked){
-    const original=tarjeta.fechaFinOriginal||currentEnd||'2099-12-31';
-    await writeUserValidity(tarjeta.numeroTarjeta,currentStart||tarjeta.fechaInicio||'2020-01-01',yesterday());
+    // Preserve the last known access profile before revoking it physically.
+    const doorMask=Number(state.auth?.AuthorizeDoorId||tarjeta.puertasAutorizadas||3)||3;
+    const timezoneId=Number(state.auth?.AuthorizeTimezoneId||tarjeta.timezoneId||1)||1;
+
+    await setUserAccessViaPullSdk({
+      pin,
+      authorized:false,
+      doorMask,
+      timezoneId
+    });
+
+    const stillAuthorized=await withC3(async client=>{
+      let rows=[];
+      try{rows=await client.getData('userauthorize');}catch(_){}
+      return rows.find(row=>
+        String(row.Pin??'').trim()===pin &&
+        Number(row.AuthorizeDoorId||0)>0
+      )||null;
+    });
+    if(stillAuthorized){
+      throw new Error('El Pull SDK respondió, pero el TAG todavía conserva autorización de puertas en el C3-200');
+    }
+
     await tarjeta.update({
       bloqueado:true,
-      fechaInicio:currentStart||tarjeta.fechaInicio,
-      fechaFin:yesterday(),
-      fechaFinOriginal:original,
+      pinDispositivo:pin,
+      puertasAutorizadas:doorMask,
+      timezoneId,
+      // Blocking is enforced by userauthorize, not by falsifying the validity date.
+      fechaFinOriginal:tarjeta.fechaFinOriginal||null,
       ultimaLectura:new Date()
     });
   }else{
-    const restore=tarjeta.fechaFinOriginal||currentEnd||'2099-12-31';
-    await writeUserValidity(tarjeta.numeroTarjeta,currentStart||tarjeta.fechaInicio||'2020-01-01',restore);
+    const doorMask=Number(tarjeta.puertasAutorizadas||3)||3;
+    const timezoneId=Number(tarjeta.timezoneId||1)||1;
+
+    // Repair TAGs blocked by the legacy "expire yesterday" implementation.
+    const currentStart=fromDateNumber(state.current.StartTime);
+    const currentEnd=fromDateNumber(state.current.EndTime);
+    const restoreEnd=tarjeta.fechaFinOriginal||tarjeta.fechaFin||currentEnd||'2099-12-31';
+    if(tarjeta.fechaFinOriginal){
+      await writeUserValidity(
+        tarjeta.numeroTarjeta,
+        currentStart||tarjeta.fechaInicio||'2020-01-01',
+        restoreEnd
+      );
+    }
+
+    await setUserAccessViaPullSdk({
+      pin,
+      authorized:true,
+      doorMask,
+      timezoneId
+    });
+
+    const restored=await withC3(async client=>{
+      let rows=[];
+      try{rows=await client.getData('userauthorize');}catch(_){}
+      return rows.find(row=>
+        String(row.Pin??'').trim()===pin &&
+        Number(row.AuthorizeDoorId||0)>0
+      )||null;
+    });
+    if(!restored){
+      throw new Error('El Pull SDK respondió, pero el C3-200 no confirmó la autorización de puertas del TAG');
+    }
+
     await tarjeta.update({
       bloqueado:false,
-      fechaFin:restore,
+      pinDispositivo:pin,
+      puertasAutorizadas:Number(restored.AuthorizeDoorId||doorMask)||doorMask,
+      timezoneId:Number(restored.AuthorizeTimezoneId||timezoneId)||timezoneId,
+      fechaFin:tarjeta.fechaFinOriginal||tarjeta.fechaFin,
       fechaFinOriginal:null,
       ultimaLectura:new Date()
     });
