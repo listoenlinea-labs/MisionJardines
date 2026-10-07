@@ -187,7 +187,27 @@ function hideBusy(){
   $('busy').hidden=true;
   document.querySelectorAll('button').forEach(b=>{if(b.dataset.prevDisabled!==undefined){b.disabled=b.dataset.prevDisabled==='1';delete b.dataset.prevDisabled}});
 }
-async function api(path,options={}){const r=await fetch(API+path,options);let j={};try{j=await r.json()}catch{}if(r.status===401){location.replace('login.html');throw Error('Sesión expirada')}if(!r.ok||!j.ok)throw Error(j.error||j.message||'No fue posible completar la solicitud');return j}
+async function api(path,options={}){
+  const r=await fetch(API+path,options);
+  let j={};
+  try{j=await r.json()}catch{}
+  if(r.status===401){location.replace('login.html');throw Error('Sesión expirada')}
+  if(!r.ok||!j.ok){
+    const error=new Error(j.message||j.error||'No fue posible completar la solicitud');
+    error.exact=String(j.error||j.message||error.message);
+    error.status=r.status;
+    error.payload=j;
+    throw error;
+  }
+  return j;
+}
+function errorText(error){return String(error?.exact||error?.message||error||'Error desconocido')}
+function showModalError(id,error,title='No fue posible completar la acción'){
+  const el=$(id);if(!el)return;
+  el.innerHTML='<strong>'+esc(title)+'</strong>'+esc(errorText(error));
+  el.classList.add('show');
+}
+function clearModalError(id){const el=$(id);if(!el)return;el.textContent='';el.classList.remove('show')}
 function fmt(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'short'}).format(d)}
 async function loadStatus(){
   try{
