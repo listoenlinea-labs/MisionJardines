@@ -62,7 +62,13 @@ async function actualizarVigencia(req,res){
     await writeUserValidity(tarjeta.numeroTarjeta,fechaInicio,fechaFin);
     await tarjeta.update({fechaInicio,fechaFin,bloqueado:false,fechaFinOriginal:null,ultimaLectura:new Date()});
     res.json({ok:true,message:'Vigencia actualizada en el C3-200',data:tarjeta});
-  }catch(error){res.status(502).json({ok:false,message:'No fue posible actualizar la vigencia',error:error.message});}
+  }catch(error){
+    await recordZkError(req,'EDITAR_VIGENCIA_TAG',error,{
+      tarjetaId:req.params.id,
+      detalle:JSON.stringify({fechaInicio:req.body?.fechaInicio||null,fechaFin:req.body?.fechaFin||null})
+    });
+    res.status(502).json({ok:false,message:'No fue posible actualizar la vigencia',error:exactError(error)});
+  }
 }
 async function bloquearVivienda(req,res){
   try{
@@ -79,7 +85,10 @@ async function asignarTarjeta(req,res){
     if(!Number.isInteger(casaId)||casaId<=0)return res.status(400).json({ok:false,message:'Vivienda inválida'});
     const data=await setCardHouse(req.params.id,casaId);
     res.json({ok:true,message:'Control asignado a la vivienda',data});
-  }catch(error){res.status(502).json({ok:false,message:error.message||'No fue posible asignar el control'});}
+  }catch(error){
+    await recordZkError(req,'ASIGNAR_TAG_VIVIENDA',error,{tarjetaId:req.params.id,casaId:req.body?.casaId});
+    res.status(502).json({ok:false,message:error.message||'No fue posible asignar el control',error:exactError(error)});
+  }
 }
 async function crearTarjeta(req,res){
   try{
@@ -129,6 +138,7 @@ async function agregarExistenteC3(req,res){
     res.json({ok:true,message:'TAG agregado y autorizado en el C3-200',data});
   }catch(error){
     const detail=describeFetchError(error);
+    await recordZkError(req,'AGREGAR_TAG_C3',error,{tarjetaId:req.params.id});
     console.error('Error agregando TAG al C3-200:',{
       detail,
       name:error?.name||null,
