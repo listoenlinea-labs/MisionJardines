@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "importar:julio": "node src/scripts/importar-julio-2026.js"
+    "importar:julio": "node src/scripts/importar-julio-2026.js",
+    "zkteco:direct-test": "node src/scripts/zkteco-direct-write-test.js"
   },
   "keywords": [],
   "author": "",
