@@ -138,11 +138,13 @@ app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
 
         var start = Date8(body.startDate);
         var end = Date8(body.endDate);
+        // Keep the user row to fields documented by the Pull SDK for C3 panels.
+        // Some C3 firmware variants reject unknown/unsupported fields with rc=-101.
         var fields = new List<string>
         {
             $"Pin={EscapeValue(body.pin)}",
             $"CardNo={EscapeValue(body.cardNo)}",
-            $"Name={EscapeValue(body.name)}",
+            "Password=",
             "Group=1"
         };
         if (!string.IsNullOrWhiteSpace(start)) fields.Add($"StartTime={start}");
