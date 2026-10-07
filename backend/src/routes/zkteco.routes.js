@@ -15,6 +15,7 @@ r.post('/simular-corte',autenticarToken,admin,c.simular);
 r.patch('/tarjetas/:id/bloqueo',autenticarToken,admin,c.bloquear);
 r.patch('/tarjetas/:id/vigencia',autenticarToken,admin,c.actualizarVigencia);
 r.post('/tarjetas/:id/agregar-c3',autenticarToken,admin,c.agregarExistenteC3);
+r.delete('/tarjetas/:id',autenticarToken,admin,c.eliminarTarjeta);
 r.patch('/tarjetas/:id/vivienda',autenticarToken,admin,c.asignarTarjeta);
 r.post('/viviendas/:id/tarjetas',autenticarToken,admin,c.crearTarjeta);
 r.patch('/viviendas/:id/bloqueo',autenticarToken,admin,c.bloquearVivienda);
