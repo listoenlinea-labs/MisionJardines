@@ -700,8 +700,7 @@ async function dashboard({calle,numero,pagina,limite}={}){
     houses=await Casa.findAll({
       where,
       attributes:['id','calle','numero','controles'],
-      order:[['calle','ASC'],['numero','ASC']],
-      limit:300
+      order:[['calle','ASC'],['numero','ASC']]
     });
   }
 
