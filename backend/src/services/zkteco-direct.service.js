@@ -97,8 +97,10 @@ async function syncUsers(){
   const payload=await withC3(async client=>{
     const users=await client.getData('user');
     let auth=[];
-    try{auth=await client.getData('userauthorize');}catch(_){}
-    return {users,auth};
+    let authReadable=true;
+    try{auth=await client.getData('userauthorize');}
+    catch(_){authReadable=false;}
+    return {users,auth,authReadable};
   });
 
   const houses=await Casa.findAll({attributes:['id','calle','numero','controles']});
@@ -177,7 +179,9 @@ async function syncUsers(){
       fechaInicio:fromDateNumber(row.StartTime),
       fechaFin:fromDateNumber(row.EndTime),
       casaId,
-      bloqueado:!auth || Number(auth.AuthorizeDoorId||0)<=0,
+      bloqueado:payload.authReadable
+        ? (!auth || Number(auth.AuthorizeDoorId||0)<=0)
+        : Boolean(existing?.bloqueado),
       origen:existing?.origen||'ZKTECO',
       enControlador:true,
       ultimaLectura:new Date()
