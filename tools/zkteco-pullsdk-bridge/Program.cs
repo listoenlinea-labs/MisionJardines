@@ -110,13 +110,14 @@ app.MapGet("/health/auth", (HttpRequest req) =>
     return Results.Ok(new { ok = true, authenticated = true });
 });
 
-app.MapGet("/health/controller", (HttpRequest req) =>
+app.MapGet("/health/controller", async (HttpRequest req) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
+    await sdkGate.WaitAsync();
     int handle = 0;
     try
     {
-        handle = Connect();
+        handle = await ConnectAsync();
         return Results.Ok(new
         {
             ok = true,
@@ -127,6 +128,7 @@ app.MapGet("/health/controller", (HttpRequest req) =>
     }
     catch (Exception ex)
     {
+        Console.Error.WriteLine($"[PullSDK] /health/controller: {ex.Message}");
         return Results.Json(new { ok = false, controller = false, error = ex.Message }, statusCode: 502);
     }
     finally
@@ -135,6 +137,8 @@ app.MapGet("/health/controller", (HttpRequest req) =>
         {
             try { Native.Disconnect(handle); } catch { }
         }
+        await Task.Delay(300);
+        sdkGate.Release();
     }
 });
 
