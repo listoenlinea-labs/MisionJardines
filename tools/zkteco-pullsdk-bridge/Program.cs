@@ -280,6 +280,70 @@ app.MapPost("/api/users/delete", async (HttpRequest req, DeleteUserRequest body)
     }
 });
 
+app.MapPost("/api/users/access", async (HttpRequest req, UserAccessRequest body) =>
+{
+    if (!Authorized(req)) return Results.Unauthorized();
+
+    var pin = EscapeValue(body.pin);
+    if (string.IsNullOrWhiteSpace(pin))
+        return Results.BadRequest(new { ok = false, error = "Falta Pin para modificar el acceso" });
+
+    await sdkGate.WaitAsync();
+    int handle = 0;
+    var stage = "connect";
+    try
+    {
+        handle = await ConnectAsync();
+        try { Native.EnableDevice(handle, 0); } catch { }
+
+        if (body.authorized)
+        {
+            stage = "set-userauthorize";
+            var timezoneId = Math.Max(1, body.timezoneId);
+            var doorMask = Math.Max(1, body.doorMask);
+            var authRow =
+                $"Pin={pin}\tAuthorizeTimezoneId={timezoneId}\tAuthorizeDoorId={doorMask}\r\n";
+            var rc = SetData(handle, "userauthorize", authRow);
+
+            return Results.Ok(new
+            {
+                ok = true,
+                authorized = true,
+                pin,
+                timezoneId,
+                doorMask,
+                rc
+            });
+        }
+
+        stage = "delete-userauthorize";
+        var deleteRc = DeleteData(handle, "userauthorize", $"Pin={pin}");
+
+        return Results.Ok(new
+        {
+            ok = true,
+            authorized = false,
+            pin,
+            rc = deleteRc
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[PullSDK] /api/users/access falló en {stage}: {ex.Message}");
+        return Results.Json(new { ok = false, stage, error = ex.Message }, statusCode: 502);
+    }
+    finally
+    {
+        if (handle > 0)
+        {
+            try { Native.EnableDevice(handle, 1); } catch { }
+            try { Native.Disconnect(handle); } catch { }
+        }
+        await Task.Delay(300);
+        sdkGate.Release();
+    }
+});
+
 app.MapPost("/api/users/validity", async (HttpRequest req, UserValidityRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
@@ -336,6 +400,13 @@ record UserValidityRequest(
     string? cardNo,
     string? startDate,
     string? endDate
+);
+
+record UserAccessRequest(
+    string pin,
+    bool authorized,
+    int doorMask = 3,
+    int timezoneId = 1
 );
 
 record DeleteUserRequest(
