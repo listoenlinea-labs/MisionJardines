@@ -6,8 +6,9 @@ const COMMAND = {
   GETPARAM: 0x04,
   CONTROL: 0x05,
   DATATABLE_CFG: 0x06,
+  PUTDATA: 0x07,
   GETDATA: 0x08,
-  SETDATA: 0x09,
+  DELETEDATA: 0x09,
   CONNECT_SESSION: 0x76
 };
 
@@ -432,7 +433,7 @@ class C3Client {
     return rows;
   }
 
-  async setRecord(tableName, values) {
+  async _writeRecord(command, tableName, values) {
     const configs = await this.getTableConfig();
     const cfg = configs.find(item => item.name.toLowerCase() === String(tableName).toLowerCase());
     if (!cfg) throw new Error(`La tabla ZKTeco '${tableName}' no está disponible`);
@@ -448,8 +449,23 @@ class C3Client {
       Buffer.from([cfg.index, fields.length, ...fields.map(field => field.index)]),
       ...encoded
     ]);
-    await this._request(COMMAND.SETDATA, payload);
+    await this._request(command, payload);
     return true;
+  }
+
+  // Confirmado contra el C3-200 real capturando el tráfico del PullSDK:
+  // 0x07 agrega/actualiza una fila y 0x09 elimina por los campos llave enviados.
+  async putRecord(tableName, values) {
+    return this._writeRecord(COMMAND.PUTDATA, tableName, values);
+  }
+
+  async deleteRecord(tableName, keyValues) {
+    return this._writeRecord(COMMAND.DELETEDATA, tableName, keyValues);
+  }
+
+  // Mantener compatibilidad con cualquier llamada existente a setRecord.
+  async setRecord(tableName, values) {
+    return this.putRecord(tableName, values);
   }
 }
 
