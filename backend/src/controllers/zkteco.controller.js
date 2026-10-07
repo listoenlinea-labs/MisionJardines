@@ -7,6 +7,7 @@ const {
   setCardHouse,
   createTagForHouse,
   addExistingTagToController,
+  removeTag,
   operateGate,
   dashboard,
   writeUserValidity
@@ -101,6 +102,33 @@ async function agregarExistenteC3(req,res){
     });
   }
 }
+
+async function eliminarTarjeta(req,res){
+  try{
+    const data=await removeTag(req.params.id);
+    res.json({
+      ok:true,
+      message:data.removedFromController
+        ? 'TAG eliminado del C3-200 y de la aplicación'
+        : 'TAG eliminado de la aplicación; ya no existía en el C3-200',
+      data
+    });
+  }catch(error){
+    const detail=describeFetchError(error);
+    console.error('Error eliminando TAG del C3-200:',{
+      detail,
+      name:error?.name||null,
+      code:error?.code||error?.cause?.code||null,
+      cause:error?.cause?.message||null,
+      stack:error?.stack||null
+    });
+    res.status(502).json({
+      ok:false,
+      message:detail||'No fue posible eliminar el TAG del C3-200',
+      error:detail
+    });
+  }
+}
 async function importarMdb(req,res){
   try{
     const importacion=await importZkAccessMdb(req.body);
@@ -122,4 +150,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,agregarExistenteC3,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,agregarExistenteC3,eliminarTarjeta,importarMdb,actualizarVigencia,pluma,viviendas,simular};
