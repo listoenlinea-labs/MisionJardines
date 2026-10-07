@@ -65,6 +65,34 @@ async function readAccessState(card) {
   });
 }
 
+function isTransientC3Error(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  return [
+    'econnreset',
+    'econnrefused',
+    'epipe',
+    'socket hang up',
+    'cerró inesperadamente',
+    'no respondió a tiempo',
+    'tiempo de espera agotado'
+  ].some(token => message.includes(token));
+}
+
+async function readAccessStateWithRetry(card, { attempts = 5, delayMs = 900 } = {}) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await readAccessState(card);
+    } catch (error) {
+      lastError = error;
+      if (!isTransientC3Error(error) || attempt === attempts) throw error;
+      console.log(`Lectura C3 transitoria (${error.message}); reintento ${attempt + 1}/${attempts}...`);
+      await sleep(delayMs * attempt);
+    }
+  }
+  throw lastError || new Error('No fue posible leer el C3-200');
+}
+
 async function writeAuthorizationDirect({ pin, authorized, doorMask, timezoneId }) {
   return withC3(async client => {
     if (authorized) {
@@ -103,18 +131,16 @@ async function createUserDirect({ card, pin, startDate, endDate, doorMask, timez
   });
 }
 
-async function deleteUserDirect({ pin }) {
-  return withC3(async client => {
-    // Same order as the PullSDK bridge: authorization first, then user.
-    try {
-      await client.deleteRecord('userauthorize', { Pin: String(pin) });
-    } catch (_) {}
-    await client.deleteRecord('user', { Pin: String(pin) });
-  });
+async function deleteAuthorizationDirect({ pin }) {
+  return withC3(client => client.deleteRecord('userauthorize', { Pin: String(pin) }));
+}
+
+async function deleteUserRowDirect({ pin }) {
+  return withC3(client => client.deleteRecord('user', { Pin: String(pin) }));
 }
 
 async function verifyExpected(card, authorized) {
-  const state = await readAccessState(card);
+  const state = await readAccessStateWithRetry(card);
   if (!state.found) {
     return { ok: false, state, reason: 'El TAG ya no aparece en la tabla user' };
   }
@@ -154,7 +180,7 @@ async function main() {
     throw new Error('Falta --card NUMERO_TAG');
   }
 
-  const before = await readAccessState(card);
+  const before = await readAccessStateWithRetry(card);
 
   console.log('Estado actual:');
   console.log(JSON.stringify(before.found ? {
@@ -212,7 +238,7 @@ async function main() {
     }
 
     await sleep(1200);
-    const created = await readAccessState(card);
+    const created = await readAccessStateWithRetry(card);
     if (created.found && created.authorized) {
       console.log('\n✅ TAG CREADO Y AUTORIZADO DIRECTAMENTE EN EL C3-200');
       console.log(JSON.stringify({
@@ -234,15 +260,59 @@ async function main() {
       console.log('\nEl TAG ya no existe en el C3. No se envió ninguna escritura.');
       return;
     }
-    console.log('\nIntentando ELIMINAR directamente userauthorize + user con DELETEDATA 0x09...');
-    await deleteUserDirect({ pin: before.pin });
-    await sleep(1000);
-    const afterDelete = await readAccessState(card);
+
+    console.log('\nEtapa 1/2: eliminando userauthorize con DELETEDATA 0x09...');
+    let authWriteError = null;
+    try {
+      await deleteAuthorizationDirect({ pin: before.pin });
+      console.log('El C3 respondió a delete userauthorize sin error.');
+    } catch (error) {
+      authWriteError = error;
+      console.log('delete userauthorize devolvió error:', error.message);
+      console.log('Verificando antes de decidir si es necesario reintentar...');
+    }
+
+    await sleep(900);
+    let afterAuth = await readAccessStateWithRetry(card);
+    if (afterAuth.found && afterAuth.authorized) {
+      if (authWriteError && isTransientC3Error(authWriteError)) {
+        console.log('La autorización sigue presente; reintentando una sola vez...');
+        await deleteAuthorizationDirect({ pin: before.pin });
+        await sleep(900);
+        afterAuth = await readAccessStateWithRetry(card);
+      }
+      if (afterAuth.found && afterAuth.authorized) {
+        throw new Error('El C3 todavía conserva userauthorize; no borraré la fila user');
+      }
+    }
+    console.log('Autorización eliminada/verificada.');
+
+    console.log('\nEtapa 2/2: eliminando la fila user con DELETEDATA 0x09...');
+    let userWriteError = null;
+    try {
+      await deleteUserRowDirect({ pin: before.pin });
+      console.log('El C3 respondió a delete user sin error.');
+    } catch (error) {
+      userWriteError = error;
+      console.log('delete user devolvió error:', error.message);
+      console.log('Verificando antes de decidir si es necesario reintentar...');
+    }
+
+    await sleep(900);
+    let afterDelete = await readAccessStateWithRetry(card);
+    if (afterDelete.found && userWriteError && isTransientC3Error(userWriteError)) {
+      console.log('La fila user sigue presente; reintentando una sola vez...');
+      await deleteUserRowDirect({ pin: before.pin });
+      await sleep(900);
+      afterDelete = await readAccessStateWithRetry(card);
+    }
+
     if (!afterDelete.found) {
       console.log('\n✅ TAG ELIMINADO DIRECTAMENTE DEL C3-200');
       return;
     }
-    throw new Error('El C3 todavía devuelve el TAG después de eliminarlo');
+
+    throw new Error('El C3 todavía devuelve el TAG después de eliminar la fila user');
   }
 
   const authorized = action === 'activate';
