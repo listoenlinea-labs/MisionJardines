@@ -25,8 +25,10 @@ string ConnString()
     sb.Append(",ipaddress=").Append(Host());
     sb.Append(",port=").Append(Port());
     sb.Append(",timeout=5000");
-    var pwd = CommPassword();
-    if (!string.IsNullOrWhiteSpace(pwd)) sb.Append(",password=").Append(pwd);
+    // PullSDK expects the parameter name "passwd" (not "password").
+    // Include it even when empty; the official examples use passwd= for
+    // controllers without a communication password.
+    sb.Append(",passwd=").Append(CommPassword());
     return sb.ToString();
 }
 
