@@ -34,12 +34,11 @@ async function recordZkError(req,accion,error,meta={}){
   }
 }
 
-async function listZkErrors({limit=200}={}){
-  const safeLimit=Math.min(500,Math.max(1,Number(limit)||200));
-  return ZkErrorLog.findAll({
-    order:[['createdAt','DESC'],['id','DESC']],
-    limit:safeLimit
-  });
+async function listZkErrors({limit}={}){
+  const requested=Number(limit);
+  const options={order:[['createdAt','DESC'],['id','DESC']]};
+  if(Number.isFinite(requested)&&requested>0) options.limit=Math.min(2000,Math.max(1,Math.trunc(requested)));
+  return ZkErrorLog.findAll(options);
 }
 
 module.exports={recordZkError,listZkErrors,exactError};
