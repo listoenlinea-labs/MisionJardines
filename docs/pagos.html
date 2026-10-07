@@ -1020,6 +1020,18 @@
       #pendingDetailBody{padding:14px 15px 21px}
       #pendingDetail .pending-proof img{max-height:36dvh}
     }
+
+    #pendingProofImage:not([hidden]){cursor:zoom-in;transition:filter .15s,transform .15s}
+    #pendingProofImage:not([hidden]):hover{filter:brightness(.97);transform:scale(1.005)}
+    .pending-proof-zoom-button{display:block;margin:8px auto 0;border:1px solid #d6e4dc;border-radius:9px;padding:7px 12px;background:#f2faf5;color:#2c7551;cursor:pointer;font-size:10px;font-weight:750}
+    #pendingPhotoZoom.pending-photo-zoom[open]{position:fixed!important;inset:0!important;margin:auto!important;width:min(1200px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:min(92dvh,950px);max-height:calc(100dvh - 24px);padding:0;overflow:hidden;border:1px solid #dde7e1;border-radius:20px;background:#fff;box-shadow:0 26px 100px #17253c65}
+    #pendingPhotoZoom::backdrop{background:rgba(17,27,42,.80);backdrop-filter:blur(5px)}
+    .pending-zoom-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 17px;background:#f6fbf8;border-bottom:1px solid #e3ebe7;color:#25374b;font-size:13px}
+    .pending-zoom-head button{width:36px;height:36px;border:1px solid #e4e8ef;border-radius:10px;background:#fff;color:#53647b;font-size:24px;cursor:pointer}
+    .pending-zoom-image{display:grid;place-items:center;height:calc(100% - 105px);min-height:0;padding:12px;background:#f7f9fa;overflow:auto}
+    .pending-zoom-image img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+    #pendingPhotoZoom>p{margin:0;padding:9px;text-align:center;color:#8290a2;font-size:10px}
+    @media(max-width:600px){#pendingPhotoZoom.pending-photo-zoom[open]{width:calc(100vw - 12px);max-width:calc(100vw - 12px);height:calc(100dvh - 18px);border-radius:14px}}
 </style>
 </head>
 
@@ -1087,7 +1099,7 @@
       </div>
     </article>
 
-    <dialog id="pendingDetail" class="pending-detail-dialog" aria-label="Detalle del comprobante"><div class="pending-detail-top"><h2>Revisión de comprobante</h2><button id="closePendingDetail" type="button" aria-label="Cerrar detalle">×</button></div><div id="pendingDetailBody"></div></dialog>
+    <dialog id="pendingDetail" class="pending-detail-dialog" aria-label="Detalle del comprobante"><div class="pending-detail-top"><h2>Revisión de comprobante</h2><button id="closePendingDetail" type="button" aria-label="Cerrar detalle">×</button></div><div id="pendingDetailBody"></div></dialog><dialog id="pendingPhotoZoom" class="pending-photo-zoom" aria-label="Comprobante ampliado"><div class="pending-zoom-head"><strong>Comprobante bancario ampliado</strong><button id="closePendingPhotoZoom" type="button" aria-label="Cerrar imagen ampliada">×</button></div><div class="pending-zoom-image"><img id="pendingZoomImage" alt="Comprobante bancario ampliado"></div><p>Presiona Esc o selecciona × para regresar a la revisión.</p></dialog>
     <div class="tabs">
       <button class="tab active" type="button" data-tab="MANTENIMIENTO">Pago de mantenimiento</button>
       <button class="tab" type="button" data-tab="EXTRAORDINARIO">Pago extraordinario</button>
@@ -1226,7 +1238,7 @@
   <div id="toast" class="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-  <script src="assets/js/pagos.js?v=20261007-centered-month"></script>
+  <script src="assets/js/pagos.js?v=20261007-photo-zoom"></script>
   <script src="assets/js/site-sidebar.js?v=20261001"></script>
 </body>
 
