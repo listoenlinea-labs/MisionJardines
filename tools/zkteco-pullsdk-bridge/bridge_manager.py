@@ -422,8 +422,7 @@ def process_rows() -> list[dict[str, Any]]:
 
 def stop_existing_processes() -> None:
     banner("DETENIENDO PROCESOS ANTERIORES")
-    runtime = load_json(RUNTIME_PATH)
-    pids = {int(x) for x in runtime.get("pids", []) if str(x).isdigit()}
+    pids: set[int] = set()
     for row in process_rows():
         name = str(row.get("Name", "")).lower()
         cmd = str(row.get("CommandLine") or "").lower()
