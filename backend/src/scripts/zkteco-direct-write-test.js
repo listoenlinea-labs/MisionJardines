@@ -9,6 +9,14 @@ function normalizeCard(value) {
   return String(value || '').replace(/\D+/g, '').replace(/^0+(?=\d)/, '');
 }
 
+function date8(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const digits = raw.replace(/\D+/g, '');
+  if (digits.length >= 8) return digits.slice(0, 8);
+  throw new Error('Fecha inválida. Usa YYYY-MM-DD');
+}
+
 function parseArgs(argv) {
   const result = {};
   for (let i = 0; i < argv.length; i += 1) {
@@ -76,6 +84,35 @@ async function writeAuthorizationDirect({ pin, authorized, doorMask, timezoneId 
   });
 }
 
+async function createUserDirect({ card, pin, startDate, endDate, doorMask, timezoneId }) {
+  return withC3(async client => {
+    await client.putRecord('user', {
+      Pin: String(pin),
+      CardNo: String(card),
+      Password: '',
+      Group: 1,
+      ...(startDate ? { StartTime: Number(startDate) } : {}),
+      ...(endDate ? { EndTime: Number(endDate) } : {})
+    });
+
+    await client.putRecord('userauthorize', {
+      Pin: String(pin),
+      AuthorizeTimezoneId: Number(timezoneId),
+      AuthorizeDoorId: Number(doorMask)
+    });
+  });
+}
+
+async function deleteUserDirect({ pin }) {
+  return withC3(async client => {
+    // Same order as the PullSDK bridge: authorization first, then user.
+    try {
+      await client.deleteRecord('userauthorize', { Pin: String(pin) });
+    } catch (_) {}
+    await client.deleteRecord('user', { Pin: String(pin) });
+  });
+}
+
 async function verifyExpected(card, authorized) {
   const state = await readAccessState(card);
   if (!state.found) {
@@ -118,32 +155,94 @@ async function main() {
   }
 
   const before = await readAccessState(card);
-  if (!before.found) {
-    throw new Error('El TAG no existe en la tabla user del C3-200');
-  }
 
   console.log('Estado actual:');
-  console.log(JSON.stringify({
+  console.log(JSON.stringify(before.found ? {
     card: before.card,
     pin: before.pin,
     authorized: before.authorized,
     doorMask: before.doorMask,
     timezoneId: before.timezoneId
+  } : {
+    card: String(card),
+    found: false
   }, null, 2));
+
+  if (!before.found && !['create', 'delete'].includes(action)) {
+    throw new Error('El TAG no existe en la tabla user del C3-200');
+  }
 
   if (action === 'status') {
     console.log('\nSolo lectura. No se realizó ninguna escritura.');
     return;
   }
 
-  if (!['block', 'activate'].includes(action)) {
-    throw new Error('Acción inválida. Usa --action status, block o activate');
+  if (!['block', 'activate', 'create', 'delete'].includes(action)) {
+    throw new Error('Acción inválida. Usa --action status, block, activate, create o delete');
   }
 
   if (confirm !== 'WRITE-DIRECT-C3') {
     throw new Error(
       'Protección activa. Para permitir escritura agrega exactamente: --confirm WRITE-DIRECT-C3'
     );
+  }
+
+  if (action === 'create') {
+    if (before.found) {
+      throw new Error('Ese TAG ya existe en el C3. Usa un TAG de prueba que todavía no exista.');
+    }
+
+    const pin = String(args.pin || normalizeCard(card)).trim();
+    if (!pin || pin === '0') throw new Error('No fue posible determinar un PIN válido');
+
+    const startDate = date8(args.start || '2020-01-01');
+    const endDate = date8(args.end || '2099-12-31');
+    if (!Number.isInteger(doorMask) || doorMask <= 0) throw new Error('--door-mask debe ser > 0');
+    if (!Number.isInteger(timezoneId) || timezoneId <= 0) throw new Error('--timezone-id debe ser > 0');
+
+    console.log('\nIntentando CREAR directamente en user + userauthorize con PUTDATA 0x07...');
+    let writeError = null;
+    try {
+      await createUserDirect({ card: normalizeCard(card), pin, startDate, endDate, doorMask, timezoneId });
+      console.log('El C3 respondió a ambas escrituras sin error.');
+    } catch (error) {
+      writeError = error;
+      console.log('La creación devolvió error:', error.message);
+      console.log('No repetiré a ciegas. Primero verificaré el estado real del C3...');
+    }
+
+    await sleep(1200);
+    const created = await readAccessState(card);
+    if (created.found && created.authorized) {
+      console.log('\n✅ TAG CREADO Y AUTORIZADO DIRECTAMENTE EN EL C3-200');
+      console.log(JSON.stringify({
+        card: created.card,
+        pin: created.pin,
+        authorized: created.authorized,
+        doorMask: created.doorMask,
+        timezoneId: created.timezoneId,
+        writeReturnedError: Boolean(writeError),
+        writeError: writeError?.message || null
+      }, null, 2));
+      return;
+    }
+    throw new Error(writeError?.message || 'El C3 no confirmó la creación/autorización del TAG');
+  }
+
+  if (action === 'delete') {
+    if (!before.found) {
+      console.log('\nEl TAG ya no existe en el C3. No se envió ninguna escritura.');
+      return;
+    }
+    console.log('\nIntentando ELIMINAR directamente userauthorize + user con DELETEDATA 0x09...');
+    await deleteUserDirect({ pin: before.pin });
+    await sleep(1000);
+    const afterDelete = await readAccessState(card);
+    if (!afterDelete.found) {
+      console.log('\n✅ TAG ELIMINADO DIRECTAMENTE DEL C3-200');
+      return;
+    }
+    throw new Error('El C3 todavía devuelve el TAG después de eliminarlo');
   }
 
   const authorized = action === 'activate';
