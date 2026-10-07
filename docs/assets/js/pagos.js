@@ -38,6 +38,12 @@
       return false;
     }
 
+    function syncBankReference() {
+      const house = profile?.casa || profile?.vivienda || storedUser()?.casa || storedUser()?.vivienda;
+      const street = (house?.calle || $('residentStreet')?.value || '').trim();
+      const number = String(house?.numero || $('residentNumber')?.value || '').trim();
+      $('bankReference').textContent = street && number ? street + ' · Casa ' + number : 'Selecciona una vivienda';
+    }
     async function loadProfile() {
       // Pintar de inmediato con la información guardada al iniciar sesión,
       // para que Calle y Número no dependan de otras llamadas de Pagos.
@@ -47,18 +53,66 @@
       const d = await api('/auth/perfil', { headers: headers() });
       profile = d.usuario;
       const painted = paintProfile(profile);
+      syncBankReference();
       if (!painted) throw Error('Tu usuario no tiene vivienda asociada');
     }
-    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; $('bankName').textContent = configText(config.banco, 'BANCO AZTECA'); $('bankHolder').textContent = configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'); $('bankAccount').textContent = configText(config.cuenta, '00002128412440'); $('bankClabe').textContent = configText(config.clabe, '127320021284124409'); $('bankCard').textContent = configText(config.tarjeta, '4027666123124884'); $('bankReference').textContent = configText(config.referencia, 'NOMBRE DE CALLE Y NUMERO DE CASA'); $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = config.legal?.texto || 'Pendiente de contenido legal.'; updatePaymentSummary() }
+    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; $('bankName').textContent = configText(config.banco, 'BANCO AZTECA'); $('bankHolder').textContent = configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'); $('bankAccount').textContent = configText(config.cuenta, '00002128412440'); $('bankClabe').textContent = configText(config.clabe, '127320021284124409'); $('bankCard').textContent = configText(config.tarjeta, '4027666123124884'); $('bankReference').textContent = 'Consultando vivienda…'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = 'El artículo 1028 del Código Civil del Estado de Jalisco dispone el pago anticipado de cuotas y prevé intereses moratorios conforme al reglamento del condominio y los límites legales. Este aviso no establece por sí mismo un recargo fijo de $50.'; syncBankReference(); updatePaymentSummary() }
     async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
     async function loadReceipts() { try { const d = await api('/pagos/mios', { headers: headers() }); renderReceipts(d.data || []) } catch (e) { $('receiptList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
 
     function renderExtras() {
       $('extraList').innerHTML = extras.length ? extras.map(x => '<div class="extra' + (selectedExtra && Number(selectedExtra.id) === Number(x.id) ? ' selected' : '') + '" data-extra="' + Number(x.id) + '"><div><strong>' + esc(x.concepto) + '</strong><small>Cuota extraordinaria activa</small></div><b>' + money(x.monto) + '</b></div>').join('') : '<div class="empty">No hay cuotas extraordinarias activas.</div>';
     }
-    function renderReceipts(items) {
-      $('receiptList').innerHTML = items.length ? items.map(p => '<div class="receipt-item"><div class="receipt-main"><strong>' + esc(p.reciboFolio || p.folioReporte) + '</strong><p>' + esc(p.concepto) + '<br>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) + '</p><div class="receipt-meta"><span class="pill ' + esc(p.estatus) + '">' + esc(({ PENDIENTE_VALIDACION: 'Pendiente de validación', VALIDADO: 'Validado', RECHAZADO: 'Rechazado' })[p.estatus] || p.estatus) + '</span><span class="pill">' + (p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') + '</span></div></div><div class="receipt-side"><b>' + money(p.monto) + '</b>' + (p.id ? '<button class="receipt-view-btn" type="button" data-receipt-id="' + Number(p.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path><path d="M14 2v5h5"></path><path d="M9 13h6M9 17h4"></path></svg><span>Ver recibo</span></button>' : '<span class="hint">Recibo no disponible</span>') + '</div></div>').join('') : '<div class="empty">Todavía no tienes recibos registrados.</div>';
+    let receiptItems = [];
+    const receiptFilter = { search: '', month: '', year: '' };
+    const monthsReceipt = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    function receiptPeriod(p) {
+      const concept = String(p.concepto || '');
+      const match = concept.match(/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})\b/i);
+      if (match) {
+        const idx = monthsReceipt.findIndex(m => m.toLowerCase() === match[1].toLowerCase());
+        return { month: String(idx + 1).padStart(2, '0'), year: match[2], label: monthsReceipt[idx] + ' ' + match[2], derived: false };
+      }
+      return { month: '', year: '', label: 'Período no especificado', derived: false };
     }
+    function renderReceipts(items) {
+      if (items) receiptItems = Array.isArray(items) ? items : [];
+      const yearSelect = $('receiptYear');
+      const selectedYear = receiptFilter.year;
+      const years = [...new Set(receiptItems.map(p => receiptPeriod(p).year).filter(Boolean))].sort().reverse();
+      yearSelect.innerHTML = '<option value="">Todos los años</option>' + years.map(y => '<option value="' + y + '">' + y + '</option>').join('');
+      yearSelect.value = years.includes(selectedYear) ? selectedYear : '';
+      receiptFilter.year = yearSelect.value;
+      const query = receiptFilter.search.toLocaleLowerCase('es-MX').trim();
+      const visible = receiptItems.filter(p => {
+        const period = receiptPeriod(p);
+        const matchText = [period.label,p.concepto,p.reciboFolio,p.folioReporte].join(' ').toLocaleLowerCase('es-MX');
+        return (!query || matchText.includes(query)) && (!receiptFilter.month || period.month === receiptFilter.month) && (!receiptFilter.year || period.year === receiptFilter.year);
+      });
+      $('receiptCount').textContent = visible.length + ' de ' + receiptItems.length + ' recibos';
+      $('receiptList').innerHTML = visible.length ? visible.map(p => {
+        const period = receiptPeriod(p);
+        const status = ({ PENDIENTE_VALIDACION: 'Pendiente de validación', VALIDADO: 'Validado', RECHAZADO: 'Rechazado' })[p.estatus] || p.estatus || '';
+        return '<div class="receipt-item"><div class="receipt-main"><strong>' + esc(p.reciboFolio || p.folioReporte || 'Recibo') +
+          '</strong><p>' + esc(p.concepto || 'Pago registrado') + '<br>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
+          '</p><div class="receipt-meta"><span class="pill ' + esc(p.estatus || '') + '">' + esc(status) +
+          '</span><span class="pill">' + (p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') +
+          '</span></div></div><div class="receipt-side"><b>' + money(p.monto) +
+          '</b>' + (p.id ? '<button class="receipt-view-btn" type="button" data-receipt-id="' + Number(p.id) +
+          '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path><path d="M14 2v5h5"></path><path d="M9 13h6M9 17h4"></path></svg><span>Ver recibo</span></button>' : '<span class="hint">Recibo no disponible</span>') + '</div></div>';
+      }).join('') : '<div class="empty">No hay recibos para ese período.</div>';
+    }
+    ['receiptSearch','receiptMonth','receiptYear'].forEach(id => $(id).addEventListener(id === 'receiptSearch' ? 'input' : 'change', () => {
+      receiptFilter.search = $('receiptSearch').value;
+      receiptFilter.month = $('receiptMonth').value;
+      receiptFilter.year = $('receiptYear').value;
+      renderReceipts();
+    }));
+    $('clearReceiptFilters').addEventListener('click', () => {
+      ['receiptSearch','receiptMonth','receiptYear'].forEach(id => $(id).value = '');
+      receiptFilter.search = receiptFilter.month = receiptFilter.year = '';
+      renderReceipts();
+    });
 
     async function openReceipt(id) {
       try {
