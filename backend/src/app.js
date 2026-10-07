@@ -21,6 +21,8 @@ const zktecoRoutes = require('./routes/zkteco.routes');
 require('./models');
 
 const app = express();
+// Confianza por un salto, sin CIDR IPv6. El proxy frontal debe normalizar
+// X-Forwarded-For y el backend no debe aceptar conexiones públicas directas.
 app.set('trust proxy', 1);
 
 app.disable('x-powered-by');
