@@ -45,7 +45,7 @@
       const painted = paintProfile(profile);
       if (!painted) throw Error('Tu usuario no tiene vivienda asociada');
     }
-    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; $('bankName').textContent = config.banco || 'Cuenta por configurar'; $('bankHolder').textContent = config.titular || '—'; $('bankAccount').textContent = config.cuenta || '—'; $('bankClabe').textContent = config.clabe || '—'; $('bankReference').textContent = config.referencia || 'Usa tu calle y número de casa'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = config.legal?.texto || 'Pendiente de contenido legal.'; updatePaymentSummary() }
+    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; $('bankName').textContent = config.banco || 'BANCO AZTECA'; $('bankHolder').textContent = config.titular || 'MARIA DEL ROCIO BAHENA JUAREZ'; $('bankAccount').textContent = config.cuenta || '00002128412440'; $('bankClabe').textContent = config.clabe || '127320021284124409'; $('bankCard').textContent = config.tarjeta || '4027666123124884'; $('bankReference').textContent = config.referencia || 'NOMBRE DE CALLE Y NUMERO DE CASA'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = config.legal?.texto || 'Pendiente de contenido legal.'; updatePaymentSummary() }
     async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
     async function loadReceipts() { try { const d = await api('/pagos/mios', { headers: headers() }); renderReceipts(d.data || []) } catch (e) { $('receiptList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
 
@@ -189,11 +189,30 @@
       try {
         const d = await api('/pagos/pendientes', { headers: headers() });
         const box = $('pendingPayments'); box.replaceChildren();
-        if (!d.data?.length) { box.textContent = 'No hay comprobantes pendientes.'; return; }
+        if (!d.data?.length) {
+          box.innerHTML = '<div class="pending-empty">No hay comprobantes pendientes por revisar.</div>';
+          return;
+        }
         for (const p of d.data) {
-          const card = document.createElement('article'); card.className = 'card pad';
-          card.innerHTML = '<h3>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) + '</h3><p>' + esc(p.folioOperacion) + ' · ' + esc(p.fechaOperacion) + ' · ' + esc(p.tipoPago) + ' · ' + money(p.monto) + '</p><details><summary>Ver comprobante</summary></details><label>Recargo incluido</label><input type="number" min="0" step="0.01" aria-label="Recargo incluido"><label>Observaciones de revisión</label><input maxlength="600" aria-label="Observaciones de revisión"><div class="actions"><button type="button" class="btn btn-primary" data-review="VALIDADO">Validar depósito</button><button type="button" class="btn" data-review="RECHAZADO">Rechazar</button></div>';
-          const img = document.createElement('img'); img.alt = 'Comprobante ' + p.folioOperacion; img.style.maxWidth = '100%'; img.loading = 'lazy';
+          const paymentType = p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento';
+          const card = document.createElement('article'); card.className = 'pending-card';
+          card.innerHTML =
+            '<div class="pending-card-head">'+
+              '<div class="pending-card-title"><strong>'+esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</strong><span>Comprobante pendiente de validación</span></div>'+
+              '<span class="pending-amount">'+money(p.monto)+'</span>'+
+            '</div>'+
+            '<div class="pending-meta">'+
+              '<div><small>Folio / operación</small><b>'+esc(p.folioOperacion)+'</b></div>'+
+              '<div><small>Fecha</small><b>'+esc(p.fechaOperacion)+'</b></div>'+
+              '<div><small>Tipo</small><b>'+esc(paymentType)+'</b></div>'+
+            '</div>'+
+            '<details class="proof-details"><summary>Comprobante bancario</summary></details>'+
+            '<div class="pending-fields">'+
+              '<div><label>Recargo incluido</label><input data-fee type="number" min="0" step="0.01" aria-label="Recargo incluido"></div>'+
+              '<div><label>Observaciones de revisión</label><textarea data-notes maxlength="600" rows="2" aria-label="Observaciones de revisión" placeholder="Agrega una nota si es necesario"></textarea></div>'+
+            '</div>'+
+            '<div class="actions"><button type="button" class="btn btn-primary" data-review="VALIDADO">Validar depósito</button><button type="button" class="btn btn-danger" data-review="RECHAZADO">Rechazar</button></div>';
+          const img = document.createElement('img'); img.alt = 'Comprobante ' + p.folioOperacion; img.loading = 'lazy';
           const details = card.querySelector('details');
           details.addEventListener('toggle', async () => {
             if (!details.open || img.src) return;
@@ -202,19 +221,25 @@
               if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(proof.data?.comprobanteData || '')) img.src = proof.data.comprobanteData;
             } catch (e) { toast(e.message); }
           });
-          card.querySelector('details').append(img);
-          const inputs = card.querySelectorAll('input'); inputs[0].value = p.recargo || 0; inputs[0].disabled = p.tipoPago !== 'MANTENIMIENTO';
+          details.append(img);
+          const feeInput = card.querySelector('[data-fee]');
+          const notesInput = card.querySelector('[data-notes]');
+          feeInput.value = p.recargo || 0;
+          feeInput.disabled = p.tipoPago !== 'MANTENIMIENTO';
           card.querySelectorAll('[data-review]').forEach(button => button.addEventListener('click', async () => {
             if (!confirm(button.dataset.review === 'VALIDADO' ? '¿Confirmas que verificaste este depósito en la cuenta bancaria?' : '¿Rechazar este comprobante?')) return;
             const buttons = card.querySelectorAll('button'); buttons.forEach(b => b.disabled = true);
             try {
-              const result = await api('/pagos/' + Number(p.id) + '/revision', { method: 'PATCH', headers: headers(true), body: JSON.stringify({ estatus: button.dataset.review, recargo: inputs[0].value, observaciones: inputs[1].value }) });
+              const result = await api('/pagos/' + Number(p.id) + '/revision', { method: 'PATCH', headers: headers(true), body: JSON.stringify({ estatus: button.dataset.review, recargo: feeInput.value, observaciones: notesInput.value }) });
               toast(result.data?.vigencia?.pendienteConfiguracion ? 'Pago validado. Falta configurar la fecha inicial de esta vivienda.' : 'Revisión guardada.');
               await Promise.all([loadPending(), loadReceipts(), loadValidity()]);
             } catch (e) { toast(e.message); buttons.forEach(b => b.disabled = false); }
-          })); box.append(card);
+          }));
+          box.append(card);
         }
-      } catch (e) { $('pendingPayments').textContent = e.message; }
+      } catch (e) {
+        $('pendingPayments').innerHTML = '<div class="pending-empty">'+esc(e.message)+'</div>';
+      }
     }
     async function loadAdministration() {
       if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role())) return;
