@@ -1,0 +1,5 @@
+.bridge-manager/
+publish/
+publish-next/
+publish-backup/
+cloudflared.exe
