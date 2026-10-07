@@ -437,6 +437,21 @@ def reconfigure_hostinger(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
+def rotate_bridge_token(config: dict[str, Any]) -> dict[str, Any]:
+    api_token, _old_bridge_token, prod_env = load_secrets(config)
+    new_bridge_token = secrets.token_urlsafe(32)
+    prod_env["ZKTECO_PULLSDK_BRIDGE_TOKEN"] = new_bridge_token
+    config["hostinger_api_token_protected"] = protect_secret(api_token)
+    config["bridge_token_protected"] = protect_secret(new_bridge_token)
+    config["production_env_protected"] = protect_secret(
+        json.dumps(prod_env, ensure_ascii=False)
+    )
+    config["bridge_token_rotated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    save_json(CONFIG_PATH, config)
+    print("BRIDGE_TOKEN rotado localmente. Se enviará a Hostinger en esta ejecución.")
+    return config
+
+
 def ensure_repo_updated() -> None:
     banner("ACTUALIZANDO REPOSITORIO")
     if not (REPO_ROOT / ".git").exists():
@@ -572,19 +587,41 @@ def http_json(url: str, *, bearer: str | None = None, timeout: int = 8) -> Any:
         return json.loads(raw) if raw else {}
 
 
-def wait_local_bridge(token: str, seconds: int = 25) -> None:
-    deadline = time.time() + seconds
+def wait_local_bridge(token: str, seconds: int = 75) -> None:
+    # El PullSDK del C3-200 puede tardar 8-20+ segundos cuando reintenta Connect.
+    # No uses timeouts de cliente menores: ASP.NET terminaría registrando 499
+    # aunque el controlador responda correctamente unos segundos después.
+    basic_deadline = time.time() + 20
     last: Exception | None = None
+    while time.time() < basic_deadline:
+        try:
+            data = http_json(DEFAULT_BRIDGE_URL + "/health", timeout=3)
+            if data.get("ok"):
+                break
+        except Exception as exc:
+            last = exc
+        time.sleep(0.75)
+    else:
+        raise ManagerError(f"El proceso del bridge no levantó /health. Último error: {last}")
+
+    deadline = time.time() + seconds
     while time.time() < deadline:
         try:
-            data = http_json(DEFAULT_BRIDGE_URL + "/health/controller", bearer=token, timeout=4)
+            data = http_json(
+                DEFAULT_BRIDGE_URL + "/health/controller",
+                bearer=token,
+                timeout=35,
+            )
             if data.get("ok") and data.get("controller"):
                 print("Bridge local conectado al C3-200.")
                 return
+            last = ManagerError(f"Respuesta inesperada de /health/controller: {data!r}")
         except Exception as exc:
             last = exc
-        time.sleep(1)
-    raise ManagerError(f"El bridge no respondió correctamente en {seconds}s. Último error: {last}")
+        time.sleep(2)
+    raise ManagerError(
+        f"El bridge no confirmó conexión con el C3-200 en {seconds}s. Último error: {last}"
+    )
 
 
 def wait_quick_tunnel(log_path: Path, seconds: int = 40) -> str:
@@ -691,17 +728,22 @@ def update_hostinger(config: dict[str, Any], api_token: str, bridge_token: str,
 
 def validate_public(quick_url: str, bridge_token: str) -> None:
     banner("VALIDACIÓN FINAL")
-    deadline = time.time() + 25
+    deadline = time.time() + 75
     last: Exception | None = None
     while time.time() < deadline:
         try:
-            data = http_json(quick_url + "/health/controller", bearer=bridge_token, timeout=8)
+            data = http_json(
+                quick_url + "/health/controller",
+                bearer=bridge_token,
+                timeout=35,
+            )
             if data.get("ok") and data.get("controller"):
                 print("Quick Tunnel -> Bridge -> C3-200: OK")
                 return
+            last = ManagerError(f"Respuesta inesperada por Quick Tunnel: {data!r}")
         except Exception as exc:
             last = exc
-        time.sleep(1.5)
+        time.sleep(2)
     raise ManagerError(f"No pude validar el bridge por la URL pública. Último error: {last}")
 
 
@@ -719,6 +761,11 @@ def main() -> int:
         action="store_true",
         help="No hace git switch/pull antes de compilar.",
     )
+    parser.add_argument(
+        "--rotate-bridge-token",
+        action="store_true",
+        help="Genera un BRIDGE_TOKEN nuevo sin volver a capturar las variables de Hostinger.",
+    )
     args = parser.parse_args()
 
     ensure_dirs()
@@ -729,6 +776,9 @@ def main() -> int:
 
     if args.reconfigure_hostinger and not first_run:
         config = reconfigure_hostinger(config)
+
+    if args.rotate_bridge_token:
+        config = rotate_bridge_token(config)
 
     api_token, bridge_token, cached_env = load_secrets(config)
     sdk_dir = find_sdk_dir(str(config.get("sdk_dir") or ""))
