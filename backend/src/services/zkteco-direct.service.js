@@ -654,7 +654,9 @@ async function operateGate(action){
   });
 }
 
-async function dashboard({calle,numero}={}){
+async function dashboard({calle,numero,pagina,limite}={}){
+  const requestedPage=Math.max(1,Number.parseInt(pagina,10)||1);
+  const pageSize=Math.min(15,Math.max(1,Number.parseInt(limite,10)||15));
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
   const searchByDepartment=Boolean(String(calle||'').trim()&&String(numero||'').trim());
 
@@ -715,7 +717,7 @@ async function dashboard({calle,numero}={}){
     }
   }
 
-  let rows=houses
+  const rows=houses
     .filter(h=>canonicalOnlyHouse(h.calle,h.numero))
     .map(h=>{
       const controls=normalizeTokens(h.controles);
@@ -770,7 +772,24 @@ async function dashboard({calle,numero}={}){
         }))
       };
     });
-  return rows;
+
+  const total=rows.length;
+  const totalPages=Math.max(1,Math.ceil(total/pageSize));
+  const page=Math.min(requestedPage,totalPages);
+  const start=(page-1)*pageSize;
+  const pageRows=rows.slice(start,start+pageSize);
+
+  return {
+    rows:pageRows,
+    pagination:{
+      page,
+      limit:pageSize,
+      total,
+      totalPages,
+      hasPrev:page>1,
+      hasNext:page<totalPages
+    }
+  };
 }
 
 module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,removeTag,operateGate,dashboard,writeUserValidity};
