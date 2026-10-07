@@ -318,6 +318,13 @@
       background: #fff0e1
     }
 
+    .copy.copied {
+      border-color: #b9dfc8;
+      color: #26784d;
+      background: #effaf3;
+      box-shadow: 0 0 0 3px rgba(69, 161, 107, .08)
+    }
+
     .rule-card {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -1043,15 +1050,15 @@
               <span class="bank-mark" aria-hidden="true">BA</span>
               <div><small>Cuenta oficial para transferencias</small><div class="bank-name" id="bankName">Cargando…</div></div>
             </div>
-            <div class="bank-row"><span>Titular</span><b id="bankHolder">—</b><button class="copy"
+            <div class="bank-row"><span>Titular</span><b id="bankHolder">—</b><button type="button" class="copy"
                 data-copy="bankHolder">Copiar</button></div>
-            <div class="bank-row"><span>Cuenta</span><b id="bankAccount">—</b><button class="copy"
+            <div class="bank-row"><span>Cuenta</span><b id="bankAccount">—</b><button type="button" class="copy"
                 data-copy="bankAccount">Copiar</button></div>
-            <div class="bank-row"><span>CLABE</span><b id="bankClabe">—</b><button class="copy"
+            <div class="bank-row"><span>CLABE</span><b id="bankClabe">—</b><button type="button" class="copy"
                 data-copy="bankClabe">Copiar</button></div>
-            <div class="bank-row"><span>Tarjeta</span><b id="bankCard">—</b><button class="copy"
+            <div class="bank-row"><span>Tarjeta</span><b id="bankCard">—</b><button type="button" class="copy"
                 data-copy="bankCard">Copiar</button></div>
-            <div class="bank-row reference-row"><span>Concepto</span><b id="bankReference">—</b><button class="copy"
+            <div class="bank-row reference-row"><span>Concepto</span><b id="bankReference">—</b><button type="button" class="copy"
                 data-copy="bankReference">Copiar</button></div>
           </div>
           <div class="rule-card" id="maintenanceRule">
@@ -1165,7 +1172,7 @@
   <div id="toast" class="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-  <script src="assets/js/pagos.js?v=20261006"></script>
+  <script src="assets/js/pagos.js?v=20261007"></script>
   <script src="assets/js/site-sidebar.js?v=20261001"></script>
 </body>
 

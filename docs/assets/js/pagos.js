@@ -10,6 +10,10 @@
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
     async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) throw Error(d.message || 'No fue posible completar la solicitud'); return d }
     const money = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+    const configText = (value, fallback) => {
+      const text = String(value ?? '').trim();
+      return text && !/^[—–-]+$/.test(text) ? text : fallback;
+    };
     const role = () => { try { const raw = localStorage.getItem('misionJardinesUsuario') || sessionStorage.getItem('misionJardinesUsuario'); const u = JSON.parse(raw || '{}'); return u?.rol?.nombre || u?.rol || '' } catch { return '' } }
     const fullName = u => [u?.nombre, u?.apellidoPaterno, u?.apellidoMaterno].filter(Boolean).join(' ').trim() || 'Residente';
     function storedUser() {
@@ -45,7 +49,7 @@
       const painted = paintProfile(profile);
       if (!painted) throw Error('Tu usuario no tiene vivienda asociada');
     }
-    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; $('bankName').textContent = config.banco || 'BANCO AZTECA'; $('bankHolder').textContent = config.titular || 'MARIA DEL ROCIO BAHENA JUAREZ'; $('bankAccount').textContent = config.cuenta || '00002128412440'; $('bankClabe').textContent = config.clabe || '127320021284124409'; $('bankCard').textContent = config.tarjeta || '4027666123124884'; $('bankReference').textContent = config.referencia || 'NOMBRE DE CALLE Y NUMERO DE CASA'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = config.legal?.texto || 'Pendiente de contenido legal.'; updatePaymentSummary() }
+    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; $('bankName').textContent = configText(config.banco, 'BANCO AZTECA'); $('bankHolder').textContent = configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'); $('bankAccount').textContent = configText(config.cuenta, '00002128412440'); $('bankClabe').textContent = configText(config.clabe, '127320021284124409'); $('bankCard').textContent = configText(config.tarjeta, '4027666123124884'); $('bankReference').textContent = configText(config.referencia, 'NOMBRE DE CALLE Y NUMERO DE CASA'); $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = config.legal?.texto || 'Pendiente de contenido legal.'; updatePaymentSummary() }
     async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
     async function loadReceipts() { try { const d = await api('/pagos/mios', { headers: headers() }); renderReceipts(d.data || []) } catch (e) { $('receiptList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
 
@@ -146,7 +150,28 @@
 
     $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if (!proofData) return toast('Adjunta un comprobante.'); if (paymentType === 'EXTRAORDINARIO' && !selectedExtra) return toast('Selecciona una cuota extraordinaria.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'EXTRAORDINARIO' && Math.abs(amount - required) > .009)) return toast(paymentType === 'MANTENIMIENTO' ? 'Ingresa un monto mayor que cero.' : 'El comprobante debe corresponder exactamente a ' + money(required) + '.'); const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast('Pago reportado correctamente.'); await loadReceipts(); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); $('previewBox').classList.remove('show'); proofData = ''; ocrText = ''; selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
-    document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => { const value = $(btn.dataset.copy).textContent.trim(); if (!value || value === '—') return; try { await navigator.clipboard.writeText(value); toast('Dato copiado.') } catch { toast('No fue posible copiar.') } }));
+    document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
+      const value = $(btn.dataset.copy).textContent.trim();
+      if (!value || value === '—') return;
+
+      try {
+        await navigator.clipboard.writeText(value);
+        clearTimeout(btn._copyResetTimer);
+        btn.textContent = 'Copiado';
+        btn.classList.add('copied');
+        btn.setAttribute('aria-label', 'Dato copiado');
+
+        btn._copyResetTimer = setTimeout(() => {
+          btn.textContent = 'Copiar';
+          btn.classList.remove('copied');
+          btn.setAttribute('aria-label', 'Copiar dato');
+        }, 1500);
+
+        toast('Dato copiado.');
+      } catch {
+        toast('No fue posible copiar.');
+      }
+    }));
 
     async function init() {
       $('adminExtraBox').hidden = !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role());

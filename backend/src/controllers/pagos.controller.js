@@ -25,6 +25,11 @@ function limpiarTexto(value, max = 300) {
     return String(value || '').trim().slice(0, max);
 }
 
+function datoTransferencia(value, fallback) {
+    const text = String(value ?? '').trim();
+    return text && !/^[—–-]+$/.test(text) ? text : fallback;
+}
+
 function basePublicaBackend(req) {
     const configured = String(process.env.APP_BASE_URL || '').trim().replace(/\/$/, '');
     if (configured) {
@@ -83,7 +88,7 @@ async function obtenerConfiguracion(req, res) {
             titular: process.env.PAGOS_TITULAR || 'MARIA DEL ROCIO BAHENA JUAREZ',
             cuenta: process.env.PAGOS_CUENTA || '00002128412440',
             clabe: process.env.PAGOS_CLABE || '127320021284124409',
-            tarjeta: process.env.PAGOS_TARJETA || '4027666123124884',
+            tarjeta: datoTransferencia(process.env.PAGOS_TARJETA, '4027666123124884'),
             referencia: process.env.PAGOS_REFERENCIA || 'NOMBRE DE CALLE Y NUMERO DE CASA',
             mantenimiento: {
                 montoBase: BASE_MANTENIMIENTO,
