@@ -138,11 +138,19 @@ async function setUserValidity({pin,cardNo,startDate,endDate}){
   });
 }
 
+async function deleteUser({pin,cardNo}){
+  return bridgeRequest('/api/users/delete',{
+    pin:String(pin||''),
+    cardNo:String(cardNo||'')
+  });
+}
+
 module.exports={
   getBridgeConfig,
   isPullSdkBridgeConfigured,
   provisionUser,
   setUserValidity,
+  deleteUser,
   testBridge,
   describeFetchError
 };
