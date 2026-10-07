@@ -419,8 +419,13 @@ async function setHouse(id,blocked,button){
 window.setHouse=setHouse;
 async function setTag(id,blocked,button){
   button.disabled=true;
-  try{const r=await api('/zkteco/tarjetas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});toast(r.message);await loadRows()}
-  catch(e){toast(e.message)}finally{button.disabled=false}
+  try{
+    const r=await api('/zkteco/tarjetas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});
+    toast(r.message);
+    await loadRows();
+  }catch(e){
+    toast(errorText(e),10000);
+  }finally{button.disabled=false}
 }
 window.setTag=setTag;
 async function removeTag(id,button){
@@ -437,7 +442,7 @@ async function removeTag(id,button){
     toast(r.message,6000);
     await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
-    toast(e.message,10000);
+    toast(errorText(e),10000);
   }finally{
     hideBusy();
   }
@@ -452,7 +457,7 @@ async function addTagToC3(id,button){
     toast(real?r.message+' · Número de tarjeta: '+real:r.message);
     await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
-    toast(e.message,10000);
+    toast(errorText(e),10000);
   }finally{
     hideBusy();
   }
@@ -461,6 +466,7 @@ window.addTagToC3=addTagToC3;
 let selectedHouseId=null;
 async function openTagModal(id){
   selectedHouseId=id;
+  clearModalError('tagModalError');
   const row=currentRows.find(r=>Number(r.id)===Number(id));
   $('tagHouseLabel').textContent=row?row.calle+' '+row.numero:'vivienda';
   $('newTagNumber').value='';$('newTagName').value=row?row.calle+' '+row.numero:'';$('newTagStart').value=new Date().toISOString().slice(0,10);$('newTagEnd').value='2099-12-31';
@@ -472,7 +478,7 @@ async function openTagModal(id){
   $('tagModal').hidden=false;
 }
 window.openTagModal=openTagModal;
-function closeTagModal(){$('tagModal').hidden=true;selectedHouseId=null}
+function closeTagModal(){clearModalError('tagModalError');$('tagModal').hidden=true;selectedHouseId=null}
 $('closeTagModal').onclick=closeTagModal;$('cancelTag').onclick=closeTagModal;
 $('existingTag').onchange=()=>{$('newTagNumber').disabled=Boolean($('existingTag').value)};
 $('saveTag').onclick=async()=>{
@@ -492,8 +498,117 @@ $('saveTag').onclick=async()=>{
       toast(real&&real!==numeroTarjeta?r.message+' · ZKTeco lo guardó como '+real:r.message);
     }
     closeTagModal();await Promise.all([loadStatus(),loadRows()]);
-  }catch(e){toast(e.message)}finally{b.disabled=false}
+  }catch(e){
+    showModalError('tagModalError',e,'No se pudo guardar el TAG');
+    toast(errorText(e),10000);
+  }finally{b.disabled=false}
 };
+function findTagContext(id){
+  for(const row of currentRows){
+    const tag=(row.tarjetas||[]).find(item=>Number(item.id)===Number(id));
+    if(tag)return{row,tag};
+  }
+  return null;
+}
+
+let selectedEditTagId=null;
+function openEditTagModal(id){
+  const context=findTagContext(id);
+  if(!context){toast('No se encontró el TAG en la página actual');return}
+  selectedEditTagId=id;
+  clearModalError('editTagError');
+  $('editTagLabel').textContent=context.tag.numeroTarjeta||'';
+  $('editTagNumber').value=context.tag.numeroTarjeta||'';
+  $('editTagStart').value=context.tag.fechaInicio||'';
+  $('editTagEnd').value=context.tag.fechaFin||'2099-12-31';
+  $('editTagStreet').value=context.row.calle||'';
+  $('editTagHouseNumber').value=context.row.numero||'';
+  $('editTagModal').hidden=false;
+}
+window.openEditTagModal=openEditTagModal;
+function closeEditTagModal(){
+  clearModalError('editTagError');
+  $('editTagModal').hidden=true;
+  selectedEditTagId=null;
+}
+$('closeEditTagModal').onclick=closeEditTagModal;
+$('cancelEditTag').onclick=closeEditTagModal;
+$('saveEditTag').onclick=async()=>{
+  if(!selectedEditTagId)return;
+  const button=$('saveEditTag');
+  button.disabled=true;
+  clearModalError('editTagError');
+  try{
+    const numeroTarjeta=$('editTagNumber').value.trim();
+    const calle=$('editTagStreet').value.trim();
+    const numero=$('editTagHouseNumber').value.trim();
+    const fechaInicio=$('editTagStart').value||null;
+    const fechaFin=$('editTagEnd').value||null;
+    if(!numeroTarjeta)throw Error('Captura el número del TAG');
+    if(!calle||!numero)throw Error('Captura calle y número de casa');
+    if(fechaInicio&&fechaFin&&fechaInicio>fechaFin)throw Error('La fecha inicial no puede ser posterior a la fecha final');
+
+    const r=await api('/zkteco/tarjetas/'+selectedEditTagId,{
+      method:'PATCH',
+      headers:headers(true),
+      body:JSON.stringify({numeroTarjeta,calle,numero,fechaInicio,fechaFin})
+    });
+    toast(r.message,6000);
+    closeEditTagModal();
+    await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){
+    showModalError('editTagError',e,'No se pudo editar el TAG');
+    toast(errorText(e),10000);
+  }finally{
+    button.disabled=false;
+  }
+};
+
+function formatLogDate(value){
+  if(!value)return'—';
+  const d=new Date(value);
+  return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{dateStyle:'medium',timeStyle:'medium'}).format(d);
+}
+function renderLogs(rows){
+  const list=$('logsList');
+  if(!rows.length){
+    list.innerHTML='<div class="empty">No hay errores registrados.</div>';
+    return;
+  }
+  list.innerHTML=rows.map(log=>{
+    const meta=[
+      log.metodo&&log.ruta?(log.metodo+' '+log.ruta):null,
+      log.numeroTarjeta?('TAG '+log.numeroTarjeta):null,
+      log.tarjetaId?('ID '+log.tarjetaId):null,
+      log.casaId?('Casa ID '+log.casaId):null,
+      log.detalle||null
+    ].filter(Boolean).join(' · ');
+    return '<article class="log-item">'+
+      '<div class="log-top"><span class="log-action">'+esc(log.accion||'ERROR')+'</span><span class="log-time">'+esc(formatLogDate(log.createdAt))+'</span></div>'+
+      '<div class="log-error">'+esc(log.error||'Error sin detalle')+'</div>'+
+      (meta?'<div class="log-meta">'+esc(meta)+'</div>':'')+
+    '</article>';
+  }).join('');
+}
+async function loadLogs(){
+  $('logsList').innerHTML='<div class="empty">Cargando logs…</div>';
+  try{
+    const r=await api('/zkteco/logs',{headers:headers()});
+    renderLogs(r.data||[]);
+  }catch(e){
+    $('logsList').innerHTML='<div class="modal-error show"><strong>No se pudieron cargar los logs</strong>'+esc(errorText(e))+'</div>';
+  }
+}
+async function openLogsModal(){
+  $('logsModal').hidden=false;
+  await loadLogs();
+}
+function closeLogsModal(){$('logsModal').hidden=true}
+$('openLogs').onclick=openLogsModal;
+$('closeLogsModal').onclick=closeLogsModal;
+$('closeLogs').onclick=closeLogsModal;
+$('refreshLogs').onclick=loadLogs;
+
 async function operate(action){
   const a=$('openGate'),c=$('closeGate');a.disabled=true;c.disabled=true;
   try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(e.message)}finally{a.disabled=false;c.disabled=false}
