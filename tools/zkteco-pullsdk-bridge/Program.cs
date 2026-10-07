@@ -91,6 +91,40 @@ int SetData(int handle, string table, string data)
 
 app.MapGet("/health", () => Results.Ok(new { ok = true, service = "zkteco-pullsdk-bridge" }));
 
+app.MapGet("/health/auth", (HttpRequest req) =>
+{
+    if (!Authorized(req)) return Results.Unauthorized();
+    return Results.Ok(new { ok = true, authenticated = true });
+});
+
+app.MapGet("/health/controller", (HttpRequest req) =>
+{
+    if (!Authorized(req)) return Results.Unauthorized();
+    int handle = 0;
+    try
+    {
+        handle = Connect();
+        return Results.Ok(new
+        {
+            ok = true,
+            controller = true,
+            host = Host(),
+            port = Port()
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { ok = false, controller = false, error = ex.Message }, statusCode: 502);
+    }
+    finally
+    {
+        if (handle > 0)
+        {
+            try { Native.Disconnect(handle); } catch { }
+        }
+    }
+});
+
 app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();

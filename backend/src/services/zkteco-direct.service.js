@@ -98,6 +98,7 @@ async function syncUsers(){
     try{auth=await client.getData('userauthorize');}catch(_){}
     return {users,auth};
   });
+
   const houses=await Casa.findAll({attributes:['id','calle','numero','controles']});
   const houseById=new Map(houses.map(h=>[Number(h.id),h]));
   const byCard=new Map();
@@ -107,27 +108,55 @@ async function syncUsers(){
       if(key) byCard.set(key,Number(house.id));
     }
   }
+
   const currentCards=await ZkTarjeta.findAll();
   const existingByNormalized=new Map();
-  for(const item of currentCards){
+  const indexExisting=item=>{
     const key=normalizeCardKey(item.numeroTarjeta);
-    if(key&&!existingByNormalized.has(key))existingByNormalized.set(key,item);
+    if(!key)return;
+    const list=existingByNormalized.get(key)||[];
+    list.push(item);
+    existingByNormalized.set(key,list);
+  };
+  currentCards.forEach(indexExisting);
+
+  // IMPORTANT: do not mark everything as absent before a sync succeeds.
+  // If one row fails halfway through, the old implementation left valid
+  // physical cards incorrectly displayed as "No existe en C3".
+  const liveKeys=new Set();
+  for(const row of payload.users){
+    const key=normalizeCardKey(row.CardNo);
+    if(key&&key!=='0')liveKeys.add(key);
   }
-  await ZkTarjeta.update({enControlador:false},{where:{}});
 
   const authByPin=new Map(payload.auth.map(row=>[String(row.Pin??'').trim(),row]));
   let processed=0,linked=0;
+
   for(const row of payload.users){
     const card=String(row.CardNo??'').trim();
-    if(!card||card==='0') continue;
+    const key=normalizeCardKey(card);
+    if(!key||key==='0') continue;
+
     const pin=String(row.Pin??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
-    const existing=existingByNormalized.get(normalizeCardKey(card))||null;
+    const candidates=existingByNormalized.get(key)||[];
+
+    // Prefer the exact literal CardNo. If ZKAccess/app stored a leading-zero
+    // variation, fall back to the same normalized card without creating a duplicate.
+    const existing=
+      candidates.find(item=>String(item.numeroTarjeta??'').trim()===card)||
+      candidates.find(item=>Number(item.casaId||0)===Number(byCard.get(key)||0))||
+      candidates[0]||
+      null;
+
     const groupId=Number(row.Group||0)||null;
-    const casaId=existing?.casaId??byCard.get(normalizeCardKey(card))??null;
+    const casaId=existing?.casaId??byCard.get(key)??null;
     if(casaId) linked++;
+
     const values={
-      numeroTarjeta:card,
+      // Preserve the application's literal CardNo when the normalized value is
+      // already known. This avoids unique-key conflicts such as 05112344 vs 5112344.
+      numeroTarjeta:existing?existing.numeroTarjeta:card,
       uidDispositivo:Number(row.UID||0)||null,
       pinDispositivo:pin,
       nombreDispositivo:String(row.Name??'').trim()||null,
@@ -144,17 +173,19 @@ async function syncUsers(){
       enControlador:true,
       ultimaLectura:new Date()
     };
+
     if(existing){
       await existing.update(values);
-      existingByNormalized.set(normalizeCardKey(card),existing);
     }else{
       const created=await ZkTarjeta.create(values);
-      existingByNormalized.set(normalizeCardKey(card),created);
+      indexExisting(created);
+      currentCards.push(created);
     }
+
     if(casaId){
       const house=houseById.get(Number(casaId));
       if(house){
-        const merged=mergeControls(house.controles,card,false);
+        const merged=mergeControls(house.controles,existing?.numeroTarjeta||card,false);
         if(String(house.controles||'')!==merged){
           await house.update({controles:merged});
         }
@@ -162,12 +193,42 @@ async function syncUsers(){
     }
     processed++;
   }
-  return {ok:true,totalPanel:payload.users.length,procesados:processed,vinculados:linked,autorizaciones:payload.auth.length};
+
+  // Only after the complete physical read + reconciliation succeeds do we mark
+  // missing cards as absent. All DB rows that normalize to a live CardNo remain
+  // live, which also prevents stale duplicate/import rows from showing false red.
+  let absent=0;
+  const now=new Date();
+  for(const item of currentCards){
+    const key=normalizeCardKey(item.numeroTarjeta);
+    if(!key)continue;
+    const live=liveKeys.has(key);
+    if(live){
+      if(item.enControlador===false){
+        await item.update({enControlador:true,ultimaLectura:now});
+      }
+    }else if(item.enControlador!==false){
+      await item.update({enControlador:false});
+      absent++;
+    }else{
+      absent++;
+    }
+  }
+
+  return {
+    ok:true,
+    totalPanel:payload.users.length,
+    procesados:processed,
+    vinculados:linked,
+    autorizaciones:payload.auth.length,
+    ausentes:absent
+  };
 }
 
 async function findPanelUserByCard(client,card){
   const rows=await client.getData('user');
-  return rows.find(row=>String(row.CardNo??'').trim()===String(card).trim())||null;
+  const wanted=normalizeCardKey(card);
+  return rows.find(row=>normalizeCardKey(row.CardNo)===wanted)||null;
 }
 
 async function writeUserValidity(card,fechaInicio,fechaFin){
