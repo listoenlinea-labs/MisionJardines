@@ -656,7 +656,7 @@ async function operateGate(action){
 
 async function dashboard({calle,numero,pagina,limite}={}){
   const requestedPage=Math.max(1,Number.parseInt(pagina,10)||1);
-  const pageSize=Math.min(15,Math.max(1,Number.parseInt(limite,10)||15));
+  const pageSize=Math.min(8,Math.max(1,Number.parseInt(limite,10)||8));
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
   const searchByDepartment=Boolean(String(calle||'').trim()&&String(numero||'').trim());
 
