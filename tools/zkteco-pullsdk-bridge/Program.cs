@@ -142,13 +142,15 @@ app.MapGet("/health/controller", async (HttpRequest req) =>
     }
 });
 
-app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
+app.MapPost("/api/users", async (HttpRequest req, UserProvisionRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
+    await sdkGate.WaitAsync();
     int handle = 0;
+    var stage = "connect";
     try
     {
-        handle = Connect();
+        handle = await ConnectAsync();
         try { Native.EnableDevice(handle, 0); } catch { }
 
         var start = Date8(body.startDate);
@@ -166,10 +168,12 @@ app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
         if (!string.IsNullOrWhiteSpace(end)) fields.Add($"EndTime={end}");
 
         var userRow = string.Join("\t", fields) + "\r\n";
+        stage = "set-user";
         SetData(handle, "user", userRow);
 
         var authRow =
             $"Pin={EscapeValue(body.pin)}\tAuthorizeTimezoneId={Math.Max(1, body.timezoneId)}\tAuthorizeDoorId={Math.Max(1, body.doorMask)}\r\n";
+        stage = "set-userauthorize";
         SetData(handle, "userauthorize", authRow);
 
         return Results.Ok(new
@@ -183,7 +187,8 @@ app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
     }
     catch (Exception ex)
     {
-        return Results.Json(new { ok = false, error = ex.Message }, statusCode: 502);
+        Console.Error.WriteLine($"[PullSDK] /api/users falló en {stage}: {ex.Message}");
+        return Results.Json(new { ok = false, stage, error = ex.Message }, statusCode: 502);
     }
     finally
     {
@@ -192,6 +197,8 @@ app.MapPost("/api/users", (HttpRequest req, UserProvisionRequest body) =>
             try { Native.EnableDevice(handle, 1); } catch { }
             try { Native.Disconnect(handle); } catch { }
         }
+        await Task.Delay(300);
+        sdkGate.Release();
     }
 });
 
