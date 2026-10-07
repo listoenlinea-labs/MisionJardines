@@ -417,18 +417,47 @@ async function clearFilters(){
 }
 async function setHouse(id,blocked,button){
   if(!confirm((blocked?'Bloquear':'Habilitar')+' todos los controles de esta vivienda en ZKTeco?'))return;
-  button.disabled=true;try{const r=await api('/zkteco/viviendas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});toast(r.message);await loadRows()}catch(e){toast(errorText(e))}finally{button.disabled=false}
+  showBusy(
+    blocked?'Bloqueando controles…':'Activando controles…',
+    blocked
+      ?'Revocando el acceso físico de cada TAG y verificando el resultado directamente en el C3-200.'
+      :'Restaurando el acceso físico de cada TAG y verificando el resultado directamente en el C3-200.'
+  );
+  try{
+    const r=await api('/zkteco/viviendas/'+id+'/bloqueo',{
+      method:'PATCH',
+      headers:headers(true),
+      body:JSON.stringify({bloqueado:blocked})
+    });
+    toast(r.message,6000);
+    await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){
+    toast(errorText(e),10000);
+  }finally{
+    hideBusy();
+  }
 }
 window.setHouse=setHouse;
 async function setTag(id,blocked,button){
-  button.disabled=true;
+  showBusy(
+    blocked?'Bloqueando TAG…':'Activando TAG…',
+    blocked
+      ?'Revocando el permiso físico y verificando que el TAG ya no tenga acceso en el C3-200.'
+      :'Restaurando el permiso físico y verificando que el TAG vuelva a tener acceso en el C3-200.'
+  );
   try{
-    const r=await api('/zkteco/tarjetas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});
-    toast(r.message);
-    await loadRows();
+    const r=await api('/zkteco/tarjetas/'+id+'/bloqueo',{
+      method:'PATCH',
+      headers:headers(true),
+      body:JSON.stringify({bloqueado:blocked})
+    });
+    toast(r.message,6000);
+    await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
     toast(errorText(e),10000);
-  }finally{button.disabled=false}
+  }finally{
+    hideBusy();
+  }
 }
 window.setTag=setTag;
 async function removeTag(id,button){
