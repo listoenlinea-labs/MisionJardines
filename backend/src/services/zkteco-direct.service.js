@@ -915,11 +915,23 @@ async function operateGate(action){
   });
 }
 
-async function dashboard({calle,numero,pagina,limite}={}){
+async function dashboard({calle,numero,tag,pagina,limite}={}){
   const requestedPage=Math.max(1,Number.parseInt(pagina,10)||1);
   const pageSize=Math.min(8,Math.max(1,Number.parseInt(limite,10)||8));
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
   const searchByDepartment=Boolean(String(calle||'').trim()&&String(numero||'').trim());
+
+  const tagQuery=String(tag||'').trim();
+  const tagKey=normalizeCardKey(tagQuery);
+  const tagMatches=value=>{
+    if(!tagQuery)return true;
+    const raw=String(value??'').trim();
+    if(!raw)return false;
+    const rawLower=raw.toLowerCase();
+    const queryLower=tagQuery.toLowerCase();
+    const normalized=normalizeCardKey(raw);
+    return rawLower.includes(queryLower) || Boolean(tagKey&&normalized.includes(tagKey));
+  };
 
   let houses;
   if(searchByDepartment){
@@ -1010,14 +1022,22 @@ async function dashboard({calle,numero,pagina,limite}={}){
         ? []
         : controls.filter(raw=>!matchedKeys.has(normalizeCardKey(raw)));
 
+      const visibleCards=tagQuery
+        ? matched.filter(card=>tagMatches(card.numeroTarjeta))
+        : matched;
+      const visibleUnresolved=tagQuery
+        ? unresolved.filter(tagMatches)
+        : unresolved;
+
       return {
         id:h.id,
         calle:canonicalStreet(h.calle),
         numero:h.numero,
         departamentoBusqueda:searchByDepartment?`${canonicalStreet(calle)} ${String(numero).trim()}`:null,
+        filtroTag:tagQuery||null,
         controles:controls,
-        controlesNoEnlazados:unresolved,
-        tarjetas:matched.map(card=>({
+        controlesNoEnlazados:visibleUnresolved,
+        tarjetas:visibleCards.map(card=>({
           id:card.id,
           numeroTarjeta:String(card.numeroTarjeta),
           pin:card.pinDispositivo,
@@ -1031,13 +1051,14 @@ async function dashboard({calle,numero,pagina,limite}={}){
           ultimaLectura:card.ultimaLectura
         }))
       };
-    });
+    })
+    .filter(row=>!tagQuery||row.tarjetas.length||row.controlesNoEnlazados.length);
 
   const total=rows.length;
   const totalPages=Math.max(1,Math.ceil(total/pageSize));
   const page=Math.min(requestedPage,totalPages);
-  const start=(page-1)*pageSize;
-  const pageRows=rows.slice(start,start+pageSize);
+  const offset=(page-1)*pageSize;
+  const pageRows=rows.slice(offset,offset+pageSize);
 
   return {
     rows:pageRows,
@@ -1048,6 +1069,11 @@ async function dashboard({calle,numero,pagina,limite}={}){
       totalPages,
       hasPrev:page>1,
       hasNext:page<totalPages
+    },
+    filters:{
+      calle:String(calle||'').trim()||null,
+      numero:String(numero||'').trim()||null,
+      tag:tagQuery||null
     }
   };
 }
