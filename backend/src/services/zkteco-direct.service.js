@@ -745,8 +745,8 @@ async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}=
   await tarjeta.update({
     casaId:Number(targetHouse.id),
     numeroTarjeta:newCard,
-    uidDispositivo:controllerResult?.uid??tarjeta.uidDispositivo,
-    pinDispositivo:controllerResult?.pin??tarjeta.pinDispositivo,
+    uidDispositivo:controllerResult?.uid??(cardChanged?null:tarjeta.uidDispositivo),
+    pinDispositivo:controllerResult?.pin??(cardChanged?null:tarjeta.pinDispositivo),
     nombreDispositivo:displayName,
     departamentoId:departmentProfile.departamentoId,
     departamento:departmentProfile.departamento,
@@ -756,7 +756,7 @@ async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}=
     fechaFin:end||null,
     fechaFinOriginal:null,
     bloqueado:false,
-    enControlador:controllerResult?true:Boolean(currentPhysical||tarjeta.enControlador),
+    enControlador:controllerResult?true:Boolean(currentPhysical),
     ultimaLectura:new Date()
   });
 
