@@ -210,62 +210,116 @@
       const date = Math.floor(index / 12) + '-' + String(index % 12 + 1).padStart(2, '0') + '-10';
       $('paymentPreview').textContent = 'Estimación al validar: ' + months + ' mensualidad(es), fecha final ' + date + ', abono restante ' + money((principal % tariff) / 100) + '. Sujeta a revisión del recargo y del depósito.';
     }
+    let pendingItems = [];
+    const pendingFilters = { street: '', house: '', month: '', year: '' };
+    function filterPending() {
+      const street = pendingFilters.street.trim().toLocaleLowerCase('es-MX');
+      const house = pendingFilters.house.trim().toLocaleLowerCase('es-MX');
+      return pendingItems.filter(p => {
+        const date = String(p.fechaOperacion || '').slice(0, 10);
+        const parts = date.split('-');
+        return (!street || String(p.calleSnapshot || '').toLocaleLowerCase('es-MX').includes(street))
+          && (!house || String(p.numeroCasaSnapshot || '').toLocaleLowerCase('es-MX').includes(house))
+          && (!pendingFilters.month || parts[1] === pendingFilters.month)
+          && (!pendingFilters.year || parts[0] === pendingFilters.year);
+      });
+    }
+    function renderPending() {
+      const box = $('pendingPayments');
+      box.replaceChildren();
+      const items = filterPending();
+      $('pendingCount').textContent = items.length + ' de ' + pendingItems.length + ' comprobantes';
+      if (!items.length) {
+        box.innerHTML = '<div class="pending-empty">No hay comprobantes con estos filtros.</div>';
+        return;
+      }
+      for (const p of items) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'pending-mini-card';
+        card.setAttribute('aria-label', 'Revisar comprobante de ' + p.calleSnapshot + ', casa ' + p.numeroCasaSnapshot);
+        card.innerHTML = '<span class="pending-mini-details"><strong>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
+          '</strong><small>' + esc(p.fechaOperacion || 'Sin fecha') + ' · ' + esc(p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') +
+          '</small><small>Folio ' + esc(p.folioOperacion || '—') + '</small></span><span class="pending-mini-right"><b>' + money(p.monto) +
+          '</b><span>Ver detalle ›</span></span>';
+        card.addEventListener('click', () => openPendingDetail(p));
+        box.append(card);
+      }
+    }
+    async function openPendingDetail(p) {
+      const dialog = $('pendingDetail');
+      const body = $('pendingDetailBody');
+      const type = p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento';
+      body.innerHTML =
+        '<div class="pending-detail-heading"><strong>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) + '</strong><b>' + money(p.monto) + '</b></div>' +
+        '<div class="pending-detail-meta"><div><small>Folio / operación</small><strong>' + esc(p.folioOperacion || '—') + '</strong></div>' +
+        '<div><small>Fecha</small><strong>' + esc(p.fechaOperacion || '—') + '</strong></div>' +
+        '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
+        '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario" hidden></div>' +
+        '<div class="pending-fields"><div><label for="pendingFee">Recargo incluido</label><input id="pendingFee" type="number" min="0" step="0.01"></div>' +
+        '<div><label for="pendingNotes">Observaciones de revisión</label><textarea id="pendingNotes" maxlength="600" rows="3" placeholder="Agrega una nota si es necesario"></textarea></div></div>' +
+        '<div class="pending-detail-actions"><button type="button" class="btn btn-primary" data-detail-review="VALIDADO">Validar depósito</button>' +
+        '<button type="button" class="btn btn-danger" data-detail-review="RECHAZADO">Rechazar</button></div>';
+      const fee = $('pendingFee');
+      fee.value = p.recargo || 0;
+      fee.disabled = p.tipoPago !== 'MANTENIMIENTO';
+      dialog.showModal();
+      body.querySelectorAll('[data-detail-review]').forEach(button => button.addEventListener('click', async () => {
+        if (!confirm(button.dataset.detailReview === 'VALIDADO' ? '¿Confirmas que verificaste este depósito en la cuenta bancaria?' : '¿Rechazar este comprobante?')) return;
+        const buttons = body.querySelectorAll('[data-detail-review]');
+        buttons.forEach(b => b.disabled = true);
+        try {
+          const result = await api('/pagos/' + Number(p.id) + '/revision', {
+            method: 'PATCH', headers: headers(true),
+            body: JSON.stringify({ estatus: button.dataset.detailReview, recargo: fee.value, observaciones: $('pendingNotes').value })
+          });
+          toast(result.data?.vigencia?.pendienteConfiguracion ? 'Pago validado. Falta configurar la fecha inicial de esta vivienda.' : 'Revisión guardada.');
+          dialog.close();
+          await Promise.all([loadPending(), loadReceipts(), loadValidity()]);
+        } catch (e) { toast(e.message); buttons.forEach(b => b.disabled = false); }
+      }));
+      try {
+        const proof = await api('/pagos/' + Number(p.id) + '/comprobante', { headers: headers() });
+        if (!dialog.open || !body.isConnected || $('pendingProofStatus')?.textContent !== 'Cargando imagen…') return;
+        const value = proof.data?.comprobanteData || '';
+        if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value)) {
+          $('pendingProofImage').src = value;
+          $('pendingProofImage').hidden = false;
+          $('pendingProofStatus').hidden = true;
+        } else { $('pendingProofStatus').textContent = 'Imagen no disponible.'; }
+      } catch (e) { if (dialog.open && $('pendingProofStatus')) $('pendingProofStatus').textContent = e.message; }
+    }
     async function loadPending() {
       try {
         const d = await api('/pagos/pendientes', { headers: headers() });
-        const box = $('pendingPayments'); box.replaceChildren();
-        if (!d.data?.length) {
-          box.innerHTML = '<div class="pending-empty">No hay comprobantes pendientes por revisar.</div>';
-          return;
-        }
-        for (const p of d.data) {
-          const paymentType = p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento';
-          const card = document.createElement('article'); card.className = 'pending-card';
-          card.innerHTML =
-            '<div class="pending-card-head">'+
-              '<div class="pending-card-title"><strong>'+esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</strong><span>Comprobante pendiente de validación</span></div>'+
-              '<span class="pending-amount">'+money(p.monto)+'</span>'+
-            '</div>'+
-            '<div class="pending-meta">'+
-              '<div><small>Folio / operación</small><b>'+esc(p.folioOperacion)+'</b></div>'+
-              '<div><small>Fecha</small><b>'+esc(p.fechaOperacion)+'</b></div>'+
-              '<div><small>Tipo</small><b>'+esc(paymentType)+'</b></div>'+
-            '</div>'+
-            '<details class="proof-details"><summary>Comprobante bancario</summary></details>'+
-            '<div class="pending-fields">'+
-              '<div><label>Recargo incluido</label><input data-fee type="number" min="0" step="0.01" aria-label="Recargo incluido"></div>'+
-              '<div><label>Observaciones de revisión</label><textarea data-notes maxlength="600" rows="2" aria-label="Observaciones de revisión" placeholder="Agrega una nota si es necesario"></textarea></div>'+
-            '</div>'+
-            '<div class="actions"><button type="button" class="btn btn-primary" data-review="VALIDADO">Validar depósito</button><button type="button" class="btn btn-danger" data-review="RECHAZADO">Rechazar</button></div>';
-          const img = document.createElement('img'); img.alt = 'Comprobante ' + p.folioOperacion; img.loading = 'lazy';
-          const details = card.querySelector('details');
-          details.addEventListener('toggle', async () => {
-            if (!details.open || img.src) return;
-            try {
-              const proof = await api('/pagos/' + Number(p.id) + '/comprobante', { headers: headers() });
-              if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(proof.data?.comprobanteData || '')) img.src = proof.data.comprobanteData;
-            } catch (e) { toast(e.message); }
-          });
-          details.append(img);
-          const feeInput = card.querySelector('[data-fee]');
-          const notesInput = card.querySelector('[data-notes]');
-          feeInput.value = p.recargo || 0;
-          feeInput.disabled = p.tipoPago !== 'MANTENIMIENTO';
-          card.querySelectorAll('[data-review]').forEach(button => button.addEventListener('click', async () => {
-            if (!confirm(button.dataset.review === 'VALIDADO' ? '¿Confirmas que verificaste este depósito en la cuenta bancaria?' : '¿Rechazar este comprobante?')) return;
-            const buttons = card.querySelectorAll('button'); buttons.forEach(b => b.disabled = true);
-            try {
-              const result = await api('/pagos/' + Number(p.id) + '/revision', { method: 'PATCH', headers: headers(true), body: JSON.stringify({ estatus: button.dataset.review, recargo: feeInput.value, observaciones: notesInput.value }) });
-              toast(result.data?.vigencia?.pendienteConfiguracion ? 'Pago validado. Falta configurar la fecha inicial de esta vivienda.' : 'Revisión guardada.');
-              await Promise.all([loadPending(), loadReceipts(), loadValidity()]);
-            } catch (e) { toast(e.message); buttons.forEach(b => b.disabled = false); }
-          }));
-          box.append(card);
-        }
+        pendingItems = Array.isArray(d.data) ? d.data : [];
+        const years = [...new Set(pendingItems.map(p => String(p.fechaOperacion || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y)))].sort().reverse();
+        const yearSelect = $('pendingYear');
+        const selected = yearSelect.value;
+        yearSelect.innerHTML = '<option value="">Todos los años</option>' + years.map(y => '<option value="' + y + '">' + y + '</option>').join('');
+        yearSelect.value = years.includes(selected) ? selected : '';
+        pendingFilters.year = yearSelect.value;
+        renderPending();
       } catch (e) {
-        $('pendingPayments').innerHTML = '<div class="pending-empty">'+esc(e.message)+'</div>';
+        $('pendingPayments').innerHTML = '<div class="pending-empty">' + esc(e.message) + '</div>';
+        $('pendingCount').textContent = 'No disponible';
       }
     }
+    ['pendingStreet','pendingHouse','pendingMonth','pendingYear'].forEach(id => {
+      $(id).addEventListener(id === 'pendingStreet' || id === 'pendingHouse' ? 'input' : 'change', () => {
+        pendingFilters.street = $('pendingStreet').value;
+        pendingFilters.house = $('pendingHouse').value;
+        pendingFilters.month = $('pendingMonth').value;
+        pendingFilters.year = $('pendingYear').value;
+        renderPending();
+      });
+    });
+    $('clearPendingFilters').addEventListener('click', () => {
+      ['pendingStreet','pendingHouse','pendingMonth','pendingYear'].forEach(id => $(id).value = '');
+      Object.keys(pendingFilters).forEach(key => pendingFilters[key] = '');
+      renderPending();
+    });
+    $('closePendingDetail').addEventListener('click', () => $('pendingDetail').close());
     async function loadAdministration() {
       if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role())) return;
       $('adminPayments').hidden = false;
