@@ -252,6 +252,26 @@ async function setTag(id,blocked,button){
   catch(e){toast(e.message)}finally{button.disabled=false}
 }
 window.setTag=setTag;
+async function removeTag(id,button){
+  const tag=currentRows.flatMap(row=>row.tarjetas||[]).find(item=>Number(item.id)===Number(id));
+  const label=tag?.numeroTarjeta||'seleccionado';
+  const confirmed=confirm(
+    '¿Eliminar definitivamente el TAG '+label+'?\n\n'+
+    'Se eliminará del C3-200, de la vivienda y de la aplicación. Esta acción no es lo mismo que bloquearlo.'
+  );
+  if(!confirmed)return;
+  showBusy('Eliminando TAG','Quitando permisos y usuario del C3-200; después verificaremos que ya no exista.');
+  try{
+    const r=await api('/zkteco/tarjetas/'+id,{method:'DELETE',headers:headers(true)});
+    toast(r.message,6000);
+    await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){
+    toast(e.message,10000);
+  }finally{
+    hideBusy();
+  }
+}
+window.removeTag=removeTag;
 async function addTagToC3(id,button){
   if(!confirm('¿Agregar este TAG físicamente al C3-200 y autorizarlo para entrada/salida?'))return;
   showBusy('Agregando TAG al C3-200','Escribiendo usuario y permisos; después verificaremos el CardNo directamente en el controlador.');
