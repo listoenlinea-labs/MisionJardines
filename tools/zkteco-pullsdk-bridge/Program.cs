@@ -3,6 +3,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
+var sdkGate = new SemaphoreSlim(1, 1);
 
 string Host() => Environment.GetEnvironmentVariable("ZKTECO_HOST")?.Trim()
                  ?? throw new InvalidOperationException("Falta ZKTECO_HOST");
