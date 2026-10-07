@@ -76,7 +76,11 @@ async function bloquearVivienda(req,res){
     const data=await setHouseBlocked(req.params.id,blocked);
     res.json({ok:true,message:blocked?'Vivienda bloqueada en ZKTeco':'Vivienda habilitada en ZKTeco',data});
   }catch(error){
-    res.status(502).json({ok:false,message:error.message||'No fue posible modificar los controles de la vivienda',data:error.results||null});
+    await recordZkError(req,Boolean(req.body.bloqueado)?'BLOQUEAR_VIVIENDA':'ACTIVAR_VIVIENDA',error,{
+      casaId:req.params.id,
+      detalle:error.results?JSON.stringify(error.results):null
+    });
+    res.status(502).json({ok:false,message:error.message||'No fue posible modificar los controles de la vivienda',error:exactError(error),data:error.results||null});
   }
 }
 async function asignarTarjeta(req,res){
