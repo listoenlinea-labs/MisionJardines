@@ -106,7 +106,7 @@ const headers=(json=false)=>({Authorization:'Bearer '+token,...(json?{'Content-T
 let role='';try{const u=JSON.parse(localStorage.getItem('misionJardinesUsuario')||sessionStorage.getItem('misionJardinesUsuario')||'{}');role=u?.rol?.nombre||u?.rol||''}catch(_){}
 const canAdmin=['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA'].includes(role);
 let currentRows=[];
-function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(window.zkToast);window.zkToast=setTimeout(()=>$('toast').style.display='none',3500)}
+function toast(message,duration=3500){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(window.zkToast);window.zkToast=setTimeout(()=>$('toast').style.display='none',duration)}
 let busyDepth=0;
 function showBusy(title,text){
   busyDepth++;
@@ -127,7 +127,7 @@ async function loadStatus(){
   try{
     const r=await api('/zkteco/estado',{headers:headers()});
     const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>Conectado al C3-200</span>';
-    $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceWriteMode').textContent=d.escrituraUsuarios==='PULLSDK'?'Pull SDK oficial':'No configurada';$('deviceCards').textContent=d.tarjetas||0;
+    $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceWriteMode').textContent=d.escrituraUsuarios==='PULLSDK'?(d.bridge?.controller?'Pull SDK oficial · conectado':(d.bridge?.error?'Pull SDK · '+d.bridge.error:'Pull SDK oficial')):'No configurada';$('deviceCards').textContent=d.tarjetas||0;
   }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(e.message)}
 }
 function rowState(row){
@@ -217,7 +217,7 @@ async function addTagToC3(id,button){
     toast(real?r.message+' · Número de tarjeta: '+real:r.message);
     await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
-    toast(e.message);
+    toast(e.message,10000);
   }finally{
     hideBusy();
   }
