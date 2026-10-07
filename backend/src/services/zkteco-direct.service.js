@@ -244,44 +244,207 @@ async function findPanelUserByCard(client,card){
   return rows.find(row=>normalizeCardKey(row.CardNo)===wanted)||null;
 }
 
+function getWriteMode(){
+  const mode=String(process.env.ZKTECO_WRITE_MODE||'AUTO').trim().toUpperCase();
+  return ['AUTO','DIRECT','PULLSDK'].includes(mode)?mode:'AUTO';
+}
+
+async function readControllerWithRetry(callback,{attempts=5,delayMs=700}={}){
+  let lastError=null;
+  for(let attempt=1;attempt<=attempts;attempt++){
+    try{
+      return await withC3(callback);
+    }catch(error){
+      lastError=error;
+      if(attempt<attempts) await new Promise(resolve=>setTimeout(resolve,delayMs*attempt));
+    }
+  }
+  throw lastError||new Error('No fue posible leer el C3-200');
+}
+
+async function findPanelAuthorizationByPin(client,pin){
+  const rows=await client.getData('userauthorize');
+  return rows.find(row=>String(row.Pin??'').trim()===String(pin??'').trim())||null;
+}
+
+async function executePanelWrite({label,direct,pullSdk,verify}){
+  const mode=getWriteMode();
+
+  if(mode==='PULLSDK'){
+    if(!isPullSdkBridgeConfigured()){
+      throw new Error(`ZKTECO_WRITE_MODE=PULLSDK pero el bridge no está configurado (${label})`);
+    }
+    await pullSdk();
+    const verified=await verify();
+    if(!verified) throw new Error(`El PullSDK respondió, pero el C3-200 no confirmó: ${label}`);
+    return 'PULLSDK';
+  }
+
+  let directError=null;
+  try{
+    await direct();
+  }catch(error){
+    directError=error;
+  }
+
+  let directVerified=false;
+  let verifyError=null;
+  try{
+    directVerified=Boolean(await verify());
+  }catch(error){
+    verifyError=error;
+  }
+
+  if(directVerified) return 'DIRECT';
+
+  if(mode==='DIRECT'){
+    throw directError||verifyError||new Error(`El C3-200 no confirmó la escritura directa: ${label}`);
+  }
+
+  if(!isPullSdkBridgeConfigured()){
+    throw directError||verifyError||new Error(
+      `La escritura directa no quedó confirmada y no hay bridge de respaldo: ${label}`
+    );
+  }
+
+  await pullSdk();
+  const fallbackVerified=await verify();
+  if(!fallbackVerified){
+    throw new Error(`Ni DIRECT ni PullSDK dejaron confirmado el estado esperado: ${label}`);
+  }
+  return 'PULLSDK_FALLBACK';
+}
+
+async function directSetUserValidity({pin,cardNo,startDate,endDate,group=1}){
+  const values={
+    Pin:String(pin),
+    CardNo:canonicalCardNo(cardNo),
+    Password:'',
+    Group:Number(group||1)||1
+  };
+  const startNumber=toDateNumber(startDate);
+  const endNumber=toDateNumber(endDate);
+  if(startNumber) values.StartTime=startNumber;
+  if(endNumber) values.EndTime=endNumber;
+
+  await withC3(client=>client.putRecord('user',values));
+}
+
+async function directSetUserAccess({pin,authorized,doorMask=3,timezoneId=1}){
+  if(authorized){
+    await withC3(client=>client.putRecord('userauthorize',{
+      Pin:String(pin),
+      AuthorizeTimezoneId:Math.max(1,Number(timezoneId)||1),
+      AuthorizeDoorId:Math.max(1,Number(doorMask)||3)
+    }));
+    return;
+  }
+  await withC3(client=>client.deleteRecord('userauthorize',{Pin:String(pin)}));
+}
+
+async function directProvisionUser({cardNo,pin,startDate,endDate,doorMask=3,timezoneId=1}){
+  let userError=null;
+  try{
+    await directSetUserValidity({pin,cardNo,startDate,endDate,group:1});
+  }catch(error){
+    userError=error;
+  }
+
+  let authError=null;
+  try{
+    await directSetUserAccess({pin,authorized:true,doorMask,timezoneId});
+  }catch(error){
+    authError=error;
+  }
+
+  if(userError||authError){
+    const error=new Error(
+      [userError&&`user: ${userError.message}`,authError&&`userauthorize: ${authError.message}`]
+        .filter(Boolean).join(' | ')
+    );
+    error.cause=userError||authError;
+    throw error;
+  }
+}
+
+async function directDeleteUser({pin}){
+  let authError=null;
+  try{
+    await withC3(client=>client.deleteRecord('userauthorize',{Pin:String(pin)}));
+  }catch(error){
+    authError=error;
+  }
+
+  let userError=null;
+  try{
+    await withC3(client=>client.deleteRecord('user',{Pin:String(pin)}));
+  }catch(error){
+    userError=error;
+  }
+
+  if(authError||userError){
+    const error=new Error(
+      [authError&&`userauthorize: ${authError.message}`,userError&&`user: ${userError.message}`]
+        .filter(Boolean).join(' | ')
+    );
+    error.cause=authError||userError;
+    throw error;
+  }
+}
+
+
 async function writeUserValidity(card,fechaInicio,fechaFin){
-  const current=await withC3(async client=>{
+  const current=await readControllerWithRetry(async client=>{
     const row=await findPanelUserByCard(client,card);
     if(!row) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
     return row;
   });
 
-  if(isPullSdkBridgeConfigured()){
-    await setUserValidityViaPullSdk({
-      pin:String(current.Pin??'').trim(),
-      cardNo:String(card),
+  const pin=String(current.Pin??'').trim();
+  if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
+  const cardNo=String(current.CardNo??canonicalCardNo(card)).trim();
+  const group=Number(current.Group||1)||1;
+
+  const verify=async()=>{
+    const verified=await readControllerWithRetry(client=>findPanelUserByCard(client,cardNo));
+    if(!verified) return false;
+    const expectedStart=fechaInicio?toDateNumber(fechaInicio):null;
+    const expectedEnd=fechaFin?toDateNumber(fechaFin):null;
+    if(expectedStart&&Number(verified.StartTime||0)!==expectedStart) return false;
+    if(expectedEnd&&Number(verified.EndTime||0)!==expectedEnd) return false;
+    return true;
+  };
+
+  const writeMode=await executePanelWrite({
+    label:`actualizar vigencia del TAG ${cardNo}`,
+    direct:()=>directSetUserValidity({
+      pin,
+      cardNo,
+      startDate:fechaInicio,
+      endDate:fechaFin,
+      group
+    }),
+    pullSdk:()=>setUserValidityViaPullSdk({
+      pin,
+      cardNo,
       startDate:fechaInicio,
       endDate:fechaFin
-    });
-    // Verify against the physical controller, not the bridge response.
-    const verified=await withC3(client=>findPanelUserByCard(client,card));
-    if(!verified) throw new Error(`El PullSDK reportó la actualización, pero la tarjeta ${card} ya no aparece en el C3-200`);
-    return {numeroTarjeta:String(card),fechaInicio,fechaFin,writeMode:'PULLSDK'};
-  }
+    }),
+    verify
+  });
 
-  throw new Error(
-    'Este C3-200 permite lectura/control directo por TCP, pero no está aceptando escrituras de usuarios por el protocolo socket. '+
-    'Configura ZKTECO_PULLSDK_BRIDGE_URL para altas y cambios de vigencia mediante el Pull SDK oficial.'
-  );
+  return {numeroTarjeta:cardNo,fechaInicio,fechaFin,writeMode};
 }
-
 async function setCardBlocked(cardId,blocked){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Tarjeta no encontrada');
 
-  const state=await withC3(async client=>{
+  const state=await readControllerWithRetry(async client=>{
     const current=await findPanelUserByCard(client,tarjeta.numeroTarjeta);
     if(!current) return {current:null,auth:null};
-
-    let authRows=[];
-    try{authRows=await client.getData('userauthorize');}catch(_){}
-    const pin=String(current.Pin??tarjeta.pinDispositivo??'').trim();
-    const auth=authRows.find(row=>String(row.Pin??'').trim()===pin)||null;
+    let auth=null;
+    try{auth=await findPanelAuthorizationByPin(client,String(current.Pin??tarjeta.pinDispositivo??'').trim());}
+    catch(_){}
     return {current,auth};
   });
 
@@ -289,38 +452,28 @@ async function setCardBlocked(cardId,blocked){
 
   const pin=String(state.current.Pin??tarjeta.pinDispositivo??'').trim();
   if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
-  if(!isPullSdkBridgeConfigured()) throw new Error('El puente Pull SDK no está configurado para modificar el acceso del TAG');
 
   if(blocked){
-    // Preserve the last known access profile before revoking it physically.
     const doorMask=Number(state.auth?.AuthorizeDoorId||tarjeta.puertasAutorizadas||3)||3;
     const timezoneId=Number(state.auth?.AuthorizeTimezoneId||tarjeta.timezoneId||1)||1;
 
-    await setUserAccessViaPullSdk({
-      pin,
-      authorized:false,
-      doorMask,
-      timezoneId
-    });
+    const verify=async()=>{
+      const auth=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+      return !auth||Number(auth.AuthorizeDoorId||0)<=0;
+    };
 
-    const stillAuthorized=await withC3(async client=>{
-      let rows=[];
-      try{rows=await client.getData('userauthorize');}catch(_){}
-      return rows.find(row=>
-        String(row.Pin??'').trim()===pin &&
-        Number(row.AuthorizeDoorId||0)>0
-      )||null;
+    await executePanelWrite({
+      label:`bloquear TAG ${tarjeta.numeroTarjeta}`,
+      direct:()=>directSetUserAccess({pin,authorized:false,doorMask,timezoneId}),
+      pullSdk:()=>setUserAccessViaPullSdk({pin,authorized:false,doorMask,timezoneId}),
+      verify
     });
-    if(stillAuthorized){
-      throw new Error('El Pull SDK respondió, pero el TAG todavía conserva autorización de puertas en el C3-200');
-    }
 
     await tarjeta.update({
       bloqueado:true,
       pinDispositivo:pin,
       puertasAutorizadas:doorMask,
       timezoneId,
-      // Blocking is enforced by userauthorize, not by falsifying the validity date.
       fechaFinOriginal:tarjeta.fechaFinOriginal||null,
       ultimaLectura:new Date()
     });
@@ -328,7 +481,6 @@ async function setCardBlocked(cardId,blocked){
     const doorMask=Number(tarjeta.puertasAutorizadas||3)||3;
     const timezoneId=Number(tarjeta.timezoneId||1)||1;
 
-    // Repair TAGs blocked by the legacy "expire yesterday" implementation.
     const currentStart=fromDateNumber(state.current.StartTime);
     const currentEnd=fromDateNumber(state.current.EndTime);
     const restoreEnd=tarjeta.fechaFinOriginal||tarjeta.fechaFin||currentEnd||'2099-12-31';
@@ -340,23 +492,21 @@ async function setCardBlocked(cardId,blocked){
       );
     }
 
-    await setUserAccessViaPullSdk({
-      pin,
-      authorized:true,
-      doorMask,
-      timezoneId
+    const verify=async()=>{
+      const auth=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+      return Boolean(auth&&Number(auth.AuthorizeDoorId||0)>0);
+    };
+
+    await executePanelWrite({
+      label:`activar TAG ${tarjeta.numeroTarjeta}`,
+      direct:()=>directSetUserAccess({pin,authorized:true,doorMask,timezoneId}),
+      pullSdk:()=>setUserAccessViaPullSdk({pin,authorized:true,doorMask,timezoneId}),
+      verify
     });
 
-    const restored=await withC3(async client=>{
-      let rows=[];
-      try{rows=await client.getData('userauthorize');}catch(_){}
-      return rows.find(row=>
-        String(row.Pin??'').trim()===pin &&
-        Number(row.AuthorizeDoorId||0)>0
-      )||null;
-    });
-    if(!restored){
-      throw new Error('El Pull SDK respondió, pero el C3-200 no confirmó la autorización de puertas del TAG');
+    const restored=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+    if(!restored||Number(restored.AuthorizeDoorId||0)<=0){
+      throw new Error('El C3-200 no confirmó la autorización de puertas del TAG');
     }
 
     await tarjeta.update({
@@ -369,9 +519,9 @@ async function setCardBlocked(cardId,blocked){
       ultimaLectura:new Date()
     });
   }
+
   return tarjeta.reload();
 }
-
 async function setHouseBlocked(casaId,blocked){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('Vivienda no encontrada');
@@ -496,8 +646,7 @@ async function readBackAuthorization(client,pin,{attempts=6,delayMs=350}={}){
 async function provisionTagOnController({casa,requestedCard,displayName,start,end}){
   const card=canonicalCardNo(requestedCard);
 
-  // Reads still go directly to the controller because that path is proven on this C3-200.
-  const state=await withC3(async client=>{
+  const state=await readControllerWithRetry(async client=>{
     const ids=await nextPanelIds(client);
     const profile=await resolveAuthorizationProfile(client,casa.id);
     const existing=ids.rows.find(r=>normalizeCardKey(r.CardNo)===card)||null;
@@ -516,53 +665,64 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
     };
   }
 
-  if(!isPullSdkBridgeConfigured()){
-    throw new Error(
-      'El C3-200 sí está conectado y se puede leer/abrir la pluma, pero este firmware no acepta altas de usuarios por la escritura TCP directa. '+
-      'Para crear TAGs necesitas configurar el puente del Pull SDK oficial (ZKTECO_PULLSDK_BRIDGE_URL).'
-    );
-  }
-
   const usedPins=new Set(state.ids.rows.map(r=>String(r.Pin??'').trim()).filter(Boolean));
   const preferredPin=String(Number(card));
   const pin=!usedPins.has(preferredPin)&&preferredPin!=='0'?preferredPin:String(state.ids.pin);
   const profile=state.profile;
+  const doorMask=Number(profile.doorMask||3)||3;
+  const timezoneId=Number(profile.timezoneId||1)||1;
 
-  await provisionUserViaPullSdk({
-    cardNo:card,
-    pin,
-    name:String(displayName||'').slice(0,24),
-    startDate:start,
-    endDate:end,
-    doorMask:Number(profile.doorMask||3),
-    timezoneId:Number(profile.timezoneId||1)
+  const verify=async()=>{
+    const result=await readControllerWithRetry(async client=>{
+      const user=await findPanelUserByCard(client,card);
+      if(!user) return null;
+      const realPin=String(user.Pin??pin).trim();
+      const auth=await findPanelAuthorizationByPin(client,realPin);
+      return {user,auth};
+    });
+    return Boolean(result?.user&&result?.auth&&Number(result.auth.AuthorizeDoorId||0)>0);
+  };
+
+  const writeMode=await executePanelWrite({
+    label:`crear TAG ${card}`,
+    direct:()=>directProvisionUser({
+      cardNo:card,
+      pin,
+      startDate:start,
+      endDate:end,
+      doorMask,
+      timezoneId
+    }),
+    pullSdk:()=>provisionUserViaPullSdk({
+      cardNo:card,
+      pin,
+      name:String(displayName||'').slice(0,24),
+      startDate:start,
+      endDate:end,
+      doorMask,
+      timezoneId
+    }),
+    verify
   });
 
-  // The official SDK call is not enough: prove the new record is now in the controller.
-  const created=await withC3(client=>readBackUserByCard(client,card,{attempts:8,delayMs:500}));
-  if(!created){
-    throw new Error(
-      'El Pull SDK respondió, pero el C3-200 no devolvió el nuevo CardNo al releer la tabla user. '+
-      'Revisa la respuesta/log del puente PullSDK.'
-    );
-  }
+  const created=await readControllerWithRetry(client=>findPanelUserByCard(client,card));
+  if(!created) throw new Error(`El C3-200 no devolvió el nuevo CardNo ${card}`);
 
   const realPin=String(created.Pin??pin).trim();
-  const auth=await withC3(client=>readBackAuthorization(client,realPin,{attempts:8,delayMs:500}));
-  if(!auth){
-    throw new Error('El usuario ya existe en el C3-200, pero userauthorize no confirmó acceso a las puertas.');
+  const auth=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,realPin));
+  if(!auth||Number(auth.AuthorizeDoorId||0)<=0){
+    throw new Error('El usuario existe en el C3-200, pero userauthorize no confirmó acceso a las puertas.');
   }
 
   return {
     uid:Number(created.UID||0)||null,
     pin:realPin,
     cardNo:String(created.CardNo??card),
-    timezoneId:Number(auth.AuthorizeTimezoneId||profile.timezoneId||1),
-    doorMask:Number(auth.AuthorizeDoorId||profile.doorMask||3),
-    writeMode:'PULLSDK'
+    timezoneId:Number(auth.AuthorizeTimezoneId||timezoneId)||timezoneId,
+    doorMask:Number(auth.AuthorizeDoorId||doorMask)||doorMask,
+    writeMode
   };
 }
-
 async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaFin}={}){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('Vivienda no encontrada');
@@ -770,10 +930,6 @@ async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}=
     if(physicalNew) throw new Error('El nuevo número de TAG ya existe físicamente en el C3-200');
 
     if(currentPhysical||tarjeta.enControlador){
-      if(!isPullSdkBridgeConfigured()){
-        throw new Error('El puente Pull SDK no está configurado para cambiar el número del TAG');
-      }
-
       controllerResult=await provisionTagOnController({
         casa:targetHouse,
         requestedCard:newCard,
@@ -787,13 +943,29 @@ async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}=
         if(!oldPin) throw new Error('No fue posible determinar el Pin actual del TAG');
 
         try{
-          await deleteUserViaPullSdk({pin:oldPin,cardNo:oldCard});
-          const stillOld=await withC3(client=>readBackUserByCard(client,oldCard,{attempts:8,delayMs:500}));
-          if(stillOld) throw new Error('El C3-200 todavía devuelve el número anterior después del cambio');
+          await executePanelWrite({
+            label:`eliminar TAG anterior ${oldCard}`,
+            direct:()=>directDeleteUser({pin:oldPin}),
+            pullSdk:()=>deleteUserViaPullSdk({pin:oldPin,cardNo:oldCard}),
+            verify:async()=>{
+              const user=await readControllerWithRetry(client=>findPanelUserByCard(client,oldCard));
+              return !user;
+            }
+          });
         }catch(error){
-          // Keep the original TAG usable if the second half of the replacement fails.
+          // Si falla la segunda mitad del reemplazo, retirar el TAG nuevo para no dejar duplicados.
           try{
-            if(controllerResult?.pin) await deleteUserViaPullSdk({pin:controllerResult.pin,cardNo:newCard});
+            if(controllerResult?.pin){
+              await executePanelWrite({
+                label:`revertir TAG nuevo ${newCard}`,
+                direct:()=>directDeleteUser({pin:controllerResult.pin}),
+                pullSdk:()=>deleteUserViaPullSdk({pin:controllerResult.pin,cardNo:newCard}),
+                verify:async()=>{
+                  const user=await readControllerWithRetry(client=>findPanelUserByCard(client,newCard));
+                  return !user;
+                }
+              });
+            }
           }catch(_){}
           throw error;
         }
@@ -859,26 +1031,26 @@ async function removeTag(cardId){
   const requestedCard=String(tarjeta.numeroTarjeta||'').trim();
   if(!requestedCard) throw new Error('El control no tiene Número de tarjeta');
 
-  const current=await withC3(client=>findPanelUserByCard(client,requestedCard));
+  const current=await readControllerWithRetry(client=>findPanelUserByCard(client,requestedCard));
   let removedFromController=false;
 
   if(current){
-    if(!isPullSdkBridgeConfigured()){
-      throw new Error('El TAG existe en el C3-200, pero el puente Pull SDK no está configurado para eliminarlo');
-    }
-
     const pin=String(current.Pin??tarjeta.pinDispositivo??'').trim();
     if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
 
-    await deleteUserViaPullSdk({
-      pin,
-      cardNo:canonicalCardNo(requestedCard)
+    await executePanelWrite({
+      label:`eliminar TAG ${requestedCard}`,
+      direct:()=>directDeleteUser({pin}),
+      pullSdk:()=>deleteUserViaPullSdk({
+        pin,
+        cardNo:canonicalCardNo(requestedCard)
+      }),
+      verify:async()=>{
+        const user=await readControllerWithRetry(client=>findPanelUserByCard(client,requestedCard));
+        return !user;
+      }
     });
 
-    const stillThere=await withC3(client=>readBackUserByCard(client,canonicalCardNo(requestedCard),{attempts:8,delayMs:500}));
-    if(stillThere){
-      throw new Error('El Pull SDK respondió, pero el TAG todavía aparece en la tabla user del C3-200');
-    }
     removedFromController=true;
   }
 
@@ -898,7 +1070,6 @@ async function removeTag(cardId){
   await tarjeta.destroy();
   return data;
 }
-
 async function operateGate(action){
   const envName=action==='CERRAR'?'ZKTECO_GATE_CLOSE_OUTPUTS':'ZKTECO_GATE_OPEN_OUTPUTS';
   let outputs=String(process.env[envName]||'').split(',').map(v=>Number(v.trim())).filter(v=>Number.isInteger(v)&&v>0);
