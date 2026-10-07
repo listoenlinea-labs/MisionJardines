@@ -79,11 +79,12 @@ async function obtenerConfiguracion(req, res) {
     return res.json({
         ok: true,
         data: {
-            banco: process.env.PAGOS_BANCO || '',
-            titular: process.env.PAGOS_TITULAR || '',
-            cuenta: process.env.PAGOS_CUENTA || '',
-            clabe: process.env.PAGOS_CLABE || '',
-            referencia: process.env.PAGOS_REFERENCIA || '',
+            banco: process.env.PAGOS_BANCO || 'BANCO AZTECA',
+            titular: process.env.PAGOS_TITULAR || 'MARIA DEL ROCIO BAHENA JUAREZ',
+            cuenta: process.env.PAGOS_CUENTA || '00002128412440',
+            clabe: process.env.PAGOS_CLABE || '127320021284124409',
+            tarjeta: process.env.PAGOS_TARJETA || '4027666123124884',
+            referencia: process.env.PAGOS_REFERENCIA || 'NOMBRE DE CALLE Y NUMERO DE CASA',
             mantenimiento: {
                 montoBase: BASE_MANTENIMIENTO,
                 diaLimite: DIA_LIMITE,
