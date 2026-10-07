@@ -13,19 +13,19 @@ function isPullSdkBridgeConfigured(){
   return Boolean(getBridgeConfig().baseUrl);
 }
 
-async function bridgeRequest(path,body){
+async function bridgeFetch(path,{method='POST',body}={}){
   const cfg=getBridgeConfig();
   if(!cfg.baseUrl) throw new Error('ZKTECO_PULLSDK_BRIDGE_URL no está configurado');
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),cfg.timeoutMs);
   try{
     const response=await fetch(cfg.baseUrl+path,{
-      method:'POST',
+      method,
       headers:{
-        'Content-Type':'application/json',
+        ...(body!==undefined?{'Content-Type':'application/json'}:{}),
         ...(cfg.token?{'Authorization':'Bearer '+cfg.token}:{})
       },
-      body:JSON.stringify(body||{}),
+      ...(body!==undefined?{body:JSON.stringify(body||{})}:{}),
       signal:controller.signal
     });
     let data={};
@@ -40,6 +40,33 @@ async function bridgeRequest(path,body){
     throw error;
   }finally{
     clearTimeout(timer);
+  }
+}
+
+async function bridgeRequest(path,body){
+  return bridgeFetch(path,{method:'POST',body});
+}
+
+async function testBridge(){
+  const cfg=getBridgeConfig();
+  if(!cfg.baseUrl) return {configured:false,reachable:false,authenticated:false,controller:false};
+  try{
+    const auth=await bridgeFetch('/health/auth',{method:'GET'});
+    const controller=await bridgeFetch('/health/controller',{method:'GET'});
+    return {
+      configured:true,
+      reachable:true,
+      authenticated:Boolean(auth?.authenticated),
+      controller:Boolean(controller?.controller)
+    };
+  }catch(error){
+    return {
+      configured:true,
+      reachable:false,
+      authenticated:false,
+      controller:false,
+      error:error.message
+    };
   }
 }
 
@@ -68,5 +95,6 @@ module.exports={
   getBridgeConfig,
   isPullSdkBridgeConfigured,
   provisionUser,
-  setUserValidity
+  setUserValidity,
+  testBridge
 };
