@@ -88,6 +88,7 @@
           <div class="field"><label>NÚMERO DE CASA</label><input id="houseNumber" placeholder="Ej. 11"></div>
           <button id="applyFilters" class="btn">Buscar</button>
           <button id="clearFilters" class="btn clear">Limpiar filtros</button>
+          <button id="openLogs" class="btn clear">Logs</button>
           <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
         </div>
         <div class="house-list-shell">
@@ -106,6 +107,7 @@
   <section class="modal-box">
     <div class="modal-head"><div><span class="eyebrow">ZKTECO · CONTROL</span><h3>Agregar TAG a <span id="tagHouseLabel"></span></h3><p class="sub">Puedes vincular un TAG ya sincronizado o crear uno nuevo directamente en el C3-200.</p></div><button id="closeTagModal" class="close" type="button">×</button></div>
     <div class="modal-body">
+      <div id="tagModalError" class="modal-error" role="alert"></div>
       <div class="modal-grid">
         <div class="field wide"><label>TAG EXISTENTE SIN VIVIENDA</label><select id="existingTag"><option value="">— Crear un TAG nuevo —</option></select></div>
         <div class="field wide"><label>NÚMERO DE TAG / TARJETA NUEVA</label><input id="newTagNumber" inputmode="numeric" placeholder="Ej. 5015731"></div>
@@ -118,6 +120,41 @@
     <div class="modal-foot"><button id="cancelTag" class="btn" type="button">Cancelar</button><button id="saveTag" class="btn primary" type="button">Guardar control</button></div>
   </section>
 </div>
+
+<div id="editTagModal" class="modal-shell" hidden>
+  <section class="modal-box">
+    <div class="modal-head">
+      <div><span class="eyebrow">ZKTECO · EDICIÓN</span><h3>Editar TAG <span id="editTagLabel"></span></h3><p class="sub">Puedes cambiar número, vigencia y vivienda. Si cambia el número, se reemplaza también en el C3-200.</p></div>
+      <button id="closeEditTagModal" class="close" type="button">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="editTagError" class="modal-error" role="alert"></div>
+      <div class="modal-grid">
+        <div class="field wide"><label>NÚMERO DE TAG / TARJETA</label><input id="editTagNumber" inputmode="numeric"></div>
+        <div class="field"><label>FECHA INICIAL</label><input id="editTagStart" type="date"></div>
+        <div class="field"><label>FECHA FINAL</label><input id="editTagEnd" type="date"></div>
+        <div class="field"><label>CALLE</label><input id="editTagStreet" placeholder="Ej. Gardenias"></div>
+        <div class="field"><label>NÚMERO DE CASA</label><input id="editTagHouseNumber" placeholder="Ej. 5"></div>
+      </div>
+      <div class="notice">Si cambias el número del TAG, primero se crea el nuevo registro en el C3-200 y después se retira el número anterior. La vivienda debe existir en el padrón.</div>
+    </div>
+    <div class="modal-foot"><button id="cancelEditTag" class="btn" type="button">Cancelar</button><button id="saveEditTag" class="btn primary" type="button">Guardar cambios</button></div>
+  </section>
+</div>
+
+<div id="logsModal" class="modal-shell" hidden>
+  <section class="modal-box wide">
+    <div class="modal-head">
+      <div><span class="eyebrow">ZKTECO · DIAGNÓSTICO</span><h3>Logs de errores</h3><p class="sub">Errores registrados al crear, bloquear, editar o eliminar TAGs, con fecha y hora de la petición.</p></div>
+      <button id="closeLogsModal" class="close" type="button">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="logsList" class="logs-list"><div class="empty">Cargando logs…</div></div>
+    </div>
+    <div class="modal-foot"><button id="refreshLogs" class="btn clear" type="button">Actualizar</button><button id="closeLogs" class="btn primary" type="button">Cerrar</button></div>
+  </section>
+</div>
+
 <div id="busy" class="busy" hidden><div class="busy-card"><div class="spinner"></div><div><strong id="busyTitle">Procesando…</strong><span id="busyText">No cierres esta ventana.</span></div></div></div>
 <div id="toast" class="toast"></div>
 
