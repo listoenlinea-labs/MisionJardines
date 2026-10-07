@@ -488,9 +488,19 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
   if(!requestedCard) throw new Error('Captura el número del TAG/control');
   const card=canonicalCardNo(requestedCard);
 
-  const existing=await ZkTarjeta.findAll();
-  if(existing.some(item=>normalizeCardKey(item.numeroTarjeta)===card)){
-    throw new Error('Ese TAG/control ya existe en la aplicación');
+  const existingRows=await ZkTarjeta.findAll();
+  const staleLocal=existingRows.find(item=>normalizeCardKey(item.numeroTarjeta)===card)||null;
+
+  // The local mirror may keep a row after the physical TAG was removed from the C3.
+  // Verify the controller before rejecting a re-create request.
+  if(staleLocal){
+    const physical=await withC3(client=>findPanelUserByCard(client,card));
+    if(physical){
+      throw new Error('Ese TAG/control ya existe físicamente en el C3-200');
+    }
+    if(staleLocal.enControlador!==false){
+      await staleLocal.update({enControlador:false});
+    }
   }
 
   const start=fechaInicio||new Date().toISOString().slice(0,10);
@@ -507,6 +517,44 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
   });
 
   const realCard=canonicalCardNo(result.cardNo);
+
+  if(staleLocal){
+    const previousCard=String(staleLocal.numeroTarjeta||realCard).trim();
+    if(staleLocal.casaId&&Number(staleLocal.casaId)!==Number(casa.id)){
+      const oldHouse=await Casa.findByPk(staleLocal.casaId,{attributes:['id','controles']});
+      if(oldHouse){
+        await oldHouse.update({controles:removeControlNormalized(oldHouse.controles,previousCard)});
+      }
+    }
+
+    await staleLocal.update({
+      casaId:Number(casa.id),
+      uidDispositivo:result.uid,
+      pinDispositivo:result.pin,
+      nombreDispositivo:displayName,
+      departamentoId:departmentProfile.departamentoId,
+      departamento:departmentProfile.departamento,
+      grupoDispositivo:1,
+      puertasAutorizadas:result.doorMask,
+      timezoneId:result.timezoneId,
+      fechaInicio:start,
+      fechaFin:end,
+      fechaFinOriginal:null,
+      bloqueado:false,
+      origen:'APP',
+      enControlador:true,
+      ultimaLectura:new Date()
+    });
+    await casa.update({controles:mergeControls(casa.controles,previousCard,false)});
+    return {
+      ...staleLocal.toJSON(),
+      numeroSolicitado:requestedCard,
+      numeroTarjetaReal:realCard,
+      normalizado:requestedCard!==realCard,
+      reutilizado:true
+    };
+  }
+
   const tarjeta=await ZkTarjeta.create({
     casaId:Number(casa.id),
     uidDispositivo:result.uid,
@@ -530,7 +578,8 @@ async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaF
     ...tarjeta.toJSON(),
     numeroSolicitado:requestedCard,
     numeroTarjetaReal:realCard,
-    normalizado:requestedCard!==realCard
+    normalizado:requestedCard!==realCard,
+    reutilizado:false
   };
 }
 
