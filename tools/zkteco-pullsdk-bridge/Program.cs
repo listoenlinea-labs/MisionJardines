@@ -349,27 +349,41 @@ app.MapPost("/api/users/validity", async (HttpRequest req, UserValidityRequest b
     if (!Authorized(req)) return Results.Unauthorized();
     await sdkGate.WaitAsync();
     int handle = 0;
+    var stage = "connect";
     try
     {
         handle = await ConnectAsync();
         try { Native.EnableDevice(handle, 0); } catch { }
 
+        var pin = EscapeValue(body.pin);
+        var cardNo = EscapeValue(body.cardNo);
+        if (string.IsNullOrWhiteSpace(pin) || string.IsNullOrWhiteSpace(cardNo))
+            throw new InvalidOperationException("Pin y CardNo son obligatorios para actualizar vigencia");
+
         var start = Date8(body.startDate);
         var end = Date8(body.endDate);
-        var fields = new List<string>();
-        if (!string.IsNullOrWhiteSpace(body.pin)) fields.Add($"Pin={EscapeValue(body.pin)}");
-        if (!string.IsNullOrWhiteSpace(body.cardNo)) fields.Add($"CardNo={EscapeValue(body.cardNo)}");
+
+        // This C3 firmware is more reliable when SetDeviceData(user) receives
+        // the same complete base row used during provisioning, instead of a
+        // partial update containing only dates.
+        var fields = new List<string>
+        {
+            $"Pin={pin}",
+            $"CardNo={cardNo}",
+            "Password=",
+            "Group=1"
+        };
         if (!string.IsNullOrWhiteSpace(start)) fields.Add($"StartTime={start}");
         if (!string.IsNullOrWhiteSpace(end)) fields.Add($"EndTime={end}");
-        if (fields.Count < 2) throw new InvalidOperationException("Datos insuficientes para actualizar vigencia");
 
-        SetData(handle, "user", string.Join("\t", fields) + "\r\n");
-        return Results.Ok(new { ok = true });
+        stage = "set-user-validity";
+        var rc = SetData(handle, "user", string.Join("\t", fields) + "\r\n");
+        return Results.Ok(new { ok = true, pin, cardNo, startDate = start, endDate = end, rc });
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine($"[PullSDK] /api/users/validity: {ex.Message}");
-        return Results.Json(new { ok = false, error = ex.Message }, statusCode: 502);
+        Console.Error.WriteLine($"[PullSDK] /api/users/validity falló en {stage}: {ex.Message}");
+        return Results.Json(new { ok = false, stage, error = ex.Message }, statusCode: 502);
     }
     finally
     {
