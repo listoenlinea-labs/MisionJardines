@@ -102,6 +102,29 @@ int SetData(int handle, string table, string data)
     }
 }
 
+int DeleteData(int handle, string table, string filter)
+{
+    var pTable = Native.AllocZ(table, out var hTable);
+    var pFilter = Native.AllocZ(filter, out var hFilter);
+    var pOpt = Native.AllocZ("", out var hOpt);
+    try
+    {
+        var rc = Native.DeleteDeviceData(handle, pTable, pFilter, pOpt);
+        if (rc < 0)
+        {
+            var err = Native.PullLastError();
+            throw new InvalidOperationException($"DeleteDeviceData({table}) falló: rc={rc}, lastError={err}");
+        }
+        return rc;
+    }
+    finally
+    {
+        if (hTable.IsAllocated) hTable.Free();
+        if (hFilter.IsAllocated) hFilter.Free();
+        if (hOpt.IsAllocated) hOpt.Free();
+    }
+}
+
 app.MapGet("/health", () => Results.Ok(new { ok = true, service = "zkteco-pullsdk-bridge" }));
 
 app.MapGet("/health/auth", (HttpRequest req) =>
@@ -202,6 +225,54 @@ app.MapPost("/api/users", async (HttpRequest req, UserProvisionRequest body) =>
     }
 });
 
+app.MapPost("/api/users/delete", async (HttpRequest req, DeleteUserRequest body) =>
+{
+    if (!Authorized(req)) return Results.Unauthorized();
+
+    var pin = EscapeValue(body.pin);
+    if (string.IsNullOrWhiteSpace(pin))
+        return Results.BadRequest(new { ok = false, error = "Falta Pin para eliminar el usuario" });
+
+    await sdkGate.WaitAsync();
+    int handle = 0;
+    var stage = "connect";
+    try
+    {
+        handle = await ConnectAsync();
+        try { Native.EnableDevice(handle, 0); } catch { }
+
+        stage = "delete-userauthorize";
+        var authRc = DeleteData(handle, "userauthorize", $"Pin={pin}");
+
+        stage = "delete-user";
+        var userRc = DeleteData(handle, "user", $"Pin={pin}");
+
+        return Results.Ok(new
+        {
+            ok = true,
+            pin,
+            cardNo = body.cardNo,
+            authRc,
+            userRc
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[PullSDK] /api/users/delete falló en {stage}: {ex.Message}");
+        return Results.Json(new { ok = false, stage, error = ex.Message }, statusCode: 502);
+    }
+    finally
+    {
+        if (handle > 0)
+        {
+            try { Native.EnableDevice(handle, 1); } catch { }
+            try { Native.Disconnect(handle); } catch { }
+        }
+        await Task.Delay(300);
+        sdkGate.Release();
+    }
+});
+
 app.MapPost("/api/users/validity", async (HttpRequest req, UserValidityRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
@@ -260,6 +331,11 @@ record UserValidityRequest(
     string? endDate
 );
 
+record DeleteUserRequest(
+    string pin,
+    string? cardNo
+);
+
 static class Native
 {
     [DllImport("plcommpro.dll", EntryPoint = "PullLastError", CallingConvention = CallingConvention.StdCall)]
@@ -273,6 +349,9 @@ static class Native
 
     [DllImport("plcommpro.dll", EntryPoint = "SetDeviceData", CallingConvention = CallingConvention.StdCall)]
     public static extern int SetDeviceData(int handle, IntPtr table, IntPtr data, IntPtr options);
+
+    [DllImport("plcommpro.dll", EntryPoint = "DeleteDeviceData", CallingConvention = CallingConvention.StdCall)]
+    public static extern int DeleteDeviceData(int handle, IntPtr table, IntPtr data, IntPtr options);
 
     [DllImport("plcommpro.dll", EntryPoint = "EnableDevice", CallingConvention = CallingConvention.StdCall)]
     public static extern int EnableDevice(int handle, int enable);
