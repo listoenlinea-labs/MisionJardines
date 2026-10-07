@@ -165,46 +165,74 @@ function renderTagDetails(row){
   const unresolved=row.controlesNoEnlazados||[];
   const synced=tags.map(tag=>{
     const s=tagState(tag);
-    return '<div class="tag-item"><div><div class="tag-id">Número de tarjeta: '+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.departamento||tag.nombreDispositivo||'Sin etiqueta')+'</div></div>'+
-      '<div><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
-      '<div><b>Entrada + salida</b><div class="tag-meta">Puertas '+esc(tag.puertasAutorizadas||3)+'</div></div>'+
-      '<div><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Vigencia final</div></div>'+
-      '<div class="tag-actions">'+(canAdmin?(tag.enControlador===false?
-        '<button class="btn mini primary" onclick="addTagToC3('+tag.id+',this)">Agregar en C3</button>':
-        (tag.bloqueado?
-          '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>':
-          '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>')):'')+'</div></div>';
+    const primaryAction=tag.enControlador===false
+      ? '<button class="btn mini primary" onclick="addTagToC3('+tag.id+',this)">Agregar en C3</button>'
+      : (tag.bloqueado
+          ? '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>'
+          : '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>');
+    const adminActions=canAdmin
+      ? primaryAction+'<button class="btn mini ghost-danger" onclick="removeTag('+tag.id+',this)">Eliminar</button>'
+      : '';
+    return '<div class="tag-item">'+
+      '<div><span class="tag-label">TAG</span><div class="tag-id">'+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.departamento||tag.nombreDispositivo||'Sin etiqueta')+'</div></div>'+
+      '<div><span class="tag-label">Estado</span><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
+      '<div><span class="tag-label">Acceso</span><b>Entrada + salida</b><div class="tag-meta">Puertas '+esc(tag.puertasAutorizadas||3)+'</div></div>'+
+      '<div class="tag-validity"><span class="tag-label">Vigencia</span><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Fecha final</div></div>'+
+      '<div class="tag-actions">'+adminActions+'</div>'+
+    '</div>';
   });
   const pending=unresolved.map(card=>
-    '<div class="tag-item"><div><div class="tag-id">Número de tarjeta: '+esc(card)+'</div><div class="tag-meta">Registrado en la vivienda, pendiente de enlazar con el C3-200</div></div>'+
-    '<div><span class="status none"><i class="dot"></i>Sin enlazar</span></div>'+
-    '<div><b>—</b><div class="tag-meta">Puertas</div></div>'+
-    '<div><b>—</b><div class="tag-meta">Vigencia</div></div>'+
-    '<div class="tag-actions"></div></div>'
+    '<div class="tag-item">'+
+      '<div><span class="tag-label">TAG</span><div class="tag-id">'+esc(card)+'</div><div class="tag-meta">Registrado en la vivienda, pendiente de enlazar con el C3-200</div></div>'+
+      '<div><span class="tag-label">Estado</span><span class="status none"><i class="dot"></i>Sin enlazar</span></div>'+
+      '<div><span class="tag-label">Acceso</span><b>—</b><div class="tag-meta">Puertas</div></div>'+
+      '<div class="tag-validity"><span class="tag-label">Vigencia</span><b>—</b><div class="tag-meta">Fecha final</div></div>'+
+      '<div class="tag-actions"></div>'+
+    '</div>'
   );
   const items=[...synced,...pending];
   return '<div class="tag-panel"><div class="tag-list">'+(items.length?items.join(''):'<div class="empty">Esta vivienda todavía no tiene controles registrados.</div>')+'</div></div>';
 }
 function render(){
   const body=$('rows');let enabled=0,blocked=0;
-  if(!currentRows.length){body.innerHTML='<tr><td class="empty" colspan="6">No se encontraron viviendas.</td></tr>';$('mHouses').textContent=0;$('mEnabled').textContent=0;$('mBlocked').textContent=0;return}
+  if(!currentRows.length){
+    body.innerHTML='<div class="empty">No se encontraron viviendas.</div>';
+    $('mHouses').textContent=0;$('mEnabled').textContent=0;$('mBlocked').textContent=0;
+    return;
+  }
+  const expandByDefault=currentRows.length<=4;
   body.innerHTML=currentRows.map(row=>{
     const s=rowState(row); if(s.cls==='on')enabled++; if(s.cls==='off')blocked++;
     const controls=(row.tarjetas?.length||0)+(row.controlesNoEnlazados?.length||0);
     const last=(row.tarjetas||[]).map(t=>t.ultimaLectura).filter(Boolean).sort().at(-1);
-    const main='<tr><td class="house">'+esc(row.calle)+'</td><td><b>'+esc(row.numero)+'</b></td>'+
-      '<td><button class="link-btn" onclick="toggleTags('+row.id+')">'+controls+' '+(controls===1?'control':'controles')+' ▾</button></td>'+
-      '<td><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></td><td>'+fmt(last)+'</td>'+
-      '<td><div class="row-actions">'+(canAdmin?
-        '<button class="btn mini" onclick="openTagModal('+row.id+')">+ TAG</button>'+
-        (s.blocked?'<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Activar todos</button>':'<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear todos</button>'):
-        '<span class="sub">Solo consulta</span>')+'</div></td></tr>';
-    const details='<tr id="tags-'+row.id+'" hidden><td colspan="6">'+renderTagDetails(row)+'</td></tr>';
-    return main+details;
+    const actions=canAdmin
+      ? '<button class="btn mini" onclick="openTagModal('+row.id+')">+ TAG</button>'+
+        (s.blocked
+          ? '<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Activar todos</button>'
+          : '<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear todos</button>')
+      : '<span class="tag-meta">Solo consulta</span>';
+    return '<article class="house-card">'+
+      '<div class="house-top">'+
+        '<div class="house-address"><strong>'+esc(row.calle)+' '+esc(row.numero)+'</strong><span>'+controls+' '+(controls===1?'control':'controles')+' asociados</span></div>'+
+        '<div class="house-summary">'+
+          '<div class="house-summary-item"><small>Estado</small><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
+          '<div class="house-summary-item"><small>Última lectura</small><b>'+fmt(last)+'</b></div>'+
+        '</div>'+
+        '<div class="house-actions">'+actions+'</div>'+
+      '</div>'+
+      '<button class="tag-toggle" data-house-toggle="'+row.id+'" onclick="toggleTags('+row.id+')"><span>'+(expandByDefault?'Ocultar TAGs':'Ver TAGs')+'</span><span>'+controls+' '+(controls===1?'TAG':'TAGs')+'</span></button>'+
+      '<div id="tags-'+row.id+'"'+(expandByDefault?'':' hidden')+'>'+renderTagDetails(row)+'</div>'+
+    '</article>';
   }).join('');
   $('mHouses').textContent=currentRows.length;$('mEnabled').textContent=enabled;$('mBlocked').textContent=blocked;
 }
-function toggleTags(id){const row=$('tags-'+id);if(row)row.hidden=!row.hidden}
+function toggleTags(id){
+  const panel=$('tags-'+id);
+  if(!panel)return;
+  panel.hidden=!panel.hidden;
+  const button=document.querySelector('[data-house-toggle="'+id+'"] span:first-child');
+  if(button)button.textContent=panel.hidden?'Ver TAGs':'Ocultar TAGs';
+}
 window.toggleTags=toggleTags;
 
 async function loadRows(){
