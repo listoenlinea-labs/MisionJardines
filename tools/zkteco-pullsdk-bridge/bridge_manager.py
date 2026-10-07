@@ -164,12 +164,83 @@ def parse_dotenv(path: Path) -> dict[str, str]:
     return result
 
 
+HOSTINGER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/154.0.0.0 Safari/537.36"
+)
+
+
+def _parse_api_body(raw: str) -> Any:
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {"raw": raw}
+
+
+def _hostinger_request_curl(method: str, path: str, api_token: str,
+                            payload: dict[str, Any] | None = None) -> Any:
+    curl = shutil.which("curl.exe") or shutil.which("curl")
+    if not curl:
+        raise ManagerError(
+            "Cloudflare bloqueó el cliente HTTP de Python y no encontré curl.exe para usar el fallback."
+        )
+
+    marker = "__HOSTINGER_HTTP_STATUS__:"
+    cmd = [
+        curl,
+        "--silent",
+        "--show-error",
+        "--location",
+        "--request", method,
+        "--header", f"Authorization: Bearer {api_token}",
+        "--header", "Accept: application/json",
+        "--header", f"User-Agent: {HOSTINGER_USER_AGENT}",
+        "--write-out", f"\\n{marker}%{{http_code}}",
+        HOSTINGER_BASE + path,
+    ]
+    stdin_data = None
+    if payload is not None:
+        cmd.extend([
+            "--header", "Content-Type: application/json",
+            "--data-binary", "@-",
+        ])
+        stdin_data = json.dumps(payload)
+
+    cp = subprocess.run(
+        cmd,
+        input=stdin_data,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    output = cp.stdout or ""
+    if marker not in output:
+        detail = (cp.stderr or output or "curl.exe no devolvió un estado HTTP").strip()
+        raise ManagerError(f"Hostinger API vía curl falló: {detail}")
+
+    raw, status_text = output.rsplit(marker, 1)
+    raw = raw.rstrip("\r\n")
+    try:
+        status = int(status_text.strip())
+    except ValueError as exc:
+        raise ManagerError(f"Estado HTTP inválido devuelto por curl: {status_text!r}") from exc
+
+    if cp.returncode != 0 or status >= 400:
+        detail = raw or (cp.stderr or "").strip()
+        raise ManagerError(f"Hostinger API HTTP {status}: {detail}")
+    return _parse_api_body(raw)
+
+
 def hostinger_request(method: str, path: str, api_token: str,
                       payload: dict[str, Any] | None = None) -> Any:
     body = None
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Accept": "application/json",
+        "User-Agent": HOSTINGER_USER_AGENT,
     }
     if payload is not None:
         body = json.dumps(payload).encode("utf-8")
@@ -178,14 +249,20 @@ def hostinger_request(method: str, path: str, api_token: str,
     try:
         with request.urlopen(req, timeout=30) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
-            if not raw:
-                return {}
-            try:
-                return json.loads(raw)
-            except json.JSONDecodeError:
-                return {"raw": raw}
+            return _parse_api_body(raw)
     except error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
+        # Hostinger está detrás de Cloudflare. Algunas versiones de Python/urllib
+        # pueden disparar Error 1010 (browser_signature_banned). En ese caso
+        # repetimos la solicitud con curl.exe, que además coincide con los
+        # ejemplos oficiales de la API de Hostinger.
+        if exc.code == 403 and (
+            '"error_code":1010' in raw.replace(" ", "")
+            or "browser_signature_banned" in raw
+            or "Error 1010" in raw
+        ):
+            print("Hostinger bloqueó urllib (Cloudflare 1010); reintentando con curl.exe...")
+            return _hostinger_request_curl(method, path, api_token, payload)
         raise ManagerError(f"Hostinger API HTTP {exc.code}: {raw or exc.reason}") from exc
     except error.URLError as exc:
         raise ManagerError(f"No se pudo conectar con Hostinger API: {exc.reason}") from exc
