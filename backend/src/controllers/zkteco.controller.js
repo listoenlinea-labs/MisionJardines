@@ -13,17 +13,19 @@ const {
 }=require('../services/zkteco-direct.service');
 const {simularCorte}=require('../services/zkteco-read.service');
 const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
-const {isPullSdkBridgeConfigured}=require('../services/zkteco-pullsdk-bridge.service');
+const {isPullSdkBridgeConfigured,testBridge}=require('../services/zkteco-pullsdk-bridge.service');
 
 async function estado(req,res){
   try{
     const info=await testDirectConnection();
+    const bridge=isPullSdkBridgeConfigured()?await testBridge():{configured:false};
     res.json({ok:true,data:{
       ...info,
       modelo:'C3-200',
       modo:'DIRECT',
       conexionDirecta:true,
       escrituraUsuarios:isPullSdkBridgeConfigured()?'PULLSDK':'NO_CONFIGURADA',
+      bridge,
       tarjetas:await ZkTarjeta.count()
     }});
   }catch(error){
@@ -84,7 +86,12 @@ async function agregarExistenteC3(req,res){
     const data=await addExistingTagToController(req.params.id);
     res.json({ok:true,message:'TAG agregado y autorizado en el C3-200',data});
   }catch(error){
-    res.status(502).json({ok:false,message:error.message||'No fue posible agregar el TAG al C3-200'});
+    console.error('Error agregando TAG al C3-200:',error);
+    res.status(502).json({
+      ok:false,
+      message:error.message||'No fue posible agregar el TAG al C3-200',
+      error:error.message||String(error)
+    });
   }
 }
 async function importarMdb(req,res){
