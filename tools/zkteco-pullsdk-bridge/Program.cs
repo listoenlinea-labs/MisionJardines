@@ -280,32 +280,110 @@ app.MapPost("/api/users/delete", async (HttpRequest req, DeleteUserRequest body)
     }
 });
 
-app.MapPost("/api/users/validity", async (HttpRequest req, UserValidityRequest body) =>
+app.MapPost("/api/users/access", async (HttpRequest req, UserAccessRequest body) =>
 {
     if (!Authorized(req)) return Results.Unauthorized();
+
+    var pin = EscapeValue(body.pin);
+    if (string.IsNullOrWhiteSpace(pin))
+        return Results.BadRequest(new { ok = false, error = "Falta Pin para modificar el acceso" });
+
     await sdkGate.WaitAsync();
     int handle = 0;
+    var stage = "connect";
     try
     {
         handle = await ConnectAsync();
         try { Native.EnableDevice(handle, 0); } catch { }
 
-        var start = Date8(body.startDate);
-        var end = Date8(body.endDate);
-        var fields = new List<string>();
-        if (!string.IsNullOrWhiteSpace(body.pin)) fields.Add($"Pin={EscapeValue(body.pin)}");
-        if (!string.IsNullOrWhiteSpace(body.cardNo)) fields.Add($"CardNo={EscapeValue(body.cardNo)}");
-        if (!string.IsNullOrWhiteSpace(start)) fields.Add($"StartTime={start}");
-        if (!string.IsNullOrWhiteSpace(end)) fields.Add($"EndTime={end}");
-        if (fields.Count < 2) throw new InvalidOperationException("Datos insuficientes para actualizar vigencia");
+        if (body.authorized)
+        {
+            stage = "set-userauthorize";
+            var timezoneId = Math.Max(1, body.timezoneId);
+            var doorMask = Math.Max(1, body.doorMask);
+            var authRow =
+                $"Pin={pin}\tAuthorizeTimezoneId={timezoneId}\tAuthorizeDoorId={doorMask}\r\n";
+            var rc = SetData(handle, "userauthorize", authRow);
 
-        SetData(handle, "user", string.Join("\t", fields) + "\r\n");
-        return Results.Ok(new { ok = true });
+            return Results.Ok(new
+            {
+                ok = true,
+                authorized = true,
+                pin,
+                timezoneId,
+                doorMask,
+                rc
+            });
+        }
+
+        stage = "delete-userauthorize";
+        var deleteRc = DeleteData(handle, "userauthorize", $"Pin={pin}");
+
+        return Results.Ok(new
+        {
+            ok = true,
+            authorized = false,
+            pin,
+            rc = deleteRc
+        });
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine($"[PullSDK] /api/users/validity: {ex.Message}");
-        return Results.Json(new { ok = false, error = ex.Message }, statusCode: 502);
+        Console.Error.WriteLine($"[PullSDK] /api/users/access falló en {stage}: {ex.Message}");
+        return Results.Json(new { ok = false, stage, error = ex.Message }, statusCode: 502);
+    }
+    finally
+    {
+        if (handle > 0)
+        {
+            try { Native.EnableDevice(handle, 1); } catch { }
+            try { Native.Disconnect(handle); } catch { }
+        }
+        await Task.Delay(300);
+        sdkGate.Release();
+    }
+});
+
+app.MapPost("/api/users/validity", async (HttpRequest req, UserValidityRequest body) =>
+{
+    if (!Authorized(req)) return Results.Unauthorized();
+    await sdkGate.WaitAsync();
+    int handle = 0;
+    var stage = "connect";
+    try
+    {
+        handle = await ConnectAsync();
+        try { Native.EnableDevice(handle, 0); } catch { }
+
+        var pin = EscapeValue(body.pin);
+        var cardNo = EscapeValue(body.cardNo);
+        if (string.IsNullOrWhiteSpace(pin) || string.IsNullOrWhiteSpace(cardNo))
+            throw new InvalidOperationException("Pin y CardNo son obligatorios para actualizar vigencia");
+
+        var start = Date8(body.startDate);
+        var end = Date8(body.endDate);
+
+        // This C3 firmware is more reliable when SetDeviceData(user) receives
+        // the same complete base row used during provisioning, instead of a
+        // partial update containing only dates.
+        var fields = new List<string>
+        {
+            $"Pin={pin}",
+            $"CardNo={cardNo}",
+            "Password=",
+            "Group=1"
+        };
+        if (!string.IsNullOrWhiteSpace(start)) fields.Add($"StartTime={start}");
+        if (!string.IsNullOrWhiteSpace(end)) fields.Add($"EndTime={end}");
+
+        stage = "set-user-validity";
+        var rc = SetData(handle, "user", string.Join("\t", fields) + "\r\n");
+        return Results.Ok(new { ok = true, pin, cardNo, startDate = start, endDate = end, rc });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[PullSDK] /api/users/validity falló en {stage}: {ex.Message}");
+        return Results.Json(new { ok = false, stage, error = ex.Message }, statusCode: 502);
     }
     finally
     {
@@ -336,6 +414,13 @@ record UserValidityRequest(
     string? cardNo,
     string? startDate,
     string? endDate
+);
+
+record UserAccessRequest(
+    string pin,
+    bool authorized,
+    int doorMask = 3,
+    int timezoneId = 1
 );
 
 record DeleteUserRequest(

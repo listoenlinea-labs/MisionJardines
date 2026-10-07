@@ -144,6 +144,15 @@ async function setUserValidity({pin,cardNo,startDate,endDate}){
   });
 }
 
+async function setUserAccess({pin,authorized,doorMask=3,timezoneId=1}){
+  return bridgeRequest('/api/users/access',{
+    pin:String(pin||''),
+    authorized:Boolean(authorized),
+    doorMask:Number(doorMask||3),
+    timezoneId:Number(timezoneId||1)
+  });
+}
+
 async function deleteUser({pin,cardNo}){
   return bridgeRequest('/api/users/delete',{
     pin:String(pin||''),
@@ -156,6 +165,7 @@ module.exports={
   isPullSdkBridgeConfigured,
   provisionUser,
   setUserValidity,
+  setUserAccess,
   deleteUser,
   testBridge,
   describeFetchError

@@ -43,5 +43,8 @@ Para producción conviene publicarlo detrás de HTTPS (IIS, Caddy, nginx en la V
 - GET /health
 - POST /api/users
 - POST /api/users/validity
+- POST /api/users/access (revoca/restaura `userauthorize` para bloqueo físico)
 
 El endpoint de alta escribe primero en user, luego en userauthorize, y vuelve a habilitar el dispositivo aunque ocurra un error.
+
+El bloqueo físico no depende únicamente de EndTime: `/api/users/access` elimina la fila `userauthorize` del Pin al bloquear y la restaura con `AuthorizeTimezoneId` + `AuthorizeDoorId` al activar. El backend relee el C3 antes de confirmar el estado.
