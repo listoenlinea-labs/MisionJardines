@@ -415,6 +415,75 @@ async function clearFilters(){
   currentPage=1;
   await refreshPage(1,{reason:'Limpiando filtros y actualizando página 1…'});
 }
+const ACCESS_RETRY_MAX_ATTEMPTS=5;
+const ACCESS_RETRY_DELAY_MS=1200;
+const waitAccessRetry=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+function isRetryableAccessError(error){
+  const text=errorText(error).toLowerCase();
+  const status=Number(error?.status||0);
+  const nonRetryable=[
+    'tarjeta no encontrada',
+    'la tarjeta no existe en el controlador',
+    'no fue posible determinar el pin',
+    'no está configurado',
+    'no esta configurado',
+    'http 404',
+    'contraseña de comunicación',
+    'sesión expirada'
+  ];
+  if(nonRetryable.some(term=>text.includes(term)))return false;
+  const transient=[
+    'la conexión con el zkteco se cerró inesperadamente',
+    'el zkteco no respondió a tiempo',
+    'tiempo de espera agotado',
+    'timed out',
+    'timeout',
+    'econnreset',
+    'econnrefused',
+    'epipe',
+    'socket hang up',
+    'fetch failed',
+    'pullsdk bridge no respondió',
+    'pullsdk bridge:',
+    'todavía conserva autorización',
+    'todavia conserva autorizacion',
+    'no confirmó la autorización',
+    'no confirmo la autorizacion',
+    'request failed'
+  ];
+  return [502,503,504].includes(status)||transient.some(term=>text.includes(term));
+}
+
+function updateAccessBusy(blocked,scope,attempt,error){
+  const action=blocked?'Bloqueando':'Activando';
+  const noun=scope==='house'?'controles':'TAG';
+  $('busyTitle').textContent='Reintentando… '+action.toLowerCase()+' '+noun;
+  $('busyText').textContent=
+    'El intento '+attempt+' no quedó confirmado por el C3-200. '+
+    'Esperando la respuesta antes de intentar nuevamente. '+
+    (error?'Detalle: '+errorText(error):'');
+}
+
+async function runAccessMutationWithRetry({path,blocked,scope='tag'}){
+  let lastError=null;
+  for(let attempt=1;attempt<=ACCESS_RETRY_MAX_ATTEMPTS;attempt++){
+    try{
+      return await api(path,{
+        method:'PATCH',
+        headers:headers(true),
+        body:JSON.stringify({bloqueado:blocked})
+      });
+    }catch(error){
+      lastError=error;
+      if(!isRetryableAccessError(error)||attempt>=ACCESS_RETRY_MAX_ATTEMPTS)throw error;
+      updateAccessBusy(blocked,scope,attempt,error);
+      await waitAccessRetry(ACCESS_RETRY_DELAY_MS);
+    }
+  }
+  throw lastError||new Error('No fue posible confirmar la acción en ZKTeco');
+}
+
 async function setHouse(id,blocked,button){
   if(!confirm((blocked?'Bloquear':'Habilitar')+' todos los controles de esta vivienda en ZKTeco?'))return;
   showBusy(
@@ -424,15 +493,15 @@ async function setHouse(id,blocked,button){
       :'Restaurando el acceso físico de cada TAG y verificando el resultado directamente en el C3-200.'
   );
   try{
-    const r=await api('/zkteco/viviendas/'+id+'/bloqueo',{
-      method:'PATCH',
-      headers:headers(true),
-      body:JSON.stringify({bloqueado:blocked})
+    const r=await runAccessMutationWithRetry({
+      path:'/zkteco/viviendas/'+id+'/bloqueo',
+      blocked,
+      scope:'house'
     });
     toast(r.message,6000);
     await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
-    toast(errorText(e),10000);
+    toast('No se pudo confirmar la acción después de '+ACCESS_RETRY_MAX_ATTEMPTS+' intentos: '+errorText(e),10000);
   }finally{
     hideBusy();
   }
@@ -446,15 +515,15 @@ async function setTag(id,blocked,button){
       :'Restaurando el permiso físico y verificando que el TAG vuelva a tener acceso en el C3-200.'
   );
   try{
-    const r=await api('/zkteco/tarjetas/'+id+'/bloqueo',{
-      method:'PATCH',
-      headers:headers(true),
-      body:JSON.stringify({bloqueado:blocked})
+    const r=await runAccessMutationWithRetry({
+      path:'/zkteco/tarjetas/'+id+'/bloqueo',
+      blocked,
+      scope:'tag'
     });
     toast(r.message,6000);
     await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
-    toast(errorText(e),10000);
+    toast('No se pudo confirmar la acción después de '+ACCESS_RETRY_MAX_ATTEMPTS+' intentos: '+errorText(e),10000);
   }finally{
     hideBusy();
   }
