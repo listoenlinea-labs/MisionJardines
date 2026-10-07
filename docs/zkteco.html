@@ -214,7 +214,7 @@ async function loadStatus(){
     const r=await api('/zkteco/estado',{headers:headers()});
     const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>Conectado al C3-200</span>';
     $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceWriteMode').textContent=d.escrituraUsuarios==='PULLSDK'?(d.bridge?.controller?'Pull SDK oficial · conectado':(d.bridge?.error?'Pull SDK · '+d.bridge.error:'Pull SDK oficial')):'No configurada';$('deviceCards').textContent=d.tarjetas||0;
-  }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(e.message)}
+  }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(errorText(e))}
 }
 function rowState(row){
   if(row.tarjetas?.length){
@@ -414,7 +414,7 @@ async function clearFilters(){
 }
 async function setHouse(id,blocked,button){
   if(!confirm((blocked?'Bloquear':'Habilitar')+' todos los controles de esta vivienda en ZKTeco?'))return;
-  button.disabled=true;try{const r=await api('/zkteco/viviendas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});toast(r.message);await loadRows()}catch(e){toast(e.message)}finally{button.disabled=false}
+  button.disabled=true;try{const r=await api('/zkteco/viviendas/'+id+'/bloqueo',{method:'PATCH',headers:headers(true),body:JSON.stringify({bloqueado:blocked})});toast(r.message);await loadRows()}catch(e){toast(errorText(e))}finally{button.disabled=false}
 }
 window.setHouse=setHouse;
 async function setTag(id,blocked,button){
@@ -611,7 +611,7 @@ $('refreshLogs').onclick=loadLogs;
 
 async function operate(action){
   const a=$('openGate'),c=$('closeGate');a.disabled=true;c.disabled=true;
-  try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(e.message)}finally{a.disabled=false;c.disabled=false}
+  try{const r=await api('/zkteco/pluma',{method:'POST',headers:headers(true),body:JSON.stringify({accion:action})});const open=action==='ABRIR';$('gateVisual').classList.toggle('open',open);$('gateLabel').textContent=open?'ABIERTA':'CERRADA';toast(r.message)}catch(e){toast(errorText(e))}finally{a.disabled=false;c.disabled=false}
 }
 $('openGate').onclick=()=>operate('ABRIR');
 $('closeGate').onclick=()=>operate('CERRAR');
@@ -623,7 +623,7 @@ $('sync').onclick=async()=>{
   try{
     await refreshPage(currentPage,{notify:true,reason:'Sincronizando esta página con ZKTeco…'});
     await loadStatus();
-  }catch(e){toast(e.message)}
+  }catch(e){toast(errorText(e))}
   finally{hideBusy()}
 };
 ['street','houseNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')applySearch()}));
@@ -631,11 +631,11 @@ const gateCollapse=$('gateCollapse');
 gateCollapse?.addEventListener('toggle',()=>{
   $('gateCollapseLabel').textContent=gateCollapse.open?'Ocultar':'Mostrar';
 });
-if(!canAdmin)$('sync').style.display='none';
+if(!canAdmin){$('sync').style.display='none';$('openLogs').style.display='none';}
 (async()=>{
   await loadStatus();
   await refreshPage(1,{reason:'Actualizando página 1 con ZKTeco…'});
-})().catch(e=>toast(e.message,7000));
+})().catch(e=>toast(errorText(e),7000));
 setInterval(async()=>{
   if(pageRefreshInFlight)return;
   try{await Promise.all([loadStatus(),loadRows()])}catch(_){}
