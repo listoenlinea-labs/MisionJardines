@@ -276,8 +276,34 @@ def hostinger_restart_path(username: str, domain: str) -> str:
     return f"/api/hosting/v1/accounts/{username}/websites/{domain}/nodejs/server/restart"
 
 
+def hostinger_request_with_retry(method: str, path: str, api_token: str,
+                                 payload: dict[str, Any] | None = None,
+                                 attempts: int = 3) -> Any:
+    last: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return hostinger_request(method, path, api_token, payload)
+        except ManagerError as exc:
+            last = exc
+            message = str(exc)
+            retryable = "Hostinger API HTTP 500" in message or "Hostinger API HTTP 502" in message or "Hostinger API HTTP 503" in message
+            if not retryable or attempt >= attempts:
+                raise
+            wait_seconds = 3 * attempt
+            print(
+                f"Hostinger respondió con error temporal ({attempt}/{attempts}); "
+                f"reintentando en {wait_seconds}s..."
+            )
+            time.sleep(wait_seconds)
+    raise ManagerError(f"Hostinger API falló después de {attempts} intentos: {last}")
+
+
 def remote_env_keys(api_token: str, username: str, domain: str) -> set[str]:
-    data = hostinger_request("GET", hostinger_env_path(username, domain), api_token)
+    data = hostinger_request_with_retry(
+        "GET",
+        hostinger_env_path(username, domain),
+        api_token,
+    )
     if not isinstance(data, list):
         raise ManagerError(f"Respuesta inesperada al leer variables Hostinger: {data!r}")
     return {str(item.get("key", "")).strip() for item in data if item.get("key")}
@@ -684,6 +710,8 @@ def update_hostinger(config: dict[str, Any], api_token: str, bridge_token: str,
     banner("ACTUALIZANDO HOSTINGER")
     username = str(config["hostinger_username"])
     domain = str(config["hostinger_domain"])
+
+    print("[1/3] Leyendo las claves actuales de Hostinger...")
     current_keys = remote_env_keys(api_token, username, domain)
     cached_keys = set(cached_env)
 
@@ -709,21 +737,35 @@ def update_hostinger(config: dict[str, Any], api_token: str, bridge_token: str,
     payload = {
         "env_vars": [{"key": key, "value": env[key]} for key in sorted(env)]
     }
-    hostinger_request("PUT", hostinger_env_path(username, domain), api_token, payload)
-    # La API de env ya reinicia Node.js; este restart adicional hace el flujo explícito.
-    time.sleep(1)
-    hostinger_request("POST", hostinger_restart_path(username, domain), api_token)
 
-    # Guarda URL nueva en la caché cifrada para que el set de variables permanezca completo.
+    print("[2/3] Guardando variables de entorno en Hostinger...")
+    # Este PUT ya reinicia la aplicación Node.js según la API oficial de Hostinger.
+    # No hacemos un POST /restart adicional: sería redundante y puede fallar mientras
+    # el proceso todavía está reiniciándose por el propio PUT.
+    hostinger_request_with_retry(
+        "PUT",
+        hostinger_env_path(username, domain),
+        api_token,
+        payload,
+        attempts=3,
+    )
+
+    print("[3/3] Verificando que el conjunto de variables quedó guardado...")
+    time.sleep(3)
+    verified = remote_env_keys(api_token, username, domain)
+    if verified != set(env):
+        raise ManagerError(
+            "Hostinger aceptó la actualización, pero el conjunto de claves "
+            "no coincide después de guardar."
+        )
+
+    # Solo persistimos la URL nueva después de que Hostinger confirmó la operación.
     config["production_env_protected"] = protect_secret(json.dumps(env, ensure_ascii=False))
     config["last_quick_url"] = quick_url
     config["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
     save_json(CONFIG_PATH, config)
 
-    verified = remote_env_keys(api_token, username, domain)
-    if verified != set(env):
-        raise ManagerError("Hostinger respondió, pero el conjunto de claves no coincide después de actualizar.")
-    print(f"Hostinger actualizado y Node.js reiniciado: {domain}")
+    print(f"Hostinger actualizado; Node.js fue reiniciado por el guardado de variables: {domain}")
 
 
 def validate_public(quick_url: str, bridge_token: str) -> None:
