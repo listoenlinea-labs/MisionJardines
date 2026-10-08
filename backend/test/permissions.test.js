@@ -8,8 +8,11 @@ test('security has exactly the requested operational pages plus account', () => 
   assert.deepEqual(pages.filter(p=>canAccess('SEGURIDAD',p)).sort(), ['index.html','bases_datos.html','mapa.html','visitas.html','conmutador.html','reportes.html','reporte.html','seguridad.html','conexion.html','cuenta.html','viviendas.html','zkteco.html'].sort());
 });
 test('residents have complementary pages, no operational access', () => {
-  assert.deepEqual(pages.filter(p=>canAccess('CONDOMINO',p)).sort(), ['cuotas.html','pagos.html','anuncios.html','calendario.html','directorio.html','cuenta.html','viviendas.html'].sort());
+  assert.deepEqual(pages.filter(p=>canAccess('CONDOMINO',p)).sort(), ['cuotas.html','pagos.html','casa-club.html','anuncios.html','calendario.html','directorio.html','cuenta.html','viviendas.html'].sort());
   assert.equal(landing('CONDOMINO'),'cuotas.html');
+  assert.equal(canAccess('CONDOMINO','analisis-cuotas.html'),false);
+  assert.equal(canAccess('SEGURIDAD','casa-club.html'),false);
+  assert.equal(canAccess('ADMINISTRADOR','analisis-cuotas.html'),true);
 });
 test('unknown roles and pages are denied', () => {
   for (const page of pages) assert.equal(canAccess('',page),false);
