@@ -70,25 +70,25 @@ test('newly linked TAG inherits completed house cutoff without another payment',
     await worker.sincronizarCasa(7, { now, dryRun: false });
     assert.deepEqual(writes, ['456']);
 });
-test('confirmed 1500 payment minus 50 fee advances two 500 months from the old cutoff, then synchronizes', async t => {
+test('confirmed 1500 payment minus 50 fee advances four 300 months from the old cutoff, then synchronizes', async t => {
     const models = require('../src/models');
     const payments = require('../src/services/vigencia-mantenimiento.service');
     const tag = row({ numeroTarjeta: '123', fechaFin: '2026-08-10' });
     const validity = setup(t, [tag], { fechaBase: '2026-08-10', fechaFinal: '2026-08-10',
-        tarifaMensual: '500.00', principalInicial: '0.00' });
+        tarifaMensual: '300.00', principalInicial: '0.00' });
     t.mock.method(models.Casa, 'findByPk', async () => ({ id: 7 }));
     t.mock.method(models.Cuota, 'findAll', async () => []);
     t.mock.method(models.PagoReportado, 'findAll', async () => [{ monto: '1500.00', recargo: '50.00', folioOperacion: 'bank1' }]);
     const writes = [];
     t.mock.method(direct, 'writeUserValidity', async (...args) => writes.push(args));
     const result = await payments.actualizar(7, 2, tx);
-    assert.equal(result.fechaFinal, '2026-10-10');
-    assert.equal(result.saldoParcial, '450.00');
+    assert.equal(result.fechaFinal, '2026-12-10');
+    assert.equal(result.saldoParcial, '250.00');
     assert.equal(result.sincronizacion, 'PENDIENTE');
     assert.equal(writes.length, 0, 'payment transaction must not perform TCP writes');
     await worker.sincronizarCasa(7, { now, dryRun: false });
-    assert.deepEqual(writes, [['123', null, '2026-10-10', { mode: 'DIRECT' }]]);
-    assert.equal(tag.fechaFin, '2026-10-10');
+    assert.deepEqual(writes, [['123', null, '2026-12-10', { mode: 'DIRECT' }]]);
+    assert.equal(tag.fechaFin, '2026-12-10');
 });
 test('payment writer changes only EndTime and verifies it even when global mode is PULLSDK', async t => {
     const panel = { Pin: '42', CardNo: '123', Password: 'secret', Group: '2', StartTime: '20200101', EndTime: '20261010' };
