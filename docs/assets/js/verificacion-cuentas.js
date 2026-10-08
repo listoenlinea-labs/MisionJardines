@@ -32,7 +32,7 @@
     top.append(identity); node.append(top, textElement('span', 'Solicita: ' + labels[item.tipoCuenta], 'request-badge'));
     const details = document.createElement('div'); details.className = 'request-details';
     for (const [label, value] of [['Domicilio', item.tipoCuenta === 'SEGURIDAD' ? 'Personal de seguridad · Sin vivienda' : [item.calle, item.numeroCasa].filter(Boolean).join(' ')],
-      ['Teléfono', item.usuario?.telefono || 'No proporcionado'], ['Correo', 'Verificado'], ['Solicitada', date(item.creadoEn)]]) {
+      ['Teléfono', item.usuario?.telefono || 'No proporcionado'], ['Correo', 'Declarado · sin verificación automática'], ['Solicitada', date(item.creadoEn)]]) {
       const p = document.createElement('p'); p.append(textElement('strong', label + ': '), document.createTextNode(value || '—')); details.append(p);
     }
     if (item.estatus !== 'PENDIENTE') {
@@ -57,7 +57,7 @@
       $('requestList').replaceChildren(...data.solicitudes.map(card));
       if (!data.solicitudes.length) {
         const empty = document.createElement('div'); empty.className = 'review-empty';
-        empty.append(textElement('strong', status === 'PENDIENTE' ? 'Todo al día' : 'Sin solicitudes en este estado'), textElement('p', status === 'PENDIENTE' ? 'Aquí aparecerán las cuentas nuevas cuando verifiquen su correo.' : 'Las revisiones quedarán guardadas aquí.'));
+        empty.append(textElement('strong', status === 'PENDIENTE' ? 'Todo al día' : 'Sin solicitudes en este estado'), textElement('p', status === 'PENDIENTE' ? 'Aquí aparecerán las cuentas nuevas apenas envíen su solicitud.' : 'Las revisiones quedarán guardadas aquí.'));
         $('requestList').append(empty);
       }
       $('pageLabel').textContent = 'Página ' + page + ' de ' + pages;
@@ -140,4 +140,8 @@
   $('previousPage').addEventListener('click', () => { if (page > 1) { page--; void load(); } });
   $('nextPage').addEventListener('click', () => { if (page < pages) { page++; void load(); } });
   await load();
+  // Refresca solicitudes en espera sin interferir con el formulario de revisión.
+  if (typeof setInterval === 'function') setInterval(() => {
+    if (status === 'PENDIENTE' && !$('reviewDialog').open && !document.hidden) void load();
+  }, 30000);
 })();
