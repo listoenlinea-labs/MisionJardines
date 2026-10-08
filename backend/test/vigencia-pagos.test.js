@@ -6,7 +6,7 @@ const models = require('../src/models');
 const service = require('../src/services/vigencia-mantenimiento.service');
 const controller = require('../src/controllers/pagos.controller');
 const sequelize = require('../src/config/database');
-const tx = { LOCK: { UPDATE: 'UPDATE' } };
+const tx = { LOCK: { UPDATE: 'UPDATE' }, afterCommit() {} };
 const args = { fechaBase: '2026-08-10', tarifaMensual: '300.00', principalInicial: '900.00' };
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; }, setHeader() {} });
 const row = values => ({ ...values, toJSON() { return { ...this }; }, async update(changes) { Object.assign(this, changes); return this; } });

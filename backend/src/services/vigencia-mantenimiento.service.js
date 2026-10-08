@@ -3,6 +3,13 @@ const { Cuota, PagoReportado, Casa } = require('../models');
 const Vigencia = require('../models/VigenciaMantenimiento');
 const { centavos, validarFecha, calcular, vigente } = require('./vigencia-calculo');
 
+function enviarTrasCommit(casaId, transaction) {
+    // Never hold a payment transaction open while communicating with hardware.
+    transaction.afterCommit(() => {
+        require('./zkteco-vigencias.service').solicitar(casaId);
+    });
+}
+
 async function principalConfirmado(casaId, transaction) {
     const cuotas = await Cuota.findAll({ where: { casaId, estatusPago: { [Op.in]: ['PAGADO', 'PAGO_PARCIAL'] } }, transaction });
     const pagos = await PagoReportado.findAll({ where: { casaId, tipoPago: 'MANTENIMIENTO', estatus: 'VALIDADO' }, transaction });
@@ -23,9 +30,11 @@ async function inicializar(casaId, fechaBase, tarifa, usuarioId, transaction) {
     await bloquearCasa(casaId, transaction);
     if (await Vigencia.findByPk(casaId, { transaction })) throw Object.assign(new Error('La vigencia inicial ya fue registrada'), { status: 409 });
     const principal = await principalConfirmado(casaId, transaction);
-    return Vigencia.create({ casaId, fechaBase, fechaFinal: fechaBase, tarifaMensual: tarifa,
+    const row = await Vigencia.create({ casaId, fechaBase, fechaFinal: fechaBase, tarifaMensual: tarifa,
         principalInicial: principal, principalConfirmado: principal, saldoParcial: 0, actualizadoPorUsuarioId: usuarioId,
         sincronizacion: 'PENDIENTE', intentos: 0 }, { transaction });
+    enviarTrasCommit(casaId, transaction);
+    return row;
 }
 async function actualizar(casaId, usuarioId, transaction) {
     await bloquearCasa(casaId, transaction);
@@ -39,6 +48,7 @@ async function actualizar(casaId, usuarioId, transaction) {
     await row.update({ fechaFinal: result.fechaFinal, principalConfirmado: principal,
         saldoParcial: result.saldoParcial, actualizadoPorUsuarioId: usuarioId,
         sincronizacion: 'PENDIENTE', proximoIntento: null, intentos: 0, errorSincronizacion: null }, { transaction });
+    enviarTrasCommit(casaId, transaction);
     return resumen(row);
 }
 function resumen(row) {

@@ -1,6 +1,5 @@
 const {syncUsers}=require('./zkteco-direct.service');
 
-let timer=null;
 let running=false;
 let lastRun=null;
 let lastOk=null;
@@ -23,15 +22,8 @@ async function runAutoSync(){
   }
 }
 
-function startZktecoAutoSync(){
-  const enabled=String(process.env.ZKTECO_AUTOSYNC_ENABLED??'true').toLowerCase()!=='false';
-  if(!enabled)return;
-  const interval=Math.max(15000,Number(process.env.ZKTECO_AUTOSYNC_MS||30000));
-  setTimeout(runAutoSync,3000);
-  timer=setInterval(runAutoSync,interval);
-  timer.unref?.();
-  console.log(`ZKTeco autosync activo cada ${interval} ms`);
-}
+// Inventory refresh is explicit (POST /api/zkteco/sincronizar), never periodic.
+function startZktecoAutoSync() {}
 
 function getZktecoAutoSyncStatus(){
   return {running,lastRun,lastOk,lastError};

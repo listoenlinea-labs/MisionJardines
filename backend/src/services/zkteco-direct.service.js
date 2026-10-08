@@ -228,6 +228,10 @@ async function syncUsers(){
     }
   }
 
+  for (const casaId of new Set(currentCards.filter(card=>card.enControlador&&card.casaId).map(card=>card.casaId))) {
+    await require('./zkteco-vigencias.service').marcarPendiente(casaId);
+  }
+
   return {
     ok:true,
     totalPanel:payload.users.length,
@@ -1247,4 +1251,12 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
   };
 }
 
-module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,editTag,removeTag,operateGate,dashboard,writeUserValidity};
+// Preserve the durable pending delivery when a tag is created, reassigned or
+// restored. Lazy require avoids the direct-client/worker dependency cycle.
+const conVigencia = operation => async (...args) => {
+  const result = await operation(...args);
+  if(result?.casaId) await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
+  return result;
+};
+
+module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag),removeTag,operateGate,dashboard,writeUserValidity};
