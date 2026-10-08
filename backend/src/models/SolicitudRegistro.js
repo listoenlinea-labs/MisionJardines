@@ -6,6 +6,7 @@ const SolicitudRegistro = sequelize.define('SolicitudRegistro', {
   usuarioId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, unique: true, field: 'usuario_id' },
   casaId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, field: 'casa_id' },
   tipoSolicitado: { type: DataTypes.ENUM('CONDOMINO', 'SEGURIDAD'), allowNull: false, field: 'tipo_solicitado' },
+  tipoVinculo: { type: DataTypes.ENUM('MIEMBRO', 'RESPONSABLE'), allowNull: false, defaultValue: 'MIEMBRO', field: 'tipo_vinculo' },
   estatus: { type: DataTypes.ENUM('PENDIENTE', 'APROBADA', 'RECHAZADA'), allowNull: false, defaultValue: 'PENDIENTE' },
   rolAsignado: { type: DataTypes.STRING(30), allowNull: true, field: 'rol_asignado' },
   revisadoPorUsuarioId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true, field: 'revisado_por_usuario_id' },
