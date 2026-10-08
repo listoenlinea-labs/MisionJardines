@@ -1,6 +1,54 @@
-<!doctype html><html lang="es"><head>
-  <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico?v=20261005">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20261005">
-  <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png?v=20261005">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20261005">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Registro · Misión Jardines</title><link rel="stylesheet" href="assets/css/viviendas.css"></head><body><main style="max-width:650px"><section class="panel"><h1>Crea tu cuenta con una invitación</h1><p>Solicita una invitación a Administración o al responsable de tu vivienda. Recibirás un enlace por correo para registrarte y verificar tu cuenta.</p><p>Si ya tienes cuenta y te invitaron a otra casa, puedes aceptar con tu mismo correo y contraseña.</p><a class="button" href="login.html">Ya tengo cuenta</a></section></main></body></html>
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crear cuenta · Misión Jardines</title>
+<link rel="icon" href="assets/images/favicon.ico">
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#223047;background:#f5f7fa}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:38px 18px;background:radial-gradient(circle at 14% 12%,#fff0e4 0,transparent 35%),radial-gradient(circle at 85% 80%,#ebf8f3 0,transparent 40%),#f5f7fa}
+.page{max-width:760px;margin:auto}.brand{display:flex;align-items:center;gap:12px;margin-bottom:18px;color:#33435a;font-weight:850}.brand img{width:63px;height:55px;object-fit:contain;border:1px solid #f0dac8;border-radius:14px;background:white;padding:5px}
+.panel{padding:clamp(20px,4vw,35px);border:1px solid #e3e9ef;border-radius:23px;background:white;box-shadow:0 18px 55px #26364b0d}
+.eyebrow{font-size:11px;font-weight:900;letter-spacing:.11em;color:#d66a10}.panel h1{margin:8px 0 9px;font-size:clamp(26px,4vw,35px);line-height:1.15}.subtitle{color:#728198;line-height:1.65;font-size:13px;margin-bottom:22px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}label{display:block;color:#33425c;font-size:12px;font-weight:750}input,select{width:100%;margin-top:6px;padding:12px;min-height:45px;border:1px solid #d8e1ec;border-radius:12px;background:#fff;color:#21314b;font:inherit;font-size:13px}input:focus,select:focus{outline:2px solid #f8d4b5;border-color:#e68c43}
+.full{grid-column:1/-1}.switch{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:14px 16px;margin:20px 0;border:1px solid #dbe9df;border-radius:14px;background:#f5fbf7;cursor:pointer;color:#2c6347;text-align:left;font-weight:750}.switch[aria-pressed=true]{border-color:#9fcdb2;background:#eaf8ef}.switch span{font-size:11px;line-height:1.5;color:#637f6f;font-weight:500}.switch b{display:block;font-size:13px;margin-bottom:3px}.switch-indicator{min-width:48px;padding:7px;background:#fff;border:1px solid #cfe3d7;border-radius:99px;text-align:center;font-size:11px}
+.notice{margin:15px 0;padding:12px 14px;border:1px solid #e5dbf4;border-radius:12px;background:#faf7ff;color:#695989;font-size:12px;line-height:1.6}
+.primary{width:100%;min-height:48px;border:0;border-radius:12px;background:linear-gradient(110deg,#f59128,#e7730a);color:#fff;font-size:14px;font-weight:850;cursor:pointer}.primary:disabled{opacity:.55;cursor:wait}
+.status{padding:12px;margin:15px 0;border:1px solid #cfe7dc;border-radius:12px;background:#f3fbf6;font-size:12px;color:#315f4b;line-height:1.6}.status.error{border-color:#f0d6d2;background:#fff7f7;color:#a04443}
+.bottom{text-align:center;margin-top:20px;font-size:13px;color:#65758d}.bottom a{color:#c36b1a;font-weight:750;text-decoration:none}
+[hidden]{display:none!important}@media(max-width:580px){.fields{grid-template-columns:1fr}.full{grid-column:1}.panel{padding:21px}body{padding:18px 12px}}
+</style></head><body>
+<main class="page">
+<div class="brand"><img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines"><span>Misión Jardines · Portal residencial</span></div>
+<section class="panel">
+<div class="eyebrow">REGISTRO DE CUENTAS</div><h1>Crea tu cuenta</h1>
+<p class="subtitle">Completa tus datos y verifica tu correo. La administración confirmará tu identidad y aprobará el acceso antes de que puedas ingresar.</p>
+<form id="registration">
+<div class="fields">
+<label>Nombre *<input name="nombre" maxlength="100" autocomplete="given-name" required></label>
+<label>Apellido paterno *<input name="apellidoPaterno" maxlength="100" autocomplete="family-name" required></label>
+<label>Apellido materno<input name="apellidoMaterno" maxlength="100"></label>
+<label>Teléfono<input name="telefono" inputmode="tel" maxlength="25" autocomplete="tel"></label>
+<label class="full">Correo electrónico *<input name="correo" type="email" maxlength="150" autocomplete="email" required></label>
+</div>
+<button type="button" class="switch" id="securityToggle" aria-pressed="false"><span><b>Soy de seguridad</b>Solicita acceso como personal de seguridad; no necesitas seleccionar una casa.</span><span class="switch-indicator" id="securityState">No</span></button>
+<div class="fields" id="houseFields">
+<label>Calle *<select id="street" required><option value="">Selecciona tu calle</option></select></label>
+<label>Número de casa *<select id="house" name="casaId" required disabled><option value="">Selecciona una calle primero</option></select></label>
+</div>
+<div class="fields" style="margin-top:17px">
+<label>Contraseña *<input name="contrasena" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+<label>Confirmar contraseña *<input id="confirmation" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+</div>
+<div class="notice">Tu cuenta <b>no tendrá acceso inmediato</b>. Se enviará un código a tu correo y después una persona administradora revisará la solicitud. Solo administración asigna los roles de Seguridad y Administrador.</div>
+<button class="primary" id="registerButton" type="submit">Enviar código de verificación</button>
+</form>
+<form id="verifyForm" hidden>
+<p class="subtitle">Escribe el código de 6 dígitos enviado a <b id="verifyEmail"></b>.</p>
+<label>Código de verificación<input id="verificationCode" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+<button class="primary" id="verifyButton" type="submit" style="margin-top:15px">Confirmar correo y solicitar autorización</button>
+</form>
+<div id="message" role="status" aria-live="polite" class="status" hidden></div>
+<div class="bottom">¿Ya tienes una cuenta? <a href="login.html">Iniciar sesión</a></div>
+</section></main>
+<script src="assets/js/registro-publico.js?v=20261008"></script>
+</body></html>
