@@ -246,6 +246,11 @@ function zkDateToday(){
 }
 function tagState(tag){
   if(tag.enControlador===false)return{label:'No confirmado en C3',cls:'none'};
+  // La base conserva la última presencia positiva. Una lectura antigua no
+  // acredita que el TAG siga físicamente en ese panel hoy.
+  const leido=tag.ultimaLectura?new Date(tag.ultimaLectura).getTime():0;
+  if(!leido || !Number.isFinite(leido) || Date.now()-leido>5*60*1000)
+    return{label:'Presencia por verificar',cls:'none'};
   if(tag.bloqueado)return{label:'Bloqueado',cls:'off'};
   if(tag.fechaFin&&String(tag.fechaFin).slice(0,10)<zkDateToday())
     return{label:'Vigencia vencida',cls:'off'};
@@ -255,8 +260,10 @@ function rowState(row){
   if(row.tarjetas?.length){
     const live=row.tarjetas.filter(t=>t.enControlador!==false);
     if(!live.length)return{label:'Sin enlace C3',cls:'none',blocked:false};
-    const blocked=live.every(t=>t.bloqueado);
-    const expired=live.every(t=>tagState(t).cls==='off');
+    const recientes=live.filter(t=>tagState(t).cls!=='none');
+    if(!recientes.length)return{label:'Verificar inventario',cls:'none',blocked:false};
+    const blocked=recientes.every(t=>t.bloqueado);
+    const expired=recientes.every(t=>tagState(t).cls==='off');
     if(blocked)return{label:'Bloqueada',cls:'off',blocked:true};
     if(expired)return{label:'Vigencia vencida',cls:'off',blocked:false};
     return{label:'Sincronizado',cls:'on',blocked:false};
