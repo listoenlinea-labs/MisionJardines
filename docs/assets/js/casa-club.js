@@ -126,8 +126,9 @@
   const r=adminRows.find(x=>Number(x.id)===Number(b.dataset.paid));if(!r)return;
   const folio=prompt('Folio de pago verificado (puede quedar vacío):',r.folio||'');if(folio===null)return;
   const ok=confirm(r.pagado?'¿Marcar este pago como pendiente?':'¿Confirmas que el pago aparece en la cuenta bancaria?');
+  if(!ok)return;
   b.disabled=true;
-  try{await api('/administracion/'+Number(r.id),'PATCH',{accion:'PAGO',pagado:!r.pagado,folio});notify(ok?'Movimiento registrado.':'Movimiento actualizado.');await adminList();}
+  try{await api('/administracion/'+Number(r.id),'PATCH',{accion:'PAGO',pagado:!r.pagado,folio});notify('Movimiento registrado.');await adminList();}
   catch(err){notify(err.message,true);}
   finally{b.disabled=false;}
  });
