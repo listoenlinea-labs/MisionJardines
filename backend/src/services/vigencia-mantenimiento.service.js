@@ -64,8 +64,12 @@ async function actualizar(casaId, usuarioId, transaction) {
         enviarTrasCommit(casaId, transaction);
         return resumen(created);
     }
+    // No alterar la línea base de vigencias antiguas configuradas manualmente
+    // con capital ya reconocido. El inicio automático tiene capital inicial 0.
+    const inicioAutomatico = row.fechaBase === mensualidades.CORTE_INICIAL &&
+        centavos(row.principalInicial || 0) === 0;
     const principal = await principalConfirmado(casaId, transaction,
-        { desde: row.fechaBase === mensualidades.CORTE_INICIAL ? mensualidades.INICIO : null });
+        { desde: inicioAutomatico ? mensualidades.INICIO : null });
     const result = calcular({ fechaBase: row.fechaBase, tarifaMensual: row.tarifaMensual,
         principalInicial: row.principalInicial, principalConfirmado: principal });
     await row.update({ fechaFinal: result.fechaFinal, principalConfirmado: principal,
