@@ -1349,10 +1349,12 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
 
 // Preserve the durable pending delivery when a tag is created, reassigned or
 // restored. Lazy require avoids the direct-client/worker dependency cycle.
-const conVigencia = operation => async (...args) => {
+const conVigencia = (operation, debeSincronizar = () => true) => async (...args) => {
   const result = await operation(...args);
-  if(result?.casaId) await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
+  if(result?.casaId && debeSincronizar(result)) await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
   return result;
 };
 
-module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag),removeTag,operateGate,dashboard,writeUserValidity};
+// Una fecha manual no genera una nueva entrega de la vigencia financiera.
+// Reemplazar o reasignar el TAG sí debe heredar la vigencia de su vivienda.
+module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag, result => result.numeroCambiado || result.viviendaCambiada),removeTag,operateGate,dashboard,writeUserValidity};

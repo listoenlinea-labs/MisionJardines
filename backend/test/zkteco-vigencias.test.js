@@ -9,6 +9,43 @@ const worker = require('../src/services/zkteco-vigencias.service');
 const { C3Client } = require('../src/services/zkteco-c3-client.service');
 const now = new Date('2026-10-08T18:00:00Z');
 const tx = { LOCK: { UPDATE: 'UPDATE' }, afterCommit() {} };
+
+for (const reassigned of [false, true]) {
+    test(reassigned ? 'editing a house association still queues its maintenance cutoff' :
+        'manual date edit persists without queueing the old maintenance cutoff', async t => {
+        const Casa = require('../src/models/Casa');
+        const panel = { Pin: '99158458', CardNo: '5112343', StartTime: '20200101', EndTime: '20260910' };
+        const tag = { id: 1, casaId: 5, numeroTarjeta: '5112343', fechaInicio: '2020-01-01',
+            fechaFin: '2026-09-10', enControlador: true,
+            async update(values) { Object.assign(this, values); },
+            async reload() { return this; }, toJSON() { return { ...this }; } };
+        const houses = [5, 6].map(id => ({ id, calle: 'Gardenias', numero: String(id), controles: '5112343',
+            async update(values) { Object.assign(this, values); } }));
+        t.mock.method(Casa, 'findByPk', async id => houses.find(h => h.id === Number(id)));
+        t.mock.method(Casa, 'findAll', async options => houses.filter(h => h.numero === options.where.numero));
+        t.mock.method(Tags, 'findByPk', async () => tag);
+        t.mock.method(Tags, 'findAll', async () => [tag]);
+        t.mock.method(Tags, 'findOne', async () => null);
+        t.mock.method(C3Client.prototype, 'connect', async () => {});
+        t.mock.method(C3Client.prototype, 'disconnect', async () => {});
+        t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [{ ...panel }] :
+            [{ Pin: panel.Pin, AuthorizeDoorId: '3', AuthorizeTimezoneId: '1' }]);
+        t.mock.method(C3Client.prototype, 'putRecord', async (table, values) => {
+            assert.equal(table, 'user'); Object.assign(panel, values);
+        });
+        const oldMode = process.env.ZKTECO_WRITE_MODE;
+        process.env.ZKTECO_WRITE_MODE = 'DIRECT';
+        t.after(() => { if (oldMode === undefined) delete process.env.ZKTECO_WRITE_MODE;
+            else process.env.ZKTECO_WRITE_MODE = oldMode; });
+        const queued = [];
+        t.mock.method(worker, 'marcarPendiente', async id => queued.push(id));
+        const result = await direct.editTag(1, { fechaFin: '2026-11-10',
+            ...(reassigned ? { calle: 'Gardenias', numero: '6' } : {}) });
+        assert.equal(String(panel.EndTime), '20261110');
+        assert.equal(result.fechaFin, '2026-11-10');
+        assert.deepEqual(queued, reassigned ? [6] : []);
+    });
+}
 const row = data => ({ ...data, async update(values, options) {
     assert.equal(options.transaction, tx); Object.assign(this, values); return this;
 } });
