@@ -528,6 +528,16 @@ async function descargarRecibo(req, res) {
     }
 }
 
+async function obtenerComprobantePropio(req,res){
+ try{
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1||!req.usuario.casaId)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
+  const row=await PagoReportado.findOne({where:{id,casaId:req.usuario.casaId},attributes:['id','comprobanteData','comprobanteNombre','comprobanteMime']});
+  if(!row)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
+  res.setHeader('Cache-Control','private, no-store');
+  return res.json({ok:true,data:{comprobanteData:row.comprobanteData,comprobanteNombre:row.comprobanteNombre,comprobanteMime:row.comprobanteMime}});
+ }catch(e){console.error('Comprobante propio:',e);return res.status(503).json({ok:false,message:'No fue posible consultar el comprobante'});}
+}
 module.exports = {
     obtenerConfiguracion,
     listarMisPagos,
@@ -535,7 +545,7 @@ module.exports = {
     crearCuotaExtraordinaria,
     desactivarCuotaExtraordinaria,
     reportarPago,
-    descargarRecibo, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
+    descargarRecibo, obtenerComprobantePropio, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
 };
 
 async function obtenerVigencia(req, res) {

@@ -23,7 +23,8 @@
   const groups = [
     { label: '', items: [{ page: 'index.html', label: 'Inicio', icon: 'home' },{page:'viviendas.html',label:'Mis viviendas',icon:'residents'}] },
     { label: 'Comunidad', items: [
-      { page: 'cuotas.html', label: 'Cuotas', icon: 'payment', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO' },
+      { page: 'cuotas.html', label: 'Administración de cuotas', icon: 'payment', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO' },
+      { page: 'casa-club.html', label: 'Casa Club', icon: 'calendar', roles: 'SUPER_ADMIN,ADMINISTRADOR,CONDOMINO' },
       { page: 'pagos.html', label: 'Pagos', icon: 'payment', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,CONDOMINO' },
       { page: 'bases_datos.html', label: 'Residentes', icon: 'residents', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
       { page: 'mapa.html', label: 'Mapa', icon: 'map', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO' },

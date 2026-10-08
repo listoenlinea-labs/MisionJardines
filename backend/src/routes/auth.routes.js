@@ -39,6 +39,7 @@ router.post('/registro/verificar', codigoLimiter, verificarRegistro);
 router.get('/cuentas', autenticarToken, administracion, cuentas.listar);
 router.get('/cuentas/viviendas', autenticarToken, administracion, cuentas.viviendas);
 router.patch('/cuentas/:id', autenticarToken, administracion, cuentas.revisar);
+router.patch('/cuentas/:id/revocar', autenticarToken, administracion, cuentas.revocar);
 
 router.get(
     '/perfil',

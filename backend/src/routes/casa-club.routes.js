@@ -1,0 +1,13 @@
+const router=require('express').Router();
+const {autenticarToken}=require('../middlewares/auth.middleware');
+const {autorizarRoles}=require('../middlewares/roles.middleware');
+const club=require('../controllers/casa-club.controller');
+router.use(autenticarToken);
+router.use(autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','CONDOMINO'));
+router.get('/fechas',club.fechas);
+router.get('/mias',club.mias);
+router.post('/reservas',club.crear);
+router.patch('/reservas/:id/cancelar',club.cancelar);
+router.get('/administracion',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.listar);
+router.patch('/administracion/:id',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.revisar);
+module.exports=router;
