@@ -231,6 +231,7 @@ async function syncUsers(){
   // Un diagnóstico físico explícito mostrará cuáles faltaron en la lectura.
   const sinConfirmarEnLectura=currentCards.filter(item=>
     !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).length;
+  const reconocidos=currentCards.length-sinConfirmarEnLectura;
 
   // Solo fechas/vinculaciones realmente desincronizadas disparan una
   // escritura TCP; la lectura periódica no debe reescribir todos los TAGs.
@@ -246,6 +247,7 @@ async function syncUsers(){
     autorizaciones:payload.auth.length,
     ausentes:0,
     noObservados:sinConfirmarEnLectura,
+    reconocidos,
     previamenteConfirmados:diagnostico.previouslyConfirmed,
     camposDeTarjeta:diagnostico.fields.filter(x=>/card|pin|uid/i.test(x)),
     advertencia:sinConfirmarEnLectura?'Hay TAGs no vistos en la lectura; no se marcaron eliminados ni se crearon registros físicos.':null
