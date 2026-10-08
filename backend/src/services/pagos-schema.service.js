@@ -133,6 +133,14 @@ async function asegurarEsquemaPagos() {
 
     console.log('[Pagos] Tabla folios_consecutivos verificada');
     await require('../models/VigenciaMantenimiento').sync();
+    const vigenciaColumns = await queryInterface.describeTable('vigencias_mantenimiento');
+    for (const [name, definition] of Object.entries({
+        sincronizacion: { type: DataTypes.STRING(24), allowNull: false, defaultValue: 'PENDIENTE' },
+        sincronizado_en: { type: DataTypes.DATE, allowNull: true },
+        proximo_intento: { type: DataTypes.DATE, allowNull: true },
+        intentos: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+        error_sincronizacion: { type: DataTypes.STRING(1000), allowNull: true }
+    })) await ensureColumn(queryInterface, 'vigencias_mantenimiento', vigenciaColumns, name, definition);
     await Cuota.sync();
     const cuotaColumns = await queryInterface.describeTable('cuotas');
     await ensureColumn(queryInterface, 'cuotas', cuotaColumns, 'recargo', { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 });

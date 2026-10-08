@@ -31,9 +31,24 @@ Una operación bancaria reflejada en ambas pantallas debe tener exactamente la m
 
 La migración de inicio crea `vigencias_mantenimiento` y añade `cuotas.recargo` sin borrar datos. Debe reiniciarse el backend para aplicar el esquema antes de publicar la nueva pantalla. Los scripts de Pagos están en `docs/assets/js/pagos.js` y `pagos-pdf.js`.
 
-## Límites de integración
+## Sincronización con ZKTeco
 
-La vigencia es la fecha deseada en la plataforma y se devuelve con `sincronizacion: NO_IMPLEMENTADA`. Este cambio no envía órdenes al ZKTeco ni modifica sus tarjetas o plumas. Falta conectar esta fecha con la sincronización de tags de cada vivienda y confirmar que el controlador la aplicó. La pantalla muestra esa limitación.
+La inicialización y cada recálculo dejan `sincronizacion: PENDIENTE` dentro de la misma transacción del pago. Después de confirmar esa transacción, `zkteco-vigencias.service.js` procesa la fecha final de todos los tags vinculados a la vivienda con `en_controlador=true`, usando `writeUserValidity` y exclusivamente TCP directo. No utiliza bridge aunque el modo global sea AUTO o PULLSDK.
+
+El proceso cambia únicamente `user.EndTime`, conserva `StartTime` y las autorizaciones de puertas, y verifica la fecha leyendo nuevamente el controlador. No activa relés ni quita bloqueos manuales. También actualiza una fecha de restauración previamente guardada para que una activación manual posterior no recupere una vigencia antigua. Un pago no necesariamente deja acceso vigente: si la fecha calculada todavía está vencida, el TAG continúa vencido.
+
+Si la conexión falla, el pago permanece confirmado y la sincronización queda en ERROR, con reintentos entre 30 segundos y 15 minutos. Los pendientes sobreviven a reinicios. Se repite la fecha absoluta, sin sumar meses otra vez. La fila de vigencia y las tarjetas se bloquean en una transacción independiente mientras se escribe, para impedir escrituras obsoletas entre procesos y pagos concurrentes; un recálculo concurrente puede esperar a que termine esa escritura. También se revisan gradualmente las viviendas completadas para aplicar la fecha a nuevos tags o corregir diferencias detectadas por la lectura automática.
+
+Estados consultables en `GET /api/pagos/vigencia`: PENDIENTE, COMPLETADO (fecha confirmada), ERROR (se reintentará), SIN_TAGS (falta vincular/importar tarjetas), SIMULACION (`ZKTECO_DRY_RUN=true`) y SIN_CONFIGURAR (falta fecha inicial). El detalle interno del último error queda en `vigencias_mantenimiento.error_sincronizacion`; no se expone al residente.
+
+Para producción:
+
+1. Configurar host, puerto externo y contraseña del C3-200 con las variables `ZKTECO_DIRECT_*` y `ZKTECO_COMM_PASSWORD` existentes.
+2. Verificar la asociación real de cada vivienda con sus tags e ingresar una sola vez su fecha final manual, siempre día 10. El historial previo ya cobrado queda como referencia, sin conceder meses adicionales.
+3. Establecer `ZKTECO_DRY_RUN=false` para habilitar escrituras y `ZKTECO_WRITE_MODE=DIRECT` para que las operaciones manuales también eviten el bridge.
+4. Reiniciar el backend: la migración añade las columnas de seguimiento sin eliminar datos y arranca el proceso independiente del autosync. `ZKTECO_VIGENCIAS_MS` ajusta la revisión (15 segundos por defecto); el tiempo total depende del volumen y de los reintentos.
+
+No se ejecuta una prueba física durante las pruebas automatizadas: las respuestas TCP y el almacenamiento se simulan. La primera prueba real debe comprobar EndTime del tag de prueba en el controlador y la vigencia inclusiva del día 10.
 
 No se incorpora una pasarela bancaria ni se generan automáticamente cuotas mensuales. Un futuro webhook de pago debe verificar firma, monto y operación única, y usar la misma transacción de confirmación/recalculo; nunca confirmar un pago desde el navegador solamente. La tarifa queda fijada al inicializar; cualquier cambio de tarifa requiere una migración de periodos, no modificar el valor retroactivamente.
 

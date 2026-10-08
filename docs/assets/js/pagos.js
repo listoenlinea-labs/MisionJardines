@@ -253,6 +253,10 @@
       try {
         const d = await api('/pagos/vigencia', { headers: headers() }); validity = d.data;
         $('validityDate').textContent = validity.pendienteConfiguracion ? 'Fecha inicial pendiente' : 'Fecha final: ' + validity.fechaFinal;
+        $('validitySync').textContent = ({ COMPLETADO: 'Fecha confirmada en los tags del controlador.',
+          PENDIENTE: 'Actualización de tags pendiente.', ERROR: 'Actualización pendiente; se reintentará automáticamente.',
+          SIN_TAGS: 'Falta vincular los tags de esta vivienda al controlador.', SIMULACION: 'Sincronización en modo de prueba.',
+          SIN_CONFIGURAR: 'Administración debe registrar la fecha inicial.' })[validity.sincronizacion] || 'Actualización de tags pendiente.';
         $('validityDetail').textContent = validity.pendienteConfiguracion ? 'Administración debe registrar la fecha final actual.' : (validity.vigenteSegunFecha ? 'Vigente según la fecha calculada. ' : 'Fecha calculada vencida. ') + 'Abono acumulado: ' + money(validity.saldoParcial);
         updatePreview();
       } catch (e) { $('validityDate').textContent = 'No fue posible consultar la vigencia'; $('validityDetail').textContent = e.message; }
