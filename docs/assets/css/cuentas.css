@@ -30,3 +30,13 @@
 @media(max-width:760px){.registration-shell{display:block;margin:16px;border-radius:22px}.registration-story{padding:24px;gap:20px}.story-copy h1{font-size:31px;margin-bottom:10px}.story-copy p{font-size:13px}.registration-steps,.story-note{display:none}.registration-content{padding:26px 24px}.back-link{margin-bottom:22px}.review-main{padding:74px 16px 30px}.review-heading{align-items:flex-start}.review-heading .account-button{padding:10px 12px}.review-panel{padding:17px;border-radius:17px}.review-intro{padding:16px}.review-toolbar{gap:12px}.request-card{padding:18px}.dialog-inner{padding:22px}}
 @media(max-width:420px){.account-grid{grid-template-columns:1fr}.registration-shell{margin:10px}.registration-content{padding:24px 19px}.registration-story{padding:22px}.review-heading{flex-direction:column}.review-tabs{width:100%}.review-tab{flex:1;padding:9px 7px}.house-search{flex-wrap:wrap}.house-search input{flex-basis:100%}.dialog-actions .account-button{flex:1}.review-pagination{gap:10px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+/* Búsqueda administrativa y revocación segura */
+.account-review .account-search-row{display:grid;grid-template-columns:1.35fr 1fr .85fr auto;gap:10px;align-items:end;margin:0 0 16px}
+.account-review .account-search-row label{font-size:10px;color:#7c7f96;font-weight:800}
+.account-review .account-search-row input{display:block;min-width:0;width:100%;margin-top:6px;padding:12px;border:1px solid #dddfea;border-radius:12px;background:#fff;color:#27344e;font:inherit}
+.account-review .account-search-row button{background:#fbf6ff;color:#795f98;border:1px solid #e6d8f2;padding:12px;border-radius:11px;font-size:11px;font-weight:800;cursor:pointer}
+.account-review .revoke-access{display:inline-flex;margin-top:12px;border:1px solid #edc7d0;border-radius:10px;padding:9px 14px;background:#fff2f4;color:#af4654;font-size:11px;font-weight:850;cursor:pointer}
+.account-review .revoked-label{display:inline-flex;margin-top:12px;background:#f1eef5;color:#7b6d90;padding:7px 10px;border-radius:9px;font-size:10px}
+@media(max-width:900px){.account-review .account-search-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.account-review .account-search-row{grid-template-columns:1fr}}
