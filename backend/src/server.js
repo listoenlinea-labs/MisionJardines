@@ -26,6 +26,7 @@ async function iniciarServidor() {
         );
 
         await asegurarEsquemaPagos();
+        await require('./services/registro-publico-schema.service').asegurarRegistroPublico();
         await require('./services/viviendas-schema.service').asegurarViviendas();
         await require('./services/zkteco-schema.service').asegurarEsquemaZkteco();
         try {
