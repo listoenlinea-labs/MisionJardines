@@ -1,0 +1,38 @@
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verificación de cuentas · Misión Jardines</title>
+<link rel="icon" href="assets/images/favicon.ico">
+<script src="assets/js/permissions.js?v=20261008-accounts"></script>
+<script src="assets/js/page-access.js?v=20261001"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7fb;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#23324a;padding:28px}
+main{width:min(1240px,100%);margin:0 auto}header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:22px 24px;background:linear-gradient(120deg,#fff8f3,#f8f5ff 55%,#f5fcf8);border:1px solid #e6e8ed;border-radius:21px;margin-bottom:16px}
+.eyebrow{color:#ca6515;letter-spacing:.12em;font-size:10px;font-weight:900}h1{margin:5px 0 8px;font-size:clamp(23px,3vw,33px)}header p{color:#78859b;font-size:12px;line-height:1.5;margin:0}
+button{font:inherit;cursor:pointer}.refresh{background:white;border:1px solid #dce4ef;color:#42546e;border-radius:11px;padding:10px 16px;font-size:12px;font-weight:750}
+.banner{border:1px solid #d9e6de;background:#f6fbf8;border-radius:13px;padding:12px 15px;margin-bottom:15px;font-size:12px;color:#55705d}
+.summary{color:#8590a2;font-size:11px;font-weight:800;margin:0 0 11px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.card{background:#fff;border:1px solid #e2e7f0;border-radius:17px;padding:18px;box-shadow:0 8px 24px #26354a08}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1px solid #eef1f5;padding-bottom:12px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0;color:#25324b}.email{display:block;margin:7px 0;color:#728099;font-size:12px;overflow-wrap:anywhere}
+.badge{background:#fff3df;color:#b56a16;border-radius:99px;padding:7px 9px;font-size:10px;font-weight:800}
+.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:12px}.meta>div{border:1px solid #eaf0f4;border-radius:10px;padding:10px;background:#fbfcfe;overflow-wrap:anywhere}
+.meta small{display:block;color:#8490a4;margin-bottom:4px;font-size:9px}.meta strong{font-size:12px;color:#34445e}
+.formrow{display:grid;grid-template-columns:1fr 1.3fr;gap:10px}label{display:block;font-size:11px;color:#63728c;font-weight:700}
+select,textarea{margin-top:6px;width:100%;padding:10px;border:1px solid #d9e2eb;border-radius:10px;background:#fff;color:#27344e;font:inherit;font-size:12px}
+textarea{resize:vertical;min-height:57px}.notes{margin-top:10px}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:13px}.approve,.reject{border:1px solid transparent;border-radius:11px;padding:10px 15px;font-size:12px;font-weight:800}
+.approve{background:#e27810;color:#fff}.reject{background:#fff5f5;color:#b24451;border-color:#f2d8dd}.approve:disabled,.reject:disabled{opacity:.5;cursor:wait}
+.empty{padding:35px;border:1px dashed #d9e5dd;border-radius:16px;color:#738d80;background:#fff;text-align:center;font-size:13px}
+#notice{padding:12px 14px;border-radius:12px;background:#fff4e8;color:#9b5a26;margin-bottom:15px;font-size:12px}[hidden]{display:none!important}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}}@media(max-width:600px){body{padding:15px}header{padding:16px;align-items:flex-start}.meta,.formrow{grid-template-columns:1fr}.actions button{flex:1}}
+</style></head><body>
+<main>
+<header><div><span class="eyebrow">ADMINISTRACIÓN · SEGURIDAD DE ACCESOS</span><h1>Verificación de cuentas</h1><p>Revisa cada solicitud, confirma la identidad y la vivienda antes de autorizar el acceso. Los roles de Seguridad y Administrador requieren aprobación explícita.</p></div><button class="refresh" id="refresh" type="button">Actualizar</button></header>
+<div class="banner">Las cuentas nuevas permanecen bloqueadas hasta su aprobación. Verifica personalmente que los datos correspondan a una persona autorizada antes de elegir el rol.</div>
+<div id="notice" hidden role="status" aria-live="polite"></div>
+<div class="summary" id="count">Cargando solicitudes…</div>
+<div id="requests" class="grid"></div>
+</main>
+<script src="assets/js/verificacion-cuentas.js?v=20261008"></script>
+<script src="assets/js/site-sidebar.js?v=20261001"></script>
+</body></html>
