@@ -32,8 +32,9 @@ function prepare(t,{users=null,authorizations=null,initialConfirmed=false}={}){
  return {items,marked};
 }
 test('Gardenias 5: 4 tags previously unconfirmed become confirmed when the C3 actually returns them',async t=>{
- const {items}=prepare(t);
+ const {items,marked}=prepare(t);
  const out=await direct.syncUsers();
+ assert.deepEqual(marked, [], 'importing changed/new tags must not schedule hardware writes');
  assert.equal(out.reconocidos,4);assert.equal(out.noObservados,0);
  assert.deepEqual(items.map(x=>x.enControlador),[true,true,true,true]);
  assert.deepEqual(items.map(x=>x.bloqueado),[false,false,false,true]);

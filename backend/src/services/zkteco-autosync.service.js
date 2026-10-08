@@ -17,9 +17,6 @@ async function runAutoSync(){
       lastRun=new Date();
       lastOk=result;
       lastError=null;
-      // Solo inicia cortes generales cuando Administración lo habilitó.
-      void require('./zkteco-corte-inicial.service').prepararCortesOctubre().catch(error =>
-        console.error('ZKTeco corte inicial:',error.message));
       return result;
     }catch(error){
       lastRun=new Date();
