@@ -146,6 +146,10 @@ async function syncUsers(){
     if(key&&key!=='0')liveKeys.add(key);
   }
 
+  // Si userauthorize vuelve vacío cuando conocemos TAGs activos, puede
+  // tratarse de una lectura parcial. Nunca convertirlos todos en BLOQUEADO.
+  const permisosVerificables=payload.authReadable &&
+    !(payload.auth.length===0 && currentCards.some(c=>!c.bloqueado));
   const authByPin=new Map(payload.auth.map(row=>[String(inventario.pinFila(row)??'').trim(),row]));
   let processed=0,linked=0;
 
@@ -189,10 +193,10 @@ async function syncUsers(){
       timezoneId:auth
         ? (Number(inventario.zonaFila(auth)||0)||null)
         : (existing?.timezoneId||null),
-      fechaInicio:fromDateNumber(inventario.inicioFila(row)),
-      fechaFin:fromDateNumber(inventario.finalFila(row)),
+      fechaInicio:fromDateNumber(inventario.inicioFila(row)) || existing?.fechaInicio || null,
+      fechaFin:fromDateNumber(inventario.finalFila(row)) || existing?.fechaFin || null,
       casaId,
-      bloqueado:payload.authReadable
+      bloqueado:permisosVerificables
         ? (!auth || Number(inventario.puertasFila(auth)||0)<=0)
         : Boolean(existing?.bloqueado),
       origen:existing?.origen||'ZKTECO',
@@ -245,12 +249,15 @@ async function syncUsers(){
     procesados:processed,
     vinculados:linked,
     autorizaciones:payload.auth.length,
+    autorizacionesConfiables:permisosVerificables,
     ausentes:0,
     noObservados:sinConfirmarEnLectura,
     reconocidos,
     previamenteConfirmados:diagnostico.previouslyConfirmed,
     camposDeTarjeta:diagnostico.fields.filter(x=>/card|pin|uid/i.test(x)),
-    advertencia:sinConfirmarEnLectura?'Hay TAGs no vistos en la lectura; no se marcaron eliminados ni se crearon registros físicos.':null
+    advertencia:[sinConfirmarEnLectura?'Hay TAGs no vistos; no se marcaron eliminados.':null,
+      !permisosVerificables?'Autorizaciones de puertas no verificadas; estados manuales conservados.':null
+    ].filter(Boolean).join(' ') || null
   };
 }
 
