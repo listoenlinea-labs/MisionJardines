@@ -20,12 +20,16 @@ async function listar(req, res) {
         const cond=[{estatus}];
         if(calle)cond.push({calle:{[Op.like]:'%'+calle+'%'}});
         if(numero)cond.push({numeroCasa:{[Op.like]:'%'+numero+'%'}});
-        if(nombre)cond.push({[Op.or]:[
-          {'$usuario.nombre$':{[Op.like]:'%'+nombre+'%'}},
-          {'$usuario.apellidoPaterno$':{[Op.like]:'%'+nombre+'%'}},
-          {'$usuario.apellidoMaterno$':{[Op.like]:'%'+nombre+'%'}}
-        ]});
-        const { rows, count } = await SolicitudCuenta.findAndCountAll({ where: {[Op.and]:cond}, subQuery:false,
+        if(nombre){
+          const terms=nombre.split(/\s+/).filter(Boolean).slice(0,5);
+          const names=await Usuario.findAll({where:{[Op.and]:terms.map(term=>({[Op.or]:[
+              {nombre:{[Op.like]:'%'+term+'%'}},
+              {apellidoPaterno:{[Op.like]:'%'+term+'%'}},
+              {apellidoMaterno:{[Op.like]:'%'+term+'%'}}
+            ]}))},attributes:['id']});
+          cond.push({usuarioId:{[Op.in]:names.map(x=>x.id)}});
+        }
+        const { rows, count } = await SolicitudCuenta.findAndCountAll({ where: {[Op.and]:cond},
             include: [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'correo', 'telefono', 'estatus'] },
                 { model: Usuario, as: 'revisadoPor', attributes: ['nombre', 'apellidoPaterno'] }],
             order: [['creadoEn', 'DESC'], ['id', 'DESC']], limit: 20, offset: (pagina - 1) * 20 });
@@ -86,7 +90,9 @@ async function revisar(req, res) {
                 await user.update({ estatus: 'BLOQUEADO', actualizadoEn: new Date() }, { transaction });
             }
             await solicitud.update({ estatus: accion === 'APROBAR' ? 'APROBADA' : 'RECHAZADA',
-                rolAsignado: accion === 'APROBAR' ? rol : null, revisadoPorUsuarioId: reviewer.id,
+                rolAsignado: accion === 'APROBAR' ? rol : null,
+                ...(accion === 'APROBAR' && house ? { casaSugeridaId: house.id, calle: house.calle, numeroCasa: house.numero } : {}),
+                revisadoPorUsuarioId: reviewer.id,
                 comentarioRevision: comentario || null, revisadoEn: new Date() }, { transaction });
         });
         return res.json({ ok: true, message: accion === 'APROBAR' ? 'Cuenta aprobada. La persona ya puede iniciar sesión.' : 'Solicitud rechazada. La cuenta permanece sin acceso.' });
