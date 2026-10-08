@@ -77,3 +77,14 @@ Los comprobantes reportados quedan **PENDIENTE_VALIDACION**, aunque se genere un
 El cálculo automático solo se crea cuando no existe `vigencias_mantenimiento` para esa casa; las fechas base configuradas manualmente no se sobrescriben. El cálculo de primera activación excluye pagos anteriores al 1 de octubre de 2026, y diferencia recargos de principal. Antes de pasar a producción es esencial conciliar pagos manuales de `cuotas` con los de `pagos_reportados` y evitar reflejar dos veces el mismo pago.
 
 **Puesta en marcha:** reiniciar backend tras deploy. Comprobar `ZKTECO_DIRECT_HOST/PORT`, conectividad TCP, `ZKTECO_AUTOSYNC_ENABLED=true` y, cuando las asociaciones ya estén verificadas en el C3, `ZKTECO_DRY_RUN=false`. Mientras DRY_RUN sea true, no se cambiará físicamente ningún tag. Si una lectura falla se reporta y no se marcará un inventario vacío como ausencia real. Las autorizaciones manuales siguen siendo responsabilidad de Seguridad/Administración.
+
+### Corte general de casas sin pago (activación controlada)
+Por defecto, la primera validación de pago crea el corte de su vivienda. Para aplicar
+la fecha inicial **10/octubre/2026 también a casas que nunca hayan reportado un pago**,
+existe `ZKTECO_ENFORCE_OCTOBER_CUTOFF=true`. Este proceso necesita además
+`ZKTECO_DRY_RUN=false` y solo considera tags confirmados en el C3. Es una
+operación de control de acceso masiva: primero revisar el inventario, los pagos,
+la política condominal y una alternativa de acceso para residentes y emergencias.
+Si hay saldos legítimos de octubre anteriores a la puesta en marcha, conciliarlos
+antes de activar el modo general. Los bloques manuales nunca se levantan
+por el procesamiento financiero.
