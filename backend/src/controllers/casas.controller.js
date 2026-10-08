@@ -38,10 +38,7 @@ const obtenerCasas = async (req, res) => {
             order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']]
         });
 
-        return res.status(200).json({ ok: true, total: casas.length, casas: casas.map(casa => ({
-            ...casa.toJSON(),
-            calle: casa.calleCorrecta || casa.calle
-        })) });
+        return res.status(200).json({ ok: true, total: casas.length, casas });
     } catch (error) {
         console.error('Error al obtener casas:', error);
         return res.status(500).json({ ok: false, message: 'Error al obtener las casas' });
@@ -89,7 +86,8 @@ const actualizarAccesosCasa = async (req, res) => {
             message: habilitado ? 'Acceso otorgado' : 'Acceso bloqueado',
             data: {
                 id: casa.id,
-                calle: casa.calleCorrecta || casa.calle,
+                calle: casa.calle,
+                calleCorrecta: casa.calleCorrecta || casa.calle,
                 numero: casa.numero,
                 permisosAcceso: {
                     pluma: permisos.pluma,

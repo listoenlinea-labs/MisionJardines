@@ -1022,7 +1022,7 @@ body.page-cuotas .cuotas-shell{
     function llenarSelectCasas() {
       const streetSelect = document.getElementById('newQuotaStreet');
       if (!streetSelect) return;
-      const calles = [...new Set(casas.map(casa => String(casa.calle || '').trim()).filter(Boolean))]
+      const calles = [...new Set(casas.map(casa => String(casa.calleCorrecta || casa.calle || '').trim()).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
       streetSelect.innerHTML = '<option value="">Selecciona una calle</option>' +
         calles.map(calle => `<option value="${escapeHtml(calle)}">${escapeHtml(calle)}</option>`).join('');
@@ -1034,7 +1034,7 @@ body.page-cuotas .cuotas-shell{
       const houseSelect = document.getElementById('newQuotaHouse');
       if (!houseSelect) return;
       const disponibles = casas
-        .filter(casa => String(casa.calle || '') === street)
+        .filter(casa => String(casa.calleCorrecta || casa.calle || '') === street)
         .sort((a, b) => String(a.numero || '').localeCompare(String(b.numero || ''), 'es', { numeric: true }));
       houseSelect.disabled = !street;
       houseSelect.innerHTML = street
