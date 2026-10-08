@@ -268,6 +268,18 @@ async function solicitarRegistro(req, res) {
             return res.status(409).json({ ok: false, message: 'Ese correo ya fue utilizado para registrar una cuenta' });
         }
 
+        // Comprobar la configuración antes de crear un código que nunca podrá enviarse.
+        try {
+            emailService.validarConfiguracionSmtp();
+        } catch (smtpError) {
+            console.error('[registro.smtp] Configuración SMTP incompleta:', smtpError.message);
+            return res.status(503).json({
+                ok: false,
+                codigo: 'SMTP_CONFIG_INCOMPLETA',
+                message: 'El envío de correos no está configurado. Solicita a Administración revisar SMTP en Hostinger.'
+            });
+        }
+
         const codigo = generarCodigo();
         const datosJson = JSON.stringify({
             modalidad: 'REVISION_ADMIN', tipoCuenta,
@@ -278,12 +290,31 @@ async function solicitarRegistro(req, res) {
             contrasenaHash: await bcrypt.hash(contrasena, 12)
         });
         await VerificacionCuenta.destroy({ where: { tipo: 'REGISTRO', correo, consumidoEn: null } });
-        await VerificacionCuenta.create({
+        const registroCodigo = await VerificacionCuenta.create({
             tipo: 'REGISTRO', casaId, correo, datosJson,
             codigoHash: codigoHash(correo, codigo),
             expiraEn: new Date(Date.now() + EXPIRACION_CODIGO_MINUTOS * 60000)
         });
-        await emailService.enviarCodigoVerificacion({ destinatario: correo, codigo, nombre, motivo: 'registro' });
+        try {
+            await emailService.enviarCodigoVerificacion({ destinatario: correo, codigo, nombre, motivo: 'registro' });
+        } catch (smtpError) {
+            // No conservar códigos sin enviar ni imprimir contraseñas/códigos en los logs.
+            console.error('[registro.smtp] Fallo al enviar código:', {
+                codigo: smtpError.code || 'SMTP_ERROR',
+                comando: smtpError.command || null,
+                respuesta: smtpError.responseCode || null
+            });
+            try {
+                await VerificacionCuenta.destroy({ where: { id: registroCodigo.id, consumidoEn: null } });
+            } catch (cleanupError) {
+                console.error('[registro.smtp] No se pudo limpiar el código fallido:', cleanupError.name);
+            }
+            return res.status(503).json({
+                ok: false,
+                codigo: 'SMTP_ENVIO_FALLIDO',
+                message: 'No se pudo enviar el código por correo. Administración debe revisar la conexión y credenciales SMTP en Hostinger.'
+            });
+        }
 
         return res.status(202).json({
             ok: true,
