@@ -126,7 +126,6 @@ async function syncUsers(){
   // el inventario COMPLETO. Solo confirmar coincidencias positivas.
   // Una ausencia individual se presenta como diagnóstico y nunca provoca
   // poner en_controlador=false por una sola lectura de red.
-  const affectedHouseIds=new Set();
   const existingByNormalized=new Map();
   const indexExisting=item=>{
     const key=normalizeCardKey(item.numeroTarjeta);
@@ -205,13 +204,8 @@ async function syncUsers(){
     };
 
     if(existing){
-      const changedCard=existing.enControlador===false ||
-        String(existing.fechaFin||'')!==String(values.fechaFin||'') ||
-        Number(existing.casaId||0)!==Number(casaId||0);
-      if(changedCard && casaId) affectedHouseIds.add(casaId);
       await existing.update(values);
     }else{
-      if(casaId) affectedHouseIds.add(casaId);
       const created=await ZkTarjeta.create(values);
       indexExisting(created);
       currentCards.push(created);
@@ -237,11 +231,8 @@ async function syncUsers(){
     !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).length;
   const reconocidos=currentCards.length-sinConfirmarEnLectura;
 
-  // Solo fechas/vinculaciones realmente desincronizadas disparan una
-  // escritura TCP; la lectura periódica no debe reescribir todos los TAGs.
-  for (const casaId of affectedHouseIds) {
-    await require('./zkteco-vigencias.service').marcarPendiente(casaId);
-  }
+  // Inventory import is read-only on the controller: never enqueue validity
+  // writes here. Payments and tag mutations have their own delivery events.
 
   return {
     ok:true,
@@ -479,46 +470,65 @@ async function directDeleteUser({pin}){
 
 
 async function writeUserValidity(card,fechaInicio,fechaFin,{mode=getWriteMode()}={}){
-  const current=await readControllerWithRetry(async client=>{
-    const row=await findPanelUserByCard(client,card);
-    if(!row) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
-    return row;
+  const snapshot=await readControllerWithRetry(async client=>{
+    const user=await findPanelUserByCard(client,card);
+    if(!user) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
+    const pin=String(inventario.pinFila(user)??'').trim();
+    if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
+    // Do not write when permissions cannot be read. An absent authorization is
+    // valid (manually blocked); retain and verify its absence too.
+    const permissions=await client.getData('userauthorize');
+    return {user,pin,permissions:permissions.filter(row=>String(inventario.pinFila(row)??'').trim()===pin)};
   });
-
-  const pin=String(current.Pin??'').trim();
-  if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
-  const cardNo=String(current.CardNo??canonicalCardNo(card)).trim();
+  const {user:current,pin}=snapshot;
+  const cardNo=String(inventario.tarjetaFila(current)??'').trim();
+  const fieldKey=key=>key.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const values=Object.fromEntries(Object.entries(current).filter(([key])=>fieldKey(key)!=='uid'));
+  // PUTDATA may replace omitted user fields on C3 firmware. Resend all read
+  // user fields except the controller-generated UID, changing only the dates.
+  const setField=(names,value)=>{
+    const key=Object.keys(current).find(key=>names.includes(fieldKey(key)));
+    if(!key) throw new Error(`El C3 no devolvió el campo ${names[0]}; se cancela la escritura de vigencia`);
+    values[key]=value;
+  };
+  setField(['pin'],pin);
+  setField(['cardno','cardnumber','cardnum'],cardNo);
+  if(fechaInicio) setField(['starttime'],toDateNumber(fechaInicio));
+  if(fechaFin) setField(['endtime'],toDateNumber(fechaFin));
+  const signature=rows=>JSON.stringify(rows.map(row=>Object.entries(row)
+    .map(([key,value])=>[fieldKey(key),String(value??'')])
+    .sort(([a],[b])=>a.localeCompare(b))).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
   const verify=async()=>{
-    const verified=await readControllerWithRetry(client=>findPanelUserByCard(client,cardNo));
-    if(!verified) return false;
-    const expectedStart=fechaInicio?toDateNumber(fechaInicio):null;
-    const expectedEnd=fechaFin?toDateNumber(fechaFin):null;
-    if(expectedStart&&Number(verified.StartTime||0)!==expectedStart) return false;
-    if(expectedEnd&&Number(verified.EndTime||0)!==expectedEnd) return false;
+    const observed=await readControllerWithRetry(async client=>({
+      user:await findPanelUserByCard(client,cardNo),
+      permissions:(await client.getData('userauthorize')).filter(row=>String(inventario.pinFila(row)??'').trim()===pin)
+    }));
+    if(!observed.user) throw new Error(`El C3-200 no confirmó la escritura: TAG ${cardNo} ausente tras actualizar vigencia`);
+    const actual=new Map(Object.entries(observed.user).map(([key,value])=>[fieldKey(key),value]));
+    const expected=new Map(Object.entries(values).map(([key,value])=>[fieldKey(key),value]));
+    if(inventario.uidFila(current)!==null) expected.set('uid',inventario.uidFila(current));
+    for(const [key,value] of expected){
+      const observedValue=actual.get(key);
+      const equal=['cardno','cardnumber','cardnum'].includes(key)
+        ? normalizeCardKey(observedValue)===normalizeCardKey(value)
+        : observedValue!==undefined && String(observedValue)===String(value);
+      if(!equal){
+        const detail=['starttime','endtime'].includes(key)?` (esperado ${value}, leído ${observedValue??'ausente'})`:'';
+        // Never log passwords or other user field contents.
+        throw new Error(`El C3-200 no confirmó la escritura: TAG ${cardNo}, campo ${key} diferente${detail}`);
+      }
+    }
+    if(signature(observed.permissions)!==signature(snapshot.permissions)){
+      throw new Error(`El C3-200 no confirmó la escritura: cambiaron las autorizaciones del TAG ${cardNo}`);
+    }
     return true;
   };
-
-  const writeMode=await executePanelWrite({
-    mode,
-    label:`actualizar vigencia del TAG ${cardNo}`,
-    // PUTDATA updates only these fields. Preserve password, group, name and
-    // StartTime when payment synchronization changes only EndTime.
-    direct:()=>withC3(client=>client.putRecord('user',{
-      Pin:pin,
-      ...(fechaInicio ? {StartTime:toDateNumber(fechaInicio)} : {}),
-      ...(fechaFin ? {EndTime:toDateNumber(fechaFin)} : {})
-    })),
-    pullSdk:()=>setUserValidityViaPullSdk({
-      pin,
-      cardNo,
-      startDate:fechaInicio,
-      endDate:fechaFin
-    }),
-    verify
-  });
-
+  const writeMode=await executePanelWrite({mode,label:`actualizar vigencia del TAG ${cardNo}`,
+    direct:()=>withC3(client=>client.putRecord('user',values)),
+    pullSdk:()=>setUserValidityViaPullSdk({pin,cardNo,startDate:fechaInicio,endDate:fechaFin}),verify});
   return {numeroTarjeta:cardNo,fechaInicio,fechaFin,writeMode};
 }
+
 async function setCardBlocked(cardId,blocked){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Tarjeta no encontrada');
