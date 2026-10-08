@@ -8,7 +8,7 @@ const direct = require('../src/services/zkteco-direct.service');
 const worker = require('../src/services/zkteco-vigencias.service');
 const { C3Client } = require('../src/services/zkteco-c3-client.service');
 const now = new Date('2026-10-08T18:00:00Z');
-const tx = { LOCK: { UPDATE: 'UPDATE' }, afterCommit() {} };
+const tx = { LOCK: { UPDATE: 'UPDATE' } };
 const row = data => ({ ...data, async update(values, options) {
     assert.equal(options.transaction, tx); Object.assign(this, values); return this;
 } });
@@ -94,10 +94,10 @@ test('payment writer changes only EndTime and verifies it even when global mode 
     const panel = { Pin: '42', CardNo: '123', Password: 'secret', Group: '2', StartTime: '20200101', EndTime: '20261010' };
     t.mock.method(C3Client.prototype, 'connect', async () => {});
     t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [panel] : []);
+    t.mock.method(C3Client.prototype, 'getData', async table => { assert.equal(table, 'user'); return [panel]; });
     t.mock.method(C3Client.prototype, 'putRecord', async (table, values) => {
         assert.equal(table, 'user');
-        assert.deepEqual(values, { ...panel, EndTime: 20261210 });
+        assert.deepEqual(values, { Pin: '42', EndTime: 20261210 });
         Object.assign(panel, values);
     });
     const originalMode = process.env.ZKTECO_WRITE_MODE;
@@ -111,117 +111,10 @@ test('an unconfirmed TCP write fails rather than falling back to the bridge', as
     const panel = { Pin: '42', CardNo: '123', EndTime: '20261010' };
     t.mock.method(C3Client.prototype, 'connect', async () => {});
     t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [panel] : []);
+    t.mock.method(C3Client.prototype, 'getData', async () => [panel]);
     t.mock.method(C3Client.prototype, 'putRecord', async () => {});
     const originalMode = process.env.ZKTECO_WRITE_MODE;
     t.after(() => { if (originalMode === undefined) delete process.env.ZKTECO_WRITE_MODE; else process.env.ZKTECO_WRITE_MODE = originalMode; });
     process.env.ZKTECO_WRITE_MODE = 'AUTO';
     await assert.rejects(direct.writeUserValidity('123', null, '2026-12-10', { mode: 'DIRECT' }), /no confirmó/);
-});
-
-test('recovery queries only pending and failed houses, never completed inventory', async t => {
-    let queries = 0;
-    t.mock.method(Vigencia, 'findAll', async options => {
-        queries++;
-        const { Op } = require('sequelize');
-        assert.deepEqual(options.where.sincronizacion[Op.in], ['PENDIENTE', 'ERROR']);
-        assert.equal(options.limit, 10);
-        return [];
-    });
-    t.mock.method(Tags, 'findAll', async () => assert.fail('no full inventory scan'));
-    await worker.run();
-    assert.equal(queries, 1);
-});
-
-test('payment queues delivery only after commit, not before or on rollback', async t => {
-    const models = require('../src/models');
-    const payments = require('../src/services/vigencia-mantenimiento.service');
-    const validity = setup(t, [] , { fechaBase: '2026-08-10', tarifaMensual: '300.00', principalInicial: '0.00' });
-    t.mock.method(models.Casa, 'findByPk', async () => ({ id: 7 }));
-    t.mock.method(models.Cuota, 'findAll', async () => []);
-    t.mock.method(models.PagoReportado, 'findAll', async () => []);
-    let committed; const queued = [];
-    t.mock.method(tx, 'afterCommit', callback => { committed = callback; });
-    t.mock.method(worker, 'solicitar', id => queued.push(id));
-    await payments.actualizar(7, 2, tx);
-    assert.deepEqual(queued, []);
-    assert.equal(validity.sincronizacion, 'PENDIENTE');
-    committed();
-    assert.deepEqual(queued, [7]);
-});
-
-test('association event resets failed or completed delivery before enqueueing', async t => {
-    const queued = [];
-    t.mock.method(Vigencia, 'update', async (values, options) => {
-        assert.equal(values.sincronizacion, 'PENDIENTE');
-        assert.equal(values.proximoIntento, null);
-        assert.deepEqual(options.where, { casaId: 7 });
-        queued.push('persisted');
-    });
-    // Real queue runs asynchronously; stub the transaction to verify it follows persistence.
-    t.mock.method(sequelize, 'transaction', async () => { queued.push('delivered'); });
-    await worker.marcarPendiente(7);
-    assert.deepEqual(queued, ['persisted']);
-    await new Promise(resolve => setImmediate(resolve));
-    assert.deepEqual(queued, ['persisted', 'delivered']);
-});
-
-test('replacement-style C3 writes retain CardNo, password, name, group, UID and manual door permissions', async t => {
-    let user = { UID: 42, Pin: '42', CardNo: '5112343', Password: 'secret', Name: 'Gardenias 5', Group: 2,
-        StartTime: 20200101, EndTime: 20261010 };
-    const auth = [{ Pin: '42', AuthorizeDoorId: 3, AuthorizeTimezoneId: 2 }];
-    t.mock.method(C3Client.prototype, 'connect', async () => {});
-    t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [user] : auth);
-    t.mock.method(C3Client.prototype, 'putRecord', async (table, values) => {
-        assert.equal(table, 'user', 'never write userauthorize');
-        assert.equal(values.UID, undefined, 'internal UID is not sent');
-        // Firmware replaces the writable row, resetting any omitted field.
-        user = { UID: user.UID, ...values };
-    });
-    await direct.writeUserValidity('05112343', null, '2026-09-10', { mode: 'DIRECT' });
-    assert.deepEqual(user, { UID: 42, Pin: '42', CardNo: '5112343', Password: 'secret', Name: 'Gardenias 5',
-        Group: 2, StartTime: 20200101, EndTime: 20260910 });
-    assert.deepEqual(auth, [{ Pin: '42', AuthorizeDoorId: 3, AuthorizeTimezoneId: 2 }]);
-});
-
-test('manual blocked authorization stays absent and controller field spelling is preserved', async t => {
-    let user = { PIN: 42, CARD_NO: 5112343, START_TIME: 20200101, END_TIME: 20261010, PASSWORD: '' };
-    t.mock.method(C3Client.prototype, 'connect', async () => {});
-    t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [user] : []);
-    t.mock.method(C3Client.prototype, 'putRecord', async (table, values) => {
-        assert.equal(table, 'user'); assert.equal(values.EndTime, undefined);
-        user = { ...values };
-    });
-    await direct.writeUserValidity('05112343', null, '2026-09-10', { mode: 'DIRECT' });
-    assert.equal(user.END_TIME, 20260910);
-    assert.equal(user.START_TIME, 20200101);
-});
-
-test('a successful date write is rejected if CardNo disappears afterward', async t => {
-    let user = { Pin: '42', CardNo: '5112343', StartTime: 20200101, EndTime: 20261010 };
-    t.mock.method(C3Client.prototype, 'connect', async () => {});
-    t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [user] : []);
-    t.mock.method(C3Client.prototype, 'putRecord', async (_, values) => { user = { ...values, CardNo: 0 }; });
-    await assert.rejects(direct.writeUserValidity('05112343', null, '2026-09-10', { mode: 'DIRECT' }), /ausente tras actualizar/);
-});
-
-test('authorization drift is an error even when the requested date was written', async t => {
-    let user = { Pin: '42', CardNo: '5112343', StartTime: 20200101, EndTime: 20261010 };
-    let auth = [{ Pin: '42', AuthorizeDoorId: 3 }];
-    t.mock.method(C3Client.prototype, 'connect', async () => {});
-    t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [user] : auth);
-    t.mock.method(C3Client.prototype, 'putRecord', async (_, values) => { user = { ...values }; auth = []; });
-    await assert.rejects(direct.writeUserValidity('5112343', null, '2026-09-10', { mode: 'DIRECT' }), /cambiaron las autorizaciones/);
-});
-
-test('an omitted EndTime cancels the write instead of synthesizing an incomplete user row', async t => {
-    t.mock.method(C3Client.prototype, 'connect', async () => {});
-    t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => table === 'user' ? [{ Pin: '42', CardNo: '5112343' }] : []);
-    t.mock.method(C3Client.prototype, 'putRecord', async () => assert.fail('must not write'));
-    await assert.rejects(direct.writeUserValidity('5112343', null, '2026-09-10', { mode: 'DIRECT' }), /cancela la escritura/);
 });

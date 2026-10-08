@@ -36,4 +36,4 @@ function fechaMexico(now = new Date()) {
     return `${get('year')}-${get('month')}-${get('day')}`;
 }
 function vigente(fechaFinal, now = new Date()) { return validarFecha(fechaFinal) >= fechaMexico(now); }
-module.exports = { centavos, validarFecha, sumarMeses, calcular, vigente, fechaMexico };
+module.exports = { centavos, validarFecha, sumarMeses, calcular, vigente };

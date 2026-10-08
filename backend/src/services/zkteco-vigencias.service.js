@@ -6,33 +6,7 @@ const direct = require('./zkteco-direct.service');
 
 let timer;
 let running = false;
-const queue = new Set();
-let draining = false;
-
-// Events enqueue only after their database changes have committed. The durable
-// pending row survives process restarts; this queue only accelerates delivery.
-function solicitar(casaId) {
-    queue.add(casaId);
-    if (draining) return;
-    draining = true;
-    setImmediate(async () => {
-        try {
-            while (queue.size) {
-                const id = queue.values().next().value;
-                queue.delete(id);
-                try { await sincronizarCasa(id); }
-                catch (error) { console.error(`[ZKTeco vigencias] Casa ${id}:`, error.message); }
-            }
-        } finally { draining = false; }
-    });
-}
-
-async function marcarPendiente(casaId) {
-    if (!casaId) return;
-    await Vigencia.update({ sincronizacion: 'PENDIENTE', proximoIntento: null,
-        intentos: 0, errorSincronizacion: null }, { where: { casaId } });
-    solicitar(casaId);
-}
+let cursor = 0;
 const necesitaFecha = (tag, fecha) => tag.fechaFin !== fecha ||
     (tag.fechaFinOriginal && tag.fechaFinOriginal !== fecha);
 
@@ -85,15 +59,21 @@ async function run() {
     if (running) return;
     running = true;
     try {
-        // Recover pending deliveries only; completed houses are never scanned.
+        // Reconcile completed houses too: newly associated/imported TAGs must
+        // inherit the current cutoff even when no further payment occurs.
         const pending = await Vigencia.findAll({ attributes: ['casaId'], where: {
-            sincronizacion: { [Op.in]: ['PENDIENTE', 'ERROR'] },
+            sincronizacion: { [Op.ne]: 'COMPLETADO' },
             [Op.or]: [{ proximoIntento: null }, { proximoIntento: { [Op.lte]: new Date() } }]
         }, order: [['updatedAt', 'ASC']], limit: 10 });
-        for (const row of pending) {
+        const rows = await Vigencia.findAll({ attributes: ['casaId'],
+            where: { casaId: { [Op.gt]: cursor } }, order: [['casaId', 'ASC']], limit: 10 });
+        const unique = new Map([...pending, ...rows].map(row => [String(row.casaId), row]));
+        for (const row of unique.values()) {
             try { await sincronizarCasa(row.casaId); }
             catch (error) { console.error(`[ZKTeco vigencias] Casa ${row.casaId}:`, error.message); }
         }
+        if (rows.length) cursor = rows[rows.length - 1].casaId;
+        if (rows.length < 10) cursor = 0;
     } catch (error) {
         console.error('[ZKTeco vigencias]', error.message);
     } finally { running = false; }
@@ -101,10 +81,10 @@ async function run() {
 
 function start() {
     if (timer) return;
-    const interval = Math.max(60000, Number(process.env.ZKTECO_VIGENCIAS_MS) || 300000);
+    const interval = Math.max(5000, Number(process.env.ZKTECO_VIGENCIAS_MS) || 15000);
     timer = setInterval(run, interval);
     timer.unref();
     void run();
 }
 
-module.exports = { start, run, sincronizarCasa, solicitar, marcarPendiente };
+module.exports = { start, run, sincronizarCasa };
