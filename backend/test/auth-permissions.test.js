@@ -8,8 +8,8 @@ async function check(role,baseUrl, options={}) {
   const previous = Usuario.findByPk;
   const oldMembership=UsuarioCasa.findOne;
   UsuarioCasa.findOne=async()=>({casaId:7});
-  Usuario.findByPk = async () => options.missing ? null : ({id:1,casaId:7,rolId:2,estatus:options.status||'ACTIVO',rol:{nombre:role,activo:true}});
-  const req = {baseUrl,headers:{authorization:'Bearer '+jwt.sign({usuarioId:1,rol:'SUPER_ADMIN',casaId:99},process.env.JWT_SECRET)}};
+  Usuario.findByPk = async () => options.missing ? null : ({id:1,casaId:7,rolId:2,estatus:options.status||'ACTIVO',sesionVersion:options.sessionVersion||0,rol:{nombre:role,activo:true}});
+  const req = {baseUrl,headers:{authorization:'Bearer '+jwt.sign({usuarioId:1,rol:'SUPER_ADMIN',casaId:99,sesionVersion:options.tokenVersion||0},process.env.JWT_SECRET)}};
   let status = 200, nextCalled = false;
   const res = {status(code){status=code;return this;},json(){return this;}};
   try { await autenticarToken(req,res,()=>{nextCalled=true;}); return {status,nextCalled,user:req.usuario}; }
@@ -40,4 +40,12 @@ test('connection configuration remains writable only by administrators',()=>{
     let status; guard({usuario:{rol:role}},{status(code){status=code;return this;},json(){}},()=>assert.fail('write allowed'));
     assert.equal(status,403);
   }
+});
+
+test('un JWT anterior a la revocación no revive al volver a aprobar al mismo usuario',async()=>{
+  const viejo=await check('CONDOMINO','/api/auth',{sessionVersion:2,tokenVersion:0});
+  assert.equal(viejo.status,401);
+  assert.equal(viejo.nextCalled,false);
+  const nuevo=await check('CONDOMINO','/api/auth',{sessionVersion:2,tokenVersion:2});
+  assert.equal(nuevo.nextCalled,true);
 });
