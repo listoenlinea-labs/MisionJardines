@@ -1,6 +1,7 @@
 const {Op}=require('sequelize');
 const {Casa,Cuota,PagoReportado}=require('../models');
 const Egreso=require('../models/Egreso');
+const ReservaCasaClub=require('../models/ReservaCasaClub');
 const mesNombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const categorias=['LUZ','AGUA','JARDINERIA','MANTENIMIENTO','PROYECTOS','OTROS'];
 const num=x=>Number(x||0);
@@ -15,11 +16,12 @@ function filters(req){
 async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
-  const [casas,cuotas,pagos,egresos]=await Promise.all([
+  const [casas,cuotas,pagos,egresos,reservasClub]=await Promise.all([
    Casa.findAll({attributes:['id','calle','numero','nombre']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','estatusPago','montoPagado','montoCuota','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion']}),
-   Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000})
+   Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
+   ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']})
   ]);
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const streets=new Map();
@@ -40,6 +42,8 @@ async function analizar(req,res){
   const categoriasGasto=Object.fromEntries(categorias.map(c=>[c,0]));
   for(const e of egresos)categoriasGasto[e.categoria]+=num(e.monto);
   const ingresosValidados=ingresosReportados.mantenimiento+ingresosReportados.extraordinarios;
+  const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
+  for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
   const pagadas=residences.filter(h=>h.pagada).length;
   res.setHeader('Cache-Control','no-store');
@@ -49,9 +53,9 @@ async function analizar(req,res){
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
    calles:calls,viviendas:residences,
    cobrosCuotasRegistrados:cuotas.reduce((a,q)=>a+num(q.montoPagado),0),
-   ingresosReportados,ingresosValidados,totalEgresos,balanceReportado:ingresosValidados-totalEgresos,
+   ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosValidados-totalEgresos,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>e.toJSON()),
-   avisoConciliacion:'El balance usa solo depósitos VALIDADOS en Pagos y egresos capturados; las cuotas de la tabla se muestran por separado porque podrían duplicar depósitos. No incluye ingresos no bancarizados ni pagos de Casa Club hasta conciliarlos.'
+   avisoConciliacion:'El balance usa solo depósitos VALIDADOS en Pagos y egresos capturados; las cuotas de la tabla se muestran por separado porque podrían duplicar depósitos. Los cobros de Casa Club se presentan por separado y no se suman automáticamente para evitar duplicarlos con transferencias; tampoco incluye ingresos no bancarizados.'
   }});
  }catch(e){return sendErr(res,e);}
 }
