@@ -14,6 +14,7 @@ const {
   writeUserValidity
 }=require('../services/zkteco-direct.service');
 const {simularCorte}=require('../services/zkteco-read.service');
+const {runAutoSync,getZktecoAutoSyncStatus}=require('../services/zkteco-autosync.service');
 const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
 const {isPullSdkBridgeConfigured,testBridge,describeFetchError}=require('../services/zkteco-pullsdk-bridge.service');
 const {recordZkError,listZkErrors,exactError}=require('../services/zkteco-error-log.service');
@@ -29,7 +30,8 @@ async function estado(req,res){
       conexionDirecta:true,
       escrituraUsuarios:isPullSdkBridgeConfigured()?'PULLSDK':'NO_CONFIGURADA',
       bridge,
-      tarjetas:await ZkTarjeta.count()
+      tarjetas:await ZkTarjeta.count(),
+      inventarioAuto:getZktecoAutoSyncStatus()
     }});
   }catch(error){
     res.status(503).json({ok:false,message:'No fue posible conectar directamente con el ZKTeco',error:error.message});
@@ -40,7 +42,7 @@ async function inventario(req,res){
   res.json({ok:true,total:rows.length,data:rows});
 }
 async function sincronizar(req,res){
-  try{res.json({ok:true,data:await syncUsers(),message:'Usuarios sincronizados desde el C3-200'});}
+  try{res.json({ok:true,data:await runAutoSync(),message:'Usuarios sincronizados desde el C3-200'});}
   catch(error){res.status(502).json({ok:false,message:'No fue posible sincronizar el C3-200',error:error.message});}
 }
 async function bloquear(req,res){
