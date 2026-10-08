@@ -218,7 +218,7 @@ async function enviarCodigoVerificacion({
         : 'Verifica tu cuenta';
     const descripcion = esCambio
         ? 'Solicitaste cambiar el correo de tu cuenta en Misión Jardines.'
-        : 'Estás a un paso de activar tu cuenta residencial en Misión Jardines.';
+        : 'Verifica tu correo para enviar tu solicitud de registro. Administración revisará la cuenta antes de habilitar el acceso.';
 
     await enviarConReintento(transportador, {
         from: {
