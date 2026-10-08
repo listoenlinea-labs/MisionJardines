@@ -35,7 +35,7 @@ function diagnosticoInventario(filas, tarjetasLocales=[]) {
   const missingPreviously = local.filter(t=>!found.has(claveTarjeta(t.numeroTarjeta)));
   const fields = [...new Set(filas.flatMap(row=>Object.keys(row || {})))];
   const incomplete = (filas.length > 0 && tarjetas.length === 0) ||
-    (filas.length === 0 && local.length > 0);
+    (filas.length === 0 && tarjetasLocales.length > 0);
   return {
     ok: !incomplete,
     panelRows:filas.length,cardRows:tarjetas.length,
