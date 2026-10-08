@@ -1,11 +1,11 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis financiero · Misión Jardines</title>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261008-analysis"></script><script src="assets/js/page-access.js?v=20261008"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261008">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261008-tabs-layout">
 </head><body class="page-analisis">
 <main class="analysis-page">
-<header class="analysis-hero"><span class="eyebrow">ADMINISTRACIÓN Y FINANZAS</span><h1>Administración de <em>cuotas</em></h1><p>Control mensual de cumplimiento, ingresos confirmados y egresos del fraccionamiento.</p></header>
-<nav class="analysis-tabs" aria-label="Administración de cuotas"><a href="cuotas.html">Cuotas</a><a href="analisis-cuotas.html" class="active" aria-current="page">Análisis</a></nav>
+<header class="analysis-hero"><span class="eyebrow">ADMINISTRACIÓN Y FINANZAS</span><h1>Análisis de <em>cuotas</em></h1><p>Control mensual de cumplimiento, ingresos confirmados y egresos del fraccionamiento.</p></header>
+<nav class="analysis-tabs" aria-label="Secciones de cuotas"><a href="cuotas.html">Cuotas</a><a href="analisis-cuotas.html" class="active" aria-current="page">Análisis</a></nav>
 <section class="analysis-card filters"><label>Año<input id="financeYear" type="number" min="2020" max="2100"></label><label>Mes<select id="financeMonth"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label><button id="updateFinance" class="primary">Actualizar análisis</button></section>
 <div id="financeNotice" hidden role="status"></div>
 <div id="financialSummary" class="metric-grid"></div>
@@ -19,4 +19,4 @@
 <section class="analysis-card"><div class="heading"><div><span class="eyebrow">CONSULTA DE VIVIENDAS</span><h2>Quién pagó y quién está pendiente</h2><p>Filtra por calle, casa, residente y estado de pago.</p></div><span id="financeHouseCount"></span></div>
 <div class="filters residences-filter"><label>Buscar casa o residente<input id="financeSearch" type="search" placeholder="Ej. Gardenias, 5, nombre"></label><label>Calle<select id="financeStreet"><option value="">Todas las calles</option></select></label><label>Estado<select id="financeStatus"><option value="">Todos</option><option value="PAGADO">Pagadas</option><option value="PENDIENTE">Pendientes y parciales</option></select></label><button id="financeClear" type="button" class="soft">Limpiar</button></div>
 <div class="table-scroll houses-scroll"><table><thead><tr><th>Calle</th><th>Casa</th><th>Residente registrado</th><th>Estado</th><th>Pagado</th><th>Saldo pendiente</th></tr></thead><tbody id="financeHouseRows"></tbody></table></div></section>
-</main><script src="assets/js/analisis-cuotas.js?v=20261008" defer></script><script src="assets/js/site-sidebar.js?v=20261008-analysis" defer></script></body></html>
+</main><script src="assets/js/analisis-cuotas.js?v=20261008" defer></script><script src="assets/js/site-sidebar.js?v=20261008-cuotas-layout" defer></script></body></html>
