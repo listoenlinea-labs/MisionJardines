@@ -64,60 +64,80 @@
       $('extraList').innerHTML = extras.length ? extras.map(x => '<div class="extra' + (selectedExtra && Number(selectedExtra.id) === Number(x.id) ? ' selected' : '') + '" data-extra="' + Number(x.id) + '"><div><strong>' + esc(x.concepto) + '</strong><small>Cuota extraordinaria activa</small></div><b>' + money(x.monto) + '</b></div>').join('') : '<div class="empty">No hay cuotas extraordinarias activas.</div>';
     }
     let receiptItems = [];
-    const receiptFilter = { search: '', month: '', year: '' };
-    const monthsReceipt = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-    function receiptPeriod(p) {
-      const concept = String(p.concepto || '');
-      const match = concept.match(/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})\b/i);
-      if (match) {
-        const idx = monthsReceipt.findIndex(m => m.toLowerCase() === match[1].toLowerCase());
-        return { month: String(idx + 1).padStart(2, '0'), year: match[2], label: monthsReceipt[idx] + ' ' + match[2], derived: false };
+    const receiptFilter = {month:'',year:''};
+    const monthsReceipt=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    function receiptPeriod(p){
+      const str=String(p.concepto||'');
+      const match=str.match(/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})\b/i);
+      if(match){
+        const index=monthsReceipt.findIndex(m=>m.toLowerCase()===match[1].toLowerCase());
+        if(index>=0)return {month:String(index+1).padStart(2,'0'),year:match[2],label:monthsReceipt[index]+' '+match[2]};
       }
-      const dateMatch = /^(20\d{2})-(\d{2})-\d{2}/.exec(String(p.fechaOperacion || ''));
-      if (dateMatch && Number(dateMatch[2]) >= 1 && Number(dateMatch[2]) <= 12) {
-        return { month: dateMatch[2], year: dateMatch[1], label: 'Depósito: ' + monthsReceipt[Number(dateMatch[2]) - 1] + ' ' + dateMatch[1], derived: true };
-      }
-      return { month: '', year: '', label: 'Período no especificado', derived: false };
+      const d=/^(20\d{2})-(\d{2})-\d{2}/.exec(String(p.fechaOperacion||''));
+      if(d&&Number(d[2])>=1&&Number(d[2])<=12)return {year:d[1],month:d[2],label:'Depósito: '+monthsReceipt[Number(d[2])-1]+' '+d[1]};
+      return {month:'',year:'',label:'Período no especificado'};
     }
-    function renderReceipts(items) {
-      if (items) receiptItems = Array.isArray(items) ? items : [];
-      const yearSelect = $('receiptYear');
-      const selectedYear = receiptFilter.year;
-      const years = [...new Set(receiptItems.map(p => receiptPeriod(p).year).filter(Boolean))].sort().reverse();
-      yearSelect.innerHTML = '<option value="">Todos los años</option>' + years.map(y => '<option value="' + y + '">' + y + '</option>').join('');
-      yearSelect.value = years.includes(selectedYear) ? selectedYear : '';
-      receiptFilter.year = yearSelect.value;
-      const query = receiptFilter.search.toLocaleLowerCase('es-MX').trim();
-      const visible = receiptItems.filter(p => {
-        const period = receiptPeriod(p);
-        const matchText = [period.label,p.concepto,p.reciboFolio,p.folioReporte].join(' ').toLocaleLowerCase('es-MX');
-        return (!query || matchText.includes(query)) && (!receiptFilter.month || period.month === receiptFilter.month) && (!receiptFilter.year || period.year === receiptFilter.year);
+    function receiptHtml(p){
+      const period=receiptPeriod(p),status=({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus||'';
+      return '<article class="receipt-item"><div class="receipt-main"><strong>'+esc(p.reciboFolio||p.folioReporte||'Recibo')+
+        '</strong><p><b class="receipt-period-label">'+esc(period.label)+'</b><br>'+esc(p.concepto||'Pago registrado')+'<br>'+
+        esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
+        '</span><span class="pill">'+esc(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':'Mantenimiento')+
+        '</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b><button class="receipt-view-btn" type="button" data-receipt-detail="'+Number(p.id)+'">Ver detalle</button></div></article>';
+    }
+    function renderReceipts(items){
+      if(items)receiptItems=Array.isArray(items)?items:[];
+      const sorted=[...receiptItems].sort((a,b)=>String(b.fechaOperacion||'').localeCompare(String(a.fechaOperacion||''))||Number(b.id)-Number(a.id));
+      $('receiptList').innerHTML=sorted.length?sorted.slice(0,2).map(receiptHtml).join(''):'<div class="empty">Aún no hay pagos registrados para esta vivienda.</div>';
+      $('showAllReceipts').textContent='Ver todos ('+receiptItems.length+') ↗';
+      const years=[...new Set(receiptItems.map(p=>receiptPeriod(p).year).filter(Boolean))].sort().reverse();
+      const year=$('receiptYear'),previous=receiptFilter.year;
+      year.innerHTML='<option value="">Todos los años</option>'+years.map(y=>'<option value="'+y+'">'+y+'</option>').join('');
+      year.value=years.includes(previous)?previous:'';
+      receiptFilter.year=year.value;
+      const all=sorted.filter(p=>{
+        const period=receiptPeriod(p);
+        return (!receiptFilter.month||period.month===receiptFilter.month)&&(!receiptFilter.year||period.year===receiptFilter.year);
       });
-      $('receiptCount').textContent = visible.length + ' de ' + receiptItems.length + ' recibos';
-      $('receiptList').innerHTML = visible.length ? visible.map(p => {
-        const period = receiptPeriod(p);
-        const status = ({ PENDIENTE_VALIDACION: 'Pendiente de validación', VALIDADO: 'Validado', RECHAZADO: 'Rechazado' })[p.estatus] || p.estatus || '';
-        return '<div class="receipt-item"><div class="receipt-main"><strong>' + esc(p.reciboFolio || p.folioReporte || 'Recibo') +
-          '</strong><p><b class="receipt-period-label">' + esc(period.label) + '</b><br>' + esc(p.concepto || 'Pago registrado') + '<br>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
-          '</p><div class="receipt-meta"><span class="pill ' + esc(p.estatus || '') + '">' + esc(status) +
-          '</span><span class="pill">' + (p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') +
-          '</span></div></div><div class="receipt-side"><b>' + money(p.monto) +
-          '</b>' + (p.id ? '<button class="receipt-view-btn" type="button" data-receipt-id="' + Number(p.id) +
-          '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path><path d="M14 2v5h5"></path><path d="M9 13h6M9 17h4"></path></svg><span>Ver recibo</span></button>' : '<span class="hint">Recibo no disponible</span>') + '</div></div>';
-      }).join('') : '<div class="empty">No hay recibos para ese período.</div>';
+      $('receiptCount').textContent=all.length+' de '+receiptItems.length+' pagos';
+      $('receiptAllList').innerHTML=all.length?all.map(receiptHtml).join(''):'<div class="empty">No hay recibos para el mes y año indicados.</div>';
     }
-    ['receiptSearch','receiptMonth','receiptYear'].forEach(id => $(id).addEventListener(id === 'receiptSearch' ? 'input' : 'change', () => {
-      receiptFilter.search = $('receiptSearch').value;
-      receiptFilter.month = $('receiptMonth').value;
-      receiptFilter.year = $('receiptYear').value;
-      renderReceipts();
-    }));
-    $('clearReceiptFilters').addEventListener('click', () => {
-      ['receiptSearch','receiptMonth','receiptYear'].forEach(id => $(id).value = '');
-      receiptFilter.search = receiptFilter.month = receiptFilter.year = '';
-      renderReceipts();
+    for(const id of ['receiptMonth','receiptYear'])$(id).addEventListener('change',()=>{
+      receiptFilter.month=$('receiptMonth').value;receiptFilter.year=$('receiptYear').value;renderReceipts();
     });
-
+    $('clearReceiptFilters').addEventListener('click',()=>{
+      receiptFilter.month='';receiptFilter.year='';
+      $('receiptMonth').value='';$('receiptYear').value='';renderReceipts();
+    });
+    $('showAllReceipts').addEventListener('click',()=>{$('receiptAllModal').showModal();renderReceipts();});
+    $('closeReceiptAll').addEventListener('click',()=>$('receiptAllModal').close());
+    $('closeReceiptDetails').addEventListener('click',()=>$('receiptDetailsModal').close());
+    async function openReceiptDetails(id){
+      const p=receiptItems.find(x=>Number(x.id)===Number(id));
+      if(!p)return toast('No se encontró el pago');
+      const fields=[
+        ['Vivienda',String(p.calleSnapshot||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
+        ['Folio del reporte',p.folioReporte],['Folio del recibo',p.reciboFolio||'Pendiente'],
+        ['Folio bancario',p.folioOperacion],['Fecha de operación',p.fechaOperacion],
+        ['Hora',p.horaOperacion],['Monto depositado',money(p.monto)],
+        ['Recargo incluido',money(p.recargo)],['Tipo',p.tipoPago],['Concepto',p.concepto],
+        ['Estatus',p.estatus],['Observaciones',p.observacionesRevision||'Sin observaciones']
+      ];
+      $('receiptDetailsHeading').textContent='Pago '+String(p.reciboFolio||p.folioReporte||p.id);
+      const details=$('receiptDetailsBody');
+      details.innerHTML='<div class="receipt-detail-grid">'+fields.map(([name,value])=>'<div class="receipt-detail-field"><small>'+esc(name)+'</small><strong>'+esc(value||'—')+'</strong></div>').join('')+
+        '</div><div class="receipt-proof-block"><b>Comprobante adjunto</b><p id="receiptPhotoStatus">Cargando archivo…</p><img id="receiptPhoto" alt="Comprobante bancario" hidden></div>'+
+        '<div class="receipt-detail-actions"><button class="receipt-more" type="button" data-receipt-id="'+Number(p.id)+'">Abrir recibo PDF ↗</button></div>';
+      $('receiptDetailsModal').showModal();
+      try{
+        const proof=await api('/pagos/'+Number(p.id)+'/comprobante-mio',{headers:headers()});
+        if(!$('receiptDetailsModal').open||!$('receiptPhotoStatus'))return;
+        const data=String(proof.data?.comprobanteData||'');
+        if(/^data:image\/(png|jpeg|jpg|webp);base64,[a-zA-Z0-9+/=]+$/.test(data)){
+          $('receiptPhoto').src=data;$('receiptPhoto').hidden=false;$('receiptPhotoStatus').hidden=true;
+        }else $('receiptPhotoStatus').textContent='Comprobante adjunto: '+String(proof.data?.comprobanteNombre||'Archivo PDF u otro formato; consulta el recibo.');
+      }catch(e){if($('receiptPhotoStatus'))$('receiptPhotoStatus').textContent=e.message;}
+    }
     async function openReceipt(id) {
       try {
         const response = await fetch(API + '/pagos/' + Number(id) + '/recibo', { headers: headers() });
@@ -193,11 +213,14 @@
         toast(err.message);
       }
     });
-    $('receiptList').addEventListener('click', event => {
-      const button = event.target.closest('[data-receipt-id]');
-      if (!button) return;
-      openReceipt(button.dataset.receiptId);
-    });
+    for(const container of ['receiptList','receiptAllList','receiptDetailsBody']){
+      $(container).addEventListener('click',event=>{
+        const detail=event.target.closest('[data-receipt-detail]');
+        if(detail){void openReceiptDetails(detail.dataset.receiptDetail);return;}
+        const pdf=event.target.closest('[data-receipt-id]');
+        if(pdf)void openReceipt(pdf.dataset.receiptId);
+      });
+    }
     $('retryOcr').addEventListener('click', runOcr);
     $('operationDate').addEventListener('change', updatePaymentSummary);
     $('amount').addEventListener('input', updatePreview);
