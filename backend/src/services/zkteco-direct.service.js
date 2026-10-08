@@ -293,6 +293,8 @@ async function diagnosticarVivienda(casaId) {
     const key=inventario.claveTarjeta(inventario.tarjetaFila(row));
     if(key&&key!=='0')byCard.set(key,row);
   }
+  const permisosConfiables=Boolean(lectura.permisos) &&
+    !(lectura.permisos.length===0 && locales.some(c=>!c.bloqueado));
   const authByPin=new Map((lectura.permisos||[])
     .map(row=>[String(inventario.pinFila(row)??'').trim(),row]));
   return {
@@ -300,7 +302,8 @@ async function diagnosticarVivienda(casaId) {
     panel:{serial:lectura.panel.serial||null,firmware:lectura.panel.firmware||null,
       usuariosLeidos:lectura.usuarios.length,tarjetasIdentificadas:evaluacion.cardRows,
       camposUsuario:evaluacion.fields,permisosLeidos:lectura.permisos?.length??null,
-      errorPermisos:lectura.errorPermisos},
+      errorPermisos:lectura.errorPermisos,
+      permisosConfiables},
     tarjetas:[...allCards.values()].map(local=>{
       const key=inventario.claveTarjeta(local.numeroTarjeta);
       const fisico=byCard.get(key);
@@ -313,7 +316,7 @@ async function diagnosticarVivienda(casaId) {
         ultimoEstadoLocal:local.enControlador===null?'SIN_REGISTRO':local.enControlador?'CONFIRMADO_ANTERIORMENTE':'NO_CONFIRMADO',
         fisicamenteObservado:Boolean(fisico),
         estadoFisico:!fisico?'NO_OBSERVADO_EN_ESTA_LECTURA':
-          !lectura.permisos?'PRESENTE_AUTORIZACION_DESCONOCIDA':
+          !permisosConfiables?'PRESENTE_AUTORIZACION_DESCONOCIDA':
           autorizado?'PRESENTE_AUTORIZADO':'PRESENTE_SIN_AUTORIZACION',
         fechaFinC3:fisico?fromDateNumber(inventario.finalFila(fisico)):null
       };
