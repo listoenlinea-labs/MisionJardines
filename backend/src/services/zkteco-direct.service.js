@@ -9,6 +9,7 @@ const {
 } = require('./zkteco-pullsdk-bridge.service');
 const ZkTarjeta = require('../models/ZkTarjeta');
 const Casa = require('../models/Casa');
+const inventario = require('./zkteco-inventory-helpers');
 
 const pad2 = n => String(n).padStart(2,'0');
 const toDateNumber = value => {
@@ -103,6 +104,9 @@ async function syncUsers(){
     return {users,auth,authReadable};
   });
 
+  if(!Array.isArray(payload.users) || !Array.isArray(payload.auth)) {
+    throw new Error('El C3 devolvió un inventario incompleto. Se conserva la información anterior.');
+  }
   const houses=await Casa.findAll({attributes:['id','calle','numero','controles']});
   const houseById=new Map(houses.map(h=>[Number(h.id),h]));
   const byCard=new Map();
@@ -114,6 +118,14 @@ async function syncUsers(){
   }
 
   const currentCards=await ZkTarjeta.findAll();
+  const diagnostico=inventario.diagnosticoInventario(payload.users,currentCards);
+  if(!diagnostico.ok) {
+    throw new Error(diagnostico.message+' Campos leídos: '+diagnostico.fields.join(', ').slice(0,220));
+  }
+  // Conocer los usuarios que respondió el C3 no demuestra que devolvió
+  // el inventario COMPLETO. Solo confirmar coincidencias positivas.
+  // Una ausencia individual se presenta como diagnóstico y nunca provoca
+  // poner en_controlador=false por una sola lectura de red.
   const existingByNormalized=new Map();
   const indexExisting=item=>{
     const key=normalizeCardKey(item.numeroTarjeta);
@@ -129,19 +141,23 @@ async function syncUsers(){
   // physical cards incorrectly displayed as "No existe en C3".
   const liveKeys=new Set();
   for(const row of payload.users){
-    const key=normalizeCardKey(row.CardNo);
+    const key=inventario.claveTarjeta(inventario.tarjetaFila(row));
     if(key&&key!=='0')liveKeys.add(key);
   }
 
-  const authByPin=new Map(payload.auth.map(row=>[String(row.Pin??'').trim(),row]));
+  // Si userauthorize vuelve vacío cuando conocemos TAGs activos, puede
+  // tratarse de una lectura parcial. Nunca convertirlos todos en BLOQUEADO.
+  const permisosVerificables=payload.authReadable &&
+    !(payload.auth.length===0 && currentCards.some(c=>!c.bloqueado));
+  const authByPin=new Map(payload.auth.map(row=>[String(inventario.pinFila(row)??'').trim(),row]));
   let processed=0,linked=0;
 
   for(const row of payload.users){
-    const card=String(row.CardNo??'').trim();
-    const key=normalizeCardKey(card);
+    const card=String(inventario.tarjetaFila(row)??'').trim();
+    const key=inventario.claveTarjeta(card);
     if(!key||key==='0') continue;
 
-    const pin=String(row.Pin??'').trim()||null;
+    const pin=String(inventario.pinFila(row)??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
     const candidates=existingByNormalized.get(key)||[];
 
@@ -153,7 +169,7 @@ async function syncUsers(){
       candidates[0]||
       null;
 
-    const groupId=Number(row.Group||0)||null;
+    const groupId=Number(inventario.grupoFila(row)||0)||null;
     const casaId=existing?.casaId??byCard.get(key)??null;
     if(casaId) linked++;
 
@@ -161,9 +177,9 @@ async function syncUsers(){
       // Preserve the application's literal CardNo when the normalized value is
       // already known. This avoids unique-key conflicts such as 05112344 vs 5112344.
       numeroTarjeta:existing?existing.numeroTarjeta:card,
-      uidDispositivo:Number(row.UID||0)||null,
+      uidDispositivo:Number(inventario.uidFila(row)||0)||null,
       pinDispositivo:pin,
-      nombreDispositivo:String(row.Name??'').trim()||null,
+      nombreDispositivo:String(inventario.nombreFila(row)??'').trim()||null,
       departamento:existing?.departamento||null,
       departamentoId:existing?.departamentoId||null,
       grupoDispositivo:groupId,
@@ -171,16 +187,16 @@ async function syncUsers(){
       // When a TAG is blocked we remove that row, but keep the last known profile locally
       // so it can be restored on activation.
       puertasAutorizadas:auth
-        ? (Number(auth.AuthorizeDoorId||0)||null)
+        ? (Number(inventario.puertasFila(auth)||0)||null)
         : (existing?.puertasAutorizadas||null),
       timezoneId:auth
-        ? (Number(auth.AuthorizeTimezoneId||0)||null)
+        ? (Number(inventario.zonaFila(auth)||0)||null)
         : (existing?.timezoneId||null),
-      fechaInicio:fromDateNumber(row.StartTime),
-      fechaFin:fromDateNumber(row.EndTime),
+      fechaInicio:fromDateNumber(inventario.inicioFila(row)) || existing?.fechaInicio || null,
+      fechaFin:fromDateNumber(inventario.finalFila(row)) || existing?.fechaFin || null,
       casaId,
-      bloqueado:payload.authReadable
-        ? (!auth || Number(auth.AuthorizeDoorId||0)<=0)
+      bloqueado:permisosVerificables
+        ? (!auth || Number(inventario.puertasFila(auth)||0)<=0)
         : Boolean(existing?.bloqueado),
       origen:existing?.origen||'ZKTECO',
       enControlador:true,
@@ -207,26 +223,16 @@ async function syncUsers(){
     processed++;
   }
 
-  // Only after the complete physical read + reconciliation succeeds do we mark
-  // missing cards as absent. All DB rows that normalize to a live CardNo remain
-  // live, which also prevents stale duplicate/import rows from showing false red.
-  let absent=0;
-  const now=new Date();
-  for(const item of currentCards){
-    const key=normalizeCardKey(item.numeroTarjeta);
-    if(!key)continue;
-    const live=liveKeys.has(key);
-    if(live){
-      if(item.enControlador===false){
-        await item.update({enControlador:true,ultimaLectura:now});
-      }
-    }else if(item.enControlador!==false){
-      await item.update({enControlador:false});
-      absent++;
-    }else{
-      absent++;
-    }
-  }
+  // Confirmaciones positivas se guardan arriba. No declarar inexistentes
+  // tarjetas que no aparecieron en ESTA lectura: puede haber inventario parcial,
+  // C3 equivocado, campos omitidos o una interrupción temporal del PullSDK.
+  // Un diagnóstico físico explícito mostrará cuáles faltaron en la lectura.
+  const sinConfirmarEnLectura=currentCards.filter(item=>
+    !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).length;
+  const reconocidos=currentCards.length-sinConfirmarEnLectura;
+
+  // Inventory import is read-only on the controller: never enqueue validity
+  // writes here. Payments and tag mutations have their own delivery events.
 
   return {
     ok:true,
@@ -234,14 +240,85 @@ async function syncUsers(){
     procesados:processed,
     vinculados:linked,
     autorizaciones:payload.auth.length,
-    ausentes:absent
+    autorizacionesConfiables:permisosVerificables,
+    ausentes:0,
+    noObservados:sinConfirmarEnLectura,
+    reconocidos,
+    previamenteConfirmados:diagnostico.previouslyConfirmed,
+    camposDeTarjeta:diagnostico.fields.filter(x=>/card|pin|uid/i.test(x)),
+    advertencia:[sinConfirmarEnLectura?'Hay TAGs no vistos; no se marcaron eliminados.':null,
+      !permisosVerificables?'Autorizaciones de puertas no verificadas; estados manuales conservados.':null
+    ].filter(Boolean).join(' ') || null
+  };
+}
+
+// Diagnóstico de solo lectura para comprobar por qué una vivienda muestra
+// "No confirmado en C3". No crea/bloquea/activa TAGs ni cambia el padrón.
+async function diagnosticarVivienda(casaId) {
+  const id=Number(casaId);
+  if(!Number.isSafeInteger(id)||id<=0)throw Object.assign(new Error('Vivienda inválida'),{status:400});
+  const casa=await Casa.findByPk(id,{attributes:['id','calle','numero','controles']});
+  if(!casa)throw Object.assign(new Error('Vivienda no encontrada'),{status:404});
+  const locales=await ZkTarjeta.findAll({where:{casaId:id},order:[['numeroTarjeta','ASC']]});
+  const controles=normalizeTokens(casa.controles);
+  const allCards=new Map();
+  for(const raw of controles) {
+    const key=inventario.claveTarjeta(raw);
+    if(key)allCards.set(key,{numeroTarjeta:raw,enControlador:null});
+  }
+  for(const local of locales) {
+    const key=inventario.claveTarjeta(local.numeroTarjeta);
+    if(key)allCards.set(key,local);
+  }
+  const lectura=await withC3(async client=>{
+    const usuarios=await client.getData('user');
+    let permisos=null,errorPermisos=null;
+    try{permisos=await client.getData('userauthorize');}
+    catch(e){errorPermisos=e.message;}
+    return {usuarios,permisos,errorPermisos,panel:client.info};
+  });
+  const evaluacion=inventario.diagnosticoInventario(lectura.usuarios,locales);
+  if(!evaluacion.ok)throw Object.assign(new Error(evaluacion.message),{status:502});
+  const byCard=new Map();
+  for(const row of lectura.usuarios) {
+    const key=inventario.claveTarjeta(inventario.tarjetaFila(row));
+    if(key&&key!=='0')byCard.set(key,row);
+  }
+  const permisosConfiables=Boolean(lectura.permisos) &&
+    !(lectura.permisos.length===0 && locales.some(c=>!c.bloqueado));
+  const authByPin=new Map((lectura.permisos||[])
+    .map(row=>[String(inventario.pinFila(row)??'').trim(),row]));
+  return {
+    casaId:id,calle:casa.calle,numero:casa.numero,
+    panel:{serial:lectura.panel.serial||null,firmware:lectura.panel.firmware||null,
+      usuariosLeidos:lectura.usuarios.length,tarjetasIdentificadas:evaluacion.cardRows,
+      camposUsuario:evaluacion.fields,permisosLeidos:lectura.permisos?.length??null,
+      errorPermisos:lectura.errorPermisos,
+      permisosConfiables},
+    tarjetas:[...allCards.values()].map(local=>{
+      const key=inventario.claveTarjeta(local.numeroTarjeta);
+      const fisico=byCard.get(key);
+      const pin=String(inventario.pinFila(fisico)??'').trim();
+      const autorizacion=pin?authByPin.get(pin):null;
+      const autorizado=autorizacion?Number(inventario.puertasFila(autorizacion)||0)>0:false;
+      return {
+        numeroTarjeta:String(local.numeroTarjeta),
+        registradoLocalmente:Boolean(local.id),
+        ultimoEstadoLocal:local.enControlador===null?'SIN_REGISTRO':local.enControlador?'CONFIRMADO_ANTERIORMENTE':'NO_CONFIRMADO',
+        fisicamenteObservado:Boolean(fisico),
+        estadoFisico:!fisico?'NO_OBSERVADO_EN_ESTA_LECTURA':
+          !permisosConfiables?'PRESENTE_AUTORIZACION_DESCONOCIDA':
+          autorizado?'PRESENTE_AUTORIZADO':'PRESENTE_SIN_AUTORIZACION',
+        fechaFinC3:fisico?fromDateNumber(inventario.finalFila(fisico)):null
+      };
+    })
   };
 }
 
 async function findPanelUserByCard(client,card){
   const rows=await client.getData('user');
   const wanted=normalizeCardKey(card);
-  return rows.find(row=>normalizeCardKey(row.CardNo)===wanted)||null;
+  return rows.find(row=>inventario.claveTarjeta(inventario.tarjetaFila(row))===wanted)||null;
 }
 
 function getWriteMode(){
@@ -393,46 +470,65 @@ async function directDeleteUser({pin}){
 
 
 async function writeUserValidity(card,fechaInicio,fechaFin,{mode=getWriteMode()}={}){
-  const current=await readControllerWithRetry(async client=>{
-    const row=await findPanelUserByCard(client,card);
-    if(!row) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
-    return row;
+  const snapshot=await readControllerWithRetry(async client=>{
+    const user=await findPanelUserByCard(client,card);
+    if(!user) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
+    const pin=String(inventario.pinFila(user)??'').trim();
+    if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
+    // Do not write when permissions cannot be read. An absent authorization is
+    // valid (manually blocked); retain and verify its absence too.
+    const permissions=await client.getData('userauthorize');
+    return {user,pin,permissions:permissions.filter(row=>String(inventario.pinFila(row)??'').trim()===pin)};
   });
-
-  const pin=String(current.Pin??'').trim();
-  if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
-  const cardNo=String(current.CardNo??canonicalCardNo(card)).trim();
+  const {user:current,pin}=snapshot;
+  const cardNo=String(inventario.tarjetaFila(current)??'').trim();
+  const fieldKey=key=>key.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const values=Object.fromEntries(Object.entries(current).filter(([key])=>fieldKey(key)!=='uid'));
+  // PUTDATA may replace omitted user fields on C3 firmware. Resend all read
+  // user fields except the controller-generated UID, changing only the dates.
+  const setField=(names,value)=>{
+    const key=Object.keys(current).find(key=>names.includes(fieldKey(key)));
+    if(!key) throw new Error(`El C3 no devolvió el campo ${names[0]}; se cancela la escritura de vigencia`);
+    values[key]=value;
+  };
+  setField(['pin'],pin);
+  setField(['cardno','cardnumber','cardnum'],cardNo);
+  if(fechaInicio) setField(['starttime'],toDateNumber(fechaInicio));
+  if(fechaFin) setField(['endtime'],toDateNumber(fechaFin));
+  const signature=rows=>JSON.stringify(rows.map(row=>Object.entries(row)
+    .map(([key,value])=>[fieldKey(key),String(value??'')])
+    .sort(([a],[b])=>a.localeCompare(b))).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
   const verify=async()=>{
-    const verified=await readControllerWithRetry(client=>findPanelUserByCard(client,cardNo));
-    if(!verified) return false;
-    const expectedStart=fechaInicio?toDateNumber(fechaInicio):null;
-    const expectedEnd=fechaFin?toDateNumber(fechaFin):null;
-    if(expectedStart&&Number(verified.StartTime||0)!==expectedStart) return false;
-    if(expectedEnd&&Number(verified.EndTime||0)!==expectedEnd) return false;
+    const observed=await readControllerWithRetry(async client=>({
+      user:await findPanelUserByCard(client,cardNo),
+      permissions:(await client.getData('userauthorize')).filter(row=>String(inventario.pinFila(row)??'').trim()===pin)
+    }));
+    if(!observed.user) throw new Error(`El C3-200 no confirmó la escritura: TAG ${cardNo} ausente tras actualizar vigencia`);
+    const actual=new Map(Object.entries(observed.user).map(([key,value])=>[fieldKey(key),value]));
+    const expected=new Map(Object.entries(values).map(([key,value])=>[fieldKey(key),value]));
+    if(inventario.uidFila(current)!==null) expected.set('uid',inventario.uidFila(current));
+    for(const [key,value] of expected){
+      const observedValue=actual.get(key);
+      const equal=['cardno','cardnumber','cardnum'].includes(key)
+        ? normalizeCardKey(observedValue)===normalizeCardKey(value)
+        : observedValue!==undefined && String(observedValue)===String(value);
+      if(!equal){
+        const detail=['starttime','endtime'].includes(key)?` (esperado ${value}, leído ${observedValue??'ausente'})`:'';
+        // Never log passwords or other user field contents.
+        throw new Error(`El C3-200 no confirmó la escritura: TAG ${cardNo}, campo ${key} diferente${detail}`);
+      }
+    }
+    if(signature(observed.permissions)!==signature(snapshot.permissions)){
+      throw new Error(`El C3-200 no confirmó la escritura: cambiaron las autorizaciones del TAG ${cardNo}`);
+    }
     return true;
   };
-
-  const writeMode=await executePanelWrite({
-    mode,
-    label:`actualizar vigencia del TAG ${cardNo}`,
-    // PUTDATA updates only these fields. Preserve password, group, name and
-    // StartTime when payment synchronization changes only EndTime.
-    direct:()=>withC3(client=>client.putRecord('user',{
-      Pin:pin,
-      ...(fechaInicio ? {StartTime:toDateNumber(fechaInicio)} : {}),
-      ...(fechaFin ? {EndTime:toDateNumber(fechaFin)} : {})
-    })),
-    pullSdk:()=>setUserValidityViaPullSdk({
-      pin,
-      cardNo,
-      startDate:fechaInicio,
-      endDate:fechaFin
-    }),
-    verify
-  });
-
+  const writeMode=await executePanelWrite({mode,label:`actualizar vigencia del TAG ${cardNo}`,
+    direct:()=>withC3(client=>client.putRecord('user',values)),
+    pullSdk:()=>setUserValidityViaPullSdk({pin,cardNo,startDate:fechaInicio,endDate:fechaFin}),verify});
   return {numeroTarjeta:cardNo,fechaInicio,fechaFin,writeMode};
 }
+
 async function setCardBlocked(cardId,blocked){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Tarjeta no encontrada');
@@ -1104,26 +1200,27 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
 
   let houses;
   if(searchByDepartment){
+    // Si DEPTNAME está vacío, no ocultar una casa que existe en direcciones.
     // ZKAccess stores the address as one value in DEPARTMENTS.DEPTNAME,
     // for example "GARDENIAS 21". Treat that field as the source of truth.
     const matchedCards=cards.filter(card=>departmentMatchesHouse(card.departamento,calle,numero));
     const houseIds=[...new Set(matchedCards.map(card=>Number(card.casaId)).filter(Boolean))];
 
+    const candidates=await Casa.findAll({
+      where:{numero:String(numero).trim()},
+      attributes:['id','calle','numero','controles'],
+      order:[['calle','ASC'],['numero','ASC']]
+    });
+    houses=candidates.filter(h=>normalizeDepartmentKey(h.calle,h.numero)===normalizeDepartmentKey(calle,numero));
+    // Show physically matching houses as well if they have not yet been
+    // reconciled to a physical department record.
     if(houseIds.length){
-      houses=await Casa.findAll({
-        where:{id:{[Op.in]:houseIds}},
-        attributes:['id','calle','numero','controles'],
-        order:[['calle','ASC'],['numero','ASC']]
-      });
-    }else{
-      // If the department import has not linked casa_id yet, locate the one
-      // matching the same street/number so the UI can show "Pendiente de enlazar".
-      const candidates=await Casa.findAll({
-        where:{numero:String(numero).trim()},
-        attributes:['id','calle','numero','controles'],
-        order:[['calle','ASC'],['numero','ASC']]
-      });
-      houses=candidates.filter(h=>normalizeDepartmentKey(h.calle,h.numero)===normalizeDepartmentKey(calle,numero));
+      const additional=await Casa.findAll({where:{id:{[Op.in]:houseIds}},
+        attributes:['id','calle','numero','controles']});
+      const have=new Set(houses.map(h=>Number(h.id)));
+      for(const house of additional){
+        if(!have.has(Number(house.id))){houses.push(house);have.add(Number(house.id));}
+      }
     }
   }else{
     const where={};
@@ -1165,8 +1262,9 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       const matched=[];
       const seen=new Set();
 
-      // When street + house number are provided, only show cards whose
-      // ZKAccess Departamento actually matches that house.
+      // El dato físico Departamento puede faltar o ser antiguo. Priorizar
+      // los tags de usuarios_casas/controles del padrón para no esconder
+      // Gardenias 5 simplemente porque ZKAccess no devolvió DEPTNAME.
       const departmentCards=searchByDepartment
         ? cards.filter(card=>departmentMatchesHouse(card.departamento,h.calle,h.numero))
         : [];
@@ -1176,12 +1274,14 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       }
       for(const rawCard of controls){
         const card=byNormalizedCard.get(normalizeCardKey(rawCard));
-        if(card&&!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+        if(card&&!seen.has(card.id)&&(!searchByDepartment || Number(card.casaId||0)===Number(h.id) ||
+          departmentMatchesHouse(card.departamento,h.calle,h.numero) || !card.departamento)){
           matched.push(card);seen.add(card.id);
         }
       }
       for(const card of (byHouse.get(Number(h.id))||[])){
-        if(!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+        if(!seen.has(card.id) && (!searchByDepartment || Number(card.casaId)===Number(h.id) ||
+          departmentMatchesHouse(card.departamento,h.calle,h.numero))){
           matched.push(card);seen.add(card.id);
         }
       }
@@ -1247,4 +1347,12 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
   };
 }
 
-module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse,addExistingTagToController,editTag,removeTag,operateGate,dashboard,writeUserValidity};
+// Preserve the durable pending delivery when a tag is created, reassigned or
+// restored. Lazy require avoids the direct-client/worker dependency cycle.
+const conVigencia = operation => async (...args) => {
+  const result = await operation(...args);
+  if(result?.casaId) await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
+  return result;
+};
+
+module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag),removeTag,operateGate,dashboard,writeUserValidity};
