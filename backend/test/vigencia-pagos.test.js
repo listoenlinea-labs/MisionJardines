@@ -75,10 +75,32 @@ test('recalculation is idempotent and stores desired date without claiming hardw
         assert.equal(result.fechaFinal, '2026-10-10'); assert.equal(result.sincronizacion, 'PENDIENTE');
     }
 });
-test('missing initial date never invents a grace month', async t => {
+test('first confirmed 300 from October starts in October and expires November 10', async t => {
     t.mock.method(models.Casa, 'findByPk', async () => ({ id: 7 }));
     t.mock.method(service.Vigencia, 'findByPk', async () => null);
-    assert.deepEqual(await service.actualizar(7, 2, tx), { pendienteConfiguracion: true, fechaFinal: null });
+    t.mock.method(models.Cuota, 'findAll', async () => []);
+    t.mock.method(models.PagoReportado, 'findAll', async () =>
+      [{ monto:'300.00', recargo:'0.00', folioOperacion:'oct1', fechaOperacion:'2026-10-08' }]);
+    let stored;
+    t.mock.method(service.Vigencia, 'create', async values => {
+      stored = row(values); return stored;
+    });
+    const result=await service.actualizar(7,2,tx);
+    assert.equal(result.pendienteConfiguracion,false);
+    assert.equal(result.fechaFinal,'2026-11-10');
+    assert.equal(stored.fechaBase,'2026-10-10');
+    assert.equal(stored.principalInicial,'0.00');
+    assert.equal(stored.sincronizacion,'PENDIENTE');
+});
+test('a transfer in November covers October first, without resetting the cutoff', async t => {
+    t.mock.method(models.Casa,'findByPk',async()=>({id:7}));
+    t.mock.method(service.Vigencia,'findByPk',async()=>null);
+    t.mock.method(models.Cuota,'findAll',async()=>[]);
+    t.mock.method(models.PagoReportado,'findAll',async()=>[
+        {monto:'300.00',recargo:0,folioOperacion:'nov1',fechaOperacion:'2026-11-08'}
+    ]);
+    t.mock.method(service.Vigencia,'create',async data=>row(data));
+    assert.equal((await service.actualizar(7,2,tx)).fechaFinal,'2026-11-10');
 });
 function mockReview(t, payment) {
     t.mock.method(models.PagoReportado, 'findByPk', async () => payment);
