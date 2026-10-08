@@ -11,54 +11,81 @@ const tx = { LOCK: { UPDATE: 'UPDATE' }, async commit() { this.finished = true; 
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; }, setHeader() {} });
 const row = data => ({ ...data, async update(values) { Object.assign(this, values); return this; } });
 
-async function signup(t, body = {}) {
-    let verification, sent;
-    t.mock.method(models.Usuario, 'findOne', async () => null);
-    t.mock.method(models.VerificacionCuenta, 'findOne', async () => null);
-    t.mock.method(models.VerificacionCuenta, 'destroy', async () => {});
-    t.mock.method(models.VerificacionCuenta, 'create', async values => { verification = row(values); return verification; });
-    t.mock.method(email, 'enviarCodigoVerificacion', async values => { sent = values; });
+async function signup(t, body = {}, options = {}) {
+    let userData = null, requested = null, saved = false;
+    t.mock.method(db, 'transaction', async cb => cb(tx));
+    t.mock.method(models.Usuario, 'findOne', async () => options.duplicate ? { id: 5 } : null);
+    t.mock.method(models.Rol, 'findOne', async query => {
+        assert.equal(query.where.nombre, 'CONDOMINO');
+        return { id: 3 };
+    });
+    t.mock.method(models.Usuario, 'create', async data => {
+        userData = data;
+        return { id: 21 };
+    });
+    t.mock.method(models.SolicitudCuenta, 'create', async data => {
+        requested = data; saved = true;
+        return { id: 50 };
+    });
+    t.mock.method(email, 'enviarCodigoVerificacion', async () => assert.fail('El registro no debe enviar correos'));
+    t.mock.method(email, 'validarConfiguracionSmtp', () => assert.fail('El registro no debe depender de SMTP'));
     const res = response();
-    await auth.solicitarRegistro({ body: { nombre: 'Ana', apellidoPaterno: 'Prueba', correo: 'ana@example.com', contrasena: 'Prueba1234', calle: 'Calle Prueba', numeroCasa: '1', ...body } }, res);
-    return { res, verification, sent };
+    await auth.solicitarRegistro({ body: {
+        nombre: 'Ana', apellidoPaterno: 'Prueba', correo: 'ana@example.com',
+        contrasena: 'Prueba1234', calle: 'Calle Prueba', numeroCasa: '1', ...body
+    } }, res);
+    return { res, userData, requested, saved };
 }
-test('public resident verifies email, receives pending account and no membership or elevated role', async t => {
-    const { res, verification, sent } = await signup(t, { rolId: 1, rol: 'SUPER_ADMIN', casaId: 999 });
-    assert.equal(res.code, 202); assert.equal(verification.casaId, null);
-    const data = JSON.parse(verification.datosJson);
-    assert.equal(data.calle, 'Calle Prueba'); assert.equal(data.contrasena, undefined);
-    assert.equal(await bcrypt.compare('Prueba1234', data.contrasenaHash), true);
-    let userData, requested;
-    t.mock.method(db, 'transaction', async () => ({ ...tx }));
-    models.VerificacionCuenta.findOne = async () => verification;
-    t.mock.method(models.Rol, 'findOne', async options => { assert.equal(options.where.nombre, 'CONDOMINO'); return { id: 3 }; });
-    t.mock.method(models.Usuario, 'create', async values => { userData = values; return { id: 21 }; });
-    t.mock.method(models.SolicitudCuenta, 'create', async values => { requested = values; });
-    t.mock.method(models.UsuarioCasa, 'findOrCreate', async () => assert.fail('must not grant housing access'));
-    const verified = response();
-    await auth.verificarRegistro({ body: { correo: res.body.correo, codigo: sent.codigo } }, verified);
-    assert.equal(verified.code, 201); assert.equal(verified.body.pendienteAprobacion, true);
-    assert.equal(userData.estatus, 'PENDIENTE'); assert.equal(userData.rolId, 3); assert.equal(userData.casaId, null);
-    assert.equal(requested.tipoCuenta, 'CONDOMINO'); assert.equal(verification.datosJson, null);
+test('residente crea solicitud pendiente sin correo, código ni membresía automática', async t => {
+    const { res, userData, requested } = await signup(t, { rolId: 1, rol: 'SUPER_ADMIN', casaId: 999 });
+    assert.equal(res.code, 201);
+    assert.equal(res.body.pendienteAprobacion, true);
+    assert.equal(userData.estatus, 'PENDIENTE');
+    assert.equal(userData.casaId, null);
+    assert.equal(userData.rolId, 3);
+    assert.equal(await bcrypt.compare('Prueba1234', userData.contrasenaHash), true);
+    assert.equal(requested.tipoCuenta, 'CONDOMINO');
+    assert.equal(requested.calle, 'Calle Prueba');
+    assert.equal(requested.numeroCasa, '1');
 });
-test('security signup needs no address and only requests security without assigning it', async t => {
-    const { res, verification } = await signup(t, { tipoCuenta: 'SEGURIDAD', calle: '', numeroCasa: '' });
-    assert.equal(res.code, 202);
-    assert.equal(verification.casaId, null);
-    const data = JSON.parse(verification.datosJson);
-    assert.equal(data.tipoCuenta, 'SEGURIDAD'); assert.equal(data.calle, null); assert.equal(data.numeroCasa, null);
+test('seguridad sin vivienda no recibe privilegios antes de revisión', async t => {
+    const { res, userData, requested } = await signup(t, { tipoCuenta: 'SEGURIDAD', calle: '', numeroCasa: '' });
+    assert.equal(res.code, 201);
+    assert.equal(userData.casaId, null);
+    assert.equal(userData.estatus, 'PENDIENTE');
+    assert.equal(requested.tipoCuenta, 'SEGURIDAD');
+    assert.equal(requested.calle, null);
+    assert.equal(requested.numeroCasa, null);
 });
-test('database connection failure during email verification returns a controlled error and creates no account', async t => {
+test('base de datos no disponible no crea ninguna solicitud ni usuario', async t => {
     t.mock.method(db, 'transaction', async () => { throw Error('database unavailable'); });
     t.mock.method(models.Usuario, 'create', async () => assert.fail('must not create account'));
     const res = response();
-    await auth.verificarRegistro({ body: { correo: 'ana@example.com', codigo: '123456' } }, res);
-    assert.equal(res.code, 500); assert.equal(res.body.ok, false);
+    await auth.solicitarRegistro({ body: {
+        nombre:'Ana',apellidoPaterno:'Prueba',correo:'ana@example.com',
+        contrasena:'Prueba1234',calle:'Gardenias',numeroCasa:'5'
+    } }, res);
+    assert.equal(res.code, 503);
+    assert.equal(res.body.ok, false);
 });
-test('registration rejects elevated account types and incomplete residential addresses', async t => {
-    for (const body of [{ tipoCuenta: 'ADMINISTRADOR' }, { tipoCuenta: 'SUPER_ADMIN' }, { calle: '' }, { numeroCasa: '' }]) {
-        const { res } = await signup(t, body); assert.equal(res.code, 400);
-    }
+test('registro rechaza tipos elevados y direcciones incompletas', async t => {
+    const res1 = response();
+    await auth.solicitarRegistro({ body: {
+        nombre:'Ana', apellidoPaterno:'Prueba', correo:'ana@example.com',
+        contrasena:'Prueba1234', tipoCuenta:'SUPER_ADMIN', calle:'Gardenias', numeroCasa:'1'
+    } }, res1);
+    assert.equal(res1.code,400);
+    const res2=response();
+    await auth.solicitarRegistro({ body: {
+        nombre:'Ana',apellidoPaterno:'Prueba',correo:'ana@example.com',
+        contrasena:'Prueba1234',tipoCuenta:'CONDOMINO',calle:'',numeroCasa:'1'
+    } }, res2);
+    assert.equal(res2.code,400);
+});
+test('registro no duplica cuentas existentes', async t => {
+    const { res, saved } = await signup(t, {}, { duplicate:true });
+    assert.equal(res.code,409);
+    assert.equal(saved,false);
 });
 function setupReview(t, overrides = {}) {
     const solicitud = row({ id: 8, usuarioId: 21, tipoCuenta: 'SEGURIDAD', estatus: 'PENDIENTE', ...overrides.solicitud });
