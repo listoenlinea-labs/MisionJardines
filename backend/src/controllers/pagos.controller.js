@@ -10,6 +10,7 @@ const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.s
 
 const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
+const pagosPruebas = require('../config/pagos-pruebas');
 const BASE_MANTENIMIENTO = 300;
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
@@ -413,10 +414,18 @@ async function reportarPago(req, res) {
             comprobanteNombre: comprobanteNombre || null,
             comprobanteMime: comprobanteMime || 'image/jpeg',
             textoOcr: textoOcr || null,
-            estatus: 'PENDIENTE_VALIDACION',
+            estatus: pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? 'VALIDADO' : 'PENDIENTE_VALIDACION',
+            ...(pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? {
+                fechaValidacion: now,
+                validadoPorUsuarioId: null,
+                observacionesRevision: 'Validación automática temporal para pruebas; sin revisión administrativa ni bancaria.'
+            } : {}),
             reciboFolio: folio,
             fechaEmisionRecibo: now
         }, { transaction });
+
+        const vigenciaAcceso = pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN && tipoPago === 'MANTENIMIENTO'
+            ? await vigenciaService.actualizar(casaId, usuarioId, transaction) : null;
 
         await transaction.commit();
         transaction = null;
@@ -447,8 +456,9 @@ async function reportarPago(req, res) {
 
         return res.status(201).json({
             ok: true,
-            message: 'Pago reportado y recibo generado',
-            data: pagoSeguro(req, pagoCompleto)
+            message: pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? 'Pago validado automáticamente para pruebas' : 'Pago reportado y recibo generado',
+            data: pagoSeguro(req, pagoCompleto),
+            vigencia: vigenciaAcceso
         });
     } catch (error) {
         if (transaction && !transaction.finished) {

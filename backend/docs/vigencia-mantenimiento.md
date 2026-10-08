@@ -55,3 +55,9 @@ No se ejecuta una prueba física durante las pruebas automatizadas: las respuest
 No se incorpora una pasarela bancaria ni se generan automáticamente cuotas mensuales. Un futuro webhook de pago debe verificar firma, monto y operación única, y usar la misma transacción de confirmación/recalculo; nunca confirmar un pago desde el navegador solamente. La tarifa queda fijada al inicializar; cualquier cambio de tarifa requiere una migración de periodos, no modificar el valor retroactivamente.
 
 Pruebas: `node --test backend/test/*.test.js`.
+
+## Validación automática temporal para pruebas
+
+`backend/src/config/pagos-pruebas.js` contiene `VALIDAR_PAGOS_SIN_ADMIN: true`. Cada nuevo reporte válido se registra directamente como VALIDADO, con fecha y una nota de validación automática, sin atribuirlo a un administrador. No comprueba el depósito bancario. Mantenimiento recalcula la vigencia en la misma transacción y solicita el envío al controlador tras el commit; los extraordinarios no modifican las fechas de acceso. Los pagos antiguos pendientes no se aprueban retroactivamente. Se mantienen sesión, vivienda, formato y protección de folios duplicados.
+
+Cambiar la constante a `false` y desplegar/reiniciar el backend restaura PENDIENTE_VALIDACION y la revisión administrativa. Para una prueba de Gardenias 5, configurar primero su vigencia inicial; activar este modo no crea una fecha inicial ni cambia los recargos.
