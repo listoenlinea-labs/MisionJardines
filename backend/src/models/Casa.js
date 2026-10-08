@@ -15,6 +15,12 @@ const Casa = sequelize.define(
             allowNull: false
         },
 
+        calleCorrecta: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+            field: 'calle_correcta'
+        },
+
         numero: {
             type: DataTypes.STRING(20),
             allowNull: false

@@ -29,16 +29,19 @@ const obtenerCasas = async (req, res) => {
 
         const casas = await Casa.findAll({
             attributes: esSeguridad
-                ? ['id', 'calle', 'numero']
+                ? ['id', 'calle', 'calleCorrecta', 'numero']
                 : [
-                    'id', 'calle', 'numero', 'nombre', 'controles', 'pago',
+                    'id', 'calle', 'calleCorrecta', 'numero', 'nombre', 'controles', 'pago',
                     'enRenta', 'telefono', 'correo', 'observaciones'
                 ],
             include,
-            order: [['calle', 'ASC'], ['numero', 'ASC']]
+            order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']]
         });
 
-        return res.status(200).json({ ok: true, total: casas.length, casas });
+        return res.status(200).json({ ok: true, total: casas.length, casas: casas.map(casa => ({
+            ...casa.toJSON(),
+            calle: casa.calleCorrecta || casa.calle
+        })) });
     } catch (error) {
         console.error('Error al obtener casas:', error);
         return res.status(500).json({ ok: false, message: 'Error al obtener las casas' });
@@ -86,7 +89,7 @@ const actualizarAccesosCasa = async (req, res) => {
             message: habilitado ? 'Acceso otorgado' : 'Acceso bloqueado',
             data: {
                 id: casa.id,
-                calle: casa.calle,
+                calle: casa.calleCorrecta || casa.calle,
                 numero: casa.numero,
                 permisosAcceso: {
                     pluma: permisos.pluma,

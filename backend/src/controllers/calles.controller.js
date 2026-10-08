@@ -3,18 +3,18 @@ const { Casa } = require('../models');
 const listarCalles = async (req, res) => {
     try {
         const resultados = await Casa.findAll({
-            attributes: ['calle'],
+            attributes: ['calleCorrecta'],
 
-            group: ['calle'],
+            group: ['calleCorrecta'],
 
             order: [
-                ['calle', 'ASC']
+                ['calleCorrecta', 'ASC']
             ],
 
             raw: true
         });
 
-        const calles = resultados.map(item => item.calle);
+        const calles = resultados.map(item => item.calleCorrecta);
 
         return res.status(200).json({
             ok: true,
