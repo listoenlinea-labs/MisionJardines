@@ -8,6 +8,7 @@ const operar=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD');
 
 r.get('/estado',autenticarToken,operar,c.estado);
 r.get('/tarjetas',autenticarToken,admin,c.inventario);
+r.get('/diagnostico/viviendas/:id',autenticarToken,admin,c.diagnosticoVivienda);
 r.get('/logs',autenticarToken,admin,c.logs);
 r.get('/viviendas',autenticarToken,operar,c.viviendas);
 r.post('/sincronizar',autenticarToken,admin,c.sincronizar);
