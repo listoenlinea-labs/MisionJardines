@@ -36,7 +36,10 @@
       const p = document.createElement('p'); p.append(textElement('strong', label + ': '), document.createTextNode(value || '—')); details.append(p);
     }
     if (item.estatus !== 'PENDIENTE') {
-      details.append(textElement('p', (item.estatus === 'APROBADA' ? 'Rol asignado: ' + (labels[item.rolAsignado] || item.rolAsignado) : 'Solicitud rechazada') + ' · ' + date(item.revisadoEn)));
+      const descripcion = item.estatus === 'APROBADA' ? 'Rol asignado: ' + (labels[item.rolAsignado] || item.rolAsignado)
+        : item.estatus === 'REVOCADA' ? 'Aprobación histórica · rol: ' + (labels[item.rolAsignado] || item.rolAsignado || 'No indicado')
+        : 'Solicitud rechazada';
+      details.append(textElement('p', descripcion + ' · ' + date(item.revisadoEn)));
       details.append(textElement('p', 'Revisó: ' + fullName(item.revisadoPor)));
       if (item.comentarioRevision) details.append(textElement('p', item.comentarioRevision));
     }
