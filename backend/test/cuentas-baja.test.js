@@ -1,0 +1,45 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+Object.assign(process.env,{DB_HOST:'localhost',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'test',JWT_SECRET:'test-secret'});
+const db=require('../src/config/database');
+const bcrypt=require('bcryptjs');
+const {Usuario,UsuarioCasa,SolicitudCuenta}=require('../src/models');
+const accounts=require('../src/controllers/cuentas.controller');
+const response=()=>({code:200,payload:null,status(n){this.code=n;return this;},json(v){this.payload=v;return this;}});
+test('revocar una cuenta aprobada bloquea credenciales y viviendas sin borrar historial',async t=>{
+ const reviewer={id:1,estatus:'ACTIVO',rol:{nombre:'SUPER_ADMIN',activo:true}};
+ let user={id:5,estatus:'ACTIVO',rol:{nombre:'CONDOMINO'},async update(data){Object.assign(this,data);}};
+ let request={id:8,usuarioId:5,estatus:'APROBADA',comentarioRevision:null,async update(data){Object.assign(this,data);}};
+ t.mock.method(db,'transaction',async(options,callback)=>callback({LOCK:{UPDATE:'UPDATE'}}));
+ t.mock.method(Usuario,'findByPk',async id=>Number(id)===1?reviewer:user);
+ t.mock.method(SolicitudCuenta,'findByPk',async()=>request);
+ t.mock.method(bcrypt,'hash',async()=>'$2a$12$random-protected-hash');
+ let membershipUpdate=null;
+ t.mock.method(UsuarioCasa,'update',async (data,opts)=>{membershipUpdate={data,opts};});
+ const res=response();
+ await accounts.revocar({usuario:{usuarioId:1},params:{id:8}},res);
+ assert.equal(res.code,200);
+ assert.equal(user.estatus,'BAJA');
+ assert.notEqual(user.contrasenaHash,undefined);
+ assert.equal(membershipUpdate.data.activo,false);
+ assert.equal(membershipUpdate.opts.where.usuarioId,5);
+ assert.match(request.comentarioRevision,/revocado/);
+});
+test('administración no puede revocar su propia cuenta',async t=>{
+ const reviewer={id:5,estatus:'ACTIVO',rol:{nombre:'SUPER_ADMIN',activo:true}};
+ t.mock.method(db,'transaction',async(o,fn)=>fn({LOCK:{UPDATE:'UPDATE'}}));
+ t.mock.method(Usuario,'findByPk',async()=>reviewer);
+ t.mock.method(SolicitudCuenta,'findByPk',async()=>({estatus:'APROBADA',usuarioId:5}));
+ const res=response();await accounts.revocar({usuario:{usuarioId:5},params:{id:8}},res);
+ assert.equal(res.code,403);
+});
+test('nombre+calle+casa filtra consultas sin divulgar contraseñas',async t=>{
+ let queried=null;
+ t.mock.method(Usuario,'findAll',async()=>[{id:2}]);
+ t.mock.method(SolicitudCuenta,'findAndCountAll',async opts=>{queried=opts;return{rows:[],count:0};});
+ const res={...response(),setHeader(){}};
+ await accounts.listar({query:{estatus:'APROBADA',pagina:'1',nombre:'Leopoldo Rodriguez',calle:'Gardenias',numero:'5'}},res);
+ assert.equal(res.code,200);
+ assert.equal(res.payload.total,0);
+ assert.equal(queried.include[0].attributes.includes('contrasenaHash'),false);
+});
