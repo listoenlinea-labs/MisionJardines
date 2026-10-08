@@ -26,7 +26,14 @@ async function iniciarServidor() {
         );
 
         await asegurarEsquemaPagos();
-        await require('./services/registro-publico-schema.service').asegurarRegistroPublico();
+        // An optional schema upgrade must not take the rest of the portal offline.
+        // If the DB account cannot ALTER usuarios, log the problem and complete
+        // the deployment instructions before enabling public registrations.
+        try {
+            await require('./services/registro-publico-schema.service').asegurarRegistroPublico();
+        } catch (error) {
+            console.error('Registro público pendiente de migración; el portal continuará activo:', error.message);
+        }
         await require('./services/viviendas-schema.service').asegurarViviendas();
         await require('./services/zkteco-schema.service').asegurarEsquemaZkteco();
         try {
