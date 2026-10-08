@@ -11,8 +11,8 @@ const Usuario = sequelize.define(
         },
 
         casaId: {
-            type: DataTypes.BIGINT.UNSIGNED,
-            allowNull: false,
+            type: DataTypes.INTEGER.UNSIGNED,
+            allowNull: true,
             field: 'casa_id'
         },
 
