@@ -229,185 +229,97 @@ async function obtenerPerfil(req, res) {
 
 async function listarViviendasRegistro(req,res) { return res.status(403).json({ok:false,message:'El padrón de viviendas solo está disponible para Administración. Indica tu domicilio en el formulario de registro.'}); }
 
+// El alta pública NO verifica ni envía mensajes al correo: únicamente recibe
+// solicitudes PENDIENTES para revisión manual de Administración.
 async function solicitarRegistro(req, res) {
+    const body = req.body || {};
+    const correo = normalizarCorreo(body.correo);
+    const nombre = String(body.nombre || '').trim();
+    const apellidoPaterno = String(body.apellidoPaterno || '').trim();
+    const apellidoMaterno = String(body.apellidoMaterno || '').trim();
+    const telefono = String(body.telefono || '').trim();
+    const contrasena = body.contrasena;
+    const tipoCuenta = body.invitacion ? 'CONDOMINO' : String(body.tipoCuenta || 'CONDOMINO').toUpperCase();
+    const calle = tipoCuenta === 'CONDOMINO' ? String(body.calle || '').trim() : '';
+    const numeroCasa = tipoCuenta === 'CONDOMINO' ? String(body.numeroCasa || '').trim() : '';
+
+    if (!['CONDOMINO', 'SEGURIDAD'].includes(tipoCuenta)) {
+        return res.status(400).json({ ok: false, message: 'Tipo de cuenta inválido' });
+    }
+    if (!correo || correo.length > 150 || !/^\S+@\S+\.\S+$/.test(correo)
+        || !nombre || !apellidoPaterno || nombre.length > 100 || apellidoPaterno.length > 100
+        || apellidoMaterno.length > 100 || telefono.length > 25) {
+        return res.status(400).json({ ok: false, message: 'Revisa tus datos personales y escribe un correo válido' });
+    }
+    if (tipoCuenta === 'CONDOMINO' && !body.invitacion &&
+        (!calle || !numeroCasa || calle.length > 100 || numeroCasa.length > 20)) {
+        return res.status(400).json({ ok: false, message: 'Indica calle y número de casa' });
+    }
+    if (!contrasenaSegura(contrasena) || Buffer.byteLength(contrasena, 'utf8') > 72) {
+        return res.status(400).json({ ok: false, message: 'La contraseña debe tener 8 caracteres, mayúscula, minúscula y número' });
+    }
+
     try {
-        const correo = normalizarCorreo(req.body.correo);
-        const nombre = String(req.body.nombre || '').trim();
-        const apellidoPaterno = String(req.body.apellidoPaterno || '').trim();
-        const apellidoMaterno = String(req.body.apellidoMaterno || '').trim();
-        const telefono = String(req.body.telefono || '').trim();
-        const contrasena = req.body.contrasena;
-        const invitacionRegistro = req.body.invitacion ? await invitacion(req.body.invitacion) : null;
-        if (invitacionRegistro && invitacionRegistro.correo !== correo) return res.status(403).json({ok:false,message:'Usa el correo que recibió la invitación'});
-        const casaId = invitacionRegistro?.casaId || null;
-        const tipoCuenta = invitacionRegistro ? 'CONDOMINO' : (req.body.tipoCuenta || 'CONDOMINO');
-        if (!['CONDOMINO', 'SEGURIDAD'].includes(tipoCuenta)) return res.status(400).json({ok:false,message:'Tipo de cuenta inválido'});
-        const calle = tipoCuenta === 'SEGURIDAD' ? null : String(req.body.calle || '').trim();
-        const numeroCasa = tipoCuenta === 'SEGURIDAD' ? null : String(req.body.numeroCasa || '').trim();
-        if (!invitacionRegistro && tipoCuenta === 'CONDOMINO' && (!calle || !numeroCasa || calle.length > 100 || numeroCasa.length > 20)) {
-            return res.status(400).json({ok:false,message:'Completa la calle y el número de casa'});
-        }
-
-        if (!correo || correo.length > 150 || !/^\S+@\S+\.\S+$/.test(correo) || !nombre || !apellidoPaterno || nombre.length > 100 || apellidoPaterno.length > 100 || apellidoMaterno.length > 100 || telefono.length > 25) {
-            return res.status(400).json({ ok: false, message: 'Revisa tus datos personales y escribe un correo válido' });
-        }
-        if (!contrasenaSegura(contrasena) || Buffer.byteLength(contrasena, 'utf8') > 72) {
-            return res.status(400).json({ ok: false, message: 'La contraseña debe tener 8 caracteres, mayúscula, minúscula y número' });
-        }
-
-        const [casa, correoExistente, correoRegistradoAntes] = await Promise.all([
-            casaId ? Casa.findByPk(casaId, { attributes: ['id', 'calle', 'numero', 'correo'] }) : null,
-            Usuario.findOne({ where: { correo } }),
-            VerificacionCuenta.findOne({
-                where: { tipo: 'REGISTRO', correo, consumidoEn: { [Op.ne]: null } },
-                attributes: ['id']
-            })
-        ]);
-        if (casaId && !casa) return res.status(404).json({ ok: false, message: 'La vivienda seleccionada no existe' });
-        if (correoExistente || correoRegistradoAntes) {
-            return res.status(409).json({ ok: false, message: 'Ese correo ya fue utilizado para registrar una cuenta' });
-        }
-
-        // Comprobar la configuración antes de crear un código que nunca podrá enviarse.
-        try {
-            emailService.validarConfiguracionSmtp();
-        } catch (smtpError) {
-            console.error('[registro.smtp] Configuración SMTP incompleta:', smtpError.message);
-            return res.status(503).json({
-                ok: false,
-                codigo: 'SMTP_CONFIG_INCOMPLETA',
-                message: 'El envío de correos no está configurado. Solicita a Administración revisar SMTP en Hostinger.'
-            });
-        }
-
-        const codigo = generarCodigo();
-        const datosJson = JSON.stringify({
-            modalidad: 'REVISION_ADMIN', tipoCuenta,
-            calle: casa?.calle || calle, numeroCasa: casa?.numero || numeroCasa,
-            invitacionId: invitacionRegistro?.id,
-            nombre, apellidoPaterno, apellidoMaterno: apellidoMaterno || null,
-            telefono: telefono || null,
-            contrasenaHash: await bcrypt.hash(contrasena, 12)
-        });
-        await VerificacionCuenta.destroy({ where: { tipo: 'REGISTRO', correo, consumidoEn: null } });
-        const registroCodigo = await VerificacionCuenta.create({
-            tipo: 'REGISTRO', casaId, correo, datosJson,
-            codigoHash: codigoHash(correo, codigo),
-            expiraEn: new Date(Date.now() + EXPIRACION_CODIGO_MINUTOS * 60000)
-        });
-        try {
-            await emailService.enviarCodigoVerificacion({ destinatario: correo, codigo, nombre, motivo: 'registro' });
-        } catch (smtpError) {
-            // No conservar códigos sin enviar ni imprimir contraseñas/códigos en los logs.
-            console.error('[registro.smtp] Fallo al enviar código:', {
-                codigo: smtpError.code || 'SMTP_ERROR',
-                comando: smtpError.command || null,
-                respuesta: smtpError.responseCode || null
-            });
-            try {
-                await VerificacionCuenta.destroy({ where: { id: registroCodigo.id, consumidoEn: null } });
-            } catch (cleanupError) {
-                console.error('[registro.smtp] No se pudo limpiar el código fallido:', cleanupError.name);
+        const contrasenaHash = await bcrypt.hash(contrasena, 12);
+        // Usuario y solicitud se crean juntos, o no se crea ninguno.
+        await sequelize.transaction(async transaction => {
+            const existente = await Usuario.findOne({ where: { correo }, attributes: ['id'], transaction });
+            if (existente) {
+                throw Object.assign(new Error('Ese correo ya tiene una cuenta o solicitud registrada. Contacta a Administración.'), { status: 409 });
             }
-            return res.status(503).json({
-                ok: false,
-                codigo: 'SMTP_ENVIO_FALLIDO',
-                message: 'No se pudo enviar el código por correo. Administración debe revisar la conexión y credenciales SMTP en Hostinger.'
-            });
-        }
-
-        return res.status(202).json({
-            ok: true,
-            message: 'Enviamos un código de seis dígitos a tu correo',
-            correo,
-            expiraEnMinutos: EXPIRACION_CODIGO_MINUTOS
+            let invitacionRegistro = null;
+            let casa = null;
+            if (body.invitacion) {
+                invitacionRegistro = await invitacion(body.invitacion, transaction);
+                if (normalizarCorreo(invitacionRegistro.correo) !== correo) {
+                    throw Object.assign(new Error('Usa el correo indicado en la invitación'), { status: 403 });
+                }
+                casa = await Casa.findByPk(invitacionRegistro.casaId, {
+                    attributes: ['id', 'calle', 'numero'], transaction
+                });
+                if (!casa) throw Object.assign(new Error('La vivienda de la invitación ya no existe'), { status: 400 });
+            }
+            const rolBase = await Rol.findOne({ where: { nombre: 'CONDOMINO', activo: true }, transaction });
+            if (!rolBase) throw new Error('Rol CONDOMINO no configurado');
+            const nuevoUsuario = await Usuario.create({
+                casaId: null,
+                rolId: rolBase.id,
+                nombre, apellidoPaterno, apellidoMaterno: apellidoMaterno || null,
+                telefono: telefono || null, correo, contrasenaHash,
+                estatus: 'PENDIENTE', esContactoPrincipal: false, recibeCorreosPago: true
+            }, { transaction });
+            await SolicitudCuenta.create({
+                usuarioId: nuevoUsuario.id, tipoCuenta,
+                calle: casa?.calle || (tipoCuenta === 'CONDOMINO' ? calle : null),
+                numeroCasa: casa?.numero || (tipoCuenta === 'CONDOMINO' ? numeroCasa : null),
+                casaSugeridaId: casa?.id || null,
+                tipoVinculo: invitacionRegistro?.tipo === 'RESPONSABLE' ? 'RESPONSABLE' : 'MIEMBRO',
+                estatus: 'PENDIENTE'
+            }, { transaction });
+            // Una invitación no puede utilizarse para registrar dos cuentas.
+            if (invitacionRegistro) await invitacionRegistro.update({ aceptadoEn: new Date() }, { transaction });
+        });
+        return res.status(201).json({
+            ok: true, pendienteAprobacion: true,
+            message: 'Solicitud recibida. Administración revisará tu identidad y autorizará el acceso. No se enviará ningún correo.'
         });
     } catch (error) {
-        console.error('Error al solicitar registro:', error);
-        return res.status(error.status || 500).json({ ok: false, message: error.status ? error.message : 'No fue posible enviar el código de verificación' });
+        if (error.status) return res.status(error.status).json({ ok: false, message: error.message });
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ ok: false, message: 'Ese correo ya está registrado. Contacta a Administración.' });
+        }
+        console.error('Error al crear solicitud de registro:', error);
+        return res.status(503).json({ ok: false, message: 'No fue posible guardar tu solicitud. Intenta nuevamente o contacta a Administración.' });
     }
 }
 
+// Compatibilidad con clientes antiguos: el código por correo ya no participa
+// en el alta. No crear cuentas por una ruta de verificación obsoleta.
 async function verificarRegistro(req, res) {
-    const correo = normalizarCorreo(req.body.correo);
-    const codigo = String(req.body.codigo || '').trim();
-    if (!correo || !/^\d{6}$/.test(codigo)) {
-        return res.status(400).json({ ok: false, message: 'Escribe el correo y el código de seis dígitos' });
-    }
-
-    let transaction;
-    try {
-        transaction = await sequelize.transaction();
-        const verificacion = await VerificacionCuenta.findOne({
-            where: { tipo: 'REGISTRO', correo, consumidoEn: null },
-            order: [['id', 'DESC']],
-            transaction,
-            lock: transaction.LOCK.UPDATE
-        });
-        if (!verificacion || verificacion.expiraEn <= new Date()) {
-            await transaction.rollback();
-            return res.status(410).json({ ok: false, message: 'El código venció. Solicita uno nuevo.' });
-        }
-        if (verificacion.intentos >= MAX_INTENTOS_CODIGO) {
-            await transaction.rollback();
-            return res.status(429).json({ ok: false, message: 'Código bloqueado por demasiados intentos. Solicita uno nuevo.' });
-        }
-        if (verificacion.codigoHash !== codigoHash(correo, codigo)) {
-            await verificacion.increment('intentos', { transaction });
-            await transaction.commit();
-            return res.status(400).json({ ok: false, message: 'El código no es correcto' });
-        }
-
-        const [rol, correoExistente] = await Promise.all([
-            Rol.findOne({ where: { nombre: 'CONDOMINO', activo: true }, transaction }),
-            Usuario.findOne({ where: { correo }, transaction })
-        ]);
-        if (!rol) throw new Error('No existe el rol CONDOMINO');
-        if (correoExistente) {
-            await transaction.rollback();
-            return res.status(409).json({ ok: false, message: 'Ese correo ya tiene una cuenta registrada' });
-        }
-
-        const datos = JSON.parse(verificacion.datosJson || '{}');
-        const inv = datos.invitacionId ? await InvitacionCasa.findByPk(datos.invitacionId,{transaction,lock:transaction.LOCK.UPDATE}) : null;
-        if (datos.invitacionId ? (!vigente(inv) || inv.correo !== correo || String(inv.casaId) !== String(verificacion.casaId))
-            : datos.modalidad !== 'REVISION_ADMIN') {
-            await transaction.rollback();
-            return res.status(410).json({ok:false,message:'Solicita una invitación vigente a tu vivienda.'});
-        }
-        const nuevoUsuario = await Usuario.create({
-            casaId: null,
-            rolId: rol.id,
-            nombre: datos.nombre,
-            apellidoPaterno: datos.apellidoPaterno,
-            apellidoMaterno: datos.apellidoMaterno,
-            telefono: datos.telefono,
-            correo,
-            contrasenaHash: datos.contrasenaHash,
-            estatus: 'PENDIENTE',
-            esContactoPrincipal: false,
-            recibeCorreosPago: true
-        }, { transaction });
-        const casaInvitada = inv ? await Casa.findByPk(inv.casaId, { transaction }) : null;
-        await SolicitudCuenta.create({ usuarioId: nuevoUsuario.id,
-            tipoCuenta: datos.tipoCuenta === 'SEGURIDAD' ? 'SEGURIDAD' : 'CONDOMINO',
-            calle: casaInvitada?.calle || datos.calle || null,
-            numeroCasa: casaInvitada?.numero || datos.numeroCasa || null,
-            casaSugeridaId: inv?.casaId || null, tipoVinculo: inv?.tipo || 'MIEMBRO', estatus: 'PENDIENTE'
-        }, { transaction });
-        if (inv) await inv.update({aceptadoEn:new Date()},{transaction});
-        await verificacion.update({
-            consumidoEn: new Date(),
-            datosJson: null,
-            codigoHash: crypto.randomBytes(32).toString('hex')
-        }, { transaction });
-        await transaction.commit();
-        return res.status(201).json({ ok: true, message: 'Correo verificado. Tu cuenta está pendiente de aprobación por Administración.', pendienteAprobacion: true });
-    } catch (error) {
-        if (transaction && !transaction.finished) await transaction.rollback();
-        console.error('Error al verificar registro:', error);
-        return res.status(500).json({ ok: false, message: 'No fue posible registrar la solicitud de cuenta' });
-    }
+    return res.status(410).json({
+        ok: false,
+        message: 'La verificación por correo ya no se utiliza. Actualiza la página y envía tu solicitud para revisión administrativa.'
+    });
 }
 
 async function actualizarPerfil(req, res) {

@@ -43,26 +43,30 @@ function ui(page, script, request) {
     const done = vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/js', script), 'utf8'), sandbox);
     return { elements, done, writes, tabs };
 }
-test('registration hides and disables the address for security, verifies email and ends waiting for approval', async () => {
-    const u = ui('registro.html', 'registro.js', async url => url.endsWith('solicitar') ? { ok: true, correo: 'ana@example.com', message: 'Código enviado' } : { ok: true, pendienteAprobacion: true });
-    const e = u.elements;
+test('registro de seguridad sin vivienda crea solicitud pendiente, sin paso de correo', async () => {
+    const u = ui('registro.html','registro.js',async () => ({ok:true,pendienteAprobacion:true,message:'Solicitud recibida'}));
+    const e=u.elements;
     await e.securityType.emit('click');
-    assert.equal(e.addressFields.hidden, true); assert.equal(e.addressFields.disabled, true);
-    e.registerPassword.value = e.confirmPassword.value = 'Prueba1234';
+    assert.equal(e.addressFields.hidden,true);
+    assert.equal(e.addressFields.disabled,true);
+    e.registerPassword.value=e.confirmPassword.value='Prueba1234';
     await e.registerForm.emit('submit');
-    assert.equal(u.writes[0].tipoCuenta, 'SEGURIDAD'); assert.equal(u.writes[0].calle, undefined);
-    assert.equal(e.registerForm.hidden, true); assert.equal(e.verifyForm.hidden, false);
-    assert.equal(e.registerPassword.value, '');
-    e.emailCode.value = '123456'; await e.verifyForm.emit('submit');
-    assert.equal(e.registerSuccess.hidden, false); assert.equal(e.verifyForm.hidden, true);
-    assert.match(e.registerTitle.textContent, /Gracias/);
+    assert.equal(u.writes.length,1);
+    assert.equal(u.writes[0].tipoCuenta,'SEGURIDAD');
+    assert.equal(u.writes[0].calle,undefined);
+    assert.equal(e.registerForm.hidden,true);
+    assert.equal(e.registerSuccess.hidden,false);
+    assert.match(e.registerTitle.textContent,/solicitud/i);
 });
-test('failed email delivery leaves the form available and does not claim a created account', async () => {
-    const u = ui('registro.html', 'registro.js', async () => ({ ok: false, message: 'No fue posible enviar el código' }));
-    const e = u.elements; e.registerPassword.value = e.confirmPassword.value = 'Prueba1234';
+test('si falla guardar la solicitud el formulario continúa disponible y muestra el error', async () => {
+    const u=ui('registro.html','registro.js',async ()=>({ok:false,message:'No fue posible guardar la solicitud'}));
+    const e=u.elements;
+    e.registerPassword.value=e.confirmPassword.value='Prueba1234';
     await e.registerForm.emit('submit');
-    assert.equal(e.registerMessage.hidden, false); assert.match(e.registerMessage.textContent, /enviar/);
-    assert.equal(e.registerSubmit.disabled, false); assert.equal(e.registerForm.hidden, false);
+    assert.equal(e.registerMessage.hidden,false);
+    assert.match(e.registerMessage.textContent,/guardar/);
+    assert.equal(e.registerForm.hidden,false);
+    assert.equal(e.registerSubmit.disabled,false);
 });
 async function adminUI() {
     const item = { id: 8, tipoCuenta: 'CONDOMINO', calle: 'Gardenias', numeroCasa: '5', estatus: 'PENDIENTE', usuario: { id: 21, nombre: '<script>bad()</script>', apellidoPaterno: 'Prueba', correo: 'ana@example.com' } };
