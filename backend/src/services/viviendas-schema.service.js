@@ -5,6 +5,6 @@ async function asegurarViviendas(){
  // Unique membership rows preserve revocations across restarts. Never reactivate here.
  await db.query(`INSERT IGNORE INTO usuarios_casas
  (usuario_id,casa_id,tipo,activo,vinculado_en)
- SELECT id,casa_id,'MIEMBRO',1,NOW() FROM usuarios WHERE casa_id IS NOT NULL`);
+ SELECT id,casa_id,'MIEMBRO',1,NOW() FROM usuarios WHERE casa_id IS NOT NULL AND estatus='ACTIVO'`);
 }
 module.exports={asegurarViviendas};
