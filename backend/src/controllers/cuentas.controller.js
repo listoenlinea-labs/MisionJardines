@@ -68,7 +68,7 @@ async function revisar(req, res) {
                 if (rol === 'CONDOMINO' && !house) throw fail(400, 'Selecciona la vivienda real del condómino');
                 await user.update({ rolId: assigned.id, casaId: house?.id || null, estatus: 'ACTIVO',
                     esContactoPrincipal: false, actualizadoEn: new Date() }, { transaction });
-                if (house) await vincular({ usuarioId: user.id, casaId: house.id, tipo: 'MIEMBRO', actorId: reviewer.id, transaction });
+                if (house) await vincular({ usuarioId: user.id, casaId: house.id, tipo: solicitud.tipoVinculo === 'RESPONSABLE' ? 'RESPONSABLE' : 'MIEMBRO', actorId: reviewer.id, transaction });
             } else {
                 await user.update({ estatus: 'BLOQUEADO', actualizadoEn: new Date() }, { transaction });
             }
