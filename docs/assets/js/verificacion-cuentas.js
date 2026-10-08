@@ -67,6 +67,7 @@
       field('Solicitud', s.tipoSolicitado === 'SEGURIDAD' ? 'Personal de seguridad' : 'Residente'),
       field('Vivienda solicitada', s.casa ? s.casa.calle + ' · Casa ' + s.casa.numero : 'No aplica'),
       field('Teléfono', user.telefono || 'No proporcionado'),
+      field('Padrón de la vivienda', (s.padron || []).join(', ') || s.casa?.nombre || 'Sin coincidencia en padrón'),
       field('Fecha de solicitud', s.creadoEn ? new Date(s.creadoEn).toLocaleString('es-MX') : '—')
     );
     article.append(meta);
