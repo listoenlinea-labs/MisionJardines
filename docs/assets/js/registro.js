@@ -19,9 +19,23 @@
     $('typeHint').textContent = security ? 'No necesitas indicar una vivienda. Solo Administración puede asignarte el rol de seguridad.' : 'Administración verificará tu identidad y la vivienda que indiques.';
   }
   async function api(path, body) {
-    const response = await fetch(base + '/auth/registro/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await response.json();
-    if (!response.ok || !data.ok) throw Error(data.message || 'No fue posible completar el registro.');
+    let response;
+    try {
+      response = await fetch(base + '/auth/registro/' + path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+    } catch (error) {
+      console.error('[Registro Misión Jardines] No se pudo conectar al servidor:', { ruta: path, motivo: error.message });
+      throw Error('No fue posible conectarse al servidor. Comprueba tu conexión e intenta nuevamente.');
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) {
+      // Deliberadamente no registra correo, contraseña ni código de verificación.
+      console.error('[Registro Misión Jardines] Falló la solicitud:', {
+        ruta: path, estadoHTTP: response.status, codigo: data.codigo || 'ERROR_NO_CLASIFICADO'
+      });
+      throw Error(data.message || 'El servidor no pudo completar el registro (HTTP ' + response.status + ').');
+    }
     return data;
   }
   $('residentType').addEventListener('click', () => setType('CONDOMINO'));
