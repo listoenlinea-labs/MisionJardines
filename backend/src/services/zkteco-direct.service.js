@@ -103,6 +103,9 @@ async function syncUsers(){
     return {users,auth,authReadable};
   });
 
+  if(!Array.isArray(payload.users) || !Array.isArray(payload.auth)) {
+    throw new Error('El C3 devolvió un inventario incompleto. Se conserva la información anterior.');
+  }
   const houses=await Casa.findAll({attributes:['id','calle','numero','controles']});
   const houseById=new Map(houses.map(h=>[Number(h.id),h]));
   const byCard=new Map();
@@ -114,6 +117,12 @@ async function syncUsers(){
   }
 
   const currentCards=await ZkTarjeta.findAll();
+  // Una respuesta vacía inesperada por fallo/protocolo no debe declarar que
+  // todos los controles físicos desaparecieron del C3.
+  if(payload.users.length===0 && currentCards.some(c=>c.enControlador)){
+    throw new Error('El C3 reportó cero usuarios pero existían TAGs; no se marcarán ausentes sin una comprobación manual.');
+  }
+  const affectedHouseIds=new Set();
   const existingByNormalized=new Map();
   const indexExisting=item=>{
     const key=normalizeCardKey(item.numeroTarjeta);
@@ -188,8 +197,13 @@ async function syncUsers(){
     };
 
     if(existing){
+      const changedCard=existing.enControlador===false ||
+        String(existing.fechaFin||'')!==String(values.fechaFin||'') ||
+        Number(existing.casaId||0)!==Number(casaId||0);
+      if(changedCard && casaId) affectedHouseIds.add(casaId);
       await existing.update(values);
     }else{
+      if(casaId) affectedHouseIds.add(casaId);
       const created=await ZkTarjeta.create(values);
       indexExisting(created);
       currentCards.push(created);
@@ -228,7 +242,9 @@ async function syncUsers(){
     }
   }
 
-  for (const casaId of new Set(currentCards.filter(card=>card.enControlador&&card.casaId).map(card=>card.casaId))) {
+  // Solo fechas/vinculaciones realmente desincronizadas disparan una
+  // escritura TCP; la lectura periódica no debe reescribir todos los TAGs.
+  for (const casaId of affectedHouseIds) {
     await require('./zkteco-vigencias.service').marcarPendiente(casaId);
   }
 
@@ -1108,26 +1124,27 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
 
   let houses;
   if(searchByDepartment){
+    // Si DEPTNAME está vacío, no ocultar una casa que existe en direcciones.
     // ZKAccess stores the address as one value in DEPARTMENTS.DEPTNAME,
     // for example "GARDENIAS 21". Treat that field as the source of truth.
     const matchedCards=cards.filter(card=>departmentMatchesHouse(card.departamento,calle,numero));
     const houseIds=[...new Set(matchedCards.map(card=>Number(card.casaId)).filter(Boolean))];
 
+    const candidates=await Casa.findAll({
+      where:{numero:String(numero).trim()},
+      attributes:['id','calle','numero','controles'],
+      order:[['calle','ASC'],['numero','ASC']]
+    });
+    houses=candidates.filter(h=>normalizeDepartmentKey(h.calle,h.numero)===normalizeDepartmentKey(calle,numero));
+    // Show physically matching houses as well if they have not yet been
+    // reconciled to a physical department record.
     if(houseIds.length){
-      houses=await Casa.findAll({
-        where:{id:{[Op.in]:houseIds}},
-        attributes:['id','calle','numero','controles'],
-        order:[['calle','ASC'],['numero','ASC']]
-      });
-    }else{
-      // If the department import has not linked casa_id yet, locate the one
-      // matching the same street/number so the UI can show "Pendiente de enlazar".
-      const candidates=await Casa.findAll({
-        where:{numero:String(numero).trim()},
-        attributes:['id','calle','numero','controles'],
-        order:[['calle','ASC'],['numero','ASC']]
-      });
-      houses=candidates.filter(h=>normalizeDepartmentKey(h.calle,h.numero)===normalizeDepartmentKey(calle,numero));
+      const additional=await Casa.findAll({where:{id:{[Op.in]:houseIds}},
+        attributes:['id','calle','numero','controles']});
+      const have=new Set(houses.map(h=>Number(h.id)));
+      for(const house of additional){
+        if(!have.has(Number(house.id))){houses.push(house);have.add(Number(house.id));}
+      }
     }
   }else{
     const where={};
@@ -1169,8 +1186,9 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       const matched=[];
       const seen=new Set();
 
-      // When street + house number are provided, only show cards whose
-      // ZKAccess Departamento actually matches that house.
+      // El dato físico Departamento puede faltar o ser antiguo. Priorizar
+      // los tags de usuarios_casas/controles del padrón para no esconder
+      // Gardenias 5 simplemente porque ZKAccess no devolvió DEPTNAME.
       const departmentCards=searchByDepartment
         ? cards.filter(card=>departmentMatchesHouse(card.departamento,h.calle,h.numero))
         : [];
@@ -1180,12 +1198,14 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       }
       for(const rawCard of controls){
         const card=byNormalizedCard.get(normalizeCardKey(rawCard));
-        if(card&&!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+        if(card&&!seen.has(card.id)&&(!searchByDepartment || Number(card.casaId||0)===Number(h.id) ||
+          departmentMatchesHouse(card.departamento,h.calle,h.numero) || !card.departamento)){
           matched.push(card);seen.add(card.id);
         }
       }
       for(const card of (byHouse.get(Number(h.id))||[])){
-        if(!seen.has(card.id)&&(!searchByDepartment||departmentMatchesHouse(card.departamento,h.calle,h.numero))){
+        if(!seen.has(card.id) && (!searchByDepartment || Number(card.casaId)===Number(h.id) ||
+          departmentMatchesHouse(card.departamento,h.calle,h.numero))){
           matched.push(card);seen.add(card.id);
         }
       }

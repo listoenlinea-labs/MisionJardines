@@ -44,6 +44,7 @@ async function iniciarServidor() {
                 `Servidor corriendo en http://localhost:${PORT}`
             );
             require('./services/zkteco-vigencias.service').start();
+            require('./services/zkteco-autosync.service').startZktecoAutoSync();
         });
     } catch (error) {
         console.error(
