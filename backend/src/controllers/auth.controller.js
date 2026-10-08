@@ -12,7 +12,8 @@ const {
     VerificacionCuenta,
     SolicitudRol
 } = require('../models');
-const { invitacion, vigente, vincular } = require('../services/viviendas.service');
+const { invitacion, vigente } = require('../services/viviendas.service');
+const SolicitudRegistro = require('../models/SolicitudRegistro');
 const { InvitacionCasa } = require('../models');
 const { enviarCodigoVerificacion } = require('../services/email.service');
 
@@ -342,11 +343,17 @@ async function verificarRegistro(req, res) {
             telefono: datos.telefono,
             correo,
             contrasenaHash: datos.contrasenaHash,
-            estatus: 'ACTIVO',
-            esContactoPrincipal: inv.tipo === 'RESPONSABLE',
+            estatus: 'PENDIENTE',
+            esContactoPrincipal: false,
             recibeCorreosPago: true
         }, { transaction });
-        await vincular({usuarioId:nuevoUsuario.id,casaId:inv.casaId,tipo:inv.tipo,actorId:nuevoUsuario.id,transaction});
+        await SolicitudRegistro.create({
+            usuarioId: nuevoUsuario.id,
+            casaId: inv.casaId,
+            tipoSolicitado: 'CONDOMINO',
+            tipoVinculo: inv.tipo === 'RESPONSABLE' ? 'RESPONSABLE' : 'MIEMBRO',
+            estatus: 'PENDIENTE'
+        }, { transaction });
         await inv.update({aceptadoEn:new Date()},{transaction});
         await verificacion.update({
             consumidoEn: new Date(),
@@ -354,7 +361,7 @@ async function verificarRegistro(req, res) {
             codigoHash: crypto.randomBytes(32).toString('hex')
         }, { transaction });
         await transaction.commit();
-        return res.status(201).json({ ok: true, message: 'Cuenta verificada y activada. Ya puedes iniciar sesión.' });
+        return res.status(201).json({ ok: true, message: 'Correo verificado. Administración revisará tu cuenta antes de habilitar el acceso.' });
     } catch (error) {
         if (!transaction.finished) await transaction.rollback();
         console.error('Error al verificar registro:', error);
