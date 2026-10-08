@@ -1,4 +1,4 @@
-const {syncUsers} = require('./zkteco-direct.service');
+const direct = require('./zkteco-direct.service');
 let timer = null;
 let running = false;
 let lastRun = null;
@@ -13,7 +13,7 @@ async function runAutoSync(){
   inFlight = (async()=>{
     running=true;
     try{
-      const result=await syncUsers();
+      const result=await direct.syncUsers();
       lastRun=new Date();
       lastOk=result;
       lastError=null;
