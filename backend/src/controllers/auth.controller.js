@@ -129,7 +129,8 @@ async function iniciarSesion(req, res) {
                 usuarioId: usuario.id,
                 casaId: usuario.casaId,
                 rolId: usuario.rolId,
-                rol: usuario.rol.nombre
+                rol: usuario.rol.nombre,
+                sesionVersion: Number(usuario.sesionVersion || 0)
             },
             process.env.JWT_SECRET,
             {
