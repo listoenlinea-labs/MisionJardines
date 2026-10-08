@@ -31,7 +31,11 @@
    ['Pendientes',data.pendientes],['Ingresos validados',fmt(data.ingresosValidados)],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
-   ['Egresos registrados',fmt(data.totalEgresos)],['Saldo parcial conciliable',fmt(data.balanceReportado)]
+   ['Egresos registrados',fmt(data.totalEgresos)],['Saldo parcial conciliable',fmt(data.balanceReportado)],
+   ['Casa Club · recuperación',fmt(data.casaClub?.recuperacion)],
+   ['Casa Club · limpieza',fmt(data.casaClub?.limpieza)],
+   ['Garantías recibidas',fmt(data.casaClub?.garantiasRecibidas)],
+   ['Garantías devueltas',fmt(data.casaClub?.garantiasDevueltas)]
   ].map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent',data.porcentaje+'%');
   $('financeDonutText').innerHTML=esc(data.porcentaje)+'%<small>Casas pagadas</small>';
