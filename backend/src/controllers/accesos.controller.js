@@ -10,7 +10,7 @@ function incluirRelaciones() {
         {
             model: Casa,
             as: 'casa',
-            attributes: ['id', 'calle', 'numero', 'nombre']
+            attributes: ['id', 'calle', 'calleCorrecta', 'numero', 'nombre']
         },
         {
             model: Usuario,
@@ -36,7 +36,7 @@ async function obtenerAccesos(req, res) {
         const include = incluirRelaciones();
         if (calle || numero) {
             include[0].where = {};
-            if (calle) include[0].where.calle = calle;
+            if (calle) include[0].where.calleCorrecta = calle;
             if (numero) include[0].where.numero = { [Op.like]: `%${numero}%` };
         }
 
