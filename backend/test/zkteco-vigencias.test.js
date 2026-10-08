@@ -8,7 +8,7 @@ const direct = require('../src/services/zkteco-direct.service');
 const worker = require('../src/services/zkteco-vigencias.service');
 const { C3Client } = require('../src/services/zkteco-c3-client.service');
 const now = new Date('2026-10-08T18:00:00Z');
-const tx = { LOCK: { UPDATE: 'UPDATE' } };
+const tx = { LOCK: { UPDATE: 'UPDATE' }, afterCommit() {} };
 const row = data => ({ ...data, async update(values, options) {
     assert.equal(options.transaction, tx); Object.assign(this, values); return this;
 } });
@@ -117,4 +117,51 @@ test('an unconfirmed TCP write fails rather than falling back to the bridge', as
     t.after(() => { if (originalMode === undefined) delete process.env.ZKTECO_WRITE_MODE; else process.env.ZKTECO_WRITE_MODE = originalMode; });
     process.env.ZKTECO_WRITE_MODE = 'AUTO';
     await assert.rejects(direct.writeUserValidity('123', null, '2026-12-10', { mode: 'DIRECT' }), /no confirmó/);
+});
+
+test('recovery queries only pending and failed houses, never completed inventory', async t => {
+    let queries = 0;
+    t.mock.method(Vigencia, 'findAll', async options => {
+        queries++;
+        const { Op } = require('sequelize');
+        assert.deepEqual(options.where.sincronizacion[Op.in], ['PENDIENTE', 'ERROR']);
+        assert.equal(options.limit, 10);
+        return [];
+    });
+    t.mock.method(Tags, 'findAll', async () => assert.fail('no full inventory scan'));
+    await worker.run();
+    assert.equal(queries, 1);
+});
+
+test('payment queues delivery only after commit, not before or on rollback', async t => {
+    const models = require('../src/models');
+    const payments = require('../src/services/vigencia-mantenimiento.service');
+    const validity = setup(t, [] , { fechaBase: '2026-08-10', tarifaMensual: '300.00', principalInicial: '0.00' });
+    t.mock.method(models.Casa, 'findByPk', async () => ({ id: 7 }));
+    t.mock.method(models.Cuota, 'findAll', async () => []);
+    t.mock.method(models.PagoReportado, 'findAll', async () => []);
+    let committed; const queued = [];
+    t.mock.method(tx, 'afterCommit', callback => { committed = callback; });
+    t.mock.method(worker, 'solicitar', id => queued.push(id));
+    await payments.actualizar(7, 2, tx);
+    assert.deepEqual(queued, []);
+    assert.equal(validity.sincronizacion, 'PENDIENTE');
+    committed();
+    assert.deepEqual(queued, [7]);
+});
+
+test('association event resets failed or completed delivery before enqueueing', async t => {
+    const queued = [];
+    t.mock.method(Vigencia, 'update', async (values, options) => {
+        assert.equal(values.sincronizacion, 'PENDIENTE');
+        assert.equal(values.proximoIntento, null);
+        assert.deepEqual(options.where, { casaId: 7 });
+        queued.push('persisted');
+    });
+    // Real queue runs asynchronously; stub the transaction to verify it follows persistence.
+    t.mock.method(sequelize, 'transaction', async () => { queued.push('delivered'); });
+    await worker.marcarPendiente(7);
+    assert.deepEqual(queued, ['persisted']);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(queued, ['persisted', 'delivered']);
 });
