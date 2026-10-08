@@ -41,6 +41,20 @@
       if (item.comentarioRevision) details.append(textElement('p', item.comentarioRevision));
     }
     node.append(details);
+    if(item.estatus==='APROBADA' && item.usuario?.estatus==='ACTIVO'){
+      const button=textElement('button','Revocar acceso y credenciales','revoke-access');
+      button.type='button';
+      button.addEventListener('click',async()=>{
+        if(!confirm('¿Desactivar permanentemente el acceso de '+fullName(item.usuario)+'? Se cerrarán sus permisos y no podrá volver a iniciar sesión. Se conservarán sus pagos y reservas históricas.'))return;
+        if(!confirm('Confirma nuevamente: ¿revocar acceso de '+fullName(item.usuario)+'?'))return;
+        button.disabled=true;
+        try{const response=await api('/'+Number(item.id)+'/revocar','PATCH',{});message('reviewMessage',response.message);await load();}
+        catch(error){message('reviewMessage',error.message,true);button.disabled=false;}
+      });
+      node.append(button);
+    }else if(item.estatus==='APROBADA' && item.usuario?.estatus!=='ACTIVO'){
+      node.append(textElement('span','Acceso revocado o inactivo','revoked-label'));
+    }
     if (item.estatus === 'PENDIENTE' && item.usuario) {
       const button = textElement('button', 'Revisar solicitud →', 'account-button secondary'); button.type = 'button';
       button.addEventListener('click', () => open(item)); node.append(button);
@@ -51,7 +65,8 @@
     const version = ++listVersion; $('requestList').setAttribute('aria-busy', 'true'); $('refreshAccounts').disabled = true;
     $('previousPage').disabled = true; $('nextPage').disabled = true;
     try {
-      const data = await api('?estatus=' + status + '&pagina=' + page);
+      const query=new URLSearchParams({estatus:status,pagina:String(page),nombre:$('accountSearchName').value.trim(),calle:$('accountSearchStreet').value.trim(),numero:$('accountSearchHouse').value.trim()});
+      const data = await api('?'+query.toString());
       if (version !== listVersion) return;
       pages = data.paginas; $('reviewCount').textContent = data.total + ' solicitud(es)';
       $('requestList').replaceChildren(...data.solicitudes.map(card));
@@ -131,6 +146,17 @@
   $('verifiedHouse').addEventListener('change', () => { $('identityConfirmed').checked = false; });
   $('searchHouse').addEventListener('click', () => void searchHouses());
   $('houseQuery').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); void searchHouses(); } });
+  let searchTimer;
+  for(const id of ['accountSearchName','accountSearchStreet','accountSearchHouse']){
+    $(id).addEventListener('input',()=>{
+      clearTimeout(searchTimer);
+      searchTimer=setTimeout(()=>{page=1;void load()},280);
+    });
+  }
+  $('clearAccountSearch').addEventListener('click',()=>{
+    ['accountSearchName','accountSearchStreet','accountSearchHouse'].forEach(id=>$(id).value='');
+    page=1;void load();
+  });
   $('refreshAccounts').addEventListener('click', () => void load());
   for (const button of document.querySelectorAll('[data-status]')) button.addEventListener('click', () => {
     status = button.dataset.status; page = 1; $('reviewMessage').hidden = true;
