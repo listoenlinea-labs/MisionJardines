@@ -213,23 +213,40 @@ function fmt(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getT
 async function loadStatus(){
   try{
     const r=await api('/zkteco/estado',{headers:headers()});
-    const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>Conectado al C3-200</span>';
+    const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>'+(d.inventarioAuto?.lastError?'C3 conectado · lectura en revisión':'Conectado al C3-200')+'</span>';
     $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceWriteMode').textContent=d.escrituraUsuarios==='PULLSDK'?(d.bridge?.controller?'Pull SDK oficial · conectado':(d.bridge?.error?'Pull SDK · '+d.bridge.error:'Pull SDK oficial')):'No configurada';$('deviceCards').textContent=d.tarjetas||0;
   }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(errorText(e))}
+}
+function zkDateToday(){
+  return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',
+    year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+}
+function tagState(tag){
+  if(tag.enControlador===false)return{label:'No confirmado en C3',cls:'none'};
+  // La base conserva la última presencia positiva. Una lectura antigua no
+  // acredita que el TAG siga físicamente en ese panel hoy.
+  const leido=tag.ultimaLectura?new Date(tag.ultimaLectura).getTime():0;
+  if(!leido || !Number.isFinite(leido) || Date.now()-leido>5*60*1000)
+    return{label:'Presencia por verificar',cls:'none'};
+  if(tag.bloqueado)return{label:'Bloqueado',cls:'off'};
+  if(tag.fechaFin&&String(tag.fechaFin).slice(0,10)<zkDateToday())
+    return{label:'Vigencia vencida',cls:'off'};
+  return{label:'Activo',cls:'on'};
 }
 function rowState(row){
   if(row.tarjetas?.length){
     const live=row.tarjetas.filter(t=>t.enControlador!==false);
-    if(!live.length)return{label:'Pendiente de enlazar',cls:'none',blocked:false};
-    const blocked=live.every(t=>t.bloqueado);
-    return blocked?{label:'Bloqueada',cls:'off',blocked:true}:{label:'Sincronizado',cls:'on',blocked:false};
+    if(!live.length)return{label:'Sin enlace C3',cls:'none',blocked:false};
+    const recientes=live.filter(t=>tagState(t).cls!=='none');
+    if(!recientes.length)return{label:'Verificar inventario',cls:'none',blocked:false};
+    const blocked=recientes.every(t=>t.bloqueado);
+    const expired=recientes.every(t=>tagState(t).cls==='off');
+    if(blocked)return{label:'Bloqueada',cls:'off',blocked:true};
+    if(expired)return{label:'Vigencia vencida',cls:'off',blocked:false};
+    return{label:'Sincronizado',cls:'on',blocked:false};
   }
   if(row.controlesNoEnlazados?.length)return{label:'Pendiente de enlazar',cls:'none',blocked:false};
   return{label:'Sin controles',cls:'none',blocked:false};
-}
-function tagState(tag){
-  if(tag.enControlador===false)return{label:'No existe en C3',cls:'off'};
-  return tag.bloqueado?{label:'Bloqueado',cls:'off'}:{label:'Activo',cls:'on'};
 }
 function renderTagDetails(row){
   const tags=row.tarjetas||[];
@@ -250,7 +267,7 @@ function renderTagDetails(row){
       '<div><span class="tag-label">TAG</span><div class="tag-id">'+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.departamento||tag.nombreDispositivo||'Sin etiqueta')+'</div></div>'+
       '<div><span class="tag-label">Estado</span><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
       '<div><span class="tag-label">Acceso</span><b>Entrada + salida</b><div class="tag-meta">Puertas '+esc(tag.puertasAutorizadas||3)+'</div></div>'+
-      '<div class="tag-validity"><span class="tag-label">Vigencia</span><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Fecha final</div></div>'+
+      '<div class="tag-validity"><span class="tag-label">Vigencia</span><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Fecha final C3</div></div>'+
       '<div class="tag-actions">'+adminActions+'</div>'+
     '</div>';
   });
@@ -367,7 +384,14 @@ async function loadRows(){
 async function syncBeforePageLoad({notify=false}={}){
   if(!canAdmin)return null;
   const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});
-  if(notify)toast(r.message+' · '+(r.data?.procesados||0)+' controles');
+  if(notify){
+    const unread=Number(r.data?.noObservados||0);
+    toast(unread
+      ? 'Lectura C3 terminada, pero '+unread+' TAG(s) locales no se observaron. Revisa el inventario y los logs antes de agregar.'
+      : r.data?.autorizacionesConfiables===false
+      ? 'TAGs identificados, pero permisos de puertas sin verificar. Revisa los logs antes de modificar.'
+      : r.message+' · '+(r.data?.procesados||0)+' controles');
+  }
   return r;
 }
 async function refreshPage(page,{notify=false,reason}={}){
@@ -375,11 +399,15 @@ async function refreshPage(page,{notify=false,reason}={}){
   currentPage=target;
   pageRefreshInFlight=true;
   let synchronized=true;
+  let partialCount=0;
+  let permissionsUncertain=false;
   let loaded=false;
   setPageSyncStatus(reason||('Actualizando página '+target+' con ZKTeco…'),true);
   try{
     try{
-      await syncBeforePageLoad({notify});
+      const syncResponse=await syncBeforePageLoad({notify});
+      partialCount=Number(syncResponse?.data?.noObservados||0);
+      permissionsUncertain=syncResponse?.data?.autorizacionesConfiables===false;
     }catch(syncError){
       synchronized=false;
       toast('No se pudo sincronizar antes de cargar la página: '+syncError.message,7000);
@@ -388,7 +416,11 @@ async function refreshPage(page,{notify=false,reason}={}){
     loaded=true;
   }finally{
     pageRefreshInFlight=false;
-    const message=!loaded?'No se pudo actualizar la página':(synchronized?'Actualizado con ZKTeco':'Datos cargados · sincronización pendiente');
+    const message=!loaded?'No se pudo actualizar la página':
+      !synchronized?'Datos locales; verificar lectura C3':
+      partialCount?'Lectura parcial: '+partialCount+' TAG(s) no observados · revisar inventario':
+      permissionsUncertain?'C3 leído · autorizaciones sin confirmar':
+      'Inventario C3 confirmado para TAGs observados';
     setPageSyncStatus(message,false);
     window.clearTimeout(window.zkPageSyncStatusTimer);
     window.zkPageSyncStatusTimer=setTimeout(()=>setPageSyncStatus(''),3500);
