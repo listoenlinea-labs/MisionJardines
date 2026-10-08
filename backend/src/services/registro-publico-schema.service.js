@@ -13,7 +13,8 @@ async function asegurarRegistroPublico() {
   );
   if (!column) throw new Error('No existe usuarios.casa_id');
   if (column.nullable !== 'YES') {
-    if (!/^(int|bigint)(\\(\\d+\\))?( unsigned)?$/i.test(column.columnType)) {
+    const normalizedType = String(column.columnType).toLowerCase().replace(/\([0-9]+\)/g, '');
+    if (!['int', 'int unsigned', 'bigint', 'bigint unsigned'].includes(normalizedType)) {
       throw new Error('Tipo inesperado de usuarios.casa_id: revisión manual necesaria');
     }
     await db.query(`ALTER TABLE usuarios MODIFY COLUMN casa_id ${column.columnType} NULL`);
