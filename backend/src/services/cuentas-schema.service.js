@@ -18,6 +18,9 @@ async function asegurarCuentas() {
         });
     }
 
+    // En instalaciones nuevas crear la tabla antes de revisar sus índices.
+    await SolicitudCuenta.sync();
+
     // Necesitamos cambiar el enum existente; sync() sin alter no lo haría.
     const [columnasEstatus] = await db.query("SHOW COLUMNS FROM solicitudes_cuenta LIKE 'estatus'");
     const tipoEstatus = String(columnasEstatus[0]?.Type || '');
@@ -56,7 +59,6 @@ async function asegurarCuentas() {
 
     await VerificacionCuenta.sync();
     await SolicitudRol.sync();
-    await SolicitudCuenta.sync();
     for (const nombre of ['CONDOMINO', 'SEGURIDAD', 'ADMINISTRADOR']) {
         await Rol.findOrCreate({ where: { nombre }, defaults: { activo: true, descripcion: nombre } });
     }
