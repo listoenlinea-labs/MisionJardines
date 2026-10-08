@@ -252,6 +252,66 @@ async function syncUsers(){
   };
 }
 
+// Diagnóstico de solo lectura para comprobar por qué una vivienda muestra
+// "No confirmado en C3". No crea/bloquea/activa TAGs ni cambia el padrón.
+async function diagnosticarVivienda(casaId) {
+  const id=Number(casaId);
+  if(!Number.isSafeInteger(id)||id<=0)throw Object.assign(new Error('Vivienda inválida'),{status:400});
+  const casa=await Casa.findByPk(id,{attributes:['id','calle','numero','controles']});
+  if(!casa)throw Object.assign(new Error('Vivienda no encontrada'),{status:404});
+  const locales=await ZkTarjeta.findAll({where:{casaId:id},order:[['numeroTarjeta','ASC']]});
+  const controles=normalizeTokens(casa.controles);
+  const allCards=new Map();
+  for(const raw of controles) {
+    const key=inventario.claveTarjeta(raw);
+    if(key)allCards.set(key,{numeroTarjeta:raw,enControlador:null});
+  }
+  for(const local of locales) {
+    const key=inventario.claveTarjeta(local.numeroTarjeta);
+    if(key)allCards.set(key,local);
+  }
+  const lectura=await withC3(async client=>{
+    const usuarios=await client.getData('user');
+    let permisos=null,errorPermisos=null;
+    try{permisos=await client.getData('userauthorize');}
+    catch(e){errorPermisos=e.message;}
+    return {usuarios,permisos,errorPermisos,panel:client.info};
+  });
+  const evaluacion=inventario.diagnosticoInventario(lectura.usuarios,locales);
+  if(!evaluacion.ok)throw Object.assign(new Error(evaluacion.message),{status:502});
+  const byCard=new Map();
+  for(const row of lectura.usuarios) {
+    const key=inventario.claveTarjeta(inventario.tarjetaFila(row));
+    if(key&&key!=='0')byCard.set(key,row);
+  }
+  const authByPin=new Map((lectura.permisos||[])
+    .map(row=>[String(inventario.pinFila(row)??'').trim(),row]));
+  return {
+    casaId:id,calle:casa.calle,numero:casa.numero,
+    panel:{serial:lectura.panel.serial||null,firmware:lectura.panel.firmware||null,
+      usuariosLeidos:lectura.usuarios.length,tarjetasIdentificadas:evaluacion.cardRows,
+      camposUsuario:evaluacion.fields,permisosLeidos:lectura.permisos?.length??null,
+      errorPermisos:lectura.errorPermisos},
+    tarjetas:[...allCards.values()].map(local=>{
+      const key=inventario.claveTarjeta(local.numeroTarjeta);
+      const fisico=byCard.get(key);
+      const pin=String(inventario.pinFila(fisico)??'').trim();
+      const autorizacion=pin?authByPin.get(pin):null;
+      const autorizado=autorizacion?Number(inventario.puertasFila(autorizacion)||0)>0:false;
+      return {
+        numeroTarjeta:String(local.numeroTarjeta),
+        registradoLocalmente:Boolean(local.id),
+        ultimoEstadoLocal:local.enControlador===null?'SIN_REGISTRO':local.enControlador?'CONFIRMADO_ANTERIORMENTE':'NO_CONFIRMADO',
+        fisicamenteObservado:Boolean(fisico),
+        estadoFisico:!fisico?'NO_OBSERVADO_EN_ESTA_LECTURA':
+          !lectura.permisos?'PRESENTE_AUTORIZACION_DESCONOCIDA':
+          autorizado?'PRESENTE_AUTORIZADO':'PRESENTE_SIN_AUTORIZACION',
+        fechaFinC3:fisico?fromDateNumber(inventario.finalFila(fisico)):null
+      };
+    })
+  };
+}
+
 async function findPanelUserByCard(client,card){
   const rows=await client.getData('user');
   const wanted=normalizeCardKey(card);
@@ -1273,4 +1333,4 @@ const conVigencia = operation => async (...args) => {
   return result;
 };
 
-module.exports={testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag),removeTag,operateGate,dashboard,writeUserValidity};
+module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag),removeTag,operateGate,dashboard,writeUserValidity};
