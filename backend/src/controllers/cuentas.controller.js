@@ -73,14 +73,23 @@ async function revisar(req, res) {
             if (String(solicitud.usuarioId) === String(reviewer.id)) throw fail(403, 'No puedes aprobar tu propia cuenta');
             const user = await Usuario.findByPk(solicitud.usuarioId, { transaction, lock: transaction.LOCK.UPDATE });
             if (!user || user.estatus !== 'PENDIENTE') throw fail(409, 'La cuenta ya no está pendiente de verificación');
+            // Mantener la vivienda en el alcance de toda la transacción.
+            // Antes estaba declarada dentro de APROBAR y la referencia en
+            // solicitud.update() causaba ReferenceError, deshaciendo el alta.
+            let house = null;
             if (accion === 'APROBAR') {
                 const assigned = await Rol.findOne({ where: { nombre: rol, activo: true }, transaction });
                 if (!assigned) throw fail(409, 'El rol seleccionado no está disponible');
-                let house = null;
                 if (rol !== 'SEGURIDAD' && casaId) {
                     if (!/^[1-9]\d*$/.test(String(casaId))) throw fail(400, 'Vivienda inválida');
                     house = await Casa.findByPk(casaId, { transaction });
                     if (!house) throw fail(400, 'La vivienda seleccionada no existe en el padrón');
+                }
+                // Si se registró como residente, también debe conservar su
+                // vivienda cuando Administración le concede rol ADMINISTRADOR.
+                // Seguridad nunca recibe una casa por el hecho de registrarse.
+                if (rol !== 'SEGURIDAD' && solicitud.tipoCuenta === 'CONDOMINO' && !house) {
+                    throw fail(400, 'Selecciona la vivienda real que corresponde a esta solicitud');
                 }
                 if (rol === 'CONDOMINO' && !house) throw fail(400, 'Selecciona la vivienda real del condómino');
                 await user.update({ rolId: assigned.id, casaId: house?.id || null, estatus: 'ACTIVO',

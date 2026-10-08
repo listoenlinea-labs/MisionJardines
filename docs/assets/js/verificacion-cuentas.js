@@ -95,7 +95,9 @@
   function roleChanged() {
     const security = $('assignedRole').value === 'SEGURIDAD';
     $('houseAssignment').hidden = security;
-    $('verifiedHouse').required = $('assignedRole').value === 'CONDOMINO';
+    // Un residente que recibirá rol ADMINISTRADOR también debe tener su
+    // vivienda verificada y vinculada; Seguridad no requiere domicilio.
+    $('verifiedHouse').required = !security && (active?.tipoCuenta === 'CONDOMINO' || $('assignedRole').value === 'CONDOMINO');
     $('identityConfirmed').checked = false;
   }
   async function searchHouses() {
@@ -130,7 +132,21 @@
     const comentario = $('reviewComment').value.trim();
     if (action === 'RECHAZAR' && !comentario) { message('dialogMessage', 'Indica el motivo del rechazo.', true); $('reviewComment').focus(); return; }
     if (action === 'APROBAR' && !$('identityConfirmed').checked) { message('dialogMessage', 'Confirma que verificaste la identidad antes de dar acceso.', true); return; }
+    if (action === 'APROBAR' && $('verifiedHouse').required && !$('verifiedHouse').value) {
+      message('dialogMessage', 'Selecciona y confirma la vivienda del padrón antes de aprobar el acceso.', true);
+      $('verifiedHouse').focus();
+      return;
+    }
     if (action === 'APROBAR' && !$('approvalForm').reportValidity()) return;
+    if (action === 'APROBAR' && $('assignedRole').value !== 'SEGURIDAD' && $('verifiedHouse').value) {
+      const selected = $('verifiedHouse').selectedOptions[0]?.textContent || '';
+      const requested = [active.calle, active.numeroCasa].filter(Boolean).join(' · ');
+      const verified = normalize(selected);
+      if (active.tipoCuenta === 'CONDOMINO' && requested && verified !== normalize(requested)) {
+        if (!confirm('La vivienda verificada (' + selected + ') es distinta a la declarada (' + requested +
+          '). ¿Confirmas que comprobaste el padrón y deseas vincular la cuenta a esa vivienda?')) return;
+      }
+    }
     if (action === 'RECHAZAR' && !confirm('¿Rechazar esta solicitud y mantener la cuenta sin acceso?')) return;
     if (action === 'APROBAR' && $('assignedRole').value === 'ADMINISTRADOR' && !confirm('Esta cuenta podrá administrar el sistema y aprobar otras cuentas. ¿Confirmas el rol de administrador?')) return;
     const body = { accion: action, rol: $('assignedRole').value, casaId: $('assignedRole').value === 'SEGURIDAD' ? null : ($('verifiedHouse').value || null),

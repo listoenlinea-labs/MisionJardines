@@ -146,10 +146,20 @@ function setupReview(t, overrides = {}) {
     });
     t.mock.method(models.SolicitudCuenta, 'findByPk', async () => solicitud);
     t.mock.method(models.Rol, 'findOne', async () => ({ id: 4 }));
-    t.mock.method(models.Casa, 'findByPk', async id => id === '7' ? { id: 7 } : null);
-    t.mock.method(models.UsuarioCasa, 'findOrCreate', async () => [{ tipo: 'MIEMBRO' }, true]);
-    t.mock.method(models.HistorialVinculo, 'create', async () => ({}));
-    return { solicitud, user, reviewer };
+    t.mock.method(models.Casa, 'findByPk', async id => id === '7' ? { id: 7, calle: 'Gardenias', numero: '5' } : null);
+    const previousMembership = row({ id: 14, usuarioId: 21, casaId: 7, tipo: 'MIEMBRO',
+        activo: false, desvinculadoEn: new Date('2026-10-08T00:00:00.000Z') });
+    t.mock.method(models.UsuarioCasa, 'findOrCreate', async options => {
+        assert.equal(options.where.usuarioId, 21);
+        return overrides.inactiveMembership
+            ? [previousMembership, false] : [{ tipo: 'MIEMBRO' }, true];
+    });
+    let linkedHistory = [];
+    t.mock.method(models.HistorialVinculo, 'create', async record => {
+        linkedHistory.push(record);
+        return {};
+    });
+    return { solicitud, user, reviewer, previousMembership, get linkedHistory() { return linkedHistory; } };
 }
 const request = body => ({ usuario: { usuarioId: 9 }, params: { id: 8 }, body: { accion: 'APROBAR', rol: 'SEGURIDAD', identidadVerificada: true, ...body } });
 test('administrator approves security without assigning a fictitious house', async t => {
@@ -169,6 +179,43 @@ test('residential approval requires an existing house and grants a member link a
     assert.equal(approved.code, 200); assert.equal(user.casaId, 7); assert.equal(solicitud.estatus, 'APROBADA');
     const duplicate = response(); await cuentas.revisar(request({ rol: 'CONDOMINO', casaId: '7' }), duplicate);
     assert.equal(duplicate.code, 409);
+});
+test('cuenta registrada nuevamente puede aprobarse como administrador con la vivienda declarada', async t => {
+    // El mismo usuario fue dado de baja antes; usuarios_casas quedó inactivo.
+    const { user, solicitud, previousMembership, linkedHistory } = setupReview(t, {
+        inactiveMembership: true,
+        solicitud: {
+            id: 25, tipoCuenta: 'CONDOMINO', estatus: 'PENDIENTE',
+            calle: 'Gardenias', numeroCasa: '5', casaSugeridaId: null,
+            tipoVinculo: 'MIEMBRO'
+        }
+    });
+    const approved = response();
+    await cuentas.revisar(request({ rol: 'ADMINISTRADOR', casaId: '7' }), approved);
+    assert.equal(approved.code, 200, approved.body?.message);
+    assert.equal(user.estatus, 'ACTIVO');
+    assert.equal(user.rolId, 4);
+    assert.equal(user.casaId, 7, 'usuarios.casa_id debe apuntar a direcciones.id');
+    assert.equal(previousMembership.activo, true, 'se reactiva usuarios_casas si existía');
+    assert.equal(previousMembership.desvinculadoEn, null);
+    assert.equal(solicitud.estatus, 'APROBADA');
+    assert.equal(solicitud.rolAsignado, 'ADMINISTRADOR');
+    assert.equal(solicitud.casaSugeridaId, 7);
+    assert.equal(solicitud.calle, 'Gardenias');
+    assert.equal(solicitud.numeroCasa, '5');
+    assert.equal(linkedHistory.length, 1);
+    assert.equal(linkedHistory[0].casaId, 7);
+    assert.equal(linkedHistory[0].usuarioId, 21);
+});
+test('rol administrador para residente requiere la casa antes de conceder acceso', async t => {
+    const { user, solicitud } = setupReview(t, {
+        solicitud: { tipoCuenta: 'CONDOMINO', calle: 'Gardenias', numeroCasa: '5' }
+    });
+    const res = response();
+    await cuentas.revisar(request({ rol: 'ADMINISTRADOR', casaId: null }), res);
+    assert.equal(res.code, 400);
+    assert.equal(user.estatus, 'PENDIENTE');
+    assert.equal(solicitud.estatus, 'PENDIENTE');
 });
 test('membership failure rolls back role assignment, account activation and review', async t => {
     const { user, solicitud } = setupReview(t);
