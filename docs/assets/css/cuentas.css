@@ -40,3 +40,28 @@
 .account-review .revoked-label{display:inline-flex;margin-top:12px;background:#f1eef5;color:#7b6d90;padding:7px 10px;border-radius:9px;font-size:10px}
 @media(max-width:900px){.account-review .account-search-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.account-review .account-search-row{grid-template-columns:1fr}}
+
+/* Histórico de bajas, junto a Pendientes/Aprobadas/Rechazadas */
+.account-review .review-tabs{
+  max-width:100%;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
+.account-review .review-tab{white-space:nowrap;flex:0 0 auto}
+.account-review .review-tab[data-status="REVOCADA"][aria-pressed="true"]{
+  background:#f6effd;
+  color:#78558f;
+  border:1px solid #e5d6f0;
+  box-shadow:0 2px 8px rgba(103,77,125,.07);
+}
+.account-review .revoked-history-note{
+  margin:9px 0 0;
+  color:#7b6b96;
+  font-size:11px;
+  line-height:1.5;
+}
+@media(max-width:420px){
+  .account-review .review-tabs{justify-content:flex-start}
+  .account-review .review-tab{flex:0 0 auto;padding:9px 11px}
+}
