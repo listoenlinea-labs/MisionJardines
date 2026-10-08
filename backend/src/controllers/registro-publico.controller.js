@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const db = require('../config/database');
-const { Usuario, Rol, Casa, VerificacionCuenta } = require('../models');
+const { Usuario, Rol, Casa, Condomino, VerificacionCuenta } = require('../models');
 const SolicitudRegistro = require('../models/SolicitudRegistro');
 const { enviarCodigoVerificacion } = require('../services/email.service');
 const { vincular } = require('../services/viviendas.service');
@@ -149,14 +149,25 @@ async function listarSolicitudes(req, res) {
     }) : [];
     const casasIds = solicitudes.map(s => s.casaId).filter(Boolean);
     const casas = casasIds.length ? await Casa.findAll({
-      where: { id: { [Op.in]: casasIds } }, attributes: ['id', 'calle', 'numero']
+      where: { id: { [Op.in]: casasIds } }, attributes: ['id', 'calle', 'numero', 'nombre']
     }) : [];
+    const padrons = casasIds.length ? await Condomino.findAll({
+      where: { direccionId: { [Op.in]: casasIds }, activo: true },
+      attributes: ['direccionId', 'nombreCompleto'], limit: 500
+    }) : [];
+    const byPadron = new Map();
+    for (const p of padrons) {
+      const key = String(p.direccionId);
+      if (!byPadron.has(key)) byPadron.set(key, []);
+      byPadron.get(key).push(p.nombreCompleto);
+    }
     const byUser = new Map(usuarios.map(u => [String(u.id), u]));
     const byHouse = new Map(casas.map(c => [String(c.id), c]));
     return res.json({ ok: true, solicitudes: solicitudes.map(row => ({
       id: row.id, usuarioId: row.usuarioId, tipoSolicitado: row.tipoSolicitado,
       creadoEn: row.creadoEn, casaId: row.casaId,
       casa: byHouse.get(String(row.casaId)) || null,
+      padron: byPadron.get(String(row.casaId)) || [],
       usuario: byUser.get(String(row.usuarioId)) || null
     })) });
   } catch (error) {
