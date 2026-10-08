@@ -213,23 +213,33 @@ function fmt(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getT
 async function loadStatus(){
   try{
     const r=await api('/zkteco/estado',{headers:headers()});
-    const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>Conectado al C3-200</span>';
+    const d=r.data||{};$('connectionPill').className='status-pill ok';$('connectionPill').innerHTML='<i></i><span>'+(d.inventarioAuto?.lastError?'C3 conectado · lectura en revisión':'Conectado al C3-200')+'</span>';
     $('deviceName').textContent=d.deviceName||d.modelo||'C3-200';$('deviceMode').textContent='Directa';$('deviceDoors').textContent=d.lockCount||'2';$('deviceFirmware').textContent=d.firmware||'—';$('deviceWriteMode').textContent=d.escrituraUsuarios==='PULLSDK'?(d.bridge?.controller?'Pull SDK oficial · conectado':(d.bridge?.error?'Pull SDK · '+d.bridge.error:'Pull SDK oficial')):'No configurada';$('deviceCards').textContent=d.tarjetas||0;
   }catch(e){$('connectionPill').className='status-pill err';$('connectionPill').innerHTML='<i></i><span>Sin conexión</span>';toast(errorText(e))}
+}
+function zkDateToday(){
+  return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',
+    year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+}
+function tagState(tag){
+  if(tag.enControlador===false)return{label:'No confirmado en C3',cls:'none'};
+  if(tag.bloqueado)return{label:'Bloqueado',cls:'off'};
+  if(tag.fechaFin&&String(tag.fechaFin).slice(0,10)<zkDateToday())
+    return{label:'Vigencia vencida',cls:'off'};
+  return{label:'Activo',cls:'on'};
 }
 function rowState(row){
   if(row.tarjetas?.length){
     const live=row.tarjetas.filter(t=>t.enControlador!==false);
-    if(!live.length)return{label:'Pendiente de enlazar',cls:'none',blocked:false};
+    if(!live.length)return{label:'Sin enlace C3',cls:'none',blocked:false};
     const blocked=live.every(t=>t.bloqueado);
-    return blocked?{label:'Bloqueada',cls:'off',blocked:true}:{label:'Sincronizado',cls:'on',blocked:false};
+    const expired=live.every(t=>tagState(t).cls==='off');
+    if(blocked)return{label:'Bloqueada',cls:'off',blocked:true};
+    if(expired)return{label:'Vigencia vencida',cls:'off',blocked:false};
+    return{label:'Sincronizado',cls:'on',blocked:false};
   }
   if(row.controlesNoEnlazados?.length)return{label:'Pendiente de enlazar',cls:'none',blocked:false};
   return{label:'Sin controles',cls:'none',blocked:false};
-}
-function tagState(tag){
-  if(tag.enControlador===false)return{label:'No existe en C3',cls:'off'};
-  return tag.bloqueado?{label:'Bloqueado',cls:'off'}:{label:'Activo',cls:'on'};
 }
 function renderTagDetails(row){
   const tags=row.tarjetas||[];
@@ -250,7 +260,7 @@ function renderTagDetails(row){
       '<div><span class="tag-label">TAG</span><div class="tag-id">'+esc(tag.numeroTarjeta)+'</div><div class="tag-meta">'+esc(tag.departamento||tag.nombreDispositivo||'Sin etiqueta')+'</div></div>'+
       '<div><span class="tag-label">Estado</span><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
       '<div><span class="tag-label">Acceso</span><b>Entrada + salida</b><div class="tag-meta">Puertas '+esc(tag.puertasAutorizadas||3)+'</div></div>'+
-      '<div class="tag-validity"><span class="tag-label">Vigencia</span><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Fecha final</div></div>'+
+      '<div class="tag-validity"><span class="tag-label">Vigencia</span><b>'+esc(tag.fechaFin||'Sin límite')+'</b><div class="tag-meta">Fecha final C3</div></div>'+
       '<div class="tag-actions">'+adminActions+'</div>'+
     '</div>';
   });
