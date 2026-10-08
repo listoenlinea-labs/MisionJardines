@@ -20,6 +20,8 @@ const {
     autenticarToken
 } = require('../middlewares/auth.middleware');
 
+const registroPublico = require('../controllers/registro-publico.controller');
+const { autorizarRoles } = require('../middlewares/roles.middleware');
 const router = express.Router();
 const codigoLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -30,6 +32,11 @@ const codigoLimiter = rateLimit({
 });
 
 router.post('/login', iniciarSesion);
+router.get('/registro-publico/viviendas', registroPublico.viviendasDisponibles);
+router.post('/registro-publico/solicitar', codigoLimiter, registroPublico.solicitarAlta);
+router.post('/registro-publico/verificar', codigoLimiter, registroPublico.verificarAlta);
+router.get('/registro-publico/solicitudes', autenticarToken, autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'), registroPublico.listarSolicitudes);
+router.patch('/registro-publico/solicitudes/:id', autenticarToken, autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'), registroPublico.revisarSolicitud);
 router.get('/registro/viviendas', listarViviendasRegistro);
 router.post('/registro/solicitar', codigoLimiter, solicitarRegistro);
 router.post('/registro/verificar', codigoLimiter, verificarRegistro);
