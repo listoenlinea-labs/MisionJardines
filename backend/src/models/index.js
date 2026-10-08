@@ -10,6 +10,7 @@ const PermisoAcceso = require('./PermisoAcceso');
 const Visita = require('./Visita');
 const VerificacionCuenta = require('./VerificacionCuenta');
 const SolicitudRol = require('./SolicitudRol');
+const SolicitudCuenta = require('./SolicitudCuenta');
 const PagoReportado = require('./PagoReportado');
 const ConfiguracionConexion = require('./ConfiguracionConexion');
 const CuotaExtraordinaria = require('./CuotaExtraordinaria');
@@ -215,6 +216,7 @@ Casa.hasMany(UsuarioCasa,{foreignKey:'casaId',as:'miembros'});
 Casa.belongsToMany(Usuario,{through:UsuarioCasa,foreignKey:'casaId',otherKey:'usuarioId',as:'usuarios'});
 InvitacionCasa.belongsTo(Casa,{foreignKey:'casaId',as:'casa'});
 module.exports = {
+    SolicitudCuenta,
     UsuarioCasa, InvitacionCasa, HistorialVinculo,
     Casa,
     Rol,
@@ -233,3 +235,6 @@ module.exports = {
     CuotaExtraordinaria,
     ZkTarjeta
 };
+
+SolicitudCuenta.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+SolicitudCuenta.belongsTo(Usuario, { foreignKey: 'revisadoPorUsuarioId', as: 'revisadoPor' });

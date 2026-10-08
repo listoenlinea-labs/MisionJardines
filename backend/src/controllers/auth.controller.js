@@ -10,11 +10,12 @@ const {
     Casa,
     Condomino,
     VerificacionCuenta,
-    SolicitudRol
+    SolicitudRol,
+    SolicitudCuenta
 } = require('../models');
-const { invitacion, vigente, vincular } = require('../services/viviendas.service');
+const { invitacion, vigente } = require('../services/viviendas.service');
 const { InvitacionCasa } = require('../models');
-const { enviarCodigoVerificacion } = require('../services/email.service');
+const emailService = require('../services/email.service');
 
 const EXPIRACION_CODIGO_MINUTOS = 15;
 const MAX_INTENTOS_CODIGO = 5;
@@ -105,13 +106,6 @@ async function iniciarSesion(req, res) {
             });
         }
 
-        if (usuario.estatus !== 'ACTIVO') {
-            return res.status(403).json({
-                ok: false,
-                message: `El usuario se encuentra ${usuario.estatus.toLowerCase()}`
-            });
-        }
-
         const contrasenaValida = await bcrypt.compare(
             contrasena,
             usuario.contrasenaHash
@@ -122,6 +116,12 @@ async function iniciarSesion(req, res) {
                 ok: false,
                 message: 'Credenciales incorrectas'
             });
+        }
+
+        if (usuario.estatus !== 'ACTIVO') {
+            return res.status(403).json({ ok: false, message: usuario.estatus === 'PENDIENTE'
+                ? 'Tu cuenta está pendiente de verificación por Administración. Aún no tienes acceso al portal.'
+                : 'Tu cuenta no tiene acceso. Contacta a Administración.' });
         }
 
         const token = jwt.sign(
@@ -227,7 +227,7 @@ async function obtenerPerfil(req, res) {
     }
 }
 
-async function listarViviendasRegistro(req,res) { return res.status(403).json({ok:false,message:'El registro requiere una invitación de Administración o del responsable de tu vivienda.'}); }
+async function listarViviendasRegistro(req,res) { return res.status(403).json({ok:false,message:'El padrón de viviendas solo está disponible para Administración. Indica tu domicilio en el formulario de registro.'}); }
 
 async function solicitarRegistro(req, res) {
     try {
@@ -237,33 +237,42 @@ async function solicitarRegistro(req, res) {
         const apellidoMaterno = String(req.body.apellidoMaterno || '').trim();
         const telefono = String(req.body.telefono || '').trim();
         const contrasena = req.body.contrasena;
-        const invitacionRegistro = await invitacion(req.body.invitacion);
-        if (invitacionRegistro.correo !== correo) return res.status(403).json({ok:false,message:'Usa el correo que recibió la invitación'});
-        const casaId = invitacionRegistro.casaId;
-
-        if (!correo || !/^\S+@\S+\.\S+$/.test(correo) || !nombre || !apellidoPaterno || !casaId) {
-            return res.status(400).json({ ok: false, message: 'Completa nombre, apellido, correo y vivienda' });
+        const invitacionRegistro = req.body.invitacion ? await invitacion(req.body.invitacion) : null;
+        if (invitacionRegistro && invitacionRegistro.correo !== correo) return res.status(403).json({ok:false,message:'Usa el correo que recibió la invitación'});
+        const casaId = invitacionRegistro?.casaId || null;
+        const tipoCuenta = invitacionRegistro ? 'CONDOMINO' : (req.body.tipoCuenta || 'CONDOMINO');
+        if (!['CONDOMINO', 'SEGURIDAD'].includes(tipoCuenta)) return res.status(400).json({ok:false,message:'Tipo de cuenta inválido'});
+        const calle = tipoCuenta === 'SEGURIDAD' ? null : String(req.body.calle || '').trim();
+        const numeroCasa = tipoCuenta === 'SEGURIDAD' ? null : String(req.body.numeroCasa || '').trim();
+        if (!invitacionRegistro && tipoCuenta === 'CONDOMINO' && (!calle || !numeroCasa || calle.length > 100 || numeroCasa.length > 20)) {
+            return res.status(400).json({ok:false,message:'Completa la calle y el número de casa'});
         }
-        if (!contrasenaSegura(contrasena)) {
+
+        if (!correo || correo.length > 150 || !/^\S+@\S+\.\S+$/.test(correo) || !nombre || !apellidoPaterno || nombre.length > 100 || apellidoPaterno.length > 100 || apellidoMaterno.length > 100 || telefono.length > 25) {
+            return res.status(400).json({ ok: false, message: 'Revisa tus datos personales y escribe un correo válido' });
+        }
+        if (!contrasenaSegura(contrasena) || Buffer.byteLength(contrasena, 'utf8') > 72) {
             return res.status(400).json({ ok: false, message: 'La contraseña debe tener 8 caracteres, mayúscula, minúscula y número' });
         }
 
         const [casa, correoExistente, correoRegistradoAntes] = await Promise.all([
-            Casa.findByPk(casaId, { attributes: ['id', 'calle', 'numero', 'correo'] }),
+            casaId ? Casa.findByPk(casaId, { attributes: ['id', 'calle', 'numero', 'correo'] }) : null,
             Usuario.findOne({ where: { correo } }),
             VerificacionCuenta.findOne({
                 where: { tipo: 'REGISTRO', correo, consumidoEn: { [Op.ne]: null } },
                 attributes: ['id']
             })
         ]);
-        if (!casa) return res.status(404).json({ ok: false, message: 'La vivienda seleccionada no existe' });
+        if (casaId && !casa) return res.status(404).json({ ok: false, message: 'La vivienda seleccionada no existe' });
         if (correoExistente || correoRegistradoAntes) {
             return res.status(409).json({ ok: false, message: 'Ese correo ya fue utilizado para registrar una cuenta' });
         }
 
         const codigo = generarCodigo();
         const datosJson = JSON.stringify({
-            invitacionId: invitacionRegistro.id,
+            modalidad: 'REVISION_ADMIN', tipoCuenta,
+            calle: casa?.calle || calle, numeroCasa: casa?.numero || numeroCasa,
+            invitacionId: invitacionRegistro?.id,
             nombre, apellidoPaterno, apellidoMaterno: apellidoMaterno || null,
             telefono: telefono || null,
             contrasenaHash: await bcrypt.hash(contrasena, 12)
@@ -274,7 +283,7 @@ async function solicitarRegistro(req, res) {
             codigoHash: codigoHash(correo, codigo),
             expiraEn: new Date(Date.now() + EXPIRACION_CODIGO_MINUTOS * 60000)
         });
-        await enviarCodigoVerificacion({ destinatario: correo, codigo, nombre, motivo: 'registro' });
+        await emailService.enviarCodigoVerificacion({ destinatario: correo, codigo, nombre, motivo: 'registro' });
 
         return res.status(202).json({
             ok: true,
@@ -295,8 +304,9 @@ async function verificarRegistro(req, res) {
         return res.status(400).json({ ok: false, message: 'Escribe el correo y el código de seis dígitos' });
     }
 
-    const transaction = await sequelize.transaction();
+    let transaction;
     try {
+        transaction = await sequelize.transaction();
         const verificacion = await VerificacionCuenta.findOne({
             where: { tipo: 'REGISTRO', correo, consumidoEn: null },
             order: [['id', 'DESC']],
@@ -329,12 +339,13 @@ async function verificarRegistro(req, res) {
 
         const datos = JSON.parse(verificacion.datosJson || '{}');
         const inv = datos.invitacionId ? await InvitacionCasa.findByPk(datos.invitacionId,{transaction,lock:transaction.LOCK.UPDATE}) : null;
-        if (!vigente(inv) || inv.correo !== correo || String(inv.casaId) !== String(verificacion.casaId)) {
+        if (datos.invitacionId ? (!vigente(inv) || inv.correo !== correo || String(inv.casaId) !== String(verificacion.casaId))
+            : datos.modalidad !== 'REVISION_ADMIN') {
             await transaction.rollback();
             return res.status(410).json({ok:false,message:'Solicita una invitación vigente a tu vivienda.'});
         }
         const nuevoUsuario = await Usuario.create({
-            casaId: verificacion.casaId,
+            casaId: null,
             rolId: rol.id,
             nombre: datos.nombre,
             apellidoPaterno: datos.apellidoPaterno,
@@ -342,23 +353,29 @@ async function verificarRegistro(req, res) {
             telefono: datos.telefono,
             correo,
             contrasenaHash: datos.contrasenaHash,
-            estatus: 'ACTIVO',
-            esContactoPrincipal: inv.tipo === 'RESPONSABLE',
+            estatus: 'PENDIENTE',
+            esContactoPrincipal: false,
             recibeCorreosPago: true
         }, { transaction });
-        await vincular({usuarioId:nuevoUsuario.id,casaId:inv.casaId,tipo:inv.tipo,actorId:nuevoUsuario.id,transaction});
-        await inv.update({aceptadoEn:new Date()},{transaction});
+        const casaInvitada = inv ? await Casa.findByPk(inv.casaId, { transaction }) : null;
+        await SolicitudCuenta.create({ usuarioId: nuevoUsuario.id,
+            tipoCuenta: datos.tipoCuenta === 'SEGURIDAD' ? 'SEGURIDAD' : 'CONDOMINO',
+            calle: casaInvitada?.calle || datos.calle || null,
+            numeroCasa: casaInvitada?.numero || datos.numeroCasa || null,
+            casaSugeridaId: inv?.casaId || null, tipoVinculo: inv?.tipo || 'MIEMBRO', estatus: 'PENDIENTE'
+        }, { transaction });
+        if (inv) await inv.update({aceptadoEn:new Date()},{transaction});
         await verificacion.update({
             consumidoEn: new Date(),
             datosJson: null,
             codigoHash: crypto.randomBytes(32).toString('hex')
         }, { transaction });
         await transaction.commit();
-        return res.status(201).json({ ok: true, message: 'Cuenta verificada y activada. Ya puedes iniciar sesión.' });
+        return res.status(201).json({ ok: true, message: 'Correo verificado. Tu cuenta está pendiente de aprobación por Administración.', pendienteAprobacion: true });
     } catch (error) {
-        if (!transaction.finished) await transaction.rollback();
+        if (transaction && !transaction.finished) await transaction.rollback();
         console.error('Error al verificar registro:', error);
-        return res.status(500).json({ ok: false, message: 'No fue posible activar la cuenta' });
+        return res.status(500).json({ ok: false, message: 'No fue posible registrar la solicitud de cuenta' });
     }
 }
 
@@ -426,7 +443,7 @@ async function solicitarCambioCorreo(req, res) {
             correo, codigoHash: codigoHash(correo, codigo),
             expiraEn: new Date(Date.now() + EXPIRACION_CODIGO_MINUTOS * 60000)
         });
-        await enviarCodigoVerificacion({ destinatario: correo, codigo, nombre: nombreCompleto(usuario), motivo: 'cambio_correo' });
+        await emailService.enviarCodigoVerificacion({ destinatario: correo, codigo, nombre: nombreCompleto(usuario), motivo: 'cambio_correo' });
         return res.status(202).json({ ok: true, message: 'Enviamos el código al nuevo correo', correo });
     } catch (error) {
         console.error('Error al solicitar cambio de correo:', error);

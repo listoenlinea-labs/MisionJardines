@@ -1,6 +1,28 @@
-<!doctype html><html lang="es"><head>
-  <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico?v=20261005">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20261005">
-  <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png?v=20261005">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20261005">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Registro · Misión Jardines</title><link rel="stylesheet" href="assets/css/viviendas.css"></head><body><main style="max-width:650px"><section class="panel"><h1>Crea tu cuenta con una invitación</h1><p>Solicita una invitación a Administración o al responsable de tu vivienda. Recibirás un enlace por correo para registrarte y verificar tu cuenta.</p><p>Si ya tienes cuenta y te invitaron a otra casa, puedes aceptar con tu mismo correo y contraseña.</p><a class="button" href="login.html">Ya tengo cuenta</a></section></main></body></html>
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Crear cuenta · Misión Jardines</title>
+<link rel="icon" href="assets/images/favicon.ico?v=20261005"><link rel="stylesheet" href="assets/css/cuentas.css?v=20261008">
+</head><body class="account-register">
+<main class="registration-shell">
+<aside class="registration-story">
+<a class="account-brand" href="login.html"><img src="assets/images/logo-mision-jardines.png" alt=""><span>Misión Jardines<small>Tu comunidad, más cerca de ti.</small></span></a>
+<div class="story-copy"><span class="account-eyebrow">BIENVENIDO A TU COMUNIDAD</span><h1>Tu lugar en<br><em>Misión Jardines.</em></h1><p>Crea tu cuenta para acceder a los servicios que corresponden a tu perfil.</p></div>
+<ol class="registration-steps"><li><span>1</span><div><strong>Comparte tus datos</strong><p>Cuéntanos quién eres y cómo formas parte de la comunidad.</p></div></li><li><span>2</span><div><strong>Verifica tu correo</strong><p>Te enviaremos un código para confirmar que el correo es tuyo.</p></div></li><li><span>3</span><div><strong>Administración revisa tu cuenta</strong><p>Verifica tu identidad y autoriza el perfil y el acceso.</p></div></li></ol>
+<div class="story-note">Cada cuenta recibe únicamente los permisos autorizados para su perfil.</div>
+</aside>
+<section class="registration-content" aria-labelledby="registerTitle">
+<a class="back-link" href="login.html">← Volver a iniciar sesión</a><span class="account-eyebrow">UN NUEVO COMIENZO</span><h2 id="registerTitle">Crear cuenta</h2><p class="account-subtitle">Completa tus datos. Tu acceso quedará sujeto a la verificación de Administración.</p>
+<div id="registerMessage" class="account-message" role="status" aria-live="polite" hidden></div>
+<form id="registerForm">
+<div class="account-type" role="group" aria-label="Tipo de cuenta"><button type="button" id="residentType" class="type-button selected" aria-pressed="true">Soy residente</button><button type="button" id="securityType" class="type-button" aria-pressed="false">Soy de seguridad</button></div>
+<p id="typeHint" class="field-hint">Administración verificará tu identidad y la vivienda que indiques.</p>
+<div class="account-grid"><label>Nombre<input name="nombre" required maxlength="100" autocomplete="given-name" placeholder="Tu nombre"></label><label>Apellido paterno<input name="apellidoPaterno" required maxlength="100" autocomplete="family-name" placeholder="Tu apellido"></label><label>Apellido materno <span class="optional">(opcional)</span><input name="apellidoMaterno" maxlength="100" placeholder="Segundo apellido"></label><label>Teléfono <span class="optional">(opcional)</span><input name="telefono" type="tel" maxlength="25" autocomplete="tel" placeholder="Número de contacto"></label></div>
+<fieldset id="addressFields" class="address-fields"><legend>Tu vivienda</legend><div class="account-grid"><label>Calle<input name="calle" required maxlength="100" autocomplete="address-line1" placeholder="Ej. Gardenias"></label><label>Número de casa<input name="numeroCasa" required maxlength="20" placeholder="Ej. 5"></label></div></fieldset>
+<label>Correo electrónico<input name="correo" type="email" required maxlength="150" autocomplete="email" placeholder="nombre@correo.com"></label>
+<div class="account-grid"><label>Contraseña<input id="registerPassword" name="contrasena" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="passwordHint"></label><label>Confirmar contraseña<input id="confirmPassword" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label></div>
+<p id="passwordHint" class="field-hint">Usa al menos 8 caracteres, con mayúscula, minúscula y número.</p><button class="account-button primary wide" id="registerSubmit" type="submit">Continuar y verificar correo →</button>
+</form>
+<form id="verifyForm" hidden><div class="verification-note"><span class="note-icon">✉</span><div><h3>Revisa tu correo</h3><p>Enviamos un código a <strong id="verificationEmail"></strong>. Vence en 15 minutos; revisa también la carpeta de spam.</p></div></div><label>Código de verificación<input id="emailCode" name="codigo" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required placeholder="000000" class="code-input"></label><button class="account-button primary wide" id="verifySubmit" type="submit">Verificar y enviar solicitud</button><button type="button" id="restartRegistration" class="account-button secondary wide">Corregir datos o solicitar otro código</button></form>
+<section id="registerSuccess" class="registration-success" hidden><span class="success-icon">✓</span><h3>Solicitud enviada</h3><p>Tu correo está verificado. Administración revisará tu identidad y asignará el rol correspondiente antes de habilitar tu acceso.</p><a class="account-button primary" href="login.html">Ir a iniciar sesión</a></section>
+<p class="account-footer">¿Ya tienes una cuenta? <a href="login.html">Inicia sesión</a></p>
+</section></main><script src="assets/js/registro.js?v=20261008" defer></script></body></html>

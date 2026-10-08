@@ -8,14 +8,16 @@ async function verify(t,options={}){
  t.mock.method(m.VerificacionCuenta,'findOne',async()=>({casaId:20,expiraEn:new Date(Date.now()+60000),intentos:0,codigoHash:crypto.createHash('sha256').update(correo+':'+codigo+':test-secret').digest('hex'),datosJson:JSON.stringify({invitacionId:options.legacy?undefined:1,nombre:'Test',apellidoPaterno:'New',contrasenaHash:'hash'}),async update(){},async increment(){}}));
  t.mock.method(m.Rol,'findOne',async()=>({id:2}));t.mock.method(m.Usuario,'findOne',async()=>null);
  t.mock.method(m.InvitacionCasa,'findByPk',async()=>({casaId:20,correo,tipo:'MIEMBRO',expiraEn:new Date(Date.now()+(options.expired?-1000:60000)),async update(){consumed=true;}}));
- t.mock.method(m.Usuario,'create',async data=>{created++;assert.equal(data.rolId,2);assert.equal(data.casaId,20);return {id:8};});
+ t.mock.method(m.Casa,'findByPk',async()=>({id:20,calle:'Prueba',numero:'1'}));
+ t.mock.method(m.SolicitudCuenta,'create',async data=>{assert.equal(data.usuarioId,8);assert.equal(data.casaSugeridaId,20);assert.equal(data.estatus,'PENDIENTE');return {id:3};});
+ t.mock.method(m.Usuario,'create',async data=>{created++;assert.equal(data.rolId,2);assert.equal(data.casaId,null);assert.equal(data.estatus,'PENDIENTE');return {id:8};});
  t.mock.method(m.UsuarioCasa,'findOrCreate',async opt=>{linked++;assert.deepEqual(opt.where,{usuarioId:8,casaId:20});return [{tipo:'MIEMBRO'},true];});t.mock.method(m.HistorialVinculo,'create',async()=>({}));
  let status=200;const res={status(n){status=n;return this;},json(){return this;}};
  await verificarRegistro({body:{correo,codigo:options.badCode?'999999':codigo}},res);
  return {status,created,linked,consumed,committed};
 }
-test('new account and membership are created atomically after email verification',async t=>{
- assert.deepEqual(await verify(t),{status:201,created:1,linked:1,consumed:true,committed:true});
+test('invited account waits for administrative approval and has no active membership',async t=>{
+ assert.deepEqual(await verify(t),{status:201,created:1,linked:0,consumed:true,committed:true});
 });
 test('expired invitation cannot create account even with a correct email code',async t=>{
  const r=await verify(t,{expired:true});assert.equal(r.status,410);assert.equal(r.created,0);assert.equal(r.committed,false);

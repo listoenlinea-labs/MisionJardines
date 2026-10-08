@@ -37,7 +37,8 @@
     ]},
     { label: 'Administración', items: [
       { page: 'seguridad.html', label: 'Seguridad', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD' },
-      { page: 'conexion.html', label: 'Conexión', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR' }
+      { page: 'conexion.html', label: 'Conexión', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR' },
+      { page: 'verificacion-cuentas.html', label: 'Verificación de cuentas', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR' }
     ]}
   ];
 

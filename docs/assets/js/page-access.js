@@ -7,7 +7,7 @@
   window.fetch = (input, init = {}) => {
     const url = new URL(input instanceof Request ? input.url : input,location.href);
     if (url.origin === api.origin && url.pathname.startsWith(api.pathname+'/') && selected &&
-        !(['viviendas.html','cuenta.html'].includes(currentPage) && url.pathname.endsWith('/auth/perfil'))) {
+        !(['viviendas.html','cuenta.html','verificacion-cuentas.html'].includes(currentPage) && url.pathname.endsWith('/auth/perfil'))) {
       const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
       headers.set('X-Casa-Id',selected); init = {...init,headers};
     }
@@ -24,7 +24,7 @@
     if (!token) { location.replace('login.html'); return false; }
     try {
       const response = await fetch((window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api') + '/auth/perfil', {headers:{Authorization:'Bearer '+token}});
-      if (response.status === 403 && sessionStorage.getItem('mjCasaSeleccionada') && !['cuenta.html','viviendas.html'].includes(page)) {
+      if (response.status === 403 && sessionStorage.getItem('mjCasaSeleccionada') && !['cuenta.html','viviendas.html','verificacion-cuentas.html'].includes(page)) {
         sessionStorage.removeItem('mjCasaSeleccionada'); location.replace('viviendas.html'); return false;
       }
       if (!response.ok) throw new Error('No fue posible verificar tu sesión.');
