@@ -267,8 +267,7 @@ async function findPanelAuthorizationByPin(client,pin){
   return rows.find(row=>String(row.Pin??'').trim()===String(pin??'').trim())||null;
 }
 
-async function executePanelWrite({label,direct,pullSdk,verify}){
-  const mode=getWriteMode();
+async function executePanelWrite({label,direct,pullSdk,verify,mode=getWriteMode()}){
 
   if(mode==='PULLSDK'){
     if(!isPullSdkBridgeConfigured()){
@@ -393,7 +392,7 @@ async function directDeleteUser({pin}){
 }
 
 
-async function writeUserValidity(card,fechaInicio,fechaFin){
+async function writeUserValidity(card,fechaInicio,fechaFin,{mode=getWriteMode()}={}){
   const current=await readControllerWithRetry(async client=>{
     const row=await findPanelUserByCard(client,card);
     if(!row) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
@@ -403,8 +402,6 @@ async function writeUserValidity(card,fechaInicio,fechaFin){
   const pin=String(current.Pin??'').trim();
   if(!pin) throw new Error('No fue posible determinar el Pin del TAG en el C3-200');
   const cardNo=String(current.CardNo??canonicalCardNo(card)).trim();
-  const group=Number(current.Group||1)||1;
-
   const verify=async()=>{
     const verified=await readControllerWithRetry(client=>findPanelUserByCard(client,cardNo));
     if(!verified) return false;
@@ -416,14 +413,15 @@ async function writeUserValidity(card,fechaInicio,fechaFin){
   };
 
   const writeMode=await executePanelWrite({
+    mode,
     label:`actualizar vigencia del TAG ${cardNo}`,
-    direct:()=>directSetUserValidity({
-      pin,
-      cardNo,
-      startDate:fechaInicio,
-      endDate:fechaFin,
-      group
-    }),
+    // PUTDATA updates only these fields. Preserve password, group, name and
+    // StartTime when payment synchronization changes only EndTime.
+    direct:()=>withC3(client=>client.putRecord('user',{
+      Pin:pin,
+      ...(fechaInicio ? {StartTime:toDateNumber(fechaInicio)} : {}),
+      ...(fechaFin ? {EndTime:toDateNumber(fechaFin)} : {})
+    })),
     pullSdk:()=>setUserValidityViaPullSdk({
       pin,
       cardNo,

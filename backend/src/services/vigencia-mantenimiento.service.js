@@ -24,7 +24,8 @@ async function inicializar(casaId, fechaBase, tarifa, usuarioId, transaction) {
     if (await Vigencia.findByPk(casaId, { transaction })) throw Object.assign(new Error('La vigencia inicial ya fue registrada'), { status: 409 });
     const principal = await principalConfirmado(casaId, transaction);
     return Vigencia.create({ casaId, fechaBase, fechaFinal: fechaBase, tarifaMensual: tarifa,
-        principalInicial: principal, principalConfirmado: principal, saldoParcial: 0, actualizadoPorUsuarioId: usuarioId }, { transaction });
+        principalInicial: principal, principalConfirmado: principal, saldoParcial: 0, actualizadoPorUsuarioId: usuarioId,
+        sincronizacion: 'PENDIENTE', intentos: 0 }, { transaction });
 }
 async function actualizar(casaId, usuarioId, transaction) {
     await bloquearCasa(casaId, transaction);
@@ -36,13 +37,15 @@ async function actualizar(casaId, usuarioId, transaction) {
     const result = calcular({ fechaBase: row.fechaBase, tarifaMensual: row.tarifaMensual,
         principalInicial: row.principalInicial, principalConfirmado: principal });
     await row.update({ fechaFinal: result.fechaFinal, principalConfirmado: principal,
-        saldoParcial: result.saldoParcial, actualizadoPorUsuarioId: usuarioId }, { transaction });
+        saldoParcial: result.saldoParcial, actualizadoPorUsuarioId: usuarioId,
+        sincronizacion: 'PENDIENTE', proximoIntento: null, intentos: 0, errorSincronizacion: null }, { transaction });
     return resumen(row);
 }
 function resumen(row) {
-    if (!row) return { pendienteConfiguracion: true, fechaFinal: null, sincronizacion: 'NO_IMPLEMENTADA' };
+    if (!row) return { pendienteConfiguracion: true, fechaFinal: null, sincronizacion: 'SIN_CONFIGURAR' };
     return { pendienteConfiguracion: false, fechaFinal: row.fechaFinal, tarifaMensual: row.tarifaMensual,
         saldoParcial: row.saldoParcial, vigenteSegunFecha: vigente(row.fechaFinal),
-        actualizadoEn: row.updatedAt, sincronizacion: 'NO_IMPLEMENTADA' };
+        actualizadoEn: row.updatedAt, sincronizacion: row.sincronizacion || 'PENDIENTE',
+        sincronizadoEn: row.sincronizadoEn || null, proximoIntento: row.proximoIntento || null };
 }
 module.exports = { inicializar, actualizar, resumen, principalConfirmado, Vigencia };

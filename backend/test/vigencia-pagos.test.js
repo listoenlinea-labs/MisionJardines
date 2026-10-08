@@ -72,7 +72,7 @@ test('recalculation is idempotent and stores desired date without claiming hardw
     t.mock.method(service.Vigencia, 'findByPk', async () => validity);
     for (let i = 0; i < 2; i++) {
         const result = await service.actualizar(7, 2, tx);
-        assert.equal(result.fechaFinal, '2026-10-10'); assert.equal(result.sincronizacion, 'NO_IMPLEMENTADA');
+        assert.equal(result.fechaFinal, '2026-10-10'); assert.equal(result.sincronizacion, 'PENDIENTE');
     }
 });
 test('missing initial date never invents a grace month', async t => {
