@@ -119,7 +119,7 @@ async function verificarAlta(req, res) {
     }, { transaction });
     await SolicitudRegistro.create({
       usuarioId: user.id, casaId: datos.esSeguridad ? null : row.casaId,
-      tipoSolicitado: datos.esSeguridad ? 'SEGURIDAD' : 'CONDOMINO', estatus: 'PENDIENTE'
+      tipoSolicitado: datos.esSeguridad ? 'SEGURIDAD' : 'CONDOMINO', tipoVinculo: 'MIEMBRO', estatus: 'PENDIENTE'
     }, { transaction });
     await row.update({
       consumidoEn: new Date(), datosJson: null, codigoHash: crypto.randomBytes(32).toString('hex')
@@ -194,7 +194,7 @@ async function revisarSolicitud(req, res) {
       if (!rol) throw errorHttp(409, 'El rol seleccionado no está configurado');
       await usuario.update({ rolId: rol.id, casaId, estatus: 'ACTIVO', actualizadoEn: new Date() }, { transaction });
       if (rolDeseado === 'CONDOMINO') {
-        await vincular({ usuarioId: usuario.id, casaId, tipo: 'MIEMBRO', actorId: req.usuario.usuarioId, transaction });
+        await vincular({ usuarioId: usuario.id, casaId, tipo: solicitud.tipoVinculo || 'MIEMBRO', actorId: req.usuario.usuarioId, transaction });
       }
     } else {
       await usuario.update({ estatus: 'BAJA', actualizadoEn: new Date() }, { transaction });
