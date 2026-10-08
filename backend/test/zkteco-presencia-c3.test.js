@@ -50,6 +50,20 @@ test('a zero-user read is rejected even if all four tags are already unconfirmed
  await assert.rejects(direct.syncUsers(),/lectura|tarjeta/i);
  assert.deepEqual(items.map(x=>x.enControlador),[false,false,false,false]);
 });
+test('empty authorization table does not falsely block every physical tag',async t=>{
+  const {items}=prepare(t,{authorizations:[],initialConfirmed:true});
+  const summary=await direct.syncUsers();
+  assert.equal(summary.autorizacionesConfiables,false);
+  assert.ok(summary.advertencia.includes('Autorizaciones'));
+  assert.deepEqual(items.map(x=>x.bloqueado),[false,false,false,false]);
+  assert.ok(items.every(x=>x.enControlador),'physical presence and door permission are distinct');
+});
+test('if EndTime is omitted from a partial user response, keep the last known date',async t=>{
+  const users=cards.map((card,i)=>({cardNo:card,pin:String(i+101)}));
+  const {items}=prepare(t,{users});
+  await direct.syncUsers();
+  assert.ok(items.every(x=>x.fechaFin==='2027-01-11'));
+});
 test('the diagnostic reports real panel presence separately from authorization, without changing tags',async t=>{
  const {items}=prepare(t);
  const out=await direct.diagnosticarVivienda(5);
