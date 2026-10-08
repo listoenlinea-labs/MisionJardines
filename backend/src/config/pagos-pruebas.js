@@ -1,4 +1,3 @@
-// Modo temporal solicitado para las pruebas de pagos y ZKTeco.
-// Cambiar a false para volver a exigir revisión administrativa.
-// No verifica que el dinero haya llegado al banco.
-module.exports = { VALIDAR_PAGOS_SIN_ADMIN: true };
+// El modo de pruebas nunca debe validar comprobantes ni habilitar accesos.
+ // La autorización financiera requiere confirmación explícita por Administración.
+module.exports = Object.freeze({ VALIDAR_PAGOS_SIN_ADMIN: false });
