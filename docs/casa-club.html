@@ -1,0 +1,41 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
+<link rel="icon" href="assets/images/favicon.ico?v=20261005">
+<script src="assets/js/permissions.js?v=20261008-club"></script><script src="assets/js/page-access.js?v=20261008"></script>
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261008">
+</head><body class="page-club">
+<main class="club-wrap">
+<header class="club-hero"><div><span class="eyebrow">ESPACIOS DE NUESTRA COMUNIDAD</span><h1>Casa <em>Club</em></h1><p>Consulta fechas disponibles, solicita tu espacio y administra tus reservaciones desde un solo lugar.</p></div><div class="hero-mark">Misión Jardines · Reservaciones</div></header>
+<nav id="clubTabs" class="club-tabs" aria-label="Secciones de Casa Club">
+<button type="button" data-tab="reservar" aria-current="page">Reservar</button>
+<button type="button" data-tab="mis-reservas">Mis reservas</button>
+<button type="button" data-tab="administracion" data-admin hidden>Administración de reservas</button>
+<button type="button" data-tab="aprobacion" data-admin hidden>Aprobación de reservas</button>
+</nav>
+<div id="clubNotice" role="status" aria-live="polite" hidden></div>
+<section id="tab-reservar" class="club-panel">
+<div class="two-col">
+<article class="club-card"><div class="section-header"><div><span class="eyebrow">DISPONIBILIDAD</span><h2>Elige una fecha</h2><p>Los días verdes están disponibles; rojos ya están reservados y ámbar pendientes de aprobación.</p></div><div class="legend"><span><i class="available"></i>Disponible</span><span><i class="busy"></i>Reservada</span><span><i class="waiting"></i>En revisión</span></div></div>
+<div class="calendar-nav"><button id="prevMonth" type="button" aria-label="Mes anterior">‹</button><strong id="calendarLabel"></strong><button id="nextMonth" type="button" aria-label="Mes siguiente">›</button></div>
+<div class="weekdays"><b>L</b><b>M</b><b>M</b><b>J</b><b>V</b><b>S</b><b>D</b></div>
+<div id="calendarDays" class="calendar-days" role="group" aria-label="Calendario de disponibilidad"></div>
+<p class="club-hint">La fecha se bloquea provisionalmente al solicitarla. La reserva solo se confirma cuando Administración la aprueba.</p></article>
+<article class="club-card"><span class="eyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
+<form id="clubForm">
+<div class="form-grid"><label>Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha del calendario"></label>
+<label>Vivienda<input id="clubHouse" readonly placeholder="Vivienda seleccionada"></label>
+<label>Nombre del solicitante<input id="clubName" name="solicitante" maxlength="180" required></label>
+<label>Teléfono<input id="clubPhone" name="telefono" type="tel" maxlength="25" required></label>
+<label class="wide">Correo de contacto<input id="clubEmail" name="correo" type="email" maxlength="150" required></label>
+<label class="wide">¿Eres propietario?<select id="clubOwner" name="propietario"><option value="">Selecciona una opción</option><option value="SI">Sí, propietario</option><option value="NO">No, residente o inquilino</option></select></label>
+<label class="wide">Motivo del evento<input id="clubReason" name="motivo" maxlength="200" required placeholder="Ej. Cumpleaños, reunión familiar"></label></div>
+<button class="primary" id="clubSubmit" type="submit">Enviar solicitud de reservación</button>
+</form></article></div></section>
+<section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
+<section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Registro de reservas y pagos capturados. Marca los movimientos cuando estén comprobados.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div><div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Registrar pago</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
+<section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Confirma disponibilidad, residente y condiciones de pago antes de aprobar.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
+</main>
+<dialog id="clubReviewModal" class="club-dialog"><form id="clubReviewForm" method="dialog"><div class="dialog-head"><div><span class="eyebrow">REVISIÓN ADMINISTRATIVA</span><h2 id="clubReviewTitle">Aprobar reservación</h2></div><button type="button" id="closeClubReview" class="xbtn" aria-label="Cerrar">×</button></div><div id="clubReviewDetails" class="review-details"></div>
+<div class="form-grid"><label>Pago recuperación (MXN)<input id="clubRecovery" type="number" min="0" step=".01" value="700"></label><label>Depósito de garantía (MXN)<input id="clubGuarantee" type="number" min="0" step=".01" value="700"></label><label>Limpieza (MXN)<input id="clubCleaning" type="number" min="0" step=".01" value="300"></label><label class="check"><input id="clubPaid" type="checkbox">Pago verificado por Administración</label><label class="wide">Observaciones<textarea id="clubNotes" maxlength="600" rows="3"></textarea></label></div>
+<div class="dialog-actions"><button type="button" class="danger" id="clubReject">Rechazar</button><button class="primary" type="submit" id="clubApprove">Aprobar reservación</button></div></form></dialog>
+<script src="assets/js/casa-club.js?v=20261008" defer></script><script src="assets/js/site-sidebar.js?v=20261008-club" defer></script>
+</body></html>
