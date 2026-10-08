@@ -10,7 +10,7 @@ const roles = ['CONDOMINO', 'SEGURIDAD', 'ADMINISTRADOR'];
 async function listar(req, res) {
     const estatus = req.query.estatus || 'PENDIENTE';
     const pagina = Number(req.query.pagina || 1);
-    if (!['PENDIENTE', 'APROBADA', 'RECHAZADA'].includes(estatus) || !Number.isSafeInteger(pagina) || pagina < 1 || pagina > 100000) {
+    if (!['PENDIENTE', 'APROBADA', 'RECHAZADA', 'REVOCADA'].includes(estatus) || !Number.isSafeInteger(pagina) || pagina < 1 || pagina > 100000) {
         return res.status(400).json({ ok: false, message: 'Filtro inválido' });
     }
     try {
@@ -115,9 +115,9 @@ async function revocar(req,res){
    if(user.rol?.nombre==='SUPER_ADMIN')throw fail(403,'No es posible revocar Super Admin desde este módulo');
    if(user.rol?.nombre==='ADMINISTRADOR'&&reviewer.rol.nombre!=='SUPER_ADMIN')throw fail(403,'Solo Super Admin puede revocar administradores');
    const ahora=new Date();
-   await user.update({estatus:'BAJA',contrasenaHash:await bcrypt.hash(crypto.randomBytes(36).toString('hex'),12),actualizadoEn:ahora},{transaction});
+   await user.update({estatus:'BAJA',contrasenaHash:await bcrypt.hash(crypto.randomBytes(36).toString('hex'),12),sesionVersion:Number(user.sesionVersion||0)+1,actualizadoEn:ahora},{transaction});
    await UsuarioCasa.update({activo:false,desvinculadoEn:ahora},{where:{usuarioId:user.id,activo:true},transaction});
-   await solicitud.update({comentarioRevision:(String(solicitud.comentarioRevision||'').slice(0,370)+' | Acceso revocado por administrador '+reviewer.id+' en '+ahora.toISOString()).slice(0,600)},{transaction});
+   await solicitud.update({estatus:'REVOCADA',comentarioRevision:(String(solicitud.comentarioRevision||'').slice(0,370)+' | Acceso revocado por administrador '+reviewer.id+' en '+ahora.toISOString()).slice(0,600)},{transaction});
   });
   return res.json({ok:true,message:'Acceso revocado. Las credenciales y sesiones anteriores dejan de funcionar. El historial de pagos permanece.'});
  }catch(e){if(!e.status)console.error('Revocar cuenta:',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible desactivar la cuenta'});}
