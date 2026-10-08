@@ -442,7 +442,12 @@ async function loadRows(){
 async function syncBeforePageLoad({notify=false}={}){
   if(!canAdmin)return null;
   const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});
-  if(notify)toast(r.message+' · '+(r.data?.procesados||0)+' controles');
+  if(notify){
+    const unread=Number(r.data?.noObservados||0);
+    toast(unread
+      ? 'Lectura C3 terminada, pero '+unread+' TAG(s) locales no se observaron. Usa Comprobar C3 antes de agregar.'
+      : r.message+' · '+(r.data?.procesados||0)+' controles');
+  }
   return r;
 }
 async function refreshPage(page,{notify=false,reason}={}){
@@ -450,11 +455,13 @@ async function refreshPage(page,{notify=false,reason}={}){
   currentPage=target;
   pageRefreshInFlight=true;
   let synchronized=true;
+  let partialCount=0;
   let loaded=false;
   setPageSyncStatus(reason||('Actualizando página '+target+' con ZKTeco…'),true);
   try{
     try{
-      await syncBeforePageLoad({notify});
+      const syncResponse=await syncBeforePageLoad({notify});
+      partialCount=Number(syncResponse?.data?.noObservados||0);
     }catch(syncError){
       synchronized=false;
       toast('No se pudo sincronizar antes de cargar la página: '+syncError.message,7000);
@@ -463,7 +470,10 @@ async function refreshPage(page,{notify=false,reason}={}){
     loaded=true;
   }finally{
     pageRefreshInFlight=false;
-    const message=!loaded?'No se pudo actualizar la página':(synchronized?'Actualizado con ZKTeco':'Datos cargados · sincronización pendiente');
+    const message=!loaded?'No se pudo actualizar la página':
+      !synchronized?'Datos locales; verificar lectura C3':
+      partialCount?'Lectura parcial: '+partialCount+' TAG(s) no observados · Comprobar C3':
+      'Inventario C3 confirmado para TAGs observados';
     setPageSyncStatus(message,false);
     window.clearTimeout(window.zkPageSyncStatusTimer);
     window.zkPageSyncStatusTimer=setTimeout(()=>setPageSyncStatus(''),3500);
