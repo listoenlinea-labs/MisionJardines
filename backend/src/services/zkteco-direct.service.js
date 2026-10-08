@@ -9,6 +9,7 @@ const {
 } = require('./zkteco-pullsdk-bridge.service');
 const ZkTarjeta = require('../models/ZkTarjeta');
 const Casa = require('../models/Casa');
+const inventario = require('./zkteco-inventory-helpers');
 
 const pad2 = n => String(n).padStart(2,'0');
 const toDateNumber = value => {
@@ -117,11 +118,14 @@ async function syncUsers(){
   }
 
   const currentCards=await ZkTarjeta.findAll();
-  // Una respuesta vacía inesperada por fallo/protocolo no debe declarar que
-  // todos los controles físicos desaparecieron del C3.
-  if(payload.users.length===0 && currentCards.some(c=>c.enControlador)){
-    throw new Error('El C3 reportó cero usuarios pero existían TAGs; no se marcarán ausentes sin una comprobación manual.');
+  const diagnostico=inventario.diagnosticoInventario(payload.users,currentCards);
+  if(!diagnostico.ok) {
+    throw new Error(diagnostico.message+' Campos leídos: '+diagnostico.fields.join(', ').slice(0,220));
   }
+  // Conocer los usuarios que respondió el C3 no demuestra que devolvió
+  // el inventario COMPLETO. Solo confirmar coincidencias positivas.
+  // Una ausencia individual se presenta como diagnóstico y nunca provoca
+  // poner en_controlador=false por una sola lectura de red.
   const affectedHouseIds=new Set();
   const existingByNormalized=new Map();
   const indexExisting=item=>{
@@ -138,19 +142,19 @@ async function syncUsers(){
   // physical cards incorrectly displayed as "No existe en C3".
   const liveKeys=new Set();
   for(const row of payload.users){
-    const key=normalizeCardKey(row.CardNo);
+    const key=inventario.claveTarjeta(inventario.tarjetaFila(row));
     if(key&&key!=='0')liveKeys.add(key);
   }
 
-  const authByPin=new Map(payload.auth.map(row=>[String(row.Pin??'').trim(),row]));
+  const authByPin=new Map(payload.auth.map(row=>[String(inventario.pinFila(row)??'').trim(),row]));
   let processed=0,linked=0;
 
   for(const row of payload.users){
-    const card=String(row.CardNo??'').trim();
-    const key=normalizeCardKey(card);
+    const card=String(inventario.tarjetaFila(row)??'').trim();
+    const key=inventario.claveTarjeta(card);
     if(!key||key==='0') continue;
 
-    const pin=String(row.Pin??'').trim()||null;
+    const pin=String(inventario.pinFila(row)??'').trim()||null;
     const auth=pin?authByPin.get(pin):null;
     const candidates=existingByNormalized.get(key)||[];
 
@@ -162,7 +166,7 @@ async function syncUsers(){
       candidates[0]||
       null;
 
-    const groupId=Number(row.Group||0)||null;
+    const groupId=Number(inventario.grupoFila(row)||0)||null;
     const casaId=existing?.casaId??byCard.get(key)??null;
     if(casaId) linked++;
 
@@ -170,9 +174,9 @@ async function syncUsers(){
       // Preserve the application's literal CardNo when the normalized value is
       // already known. This avoids unique-key conflicts such as 05112344 vs 5112344.
       numeroTarjeta:existing?existing.numeroTarjeta:card,
-      uidDispositivo:Number(row.UID||0)||null,
+      uidDispositivo:Number(inventario.uidFila(row)||0)||null,
       pinDispositivo:pin,
-      nombreDispositivo:String(row.Name??'').trim()||null,
+      nombreDispositivo:String(inventario.nombreFila(row)??'').trim()||null,
       departamento:existing?.departamento||null,
       departamentoId:existing?.departamentoId||null,
       grupoDispositivo:groupId,
@@ -180,16 +184,16 @@ async function syncUsers(){
       // When a TAG is blocked we remove that row, but keep the last known profile locally
       // so it can be restored on activation.
       puertasAutorizadas:auth
-        ? (Number(auth.AuthorizeDoorId||0)||null)
+        ? (Number(inventario.puertasFila(auth)||0)||null)
         : (existing?.puertasAutorizadas||null),
       timezoneId:auth
-        ? (Number(auth.AuthorizeTimezoneId||0)||null)
+        ? (Number(inventario.zonaFila(auth)||0)||null)
         : (existing?.timezoneId||null),
-      fechaInicio:fromDateNumber(row.StartTime),
-      fechaFin:fromDateNumber(row.EndTime),
+      fechaInicio:fromDateNumber(inventario.inicioFila(row)),
+      fechaFin:fromDateNumber(inventario.finalFila(row)),
       casaId,
       bloqueado:payload.authReadable
-        ? (!auth || Number(auth.AuthorizeDoorId||0)<=0)
+        ? (!auth || Number(inventario.puertasFila(auth)||0)<=0)
         : Boolean(existing?.bloqueado),
       origen:existing?.origen||'ZKTECO',
       enControlador:true,
@@ -221,26 +225,12 @@ async function syncUsers(){
     processed++;
   }
 
-  // Only after the complete physical read + reconciliation succeeds do we mark
-  // missing cards as absent. All DB rows that normalize to a live CardNo remain
-  // live, which also prevents stale duplicate/import rows from showing false red.
-  let absent=0;
-  const now=new Date();
-  for(const item of currentCards){
-    const key=normalizeCardKey(item.numeroTarjeta);
-    if(!key)continue;
-    const live=liveKeys.has(key);
-    if(live){
-      if(item.enControlador===false){
-        await item.update({enControlador:true,ultimaLectura:now});
-      }
-    }else if(item.enControlador!==false){
-      await item.update({enControlador:false});
-      absent++;
-    }else{
-      absent++;
-    }
-  }
+  // Confirmaciones positivas se guardan arriba. No declarar inexistentes
+  // tarjetas que no aparecieron en ESTA lectura: puede haber inventario parcial,
+  // C3 equivocado, campos omitidos o una interrupción temporal del PullSDK.
+  // Un diagnóstico físico explícito mostrará cuáles faltaron en la lectura.
+  const sinConfirmarEnLectura=currentCards.filter(item=>
+    !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).length;
 
   // Solo fechas/vinculaciones realmente desincronizadas disparan una
   // escritura TCP; la lectura periódica no debe reescribir todos los TAGs.
@@ -254,14 +244,18 @@ async function syncUsers(){
     procesados:processed,
     vinculados:linked,
     autorizaciones:payload.auth.length,
-    ausentes:absent
+    ausentes:0,
+    noObservados:sinConfirmarEnLectura,
+    previamenteConfirmados:diagnostico.previouslyConfirmed,
+    camposDeTarjeta:diagnostico.fields.filter(x=>/card|pin|uid/i.test(x)),
+    advertencia:sinConfirmarEnLectura?'Hay TAGs no vistos en la lectura; no se marcaron eliminados ni se crearon registros físicos.':null
   };
 }
 
 async function findPanelUserByCard(client,card){
   const rows=await client.getData('user');
   const wanted=normalizeCardKey(card);
-  return rows.find(row=>normalizeCardKey(row.CardNo)===wanted)||null;
+  return rows.find(row=>inventario.claveTarjeta(inventario.tarjetaFila(row))===wanted)||null;
 }
 
 function getWriteMode(){
