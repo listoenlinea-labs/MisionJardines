@@ -117,7 +117,7 @@ async function revocar(req,res){
    const ahora=new Date();
    await user.update({estatus:'BAJA',contrasenaHash:await bcrypt.hash(crypto.randomBytes(36).toString('hex'),12),actualizadoEn:ahora},{transaction});
    await UsuarioCasa.update({activo:false,desvinculadoEn:ahora},{where:{usuarioId:user.id,activo:true},transaction});
-   await solicitud.update({comentarioRevision:(String(solicitud.comentarioRevision||'').slice(0,370)+' | Acceso revocado por administrador '+reviewer.id+' en '+ahora.toISOString()).slice(0,600),revisadoPorUsuarioId:reviewer.id,revisadoEn:ahora},{transaction});
+   await solicitud.update({comentarioRevision:(String(solicitud.comentarioRevision||'').slice(0,370)+' | Acceso revocado por administrador '+reviewer.id+' en '+ahora.toISOString()).slice(0,600)},{transaction});
   });
   return res.json({ok:true,message:'Acceso revocado. Las credenciales y sesiones anteriores dejan de funcionar. El historial de pagos permanece.'});
  }catch(e){if(!e.status)console.error('Revocar cuenta:',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible desactivar la cuenta'});}
