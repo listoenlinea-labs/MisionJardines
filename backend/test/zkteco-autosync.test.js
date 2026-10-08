@@ -39,7 +39,7 @@ test('una lectura cero sospechosa no declara inexistentes los TAGs que antes est
  t.mock.method(Casa,'findAll',async()=>[]);
  t.mock.method(ZkTarjeta,'findAll',async()=>[existing]);
  t.mock.method(ZkTarjeta,'update',async()=>{modified=true});
- await assert.rejects(direct.syncUsers(),/cero usuarios/);
+ await assert.rejects(direct.syncUsers(),/lectura no devolvió tarjetas identificables/);
  assert.equal(modified,false);
  assert.equal(existing.enControlador,true);
 });
