@@ -305,7 +305,7 @@ function render(){
       : '<span class="tag-meta">Solo consulta</span>';
     return '<article class="house-card">'+
       '<div class="house-top">'+
-        '<div class="house-address"><strong>'+esc(row.calle)+' '+esc(row.numero)+'</strong><span>'+controls+' '+(controls===1?'control':'controles')+' asociados</span></div>'+
+        '<div class="house-address"><strong>'+esc(row.calleCorrecta||row.calle)+' '+esc(row.numero)+'</strong><span>'+controls+' '+(controls===1?'control':'controles')+' asociados</span></div>'+
         '<div class="house-cell house-state"><span class="mobile-label">Estado</span><span class="status '+s.cls+'"><i class="dot"></i>'+s.label+'</span></div>'+
         '<div class="house-cell house-last"><span class="mobile-label">Última lectura</span><b>'+fmt(last)+'</b></div>'+
         '<div class="house-actions"><span class="mobile-label">Acciones</span>'+actions+'</div>'+
@@ -601,7 +601,7 @@ async function openTagModal(id){
   selectedHouseId=id;
   clearModalError('tagModalError');
   const row=currentRows.find(r=>Number(r.id)===Number(id));
-  $('tagHouseLabel').textContent=row?row.calle+' '+row.numero:'vivienda';
+  $('tagHouseLabel').textContent=row?(row.calleCorrecta||row.calle)+' '+row.numero:'vivienda';
   $('newTagNumber').value='';$('newTagName').value=row?row.calle+' '+row.numero:'';$('newTagStart').value=new Date().toISOString().slice(0,10);$('newTagEnd').value='2099-12-31';
   try{
     const inv=await api('/zkteco/tarjetas',{headers:headers()});

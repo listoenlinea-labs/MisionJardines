@@ -30,8 +30,8 @@
       const house = user.casa || null;
       $('residentName').textContent = fullName(user);
       if (house) {
-        $('houseText').textContent = (house.calle || '') + ' · Casa ' + (house.numero || '');
-        $('residentStreet').value = house.calle || '';
+        $('houseText').textContent = (house.calleCorrecta || house.calle || '') + ' · Casa ' + (house.numero || '');
+        $('residentStreet').value = house.calleCorrecta || house.calle || '';
         $('residentNumber').value = house.numero || '';
         return Boolean(house.calle || house.numero);
       }
@@ -40,7 +40,7 @@
 
     function syncBankReference() {
       const house = profile?.casa || profile?.vivienda || storedUser()?.casa || storedUser()?.vivienda;
-      const street = (house?.calle || $('residentStreet')?.value || '').trim();
+      const street = (house?.calleCorrecta || house?.calle || $('residentStreet')?.value || '').trim();
       const number = String(house?.numero || $('residentNumber')?.value || '').trim();
       $('bankReference').textContent = street && number ? street + ' · Casa ' + number : 'Selecciona una vivienda';
     }
