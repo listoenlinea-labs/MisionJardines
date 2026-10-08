@@ -20,6 +20,8 @@ test('revocar una cuenta aprobada bloquea credenciales y viviendas sin borrar hi
  await accounts.revocar({usuario:{usuarioId:1},params:{id:8}},res);
  assert.equal(res.code,200);
  assert.equal(user.estatus,'BAJA');
+ assert.equal(user.sesionVersion,1);
+ assert.equal(request.estatus,'REVOCADA');
  assert.notEqual(user.contrasenaHash,undefined);
  assert.equal(membershipUpdate.data.activo,false);
  assert.equal(membershipUpdate.opts.where.usuarioId,5);
@@ -42,4 +44,16 @@ test('nombre+calle+casa filtra consultas sin divulgar contraseñas',async t=>{
  assert.equal(res.code,200);
  assert.equal(res.payload.total,0);
  assert.equal(queried.include[0].attributes.includes('contrasenaHash'),false);
+});
+
+test('Eliminadas se lista por estado histórico y no se mezcla con Aprobadas',async t=>{
+ const queries=[];
+ t.mock.method(SolicitudCuenta,'findAndCountAll',async q=>{queries.push(q);return{rows:[],count:0};});
+ const result={...response(),setHeader(){}};
+ await accounts.listar({query:{estatus:'REVOCADA',pagina:'1'}},result);
+ assert.equal(result.code,200);
+ assert.equal(queries[0].where[require('sequelize').Op.and][0].estatus,'REVOCADA');
+ await accounts.listar({query:{estatus:'APROBADA',pagina:'1'}},result);
+ assert.equal(result.code,200);
+ assert.equal(queries[1].where[require('sequelize').Op.and][0].estatus,'APROBADA');
 });

@@ -87,6 +87,52 @@ test('registro no duplica cuentas existentes', async t => {
     assert.equal(res.code,409);
     assert.equal(saved,false);
 });
+test('una cuenta revocada puede volver a registrarse con el mismo correo sin permisos antiguos', async t => {
+    const account = row({
+        id: 31, estatus: 'BAJA', sesionVersion: 4, rolId: 99,
+        casaId: null, correo: 'ana@example.com',
+        nombre: 'Anterior'
+    });
+    let createCalled = false, requested = null;
+    t.mock.method(db, 'transaction', async cb => cb(tx));
+    t.mock.method(models.Usuario, 'findOne', async options => {
+        assert.equal(options.lock, 'UPDATE');
+        assert.equal(options.where.correo, 'ana@example.com');
+        return account;
+    });
+    t.mock.method(models.Rol, 'findOne', async () => ({ id: 3 }));
+    t.mock.method(models.Usuario, 'create', async () => { createCalled = true; throw Error('No debe crear otro usuario'); });
+    t.mock.method(models.SolicitudCuenta, 'create', async payload => { requested = payload; return {id: 81}; });
+    t.mock.method(email, 'enviarCodigoVerificacion', async () => assert.fail('No debe enviar correo'));
+    const res=response();
+    await auth.solicitarRegistro({body:{
+        nombre:'Ana', apellidoPaterno:'Nueva', correo:'ana@example.com',
+        contrasena:'NuevaSegura123', calle:'Gardenias', numeroCasa:'5'
+    }}, res);
+    assert.equal(res.code,201);
+    assert.equal(createCalled,false);
+    assert.equal(account.estatus,'PENDIENTE');
+    assert.equal(account.sesionVersion,5);
+    assert.equal(account.rolId,3);
+    assert.equal(account.casaId,null);
+    assert.equal(await bcrypt.compare('NuevaSegura123',account.contrasenaHash),true);
+    assert.equal(requested.usuarioId,31);
+    assert.equal(requested.estatus,'PENDIENTE');
+    assert.equal(requested.calle,'Gardenias');
+});
+test('una segunda solicitud con el mismo correo pendiente no se admite', async t => {
+    let created=false;
+    t.mock.method(db, 'transaction', async cb => cb(tx));
+    t.mock.method(models.Usuario, 'findOne', async () => row({id:31,estatus:'PENDIENTE'}));
+    t.mock.method(models.SolicitudCuenta, 'create', async () => { created=true; });
+    const res=response();
+    await auth.solicitarRegistro({body:{
+        nombre:'Ana', apellidoPaterno:'Nueva', correo:'ana@example.com',
+        contrasena:'NuevaSegura123', calle:'Gardenias', numeroCasa:'5'
+    }}, res);
+    assert.equal(res.code,409);
+    assert.equal(created,false);
+});
 function setupReview(t, overrides = {}) {
     const solicitud = row({ id: 8, usuarioId: 21, tipoCuenta: 'SEGURIDAD', estatus: 'PENDIENTE', ...overrides.solicitud });
     const user = row({ id: 21, estatus: 'PENDIENTE', casaId: null, rolId: 3 });

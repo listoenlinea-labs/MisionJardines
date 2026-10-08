@@ -85,6 +85,8 @@ const Usuario = sequelize.define(
             defaultValue: 'PENDIENTE'
         },
 
+        sesionVersion: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0, field: 'sesion_version' },
+
         ultimoAccesoEn: {
             type: DataTypes.DATE,
             allowNull: true,

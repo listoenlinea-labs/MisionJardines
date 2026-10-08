@@ -23,11 +23,15 @@ async function autenticarToken(req, res, next) {
         );
 
         const user = await Usuario.findByPk(payload.usuarioId, {
-            attributes: ['id','casaId','rolId','estatus'],
+            attributes: ['id','casaId','rolId','estatus','sesionVersion'],
             include: [{ model: Rol, as: 'rol', attributes: ['nombre','activo'] }]
         });
         if (!user || user.estatus !== 'ACTIVO' || !user.rol?.activo) {
             return res.status(403).json({ok:false,message:'El usuario ya no tiene acceso'});
+        }
+        // Cuenta reactivada: rechazar JWT emitidos antes de la baja, aunque vuelvan a estar ACTIVA.
+        if (Number(payload.sesionVersion || 0) !== Number(user.sesionVersion || 0)) {
+            return res.status(401).json({ok:false,message:'Esta sesión fue revocada. Inicia sesión nuevamente.'});
         }
         req.usuario = { ...payload, usuarioId:user.id, casaId:user.casaId, rolId:user.rolId, rol:user.rol.nombre };
         const section = modules[req.baseUrl.split('/').pop()];
