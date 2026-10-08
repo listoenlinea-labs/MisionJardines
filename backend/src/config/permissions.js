@@ -7,9 +7,10 @@
     MESA_DIRECTIVA: ['index.html','cuotas.html','pagos.html','bases_datos.html','conmutador.html','anuncios.html','calendario.html','directorio.html'],
     MANTENIMIENTO: ['index.html','reportes.html','reporte.html','anuncios.html','calendario.html','directorio.html']
   };
-  const pages = [...new Set([...security,...resident,'cuenta.html','viviendas.html'])];
+  const pages = [...new Set([...security,...resident,'cuenta.html','viviendas.html','verificacion-cuentas.html'])];
   function canAccess(role, page) {
     if (!pages.includes(page)) return false;
+    if (page === 'verificacion-cuentas.html') return admins.includes(role);
     if (admins.includes(role)) return true;
     const allowed = role === 'SEGURIDAD' ? security : role === 'CONDOMINO' ? resident : legacy[role];
     return !!allowed && (['cuenta.html','viviendas.html'].includes(page) || allowed.includes(page));
