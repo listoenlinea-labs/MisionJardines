@@ -10,8 +10,6 @@ const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.s
 
 const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
-const pagosPruebas = require('../config/pagos-pruebas');
-const mensualidades = require('../services/mensualidades-mantenimiento');
 const BASE_MANTENIMIENTO = 300;
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
@@ -52,8 +50,19 @@ function construirUrlRecibo(req, pagoId) {
     return basePublicaBackend(req) + '/api/pagos/' + pagoId + '/recibo';
 }
 
-function montoMantenimiento(fechaOperacion, monto) {
-    return mensualidades.cotizar(fechaOperacion,monto);
+function montoMantenimiento(fechaOperacion) {
+    const match = String(fechaOperacion || '').match(/^\d{4}-\d{2}-(\d{2})$/);
+    const day = match ? Number(match[1]) : NaN;
+    if (!Number.isInteger(day)) return null;
+
+    const late = day > DIA_LIMITE;
+
+    return {
+        base: BASE_MANTENIMIENTO,
+        recargo: late ? RECARGO_TARDIO : 0,
+        total: BASE_MANTENIMIENTO + (late ? RECARGO_TARDIO : 0),
+        late
+    };
 }
 
 function conceptoMantenimiento() {
@@ -355,15 +364,18 @@ async function reportarPago(req, res) {
             requerido = Number(cuotaExtraordinaria.monto);
             concepto = 'Pago extraordinario correspondiente a ' + cuotaExtraordinaria.concepto;
         } else {
-            // Validar en el backend, no confiar en importes del navegador ni OCR.
-            // El recibo solo registra una solicitud: hasta validar contra el banco
-            // no se activan TAGs físicos.
-            const rule = montoMantenimiento(fechaOperacion, req.body.monto);
+            const rule = montoMantenimiento(fechaOperacion);
+
+            if (!rule) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'Fecha de operación no válida'
+                });
+            }
+
             requerido = rule.total;
             recargo = rule.recargo;
-            concepto = 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ' +
-                '(desde octubre de 2026, pendientes primero). ' +
-                (rule.tardio ? 'Incluye recargo de $50 por mensualidad.' : 'Sin recargo.');
+            concepto = conceptoMantenimiento();
         }
 
         if (!Number.isFinite(monto) || monto <= 0 || (tipoPago === 'EXTRAORDINARIO' && Math.abs(monto - requerido) > 0.009)) {
@@ -401,18 +413,10 @@ async function reportarPago(req, res) {
             comprobanteNombre: comprobanteNombre || null,
             comprobanteMime: comprobanteMime || 'image/jpeg',
             textoOcr: textoOcr || null,
-            estatus: pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? 'VALIDADO' : 'PENDIENTE_VALIDACION',
-            ...(pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? {
-                fechaValidacion: now,
-                validadoPorUsuarioId: null,
-                observacionesRevision: 'Validación automática temporal para pruebas; sin revisión administrativa ni bancaria.'
-            } : {}),
+            estatus: 'PENDIENTE_VALIDACION',
             reciboFolio: folio,
             fechaEmisionRecibo: now
         }, { transaction });
-
-        const vigenciaAcceso = pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN && tipoPago === 'MANTENIMIENTO'
-            ? await vigenciaService.actualizar(casaId, usuarioId, transaction) : null;
 
         await transaction.commit();
         transaction = null;
@@ -443,9 +447,8 @@ async function reportarPago(req, res) {
 
         return res.status(201).json({
             ok: true,
-            message: pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? 'Pago validado automáticamente para pruebas' : 'Pago reportado y recibo generado',
-            data: pagoSeguro(req, pagoCompleto),
-            vigencia: vigenciaAcceso
+            message: 'Pago reportado y recibo generado',
+            data: pagoSeguro(req, pagoCompleto)
         });
     } catch (error) {
         if (transaction && !transaction.finished) {
@@ -576,11 +579,7 @@ async function revisarPago(req, res) {
                 if (pago.estatus !== req.body.estatus) throw Object.assign(new Error('El pago ya tiene otra resolución'), { status: 409 });
                 return { pago: pagoSeguro(req, pago), vigencia: vigenciaService.resumen(await vigenciaService.Vigencia.findByPk(pago.casaId, { transaction })) };
             }
-            // La tarifa y el recargo se fijan según la fecha e importe del banco.
-            // No permitir que el modal reescriba el recargo y extienda accesos.
-            const recargo = pago.recargo;
-            if (req.body.recargo !== undefined && centavos(req.body.recargo) !== centavos(recargo))
-                throw Object.assign(new Error('El recargo del comprobante no se puede modificar al aprobar. Corrige o rechaza el reporte.'), { status: 409 });
+            const recargo = req.body.recargo === undefined ? pago.recargo : req.body.recargo;
             if (centavos(recargo) > centavos(pago.monto)) throw Object.assign(new Error('El recargo no puede superar el pago'), { status: 400 });
             if (pago.tipoPago === 'EXTRAORDINARIO' && centavos(recargo) !== 0) throw Object.assign(new Error('La cuota extraordinaria no lleva recargo de mantenimiento'), { status: 400 });
             await pago.update({ estatus: req.body.estatus, recargo, validadoPorUsuarioId: req.usuario.usuarioId,
