@@ -141,7 +141,7 @@
   $('nextPage').addEventListener('click', () => { if (page < pages) { page++; void load(); } });
   await load();
   // Refresca solicitudes en espera sin interferir con el formulario de revisión.
-  setInterval(() => {
+  if (typeof setInterval === 'function') setInterval(() => {
     if (status === 'PENDIENTE' && !$('reviewDialog').open && !document.hidden) void load();
   }, 30000);
 })();
