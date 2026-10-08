@@ -73,6 +73,10 @@
         const idx = monthsReceipt.findIndex(m => m.toLowerCase() === match[1].toLowerCase());
         return { month: String(idx + 1).padStart(2, '0'), year: match[2], label: monthsReceipt[idx] + ' ' + match[2], derived: false };
       }
+      const dateMatch = /^(20\d{2})-(\d{2})-\d{2}/.exec(String(p.fechaOperacion || ''));
+      if (dateMatch && Number(dateMatch[2]) >= 1 && Number(dateMatch[2]) <= 12) {
+        return { month: dateMatch[2], year: dateMatch[1], label: 'Depósito: ' + monthsReceipt[Number(dateMatch[2]) - 1] + ' ' + dateMatch[1], derived: true };
+      }
       return { month: '', year: '', label: 'Período no especificado', derived: false };
     }
     function renderReceipts(items) {
@@ -94,7 +98,7 @@
         const period = receiptPeriod(p);
         const status = ({ PENDIENTE_VALIDACION: 'Pendiente de validación', VALIDADO: 'Validado', RECHAZADO: 'Rechazado' })[p.estatus] || p.estatus || '';
         return '<div class="receipt-item"><div class="receipt-main"><strong>' + esc(p.reciboFolio || p.folioReporte || 'Recibo') +
-          '</strong><p>' + esc(p.concepto || 'Pago registrado') + '<br>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
+          '</strong><p><b class="receipt-period-label">' + esc(period.label) + '</b><br>' + esc(p.concepto || 'Pago registrado') + '<br>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
           '</p><div class="receipt-meta"><span class="pill ' + esc(p.estatus || '') + '">' + esc(status) +
           '</span><span class="pill">' + (p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') +
           '</span></div></div><div class="receipt-side"><b>' + money(p.monto) +
