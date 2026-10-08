@@ -2,6 +2,7 @@ const ZkTarjeta=require('../models/ZkTarjeta');
 const {
   testDirectConnection,
   syncUsers,
+  diagnosticarVivienda,
   setCardBlocked,
   setHouseBlocked,
   setCardHouse,
@@ -40,6 +41,17 @@ async function estado(req,res){
 async function inventario(req,res){
   const rows=await ZkTarjeta.findAll({order:[['departamento','ASC'],['numeroTarjeta','ASC']],limit:2000});
   res.json({ok:true,total:rows.length,data:rows});
+}
+async function diagnosticoVivienda(req,res){
+  try{
+    const data=await diagnosticarVivienda(req.params.id);
+    return res.json({ok:true,data});
+  }catch(error){
+    await recordZkError(req,'DIAGNOSTICO_C3',error,{casaId:req.params.id});
+    return res.status(error.status||502).json({
+      ok:false,message:'No fue posible verificar el inventario físico del C3',error:exactError(error)
+    });
+  }
 }
 async function sincronizar(req,res){
   try{res.json({ok:true,data:await runAutoSync(),message:'Usuarios sincronizados desde el C3-200'});}
@@ -217,4 +229,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};
