@@ -264,8 +264,15 @@ async function solicitarRegistro(req, res) {
         const contrasenaHash = await bcrypt.hash(contrasena, 12);
         // Usuario y solicitud se crean juntos, o no se crea ninguno.
         await sequelize.transaction(async transaction => {
-            const existente = await Usuario.findOne({ where: { correo }, attributes: ['id'], transaction });
-            if (existente) {
+            // El correo sigue siendo único en usuarios. Una cuenta BAJA puede
+            // volver a solicitar autorización sin recuperar su acceso anterior.
+            // El lock evita solicitudes simultáneas con el mismo correo.
+            const existente = await Usuario.findOne({
+                where: { correo },
+                attributes: ['id', 'estatus', 'sesionVersion'],
+                transaction, lock: transaction.LOCK.UPDATE
+            });
+            if (existente && existente.estatus !== 'BAJA') {
                 throw Object.assign(new Error('Ese correo ya tiene una cuenta o solicitud registrada. Contacta a Administración.'), { status: 409 });
             }
             let invitacionRegistro = null;
@@ -282,13 +289,27 @@ async function solicitarRegistro(req, res) {
             }
             const rolBase = await Rol.findOne({ where: { nombre: 'CONDOMINO', activo: true }, transaction });
             if (!rolBase) throw new Error('Rol CONDOMINO no configurado');
-            const nuevoUsuario = await Usuario.create({
-                casaId: null,
-                rolId: rolBase.id,
-                nombre, apellidoPaterno, apellidoMaterno: apellidoMaterno || null,
-                telefono: telefono || null, correo, contrasenaHash,
-                estatus: 'PENDIENTE', esContactoPrincipal: false, recibeCorreosPago: true
-            }, { transaction });
+            let nuevoUsuario;
+            if (existente) {
+                // Actualizar la identidad declarada y contraseña SOLO como
+                // solicitud pendiente. No se restauran roles ni viviendas.
+                await existente.update({
+                    casaId: null, rolId: rolBase.id,
+                    nombre, apellidoPaterno, apellidoMaterno: apellidoMaterno || null,
+                    telefono: telefono || null, contrasenaHash,
+                    estatus: 'PENDIENTE', esContactoPrincipal: false,
+                    sesionVersion: Number(existente.sesionVersion || 0) + 1,
+                    actualizadoEn: new Date()
+                }, { transaction });
+                nuevoUsuario = existente;
+            } else {
+                nuevoUsuario = await Usuario.create({
+                    casaId: null, rolId: rolBase.id,
+                    nombre, apellidoPaterno, apellidoMaterno: apellidoMaterno || null,
+                    telefono: telefono || null, correo, contrasenaHash,
+                    estatus: 'PENDIENTE', esContactoPrincipal: false, recibeCorreosPago: true
+                }, { transaction });
+            }
             await SolicitudCuenta.create({
                 usuarioId: nuevoUsuario.id, tipoCuenta,
                 calle: casa?.calle || (tipoCuenta === 'CONDOMINO' ? calle : null),
