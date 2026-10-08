@@ -11,7 +11,7 @@
   <script src="assets/js/page-access.js?v=20261008"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cuotas | Misión Jardines</title>
+  <title>Administración de cuotas | Misión Jardines</title>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -242,7 +242,11 @@
         width: 100%;
       }
     }
-  </style>
+  
+.cuotas-primary-tabs{display:flex;gap:8px;margin:14px 0 17px;border:1px solid #e8e5ee;padding:6px;border-radius:14px;background:#fff}
+.cuotas-primary-tabs a{padding:11px 25px;border-radius:10px;color:#76618c;font-weight:850;font-size:12px;text-decoration:none}
+.cuotas-primary-tabs a.active{background:#f9edff;color:#644884;border:1px solid #e9d3f1}
+</style>
 </head>
 
 <body class="page-cuotas">
@@ -250,7 +254,7 @@
     <div class="cuotas-topbar">
       <div class="cuotas-topbar-title">
         <span>ADMINISTRACIÓN Y FINANZAS</span>
-        <strong>Cuotas del fraccionamiento</strong>
+        <strong>Administración de cuotas</strong>
       </div>
 
       <div class="cuotas-topbar-actions">
@@ -269,6 +273,11 @@
         </button>
       </div>
     </div>
+
+    <nav class="cuotas-primary-tabs" aria-label="Administración de cuotas">
+      <a class="active" href="cuotas.html" aria-current="page">Cuotas</a>
+      <a href="analisis-cuotas.html" data-roles="SUPER_ADMIN,ADMINISTRADOR">Análisis</a>
+    </nav>
 
     <section class="cuotas-hero">
       <div class="cuotas-hero-copy">
@@ -422,13 +431,6 @@
 
         <div class="actions cuotas-actions">
           <input id="excelInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
-
-          <button id="analyticsButton" class="btn-secondary" type="button" onclick="abrirModalAnalisis()">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path>
-            </svg>
-            Ver análisis
-          </button>
 
           <button id="bulkReceiptButton" class="btn-secondary" type="button"
             data-roles="SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA" onclick="abrirModalRecibos()" disabled>
