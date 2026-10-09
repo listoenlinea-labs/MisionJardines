@@ -4,7 +4,15 @@ El C3 es la fuente de la fecha final. Cada nuevo importe confirmado de mantenimi
 
 Para cada TAG asociado a la vivienda se lee su fecha real, se agregan los meses comprados y se fija el día 10 del mes resultante. Por ejemplo, una fecha física del 11 de septiembre y $600 netos producen el 10 de noviembre. Si luego un administrador cambia la fecha física, el siguiente pago parte de esa nueva fecha. No hay mes de gracia ni cómputo desde la fecha del pago.
 
-El cálculo utiliza el recargo guardado por el módulo de pagos/cuotas; no vuelve a deducirlo. Las reglas existentes del formulario de pagos siguen cotizando mensualidades de $300 o $350 con recargo, hasta 36 meses y con sus validaciones de importe. Este cambio no modifica esa política de captura.
+El recargo ya no depende del día del depósito por sí solo. Se lee la fecha final física de todos los TAGs de la vivienda y se enumeran los cortes del día 10 vencidos antes de la fecha bancaria. Cada corte pendiente genera $50 una sola vez. Una fecha física histórica de día 11 se interpreta con corte de cobro del día 10 de ese mes. Pagar adelantado después del día 10 no genera recargo.
+
+La cotización exige cubrir los recargos pendientes y principal suficiente para una mensualidad, considerando el saldo a favor. No exige múltiplos de $350. Por ejemplo, $1,500 con un recargo de $50 compran cuatro meses y dejan $250. Se conserva el máximo de 36 meses por movimiento y la fecha bancaria válida desde octubre de 2026.
+
+`GET /api/pagos/cotizacion?fechaOperacion=YYYY-MM-DD` consulta solo la vivienda activa del usuario autenticado. El formulario solicita esta estimación al seleccionar la fecha y el backend vuelve a consultar al registrar el comprobante. No utiliza fechas locales como sustituto cuando falla el C3. Se detiene la cotización si faltan TAGs/fechas, sus fechas difieren, existe un comprobante pendiente o un incremento anterior sin terminar. Resolver esos casos antes de registrar otro pago de mantenimiento. Las cuotas extraordinarias no consultan el C3 ni llevan este recargo.
+
+Al arrancar se agrega `pagos_reportados.cortes_recargo` (JSON nullable) y se crea `recargos_mantenimiento`, con clave única por `casa_id` y `corte`. Los cortes del comprobante se registran como pagados en la misma transacción que su validación y el diario de acceso. Rechazar un comprobante no paga sus recargos. Si el primer abono deja acceso vencido, el siguiente no vuelve a cobrar cortes ya cubiertos.
+
+Los comprobantes antiguos sin `cortes_recargo` y los recargos capturados manualmente en Cuotas no se reinterpretan ni asignan automáticamente a meses. Si una vivienda sigue vencida y esos pagos históricos ya cubrieron recargos, Administración debe conciliar los cortes correspondientes antes de utilizar la cotización automática; no se puede inferir el periodo a partir del importe solo.
 
 ## Diario de aplicación
 
@@ -62,3 +70,17 @@ WHERE p.casa_id = @casa_revision ORDER BY p.id DESC, t.id;
 5. Probar una desconexión temporal con otro movimiento. Al recuperar conexión, comprobar que el diario completa el intento sin duplicar meses.
 
 Las pruebas automatizadas usan modelos y TCP simulados. Esta entrega no ha escrito al controlador de producción ni ejecutado migraciones contra su MySQL.
+
+## Consulta de recargos confirmados
+
+```sql
+SELECT casa_id, corte, pago_id, monto, createdAt
+FROM recargos_mantenimiento
+WHERE casa_id = @casa_revision ORDER BY corte;
+
+SELECT id, folio_operacion, fecha_operacion, monto, recargo, cortes_recargo, estatus
+FROM pagos_reportados
+WHERE casa_id = @casa_revision ORDER BY id DESC;
+```
+
+Prueba específica: con fecha real 10 de octubre, pagar $300 el 8 de octubre avanza a noviembre. Un nuevo pago de $300 el 12 de octubre no genera recargo y avanza a diciembre. Con fecha real 10 de septiembre, pagar $400 el 12 de octubre cubre $100 de recargos y un mes; otro pago de $300 ese mismo día no vuelve a cobrar esos recargos. Utilizar fechas bancarias reales en producción y referencias distintas.

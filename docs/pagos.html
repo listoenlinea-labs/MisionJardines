@@ -1095,8 +1095,7 @@
                 data-copy="bankReference">Copiar</button></div>
           </div>
           <div class="rule-card" id="maintenanceRule">
-            <div><strong>Cuota de mantenimiento</strong><span>$300 hasta el día 10 · $50 de recargo desde el día
-                11</span></div>
+            <div><strong>Cuota de mantenimiento</strong><span>$300 por mensualidad · $50 por corte vencido pendiente</span></div>
             <span id="ruleAmount" class="rule-amount">$300</span>
           </div>
           <p>Se aceptan abonos y mensualidades adelantadas. Los recargos no compran meses de acceso.</p>
@@ -1190,7 +1189,7 @@
           <div class="summary">
             <div class="summary-row"><span>Cuota base / concepto</span><b id="summaryBase">$300.00</b></div>
             <div class="summary-row" id="lateRow"><span>Recargo por fecha</span><b id="summaryLate">$0.00</b></div>
-            <div class="summary-row total"><span>Una mensualidad con recargo</span><b id="summaryTotal">$300.00</b></div>
+            <div class="summary-row total"><span>Mínimo para avanzar un mes</span><b id="summaryTotal">$300.00</b></div>
           </div>
 
           <p id="paymentPreview" class="hint" aria-live="polite"></p>
@@ -1222,7 +1221,7 @@
 </dialog>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-  <script src="assets/js/pagos.js?v=20261009-incremento-c3"></script>
+  <script src="assets/js/pagos.js?v=20261009-recargos-vencidos"></script>
   <script src="assets/js/site-sidebar.js?v=20261008-cuotas-layout"></script>
 </body>
 
