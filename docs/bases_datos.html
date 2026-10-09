@@ -625,6 +625,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="assets/css/residentes-gestion.css?v=20261009">
 </head>
 
 <body class="residents-page">
@@ -632,8 +633,10 @@
     <div class="topline">
       <div><span class="kicker">PADRÓN RESIDENCIAL</span><strong>Directorio de residentes</strong></div>
       <div class="top-actions">
+        <button class="btn btn-primary" type="button" id="newResident" data-admin hidden>+ Nuevo residente</button>
+        <button class="btn" type="button" id="manageHouse" data-admin hidden>Gestionar vivienda</button>
         <div id="connectionStatus" class="online" role="status">Conectado al padrón</div><button class="btn"
-          type="button" onclick="loadResidents(true)"><svg viewBox="0 0 24 24">
+          type="button" id="refreshResidents"><svg viewBox="0 0 24 24">
             <path d="M20 6v5h-5M4 18v-5h5"></path>
             <path d="M6.1 9A7 7 0 0 1 18 6l2 5M4 13l2 5a7 7 0 0 0 11.9-3"></path>
           </svg>Actualizar</button>
@@ -689,7 +692,7 @@
         <div><span class="eyebrow">CONSULTA RÁPIDA</span>
           <h2>Padrón de residentes</h2>
           <p>Busca por nombre, contacto, calle o número de vivienda.</p>
-        </div><button class="btn btn-primary" type="button" onclick="exportResidents()"><svg viewBox="0 0 24 24">
+        </div><button class="btn btn-primary" type="button" id="exportResidents"><svg viewBox="0 0 24 24">
             <path d="M12 3v12"></path>
             <path d="m7 10 5 5 5-5"></path>
             <path d="M5 21h14"></path>
@@ -699,20 +702,19 @@
         <div class="search"><label for="filterText">Buscar residente o contacto</label><svg viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="6"></circle>
             <path d="m16 16 5 5"></path>
-          </svg><input id="filterText" placeholder="Nombre, teléfono o correo" oninput="applyFilters()"></div>
-        <div><label for="filterStreet">Calle</label><select id="filterStreet" onchange="applyFilters()">
+          </svg><input id="filterText" placeholder="Nombre, teléfono o correo"></div>
+        <div><label for="filterStreet">Calle</label><select id="filterStreet">
             <option value="">Todas las calles</option>
           </select></div>
-        <div><label for="filterNumber">Número</label><input id="filterNumber" placeholder="Ej. 101"
-            oninput="applyFilters()"></div>
-        <div><label for="filterContact">Datos de contacto</label><select id="filterContact" onchange="applyFilters()">
+        <div><label for="filterNumber">Número</label><input id="filterNumber" placeholder="Ej. 101"></div>
+        <div><label for="filterContact">Datos de contacto</label><select id="filterContact">
             <option value="">Todos</option>
             <option value="phone">Con teléfono</option>
             <option value="no-phone">Sin teléfono</option>
             <option value="email">Con correo</option>
             <option value="no-email">Sin correo</option>
           </select></div>
-        <button class="btn" type="button" onclick="clearFilters()">Limpiar</button>
+        <button class="btn" type="button" id="clearResidentsFilters">Limpiar</button>
       </div>
       <div class="table-card">
         <div class="table-wrap">
@@ -725,7 +727,7 @@
                 <th>Teléfono</th>
                 <th>Correo</th>
                 <th>Fecha de registro</th>
-                <th>Estado</th>
+                <th>Estado</th><th data-admin hidden>Acciones</th>
               </tr>
             </thead>
             <tbody id="residentsTable">
@@ -744,33 +746,29 @@
     <footer class="footer"><span>Misión Jardines Residencial · Zapopan, Jalisco</span><span>Plataforma desarrollada por
         <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a></span></footer>
   </main>
+  <dialog id="residentDialog" class="resident-dialog" aria-labelledby="residentDialogTitle">
+    <form id="residentForm">
+      <div class="resident-dialog-head"><div><span class="eyebrow">ADMINISTRACIÓN</span><h2 id="residentDialogTitle">Gestionar residentes</h2></div><button type="button" id="closeResidentDialog" class="btn" aria-label="Cerrar">✕</button></div>
+      <p class="resident-help">Actualiza el padrón y los contactos de una vivienda. Para iniciar sesión, el residente necesita su propia cuenta aprobada en Verificación de cuentas.</p>
+      <div class="resident-form-grid">
+        <label>Operación<select id="residentMode"><option value="ALTA">Alta de residente</option><option value="EDITAR">Editar residente</option><option value="CAMBIO">Cambio de inquilino</option></select></label>
+        <label>Vivienda<select id="residentHouse" required></select></label>
+        <label id="outgoingLabel" class="resident-full" hidden>Residente actual<select id="outgoingResident"></select></label>
+        <label class="resident-full"><span id="incomingNameLabel">Nombre completo</span><input id="residentName" maxlength="150" autocomplete="name" required></label>
+        <label>Teléfono<input id="residentPhone" type="tel" maxlength="25" autocomplete="tel"></label>
+        <label>Correo<input id="residentEmail" type="email" maxlength="150" autocomplete="email"></label>
+        <label class="resident-full">Observaciones de la vivienda<textarea id="residentNotes" maxlength="3000" rows="3"></textarea></label>
+      </div>
+      <label class="resident-check"><input id="residentRental" type="checkbox">La vivienda está en renta</label>
+      <label class="resident-check"><input id="residentContact" type="checkbox">Usar estos datos como contacto principal de la vivienda</label>
+      <section id="residentAccountSection" class="resident-account-section" hidden><h3>Cuentas que dejan esta vivienda</h3><p>Selecciona únicamente las personas que salen. Conservarán sus otras viviendas; sus pagos anteriores permanecerán registrados.</p><div id="residentAccounts"></div><label class="resident-check"><input id="confirmResidentChange" type="checkbox">Confirmo la salida del residente seleccionado y el alta de la nueva persona.</label></section>
+      <p class="resident-note">Los pagos, adeudos y vigencia de mantenimiento permanecen asociados a esta vivienda. Los TAGs no se reasignan ni se bloquean con este formulario; revisa su entrega al cambiar de inquilino.</p>
+      <p id="residentFormError" class="resident-form-error" role="alert" hidden></p>
+      <div class="resident-dialog-actions"><button type="button" id="cancelResidentDialog" class="btn">Cancelar</button><button id="saveResident" class="btn btn-primary" type="submit">Guardar cambios</button></div>
+    </form>
+  </dialog>
   <div id="toast" class="toast"></div>
-  <script>
-    const API_URL = 'https://api-misionjardines.listoenlinea.host/api';
-    const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
-    const PAGE_SIZE = 12; let residents = [], filteredResidents = [], page = 1;
-    if (!token) location.replace('login.html');
-    const esc = v => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-    function toast(m) { const e = document.getElementById('toast'); e.textContent = m; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.display = 'none', 3000) }
-    function connection(m, error = false) { const e = document.getElementById('connectionStatus'); e.textContent = m; e.classList.toggle('error', error) }
-    function clearSession() { ['misionJardinesToken', 'misionJardinesUsuario'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k) }) }
-    async function api(path) { const r = await fetch(API_URL + path, { headers: { Authorization: `Bearer ${token}` } }); let d = {}; try { d = await r.json() } catch (_) { } if (r.status === 401) { clearSession(); location.replace('login.html'); throw Error('Sesión expirada') } if (!r.ok || d.ok === false) throw Error(d.message || 'No fue posible consultar el padrón'); return d }
-    function flatten(casas) { return (casas || []).flatMap(casa => (Array.isArray(casa.condominos) ? casa.condominos : []).map(c => ({ id: c.id, name: c.nombreCompleto || 'Sin nombre', phone: c.telefono || '', email: c.correo || '', date: c.fechaRegistro || '', active: c.activo !== false, houseId: casa.id, street: casa.calleCorrecta || casa.calle || '', number: casa.numero || '' }))) }
-    function fillStreets() { const s = document.getElementById('filterStreet'), selected = s.value, streets = [...new Set(residents.map(x => x.street).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es-MX', {numeric:true,sensitivity:'base'})); s.innerHTML = '<option value="">Todas las calles</option>' + streets.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join(''); if (streets.includes(selected)) s.value = selected }
-    function metrics() { metricResidents.textContent = residents.length; metricHomes.textContent = new Set(residents.map(x => x.houseId)).size; metricPhones.textContent = residents.filter(x => x.phone).length; metricEmails.textContent = residents.filter(x => x.email).length }
-    function initials(n) { return String(n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]?.toUpperCase()).join('') || 'R' }
-    function formatDate(v) { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? '—' : new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).format(d) }
-    function link(type, v) { if (!v) return '—'; const safe = esc(v); return type === 'phone' ? `<a class="contact" href="tel:${safe.replace(/\s+/g, '')}">${safe}</a>` : `<a class="contact" href="mailto:${safe}">${safe}</a>` }
-    function applyFilters(reset = true) { const q = norm(filterText.value), street = norm(filterStreet.value), num = norm(filterNumber.value), contact = filterContact.value; filteredResidents = residents.filter(x => (!q || norm(`${x.name} ${x.phone} ${x.email}`).includes(q)) && (!street || norm(x.street) === street) && (!num || norm(x.number).includes(num)) && (!contact || (contact === 'phone' && x.phone) || (contact === 'no-phone' && !x.phone) || (contact === 'email' && x.email) || (contact === 'no-email' && !x.email))); filteredResidents.sort((a,b)=>String(a.street).localeCompare(String(b.street),'es-MX',{numeric:true,sensitivity:'base'})||String(a.number).localeCompare(String(b.number),'es-MX',{numeric:true})||String(a.name).localeCompare(String(b.name),'es-MX',{sensitivity:'base'})); if (reset) page = 1; render() }
-    function render() { const total = Math.max(1, Math.ceil(filteredResidents.length / PAGE_SIZE)); page = Math.min(page, total); const start = (page - 1) * PAGE_SIZE, items = filteredResidents.slice(start, start + PAGE_SIZE); residentsTable.innerHTML = items.length ? items.map(x => `<tr><td><div class="resident"><span class="avatar">${esc(initials(x.name))}</span><div><b>${esc(x.name)}</b><small>ID ${esc(x.id)}</small></div></div></td><td>${esc(x.street || '—')}</td><td><strong>${esc(x.number || '—')}</strong></td><td>${link('phone', x.phone)}</td><td>${link('email', x.email)}</td><td>${esc(formatDate(x.date))}</td><td><span class="chip">${x.active ? 'Activo' : 'Inactivo'}</span></td></tr>`).join('') : '<tr><td class="empty" colspan="7">No se encontraron residentes con los filtros seleccionados.</td></tr>'; const from = filteredResidents.length ? start + 1 : 0, to = Math.min(start + PAGE_SIZE, filteredResidents.length); paginationInfo.textContent = `Mostrando ${from}-${to} de ${filteredResidents.length} residentes`; let h = `<button class="page-btn" onclick="go(${page - 1})" ${page === 1 ? 'disabled' : ''}>‹</button>`; for (let p = 1; p <= total; p++)if (p === 1 || p === total || Math.abs(p - page) <= 1) h += `<button class="page-btn ${p === page ? 'active' : ''}" onclick="go(${p})">${p}</button>`; h += `<button class="page-btn" onclick="go(${page + 1})" ${page === total ? 'disabled' : ''}>›</button>`; paginationControls.innerHTML = h }
-    function go(p) { const total = Math.max(1, Math.ceil(filteredResidents.length / PAGE_SIZE)); page = Math.min(Math.max(p, 1), total); render() }
-    function clearFilters() { filterText.value = ''; filterStreet.value = ''; filterNumber.value = ''; filterContact.value = ''; applyFilters() }
-    function exportResidents() { if (!filteredResidents.length) return toast('No hay residentes para exportar.'); const rows = [['Nombre', 'Calle', 'Número', 'Teléfono', 'Correo', 'Fecha de registro'], ...filteredResidents.map(x => [x.name, x.street, x.number, x.phone, x.email, formatDate(x.date)])], csv = '\ufeff' + rows.map(r => r.map(v => `"${String(v ?? '').replaceAll('"', '""')}"`).join(',')).join('\n'), blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `residentes-mision-jardines-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url) }
-    async function validate() { try { const d = await api('/auth/perfil'), role = d.usuario?.rol?.nombre || d.usuario?.rol; const allowed = ['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD']; if (!allowed.includes(role)) { toast('Tu perfil no tiene acceso al padrón completo.'); setTimeout(() => location.replace('index.html'), 1000); return false } return true } catch (e) { console.error(e); return false } }
-    async function loadResidents(manual = false) { connection('Consultando padrón…'); try { if (!(await validate())) return; const d = await api('/casas'); residents = flatten(d.casas); fillStreets(); const params = new URLSearchParams(location.search); if (!manual) { filterText.value = params.get('buscar') || ''; filterStreet.value = params.get('calle') || ''; filterNumber.value = params.get('numero') || ''; } metrics(); applyFilters(); connection('Conectado al padrón'); if (manual) toast('Padrón actualizado.') } catch (e) { console.error(e); residents = []; filteredResidents = []; metrics(); render(); connection('No se pudo cargar el padrón', true); toast(e.message || 'No fue posible cargar residentes.') } }
-    loadResidents();
-  </script>
+  <script src="assets/js/residentes.js?v=20261009"></script>
   <script src="assets/js/site-sidebar.js?v=20261008"></script>
 </body>
 

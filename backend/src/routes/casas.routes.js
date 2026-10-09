@@ -14,6 +14,10 @@ const {
 } = require('../middlewares/roles.middleware');
 
 const router = express.Router();
+const { obtenerDetalle, guardarResidente } = require('../controllers/residentes.controller');
+const administracion = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR');
+router.get('/:id/residentes', autenticarToken, administracion, obtenerDetalle);
+router.post('/:id/residentes', autenticarToken, administracion, guardarResidente);
 
 router.get(
     '/',
