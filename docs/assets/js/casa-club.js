@@ -62,7 +62,7 @@
    days.append(btn);
   }
  }
- function homeText(r){return r?.casa?(r.casa.calle+' · Casa '+r.casa.numero):'Sin vivienda';}
+ function homeText(r){return r?.casa?((r.casa.calleCorrecta||r.casa.calle)+' · Casa '+r.casa.numero):'Sin vivienda';}
  function statusBadge(status){return '<span class="state-pill '+esc(status)+'">'+esc(({PENDIENTE:'Pendiente',APROBADA:'Aprobada',RECHAZADA:'Rechazada',CANCELADA:'Cancelada'})[status]||status)+'</span>';}
  $('clubForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!selectedDate)return notify('Selecciona una fecha disponible del calendario.',true);
@@ -105,7 +105,7 @@
  async function adminList(){
   if(!admin)return;
   try{
-   const d=await api('/administracion');adminRows=d.data;
+   const d=await api('/administracion');adminRows=[...(d.data||[])].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true})||String(a.fecha||'').localeCompare(String(b.fecha||'')));
    let paid=adminRows.filter(r=>r.pagado&&r.estatus==='APROBADA');
    let income=paid.reduce((a,r)=>a+Number(r.cuotaRecuperacion),0),
        guarantee=paid.reduce((a,r)=>a+Number(r.depositoGarantia),0),
@@ -113,7 +113,7 @@
    $('clubTotals').innerHTML=[['Total de reservas',adminRows.length],['Reservas aprobadas',adminRows.filter(r=>r.estatus==='APROBADA').length],['Recuperación cobrada',money(income)],['Garantías recibidas',money(guarantee)],['Limpieza cobrada',money(cleaning)]].map(([name,value])=>'<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
    const tableRows=adminRows.filter(r=>r.estatus==='APROBADA' && (r.pagado || $('includeUnpaid').checked));
    $('clubAdminRows').innerHTML=tableRows.map(r=>'<tr>'+
-    [r.casa?.numero,r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',r.pagado?'PAGADO':'PENDIENTE',r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
+    [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',r.pagado?'PAGADO':'PENDIENTE',r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
     '<td>'+(r.estatus==='APROBADA'?'<button type="button" class="soft" data-paid="'+Number(r.id)+'">'+(r.pagado?'Editar pago':'Registrar pago')+'</button> <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="15">Aún no hay reservas registradas.</td></tr>';
    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
     '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
