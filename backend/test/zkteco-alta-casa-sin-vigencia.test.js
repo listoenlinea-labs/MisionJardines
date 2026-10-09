@@ -57,3 +57,40 @@ for (const hasAuthorization of [false, true]) {
     assert.match(house.controles, /5108833/);
   });
 }
+
+test('Reparar C3 restituye autorización del TAG ya guardado para casa 702', async t => {
+  const house = { id: 702, calle: 'Guadalajara', numero: '707', controles: '5108833',
+    async update(values) { Object.assign(this, values); } };
+  const tag = { id: 3331, casaId: 702, numeroTarjeta: '5108833', bloqueado: false,
+    fechaInicio: '2026-10-08', fechaFin: '2027-01-11', enControlador: true,
+    async update(values) { Object.assign(this, values); },
+    toJSON() { return { ...this }; } };
+  const user = { UID: '14', Pin: '5108833', CardNo: '5108833' };
+  let auth = null;
+  let writes = 0;
+  t.mock.method(Casa, 'findByPk', async id => Number(id) === 702 ? house : null);
+  t.mock.method(Tags, 'findByPk', async id => Number(id) === 3331 ? tag : null);
+  t.mock.method(Tags, 'findOne', async () => null);
+  t.mock.method(Vigencia, 'update', async () => [0]);
+  t.mock.method(C3Client.prototype, 'connect', async () => {});
+  t.mock.method(C3Client.prototype, 'disconnect', async () => {});
+  t.mock.method(C3Client.prototype, 'getData', async table =>
+    table === 'user' ? [user] : auth ? [auth] : []);
+  t.mock.method(C3Client.prototype, 'putRecord', async (table, values) => {
+    assert.equal(table, 'userauthorize');
+    writes++;
+    auth = { ...values };
+  });
+  const oldMode = process.env.ZKTECO_WRITE_MODE;
+  process.env.ZKTECO_WRITE_MODE = 'DIRECT';
+  t.after(() => {
+    if (oldMode === undefined) delete process.env.ZKTECO_WRITE_MODE;
+    else process.env.ZKTECO_WRITE_MODE = oldMode;
+  });
+  const result = await direct.addExistingTagToController(3331);
+  assert.equal(result.casaId, 702);
+  assert.equal(result.vigenciaConfigurada, false);
+  assert.equal(result.puertasAutorizadas, 3);
+  assert.equal(tag.bloqueado, false);
+  assert.equal(writes, 1, 'solo el TAG seleccionado recupera permisos');
+});
