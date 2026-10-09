@@ -19,13 +19,12 @@ async function ui(role = 'ADMINISTRADOR', failSave = false) {
             set innerHTML(value) { markup = value; if (['residentHouse', 'outgoingResident'].includes(id)) this.value = value.match(/<option value="([^"]*)"/)?.[1] || ''; } };
     }
     for (const id of ['filterText','filterStreet','filterNumber','filterContact']) elements[id].hidden = false;
-    elements.residentMode.value = 'ALTA';
     elements.residentForm.elements = Object.values(elements);
     const writes = [], calls = [];
     const casa = { id: 5, calle: 'Gardenias', numero: '5', enRenta: true, nombre: 'Anterior Persona',
         condominos: [{ id: 7, nombreCompleto: 'Anterior Persona', correo: 'old@example.com', activo: true }] };
     const sandbox = { ...elements, document: { getElementById: id => elements[id],
-        querySelectorAll: selector => selector === '[data-admin]' ? [elements.newResident, elements.manageHouse] : [] },
+        querySelectorAll: selector => selector === '[data-admin]' ? [elements.manageHouse] : [] },
         localStorage: { getItem: () => 'test-token' }, sessionStorage: { getItem: () => null },
         location: { search: '', replace() {} }, console, Intl, URLSearchParams,
         setTimeout: () => 1, clearTimeout() {},
@@ -46,8 +45,8 @@ async function ui(role = 'ADMINISTRADOR', failSave = false) {
 }
 test('admin can register a resident and the browser sends contact choices to the selected real house', async () => {
     const u = await ui(), e = u.elements;
-    assert.equal(e.newResident.hidden, false);
-    await e.newResident.emit('click');
+    assert.equal(e.manageHouse.hidden, false);
+    await e.manageHouse.emit('click');
     assert.equal(e.residentDialog.open, true);
     e.residentName.value = 'Nueva Persona'; e.residentEmail.value = 'new@example.com';
     e.residentContact.checked = true;
@@ -55,27 +54,34 @@ test('admin can register a resident and the browser sends contact choices to the
     assert.equal(u.writes[0].modo, 'ALTA');
     assert.equal(u.writes[0].nombreCompleto, 'Nueva Persona');
     assert.equal(u.writes[0].actualizarContacto, true);
-    assert.equal(u.writes[0].desvincularUsuarioIds.length, 0);
+    assert.equal(u.writes[0].desvincularUsuarioIds, undefined);
     assert.ok(u.calls.some(c => c.url.endsWith('/casas/5/residentes') && c.options.method === 'POST'));
     assert.equal(e.residentDialog.open, false);
 });
-test('tenant change sends explicit outgoing resident and only selected accounts', async () => {
+test('registry edit preloads the selected tenant and overwrites that same record without a replacement operation', async () => {
     const u = await ui(), e = u.elements;
-    await e.manageHouse.emit('click');
-    assert.equal(e.residentAccountSection.hidden, false);
-    assert.equal(e.residentContact.disabled, true);
-    e.outgoingResident.value = '7'; e.residentName.value = 'Nueva Persona';
-    e.confirmResidentChange.checked = true;
-    e.residentAccounts.inputs = [{ value: '8', checked: true }, { value: '9', checked: false }];
+    assert.match(e.residentsTable.innerHTML, /Editar inquilino/);
+    await e.residentsTable.listeners.click({ target: { closest: () => ({ dataset: { house: '5', editResident: '7' } }) } });
+    assert.equal(e.residentName.value, 'Anterior Persona');
+    assert.equal(e.residentEmail.value, 'old@example.com');
+    assert.equal(e.residentHouse.disabled, true);
+    assert.equal(e.residentDialogTitle.textContent, 'Editar inquilino');
+    e.residentName.value = 'Nueva Persona'; e.residentEmail.value = 'new@example.com';
     await e.residentForm.emit('submit');
-    assert.equal(u.writes[0].modo, 'CAMBIO');
+    assert.equal(u.writes[0].modo, 'EDITAR');
     assert.equal(u.writes[0].residenteId, '7');
-    assert.deepEqual(Array.from(u.writes[0].desvincularUsuarioIds), ['8']);
-    assert.equal(u.writes[0].confirmarCambio, true);
+    assert.equal(u.writes[0].nombreCompleto, 'Nueva Persona');
+    assert.equal(u.writes[0].desvincularUsuarioIds, undefined);
+    assert.equal(u.writes[0].actualizarContacto, true);
+});
+test('management has one orange button and no operation or outgoing tenant selector', () => {
+    const html = fs.readFileSync(path.join(root, 'bases_datos.html'), 'utf8');
+    assert.match(html, /class="btn btn-primary"[^>]*id="manageHouse"/);
+    assert.doesNotMatch(html, /id="(?:newResident|residentMode|outgoingResident|residentAccountSection)"/);
 });
 test('failed save keeps the form and its values available, and displays the server error', async () => {
     const u = await ui('ADMINISTRADOR', true), e = u.elements;
-    await e.newResident.emit('click'); e.residentName.value = 'Nueva Persona';
+    await e.manageHouse.emit('click'); e.residentName.value = 'Nueva Persona';
     await e.residentForm.emit('submit');
     assert.equal(e.residentDialog.open, true);
     assert.equal(e.residentName.value, 'Nueva Persona');
@@ -85,9 +91,9 @@ test('failed save keeps the form and its values available, and displays the serv
 });
 test('security sees the registry without administrative controls or edit actions', async () => {
     const u = await ui('SEGURIDAD');
-    assert.equal(u.elements.newResident.hidden, true);
+    assert.equal(u.elements.manageHouse.hidden, true);
     assert.equal(u.elements.manageHouse.hidden, true);
     assert.doesNotMatch(u.elements.residentsTable.innerHTML, /data-edit-resident/);
-    await u.elements.newResident.emit('click');
+    await u.elements.manageHouse.emit('click');
     assert.notEqual(u.elements.residentDialog.open, true);
 });

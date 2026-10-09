@@ -4,7 +4,7 @@
 .resident-dialog::backdrop{background:#20283d70;backdrop-filter:blur(3px)}
 .resident-dialog-head{display:flex;justify-content:space-between;align-items:start;gap:12px}
 .resident-dialog h2{margin:7px 0;font-size:24px;letter-spacing:-.03em}
-.resident-help,.resident-note,.resident-account-section p{font-size:13px;line-height:1.65;color:#65738c}
+.resident-help,.resident-note{font-size:13px;line-height:1.65;color:#65738c}
 .resident-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
 .resident-form-grid label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:750;min-width:0}
 .resident-form-grid input,.resident-form-grid select,.resident-form-grid textarea{width:100%;min-height:44px;padding:11px 12px;border:1px solid #dfe5ef;border-radius:12px;background:#f8faff;color:#20283d;font:inherit;font-size:14px}
@@ -13,8 +13,6 @@
 .resident-full{grid-column:1/-1}
 .resident-check{display:flex;align-items:start;gap:10px;margin:14px 0;font-size:13px;line-height:1.5}
 .resident-check input{margin-top:3px;accent-color:#ef7d0b;flex-shrink:0;width:17px;height:17px}
-.resident-account-section{margin:20px 0;padding:16px;background:#f5f0ff;border:1px solid #e6ddf9;border-radius:16px}
-.resident-account-section h3{margin:0;font-size:15px}.resident-account-section small{color:#71809a}
 .resident-note{padding:12px;background:#fff6e9;border:1px solid #f4e6cf;border-radius:12px}
 .resident-form-error{color:#a43737;background:#fff1f1;padding:12px;border-radius:12px;font-size:13px}
 .resident-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.resident-dialog .btn{min-height:44px}

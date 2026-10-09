@@ -51,45 +51,32 @@ test('editing preserves resident identity and does not remove household accounts
     assert.equal(data.created, undefined);
     assert.equal(data.link.activo, true);
 });
-test('tenant replacement retains old registry and payments, removes only selected house membership and pending invitations', async t => {
+test('editing tenant data keeps the current registry record active and can update the house contact', async t => {
     const data = setup(t);
-    await service.guardar(actor, 5, { ...input, modo: 'CAMBIO', residenteId: 7, confirmarCambio: true, desvincularUsuarioIds: [8] });
-    assert.equal(data.anterior.activo, false);
-    assert.equal(data.anterior.nombreCompleto, 'Anterior Persona');
-    assert.equal(data.created.activo, true);
-    assert.equal(data.link.activo, false);
-    assert.equal(data.user.casaId, 20);
-    assert.equal(data.user.estatus, 'ACTIVO');
-    assert.deepEqual(data.history[0], { usuarioId: 8, casaId: 5, actorId: 99, tipo: 'RESPONSABLE', accion: 'DESVINCULAR' });
-    assert.ok(data.invites.every(where => where.casaId === 5 && where.aceptadoEn === null && where.revocadoEn === null));
-});
-test('other household accounts are retained unless explicitly selected', async t => {
-    const data = setup(t);
-    await service.guardar(actor, 5, { ...input, modo: 'CAMBIO', residenteId: 7, confirmarCambio: true });
+    await service.guardar(actor, 5, { ...input, modo: 'EDITAR', residenteId: 7 });
+    assert.equal(data.anterior.activo, true);
+    assert.equal(data.anterior.correo, input.correo);
+    assert.equal(data.casa.nombre, input.nombreCompleto);
+    assert.equal(data.created, undefined);
     assert.equal(data.link.activo, true);
     assert.equal(data.user.casaId, 5);
-});
-test('replacement cannot remove an administrator or a member of another house', async t => {
-    const data = setup(t); data.user.rol.nombre = 'ADMINISTRADOR';
-    await assert.rejects(service.guardar(actor, 5, { ...input, modo: 'CAMBIO', residenteId: 7, confirmarCambio: true, desvincularUsuarioIds: [8] }), { status: 409 });
-    assert.equal(data.updates.length, 0);
-    t.mock.method(models.UsuarioCasa, 'findOne', async () => null);
-    await assert.rejects(service.guardar(actor, 5, { ...input, modo: 'CAMBIO', residenteId: 7, confirmarCambio: true, desvincularUsuarioIds: [8] }), { status: 409 });
+    assert.equal(data.history.length, 0);
+    assert.equal(data.invites.length, 0);
 });
 test('missing/stale outgoing resident and duplicate registration are rejected', async t => {
     setup(t);
-    await assert.rejects(service.guardar(actor, 5, { ...input, modo: 'CAMBIO', residenteId: 100, confirmarCambio: true }), { status: 409 });
+    await assert.rejects(service.guardar(actor, 5, { ...input, modo: 'EDITAR', residenteId: 100 }), { status: 409 });
     t.mock.method(models.Condomino, 'findOne', async () => ({ id: 10 }));
     await assert.rejects(service.guardar(actor, 5, input), { status: 409 });
 });
-test('invalid fields and missing confirmation are rejected before database writes', async t => {
+test('invalid fields and removed replacement operation are rejected before database writes', async t => {
     t.mock.method(db, 'transaction', async () => assert.fail('validation precedes writes'));
     for (const extra of [{ nombreCompleto: '' }, { correo: 'bad' }, { telefono: '1'.repeat(26) },
         { enRenta: 'true' }, { modo: 'CAMBIO', residenteId: 7 }, { desvincularUsuarioIds: [8] }, { observaciones: 'x'.repeat(3001) }]) {
         await assert.rejects(service.guardar(actor, 5, { ...input, ...extra }), { status: 400 });
     }
 });
-test('security, residents and mesa directiva cannot mutate or obtain account details', async () => {
+test('security, residents and mesa directiva cannot mutate or obtain resident details', async () => {
     for (const rol of ['SEGURIDAD', 'CONDOMINO', 'MESA_DIRECTIVA']) {
         await assert.rejects(service.guardar({ ...actor, rol }, 5, input), { status: 403 });
         await assert.rejects(service.detalle({ ...actor, rol }, 5), { status: 403 });

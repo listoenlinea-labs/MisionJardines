@@ -625,7 +625,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="assets/css/residentes-gestion.css?v=20261009-header">
+  <link rel="stylesheet" href="assets/css/residentes-gestion.css?v=20261009-simple">
 </head>
 
 <body class="residents-page">
@@ -633,8 +633,7 @@
     <div class="topline">
       <div><span class="kicker">PADRÓN RESIDENCIAL</span><strong>Directorio de residentes</strong></div>
       <div class="top-actions">
-        <button class="btn btn-primary" type="button" id="newResident" data-admin hidden>+ Nuevo residente</button>
-        <button class="btn" type="button" id="manageHouse" data-admin hidden>Gestionar vivienda</button>
+        <button class="btn btn-primary" type="button" id="manageHouse" data-admin hidden>Gestionar vivienda</button>
         <div id="connectionStatus" class="online" role="status">Conectado al padrón</div><button class="btn"
           type="button" id="refreshResidents"><svg viewBox="0 0 24 24">
             <path d="M20 6v5h-5M4 18v-5h5"></path>
@@ -751,9 +750,7 @@
       <div class="resident-dialog-head"><div><span class="eyebrow">ADMINISTRACIÓN</span><h2 id="residentDialogTitle">Gestionar residentes</h2></div><button type="button" id="closeResidentDialog" class="btn" aria-label="Cerrar">✕</button></div>
       <p class="resident-help">Actualiza el padrón y los contactos de una vivienda. Para iniciar sesión, el residente necesita su propia cuenta aprobada en Verificación de cuentas.</p>
       <div class="resident-form-grid">
-        <label>Operación<select id="residentMode"><option value="ALTA">Alta de residente</option><option value="EDITAR">Editar residente</option><option value="CAMBIO">Cambio de inquilino</option></select></label>
-        <label>Vivienda<select id="residentHouse" required></select></label>
-        <label id="outgoingLabel" class="resident-full" hidden>Residente actual<select id="outgoingResident"></select></label>
+        <label class="resident-full">Vivienda<select id="residentHouse" required></select></label>
         <label class="resident-full"><span id="incomingNameLabel">Nombre completo</span><input id="residentName" maxlength="150" autocomplete="name" required></label>
         <label>Teléfono<input id="residentPhone" type="tel" maxlength="25" autocomplete="tel"></label>
         <label>Correo<input id="residentEmail" type="email" maxlength="150" autocomplete="email"></label>
@@ -761,14 +758,13 @@
       </div>
       <label class="resident-check"><input id="residentRental" type="checkbox">La vivienda está en renta</label>
       <label class="resident-check"><input id="residentContact" type="checkbox">Usar estos datos como contacto principal de la vivienda</label>
-      <section id="residentAccountSection" class="resident-account-section" hidden><h3>Cuentas que dejan esta vivienda</h3><p>Selecciona únicamente las personas que salen. Conservarán sus otras viviendas; sus pagos anteriores permanecerán registrados.</p><div id="residentAccounts"></div><label class="resident-check"><input id="confirmResidentChange" type="checkbox">Confirmo la salida del residente seleccionado y el alta de la nueva persona.</label></section>
       <p class="resident-note">Los pagos, adeudos y vigencia de mantenimiento permanecen asociados a esta vivienda. Los TAGs no se reasignan ni se bloquean con este formulario; revisa su entrega al cambiar de inquilino.</p>
       <p id="residentFormError" class="resident-form-error" role="alert" hidden></p>
       <div class="resident-dialog-actions"><button type="button" id="cancelResidentDialog" class="btn">Cancelar</button><button id="saveResident" class="btn btn-primary" type="submit">Guardar cambios</button></div>
     </form>
   </dialog>
   <div id="toast" class="toast"></div>
-  <script src="assets/js/residentes.js?v=20261009"></script>
+  <script src="assets/js/residentes.js?v=20261009-simple"></script>
   <script src="assets/js/site-sidebar.js?v=20261009-header"></script>
 </body>
 
