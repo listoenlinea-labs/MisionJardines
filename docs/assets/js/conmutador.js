@@ -24,6 +24,9 @@
         }
       ];
 
+      // Solo orden de pantalla: lookup y numeración de llamadas intactos.
+      sections.sort((a,b)=>a.key.localeCompare(b.key,'es-MX',{numeric:true,sensitivity:'base'}));
+      sections.forEach(section=>section.houses.sort((a,b)=>String(a.number).localeCompare(String(b.number),'es-MX',{numeric:true})));
       const caller = new TelefoniaEngine({ api: API, token, status: setStatus });
       let activeSection = sections[0];
       let pendingPhones = [];

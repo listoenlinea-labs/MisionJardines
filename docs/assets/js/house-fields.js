@@ -10,7 +10,7 @@
     'Av. Valle de México',
     'Avenida Guadalajara',
     'Atotonilco'
-  ];
+  ].sort((a,b)=>a.localeCompare(b,'es-MX',{numeric:true,sensitivity:'base'}));
 
   const PREFIXES = {
     MJ: 'Misión Jardines',
