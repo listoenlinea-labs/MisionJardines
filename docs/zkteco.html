@@ -637,7 +637,7 @@ async function openTagModal(id){
         ' con la FECHA FINAL elegida (día 10). '+
         (suggested?'Se sugirió '+suggested+' a partir de TAGs anteriores: confirma que realmente esté pagada. ':
           'Selecciona la fecha final real acreditada (día 10). ')+
-        'No se registrará ningún pago ficticio.';
+        'No se registrará ningún pago ficticio ni se reprogramarán otros TAGs durante esta alta.';
     }
   }catch(e){
     $('newTagEnd').value='';

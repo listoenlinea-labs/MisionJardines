@@ -96,7 +96,7 @@ async function asegurarVigenciaParaAlta(casaId, fechaFinal, usuarioId = null) {
             tarifaMensual: mensualidades.BASE,
             principalInicial: principal, principalConfirmado: principal,
             saldoParcial: 0, actualizadoPorUsuarioId: usuarioId,
-            sincronizacion: 'PENDIENTE', intentos: 0
+            sincronizacion: 'ALTA_C3_CONFIRMADA', intentos: 0
         }, { transaction });
         return { creada: true, casaId, fechaFinal: creada.fechaFinal };
     });

@@ -772,6 +772,14 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
         verify
       });
     }
+    const currentStart=fromDateNumber(state.existing.StartTime);
+    const currentEnd=fromDateNumber(state.existing.EndTime);
+    if((start&&currentStart!==start)||(end&&currentEnd!==end)){
+      // An existing physical user can have an old expiry even when the user
+      // and door authorization are valid. Refresh only that CardNo and read
+      // it back, preserving its PIN and other controller fields.
+      await writeUserValidity(card,start,end,{mode:'DIRECT'});
+    }
     const confirmed=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
     const doorMask=Number(confirmed?.AuthorizeDoorId||0);
     if((doorMask&expectedMask)!==expectedMask)
@@ -1407,7 +1415,12 @@ async function altaTagConVigencia(casaId, datos = {}, usuarioId = null) {
   const data = tag?.toJSON ? tag.toJSON() : tag;
   try {
     const vigencia = await pagos.asegurarVigenciaParaAlta(casaId,fechaFin,usuarioId);
-    const estado = await require('./zkteco-vigencias.service').marcarPendiente(casaId);
+    // On a newly initialized house only this TAG is provisioned over TCP.
+    // Existing C3 cards are not rewritten without a subsequent paid/validated
+    // maintenance update. Payment events will queue a full house sync later.
+    const estado = vigencia.creada
+      ? { sincronizacion: 'ALTA_C3_CONFIRMADA' }
+      : await require('./zkteco-vigencias.service').marcarPendiente(casaId);
     return {...data, vigenciaCreada:vigencia.creada,
       vigenciaConfigurada:true, vigenciaMantenimiento:vigencia.fechaFinal,
       sincronizacionVigencia:estado.sincronizacion};
