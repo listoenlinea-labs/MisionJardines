@@ -7,7 +7,7 @@ const admin=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA');
 const operar=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD');
 
 r.get('/estado',autenticarToken,operar,c.estado);
-r.get('/calles',autenticarToken,admin,c.callesEdicion);
+r.get('/calles',autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA','SEGURIDAD'),c.callesEdicion);
 r.get('/tarjetas',autenticarToken,admin,c.inventario);
 r.get('/diagnostico/viviendas/:id',autenticarToken,admin,c.diagnosticoVivienda);
 r.get('/logs',autenticarToken,admin,c.logs);

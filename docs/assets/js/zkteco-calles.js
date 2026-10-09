@@ -1,10 +1,11 @@
 (() => {
   'use strict';
-  const input = document.getElementById('editTagStreet');
-  const list = document.getElementById('editTagStreetOptions');
-  const modal = document.getElementById('editTagModal');
-  const hint = document.getElementById('editTagStreetHint');
-  if (!input || !list || !modal || !canAdmin) return;
+  function attachStreetPicker(inputId, listId, hintId, modalId) {
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  const modal = modalId ? document.getElementById(modalId) : null;
+  const hint = document.getElementById(hintId);
+  if (!input || !list || !hint || (modalId && !canAdmin)) return;
   // Outside the scrolling modal so the list above the field is never clipped.
   document.body.append(list);
   let streets = [], visible = [], loaded = false, loading = false, opened = false, active = -1, filterText = '';
@@ -45,7 +46,7 @@
       const option = document.createElement('button');
       option.type = 'button';
       option.tabIndex = -1;
-      option.id = 'zk-street-option-' + index;
+      option.id = listId + '-option-' + index;
       option.className = 'zk-street-option';
       option.setAttribute('role', 'option');
       option.setAttribute('aria-selected', 'false');
@@ -73,7 +74,7 @@
     }
   }
   function open(filter = '') {
-    if (modal.hidden) return;
+    if (modal && modal.hidden) return;
     opened = true;
     list.hidden = false;
     input.setAttribute('aria-expanded', 'true');
@@ -101,6 +102,11 @@
   document.addEventListener('focusin', event => { if (event.target !== input && !list.contains(event.target)) close(); });
   window.addEventListener('resize', position);
   document.addEventListener('scroll', position, true);
-  new MutationObserver(() => { if (modal.hidden) close(); else void loadStreets(); }).observe(modal, { attributes: true, attributeFilter: ['hidden'] });
-  if (!modal.hidden) void loadStreets();
+  if (modal) {
+    new MutationObserver(() => { if (modal.hidden) close(); else void loadStreets(); }).observe(modal, { attributes: true, attributeFilter: ['hidden'] });
+    if (!modal.hidden) void loadStreets();
+  }
+  }
+  attachStreetPicker('editTagStreet', 'editTagStreetOptions', 'editTagStreetHint', 'editTagModal');
+  attachStreetPicker('street', 'streetOptions', 'streetHint', null);
 })();

@@ -52,7 +52,7 @@
       .house-actions .btn{max-width:100%}
     }
   </style>
-<link rel="stylesheet" href="assets/css/zkteco-calles.css?v=20261009-campo-unico">
+<link rel="stylesheet" href="assets/css/zkteco-calles.css?v=20261009-buscador">
 </head>
 <body>
 <main class="wrap">
@@ -105,7 +105,7 @@
           <div class="metric bad"><small>Bloqueadas</small><strong id="mBlocked">0</strong></div>
         </div>
         <div class="toolbar">
-          <div class="field"><label>CALLE</label><input id="street" placeholder="Ej. Gardenias"></div>
+          <div class="field"><label for="street">CALLE</label><input id="street" placeholder="Escribe o selecciona una calle" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="streetOptions" aria-describedby="streetHint"><div id="streetOptions" class="zk-street-options" role="listbox" aria-label="Calles para buscar TAGs" hidden></div><span id="streetHint" class="zk-street-sr" role="status">Escribe o selecciona una calle del padrón.</span></div>
           <div class="field"><label>NÚMERO DE CASA</label><input id="houseNumber" placeholder="Ej. 11"></div>
           <div class="field"><label>NÚMERO DE TAG</label><input id="tagNumber" inputmode="numeric" autocomplete="off" placeholder="Ej. 5112343"></div>
           <button id="applyFilters" class="btn">Buscar</button>
@@ -857,7 +857,7 @@ $('sync').onclick=async()=>{
   }catch(e){toast(errorText(e))}
   finally{hideBusy()}
 };
-['street','houseNumber','tagNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')applySearch()}));
+['street','houseNumber','tagNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'&&!(e.target.getAttribute('aria-expanded')==='true'&&e.target.hasAttribute('aria-activedescendant')))applySearch()}));
 const gateCollapse=$('gateCollapse');
 gateCollapse?.addEventListener('toggle',()=>{
   $('gateCollapseLabel').textContent=gateCollapse.open?'Ocultar':'Mostrar';
@@ -872,7 +872,7 @@ setInterval(async()=>{
   try{await Promise.all([loadStatus(),loadRows()])}catch(_){}
 },30000);
 </script>
-<script src="assets/js/zkteco-calles.js?v=20261009-campo-unico"></script>
-<script src="assets/js/site-sidebar.js?v=20261008"></script>
+<script src="assets/js/zkteco-calles.js?v=20261009-buscador"></script>
+<script src="assets/js/site-sidebar.js?v=20261009-logo-vivienda"></script>
 </body>
 </html>
