@@ -52,6 +52,7 @@
       .house-actions .btn{max-width:100%}
     }
   </style>
+<link rel="stylesheet" href="assets/css/zkteco-calles.css?v=20261009-campo-unico">
 </head>
 <body>
 <main class="wrap">
@@ -156,11 +157,10 @@
         <div class="field"><label>FECHA INICIAL</label><input id="editTagStart" type="date" readonly disabled></div>
         <div class="field"><label>FECHA FINAL</label><input id="editTagEnd" type="date" readonly disabled></div>
         <div class="field">
-          <label for="editTagStreetSelect">CALLES DEL PADRÓN</label>
-          <select id="editTagStreetSelect" aria-describedby="editTagStreetHint"><option value="">Cargando calles…</option></select>
-          <label for="editTagStreet" style="margin-top:10px">CALLE · TAMBIÉN PUEDES ESCRIBIR</label>
-          <input id="editTagStreet" placeholder="Ej. Gardenias" aria-describedby="editTagStreetHint">
-          <p id="editTagStreetHint" class="sub" role="status">Selecciona una calle o escríbela manualmente.</p>
+          <label for="editTagStreet">CALLE</label>
+          <input id="editTagStreet" placeholder="Escribe o selecciona una calle" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="editTagStreetOptions" aria-describedby="editTagStreetHint">
+          <div id="editTagStreetOptions" class="zk-street-options" role="listbox" aria-label="Calles del padrón" hidden></div>
+          <p id="editTagStreetHint" class="sub" role="status">Escribe o selecciona una calle del padrón.</p>
         </div>
         <div class="field"><label>NÚMERO DE CASA</label><input id="editTagHouseNumber" placeholder="Ej. 5"></div>
       </div>
@@ -872,7 +872,7 @@ setInterval(async()=>{
   try{await Promise.all([loadStatus(),loadRows()])}catch(_){}
 },30000);
 </script>
-<script src="assets/js/zkteco-calles.js?v=20261009"></script>
+<script src="assets/js/zkteco-calles.js?v=20261009-campo-unico"></script>
 <script src="assets/js/site-sidebar.js?v=20261008"></script>
 </body>
 </html>
