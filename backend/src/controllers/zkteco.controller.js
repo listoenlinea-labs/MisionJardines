@@ -105,7 +105,7 @@ async function actualizarVigenciaViviendaTags(req,res){
   const casaId=Number(req.params.id);
   const fechaFin=String(req.body?.fechaFin||'').trim();
   if(!Number.isSafeInteger(casaId)||casaId<1)return res.status(400).json({ok:false,message:'Vivienda inválida'});
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(fechaFin)||Number.isNaN(Date.parse(fechaFin+'T12:00:00Z'))||
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fechaFin)||Number.isNaN(Date.parse(fechaFin+'T12:00:00Z'))||
      new Date(fechaFin+'T12:00:00Z').toISOString().slice(0,10)!==fechaFin)
      return res.status(400).json({ok:false,message:'Fecha final inválida'});
   try{
