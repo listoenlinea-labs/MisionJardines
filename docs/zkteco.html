@@ -717,14 +717,24 @@ $('saveHouseValidity').onclick=async()=>{
   btn.disabled=true;
   clearModalError('houseValidityError');
   try{
-    const r=await api('/zkteco/viviendas/'+selectedValidityHouseId+'/vigencia-tags',{
+    const response=await fetch(API+'/zkteco/viviendas/'+selectedValidityHouseId+'/vigencia-tags',{
       method:'PATCH',headers:headers(true),body:JSON.stringify({fechaFin})
     });
+    const r=await response.json();
+    if(!response.ok||r.ok===false){
+      const error=new Error(r.message||'No se pudo actualizar la vigencia');
+      error.data=r.data;
+      throw error;
+    }
     toast(r.message,7000);
     closeHouseValidityModal();
     await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
-    showModalError('houseValidityError',e,'No se pudo actualizar la vigencia de todos los TAGs');
+    const fallos=e?.data?.resultados?.filter(x=>!x.ok)||[];
+    const detail=fallos.length
+      ? 'TAG(s) pendientes: '+fallos.map(x=>x.numeroTarjeta+': '+x.error).join(' | ')+'. Puedes reintentar: se comprobarán las fechas físicas y no se reescribirán las ya correctas.'
+      : errorText(e);
+    showModalError('houseValidityError',new Error(detail),'No se pudo actualizar la vigencia de todos los TAGs');
     toast(errorText(e),10000);
     await loadRows();
   }finally{btn.disabled=false;}
