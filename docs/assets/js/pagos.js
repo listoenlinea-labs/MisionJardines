@@ -6,7 +6,7 @@
     const headers = (json = false) => ({ Authorization: 'Bearer ' + token, ...(json ? { 'Content-Type': 'application/json' } : {}) });
     let validity = null;
     let quote = null, quoteRevision = 0;
-    let profile = null, config = null, proofData = '', ocrText = '', proofMeta = { name: '', mime: '' }, paymentType = 'MANTENIMIENTO', extras = [], selectedExtra = null;
+    let profile = null, config = null, proofData = '', ocrText = '', proofConfirmed = false, scanRevision = 0, proofMeta = { name: '', mime: '' }, paymentType = 'MANTENIMIENTO', extras = [], selectedExtra = null;
 
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
     async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) throw Error(d.message || 'No fue posible completar la solicitud'); return d }
@@ -209,7 +209,7 @@
     function readFile(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file) }) }
     function loadImage(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src }) }
     async function canvasToCompressed(canvas) { let q = .82, data = canvas.toDataURL('image/jpeg', q); while (data.length > 1350000 && q > .42) { q -= .1; data = canvas.toDataURL('image/jpeg', q) } if (data.length > 1500000) throw Error('El comprobante procesado es demasiado grande.'); return data }
-    async function imageToData(file) { const raw = await readFile(file); const image = await loadImage(raw); const max = 1500; const scale = Math.min(1, max / Math.max(image.width, image.height)); const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale)); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); return canvasToCompressed(canvas) }
+    async function imageToData(file) { const raw = await readFile(file); const image = await loadImage(raw); const max = 2100; const scale = Math.min(1, max / Math.max(image.width, image.height)); const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale)); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); return canvasToCompressed(canvas) }
     async function pdfToData(file) { if (!window.mjPdfJs) throw Error('El lector PDF todavía está cargando. Intenta de nuevo en unos segundos.'); const bytes = new Uint8Array(await file.arrayBuffer()); const pdf = await window.mjPdfJs.getDocument({ data: bytes }).promise; const page = await pdf.getPage(1); const viewport = page.getViewport({ scale: 1.7 }); const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height; await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise; return canvasToCompressed(canvas) }
     function normalizeAmount(value) { const s = String(value || '').replace(/[^0-9.,]/g, ''); if (!s) return ''; const comma = s.lastIndexOf(','), dot = s.lastIndexOf('.'); const n = Number(comma > dot ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '')); return Number.isFinite(n) ? n.toFixed(2) : '' }
     function normalizeDate(v) { let m = String(v || '').match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'); m = String(v || '').match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/); if (m) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); return '' }
@@ -218,56 +218,114 @@
       if (!m) return '';
       return m[1].padStart(2, '0') + ':' + m[2] + ':' + (m[3] || '00');
     }
-    function extract(text) {
-      const lines = String(text || '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean);
-      const all = lines.join(' ').replace(/\s+/g, ' ');
-      const labelled = (label, value) => {
-        const pattern = new RegExp('(?:^|\\b)(?:' + label + ')\\s*[:#-]?\\s*(' + value + ')', 'i');
-        return (all.match(pattern) || [])[1] || '';
-      };
-      // Do not confuse a payment reference, transaction concept, or tracking key with its folio.
-      const folio = labelled('folio\\s*(?:de\\s*)?(?:operaci[oó]n|transacci[oó]n|transferencia)|n[uú]mero\\s*de\\s*operaci[oó]n', '[A-Z0-9-]{5,}')
-        || labelled('folio', '[A-Z0-9-]{5,}')
-        || labelled('clave\\s*de\\s*rastreo', '[A-Z0-9-]{5,}');
-      const amountRaw = labelled('monto\\s*(?:transferido|pagado|enviado|de\\s*la\\s*operaci[oó]n)?|importe\\s*(?:transferido|pagado)?|total\\s*(?:transferido|pagado)', '\\$?\\s*[0-9][0-9.,]*');
-      let amount = amountRaw ? normalizeAmount(amountRaw) : '';
-      if (!amount) {
-        const values = [...all.matchAll(/\$\s*([0-9][0-9.,]*)/g)].map(m => Number(normalizeAmount(m[1]))).filter(Number.isFinite);
-        if (values.length === 1) amount = values[0].toFixed(2);
-      }
-      const months = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
-      const parseDate = raw => {
-        const named = String(raw).match(/\b(\d{1,2})\s*(?:de\s*)?(ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:sto)?|sep(?:tiembre)?|setiembre|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\s*(?:de\s*)?(20\d{2})\b/i);
-        if (named) return named[3] + '-' + String(months[named[2].slice(0,3).toLowerCase()] || 9).padStart(2,'0') + '-' + named[1].padStart(2,'0');
-        const numeric = String(raw).match(/\b(?:\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}|\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4})\b/);
-        return numeric ? normalizeDate(numeric[0]) : '';
-      };
-      const operationDate = (all.match(/fecha\s*(?:de\s*)?(?:operaci[oó]n|transferencia|pago)\s*[:#-]?\s*([^\n]{0,50})/i) || [])[1] || '';
-      const date = parseDate(operationDate) || parseDate(all);
-      const timeText = operationDate || all;
-      const time = (timeText.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\b/) || [])[0] || '';
-      return { folio, date, time: normalizeTime(time), amount };
+    const isPhotoDevice = window.matchMedia('(max-width: 900px) and (pointer: coarse)').matches;
+    // On phones/tablets request image files only; never request camera capture.
+    if (isPhotoDevice) {
+      $('proofInput').accept = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
+      $('proofInput').removeAttribute('capture');
     }
-    async function runOcr() { if (!proofData) return toast('Primero adjunta un comprobante.'); if (!window.Tesseract) return toast('El lector automático no está disponible.'); $('retryOcr').disabled = true; $('ocrState').textContent = 'Leyendo comprobante…'; $('ocrBar').style.width = '5%'; try { const result = await Tesseract.recognize(proofData, 'spa+eng', { logger: m => { if (m.status === 'recognizing text') { $('ocrBar').style.width = Math.round((m.progress || 0) * 100) + '%'; $('ocrState').textContent = 'Leyendo texto… ' + Math.round((m.progress || 0) * 100) + '%' } } }); ocrText = result?.data?.text || ''; const f = extract(ocrText); if (f.folio) $('operationFolio').value = f.folio; if (f.date) $('operationDate').value = f.date; if (f.time) $('operationTime').value = normalizeTime(f.time); else if (!$('operationTime').value) $('operationTime').value = currentMexicoTime(); if (f.amount) $('amount').value = f.amount; updatePaymentSummary(); $('ocrBar').style.width = '100%'; $('ocrState').textContent = 'Lectura terminada. Revisa los datos antes de enviar.'; toast('Comprobante leído automáticamente.') } catch (e) { console.error(e); $('ocrState').textContent = 'No fue posible leer automáticamente. Puedes completar los campos manualmente.' } finally { $('retryOcr').disabled = false } }
+    function setDestinationStatus(message, state = '') {
+      const el = $('destinationCheck');
+      el.hidden = !message;
+      el.className = 'proof-validation' + (state ? ' ' + state : '');
+      el.textContent = message || '';
+    }
+    function resetProof() {
+      scanRevision++;
+      proofData = '';
+      ocrText = '';
+      proofConfirmed = false;
+      proofMeta = { name: '', mime: '' };
+      $('proofInput').value = '';
+      $('proofPreview').removeAttribute('src');
+      $('previewBox').classList.remove('show');
+      $('ocrBar').style.width = '0%';
+      $('ocrState').textContent = 'Esperando archivo…';
+      for (const id of ['operationFolio', 'amount', 'operationDate', 'operationTime']) $(id).value = '';
+      $('submitPayment').disabled = true;
+      setDestinationStatus('');
+      updatePaymentSummary();
+    }
+    $('removeProof').addEventListener('click', resetProof);
+
+    async function runOcr() {
+      if (!proofData) return toast('Primero adjunta un comprobante.');
+      const revision = ++scanRevision;
+      proofConfirmed = false;
+      $('submitPayment').disabled = true;
+      const retry = $('retryOcr');
+      retry.disabled = true;
+      $('ocrState').textContent = 'Leyendo comprobante…';
+      $('ocrBar').style.width = '5%';
+      setDestinationStatus('Verificando nombre y terminación bancaria en Destino…');
+      try {
+        if (!window.Tesseract || !window.MJComprobante) throw Error('El lector OCR no se ha cargado. Revisa tu conexión.');
+        const result = await Tesseract.recognize(proofData, 'spa+eng', {
+          logger: m => {
+            if (scanRevision !== revision) return;
+            if (m.status === 'recognizing text') {
+              const p = Math.round((m.progress || 0) * 100);
+              $('ocrBar').style.width = p + '%';
+              $('ocrState').textContent = 'Leyendo texto… ' + p + '%';
+            }
+          }
+        });
+        if (scanRevision !== revision) return;
+        ocrText = result?.data?.text || '';
+        const beneficiary = config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ';
+        const suffix = config?.destinoUltimos4 || '4409';
+        const destination = MJComprobante.verifyDestination(ocrText, beneficiary, suffix);
+        if (!destination.ok) {
+          $('ocrState').textContent = 'Comprobante no aceptado: destinatario no verificado.';
+          setDestinationStatus(destination.message + ' Adjunta una captura más clara donde se vea Destino.', 'invalid');
+          $('ocrBar').style.width = '0%';
+          toast(destination.message);
+          return;
+        }
+        const extracted = MJComprobante.extract(ocrText);
+        // Never fill another payment's data; do not invent a date/hour if OCR misses it.
+        $('operationFolio').value = extracted.folio || '';
+        $('amount').value = extracted.amount || '';
+        $('operationDate').value = extracted.date || '';
+        $('operationTime').value = extracted.time || '';
+        proofConfirmed = true;
+        $('submitPayment').disabled = false;
+        $('ocrBar').style.width = '100%';
+        $('ocrState').textContent = 'Lectura completada. Revisa los campos detectados.';
+        setDestinationStatus('Destino comprobado en la imagen: ' + beneficiary + ' · cuenta terminación ' + suffix + '. El depósito aún requiere confirmación bancaria.', 'ok');
+        updatePaymentSummary();
+        if (!extracted.folio || !extracted.date || !extracted.amount) toast('Comprobante aceptado; revisa y completa los campos que el OCR no pudo leer.');
+      } catch (error) {
+        if (scanRevision !== revision) return;
+        proofConfirmed = false;
+        $('ocrBar').style.width = '0%';
+        $('ocrState').textContent = 'No se pudo leer el comprobante.';
+        setDestinationStatus('La lectura no pudo comprobar el destino: ' + error.message + '. Vuelve a leer o adjunta otra imagen.', 'invalid');
+        toast('No se pudo validar el comprobante.');
+      } finally {
+        retry.disabled = false;
+      }
+    }
 
     $('proofInput').addEventListener('change', async e => {
       const file = e.target.files?.[0];
       if (!file) return;
+      resetProof();
       try {
-        const fallbackTime = currentMexicoTime();
-        $('operationTime').value = fallbackTime;
+        if (isPhotoDevice && file.type === 'application/pdf') throw Error('En celular selecciona una imagen desde la biblioteca de fotos.');
+        if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'].includes(file.type)) throw Error('Formato no admitido. Usa JPG, PNG, WEBP o PDF en computadora.');
         proofMeta = { name: file.name || 'comprobante', mime: file.type || '' };
         proofData = file.type === 'application/pdf' ? await pdfToData(file) : await imageToData(file);
         $('proofPreview').src = proofData;
         $('fileName').textContent = file.name;
         $('previewBox').classList.add('show');
-        ocrText = '';
         await runOcr();
-      } catch (err) {
-        proofData = '';
-        toast(err.message);
+      } catch (error) {
+        resetProof();
+        toast(error.message);
       }
     });
+
     for(const container of ['receiptList','receiptAllList','receiptDetailsBody']){
       $(container).addEventListener('click',event=>{
         const detail=event.target.closest('[data-receipt-detail]');
@@ -284,7 +342,7 @@
 
     $('createExtra').addEventListener('click', async () => { const concept = $('extraConcept').value.trim(), amount = Number($('extraAmount').value); if (!concept || !Number.isFinite(amount) || amount <= 0) return toast('Captura concepto y monto válidos.'); try { await api('/pagos/extraordinarias', { method: 'POST', headers: headers(true), body: JSON.stringify({ concepto: concept, monto: amount }) }); $('extraConcept').value = ''; $('extraAmount').value = ''; await loadExtras(); toast('Cuota extraordinaria creada.') } catch (e) { toast(e.message) } });
 
-    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if (!proofData) return toast('Adjunta un comprobante.'); if (paymentType === 'EXTRAORDINARIO' && !selectedExtra) return toast('Selecciona una cuota extraordinaria.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'EXTRAORDINARIO' && Math.abs(amount - required) > .009)) return toast(paymentType === 'MANTENIMIENTO' ? 'Ingresa un monto mayor que cero.' : 'El comprobante debe corresponder exactamente a ' + money(required) + '.');
+    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && !selectedExtra) return toast('Selecciona una cuota extraordinaria.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'EXTRAORDINARIO' && Math.abs(amount - required) > .009)) return toast(paymentType === 'MANTENIMIENTO' ? 'Ingresa un monto mayor que cero.' : 'El comprobante debe corresponder exactamente a ' + money(required) + '.');
     if(paymentType==='MANTENIMIENTO'){
       const date=$('operationDate').value;
       const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -292,7 +350,7 @@
       if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a seleccionar la fecha.');
       if (Math.round(amount * 100) < Math.round(quote.minimo * 100))
         return toast('Para cubrir los recargos y una mensualidad necesitas al menos ' + money(quote.minimo) + '.');
-    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); $('previewBox').classList.remove('show'); proofData = ''; ocrText = ''; selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
+    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
     document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
       const value = $(btn.dataset.copy).textContent.trim();
