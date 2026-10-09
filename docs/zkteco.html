@@ -31,6 +31,26 @@
     @media(max-width:900px){.house-list-header{display:none}.house-top{grid-template-columns:minmax(0,1fr) minmax(120px,.55fr);gap:10px 16px}.house-address{grid-column:1/-1}.house-cell{display:block;min-height:0}.mobile-label{display:block;margin-bottom:5px;color:#9aa3b2;font-size:7px;font-weight:850;letter-spacing:.05em;text-transform:uppercase}.house-last{align-items:flex-start}.house-actions{justify-content:flex-end}.tag-columns{display:none}}
     @media(max-width:820px){.wrap{width:calc(100% - 22px);padding-top:72px}.hero{align-items:flex-start;flex-direction:column;padding:19px}.toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar .field:first-child{grid-column:1/-1}.gate-content{grid-template-columns:1fr}.device{grid-template-columns:1fr}.device-row{border-bottom:1px solid #edf0f4!important}.device-row:last-child{border-bottom:0!important}.house-top{grid-template-columns:1fr 1fr}.house-address{grid-column:1/-1}.house-actions{justify-content:flex-start}.tag-item{grid-template-columns:1fr 1fr}.tag-item .tag-validity{display:block}.tag-actions{justify-content:flex-start}}
     @media(max-width:560px){.wrap{width:calc(100% - 16px)}.metrics{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr}.toolbar .field:first-child{grid-column:auto}.pagination-bar{align-items:flex-start;flex-direction:column}.pagination-buttons{justify-content:flex-start}.actions{grid-template-columns:1fr}.house-top{grid-template-columns:1fr}.house-address,.house-state,.house-last,.house-actions{grid-column:1}.house-actions{justify-content:flex-start;flex-wrap:wrap}.tag-item{grid-template-columns:1fr}.tag-label{display:block;margin-bottom:3px}.modal-grid{grid-template-columns:1fr}.modal-grid .wide{grid-column:auto}.hero h1{font-size:28px}.gate-summary-meta .summary-copy{display:none}}
+      /* A dedicated actions column prevents the date from overlapping wide action buttons. */
+    @media(min-width:901px){
+      .house-list-header,.house-top{grid-template-columns:minmax(175px,1fr) 120px 160px minmax(315px,max-content);gap:12px}
+      .house-last{padding-right:15px}
+      .house-last b{white-space:nowrap}
+      .house-actions{gap:7px;justify-self:end}
+      .house-actions .btn{flex:0 0 auto}
+    }
+    @media(min-width:901px) and (max-width:1190px){
+      .house-list-header,.house-top{grid-template-columns:minmax(145px,1fr) 110px 145px minmax(285px,max-content);gap:8px}
+      .house-actions{gap:5px}
+      .house-actions .btn{padding-left:7px;padding-right:7px}
+    }
+    @media(max-width:900px){
+      .house-last b{overflow-wrap:anywhere}
+      .house-actions{flex-wrap:wrap;gap:8px;min-width:0}
+    }
+    @media(max-width:560px){
+      .house-actions .btn{max-width:100%}
+    }
   </style>
 </head>
 <body>
