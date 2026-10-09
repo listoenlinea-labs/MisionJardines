@@ -39,9 +39,26 @@
     { label: 'Administración', items: [
       { page: 'seguridad.html', label: 'Seguridad', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD' },
       { page: 'conexion.html', label: 'Conexión', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR' },
+      { page: 'analisis-cuotas.html', label: 'Análisis de cuotas', icon: 'reports' },
       { page: 'verificacion-cuentas.html', label: 'Verificación de cuentas', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR' }
     ]}
   ];
+
+  // Classify using the effective policy rather than legacy roles on menu items.
+  function navigationGroups() {
+    const otherRoles = ['SEGURIDAD', 'CONDOMINO', 'MESA_DIRECTIVA', 'MANTENIMIENTO'];
+    const administration = [], community = [], primary = [];
+    for (const group of groups) {
+      for (const item of group.items) {
+        const onlyAdministrators = MJPermissions.admins.some(role => MJPermissions.canAccess(role, item.page)) &&
+          !otherRoles.some(role => MJPermissions.canAccess(role, item.page));
+        if (onlyAdministrators) administration.push(item);
+        else if (!group.label) primary.push(item);
+        else community.push(item);
+      }
+    }
+    return [{ label: '', items: primary }, { label: 'Comunidad', items: community }, { label: 'Administración', items: administration }];
+  }
 
   const page = () => location.pathname.split('/').pop() || 'index.html';
   const escapeHtml = value => String(value || '')
@@ -73,7 +90,7 @@
   function markup() {
     const raw = page();
     const active = raw === 'reporte.html' ? 'reportes.html' : raw;
-    const nav = groups.map(group => {
+    const nav = navigationGroups().map(group => {
       const links = group.items.map(item => {
         const roles = ` data-roles="${['SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD','CONDOMINO','MESA_DIRECTIVA','MANTENIMIENTO'].filter(r => MJPermissions.canAccess(r,item.page)).join(',')}"`;
         return `<a class="mj-side-link${item.page === active ? ' active' : ''}" href="${item.page}"${roles}>${icons[item.icon]}<span>${item.label}</span></a>`;
