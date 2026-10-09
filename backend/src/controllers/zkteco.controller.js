@@ -1,6 +1,5 @@
 const ZkTarjeta=require('../models/ZkTarjeta');
 const Casa=require('../models/Casa');
-const Vigencia=require('../models/VigenciaMantenimiento');
 const {
   testDirectConnection,
   syncUsers,
@@ -62,9 +61,9 @@ async function vigenciaVivienda(req,res){
       return res.status(400).json({ok:false,message:'ID de vivienda inválido'});
     const casa=await Casa.findByPk(id,{attributes:['id','calle','numero']});
     if(!casa)return res.status(404).json({ok:false,message:'Vivienda inexistente en direcciones'});
-    const row=await Vigencia.findByPk(id);
+    const info=await require('../services/vigencia-mantenimiento.service').estadoCasa(id);
     return res.json({ok:true,data:{
-      casaId:id,configurada:Boolean(row),fechaFinal:row?.fechaFinal||null
+      casaId:id,configurada:!info.pendienteConfiguracion,fechaFinal:info.fechaFinal,soloReferencia:true
     }});
   }catch(error){
     return res.status(503).json({ok:false,message:'No se pudo consultar la vigencia de la vivienda',error:error.message});

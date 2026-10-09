@@ -1,12 +1,11 @@
-const { centavos, sumarMeses, fechaMexico } = require('./vigencia-calculo');
+const { centavos, fechaMexico } = require('./vigencia-calculo');
 const INICIO='2026-10-01';
-const CORTE_INICIAL='2026-10-10';
 const BASE=300;
 const RECARGO=50;
 const MAX_MESES=36;
 
-// Regla por fecha de la transferencia. Los meses se imputan desde octubre
-// de 2026 en orden cronológico; pagar a destiempo no salta meses adeudados.
+// Tarifa por fecha de la transferencia. El corte de acceso se lee del C3;
+// esta cotizacion no fija una fecha inicial ni calcula fechas de TAGs.
 // Un comprobante de varios meses debe cubrir la misma tarifa por cada mes.
 function cotizar(fechaOperacion,monto,{hoy=fechaMexico()}={}){
   const fecha=String(fechaOperacion||'');
@@ -29,10 +28,6 @@ function cotizar(fechaOperacion,monto,{hoy=fechaMexico()}={}){
   const meses=amount/unit;
   if(meses>MAX_MESES)throw Object.assign(new Error('Por seguridad, registra como máximo 36 mensualidades por movimiento'),{status:400});
   return {base:BASE,recargo:tardio?RECARGO*meses:0,total:amount/100,
-    meses,principal:BASE*meses,fechaCorteReferencia:CORTE_INICIAL,precioUnitario,tardio};
+    meses,principal:BASE*meses,precioUnitario,tardio};
 }
-function fechaPorMensualidades(meses){
-  if(!Number.isSafeInteger(meses)||meses<0)throw new Error('Número de mensualidades inválido');
-  return sumarMeses(CORTE_INICIAL,meses);
-}
-module.exports={INICIO,CORTE_INICIAL,BASE,RECARGO,cotizar,fechaPorMensualidades};
+module.exports={INICIO,BASE,RECARGO,cotizar};

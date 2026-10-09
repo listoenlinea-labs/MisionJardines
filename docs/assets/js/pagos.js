@@ -237,7 +237,7 @@
       const price=Number(date.slice(-2))>10?350:300;
       if(Math.round(amount*100)<price*100 || Math.round(amount*100)%(price*100)!==0)
         return toast('Para esa fecha se requieren mensualidades completas de '+money(price)+'. Revisa el monto del banco.');
-    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado. Falta configurar la fecha inicial de esta vivienda.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); $('previewBox').classList.remove('show'); proofData = ''; ocrText = ''; selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
+    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); $('previewBox').classList.remove('show'); proofData = ''; ocrText = ''; selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
     document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
       const value = $(btn.dataset.copy).textContent.trim();
@@ -283,13 +283,14 @@
     async function loadValidity() {
       try {
         const d = await api('/pagos/vigencia', { headers: headers() }); validity = d.data;
-        $('validityDate').textContent = validity.pendienteConfiguracion ? 'Sin pagos validados desde octubre 2026' : 'Fecha final: ' + validity.fechaFinal;
-        $('validitySync').textContent = ({ COMPLETADO: 'Fecha confirmada en los tags del controlador.',
-          PENDIENTE: 'Actualización de tags pendiente.', ERROR: 'Actualización pendiente; se reintentará automáticamente.',
-          SIN_TAGS: 'Falta vincular los tags de esta vivienda al controlador.', SIMULACION: 'Sincronización en modo de prueba.',
-          SIN_CONFIGURAR: 'Octubre 2026 es el inicio automático al validar el primer pago.',
-          ALTA_C3_CONFIRMADA: 'TAG nuevo confirmado por TCP; las vigencias de TAGs anteriores no se modificaron.' })[validity.sincronizacion] || 'Actualización de tags pendiente.';
-        $('validityDetail').textContent = validity.pendienteConfiguracion ? 'Administración debe registrar la fecha final actual.' : (validity.vigenteSegunFecha ? 'Vigente según la fecha calculada. ' : 'Fecha calculada vencida. ') + 'Abono acumulado: ' + money(validity.saldoParcial);
+        $('validityDate').textContent = validity.pendienteConfiguracion ? 'Sin TAGs vinculados' : validity.fechaFinal ? 'Última fecha observada: ' + validity.fechaFinal : 'Consulta las fechas de cada TAG en ZKTeco';
+        $('validitySync').textContent = ({ COMPLETADO: 'Última aplicación de pago completada.',
+          PENDIENTE: 'Incremento por pago pendiente.', PREPARADO: 'Incremento preparado; pendiente de confirmar en el controlador.',
+          ERROR: 'Incremento pendiente; se reintentará automáticamente.',
+          CONFLICTO: 'Administración debe revisar un cambio en el TAG antes de continuar.',
+          SIN_TAGS: 'Pago registrado sin TAGs destinatarios. Administración debe revisar el acceso.',
+          SIMULACION: 'Incremento en modo de prueba.', REFERENCIA_C3: 'Referencia de la última lectura del controlador.' })[validity.sincronizacion] || 'Consulta el estado de tus TAGs en ZKTeco.';
+        $('validityDetail').textContent = 'Cada pago suma meses desde la fecha que tenga el TAG en el controlador. Saldo parcial: ' + money(validity.saldoParcial);
         updatePreview();
       } catch (e) { $('validityDate').textContent = 'No fue posible consultar la vigencia'; $('validityDetail').textContent = e.message; }
     }
@@ -300,7 +301,7 @@
       const amount=Math.round(Number($('amount').value||0)*100);
       const unit=fee*100;
       if(!operationDate || amount<=0){
-        $('paymentPreview').textContent='La vigencia se calculará después de validar el depósito. Inicio: octubre 2026.';
+        $('paymentPreview').textContent='Los meses se aplicarán después de validar el pago, desde la fecha actual de cada TAG.';
         return;
       }
       if(amount%unit!==0 || amount<unit){
@@ -308,12 +309,8 @@
         return;
       }
       const months=amount/unit;
-      const prevDate=validity&&!validity.pendienteConfiguracion?validity.fechaFinal:'2026-10-10';
-      const [year,month]=prevDate.split('-').map(Number),index=year*12+month-1+months;
-      const end=Math.floor(index/12)+'-'+String(index%12+1).padStart(2,'0')+'-10';
-      $('paymentPreview').textContent='Estimación si Administración confirma el depósito: '+
-        months+' mensualidad(es); fecha final '+end+
-        '. Se abonan primero los meses pendientes desde octubre de 2026. El TAG seguirá vencido si la fecha aún es anterior a hoy.';
+      $('paymentPreview').textContent='Estimación: '+months+' mensualidad(es), descontando los recargos. Al aprobar el pago se leerá la fecha actual de cada TAG en el C3 y se incrementará ese número de meses, con corte el día 10.';
+
     }
     let pendingItems = [];
     const pendingFilters = { street: '', house: '', month: '', year: '' };
@@ -386,7 +383,7 @@
             method: 'PATCH', headers: headers(true),
             body: JSON.stringify({ estatus: button.dataset.detailReview, recargo: fee.value, observaciones: $('pendingNotes').value })
           });
-          toast(result.data?.vigencia?.pendienteConfiguracion ? 'Pago validado. Falta configurar la fecha inicial de esta vivienda.' : 'Revisión guardada.');
+          toast(result.data?.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : 'Revisión guardada.');
           dialog.close();
           await Promise.all([loadPending(), loadReceipts(), loadValidity()]);
         } catch (e) { toast(e.message); buttons.forEach(b => b.disabled = false); }

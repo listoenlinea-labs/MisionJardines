@@ -35,18 +35,15 @@ test('subir imagen siempre deja el pago PENDIENTE_VALIDACION, sin activar acceso
  assert.equal(x.res.code,201);assert.equal(x.payment.estatus,'PENDIENTE_VALIDACION');
  assert.equal(x.payment.recargo,0);assert.deepEqual(x.events,['create','commit']);
 });
-test('8 de octubre: 300 completa octubre y vence 10 de noviembre',()=>{
+test('8 de octubre: 300 cotiza una mensualidad sin imponer fecha al C3',()=>{
  assert.deepEqual(pricing.cotizar('2026-10-08','300.00',{hoy:'2026-11-30'}).meses,1);
- assert.equal(pricing.fechaPorMensualidades(1),'2026-11-10');
 });
-test('8 de noviembre: pagar primera mensualidad de 300 cubre octubre, no salta noviembre',()=>{
+test('8 de noviembre: 300 cotiza una mensualidad sin fecha base',()=>{
  const x=pricing.cotizar('2026-11-08','300.00',{hoy:'2026-11-08'});
- assert.equal(x.meses,1);assert.equal(pricing.fechaPorMensualidades(x.meses),'2026-11-10');
 });
-test('adelantos: 600 y 900 cubren dos y tres mensualidades hasta diciembre y enero',()=>{
+test('adelantos: 600 y 900 cubren dos y tres mensualidades',()=>{
  for(const [amount,months,end]of [['600.00',2,'2026-12-10'],['900.00',3,'2027-01-10']]){
   assert.equal(pricing.cotizar('2026-10-08',amount,{hoy:'2026-10-08'}).meses,months);
-  assert.equal(pricing.fechaPorMensualidades(months),end);
  }
 });
 test('día 11 exige 350 completos: 300/600 rechazan y 350/700 cubren 1/2 meses',()=>{

@@ -537,9 +537,11 @@ async function actualizarCuota(req, res) {
 
         if (centavos(cambios.recargo ?? cuota.recargo ?? 0) > centavos(cambios.montoPagado ?? cuota.montoPagado)) throw Object.assign(new Error('Recargo superior al importe pagado'), { status: 400 });
         await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            await cuota.reload({ transaction, lock: transaction.LOCK.UPDATE });
+            const anterior = vigenciaService.capturarCuota(cuota);
             await cuota.update(cambios, { transaction });
             if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
-                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
+                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         });
 
         return res.json({
@@ -708,9 +710,11 @@ async function actualizarCuotasLote(req, res) {
             }
             const cambios = prepararCambiosCuota(cuota, operacion.cambios);
             if (centavos(cambios.recargo ?? cuota.recargo ?? 0) > centavos(cambios.montoPagado ?? cuota.montoPagado)) throw Object.assign(new Error('Recargo superior al importe pagado'), { status: 400 });
+            await cuota.reload({ transaction, lock: transaction.LOCK.UPDATE });
+            const anterior = vigenciaService.capturarCuota(cuota);
             await cuota.update(cambios, { transaction });
             if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
-                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
+                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         }
 
         await transaction.commit();
@@ -828,6 +832,7 @@ async function confirmarPago(req, res) {
 
         const recargo = req.body.recargo ?? cuota.recargo ?? 0;
         if (centavos(recargo) > centavos(montoPagado)) throw Object.assign(new Error('Recargo superior al importe pagado'), { status: 400 });
+        const anterior = vigenciaService.capturarCuota(cuota);
         await cuota.update(
             {
                 montoPagado,
@@ -879,7 +884,7 @@ async function confirmarPago(req, res) {
             }
         );
 
-        const vigenciaAcceso = await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
+        const vigenciaAcceso = await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         await transaction.commit();
 
         const cuotaConfirmada =
@@ -1373,8 +1378,8 @@ async function eliminarCuota(
         }
 
         await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            // A financial deletion is not permission to reduce dates in the C3.
             await cuota.destroy({ transaction });
-            await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction);
         });
 
         return res.json({

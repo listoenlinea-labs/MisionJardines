@@ -415,7 +415,7 @@ async function reportarPago(req, res) {
         }, { transaction });
 
         const vigenciaAcceso = pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN && tipoPago === 'MANTENIMIENTO'
-            ? await vigenciaService.actualizar(casaId, usuarioId, transaction) : null;
+            ? await vigenciaService.actualizar(casaId, usuarioId, transaction, { origen: 'PAGO', registro: pago }) : null;
 
         await transaction.commit();
         transaction = null;
@@ -551,7 +551,7 @@ module.exports = {
 async function obtenerVigencia(req, res) {
     try {
         if (!req.usuario.casaId) return res.status(400).json({ ok: false, message: 'Selecciona una vivienda' });
-        return res.json({ ok: true, data: vigenciaService.resumen(await vigenciaService.Vigencia.findByPk(req.usuario.casaId)) });
+        return res.json({ ok: true, data: await vigenciaService.estadoCasa(req.usuario.casaId) });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar la vigencia' }); }
 }
 async function inicializarVigencia(req, res) {
@@ -577,7 +577,7 @@ async function revisarPago(req, res) {
             if (!pago) throw Object.assign(new Error('Pago no encontrado'), { status: 404 });
             if (pago.estatus !== 'PENDIENTE_VALIDACION') {
                 if (pago.estatus !== req.body.estatus) throw Object.assign(new Error('El pago ya tiene otra resolución'), { status: 409 });
-                return { pago: pagoSeguro(req, pago), vigencia: vigenciaService.resumen(await vigenciaService.Vigencia.findByPk(pago.casaId, { transaction })) };
+                return { pago: pagoSeguro(req, pago), vigencia: await vigenciaService.estadoCasa(pago.casaId, transaction) };
             }
             // La tarifa y el recargo se fijan según la fecha e importe del banco.
             // No permitir que el modal reescriba el recargo y extienda accesos.
@@ -589,7 +589,7 @@ async function revisarPago(req, res) {
             await pago.update({ estatus: req.body.estatus, recargo, validadoPorUsuarioId: req.usuario.usuarioId,
                 fechaValidacion: new Date(), actualizadoEn: new Date(), observacionesRevision: limpiarTexto(req.body.observaciones, 600) }, { transaction });
             const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
-                ? await vigenciaService.actualizar(pago.casaId, req.usuario.usuarioId, transaction) : null;
+                ? await vigenciaService.actualizar(pago.casaId, req.usuario.usuarioId, transaction, { origen: 'PAGO', registro: pago }) : null;
             return { pago: pagoSeguro(req, pago), vigencia };
         });
         return res.json({ ok: true, data: result });
