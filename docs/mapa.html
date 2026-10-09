@@ -1437,7 +1437,7 @@
 
     function populateStreetFilter() {
       const streets = [...new Set(lots.map(lot => lot.street).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, 'es'));
+        .sort((a, b) => a.localeCompare(b, 'es-MX', { numeric:true, sensitivity:'base' }));
       streetFilter.innerHTML = '<option value="">Todas las calles</option>' +
         streets.map(street => `<option value="${street}">${street}</option>`).join('');
     }

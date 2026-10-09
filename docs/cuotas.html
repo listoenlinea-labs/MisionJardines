@@ -1089,7 +1089,7 @@ body.page-cuotas .cuotas-shell{
         const matchStreet = !street || calle === street;
         const matchStatus = !status || estatus === status;
         return matchText && matchHouse && matchStreet && matchStatus;
-      });
+      }).sort((a,b) => String(a.casa?.calleCorrecta || a.calleSnapshot || a.casa?.calle || '').localeCompare(String(b.casa?.calleCorrecta || b.calleSnapshot || b.casa?.calle || ''),'es-MX',{numeric:true,sensitivity:'base'}) || String(a.numeroCasaSnapshot || a.casa?.numero || '').localeCompare(String(b.numeroCasaSnapshot || b.casa?.numero || ''),'es-MX',{numeric:true}));
     }
 
     function aplicarFiltros() {
@@ -2185,7 +2185,7 @@ body.page-cuotas .cuotas-shell{
         });
         const analisisCalles = [...mapaCalles.values()]
           .map(item => ({ ...item, cumplimiento: item.total ? item.pagadas / item.total : 0 }))
-          .sort((a, b) => a.calle.localeCompare(b.calle, 'es'));
+          .sort((a, b) => a.calle.localeCompare(b.calle, 'es-MX', {numeric:true,sensitivity:'base'}));
 
         const mapaFormas = new Map();
         filas.filter(fila => fila.montoPagado > 0).forEach(fila => {

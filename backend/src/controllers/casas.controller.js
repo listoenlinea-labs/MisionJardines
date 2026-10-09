@@ -1,4 +1,5 @@
 const { Casa, Condomino, PermisoAcceso } = require('../models');
+const { ordenarDirecciones } = require('../services/direccion-sort.service');
 
 const obtenerCasas = async (req, res) => {
     try {
@@ -38,7 +39,7 @@ const obtenerCasas = async (req, res) => {
             order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']]
         });
 
-        return res.status(200).json({ ok: true, total: casas.length, casas });
+        return res.status(200).json({ ok: true, total: casas.length, casas: ordenarDirecciones(casas) });
     } catch (error) {
         console.error('Error al obtener casas:', error);
         return res.status(500).json({ ok: false, message: 'Error al obtener las casas' });

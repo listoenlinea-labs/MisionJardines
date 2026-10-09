@@ -51,7 +51,7 @@
   $('financeExpenseChart').innerHTML=cat.map(([n,v])=>bar(n,v,maxCategory,true,fmt(v))).join('');
   $('financeExpenseRows').innerHTML=data.egresos.length?data.egresos.map(e=>'<tr><td>'+esc(e.fecha)+'</td><td>'+esc(e.categoria)+'</td><td>'+esc(e.concepto)+'</td><td>'+esc(e.referencia||'—')+'</td><td>'+fmt(e.monto)+'</td></tr>').join(''):'<tr><td colspan="5">No hay egresos registrados para este mes.</td></tr>';
   const select=$('financeStreet'),selected=select.value;
-  select.innerHTML='<option value="">Todas las calles</option>'+data.calles.map(c=>'<option value="'+esc(c.calle)+'">'+esc(c.calle)+'</option>').join('');
+  select.innerHTML='<option value="">Todas las calles</option>'+[...data.calles].sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'})).map(c=>'<option value="'+esc(c.calle)+'">'+esc(c.calle)+'</option>').join('');
   select.value=data.calles.some(x=>x.calle===selected)?selected:'';
   renderHouses();
  }
@@ -62,7 +62,7 @@
   const filtered=data.viviendas.filter(h=>{
    const hay=[h.calle,h.numero,h.nombre].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
    return (!query||hay.includes(query))&&(!street||h.calle===street)&&(!status||(status==='PAGADO'?h.pagada:!h.pagada));
-  });
+  }).sort((a,b)=>String(a?.calleCorrecta||a?.calle||'').localeCompare(String(b?.calleCorrecta||b?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a?.numero||'').localeCompare(String(b?.numero||''),'es-MX',{numeric:true}));
   $('financeHouseCount').textContent=filtered.length+' de '+data.viviendas.length+' casas';
   $('financeHouseRows').innerHTML=filtered.length?filtered.map(h=>'<tr><td>'+esc(h.calle)+'</td><td>'+esc(h.numero)+'</td><td>'+esc(h.nombre)+'</td><td><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td>'+fmt(h.montoPagado)+'</td><td>'+fmt(h.saldoPendiente)+'</td></tr>').join(''):'<tr><td colspan="6">No hay viviendas que coincidan con estos filtros.</td></tr>';
  }

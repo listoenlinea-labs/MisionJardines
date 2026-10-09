@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const { ordenarDirecciones } = require('../services/direccion-sort.service');
 const db = require('../config/database');
 const { SolicitudCuenta, Usuario, Rol, Casa, UsuarioCasa } = require('../models');
 const bcrypt=require('bcryptjs');
@@ -46,9 +47,9 @@ async function viviendas(req, res) {
     try {
         const rows = await Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'],
             where: q ? { [Op.or]: [{ calleCorrecta: { [Op.like]: `%${q}%` } }, { numero: { [Op.like]: `%${q}%` } }] } : {},
-            order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']], limit: 200 });
+            order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']], limit: 1000 });
         res.setHeader('Cache-Control', 'no-store');
-        return res.json({ ok: true, viviendas: rows.map(casa => ({ ...casa.toJSON(), calle: casa.calleCorrecta || casa.calle })) });
+        return res.json({ ok: true, viviendas: ordenarDirecciones(rows).map(casa => ({ ...casa.toJSON(), calle: casa.calleCorrecta || casa.calle })) });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar el padrón de viviendas' }); }
 }
 

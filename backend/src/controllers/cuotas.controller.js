@@ -118,6 +118,8 @@ function obtenerInclude() {
     ];
 }
 
+const { compararDirecciones } = require('../services/direccion-sort.service');
+
 async function listarCuotas(req, res) {
     try {
         const anio = Number(
@@ -175,7 +177,7 @@ async function listarCuotas(req, res) {
         return res.json({
             ok: true,
             total: cuotas.length,
-            data: cuotas
+            data: cuotas.sort((a, b) => compararDirecciones(a.casa, b.casa) || Number(a.id) - Number(b.id))
         });
     } catch (error) {
         console.error(

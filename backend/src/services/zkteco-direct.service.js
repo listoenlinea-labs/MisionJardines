@@ -9,6 +9,7 @@ const {
 } = require('./zkteco-pullsdk-bridge.service');
 const ZkTarjeta = require('../models/ZkTarjeta');
 const Casa = require('../models/Casa');
+const { compararDirecciones } = require('./direccion-sort.service');
 const inventario = require('./zkteco-inventory-helpers');
 
 const pad2 = n => String(n).padStart(2,'0');
@@ -1306,8 +1307,8 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
         departamentoBusqueda:searchByDepartment?`${canonicalStreet(calle)} ${String(numero).trim()}`:null,
         filtroTag:tagQuery||null,
         controles:controls,
-        controlesNoEnlazados:visibleUnresolved,
-        tarjetas:visibleCards.map(card=>({
+        controlesNoEnlazados:visibleUnresolved.sort((a,b)=>String(a).localeCompare(String(b),'es-MX',{numeric:true})),
+        tarjetas:visibleCards.sort((a,b)=>String(a.numeroTarjeta).localeCompare(String(b.numeroTarjeta),'es-MX',{numeric:true})).map(card=>({
           id:card.id,
           numeroTarjeta:String(card.numeroTarjeta),
           pin:card.pinDispositivo,
@@ -1322,7 +1323,8 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
         }))
       };
     })
-    .filter(row=>!tagQuery||row.tarjetas.length||row.controlesNoEnlazados.length);
+    .filter(row=>!tagQuery||row.tarjetas.length||row.controlesNoEnlazados.length)
+    .sort(compararDirecciones);
 
   const total=rows.length;
   const totalPages=Math.max(1,Math.ceil(total/pageSize));
