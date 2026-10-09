@@ -83,13 +83,15 @@ async function actualizar(casaId, usuarioId, transaction) {
 // TAG to a real house that has no vigencias_mantenimiento row yet.
 // The cutoff is NOT inferred from a physical CardNo or mistaken for a payment.
 async function asegurarVigenciaParaAlta(casaId, fechaFinal, usuarioId = null) {
-    validarFecha(fechaFinal);
     return sequelize.transaction(async transaction => {
         await bloquearCasa(casaId, transaction);
         const existente = await Vigencia.findByPk(casaId, {
             transaction, lock: transaction.LOCK.UPDATE
         });
+        // Existing legacy cutoffs (often ending on day 11) are authoritative.
+        // Day-10 validation is only for a new financially initialized record.
         if (existente) return { creada: false, casaId, fechaFinal: existente.fechaFinal };
+        validarFecha(fechaFinal);
         const principal = await principalConfirmado(casaId, transaction);
         const creada = await Vigencia.create({
             casaId, fechaBase: fechaFinal, fechaFinal,
