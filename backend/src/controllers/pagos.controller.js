@@ -12,6 +12,7 @@ const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
 const pagosPruebas = require('../config/pagos-pruebas');
 const recargosService = require('../services/recargos-mantenimiento.service');
+const { comprobarDestino } = require('../services/comprobante-lector.service');
 const BASE_MANTENIMIENTO = 300;
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
@@ -75,6 +76,7 @@ async function obtenerConfiguracion(req, res) {
             titular: process.env.PAGOS_TITULAR || 'MARIA DEL ROCIO BAHENA JUAREZ',
             cuenta: process.env.PAGOS_CUENTA || '00002128412440',
             clabe: process.env.PAGOS_CLABE || '127320021284124409',
+            destinoUltimos4: process.env.PAGOS_DESTINO_ULTIMOS4 || '4409',
             tarjeta: datoTransferencia(process.env.PAGOS_TARJETA, '4027666123124884'),
             referencia: process.env.PAGOS_REFERENCIA || 'NOMBRE DE CALLE Y NUMERO DE CASA',
             mantenimiento: {
@@ -256,7 +258,9 @@ async function reportarPago(req, res) {
         const horaOperacion = limpiarTexto(req.body.horaOperacion, 8);
         const monto = centavos(req.body.monto) / 100;
         const comprobanteData = String(req.body.comprobanteData || '');
-        const textoOcr = limpiarTexto(req.body.textoOcr, 12000);
+        // El texto OCR enviado por el navegador no constituye una verificación bancaria.
+        // El servidor debe leer la imagen de nuevo antes de guardar el comprobante.
+        let textoOcr = '';
         const comprobanteNombre = limpiarTexto(req.body.comprobanteNombre, 255);
         const comprobanteMime = limpiarTexto(req.body.comprobanteMime, 100);
 
@@ -294,6 +298,11 @@ async function reportarPago(req, res) {
                 message: 'El comprobante procesado es demasiado grande'
             });
         }
+
+        const comprobado = await comprobarDestino({
+            comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto
+        });
+        textoOcr = comprobado.texto;
 
         const existente = await PagoReportado.findOne({
             where: { folioOperacion }

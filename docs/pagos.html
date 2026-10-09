@@ -1013,6 +1013,15 @@
 .receipt-detail-actions{display:flex;justify-content:flex-end;gap:10px;margin:14px 0 0}
 @media(max-width:700px){.receipt-modal-filters{grid-template-columns:1fr 1fr}.receipt-modal-filters>button{grid-column:1/-1}.receipt-all-grid{grid-template-columns:1fr}.receipt-detail-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:470px){.receipt-detail-grid{grid-template-columns:1fr}}
+    .proof-media{position:relative;width:82px;height:68px;flex:none}
+    .preview .proof-media img{display:block;width:82px;height:68px}
+    .remove-proof{position:absolute;top:-9px;right:-9px;width:29px;height:29px;border:1px solid #f2d1d1;border-radius:50%;background:#fff5f5;color:#b54343;font-size:20px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 4px 12px #24324d18;z-index:2}
+    .remove-proof:hover,.remove-proof:focus-visible{background:#ffe9e9;border-color:#eab8b8;outline-offset:2px}
+    .proof-validation{margin:9px 0 0;padding:11px 13px;border:1px solid #eed6b8;border-radius:11px;background:#fffaf2;color:#805624;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+    .proof-validation.ok{border-color:#c9e8d8;background:#f2fbf6;color:#276a47}
+    .proof-validation.invalid{border-color:#f0caca;background:#fff6f6;color:#a43d3d}
+    .proof-validation[hidden]{display:none}
+    @media(max-width:560px){.proof-validation{font-size:12px}.remove-proof{min-width:32px;min-height:32px}.preview{grid-template-columns:82px minmax(0,1fr);gap:13px;align-items:center}}
 </style>
 </head>
 
@@ -1141,8 +1150,8 @@
       <article class="card pad">
         <span class="eyebrow">COMPROBANTE BANCARIO</span>
         <h2 id="paymentTitle">Reportar mantenimiento</h2>
-        <p>Sube una captura, fotografía o PDF. El sistema intentará detectar folio, fecha, hora y monto; revisa la
-          información antes de enviar.</p>
+        <p>Sube una captura, fotografía o PDF. El sistema leerá folio, fecha, hora y monto, y solo permitirá enviar
+          comprobantes cuyo <strong>Destino</strong> muestre a <strong>MARIA DEL ROCIO BAHENA JUAREZ</strong> y la terminación <strong>4409</strong>.</p>
 
         <label class="upload" for="proofInput">
           <input id="proofInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
@@ -1156,16 +1165,20 @@
             </svg>
           </span>
           <strong>Adjuntar comprobante bancario</strong>
-          <span>Selecciona una foto de tu galería o un archivo JPG, PNG, WEBP o PDF.</span>
+          <span>En celular, selecciona una foto de tu biblioteca; en computadora también se admiten PDF.</span>
         </label>
 
         <div id="previewBox" class="preview">
-          <img id="proofPreview" alt="Vista previa del comprobante">
+          <div class="proof-media">
+            <img id="proofPreview" alt="Vista previa del comprobante">
+            <button id="removeProof" class="remove-proof" type="button" aria-label="Quitar comprobante adjunto" title="Quitar comprobante">×</button>
+          </div>
           <div><strong id="fileName">Comprobante</strong>
             <div class="progress"><i id="ocrBar"></i></div>
             <div id="ocrState" class="ocr">Esperando archivo…</div>
           </div>
         </div>
+        <p id="destinationCheck" class="proof-validation" role="status" aria-live="polite" hidden></p>
 
         <form id="paymentForm">
           <div class="form-grid">
@@ -1200,7 +1213,7 @@
           </div>
           <div class="actions">
             <button class="btn" type="button" id="retryOcr">Volver a leer</button>
-            <button class="btn btn-primary" type="submit" id="submitPayment">Reportar pago y generar recibo</button>
+            <button class="btn btn-primary" type="submit" id="submitPayment" disabled>Reportar pago y generar recibo</button>
           </div>
         </form>
       </article>
@@ -1221,7 +1234,8 @@
 </dialog>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-  <script src="assets/js/pagos.js?v=20261009-recargos-vencidos"></script>
+  <script src="assets/js/comprobante-parser.js?v=20261009-recibos-1"></script>
+  <script src="assets/js/pagos.js?v=20261009-recibos-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261008-cuotas-layout"></script>
 </body>
 
