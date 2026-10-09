@@ -11,6 +11,11 @@
     #searchForm:focus-within{border-color:#f4a75e;box-shadow:0 0 0 3px rgba(249,115,22,.12)}
     .mj-search-launch{position:fixed;z-index:91;top:14px;left:calc(var(--mj-side-width) + 61px);height:46px;width:clamp(240px,30vw,470px);padding:0 17px;border:1px solid #dce4ec;border-radius:12px;background:#fff;box-shadow:0 8px 28px rgba(23,32,51,.075);color:#68778e;font:500 13px Inter,system-ui,sans-serif;text-align:left;cursor:pointer}
     body.mj-shared-sidebar-collapsed .mj-search-launch{left:61px}.mj-search-launch:hover{border-color:#efa667;color:#172033}
+    .mj-top-tools,.mj-top-tools *{box-sizing:border-box}
+    .mj-top-tools{position:fixed;z-index:91;top:14px;left:calc(var(--mj-side-width) + 61px);display:flex;align-items:center;gap:12px;width:max-content;max-width:calc(100vw - var(--mj-side-width) - 83px)}
+    body.mj-shared-sidebar-collapsed .mj-top-tools{left:61px;max-width:calc(100vw - 83px)}
+    .mj-top-tools .mj-search-launch{position:static;flex:1 1 auto;min-width:0;max-width:470px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mj-top-tools .mj-account-top{position:static!important;top:auto!important;right:auto!important;left:auto!important;display:flex!important;flex:0 0 auto!important;margin:0!important}
     .mj-search-backdrop{position:fixed;inset:0;z-index:300;background:rgba(12,24,40,.4);display:grid;place-items:start center;padding:11vh 14px 24px;backdrop-filter:blur(3px)}
     .mj-search-backdrop[hidden]{display:none!important}
     .mj-search-panel{width:min(680px,100%);max-height:75vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid #e3e8ee;border-radius:19px;background:#fff;box-shadow:0 28px 80px rgba(18,31,50,.25);font:14px Inter,system-ui,sans-serif;color:#172033}
@@ -18,6 +23,8 @@
     .mj-search-results{min-height:110px;overflow:auto;padding:13px 15px 20px}.mj-search-section{margin:9px 0 5px;padding:0 10px;color:#9b5c20;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.mj-search-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border-radius:10px;color:#172033;text-decoration:none}.mj-search-result:hover,.mj-search-result:focus,.mj-search-result.mj-active{outline:0;background:#fff3e7}.mj-search-result strong,.mj-search-result small{display:block}.mj-search-result strong{font-size:13px}.mj-search-result small{margin-top:4px;color:#748199;font-size:11px}.mj-search-result>span:last-child{color:#c87121}.mj-search-empty{padding:20px 12px;color:#748199;line-height:1.5}.mj-search-foot{border-top:1px solid #e9edf2;padding:11px 22px;color:#8a95a5;font-size:11px}
     @media(max-width:1100px){body.mj-home.mj-shared-sidebar-enabled .operation-status{display:none}body.mj-home.mj-shared-sidebar-enabled #searchForm{width:min(36vw,450px)}}
     @media(max-width:820px){.mj-search-launch,body.mj-shared-sidebar-collapsed .mj-search-launch{left:58px;top:13px;width:min(43vw,310px);height:43px}.mj-search-backdrop{padding-top:5vh}body.mj-home.mj-shared-sidebar-enabled #searchForm{width:min(45vw,350px);margin-left:34px}}
+    @media(max-width:820px){.mj-top-tools,body.mj-shared-sidebar-collapsed .mj-top-tools{left:58px;top:13px;gap:8px;max-width:calc(100vw - 72px)}}
+    @media(max-width:600px){.mj-top-tools .mj-account-top-copy,.mj-top-tools .mj-account-top-arrow{display:none!important}.mj-top-tools .mj-account-top{padding:5px!important}.mj-top-tools .mj-search-launch{width:min(60vw,310px)}}
   `;
   document.head.appendChild(style);
   const backdrop = document.createElement('div');
@@ -34,7 +41,14 @@
     launcher.type = 'button'; launcher.className = 'mj-search-launch';
     launcher.textContent = '⌕  Buscar en Misión Jardines…    Ctrl K';
     launcher.addEventListener('click', () => open());
-    document.body.appendChild(launcher);
+    const tools = document.createElement('div');
+    tools.className = 'mj-top-tools';
+    tools.setAttribute('role', 'group');
+    tools.setAttribute('aria-label', 'Búsqueda y cuenta');
+    tools.appendChild(launcher);
+    const account = document.querySelector('.mj-account-top');
+    if (account) tools.appendChild(account);
+    document.body.appendChild(tools);
   }
   let timeout, controller, serial = 0, selected = 0, previous = null;
   const rows = () => [...results.querySelectorAll('.mj-search-result')];
