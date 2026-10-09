@@ -117,10 +117,14 @@ async function actualizarVigenciaViviendaTags(req,res){
     const resultados=[];
     for(const tag of tags){
       try{
-        // Direct TCP; neither StartTime nor door authorizations are rewritten.
-        await writeUserValidity(tag.numeroTarjeta,null,fechaFin,{mode:'DIRECT'});
+        // Skip a TAG already at the requested physical expiration. This makes retries safe.
+        const actual=await require('../services/zkteco-direct.service').readUserValidity(tag.numeroTarjeta);
+        if(actual.fechaFinal!==fechaFin){
+          // Direct TCP; preserve StartTime and door authorizations.
+          await writeUserValidity(tag.numeroTarjeta,null,fechaFin,{mode:'DIRECT',expectedEnd:actual.fechaFinal,expectedPin:actual.pin});
+        }
         await tag.update({fechaFin,fechaFinOriginal:tag.fechaFinOriginal?fechaFin:null,ultimaLectura:new Date()});
-        resultados.push({numeroTarjeta:tag.numeroTarjeta,ok:true});
+        resultados.push({numeroTarjeta:tag.numeroTarjeta,ok:true,estado:'CONFIRMADO'});
       }catch(error){
         resultados.push({numeroTarjeta:tag.numeroTarjeta,ok:false,error:error.message});
         await recordZkError(req,'VIGENCIA_VIVIENDA_TAG',error,{casaId,numeroTarjeta:tag.numeroTarjeta});
@@ -128,7 +132,7 @@ async function actualizarVigenciaViviendaTags(req,res){
     }
     const errores=resultados.filter(item=>!item.ok);
     return res.status(errores.length?207:200).json({ok:!errores.length,
-      message:errores.length?'Se actualizaron '+(resultados.length-errores.length)+' de '+resultados.length+' TAGs; revisa los fallidos':'Vigencia actualizada en todos los TAGs del C3',
+      message:errores.length?'Se confirmaron '+(resultados.length-errores.length)+' de '+resultados.length+' TAGs. Pendientes: '+errores.map(x=>x.numeroTarjeta).join(', '):'Vigencia confirmada en todos los TAGs del C3',
       data:{casaId,fechaFin,resultados}});
   }catch(error){
     await recordZkError(req,'VIGENCIA_VIVIENDA',error,{casaId});
