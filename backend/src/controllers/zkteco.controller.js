@@ -21,6 +21,22 @@ const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
 const {isPullSdkBridgeConfigured,testBridge,describeFetchError}=require('../services/zkteco-pullsdk-bridge.service');
 const {recordZkError,listZkErrors,exactError}=require('../services/zkteco-error-log.service');
 
+async function callesEdicion(req,res){
+  try {
+    const rows=await Casa.findAll({attributes:['calle'],group:['calle'],raw:true});
+    const streets=new Map();
+    for(const row of rows){
+      const street=String(row.calle||'').trim();
+      if(street&&!streets.has(street.toLocaleLowerCase('es-MX'))) streets.set(street.toLocaleLowerCase('es-MX'),street);
+    }
+    const collator=new Intl.Collator('es-MX',{numeric:true,sensitivity:'base'});
+    res.json({ok:true,calles:[...streets.values()].sort(collator.compare)});
+  } catch(error){
+    console.error('[ZKTeco] Calles para edición:',error.message);
+    res.status(503).json({ok:false,message:'No fue posible obtener las calles del padrón'});
+  }
+}
+
 async function estado(req,res){
   try{
     const info=await testDirectConnection();
@@ -289,4 +305,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={actualizarVigenciaViviendaTags,vigenciaVivienda,diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={callesEdicion,actualizarVigenciaViviendaTags,vigenciaVivienda,diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};
