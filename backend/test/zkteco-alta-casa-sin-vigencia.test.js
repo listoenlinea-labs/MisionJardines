@@ -1,96 +1,159 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-Object.assign(process.env, { DB_HOST: 'localhost', DB_PORT: '3306', DB_NAME: 'test',
-  DB_USER: 'test', DB_PASSWORD: 'unused', ZKTECO_DIRECT_HOST: 'localhost' });
-const { C3Client } = require('../src/services/zkteco-c3-client.service');
+Object.assign(process.env, {
+  DB_HOST: 'localhost', DB_PORT: '3306', DB_NAME: 'test',
+  DB_USER: 'test', DB_PASSWORD: 'unused', ZKTECO_DIRECT_HOST: 'localhost'
+});
+const sequelize = require('../src/config/database');
+const models = require('../src/models');
 const Casa = require('../src/models/Casa');
 const Tags = require('../src/models/ZkTarjeta');
 const Vigencia = require('../src/models/VigenciaMantenimiento');
 const direct = require('../src/services/zkteco-direct.service');
+const worker = require('../src/services/zkteco-vigencias.service');
+const { C3Client } = require('../src/services/zkteco-c3-client.service');
 
-for (const hasAuthorization of [false, true]) {
-  test(hasAuthorization
-    ? 'reutilizar un TAG C3 autorizado no sobrescribe sus permisos'
-    : 'reutilizar TAG C3 sin userauthorize restaura permisos antes de marcarlo activo', async t => {
-    const house = { id: 702, calle: 'Guadalajara', numero: '707', controles: '',
-      async update(values) { Object.assign(this, values); } };
-    const user = { UID: '14', Pin: '5108833', CardNo: '5108833',
-      StartTime: '20261008', EndTime: '20270111' };
-    let auth = hasAuthorization
-      ? { Pin: '5108833', AuthorizeDoorId: '3', AuthorizeTimezoneId: '1' }
-      : null;
-    const writes = [];
-    t.mock.method(Casa, 'findByPk', async id => Number(id) === 702 ? house : null);
-    t.mock.method(Tags, 'findAll', async () => []);
-    t.mock.method(Tags, 'findOne', async () => null);
-    t.mock.method(Tags, 'create', async data => ({ ...data, toJSON() { return { ...data }; } }));
-    t.mock.method(Vigencia, 'update', async () => [0]);
-    t.mock.method(C3Client.prototype, 'connect', async () => {});
-    t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-    t.mock.method(C3Client.prototype, 'getData', async table => {
-      if (table === 'user') return [user];
-      if (table === 'userauthorize') return auth ? [auth] : [];
-      throw Error('unexpected table: '+table);
-    });
-    t.mock.method(C3Client.prototype, 'putRecord', async (table, values) => {
-      writes.push({ table, values });
-      if (table !== 'userauthorize') throw Error('must not recreate existing C3 user');
-      auth = { ...values };
-    });
-    const oldMode = process.env.ZKTECO_WRITE_MODE;
-    process.env.ZKTECO_WRITE_MODE = 'DIRECT';
-    t.after(() => {
-      if (oldMode === undefined) delete process.env.ZKTECO_WRITE_MODE;
-      else process.env.ZKTECO_WRITE_MODE = oldMode;
-    });
-    const result = await direct.createTagForHouse(702, {
-      numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-11'
-    });
-    assert.equal(result.casaId, 702);
-    assert.equal(result.vigenciaConfigurada, false,
-      'missing vigencia must be reported rather than fabricated');
-    assert.equal(result.puertasAutorizadas, 3);
-    assert.equal(result.enControlador, true);
-    assert.equal(writes.length, hasAuthorization ? 0 : 1);
-    if (!hasAuthorization) assert.equal(writes[0].values.AuthorizeDoorId, 3);
-    assert.match(house.controles, /5108833/);
-  });
-}
-
-test('Reparar C3 restituye autorización del TAG ya guardado para casa 702', async t => {
-  const house = { id: 702, calle: 'Guadalajara', numero: '707', controles: '5108833',
-    async update(values) { Object.assign(this, values); } };
-  const tag = { id: 3331, casaId: 702, numeroTarjeta: '5108833', bloqueado: false,
-    fechaInicio: '2026-10-08', fechaFin: '2027-01-11', enControlador: true,
-    async update(values) { Object.assign(this, values); },
-    toJSON() { return { ...this }; } };
-  const user = { UID: '14', Pin: '5108833', CardNo: '5108833' };
-  let auth = null;
-  let writes = 0;
-  t.mock.method(Casa, 'findByPk', async id => Number(id) === 702 ? house : null);
-  t.mock.method(Tags, 'findByPk', async id => Number(id) === 3331 ? tag : null);
+function setup(t, { existingValidity = false, alreadyAuthorized = true,
+  physicalTagExists = true, physicalEnd = '2027-01-10', houseExists = true } = {}) {
+  const casa = {
+    id: 702, calle: 'Guadalajara', numero: '707', controles: '5108838',
+    async update(changes) { Object.assign(this, changes); }
+  };
+  const user = { UID: '20', Pin: '5108833', CardNo: '5108833',
+    Password: '', Group: '1', StartTime: '20261008', EndTime: physicalEnd.replace(/-/g, '') };
+  let users = physicalTagExists ? [user] : [];
+  let auth = alreadyAuthorized && physicalTagExists
+    ? [{ Pin: user.Pin, AuthorizeDoorId: '3', AuthorizeTimezoneId: '1' }] : [];
+  const writes = [];
+  let rowCreated = null;
+  const validity = existingValidity ? { casaId: 702, fechaFinal: '2027-01-10' } : null;
+  const tx = { LOCK: { UPDATE: 'UPDATE' }, afterCommit() {} };
+  t.mock.method(sequelize, 'transaction', async (a, b) =>
+    (typeof a === 'function' ? a : b)(tx));
+  t.mock.method(Casa, 'findByPk', async id =>
+    houseExists && Number(id) === 702 ? casa : null);
+  t.mock.method(Tags, 'findAll', async () => []);
   t.mock.method(Tags, 'findOne', async () => null);
-  t.mock.method(Vigencia, 'update', async () => [0]);
+  t.mock.method(Tags, 'create', async data => ({
+    id: 3333, ...data, toJSON() { return { id: this.id, ...data }; }
+  }));
+  t.mock.method(Vigencia, 'findByPk', async () => rowCreated || validity);
+  t.mock.method(Vigencia, 'create', async data => {
+    rowCreated = { ...data };
+    return rowCreated;
+  });
+  t.mock.method(models.Cuota, 'findAll', async () => []);
+  t.mock.method(models.PagoReportado, 'findAll', async () => []);
+  const queue = [];
+  t.mock.method(worker, 'marcarPendiente', async id => {
+    queue.push(id);
+    return { casaId: id, sincronizacion: 'PENDIENTE' };
+  });
   t.mock.method(C3Client.prototype, 'connect', async () => {});
   t.mock.method(C3Client.prototype, 'disconnect', async () => {});
-  t.mock.method(C3Client.prototype, 'getData', async table =>
-    table === 'user' ? [user] : auth ? [auth] : []);
-  t.mock.method(C3Client.prototype, 'putRecord', async (table, values) => {
-    assert.equal(table, 'userauthorize');
-    writes++;
-    auth = { ...values };
+  t.mock.method(C3Client.prototype, 'getData', async table => {
+    if (table === 'user') return users;
+    if (table === 'userauthorize') return auth;
+    throw Error('unexpected table ' + table);
   });
-  const oldMode = process.env.ZKTECO_WRITE_MODE;
+  t.mock.method(C3Client.prototype, 'putRecord', async (table, fields) => {
+    writes.push({ table, fields });
+    if (table === 'userauthorize') {
+      auth = [{ ...fields }];
+    } else if (table === 'user') {
+      const index = users.findIndex(u => String(u.Pin) === String(fields.Pin));
+      if (index < 0) users.push({ UID: '21', ...fields });
+      else Object.assign(users[index], fields);
+    }
+  });
+  const previous = process.env.ZKTECO_WRITE_MODE;
   process.env.ZKTECO_WRITE_MODE = 'DIRECT';
   t.after(() => {
-    if (oldMode === undefined) delete process.env.ZKTECO_WRITE_MODE;
-    else process.env.ZKTECO_WRITE_MODE = oldMode;
+    if (previous === undefined) delete process.env.ZKTECO_WRITE_MODE;
+    else process.env.ZKTECO_WRITE_MODE = previous;
   });
-  const result = await direct.addExistingTagToController(3331);
+  return { casa, writes, queue, get validityCreated() { return rowCreated; },
+    get users() { return users; }, get auth() { return auth; } };
+}
+
+test('alta nueva: misma casa_id 702 y vigencia inicial sin pagos ficticios', async t => {
+  const ctx = setup(t);
+  const result = await direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
+  }, 15);
   assert.equal(result.casaId, 702);
-  assert.equal(result.vigenciaConfigurada, false);
+  assert.equal(result.vigenciaCreada, true);
+  assert.equal(result.vigenciaMantenimiento, '2027-01-10');
+  assert.equal(result.sincronizacionVigencia, 'ALTA_C3_CONFIRMADA');
+  assert.equal(ctx.validityCreated.casaId, 702);
+  assert.equal(ctx.validityCreated.principalInicial, '0.00');
+  assert.equal(ctx.validityCreated.principalConfirmado, '0.00');
+  assert.equal(ctx.validityCreated.fechaBase, '2027-01-10');
+  assert.deepEqual(ctx.queue, [], 'no reprogramar otros TAGs al crear la vigencia');
+  assert.equal(ctx.writes.length, 0, 'usuario ya presente y autorizado no requiere PUTDATA');
+  assert.match(ctx.casa.controles, /5108833/);
+});
+
+test('TAG ya presente sin userauthorize: restituir solo permiso físico', async t => {
+  const ctx = setup(t, { alreadyAuthorized: false });
+  const result = await direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
+  });
+  assert.equal(result.vigenciaCreada, true);
   assert.equal(result.puertasAutorizadas, 3);
-  assert.equal(tag.bloqueado, false);
-  assert.equal(writes, 1, 'solo el TAG seleccionado recupera permisos');
+  assert.deepEqual(ctx.writes.map(w => w.table), ['userauthorize']);
+  assert.equal(ctx.writes[0].fields.AuthorizeDoorId, 3);
+});
+
+test('TAG físico con vencimiento anterior: actualizar fecha por TCP y verificar', async t => {
+  const ctx = setup(t, { physicalEnd: '2026-09-10' });
+  const result = await direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
+  });
+  assert.equal(result.vigenciaCreada, true);
+  assert.deepEqual(ctx.writes.map(w => w.table), ['user']);
+  assert.equal(ctx.users[0].EndTime, 20270110);
+  assert.equal(ctx.auth[0].AuthorizeDoorId, '3');
+});
+
+test('TAG físicamente nuevo: crear user + userauthorize y confirmar ambos', async t => {
+  const ctx = setup(t, { physicalTagExists: false });
+  const result = await direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
+  });
+  assert.equal(result.vigenciaCreada, true);
+  assert.deepEqual(ctx.writes.map(w => w.table), ['user', 'userauthorize']);
+  assert.equal(ctx.auth[0].AuthorizeDoorId, 3);
+  assert.equal(ctx.users[0].CardNo, '5108833');
+});
+
+test('si ya existe vigencia, no crea duplicado y hereda la fecha real', async t => {
+  const ctx = setup(t, { existingValidity: true });
+  const result = await direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2099-12-31'
+  });
+  assert.equal(result.vigenciaCreada, false);
+  assert.equal(result.vigenciaMantenimiento, '2027-01-10');
+  assert.equal(result.fechaFin, '2027-01-10');
+  assert.equal(ctx.validityCreated, null);
+  assert.deepEqual(ctx.queue, [702]);
+});
+
+test('sin vigencia, fecha no acreditable rechazada ANTES de tocar el C3', async t => {
+  const ctx = setup(t);
+  await assert.rejects(direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaFin: '2099-12-31'
+  }), /Selecciona una FECHA FINAL real con día 10/);
+  assert.equal(ctx.writes.length, 0);
+  assert.equal(ctx.validityCreated, null);
+});
+
+test('casa_id inexistente: no crea domicilio ni TAG huérfano', async t => {
+  const ctx = setup(t, { houseExists: false });
+  await assert.rejects(direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaFin: '2027-01-10'
+  }), /Vivienda no encontrada/);
+  assert.equal(ctx.writes.length, 0);
+  assert.equal(ctx.validityCreated, null);
 });
