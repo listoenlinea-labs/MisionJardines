@@ -238,7 +238,7 @@
     loadHomeDashboard();
     if (page() !== 'login.html' && !document.querySelector('script[data-mj-global-search]')) {
       const search = document.createElement('script');
-      search.src = 'assets/js/global-search.js?v=20260930';
+      search.src = 'assets/js/global-search.js?v=20261009-header';
       search.dataset.mjGlobalSearch = 'true';
       document.body.appendChild(search);
     }
