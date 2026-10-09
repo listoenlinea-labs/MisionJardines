@@ -113,10 +113,11 @@
         <div class="field wide"><label>TAG EXISTENTE SIN VIVIENDA</label><select id="existingTag"><option value="">— Crear un TAG nuevo —</option></select></div>
         <div class="field wide"><label>NÚMERO DE TAG / TARJETA NUEVA</label><input id="newTagNumber" inputmode="numeric" placeholder="Ej. 5015731"></div>
         <div class="field"><label>FECHA INICIAL</label><input id="newTagStart" type="date"></div>
-        <div class="field"><label>FECHA FINAL</label><input id="newTagEnd" type="date" value="2099-12-31"></div>
+        <div class="field"><label>FECHA FINAL DE VIGENCIA</label><input id="newTagEnd" type="date"></div>
         <div class="field wide"><label>ETIQUETA EN ZKTECO</label><input id="newTagName" maxlength="48" placeholder="Se autocompleta con calle y número"></div>
       </div>
-      <div class="notice">El TAG nuevo se crea en la tabla de usuarios del C3-200 y se autoriza para ENTRADA + SALIDA. Después queda reflejado en la tabla espejo <b>zk_tarjetas</b>.</div>
+      <div class="notice" id="tagValidityHint">Consultando la vigencia de la vivienda…</div>
+      <div class="notice">Al crear el TAG se verifica el CardNo y el permiso de puertas en el C3-200. La vigencia faltante se registra con el mismo casa_id sin registrar pagos ficticios.</div>
     </div>
     <div class="modal-foot"><button id="cancelTag" class="btn" type="button">Cancelar</button><button id="saveTag" class="btn primary" type="button">Guardar control</button></div>
   </section>
@@ -260,12 +261,9 @@ function renderTagDetails(row){
       : (tag.bloqueado
           ? '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>'
           : '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>');
-    const repairAction=tag.enControlador!==false&&!tag.bloqueado
-      ? '<button class="btn mini" onclick="addTagToC3('+tag.id+',this)">Reparar C3</button>'
-      : '';
     const adminActions=canAdmin
       ? '<button class="btn mini" onclick="openEditTagModal('+tag.id+')">Editar</button>'+
-        primaryAction+repairAction+
+        primaryAction+
         '<button class="btn mini ghost-danger" onclick="removeTag('+tag.id+',this)">Eliminar</button>'
       : '';
     return '<div class="tag-item">'+
@@ -589,8 +587,8 @@ async function removeTag(id,button){
 }
 window.removeTag=removeTag;
 async function addTagToC3(id,button){
-  if(!confirm('¿Verificar este TAG en el C3-200 y restaurar, solo si faltan, sus permisos de entrada y salida? Se revisará únicamente el TAG seleccionado.'))return;
-  showBusy('Verificando TAG en C3','Comprobando usuario y autorizaciones; si faltan permisos se restaurarán y verificarán en el controlador.');
+  if(!confirm('¿Agregar este TAG físicamente al C3-200 y autorizarlo para entrada/salida?'))return;
+  showBusy('Agregando TAG al C3-200','Escribiendo usuario y permisos; después verificaremos el CardNo directamente en el controlador.');
   try{
     const r=await api('/zkteco/tarjetas/'+id+'/agregar-c3',{method:'POST',headers:headers(true)});
     const real=r.data?.numeroTarjetaReal;
@@ -609,12 +607,43 @@ async function openTagModal(id){
   clearModalError('tagModalError');
   const row=currentRows.find(r=>Number(r.id)===Number(id));
   $('tagHouseLabel').textContent=row?(row.calleCorrecta||row.calle)+' '+row.numero:'vivienda';
-  $('newTagNumber').value='';$('newTagName').value=row?row.calle+' '+row.numero:'';$('newTagStart').value=new Date().toISOString().slice(0,10);$('newTagEnd').value='2099-12-31';
+  $('newTagNumber').value='';
+  $('newTagName').value=row?row.calle+' '+row.numero:'';
+  $('newTagStart').value=zkDateToday();
+  $('newTagEnd').value='';
+  $('tagValidityHint').textContent='Consultando vigencia de la vivienda…';
   try{
     const inv=await api('/zkteco/tarjetas',{headers:headers()});
     const free=(inv.data||[]).filter(t=>!t.casaId);
     $('existingTag').innerHTML='<option value="">— Crear un TAG nuevo —</option>'+free.map(t=>'<option value="'+t.id+'">'+esc(t.numeroTarjeta)+' · '+esc(t.nombreDispositivo||t.departamento||'Sin etiqueta')+'</option>').join('');
   }catch(e){$('existingTag').innerHTML='<option value="">— Crear un TAG nuevo —</option>'}
+  try{
+    const respuesta=await api('/zkteco/viviendas/'+id+'/vigencia',{headers:headers()});
+    if(selectedHouseId!==id)return;
+    const info=respuesta.data||{};
+    if(info.configurada){
+      $('newTagEnd').value=String(info.fechaFinal||'').slice(0,10);
+      $('tagValidityHint').textContent='Vigencia existente de la vivienda: '+info.fechaFinal+
+        '. El nuevo TAG heredará este corte; no se crearán vigencias duplicadas.';
+    }else{
+      // Historical TAG cutoffs are only a suggestion; they do not prove payment.
+      const history=[...new Set((row?.tarjetas||[])
+        .map(tag=>String(tag.fechaFin||'').slice(0,10))
+        .filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)&&date<'2099-01-01'))];
+      const suggested=history.length===1?history[0].slice(0,8)+'10':'';
+      $('newTagEnd').value=suggested;
+      $('tagValidityHint').textContent='No existe vigencia de mantenimiento para casa ID '+id+
+        '. Al guardar un TAG NUEVO, se creará automáticamente vigencias_mantenimiento.casa_id='+id+
+        ' con la FECHA FINAL elegida (día 10). '+
+        (suggested?'Se sugirió '+suggested+' a partir de TAGs anteriores: confirma que realmente esté pagada. ':
+          'Selecciona la fecha final real acreditada (día 10). ')+
+        'No se registrará ningún pago ficticio.';
+    }
+  }catch(e){
+    $('newTagEnd').value='';
+    $('tagValidityHint').textContent='No se pudo consultar vigencia: '+errorText(e)+
+      '. No crees el TAG hasta confirmar el corte de la vivienda.';
+  }
   $('tagModal').hidden=false;
 }
 window.openTagModal=openTagModal;
@@ -635,9 +664,12 @@ $('saveTag').onclick=async()=>{
         numeroTarjeta,nombre:$('newTagName').value.trim(),fechaInicio:$('newTagStart').value||null,fechaFin:$('newTagEnd').value||null
       })});
       const real=r.data?.numeroTarjetaReal;
-      toast(r.data?.vigenciaConfigurada===false
-        ? 'TAG confirmado en C3, pero casa ID '+selectedHouseId+' sin vigencia de mantenimiento. Configúrala desde Pagos antes de sincronizar cortes.'
-        : real&&real!==numeroTarjeta?r.message+' · ZKTeco lo guardó como '+real:r.message,10000);
+      toast(r.data?.vigenciaError
+        ? r.data.vigenciaError
+        : r.data?.vigenciaCreada
+          ? 'TAG confirmado por TCP y vigencia creada para casa ID '+selectedHouseId+
+            ' hasta '+r.data.vigenciaMantenimiento
+          : real&&real!==numeroTarjeta?r.message+' · ZKTeco lo guardó como '+real:r.message,10000);
     }
     closeTagModal();await Promise.all([loadStatus(),loadRows()]);
   }catch(e){
