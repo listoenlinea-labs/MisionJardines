@@ -101,6 +101,40 @@ async function actualizarVigencia(req,res){
     res.status(502).json({ok:false,message:'No fue posible actualizar la vigencia',error:exactError(error)});
   }
 }
+async function actualizarVigenciaViviendaTags(req,res){
+  const casaId=Number(req.params.id);
+  const fechaFin=String(req.body?.fechaFin||'').trim();
+  if(!Number.isSafeInteger(casaId)||casaId<1)return res.status(400).json({ok:false,message:'Vivienda inválida'});
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(fechaFin)||Number.isNaN(Date.parse(fechaFin+'T12:00:00Z'))||
+     new Date(fechaFin+'T12:00:00Z').toISOString().slice(0,10)!==fechaFin)
+     return res.status(400).json({ok:false,message:'Fecha final inválida'});
+  try{
+    const Casa=require('../models/Casa');
+    const casa=await Casa.findByPk(casaId);
+    if(!casa)return res.status(404).json({ok:false,message:'Vivienda no encontrada'});
+    const tags=await ZkTarjeta.findAll({where:{casaId},order:[['id','ASC']]});
+    if(!tags.length)return res.status(409).json({ok:false,message:'Esta vivienda no tiene TAGs asociados'});
+    const resultados=[];
+    for(const tag of tags){
+      try{
+        // Direct TCP; neither StartTime nor door authorizations are rewritten.
+        await writeUserValidity(tag.numeroTarjeta,null,fechaFin,{mode:'DIRECT'});
+        await tag.update({fechaFin,fechaFinOriginal:tag.fechaFinOriginal?fechaFin:null,ultimaLectura:new Date()});
+        resultados.push({numeroTarjeta:tag.numeroTarjeta,ok:true});
+      }catch(error){
+        resultados.push({numeroTarjeta:tag.numeroTarjeta,ok:false,error:error.message});
+        await recordZkError(req,'VIGENCIA_VIVIENDA_TAG',error,{casaId,numeroTarjeta:tag.numeroTarjeta});
+      }
+    }
+    const errores=resultados.filter(item=>!item.ok);
+    return res.status(errores.length?207:200).json({ok:!errores.length,
+      message:errores.length?'Se actualizaron '+(resultados.length-errores.length)+' de '+resultados.length+' TAGs; revisa los fallidos':'Vigencia actualizada en todos los TAGs del C3',
+      data:{casaId,fechaFin,resultados}});
+  }catch(error){
+    await recordZkError(req,'VIGENCIA_VIVIENDA',error,{casaId});
+    return res.status(502).json({ok:false,message:'No fue posible actualizar la vigencia de la vivienda',error:exactError(error)});
+  }
+}
 async function bloquearVivienda(req,res){
   try{
     const blocked=Boolean(req.body.bloqueado);
@@ -144,6 +178,7 @@ async function crearTarjeta(req,res){
 }
 async function editarTarjeta(req,res){
   try{
+    if(Object.prototype.hasOwnProperty.call(req.body||{},'fechaInicio')||Object.prototype.hasOwnProperty.call(req.body||{},'fechaFin'))return res.status(400).json({ok:false,message:'Las fechas solo se modifican desde Editar vigencia de la vivienda'});
     const data=await editTag(req.params.id,req.body||{});
     res.json({
       ok:true,
@@ -250,4 +285,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={vigenciaVivienda,diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={actualizarVigenciaViviendaTags,vigenciaVivienda,diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};

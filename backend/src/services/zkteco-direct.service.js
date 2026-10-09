@@ -1045,14 +1045,14 @@ async function findHouseByStreetNumber(street,number){
   return house;
 }
 
-async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}={}){
+async function editTag(cardId,{numeroTarjeta,calle,numero}={}){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Control no encontrado');
 
   const oldCard=canonicalCardNo(tarjeta.numeroTarjeta);
   const newCard=canonicalCardNo(numeroTarjeta||tarjeta.numeroTarjeta);
-  const start=String(fechaInicio||tarjeta.fechaInicio||new Date().toISOString().slice(0,10)).trim();
-  const end=String(fechaFin||tarjeta.fechaFinOriginal||tarjeta.fechaFin||'2099-12-31').trim();
+  const start=String(tarjeta.fechaInicio||new Date().toISOString().slice(0,10)).trim();
+  const end=String(tarjeta.fechaFin||'2099-12-31').trim();
   if(start&&end&&start>end) throw new Error('La fecha inicial no puede ser posterior a la fecha final');
 
   const targetHouse=(String(calle||'').trim()||String(numero||'').trim())
@@ -1121,9 +1121,8 @@ async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}=
   }else if(currentPhysical){
     const currentStart=fromDateNumber(currentPhysical.StartTime)||tarjeta.fechaInicio||null;
     const currentEnd=fromDateNumber(currentPhysical.EndTime)||tarjeta.fechaFin||null;
-    if(String(currentStart||'')!==String(start||'')||String(currentEnd||'')!==String(end||'')){
-      await writeUserValidity(oldCard,start,end);
-    }
+    // Editing a card or its house never writes StartTime/EndTime.
+    // Physical dates can only be changed through the house validity action.
   }
 
   const oldHouse=tarjeta.casaId
@@ -1156,8 +1155,8 @@ async function editTag(cardId,{numeroTarjeta,fechaInicio,fechaFin,calle,numero}=
     timezoneId:controllerResult?.timezoneId??tarjeta.timezoneId,
     fechaInicio:start||null,
     fechaFin:end||null,
-    fechaFinOriginal:null,
-    bloqueado:false,
+    fechaFinOriginal:tarjeta.fechaFinOriginal||null,
+    bloqueado:tarjeta.bloqueado,
     enControlador:controllerResult?true:Boolean(currentPhysical),
     ultimaLectura:new Date()
   });

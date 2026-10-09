@@ -126,21 +126,29 @@
 <div id="editTagModal" class="modal-shell" hidden>
   <section class="modal-box">
     <div class="modal-head">
-      <div><span class="eyebrow">ZKTECO · EDICIÓN</span><h3>Editar TAG <span id="editTagLabel"></span></h3><p class="sub">Puedes cambiar número, vigencia y vivienda. Si cambia el número, se reemplaza también en el C3-200.</p></div>
+      <div><span class="eyebrow">ZKTECO · EDICIÓN</span><h3>Editar TAG <span id="editTagLabel"></span></h3><p class="sub">Puedes cambiar el número y la vivienda. La vigencia se edita únicamente desde el botón de la vivienda.</p></div>
       <button id="closeEditTagModal" class="close" type="button">×</button>
     </div>
     <div class="modal-body">
       <div id="editTagError" class="modal-error" role="alert"></div>
       <div class="modal-grid">
         <div class="field wide"><label>NÚMERO DE TAG / TARJETA</label><input id="editTagNumber" inputmode="numeric"></div>
-        <div class="field"><label>FECHA INICIAL</label><input id="editTagStart" type="date"></div>
-        <div class="field"><label>FECHA FINAL</label><input id="editTagEnd" type="date"></div>
+        <div class="field"><label>FECHA INICIAL</label><input id="editTagStart" type="date" readonly disabled></div>
+        <div class="field"><label>FECHA FINAL</label><input id="editTagEnd" type="date" readonly disabled></div>
         <div class="field"><label>CALLE</label><input id="editTagStreet" placeholder="Ej. Gardenias"></div>
         <div class="field"><label>NÚMERO DE CASA</label><input id="editTagHouseNumber" placeholder="Ej. 5"></div>
       </div>
       <div class="notice">Si cambias el número del TAG, primero se crea el nuevo registro en el C3-200 y después se retira el número anterior. La vivienda debe existir en el padrón.</div>
     </div>
     <div class="modal-foot"><button id="cancelEditTag" class="btn" type="button">Cancelar</button><button id="saveEditTag" class="btn primary" type="button">Guardar cambios</button></div>
+  </section>
+</div>
+
+<div id="houseValidityModal" class="modal-shell" hidden>
+  <section class="modal-box">
+    <div class="modal-head"><div><span class="eyebrow">ZKTECO · VIGENCIA POR VIVIENDA</span><h3>Editar vigencia de <span id="houseValidityLabel"></span></h3><p class="sub">Se actualizará la fecha final de todos los TAGs asociados en el C3, conservando sus fechas iniciales y autorizaciones.</p></div><button id="closeHouseValidity" class="close" type="button">×</button></div>
+    <div class="modal-body"><div id="houseValidityError" class="modal-error" role="alert"></div><div class="modal-grid"><div class="field"><label>FECHA INICIAL (SOLO CONSULTA)</label><input id="houseValidityStart" type="text" readonly disabled></div><div class="field"><label>NUEVA FECHA FINAL</label><input id="houseValidityEnd" type="date"></div></div><div class="notice" id="houseValidityInfo"></div></div>
+    <div class="modal-foot"><button id="cancelHouseValidity" class="btn" type="button">Cancelar</button><button id="saveHouseValidity" class="btn primary" type="button">Actualizar todos los TAGs</button></div>
   </section>
 </div>
 
@@ -301,7 +309,8 @@ function render(){
     const controls=(row.tarjetas?.length||0)+(row.controlesNoEnlazados?.length||0);
     const last=(row.tarjetas||[]).map(t=>t.ultimaLectura).filter(Boolean).sort().at(-1);
     const actions=canAdmin
-      ? '<button class="btn mini" onclick="openTagModal('+row.id+')">+ TAG</button>'+
+      ? '<button class="btn mini" onclick="openHouseValidityModal('+row.id+')">Editar vigencia</button>'+
+        '<button class="btn mini" onclick="openTagModal('+row.id+')">+ TAG</button>'+
         (s.blocked
           ? '<button class="btn mini primary" onclick="setHouse('+row.id+',false,this)">Activar todos</button>'
           : '<button class="btn mini danger" onclick="setHouse('+row.id+',true,this)">Bloquear todos</button>')
@@ -660,6 +669,46 @@ function findTagContext(id){
   return null;
 }
 
+let selectedValidityHouseId=null;
+function closeHouseValidityModal(){
+  $('houseValidityModal').hidden=true;
+  selectedValidityHouseId=null;
+}
+window.openHouseValidityModal=function(id){
+  const house=currentRows.find(r=>Number(r.id)===Number(id));
+  if(!house){toast('No se encontró la vivienda');return;}
+  selectedValidityHouseId=id;
+  const tags=house.tarjetas||[];
+  $('houseValidityLabel').textContent=(house.calleCorrecta||house.calle)+' '+house.numero;
+  const starts=[...new Set(tags.map(t=>t.fechaInicio).filter(Boolean))];
+  $('houseValidityStart').value=starts.length===1?starts[0]:starts.length>1?'Diferentes por TAG':'Sin fecha registrada';
+  $('houseValidityEnd').value='';
+  $('houseValidityInfo').textContent=tags.length+' TAG(s) asociados. La fecha inicial de cada uno permanecerá sin cambios. Una fecha vencida puede suspender su acceso.';
+  clearModalError('houseValidityError');
+  $('houseValidityModal').hidden=false;
+};
+$('closeHouseValidity').onclick=closeHouseValidityModal;
+$('cancelHouseValidity').onclick=closeHouseValidityModal;
+$('saveHouseValidity').onclick=async()=>{
+  if(!selectedValidityHouseId)return;
+  const fechaFin=$('houseValidityEnd').value;
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(fechaFin))return showModalError('houseValidityError',new Error('Selecciona una fecha final válida'));
+  const btn=$('saveHouseValidity');
+  btn.disabled=true;
+  clearModalError('houseValidityError');
+  try{
+    const r=await api('/zkteco/viviendas/'+selectedValidityHouseId+'/vigencia-tags',{
+      method:'PATCH',headers:headers(true),body:JSON.stringify({fechaFin})
+    });
+    toast(r.message,7000);
+    closeHouseValidityModal();
+    await Promise.all([loadStatus(),loadRows()]);
+  }catch(e){
+    showModalError('houseValidityError',e,'No se pudo actualizar la vigencia de todos los TAGs');
+    toast(errorText(e),10000);
+    await loadRows();
+  }finally{btn.disabled=false;}
+};
 let selectedEditTagId=null;
 function openEditTagModal(id){
   const context=findTagContext(id);
@@ -691,16 +740,13 @@ $('saveEditTag').onclick=async()=>{
     const numeroTarjeta=$('editTagNumber').value.trim();
     const calle=$('editTagStreet').value.trim();
     const numero=$('editTagHouseNumber').value.trim();
-    const fechaInicio=$('editTagStart').value||null;
-    const fechaFin=$('editTagEnd').value||null;
     if(!numeroTarjeta)throw Error('Captura el número del TAG');
     if(!calle||!numero)throw Error('Captura calle y número de casa');
-    if(fechaInicio&&fechaFin&&fechaInicio>fechaFin)throw Error('La fecha inicial no puede ser posterior a la fecha final');
 
     const r=await api('/zkteco/tarjetas/'+selectedEditTagId,{
       method:'PATCH',
       headers:headers(true),
-      body:JSON.stringify({numeroTarjeta,calle,numero,fechaInicio,fechaFin})
+      body:JSON.stringify({numeroTarjeta,calle,numero})
     });
     toast(r.message,6000);
     closeEditTagModal();
