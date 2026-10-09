@@ -287,7 +287,8 @@
         $('validitySync').textContent = ({ COMPLETADO: 'Fecha confirmada en los tags del controlador.',
           PENDIENTE: 'Actualización de tags pendiente.', ERROR: 'Actualización pendiente; se reintentará automáticamente.',
           SIN_TAGS: 'Falta vincular los tags de esta vivienda al controlador.', SIMULACION: 'Sincronización en modo de prueba.',
-          SIN_CONFIGURAR: 'Octubre 2026 es el inicio automático al validar el primer pago.' })[validity.sincronizacion] || 'Actualización de tags pendiente.';
+          SIN_CONFIGURAR: 'Octubre 2026 es el inicio automático al validar el primer pago.',
+          ALTA_C3_CONFIRMADA: 'TAG nuevo confirmado por TCP; las vigencias de TAGs anteriores no se modificaron.' })[validity.sincronizacion] || 'Actualización de tags pendiente.';
         $('validityDetail').textContent = validity.pendienteConfiguracion ? 'Administración debe registrar la fecha final actual.' : (validity.vigenteSegunFecha ? 'Vigente según la fecha calculada. ' : 'Fecha calculada vencida. ') + 'Abono acumulado: ' + money(validity.saldoParcial);
         updatePreview();
       } catch (e) { $('validityDate').textContent = 'No fue posible consultar la vigencia'; $('validityDetail').textContent = e.message; }
