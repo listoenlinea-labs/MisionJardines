@@ -155,7 +155,13 @@
         <div class="field wide"><label>NÚMERO DE TAG / TARJETA</label><input id="editTagNumber" inputmode="numeric"></div>
         <div class="field"><label>FECHA INICIAL</label><input id="editTagStart" type="date" readonly disabled></div>
         <div class="field"><label>FECHA FINAL</label><input id="editTagEnd" type="date" readonly disabled></div>
-        <div class="field"><label>CALLE</label><input id="editTagStreet" placeholder="Ej. Gardenias"></div>
+        <div class="field">
+          <label for="editTagStreetSelect">CALLES DEL PADRÓN</label>
+          <select id="editTagStreetSelect" aria-describedby="editTagStreetHint"><option value="">Cargando calles…</option></select>
+          <label for="editTagStreet" style="margin-top:10px">CALLE · TAMBIÉN PUEDES ESCRIBIR</label>
+          <input id="editTagStreet" placeholder="Ej. Gardenias" aria-describedby="editTagStreetHint">
+          <p id="editTagStreetHint" class="sub" role="status">Selecciona una calle o escríbela manualmente.</p>
+        </div>
         <div class="field"><label>NÚMERO DE CASA</label><input id="editTagHouseNumber" placeholder="Ej. 5"></div>
       </div>
       <div class="notice">Si cambias el número del TAG, primero se crea el nuevo registro en el C3-200 y después se retira el número anterior. La vivienda debe existir en el padrón.</div>
@@ -866,6 +872,7 @@ setInterval(async()=>{
   try{await Promise.all([loadStatus(),loadRows()])}catch(_){}
 },30000);
 </script>
+<script src="assets/js/zkteco-calles.js?v=20261009"></script>
 <script src="assets/js/site-sidebar.js?v=20261008"></script>
 </body>
 </html>
