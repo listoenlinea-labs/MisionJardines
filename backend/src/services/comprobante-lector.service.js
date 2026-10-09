@@ -34,7 +34,7 @@ function reconocerImagen(imageData) {
     child.on('error', error => finish(Object.assign(
       new Error(error.code === 'ENOENT'
         ? 'El OCR del servidor no está instalado. Administración debe configurar Tesseract; ningún comprobante será registrado sin verificación.'
-        : 'No se pudo iniciar la verificación OCR del servidor.'), { status: 503 }));
+        : 'No se pudo iniciar la verificación OCR del servidor.'), { status: 503 })));
     child.stdout.on('data', chunk => {
       output += chunk.toString('utf8');
       if (output.length > MAX_OCR_OUTPUT) child.kill('SIGKILL');
