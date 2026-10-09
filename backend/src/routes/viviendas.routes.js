@@ -1,4 +1,5 @@
 const router=require('express').Router();
+const { ordenarDirecciones, compararDirecciones }=require('../services/direccion-sort.service');
 const rateLimit=require('express-rate-limit');
 const db=require('../config/database');
 const {Usuario,Rol,Casa,UsuarioCasa,InvitacionCasa,HistorialVinculo}=require('../models');
@@ -17,11 +18,11 @@ router.get('/invitacion/:token',rateLimit({windowMs:60000,limit:30}),run(async(r
 router.use(autenticarToken);
 router.get('/mias',run(async(req,res)=>{
  const links=await UsuarioCasa.findAll({where:{usuarioId:req.usuario.usuarioId,activo:true},include:[{model:Casa,as:'casa',attributes:casaFields}],order:[['id','ASC']]});
- res.json({ok:true,viviendas:links,administrador:admin(req.usuario.rol)});
+ res.json({ok:true,viviendas:links.sort((a,b)=>compararDirecciones(a.casa,b.casa)),administrador:admin(req.usuario.rol)});
 }));
 router.get('/administracion/casas',run(async(req,res)=>{
  if(!admin(req.usuario.rol))throw fallo(403,'Solo Administración');
- res.json({ok:true,casas:await Casa.findAll({attributes:casaFields,order:[['calleCorrecta','ASC'],['numero','ASC']]})});
+ res.json({ok:true,casas:ordenarDirecciones(await Casa.findAll({attributes:casaFields,order:[['calleCorrecta','ASC'],['numero','ASC']] }))});
 }));
 router.get('/:casaId/miembros',run(async(req,res)=>{
  const casaId=id(req.params.casaId); await gestionar(req.usuario,casaId);

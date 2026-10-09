@@ -1,4 +1,5 @@
 const {Op}=require('sequelize');
+const { compararDirecciones }=require('../services/direccion-sort.service');
 const {Casa,Cuota,PagoReportado}=require('../models');
 const Egreso=require('../models/Egreso');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
@@ -36,7 +37,7 @@ async function analizar(req,res){
    st.abonos+=num(q?.montoPagado);
    return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',estatus:status,pagada,montoPagado:num(q?.montoPagado),saldoPendiente:num(q?.saldoPendiente)};
   });
-  const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es'));
+  const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
   const ingresosReportados={mantenimiento:0,extraordinarios:0};
   for(const p of pagos)ingresosReportados[p.tipoPago==='EXTRAORDINARIO'?'extraordinarios':'mantenimiento']+=num(p.monto);
   const categoriasGasto=Object.fromEntries(categorias.map(c=>[c,0]));
@@ -51,7 +52,7 @@ async function analizar(req,res){
    anio,mes,periodo:mesName+' '+anio,
    casas:residences.length,pagadas,pendientes:residences.length-pagadas,
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
-   calles:calls,viviendas:residences,
+   calles:calls,viviendas:residences.sort(compararDirecciones),
    cobrosCuotasRegistrados:cuotas.reduce((a,q)=>a+num(q.montoPagado),0),
    ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosValidados-totalEgresos,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>e.toJSON()),

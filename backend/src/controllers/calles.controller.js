@@ -1,4 +1,5 @@
 const { Casa } = require('../models');
+const { ordenarCalles } = require('../services/direccion-sort.service');
 
 const listarCalles = async (req, res) => {
     try {
@@ -14,7 +15,7 @@ const listarCalles = async (req, res) => {
             raw: true
         });
 
-        const calles = resultados.map(item => item.calleCorrecta);
+        const calles = ordenarCalles(resultados.map(item => item.calleCorrecta));
 
         return res.status(200).json({
             ok: true,
