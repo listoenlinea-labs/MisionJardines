@@ -1332,7 +1332,7 @@
     $('filterText').value = new URLSearchParams(location.search).get('buscar') || '';
     $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); loadCameraConfig(); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
-  <script src="assets/js/site-sidebar.js?v=20261008"></script>
+  <script src="assets/js/site-sidebar.js?v=20261009-logo-vivienda"></script>
 </body>
 
 </html>
