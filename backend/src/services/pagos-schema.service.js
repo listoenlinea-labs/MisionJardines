@@ -133,6 +133,8 @@ async function asegurarEsquemaPagos() {
 
     console.log('[Pagos] Tabla folios_consecutivos verificada');
     await require('../models/VigenciaMantenimiento').sync();
+    await require('../models/PagoAccesoC3').sync();
+    await require('../models/PagoAccesoTagC3').sync();
     const vigenciaColumns = await queryInterface.describeTable('vigencias_mantenimiento');
     for (const [name, definition] of Object.entries({
         sincronizacion: { type: DataTypes.STRING(24), allowNull: false, defaultValue: 'PENDIENTE' },

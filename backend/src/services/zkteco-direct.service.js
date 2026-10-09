@@ -474,7 +474,20 @@ async function directDeleteUser({pin}){
 }
 
 
-async function writeUserValidity(card,fechaInicio,fechaFin,{mode=getWriteMode()}={}){
+async function readUserValidity(card) {
+  return readControllerWithRetry(async client => {
+    const user = await findPanelUserByCard(client, card);
+    if (!user) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
+    const pin = String(inventario.pinFila(user) ?? '').trim();
+    if (!pin) throw new Error('El C3 no devolvió el Pin del TAG');
+    const permissions = (await client.getData('userauthorize')).filter(row => String(inventario.pinFila(row) ?? '').trim() === pin);
+    const normalized = permissions.map(row => Object.entries(row).map(([key, value]) =>
+      [key.toLowerCase().replace(/[^a-z0-9]/g, ''), String(value ?? '')]).sort(([a], [b]) => a.localeCompare(b)));
+    normalized.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    return { pin, fechaFinal: fromDateNumber(inventario.finalFila(user)), autorizaciones: JSON.stringify(normalized) };
+  });
+}
+async function writeUserValidity(card,fechaInicio,fechaFin,{mode=getWriteMode(),expectedEnd,expectedPin}={}){
   const snapshot=await readControllerWithRetry(async client=>{
     const user=await findPanelUserByCard(client,card);
     if(!user) throw new Error(`Tarjeta ${card} no encontrada en el C3-200`);
@@ -486,6 +499,10 @@ async function writeUserValidity(card,fechaInicio,fechaFin,{mode=getWriteMode()}
     return {user,pin,permissions:permissions.filter(row=>String(inventario.pinFila(row)??'').trim()===pin)};
   });
   const {user:current,pin}=snapshot;
+  if ((expectedEnd !== undefined && fromDateNumber(inventario.finalFila(current)) !== expectedEnd) ||
+      (expectedPin !== undefined && String(pin) !== String(expectedPin))) {
+    throw Object.assign(new Error('Cambió el TAG en el C3 antes de escribir; se cancela el incremento'), { status: 409 });
+  }
   const cardNo=String(inventario.tarjetaFila(current)??'').trim();
   const fieldKey=key=>key.toLowerCase().replace(/[^a-z0-9]/g,'');
   const values=Object.fromEntries(Object.entries(current).filter(([key])=>fieldKey(key)!=='uid'));
@@ -1385,68 +1402,16 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
   };
 }
 
-// Preserve the durable pending delivery when a tag is created, reassigned or
-// restored. Lazy require avoids the direct-client/worker dependency cycle.
-// Preflight validation precedes any TCP writes. For an existing financial
-// cutoff, its actual value is authoritative for the new C3 user.
+// Explicit admin-supplied date for a NEW tag. A historical SQL date is never inherited.
 async function altaTagConVigencia(casaId, datos = {}, usuarioId = null) {
-  const pagos = require('./vigencia-mantenimiento.service');
-  const { validarFecha } = require('./vigencia-calculo');
-  const actual = await pagos.Vigencia.findByPk(casaId);
-  const fechaFin = actual
-    ? String(actual.fechaFinal)
-    : String(datos.fechaFin||'').trim();
-  if (!actual) {
-    try { validarFecha(fechaFin); }
-    catch (_) {
-      throw Object.assign(new Error(
-        'La vivienda ID '+casaId+' no tiene vigencia de mantenimiento. '+
-        'Selecciona una FECHA FINAL real con día 10; se creará automáticamente '+
-        'vigencias_mantenimiento con el mismo casa_id. No se inventarán pagos.'
-      ), { status: 400 });
-    }
-  }
-  const fechaInicio = String(datos.fechaInicio||'').trim();
-  if(fechaInicio && fechaInicio>fechaFin)
-    throw Object.assign(new Error('La fecha inicial del TAG supera su vigencia final'),{status:400});
-  // User creation and authorization must be read back from physical C3 before
-  // associating the card and initial financial cutoff in MySQL.
-  const tag = await createTagForHouse(casaId,{...datos,fechaFin});
-  const data = tag?.toJSON ? tag.toJSON() : tag;
-  try {
-    const vigencia = await pagos.asegurarVigenciaParaAlta(casaId,fechaFin,usuarioId);
-    // On a newly initialized house only this TAG is provisioned over TCP.
-    // Existing C3 cards are not rewritten without a subsequent paid/validated
-    // maintenance update. Payment events will queue a full house sync later.
-    const estado = vigencia.creada
-      ? { sincronizacion: 'ALTA_C3_CONFIRMADA' }
-      : await require('./zkteco-vigencias.service').marcarPendiente(casaId);
-    return {...data, vigenciaCreada:vigencia.creada,
-      vigenciaConfigurada:true, vigenciaMantenimiento:vigencia.fechaFinal,
-      sincronizacionVigencia:estado.sincronizacion};
-  } catch(error) {
-    // TCP and local zk_tarjetas already succeeded: never claim that physical
-    // enrollment failed. Surface partial success for targeted recovery.
-    console.error('[ZKTeco alta] TAG creado en C3 pero vigencia incompleta:',error);
-    return {...data, vigenciaConfigurada:false, vigenciaCreada:false,
-      vigenciaError:'TAG confirmado en C3 y BD, pero no se completó la vigencia: '+error.message};
-  }
+  const { fechaReal } = require('./pago-acceso-calculo');
+  const fechaFin = String(datos.fechaFin || '').trim();
+  try { fechaReal(fechaFin); }
+  catch (_) { throw Object.assign(new Error('Selecciona la fecha final real para el nuevo TAG'), { status: 400 }); }
+  const fechaInicio = String(datos.fechaInicio || '').trim();
+  if (fechaInicio && fechaInicio > fechaFin) throw Object.assign(new Error('La fecha inicial del TAG supera su vigencia final'), { status: 400 });
+  return createTagForHouse(casaId, { ...datos, fechaFin });
 }
 
-const conVigencia = (operation, debeSincronizar = () => true) => async (...args) => {
-  const result = await operation(...args);
-  if(result?.casaId && debeSincronizar(result)){
-    const estado=await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
-    // An existing physical TAG may be added while maintenance is unconfigured.
-    // Report that gap; never invent a paid-through date or silently rewrite C3.
-    if(estado?.sincronizacion==='SIN_CONFIGURAR'){
-      const data=typeof result.toJSON==='function'?result.toJSON():result;
-      return {...data,vigenciaConfigurada:false};
-    }
-  }
-  return result;
-};
-
-// Una fecha manual no genera una nueva entrega de la vigencia financiera.
-// Reemplazar o reasignar el TAG sí debe heredar la vigencia de su vivienda.
-module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:altaTagConVigencia,addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag, result => result.numeroCambiado || result.viviendaCambiada),removeTag,operateGate,dashboard,writeUserValidity};
+// Inventory operations preserve their explicit C3 dates and do not queue payment increments.
+module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse:altaTagConVigencia,addExistingTagToController,editTag,removeTag,operateGate,dashboard,writeUserValidity,readUserValidity};

@@ -84,13 +84,7 @@ test('alta nueva: misma casa_id 702 y vigencia inicial sin pagos ficticios', asy
     numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
   }, 15);
   assert.equal(result.casaId, 702);
-  assert.equal(result.vigenciaCreada, true);
-  assert.equal(result.vigenciaMantenimiento, '2027-01-10');
-  assert.equal(result.sincronizacionVigencia, 'ALTA_C3_CONFIRMADA');
-  assert.equal(ctx.validityCreated.casaId, 702);
-  assert.equal(ctx.validityCreated.principalInicial, '0.00');
-  assert.equal(ctx.validityCreated.principalConfirmado, '0.00');
-  assert.equal(ctx.validityCreated.fechaBase, '2027-01-10');
+  assert.equal(ctx.validityCreated, null);
   assert.deepEqual(ctx.queue, [], 'no reprogramar otros TAGs al crear la vigencia');
   assert.equal(ctx.writes.length, 0, 'usuario ya presente y autorizado no requiere PUTDATA');
   assert.match(ctx.casa.controles, /5108833/);
@@ -101,7 +95,6 @@ test('TAG ya presente sin userauthorize: restituir solo permiso físico', async 
   const result = await direct.createTagForHouse(702, {
     numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
   });
-  assert.equal(result.vigenciaCreada, true);
   assert.equal(result.puertasAutorizadas, 3);
   assert.deepEqual(ctx.writes.map(w => w.table), ['userauthorize']);
   assert.equal(ctx.writes[0].fields.AuthorizeDoorId, 3);
@@ -112,7 +105,6 @@ test('TAG físico con vencimiento anterior: actualizar fecha por TCP y verificar
   const result = await direct.createTagForHouse(702, {
     numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
   });
-  assert.equal(result.vigenciaCreada, true);
   assert.deepEqual(ctx.writes.map(w => w.table), ['user']);
   assert.equal(ctx.users[0].EndTime, 20270110);
   assert.equal(ctx.auth[0].AuthorizeDoorId, '3');
@@ -123,29 +115,26 @@ test('TAG físicamente nuevo: crear user + userauthorize y confirmar ambos', asy
   const result = await direct.createTagForHouse(702, {
     numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2027-01-10'
   });
-  assert.equal(result.vigenciaCreada, true);
   assert.deepEqual(ctx.writes.map(w => w.table), ['user', 'userauthorize']);
   assert.equal(ctx.auth[0].AuthorizeDoorId, 3);
   assert.equal(ctx.users[0].CardNo, '5108833');
 });
 
-test('si ya existe vigencia, no crea duplicado y hereda la fecha real', async t => {
+test('alta never inherits a stale SQL cutoff', async t => {
   const ctx = setup(t, { existingValidity: true });
   const result = await direct.createTagForHouse(702, {
     numeroTarjeta: '5108833', fechaInicio: '2026-10-08', fechaFin: '2099-12-31'
   });
-  assert.equal(result.vigenciaCreada, false);
-  assert.equal(result.vigenciaMantenimiento, '2027-01-10');
-  assert.equal(result.fechaFin, '2027-01-10');
+  assert.equal(result.fechaFin, '2099-12-31');
   assert.equal(ctx.validityCreated, null);
-  assert.deepEqual(ctx.queue, [702]);
+  assert.deepEqual(ctx.queue, []);
 });
 
 test('sin vigencia, fecha no acreditable rechazada ANTES de tocar el C3', async t => {
   const ctx = setup(t);
   await assert.rejects(direct.createTagForHouse(702, {
-    numeroTarjeta: '5108833', fechaFin: '2099-12-31'
-  }), /Selecciona una FECHA FINAL real con día 10/);
+    numeroTarjeta: '5108833', fechaFin: '2026-02-30'
+  }), /Selecciona la fecha final real/);
   assert.equal(ctx.writes.length, 0);
   assert.equal(ctx.validityCreated, null);
 });
@@ -168,9 +157,7 @@ test('vigencia antigua con corte el día 11 se respeta y no se recrea', async t 
     numeroTarjeta: '5108833', fechaInicio: '2026-10-08',
     fechaFin: '2099-12-31'
   });
-  assert.equal(result.vigenciaCreada, false);
-  assert.equal(result.vigenciaMantenimiento, '2027-01-11');
-  assert.equal(result.fechaFin, '2027-01-11');
+  assert.equal(result.fechaFin, '2099-12-31');
   assert.equal(ctx.validityCreated, null, 'nunca duplicar registros');
-  assert.deepEqual(ctx.queue, [702]);
+  assert.deepEqual(ctx.queue, []);
 });

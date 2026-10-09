@@ -617,33 +617,8 @@ async function openTagModal(id){
     const free=(inv.data||[]).filter(t=>!t.casaId);
     $('existingTag').innerHTML='<option value="">— Crear un TAG nuevo —</option>'+free.map(t=>'<option value="'+t.id+'">'+esc(t.numeroTarjeta)+' · '+esc(t.nombreDispositivo||t.departamento||'Sin etiqueta')+'</option>').join('');
   }catch(e){$('existingTag').innerHTML='<option value="">— Crear un TAG nuevo —</option>'}
-  try{
-    const respuesta=await api('/zkteco/viviendas/'+id+'/vigencia',{headers:headers()});
-    if(selectedHouseId!==id)return;
-    const info=respuesta.data||{};
-    if(info.configurada){
-      $('newTagEnd').value=String(info.fechaFinal||'').slice(0,10);
-      $('tagValidityHint').textContent='Vigencia existente de la vivienda: '+info.fechaFinal+
-        '. El nuevo TAG heredará este corte; no se crearán vigencias duplicadas.';
-    }else{
-      // Historical TAG cutoffs are only a suggestion; they do not prove payment.
-      const history=[...new Set((row?.tarjetas||[])
-        .map(tag=>String(tag.fechaFin||'').slice(0,10))
-        .filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)&&date<'2099-01-01'))];
-      const suggested=history.length===1?history[0].slice(0,8)+'10':'';
-      $('newTagEnd').value=suggested;
-      $('tagValidityHint').textContent='No existe vigencia de mantenimiento para casa ID '+id+
-        '. Al guardar un TAG NUEVO, se creará automáticamente vigencias_mantenimiento.casa_id='+id+
-        ' con la FECHA FINAL elegida (día 10). '+
-        (suggested?'Se sugirió '+suggested+' a partir de TAGs anteriores: confirma que realmente esté pagada. ':
-          'Selecciona la fecha final real acreditada (día 10). ')+
-        'No se registrará ningún pago ficticio ni se reprogramarán otros TAGs durante esta alta.';
-    }
-  }catch(e){
-    $('newTagEnd').value='';
-    $('tagValidityHint').textContent='No se pudo consultar vigencia: '+errorText(e)+
-      '. No crees el TAG hasta confirmar el corte de la vivienda.';
-  }
+  if(selectedHouseId!==id)return;
+  $('tagValidityHint').textContent='Selecciona la fecha final real del nuevo TAG. Se enviará al C3 sin heredar ni modificar las fechas de otros TAGs.';
   $('tagModal').hidden=false;
 }
 window.openTagModal=openTagModal;

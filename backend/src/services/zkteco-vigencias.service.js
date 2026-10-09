@@ -1,16 +1,14 @@
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
-const Vigencia = require('../models/VigenciaMantenimiento');
-const ZkTarjeta = require('../models/ZkTarjeta');
+const Casa = require('../models/Casa');
+const Tags = require('../models/ZkTarjeta');
+const Eventos = require('../models/PagoAccesoC3');
+const Aplicaciones = require('../models/PagoAccesoTagC3');
 const direct = require('./zkteco-direct.service');
-
-let timer;
-let running = false;
+const { incrementar, fechaReal } = require('./pago-acceso-calculo');
+const terminales = ['COMPLETADO', 'SIN_TAGS'];
+let timer, running = false, draining = false;
 const queue = new Set();
-let draining = false;
-
-// Events enqueue only after their database changes have committed. The durable
-// pending row survives process restarts; this queue only accelerates delivery.
 function solicitar(casaId) {
     queue.add(casaId);
     if (draining) return;
@@ -18,97 +16,122 @@ function solicitar(casaId) {
     setImmediate(async () => {
         try {
             while (queue.size) {
-                const id = queue.values().next().value;
-                queue.delete(id);
+                const id = queue.values().next().value; queue.delete(id);
                 try { await sincronizarCasa(id); }
-                catch (error) { console.error(`[ZKTeco vigencias] Casa ${id}:`, error.message); }
+                catch (e) { console.error(`[C3 pagos] Casa ${id}:`, e.message); }
             }
         } finally { draining = false; }
     });
 }
-
-async function marcarPendiente(casaId) {
-    if (!casaId) return { sincronizacion: 'SIN_CONFIGURAR' };
-    const [actualizadas] = await Vigencia.update({ sincronizacion: 'PENDIENTE', proximoIntento: null,
-        intentos: 0, errorSincronizacion: null }, { where: { casaId } });
-    // Zero rows means this house has no confirmed maintenance cutoff.
-    // Do not enqueue a silent no-op or invent a financial entitlement.
-    if (!actualizadas) return { casaId, sincronizacion: 'SIN_CONFIGURAR' };
-    solicitar(casaId);
-    return { casaId, sincronizacion: 'PENDIENTE' };
+async function bloquear(casaId, transaction) {
+    if (!await Casa.findByPk(casaId, { transaction, lock: transaction.LOCK.UPDATE })) throw new Error('Vivienda no encontrada');
 }
-const necesitaFecha = (tag, fecha) => tag.fechaFin !== fecha ||
-    (tag.fechaFinOriginal && tag.fechaFinOriginal !== fecha);
-
-async function sincronizarCasa(casaId, { now = new Date(), dryRun = process.env.ZKTECO_DRY_RUN === 'true' } = {}) {
-    // The same row is locked by payment recalculation. Concurrent workers and
-    // newer payments cannot let an older EndTime overwrite the latest cutoff.
-    // This transaction belongs to the worker, never to payment confirmation.
+async function siguiente(casaId, transaction) {
+    return Eventos.findOne({ where: { casaId, estado: { [Op.notIn]: terminales } },
+        order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+}
+async function comprobarVinculo(tag, evento, transaction) {
+    const local = await Tags.findByPk(tag.tarjetaId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!local || Number(local.casaId) !== Number(evento.casaId) || String(local.numeroTarjeta) !== String(tag.numeroTarjeta))
+        throw Object.assign(new Error('El TAG fue eliminado, reemplazado o cambió de vivienda; revisa la aplicación del pago'), { status: 409 });
+    return local;
+}
+async function preparar(casaId, now, dryRun) {
+    // Read only C3 here. Commit the whole intent before any physical write.
     return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
-        const row = await Vigencia.findByPk(casaId, { transaction, lock: transaction.LOCK.UPDATE });
-        if (!row || (row.proximoIntento && new Date(row.proximoIntento) > now)) return;
-        const tags = await ZkTarjeta.findAll({ where: { casaId, enControlador: true }, transaction, lock: transaction.LOCK.UPDATE });
-        const pending = row.sincronizacion !== 'COMPLETADO';
-        const targets = pending ? tags : tags.filter(tag => necesitaFecha(tag, row.fechaFinal));
-        if (!pending && !targets.length && tags.length) return;
-
-        if (!tags.length || dryRun) {
-            await row.update({ sincronizacion: !tags.length ? 'SIN_TAGS' : 'SIMULACION',
-                proximoIntento: new Date(now.getTime() + 60000), errorSincronizacion: null }, { transaction });
-            return;
+        await bloquear(casaId, transaction);
+        const event = await siguiente(casaId, transaction);
+        if (!event || event.estado === 'CONFLICTO' || (event.proximoIntento && new Date(event.proximoIntento) > now)) return null;
+        if (dryRun) {
+            await event.update({ estado: 'SIMULACION', proximoIntento: new Date(now.getTime() + 60000) }, { transaction });
+            return null;
         }
-
-        const errors = [];
-        for (const tag of targets) {
-            try {
-                // Null preserves the controller's actual StartTime. Never grant
-                // door authorization here, including for manually blocked TAGs.
-                await direct.writeUserValidity(tag.numeroTarjeta, null, row.fechaFinal, { mode: 'DIRECT' });
-                await tag.update({ fechaFin: row.fechaFinal,
-                    ...(tag.fechaFinOriginal ? { fechaFinOriginal: row.fechaFinal } : {}),
-                    ultimaLectura: now }, { transaction });
-            } catch (error) {
-                errors.push(`TAG ${tag.numeroTarjeta}: ${error.message}`);
-            }
+        const tags = await Aplicaciones.findAll({ where: { pagoAccesoId: event.id }, order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+        if (!tags.length) throw new Error('El pago no tiene TAGs destinatarios registrados');
+        const snapshots = [];
+        try {
+        for (const tag of tags) {
+            if (tag.fechaAntes) continue;
+            await comprobarVinculo(tag, event, transaction);
+            const actual = await direct.readUserValidity(tag.numeroTarjeta);
+            snapshots.push({ tag, pin: actual.pin, autorizaciones: actual.autorizaciones, fechaAntes: fechaReal(actual.fechaFinal),
+                fechaDespues: incrementar(actual.fechaFinal, Number(event.meses)) });
         }
-        const intentos = (row.intentos || 0) + 1;
-        const delay = Math.min(15 * 60 * 1000, 30000 * 2 ** Math.min(intentos - 1, 5));
-        await row.update(errors.length ? {
-            sincronizacion: 'ERROR', intentos,
-            errorSincronizacion: errors.join(' | ').slice(0, 1000),
-            proximoIntento: new Date(now.getTime() + delay)
-        } : {
-            sincronizacion: 'COMPLETADO', intentos: 0,
-            sincronizadoEn: now, proximoIntento: null, errorSincronizacion: null
-        }, { transaction });
-        return { casaId, fechaFinal: row.fechaFinal, sincronizacion: row.sincronizacion };
+        } catch (error) { error.eventId = event.id; throw error; }
+        for (const { tag, ...values } of snapshots) await tag.update({ ...values, estado: 'PREPARADO', error: null }, { transaction });
+        await event.update({ estado: 'PREPARADO', error: null }, { transaction });
+        return { id: event.id, tags: tags.map(t => t.id) };
     });
 }
-
+async function aplicar(casaId, eventId, tagId) {
+    // House lock serializes other payments/processes. C3 itself has no SQL transaction.
+    return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+        await bloquear(casaId, transaction);
+        const event = await siguiente(casaId, transaction);
+        if (!event || String(event.id) !== String(eventId)) return;
+        const tag = await Aplicaciones.findByPk(tagId, { transaction, lock: transaction.LOCK.UPDATE });
+        if (tag.estado === 'COMPLETADO') return;
+        const local = await comprobarVinculo(tag, event, transaction);
+        const actual = await direct.readUserValidity(tag.numeroTarjeta);
+        if (String(actual.pin) !== String(tag.pin)) throw Object.assign(new Error('Cambió el Pin físico del TAG; no se sobrescribió el C3'), { status: 409 });
+        if (actual.autorizaciones !== tag.autorizaciones) throw Object.assign(new Error('Cambiaron las autorizaciones físicas del TAG; revisa el pago'), { status: 409 });
+        if (actual.fechaFinal !== tag.fechaDespues) {
+            if (actual.fechaFinal !== tag.fechaAntes)
+                throw Object.assign(new Error(`La fecha del C3 cambió después de preparar el pago (TAG ${tag.numeroTarjeta}); no se sobrescribió`), { status: 409 });
+            await direct.writeUserValidity(tag.numeroTarjeta, null, tag.fechaDespues, {
+                mode: 'DIRECT', expectedEnd: tag.fechaAntes, expectedPin: tag.pin
+            });
+        }
+        // If TCP succeeded but SQL failed, the retry sees fechaDespues and only records it.
+        await local.update({ fechaFin: tag.fechaDespues,
+            ...(local.fechaFinOriginal ? { fechaFinOriginal: tag.fechaDespues } : {}),
+            enControlador: true, ultimaLectura: new Date() }, { transaction });
+        await tag.update({ estado: 'COMPLETADO', error: null }, { transaction });
+    });
+}
+async function registrarError(casaId, error, now, eventId) {
+    return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+        await bloquear(casaId, transaction);
+        const event = await siguiente(casaId, transaction);
+        if (!event || !eventId || String(event.id) !== String(eventId)) return;
+        const intentos = Number(event.intentos || 0) + 1;
+        await event.update({ estado: error.status === 409 ? 'CONFLICTO' : 'ERROR', intentos,
+            error: String(error.message).slice(0, 1000),
+            proximoIntento: error.status === 409 ? null : new Date(now.getTime() + Math.min(900000, 30000 * 2 ** Math.min(intentos - 1, 5))) }, { transaction });
+    });
+}
+async function sincronizarCasa(casaId, { now = new Date(), dryRun = process.env.ZKTECO_DRY_RUN === 'true' } = {}) {
+    for (let count = 0; count < 20; count++) {
+        let intent;
+        try {
+            intent = await preparar(casaId, now, dryRun);
+            if (!intent) return;
+            for (const id of intent.tags) await aplicar(casaId, intent.id, id);
+            await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+                await bloquear(casaId, transaction);
+                const event = await siguiente(casaId, transaction);
+                if (!event || String(event.id) !== String(intent.id)) return;
+                const tags = await Aplicaciones.findAll({ where: { pagoAccesoId: event.id }, transaction });
+                if (tags.every(t => t.estado === 'COMPLETADO')) await event.update({ estado: 'COMPLETADO', error: null, proximoIntento: null }, { transaction });
+            });
+        } catch (error) { await registrarError(casaId, error, now, intent?.id || error.eventId); return { error: error.message }; }
+    }
+}
+// Retired compatibility hook: inventory/reassignment must never copy SQL dates to C3.
+async function marcarPendiente() { return { sincronizacion: 'REFERENCIA_C3' }; }
 async function run() {
     if (running) return;
     running = true;
     try {
-        // Recover pending deliveries only; completed houses are never scanned.
-        const pending = await Vigencia.findAll({ attributes: ['casaId'], where: {
-            sincronizacion: { [Op.in]: ['PENDIENTE', 'ERROR'] },
-            [Op.or]: [{ proximoIntento: null }, { proximoIntento: { [Op.lte]: new Date() } }]
-        }, order: [['updatedAt', 'ASC']], limit: 10 });
-        for (const row of pending) {
-            try { await sincronizarCasa(row.casaId); }
-            catch (error) { console.error(`[ZKTeco vigencias] Casa ${row.casaId}:`, error.message); }
-        }
-    } catch (error) {
-        console.error('[ZKTeco vigencias]', error.message);
-    } finally { running = false; }
+        const events = await Eventos.findAll({ where: { estado: { [Op.in]: ['PENDIENTE', 'PREPARADO', 'ERROR', 'SIMULACION'] },
+            [Op.or]: [{ proximoIntento: null }, { proximoIntento: { [Op.lte]: new Date() } }] }, order: [['id', 'ASC']], limit: 50 });
+        for (const casaId of new Set(events.map(e => e.casaId))) await sincronizarCasa(casaId);
+    } catch (e) { console.error('[C3 pagos] Reintento pendiente:', e.message); }
+    finally { running = false; }
 }
-
 function start() {
     if (timer) return;
-    const interval = Math.max(60000, Number(process.env.ZKTECO_VIGENCIAS_MS) || 300000);
-    timer = setInterval(run, interval);
-    timer.unref();
-    void run();
+    timer = setInterval(run, Math.max(60000, Number(process.env.ZKTECO_VIGENCIAS_MS) || 300000));
+    timer.unref(); void run();
 }
-
-module.exports = { start, run, sincronizarCasa, solicitar, marcarPendiente };
+module.exports = { start, run, solicitar, marcarPendiente, sincronizarCasa };
