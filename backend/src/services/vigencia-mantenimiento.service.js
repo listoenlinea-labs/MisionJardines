@@ -3,6 +3,7 @@ const { Cuota, PagoReportado, Casa } = require('../models');
 const Vigencia = require('../models/VigenciaMantenimiento');
 const { centavos, validarFecha, calcular, vigente } = require('./vigencia-calculo');
 const mensualidades = require('./mensualidades-mantenimiento');
+const sequelize = require('../config/database');
 
 function enviarTrasCommit(casaId, transaction) {
     // Never hold a payment transaction open while communicating with hardware.
@@ -78,6 +79,29 @@ async function actualizar(casaId, usuarioId, transaction) {
     enviarTrasCommit(casaId, transaction);
     return resumen(row);
 }
+// High-confidence administrator-supplied cutoff, used only when adding a new
+// TAG to a real house that has no vigencias_mantenimiento row yet.
+// The cutoff is NOT inferred from a physical CardNo or mistaken for a payment.
+async function asegurarVigenciaParaAlta(casaId, fechaFinal, usuarioId = null) {
+    validarFecha(fechaFinal);
+    return sequelize.transaction(async transaction => {
+        await bloquearCasa(casaId, transaction);
+        const existente = await Vigencia.findByPk(casaId, {
+            transaction, lock: transaction.LOCK.UPDATE
+        });
+        if (existente) return { creada: false, casaId, fechaFinal: existente.fechaFinal };
+        const principal = await principalConfirmado(casaId, transaction);
+        const creada = await Vigencia.create({
+            casaId, fechaBase: fechaFinal, fechaFinal,
+            tarifaMensual: mensualidades.BASE,
+            principalInicial: principal, principalConfirmado: principal,
+            saldoParcial: 0, actualizadoPorUsuarioId: usuarioId,
+            sincronizacion: 'PENDIENTE', intentos: 0
+        }, { transaction });
+        return { creada: true, casaId, fechaFinal: creada.fechaFinal };
+    });
+}
+
 function resumen(row) {
     if (!row) return { pendienteConfiguracion: true, fechaFinal: null, sincronizacion: 'SIN_CONFIGURAR' };
     return { pendienteConfiguracion: false, fechaFinal: row.fechaFinal, tarifaMensual: row.tarifaMensual,
@@ -85,4 +109,4 @@ function resumen(row) {
         actualizadoEn: row.updatedAt, sincronizacion: row.sincronizacion || 'PENDIENTE',
         sincronizadoEn: row.sincronizadoEn || null, proximoIntento: row.proximoIntento || null };
 }
-module.exports = { inicializar, actualizar, resumen, principalConfirmado, Vigencia };
+module.exports = { inicializar, actualizar, asegurarVigenciaParaAlta, resumen, principalConfirmado, Vigencia };

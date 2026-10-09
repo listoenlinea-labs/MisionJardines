@@ -1379,6 +1379,47 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
 
 // Preserve the durable pending delivery when a tag is created, reassigned or
 // restored. Lazy require avoids the direct-client/worker dependency cycle.
+// Preflight validation precedes any TCP writes. For an existing financial
+// cutoff, its actual value is authoritative for the new C3 user.
+async function altaTagConVigencia(casaId, datos = {}, usuarioId = null) {
+  const pagos = require('./vigencia-mantenimiento.service');
+  const { validarFecha } = require('./vigencia-calculo');
+  const actual = await pagos.Vigencia.findByPk(casaId);
+  const fechaFin = actual
+    ? String(actual.fechaFinal)
+    : String(datos.fechaFin||'').trim();
+  if (!actual) {
+    try { validarFecha(fechaFin); }
+    catch (_) {
+      throw Object.assign(new Error(
+        'La vivienda ID '+casaId+' no tiene vigencia de mantenimiento. '+
+        'Selecciona una FECHA FINAL real con día 10; se creará automáticamente '+
+        'vigencias_mantenimiento con el mismo casa_id. No se inventarán pagos.'
+      ), { status: 400 });
+    }
+  }
+  const fechaInicio = String(datos.fechaInicio||'').trim();
+  if(fechaInicio && fechaInicio>fechaFin)
+    throw Object.assign(new Error('La fecha inicial del TAG supera su vigencia final'),{status:400});
+  // User creation and authorization must be read back from physical C3 before
+  // associating the card and initial financial cutoff in MySQL.
+  const tag = await createTagForHouse(casaId,{...datos,fechaFin});
+  const data = tag?.toJSON ? tag.toJSON() : tag;
+  try {
+    const vigencia = await pagos.asegurarVigenciaParaAlta(casaId,fechaFin,usuarioId);
+    const estado = await require('./zkteco-vigencias.service').marcarPendiente(casaId);
+    return {...data, vigenciaCreada:vigencia.creada,
+      vigenciaConfigurada:true, vigenciaMantenimiento:vigencia.fechaFinal,
+      sincronizacionVigencia:estado.sincronizacion};
+  } catch(error) {
+    // TCP and local zk_tarjetas already succeeded: never claim that physical
+    // enrollment failed. Surface partial success for targeted recovery.
+    console.error('[ZKTeco alta] TAG creado en C3 pero vigencia incompleta:',error);
+    return {...data, vigenciaConfigurada:false, vigenciaCreada:false,
+      vigenciaError:'TAG confirmado en C3 y BD, pero no se completó la vigencia: '+error.message};
+  }
+}
+
 const conVigencia = (operation, debeSincronizar = () => true) => async (...args) => {
   const result = await operation(...args);
   if(result?.casaId && debeSincronizar(result)){
@@ -1395,4 +1436,4 @@ const conVigencia = (operation, debeSincronizar = () => true) => async (...args)
 
 // Una fecha manual no genera una nueva entrega de la vigencia financiera.
 // Reemplazar o reasignar el TAG sí debe heredar la vigencia de su vivienda.
-module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag, result => result.numeroCambiado || result.viviendaCambiada),removeTag,operateGate,dashboard,writeUserValidity};
+module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:altaTagConVigencia,addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag, result => result.numeroCambiado || result.viviendaCambiada),removeTag,operateGate,dashboard,writeUserValidity};

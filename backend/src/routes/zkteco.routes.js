@@ -11,6 +11,7 @@ r.get('/tarjetas',autenticarToken,admin,c.inventario);
 r.get('/diagnostico/viviendas/:id',autenticarToken,admin,c.diagnosticoVivienda);
 r.get('/logs',autenticarToken,admin,c.logs);
 r.get('/viviendas',autenticarToken,operar,c.viviendas);
+r.get('/viviendas/:id/vigencia',autenticarToken,admin,c.vigenciaVivienda);
 r.post('/sincronizar',autenticarToken,admin,c.sincronizar);
 r.post('/importar-zkaccess',autenticarToken,admin,express.raw({type:'application/octet-stream',limit:'100mb'}),c.importarMdb);
 r.post('/simular-corte',autenticarToken,admin,c.simular);
