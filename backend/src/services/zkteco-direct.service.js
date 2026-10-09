@@ -1385,8 +1385,10 @@ const conVigencia = (operation, debeSincronizar = () => true) => async (...args)
     const estado=await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
     // An existing physical TAG may be added while maintenance is unconfigured.
     // Report that gap; never invent a paid-through date or silently rewrite C3.
-    if(estado?.sincronizacion==='SIN_CONFIGURAR')
-      return {...result,vigenciaConfigurada:false};
+    if(estado?.sincronizacion==='SIN_CONFIGURAR'){
+      const data=typeof result.toJSON==='function'?result.toJSON():result;
+      return {...data,vigenciaConfigurada:false};
+    }
   }
   return result;
 };
