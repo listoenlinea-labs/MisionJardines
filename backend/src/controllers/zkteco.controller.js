@@ -1,4 +1,6 @@
 const ZkTarjeta=require('../models/ZkTarjeta');
+const Casa=require('../models/Casa');
+const Vigencia=require('../models/VigenciaMantenimiento');
 const {
   testDirectConnection,
   syncUsers,
@@ -53,6 +55,22 @@ async function diagnosticoVivienda(req,res){
     });
   }
 }
+async function vigenciaVivienda(req,res){
+  try{
+    const id=Number(req.params.id);
+    if(!Number.isSafeInteger(id)||id<=0)
+      return res.status(400).json({ok:false,message:'ID de vivienda inválido'});
+    const casa=await Casa.findByPk(id,{attributes:['id','calle','numero']});
+    if(!casa)return res.status(404).json({ok:false,message:'Vivienda inexistente en direcciones'});
+    const row=await Vigencia.findByPk(id);
+    return res.json({ok:true,data:{
+      casaId:id,configurada:Boolean(row),fechaFinal:row?.fechaFinal||null
+    }});
+  }catch(error){
+    return res.status(503).json({ok:false,message:'No se pudo consultar la vigencia de la vivienda',error:error.message});
+  }
+}
+
 async function sincronizar(req,res){
   try{res.json({ok:true,data:await runAutoSync(),message:'Usuarios sincronizados desde el C3-200'});}
   catch(error){res.status(502).json({ok:false,message:'No fue posible sincronizar el C3-200',error:error.message});}
@@ -110,15 +128,19 @@ async function asignarTarjeta(req,res){
 }
 async function crearTarjeta(req,res){
   try{
-    const data=await createTagForHouse(req.params.id,req.body||{});
-    res.status(201).json({ok:true,message:'TAG creado y autorizado en el C3-200',data});
+    const data=await createTagForHouse(req.params.id,req.body||{},req.usuario?.usuarioId||null);
+    res.status(201).json({ok:true,
+      message:data.vigenciaError
+        ? 'TAG creado y autorizado en C3, pero la vigencia requiere atención'
+        : 'TAG creado y autorizado en el C3-200; casa_id y vigencia vinculados',
+      data});
   }catch(error){
     await recordZkError(req,'CREAR_TAG',error,{
       casaId:req.params.id,
       numeroTarjeta:req.body?.numeroTarjeta,
       detalle:JSON.stringify({fechaInicio:req.body?.fechaInicio||null,fechaFin:req.body?.fechaFin||null})
     });
-    res.status(502).json({ok:false,message:error.message||'No fue posible crear el TAG en ZKTeco',error:exactError(error)});
+    res.status(error.status||502).json({ok:false,message:error.message||'No fue posible crear el TAG en ZKTeco',error:exactError(error)});
   }
 }
 async function editarTarjeta(req,res){
@@ -229,4 +251,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={vigenciaVivienda,diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};

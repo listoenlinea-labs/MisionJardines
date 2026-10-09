@@ -228,8 +228,11 @@ async function syncUsers(){
   // tarjetas que no aparecieron en ESTA lectura: puede haber inventario parcial,
   // C3 equivocado, campos omitidos o una interrupción temporal del PullSDK.
   // Un diagnóstico físico explícito mostrará cuáles faltaron en la lectura.
-  const sinConfirmarEnLectura=currentCards.filter(item=>
-    !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).length;
+  const noObservadosDetalle=currentCards.filter(item=>
+    !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).map(item=>({
+      numeroTarjeta:String(item.numeroTarjeta),casaId:item.casaId??null,departamento:item.departamento||null
+    }));
+  const sinConfirmarEnLectura=noObservadosDetalle.length;
   const reconocidos=currentCards.length-sinConfirmarEnLectura;
 
   // Inventory import is read-only on the controller: never enqueue validity
@@ -244,6 +247,7 @@ async function syncUsers(){
     autorizacionesConfiables:permisosVerificables,
     ausentes:0,
     noObservados:sinConfirmarEnLectura,
+    noObservadosDetalle:noObservadosDetalle.slice(0,25),
     reconocidos,
     previamenteConfirmados:diagnostico.previouslyConfirmed,
     camposDeTarjeta:diagnostico.fields.filter(x=>/card|pin|uid/i.test(x)),
@@ -749,14 +753,44 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
   });
 
   if(state.existing){
+    // An existing C3 user is not proof of door authorization.
     const pin=String(state.existing.Pin??'').trim();
+    if(!pin)throw new Error('El usuario ya existe en el C3 pero no tiene PIN para autorizar puertas');
+    const expectedMask=Number(state.profile.doorMask||3)||3;
+    const expectedZone=Number(state.profile.timezoneId||1)||1;
+    const current=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+    let writeMode='EXISTING';
+    if((Number(current?.AuthorizeDoorId||0)&expectedMask)!==expectedMask){
+      const verify=async()=>{
+        const row=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+        return Boolean(row&&(Number(row.AuthorizeDoorId||0)&expectedMask)===expectedMask);
+      };
+      writeMode=await executePanelWrite({
+        label:`restaurar permisos del TAG ${card}`,
+        direct:()=>directSetUserAccess({pin,authorized:true,doorMask:expectedMask,timezoneId:expectedZone}),
+        pullSdk:()=>setUserAccessViaPullSdk({pin,authorized:true,doorMask:expectedMask,timezoneId:expectedZone}),
+        verify
+      });
+    }
+    const currentStart=fromDateNumber(state.existing.StartTime);
+    const currentEnd=fromDateNumber(state.existing.EndTime);
+    if((start&&currentStart!==start)||(end&&currentEnd!==end)){
+      // An existing physical user can have an old expiry even when the user
+      // and door authorization are valid. Refresh only that CardNo and read
+      // it back, preserving its PIN and other controller fields.
+      await writeUserValidity(card,start,end,{mode:'DIRECT'});
+    }
+    const confirmed=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+    const doorMask=Number(confirmed?.AuthorizeDoorId||0);
+    if((doorMask&expectedMask)!==expectedMask)
+      throw new Error(`El TAG ${card} existe en C3 pero no tiene permiso para todas las puertas solicitadas`);
     return {
       uid:Number(state.existing.UID||0)||null,
       pin,
       cardNo:String(state.existing.CardNo??card),
-      timezoneId:Number(state.profile.timezoneId||1),
-      doorMask:Number(state.profile.doorMask||3),
-      writeMode:'EXISTING'
+      timezoneId:Number(confirmed.AuthorizeTimezoneId||expectedZone)||expectedZone,
+      doorMask,
+      writeMode
     };
   }
 
@@ -775,7 +809,8 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
       const auth=await findPanelAuthorizationByPin(client,realPin);
       return {user,auth};
     });
-    return Boolean(result?.user&&result?.auth&&Number(result.auth.AuthorizeDoorId||0)>0);
+    return Boolean(result?.user&&result?.auth&&
+      (Number(result.auth.AuthorizeDoorId||0)&doorMask)===doorMask);
   };
 
   const writeMode=await executePanelWrite({
@@ -805,8 +840,8 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
 
   const realPin=String(created.Pin??pin).trim();
   const auth=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,realPin));
-  if(!auth||Number(auth.AuthorizeDoorId||0)<=0){
-    throw new Error('El usuario existe en el C3-200, pero userauthorize no confirmó acceso a las puertas.');
+  if(!auth||(Number(auth.AuthorizeDoorId||0)&doorMask)!==doorMask){
+    throw new Error('El usuario existe en el C3-200, pero userauthorize no confirmó todas las puertas solicitadas.');
   }
 
   return {
@@ -1352,12 +1387,66 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
 
 // Preserve the durable pending delivery when a tag is created, reassigned or
 // restored. Lazy require avoids the direct-client/worker dependency cycle.
+// Preflight validation precedes any TCP writes. For an existing financial
+// cutoff, its actual value is authoritative for the new C3 user.
+async function altaTagConVigencia(casaId, datos = {}, usuarioId = null) {
+  const pagos = require('./vigencia-mantenimiento.service');
+  const { validarFecha } = require('./vigencia-calculo');
+  const actual = await pagos.Vigencia.findByPk(casaId);
+  const fechaFin = actual
+    ? String(actual.fechaFinal)
+    : String(datos.fechaFin||'').trim();
+  if (!actual) {
+    try { validarFecha(fechaFin); }
+    catch (_) {
+      throw Object.assign(new Error(
+        'La vivienda ID '+casaId+' no tiene vigencia de mantenimiento. '+
+        'Selecciona una FECHA FINAL real con día 10; se creará automáticamente '+
+        'vigencias_mantenimiento con el mismo casa_id. No se inventarán pagos.'
+      ), { status: 400 });
+    }
+  }
+  const fechaInicio = String(datos.fechaInicio||'').trim();
+  if(fechaInicio && fechaInicio>fechaFin)
+    throw Object.assign(new Error('La fecha inicial del TAG supera su vigencia final'),{status:400});
+  // User creation and authorization must be read back from physical C3 before
+  // associating the card and initial financial cutoff in MySQL.
+  const tag = await createTagForHouse(casaId,{...datos,fechaFin});
+  const data = tag?.toJSON ? tag.toJSON() : tag;
+  try {
+    const vigencia = await pagos.asegurarVigenciaParaAlta(casaId,fechaFin,usuarioId);
+    // On a newly initialized house only this TAG is provisioned over TCP.
+    // Existing C3 cards are not rewritten without a subsequent paid/validated
+    // maintenance update. Payment events will queue a full house sync later.
+    const estado = vigencia.creada
+      ? { sincronizacion: 'ALTA_C3_CONFIRMADA' }
+      : await require('./zkteco-vigencias.service').marcarPendiente(casaId);
+    return {...data, vigenciaCreada:vigencia.creada,
+      vigenciaConfigurada:true, vigenciaMantenimiento:vigencia.fechaFinal,
+      sincronizacionVigencia:estado.sincronizacion};
+  } catch(error) {
+    // TCP and local zk_tarjetas already succeeded: never claim that physical
+    // enrollment failed. Surface partial success for targeted recovery.
+    console.error('[ZKTeco alta] TAG creado en C3 pero vigencia incompleta:',error);
+    return {...data, vigenciaConfigurada:false, vigenciaCreada:false,
+      vigenciaError:'TAG confirmado en C3 y BD, pero no se completó la vigencia: '+error.message};
+  }
+}
+
 const conVigencia = (operation, debeSincronizar = () => true) => async (...args) => {
   const result = await operation(...args);
-  if(result?.casaId && debeSincronizar(result)) await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
+  if(result?.casaId && debeSincronizar(result)){
+    const estado=await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
+    // An existing physical TAG may be added while maintenance is unconfigured.
+    // Report that gap; never invent a paid-through date or silently rewrite C3.
+    if(estado?.sincronizacion==='SIN_CONFIGURAR'){
+      const data=typeof result.toJSON==='function'?result.toJSON():result;
+      return {...data,vigenciaConfigurada:false};
+    }
+  }
   return result;
 };
 
 // Una fecha manual no genera una nueva entrega de la vigencia financiera.
 // Reemplazar o reasignar el TAG sí debe heredar la vigencia de su vivienda.
-module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:conVigencia(createTagForHouse),addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag, result => result.numeroCambiado || result.viviendaCambiada),removeTag,operateGate,dashboard,writeUserValidity};
+module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse:conVigencia(setCardHouse),createTagForHouse:altaTagConVigencia,addExistingTagToController:conVigencia(addExistingTagToController),editTag:conVigencia(editTag, result => result.numeroCambiado || result.viviendaCambiada),removeTag,operateGate,dashboard,writeUserValidity};
