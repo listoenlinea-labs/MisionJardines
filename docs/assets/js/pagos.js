@@ -311,16 +311,20 @@
       const file = e.target.files?.[0];
       if (!file) return;
       resetProof();
+      const selectedRevision = scanRevision;
       try {
         if (isPhotoDevice && file.type === 'application/pdf') throw Error('En celular selecciona una imagen desde la biblioteca de fotos.');
         if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'].includes(file.type)) throw Error('Formato no admitido. Usa JPG, PNG, WEBP o PDF en computadora.');
         proofMeta = { name: file.name || 'comprobante', mime: file.type || '' };
-        proofData = file.type === 'application/pdf' ? await pdfToData(file) : await imageToData(file);
+        const processed = file.type === 'application/pdf' ? await pdfToData(file) : await imageToData(file);
+        if (scanRevision !== selectedRevision) return; // A different photo was selected meanwhile.
+        proofData = processed;
         $('proofPreview').src = proofData;
         $('fileName').textContent = file.name;
         $('previewBox').classList.add('show');
         await runOcr();
       } catch (error) {
+        if (scanRevision !== selectedRevision) return;
         resetProof();
         toast(error.message);
       }
