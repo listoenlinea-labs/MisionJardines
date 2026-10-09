@@ -1,4 +1,5 @@
-const { spawn } = require('node:child_process');
+const { Worker } = require('node:worker_threads');
+const path = require('node:path');
 const parser = require('./comprobante-parser');
 
 let running = 0;
@@ -7,9 +8,7 @@ const MAX_OCR_OUTPUT = 50000;
 
 function reconocerImagen(imageData) {
   if (running >= MAX_CONCURRENT) {
-    const error = new Error('El lector de comprobantes está ocupado. Vuelve a intentarlo en unos segundos.');
-    error.status = 503;
-    return Promise.reject(error);
+    return Promise.reject(Object.assign(new Error('El lector de comprobantes está ocupado. Vuelve a intentarlo en unos segundos.'), { status: 503 }));
   }
   const match = /^data:image\/(?:jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/i.exec(String(imageData || ''));
   if (!match) return Promise.reject(Object.assign(new Error('Comprobante en formato inválido'), { status: 400 }));
@@ -19,35 +18,30 @@ function reconocerImagen(imageData) {
   }
   running++;
   return new Promise((resolve, reject) => {
-    const child = spawn(process.env.PAGOS_TESSERACT_BIN || 'tesseract',
-      ['stdin', 'stdout', '-l', process.env.PAGOS_OCR_LANG || 'spa+eng', '--psm', '3'],
-      { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-    let finished = false, output = '', errInfo = '', timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, 30000);
-    function finish(error, result) {
+    let worker, timer, finished = false;
+    // The outer worker lets us stop initialization as well as recognition.
+    // Its nested Tesseract worker is terminated when this thread exits.
+    async function finish(error, result) {
       if (finished) return;
       finished = true;
       clearTimeout(timer);
+      try { if (worker) await worker.terminate(); } catch (_) { /* already exited */ }
       running--;
       if (error) reject(error); else resolve(result);
     }
-    child.on('error', error => finish(Object.assign(
-      new Error(error.code === 'ENOENT'
-        ? 'El OCR del servidor no está instalado. Administración debe configurar Tesseract; ningún comprobante será registrado sin verificación.'
-        : 'No se pudo iniciar la verificación OCR del servidor.'), { status: 503 })));
-    child.stdout.on('data', chunk => {
-      output += chunk.toString('utf8');
-      if (output.length > MAX_OCR_OUTPUT) child.kill('SIGKILL');
-    });
-    child.stderr.on('data', chunk => { errInfo = (errInfo + chunk.toString('utf8')).slice(-2000); });
-    child.on('close', code => {
-      if (timedOut) return finish(Object.assign(new Error('Se agotó el tiempo de lectura del comprobante. Intenta con una imagen más clara.'), { status: 503 }));
-      if (code !== 0 || output.length > MAX_OCR_OUTPUT) return finish(Object.assign(
-        new Error('No fue posible leer el archivo en el servidor. Comprueba que Tesseract tenga los idiomas spa y eng disponibles.'), { status: 503 }));
-      finish(null, output);
-    });
-    child.stdin.on('error', () => {});
-    child.stdin.end(bytes);
+    const unavailable = () => Object.assign(new Error('No fue posible leer el comprobante con el OCR del servidor. Intenta de nuevo con una imagen clara; si persiste, Administración debe revisar el despliegue de Tesseract.js.'), { status: 503 });
+    try {
+      worker = new Worker(path.join(__dirname, 'comprobante-ocr.worker.js'), {
+        workerData: { bytes, lang: process.env.PAGOS_OCR_LANG || 'spa+eng' }
+      });
+      timer = setTimeout(() => finish(Object.assign(new Error('Se agotó el tiempo de lectura del comprobante. Intenta con una imagen más clara.'), { status: 503 })), 30000);
+      worker.once('message', message => {
+        if (!message.ok || typeof message.text !== 'string' || message.text.length > MAX_OCR_OUTPUT) return finish(unavailable());
+        finish(null, message.text);
+      });
+      worker.once('error', () => finish(unavailable()));
+      worker.once('exit', () => { if (!finished) finish(unavailable()); });
+    } catch (_) { finish(unavailable()); }
   });
 }
 
