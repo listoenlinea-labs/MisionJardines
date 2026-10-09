@@ -5,7 +5,7 @@ Inventario del código del backend y las páginas, actualizado con esta entrega.
 | Módulo | Tablas propias o consultadas | Uso |
 | --- | --- | --- |
 | Residentes | `direcciones`, `condominos`, `permisos_acceso_vivienda` | Viviendas, padrón activo y permisos mostrados por `/api/casas`. |
-| Gestión de residentes (esta entrega) | `direcciones`, `condominos`, `usuarios_casas`, `usuarios`, `roles`, `invitaciones_casa`, `historial_vinculos` | Alta/edición del padrón, contactos, retiro explícito de vínculos e invitaciones de quien sale. |
+| Gestión de residentes (esta entrega) | `direcciones`, `condominos` | Alta/edición del padrón y contactos de la vivienda. |
 | Inicio / dashboard | `cuotas`, `visitas_programadas`, `accesos_seguridad`, `condominos`, `direcciones`, `eventos` | Indicadores y actividad. Las consultas SQL del dashboard usan `eventos`; el módulo Calendario usa `calendario`. Es una diferencia existente que debe verificarse contra el esquema real. |
 | Registro, login y Mi cuenta | `usuarios`, `roles`, `direcciones`, `solicitudes_cuenta`, `verificaciones_cuenta`, `solicitudes_rol`, `invitaciones_casa`, `usuarios_casas`, `historial_vinculos` | Credenciales, solicitudes de acceso/rol, cambios de correo y pertenencia a viviendas. |
 | Verificación de cuentas | `solicitudes_cuenta`, `usuarios`, `roles`, `direcciones`, `usuarios_casas`, `historial_vinculos` | Aprobar/rechazar/revocar cuentas y asignar vivienda y rol. |
@@ -32,9 +32,9 @@ Inventario del código del backend y las páginas, actualizado con esta entrega.
 
 ## Operación desde Residentes
 
-- **Nuevo residente:** selecciona una vivienda existente y captura nombre, teléfono y correo. Puede convertirse en el contacto principal de la casa. No crea ni aprueba una cuenta de login.
-- **Editar:** corrige la persona del padrón, estado de renta y observaciones; opcionalmente actualiza el contacto de la vivienda. No modifica el correo ni la contraseña de una cuenta de login.
-- **Gestionar vivienda → Cambio de inquilino:** selecciona la persona saliente, captura la entrante y elige las cuentas de condóminos que dejan esa vivienda. El residente anterior queda inactivo, conservando sus datos. Las cuentas elegidas se desvinculan solo de esa casa; mantienen otras viviendas. Se conservan los administradores y cuentas no seleccionadas. Las invitaciones pendientes del miembro retirado y las dirigidas al correo del residente saliente se revocan en esa vivienda.
+- **Gestionar vivienda:** único botón superior, en naranja. Selecciona una vivienda existente y captura nombre, teléfono y correo para dar de alta una persona. Puede convertirse en el contacto principal de la casa. No crea ni aprueba una cuenta de login.
+- **Editar inquilino:** disponible en cada fila del padrón. Actualiza ese mismo registro; cuando cambia el inquilino, se sustituyen los datos de la persona anterior por los de la nueva. También permite actualizar renta, observaciones y contacto principal. No existe un selector de operaciones ni un flujo separado de cambio de inquilino.
+- Las cuentas de acceso y sus vínculos se gestionan en Mis viviendas y Verificación de cuentas. La edición del padrón no modifica sus credenciales ni desvincula cuentas.
 - Los pagos históricos, adeudos, fecha base financiera, controles y autorizaciones del C3 permanecen asociados a la vivienda. Este formulario no escribe al C3. Al cambiar de inquilino, Administración debe revisar quién conserva físicamente los TAGs.
 - La persona entrante puede crear su propia cuenta mediante el registro y recibir aprobación/vinculación en Verificación de cuentas; para cuentas existentes, Mis viviendas permite vincularlas.
 
@@ -45,15 +45,15 @@ GET  /api/casas/:id/residentes
 POST /api/casas/:id/residentes
 ```
 
-El POST admite `modo=ALTA|EDITAR|CAMBIO`, `nombreCompleto`, `telefono`, `correo`, `enRenta`, `observaciones`, `actualizarContacto`; EDITAR/CAMBIO requieren `residenteId`. CAMBIO requiere `confirmarCambio=true` y admite `desvincularUsuarioIds`. El backend valida campos, vivienda y vínculos; guarda la operación en una transacción y bloquea la vivienda para serializar cambios concurrentes desde esta función.
+El POST admite `modo=ALTA|EDITAR`, `nombreCompleto`, `telefono`, `correo`, `enRenta`, `observaciones`, `actualizarContacto`; EDITAR requiere `residenteId`. El backend valida campos, vivienda y residente activo; guarda la operación en una transacción y bloquea la vivienda para serializar cambios concurrentes desde esta función. El modo CAMBIO se rechaza.
 
-No agrega tablas ni columnas. Usa los modelos y tablas existentes. Debe desplegarse el backend junto con el frontend; comprobar que `condominos`, `usuarios_casas`, `invitaciones_casa` e `historial_vinculos` existan (el arranque ya inicializa las tablas de vínculos).
+No agrega tablas ni columnas. Usa `direcciones` y `condominos` existentes. Debe desplegarse el backend junto con el frontend.
 
 ## Verificación de entrega
 
 1. Como administrador, dar de alta una persona de prueba en una vivienda del padrón; comprobar su aparición tras recargar.
 2. Editar contacto y renta. Verificar qué cambia en `condominos` y `direcciones` según la selección de contacto principal.
-3. Cambiar el inquilino y elegir una cuenta saliente. Verificar el registro anterior inactivo, el nuevo activo y el vínculo retirado. La sesión saliente ya no puede seleccionar esa casa; conserva sus otras viviendas.
+3. Usar Editar inquilino para sustituir sus datos. Verificar que conserva el mismo ID activo y que no se crea un residente adicional ni se modifican cuentas vinculadas.
 4. Comprobar que cuotas, pagos, vigencia y TAGs no cambian por esta operación.
 5. Como Seguridad o Condómino, verificar ausencia de botones de administración y respuesta 403 de los endpoints.
 
