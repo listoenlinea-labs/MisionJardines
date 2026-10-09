@@ -15,7 +15,8 @@ const worker = require('../src/services/zkteco-vigencias.service');
 const { C3Client } = require('../src/services/zkteco-c3-client.service');
 
 function setup(t, { existingValidity = false, alreadyAuthorized = true,
-  physicalTagExists = true, physicalEnd = '2027-01-10', houseExists = true } = {}) {
+  physicalTagExists = true, physicalEnd = '2027-01-10', houseExists = true,
+  existingValidityDate = '2027-01-10' } = {}) {
   const casa = {
     id: 702, calle: 'Guadalajara', numero: '707', controles: '5108838',
     async update(changes) { Object.assign(this, changes); }
@@ -27,7 +28,7 @@ function setup(t, { existingValidity = false, alreadyAuthorized = true,
     ? [{ Pin: user.Pin, AuthorizeDoorId: '3', AuthorizeTimezoneId: '1' }] : [];
   const writes = [];
   let rowCreated = null;
-  const validity = existingValidity ? { casaId: 702, fechaFinal: '2027-01-10' } : null;
+  const validity = existingValidity ? { casaId: 702, fechaFinal: existingValidityDate } : null;
   const tx = { LOCK: { UPDATE: 'UPDATE' }, afterCommit() {} };
   t.mock.method(sequelize, 'transaction', async (a, b) =>
     (typeof a === 'function' ? a : b)(tx));
@@ -156,4 +157,20 @@ test('casa_id inexistente: no crea domicilio ni TAG huérfano', async t => {
   }), /Vivienda no encontrada/);
   assert.equal(ctx.writes.length, 0);
   assert.equal(ctx.validityCreated, null);
+});
+
+test('vigencia antigua con corte el día 11 se respeta y no se recrea', async t => {
+  const ctx = setup(t, {
+    existingValidity: true, existingValidityDate: '2027-01-11',
+    physicalEnd: '2027-01-11'
+  });
+  const result = await direct.createTagForHouse(702, {
+    numeroTarjeta: '5108833', fechaInicio: '2026-10-08',
+    fechaFin: '2099-12-31'
+  });
+  assert.equal(result.vigenciaCreada, false);
+  assert.equal(result.vigenciaMantenimiento, '2027-01-11');
+  assert.equal(result.fechaFin, '2027-01-11');
+  assert.equal(ctx.validityCreated, null, 'nunca duplicar registros');
+  assert.deepEqual(ctx.queue, [702]);
 });
