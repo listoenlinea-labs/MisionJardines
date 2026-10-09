@@ -260,9 +260,12 @@ function renderTagDetails(row){
       : (tag.bloqueado
           ? '<button class="btn mini primary" onclick="setTag('+tag.id+',false,this)">Activar</button>'
           : '<button class="btn mini danger" onclick="setTag('+tag.id+',true,this)">Bloquear</button>');
+    const repairAction=tag.enControlador!==false&&!tag.bloqueado
+      ? '<button class="btn mini" onclick="addTagToC3('+tag.id+',this)">Reparar C3</button>'
+      : '';
     const adminActions=canAdmin
       ? '<button class="btn mini" onclick="openEditTagModal('+tag.id+')">Editar</button>'+
-        primaryAction+
+        primaryAction+repairAction+
         '<button class="btn mini ghost-danger" onclick="removeTag('+tag.id+',this)">Eliminar</button>'
       : '';
     return '<div class="tag-item">'+
@@ -586,8 +589,8 @@ async function removeTag(id,button){
 }
 window.removeTag=removeTag;
 async function addTagToC3(id,button){
-  if(!confirm('¿Agregar este TAG físicamente al C3-200 y autorizarlo para entrada/salida?'))return;
-  showBusy('Agregando TAG al C3-200','Escribiendo usuario y permisos; después verificaremos el CardNo directamente en el controlador.');
+  if(!confirm('¿Verificar este TAG en el C3-200 y restaurar, solo si faltan, sus permisos de entrada y salida? Se revisará únicamente el TAG seleccionado.'))return;
+  showBusy('Verificando TAG en C3','Comprobando usuario y autorizaciones; si faltan permisos se restaurarán y verificarán en el controlador.');
   try{
     const r=await api('/zkteco/tarjetas/'+id+'/agregar-c3',{method:'POST',headers:headers(true)});
     const real=r.data?.numeroTarjetaReal;
