@@ -231,7 +231,9 @@ function tagState(tag){
   if(tag.bloqueado)return{label:'Bloqueado',cls:'off'};
   if(tag.fechaFin&&String(tag.fechaFin).slice(0,10)<zkDateToday())
     return{label:'Vigencia vencida',cls:'off'};
-  return{label:'Activo',cls:'on'};
+  if(!Number(tag.puertasAutorizadas))
+    return{label:'Permisos por verificar',cls:'none'};
+  return{label:'Activo según BD/C3',cls:'on'};
 }
 function rowState(row){
   if(row.tarjetas?.length){
@@ -386,8 +388,10 @@ async function syncBeforePageLoad({notify=false}={}){
   const r=await api('/zkteco/sincronizar',{method:'POST',headers:headers(true)});
   if(notify){
     const unread=Number(r.data?.noObservados||0);
+    const details=Array.isArray(r.data?.noObservadosDetalle)?r.data.noObservadosDetalle:[];
+    const names=details.slice(0,5).map(t=>String(t.numeroTarjeta)+(t.casaId?' (casa ID '+t.casaId+')':'')).join(', ');
     toast(unread
-      ? 'Lectura C3 terminada, pero '+unread+' TAG(s) locales no se observaron. Revisa el inventario y los logs antes de agregar.'
+      ? 'Lectura C3 terminada: '+unread+' TAG(s) no observados'+(names?': '+names:'')+'. Esto no demuestra eliminación física; revisa el diagnóstico de la casa.'
       : r.data?.autorizacionesConfiables===false
       ? 'TAGs identificados, pero permisos de puertas sin verificar. Revisa los logs antes de modificar.'
       : r.message+' · '+(r.data?.procesados||0)+' controles');
@@ -628,7 +632,9 @@ $('saveTag').onclick=async()=>{
         numeroTarjeta,nombre:$('newTagName').value.trim(),fechaInicio:$('newTagStart').value||null,fechaFin:$('newTagEnd').value||null
       })});
       const real=r.data?.numeroTarjetaReal;
-      toast(real&&real!==numeroTarjeta?r.message+' · ZKTeco lo guardó como '+real:r.message);
+      toast(r.data?.vigenciaConfigurada===false
+        ? 'TAG confirmado en C3, pero casa ID '+selectedHouseId+' sin vigencia de mantenimiento. Configúrala desde Pagos antes de sincronizar cortes.'
+        : real&&real!==numeroTarjeta?r.message+' · ZKTeco lo guardó como '+real:r.message,10000);
     }
     closeTagModal();await Promise.all([loadStatus(),loadRows()]);
   }catch(e){

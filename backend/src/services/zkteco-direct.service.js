@@ -228,8 +228,11 @@ async function syncUsers(){
   // tarjetas que no aparecieron en ESTA lectura: puede haber inventario parcial,
   // C3 equivocado, campos omitidos o una interrupción temporal del PullSDK.
   // Un diagnóstico físico explícito mostrará cuáles faltaron en la lectura.
-  const sinConfirmarEnLectura=currentCards.filter(item=>
-    !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).length;
+  const noObservadosDetalle=currentCards.filter(item=>
+    !liveKeys.has(inventario.claveTarjeta(item.numeroTarjeta))).map(item=>({
+      numeroTarjeta:String(item.numeroTarjeta),casaId:item.casaId??null,departamento:item.departamento||null
+    }));
+  const sinConfirmarEnLectura=noObservadosDetalle.length;
   const reconocidos=currentCards.length-sinConfirmarEnLectura;
 
   // Inventory import is read-only on the controller: never enqueue validity
@@ -244,6 +247,7 @@ async function syncUsers(){
     autorizacionesConfiables:permisosVerificables,
     ausentes:0,
     noObservados:sinConfirmarEnLectura,
+    noObservadosDetalle:noObservadosDetalle.slice(0,25),
     reconocidos,
     previamenteConfirmados:diagnostico.previouslyConfirmed,
     camposDeTarjeta:diagnostico.fields.filter(x=>/card|pin|uid/i.test(x)),
@@ -749,14 +753,36 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
   });
 
   if(state.existing){
+    // An existing C3 user is not proof of door authorization.
     const pin=String(state.existing.Pin??'').trim();
+    if(!pin)throw new Error('El usuario ya existe en el C3 pero no tiene PIN para autorizar puertas');
+    const expectedMask=Number(state.profile.doorMask||3)||3;
+    const expectedZone=Number(state.profile.timezoneId||1)||1;
+    const current=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+    let writeMode='EXISTING';
+    if((Number(current?.AuthorizeDoorId||0)&expectedMask)!==expectedMask){
+      const verify=async()=>{
+        const row=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+        return Boolean(row&&(Number(row.AuthorizeDoorId||0)&expectedMask)===expectedMask);
+      };
+      writeMode=await executePanelWrite({
+        label:`restaurar permisos del TAG ${card}`,
+        direct:()=>directSetUserAccess({pin,authorized:true,doorMask:expectedMask,timezoneId:expectedZone}),
+        pullSdk:()=>setUserAccessViaPullSdk({pin,authorized:true,doorMask:expectedMask,timezoneId:expectedZone}),
+        verify
+      });
+    }
+    const confirmed=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,pin));
+    const doorMask=Number(confirmed?.AuthorizeDoorId||0);
+    if((doorMask&expectedMask)!==expectedMask)
+      throw new Error(`El TAG ${card} existe en C3 pero no tiene permiso para todas las puertas solicitadas`);
     return {
       uid:Number(state.existing.UID||0)||null,
       pin,
       cardNo:String(state.existing.CardNo??card),
-      timezoneId:Number(state.profile.timezoneId||1),
-      doorMask:Number(state.profile.doorMask||3),
-      writeMode:'EXISTING'
+      timezoneId:Number(confirmed.AuthorizeTimezoneId||expectedZone)||expectedZone,
+      doorMask,
+      writeMode
     };
   }
 
@@ -775,7 +801,8 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
       const auth=await findPanelAuthorizationByPin(client,realPin);
       return {user,auth};
     });
-    return Boolean(result?.user&&result?.auth&&Number(result.auth.AuthorizeDoorId||0)>0);
+    return Boolean(result?.user&&result?.auth&&
+      (Number(result.auth.AuthorizeDoorId||0)&doorMask)===doorMask);
   };
 
   const writeMode=await executePanelWrite({
@@ -805,8 +832,8 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
 
   const realPin=String(created.Pin??pin).trim();
   const auth=await readControllerWithRetry(client=>findPanelAuthorizationByPin(client,realPin));
-  if(!auth||Number(auth.AuthorizeDoorId||0)<=0){
-    throw new Error('El usuario existe en el C3-200, pero userauthorize no confirmó acceso a las puertas.');
+  if(!auth||(Number(auth.AuthorizeDoorId||0)&doorMask)!==doorMask){
+    throw new Error('El usuario existe en el C3-200, pero userauthorize no confirmó todas las puertas solicitadas.');
   }
 
   return {
@@ -1354,7 +1381,13 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
 // restored. Lazy require avoids the direct-client/worker dependency cycle.
 const conVigencia = (operation, debeSincronizar = () => true) => async (...args) => {
   const result = await operation(...args);
-  if(result?.casaId && debeSincronizar(result)) await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
+  if(result?.casaId && debeSincronizar(result)){
+    const estado=await require('./zkteco-vigencias.service').marcarPendiente(result.casaId);
+    // An existing physical TAG may be added while maintenance is unconfigured.
+    // Report that gap; never invent a paid-through date or silently rewrite C3.
+    if(estado?.sincronizacion==='SIN_CONFIGURAR')
+      return {...result,vigenciaConfigurada:false};
+  }
   return result;
 };
 

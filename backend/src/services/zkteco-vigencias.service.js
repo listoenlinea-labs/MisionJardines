@@ -28,10 +28,14 @@ function solicitar(casaId) {
 }
 
 async function marcarPendiente(casaId) {
-    if (!casaId) return;
-    await Vigencia.update({ sincronizacion: 'PENDIENTE', proximoIntento: null,
+    if (!casaId) return { sincronizacion: 'SIN_CONFIGURAR' };
+    const [actualizadas] = await Vigencia.update({ sincronizacion: 'PENDIENTE', proximoIntento: null,
         intentos: 0, errorSincronizacion: null }, { where: { casaId } });
+    // Zero rows means this house has no confirmed maintenance cutoff.
+    // Do not enqueue a silent no-op or invent a financial entitlement.
+    if (!actualizadas) return { casaId, sincronizacion: 'SIN_CONFIGURAR' };
     solicitar(casaId);
+    return { casaId, sincronizacion: 'PENDIENTE' };
 }
 const necesitaFecha = (tag, fecha) => tag.fechaFin !== fecha ||
     (tag.fechaFinOriginal && tag.fechaFinOriginal !== fecha);
