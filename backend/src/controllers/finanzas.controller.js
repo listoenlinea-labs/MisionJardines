@@ -17,7 +17,7 @@ async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
   const [casas,cuotas,pagos,egresos,reservasClub]=await Promise.all([
-   Casa.findAll({attributes:['id','calle','numero','nombre']}),
+   Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','estatusPago','montoPagado','montoCuota','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
@@ -29,7 +29,7 @@ async function analizar(req,res){
    const q=byHouse.get(String(h.id));
    const status=q?.estatusPago||'PENDIENTE';
    const pagada=status==='PAGADO';
-   const calle=String(h.calle||'Sin calle');
+   const calle=String(h.calleCorrecta||h.calle||'Sin calle');
    if(!streets.has(calle))streets.set(calle,{calle,total:0,pagadas:0,pendientes:0,abonos:0});
    const st=streets.get(calle);
    st.total++;if(pagada)st.pagadas++;else st.pendientes++;

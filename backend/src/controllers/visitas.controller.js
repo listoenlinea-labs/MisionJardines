@@ -9,7 +9,7 @@ const STATUS = new Set(['PROGRAMADA', 'EN_CURSO', 'FINALIZADA', 'CANCELADA']);
 const text = value => String(value || '').trim();
 
 function includeHouse() {
-    return [{ model: Casa, as: 'casa', attributes: ['id', 'calle', 'numero', 'nombre'] }];
+    return [{ model: Casa, as: 'casa', attributes: ['id', 'calle', 'calleCorrecta', 'numero', 'nombre'] }];
 }
 
 function ownerScope(req, where) {
@@ -41,7 +41,7 @@ async function list(req, res) {
         const numero = text(req.query.numero);
         if ((calle || numero) && SECURITY_ROLES.has(req.usuario.rol)) {
             include[0].where = {};
-            if (calle) include[0].where.calle = calle;
+            if (calle) include[0].where.calleCorrecta = calle;
             if (numero) include[0].where.numero = { [Op.like]: `%${numero}%` };
         }
         const visits = await Visita.findAll({ where, include, order: [['fechaProgramada', 'DESC'], ['horaProgramada', 'DESC']], limit: 1000 });

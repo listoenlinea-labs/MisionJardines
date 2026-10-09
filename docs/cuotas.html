@@ -1022,7 +1022,7 @@ body.page-cuotas .cuotas-shell{
     function llenarSelectCasas() {
       const streetSelect = document.getElementById('newQuotaStreet');
       if (!streetSelect) return;
-      const calles = [...new Set(casas.map(casa => String(casa.calle || '').trim()).filter(Boolean))]
+      const calles = [...new Set(casas.map(casa => String(casa.calleCorrecta || casa.calle || '').trim()).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
       streetSelect.innerHTML = '<option value="">Selecciona una calle</option>' +
         calles.map(calle => `<option value="${escapeHtml(calle)}">${escapeHtml(calle)}</option>`).join('');
@@ -1034,7 +1034,7 @@ body.page-cuotas .cuotas-shell{
       const houseSelect = document.getElementById('newQuotaHouse');
       if (!houseSelect) return;
       const disponibles = casas
-        .filter(casa => String(casa.calle || '') === street)
+        .filter(casa => String(casa.calleCorrecta || casa.calle || '') === street)
         .sort((a, b) => String(a.numero || '').localeCompare(String(b.numero || ''), 'es', { numeric: true }));
       houseSelect.disabled = !street;
       houseSelect.innerHTML = street
@@ -1062,7 +1062,7 @@ body.page-cuotas .cuotas-shell{
       const select = document.getElementById('filterStreet');
       const valorActual = select.value;
       const calles = [...new Set(
-        cuotas.map(cuota => cuota.calleSnapshot || cuota.casa?.calle).filter(Boolean)
+        cuotas.map(cuota => cuota.casa?.calleCorrecta || cuota.calleSnapshot || cuota.casa?.calle).filter(Boolean)
       )].sort((a, b) => a.localeCompare(b, 'es'));
       select.innerHTML = '<option value="">Todas las calles</option>' +
         calles.map(calle => `<option value="${escapeHtml(calle)}">${escapeHtml(calle)}</option>`).join('');
@@ -1080,7 +1080,7 @@ body.page-cuotas .cuotas-shell{
         const telefono = obtenerTelefono(cuota);
         const textoCondominos = obtenerTextoCondominos(cuota);
         const numero = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
-        const calle = cuota.calleSnapshot || cuota.casa?.calle || '';
+        const calle = cuota.casa?.calleCorrecta || cuota.calleSnapshot || cuota.casa?.calle || '';
         const estatus = statusLabel(cuota.estatusPago);
         const matchText = !text || propietario.toLowerCase().includes(text) ||
           correo.toLowerCase().includes(text) || telefono.toLowerCase().includes(text) ||
@@ -1357,7 +1357,7 @@ body.page-cuotas .cuotas-shell{
         return `<tr>
           <td><input class="receipt-recipient-check" type="checkbox" value="${Number(cuota.id)}"
             ${correo ? 'checked' : 'disabled'} aria-label="Seleccionar casa ${escapeHtml(casa)}"></td>
-          <td><strong>${escapeHtml(casa)}</strong><br><small>${escapeHtml(cuota.calleSnapshot || cuota.casa?.calle || '')}</small></td>
+          <td><strong>${escapeHtml(casa)}</strong><br><small>${escapeHtml(cuota.casa?.calleCorrecta || cuota.calleSnapshot || cuota.casa?.calle || '')}</small></td>
           <td>${escapeHtml(obtenerPropietario(cuota))}</td>
           <td class="${correo ? '' : 'receipt-email-missing'}">${escapeHtml(correo || 'Sin correo registrado')}</td>
           <td>${escapeHtml(cuota.folio || 'Se generará al enviar')}</td>
@@ -1482,7 +1482,7 @@ body.page-cuotas .cuotas-shell{
       metricas.cumplimiento = exigibles ? metricas.pagadas / exigibles : 0;
       const calles = new Map();
       datos.forEach(cuota => {
-        const calle = cuota.calleSnapshot || cuota.casa?.calle || 'Sin calle';
+        const calle = cuota.casa?.calleCorrecta || cuota.calleSnapshot || cuota.casa?.calle || 'Sin calle';
         const actual = calles.get(calle) || { calle, total: 0, pagadas: 0 };
         actual.total += 1;
         actual.pagadas += cuota.estatusPago === 'PAGADO' ? 1 : 0;
@@ -1672,7 +1672,7 @@ body.page-cuotas .cuotas-shell{
       registrosPagina.forEach(cuota => {
         const tr = document.createElement('tr');
         const casa = cuota.numeroCasaSnapshot || cuota.casa?.numero || '';
-        const calle = cuota.calleSnapshot || cuota.casa?.calle || '';
+        const calle = cuota.casa?.calleCorrecta || cuota.calleSnapshot || cuota.casa?.calle || '';
         const nombre = obtenerPropietario(cuota);
         const email = obtenerCorreo(cuota);
         const pagada = cuota.estatusPago === 'PAGADO';
@@ -2133,7 +2133,7 @@ body.page-cuotas .cuotas-shell{
             anio: Number(cuota.anio),
             mes: cuota.mes || '',
             casa: cuota.numeroCasaSnapshot || cuota.casa?.numero || '',
-            calle: cuota.calleSnapshot || cuota.casa?.calle || 'Sin calle',
+            calle: cuota.casa?.calleCorrecta || cuota.calleSnapshot || cuota.casa?.calle || 'Sin calle',
             nombre: obtenerPropietario(cuota) || 'Sin nombre registrado',
             montoCuota,
             montoPagado,

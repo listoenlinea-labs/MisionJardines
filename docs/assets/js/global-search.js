@@ -41,14 +41,14 @@
   const choose = index => { const links = rows(); if (!links.length) return; selected = (index + links.length) % links.length; links.forEach((x, n) => x.classList.toggle('mj-active', n === selected)); links[selected].scrollIntoView({ block: 'nearest' }); };
   const entry = (href, name, detail) => `<a class="mj-search-result" href="${escape(href)}" role="option"><span><strong>${escape(name)}</strong><small>${escape(detail)}</small></span><span aria-hidden="true">↗</span></a>`;
   const section = (label, entries) => entries.length ? `<div class="mj-search-section">${escape(label)}</div>${entries.join('')}` : '';
-  const address = row => `${row.calle || row.casa?.calle || ''} ${row.numero || row.casa?.numero || ''}`.trim();
+  const address = row => `${row.calleCorrecta || row.casa?.calleCorrecta || row.calle || row.casa?.calle || ''} ${row.numero || row.casa?.numero || ''}`.trim();
   function render(q, data) {
     const aliases = { Visitas: ['cita', 'visitante'], Mapa: ['casa', 'domicilio', 'calle'], Cuotas: ['adeudo', 'mantenimiento'], Pagos: ['transferencia', 'recibo'], Conmutador: ['llamar', 'telefono'], Seguridad: ['acceso', 'placa'], Calendario: ['agenda', 'evento', 'asamblea'] };
     const links = allowedLinks().filter(link => !q || norm(link.name).includes(norm(q)) || (aliases[link.name] || []).some(alias => norm(q).includes(alias)));
     const nav = links.map(link => entry(link.href, link.name, 'Ir a la sección'));
-    const houses = (data.casas || []).map(x => entry(`mapa.html?calle=${encodeURIComponent(x.calle)}&numero=${encodeURIComponent(x.numero)}`, `Casa ${address(x)}`, 'Abrir domicilio en Mapa'));
+    const houses = (data.casas || []).map(x => entry(`mapa.html?calle=${encodeURIComponent(x.calleCorrecta || x.calle)}&numero=${encodeURIComponent(x.numero)}`, `Casa ${address(x)}`, 'Abrir domicilio en Mapa'));
     const residents = (data.residentes || []).map(x => entry(`bases_datos.html?buscar=${encodeURIComponent(x.nombreCompleto)}`, x.nombreCompleto, `Residente · ${address(x)}`));
-    const fees = (data.cuotas || []).map(x => entry(`cuotas.html?calle=${encodeURIComponent(x.casa?.calle || '')}&numero=${encodeURIComponent(x.casa?.numero || '')}`, `Cuota ${x.mes} ${x.anio}`, `${address(x)} · ${x.estatusPago}`));
+    const fees = (data.cuotas || []).map(x => entry(`cuotas.html?calle=${encodeURIComponent(x.casa?.calleCorrecta || x.casa?.calle || '')}&numero=${encodeURIComponent(x.casa?.numero || '')}`, `Cuota ${x.mes} ${x.anio}`, `${address(x)} · ${x.estatusPago}`));
     const visits = (data.visitas || []).map(x => entry(`visitas.html?buscar=${encodeURIComponent(x.codigo)}`, x.nombreVisitante, `Visita ${x.codigo} · ${address(x)}`));
     const access = (data.accesos || []).map(x => entry(`seguridad.html?buscar=${encodeURIComponent(x.nombre || x.placas || '')}`, x.nombre, `Acceso · ${address(x)}`));
     const events = (data.eventos || []).map(x => entry(`calendario.html?fecha=${encodeURIComponent(new Date(x.fechaInicio).toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' }))}`, x.titulo, `Evento · ${x.ubicacion || 'Misión Jardines'}`));

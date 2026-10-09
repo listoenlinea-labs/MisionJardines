@@ -54,7 +54,7 @@ function nombreCompleto(usuario) {
 function perfilInclude() {
     return [
         { model: Rol, as: 'rol', attributes: ['id', 'nombre', 'descripcion'] },
-        { model: Casa, as: 'casa', attributes: ['id', 'numero', 'calle', 'nombre'] }
+        { model: Casa, as: 'casa', attributes: ['id', 'numero', 'calle', 'calleCorrecta', 'nombre'] }
     ];
 }
 
@@ -212,7 +212,7 @@ async function obtenerPerfil(req, res) {
 
         const perfil = usuario.toJSON();
         perfil.casaId = req.usuario.casaId;
-        perfil.casa = req.usuario.casaId ? await Casa.findByPk(req.usuario.casaId,{attributes:['id','calle','numero','nombre']}) : null;
+        perfil.casa = req.usuario.casaId ? await Casa.findByPk(req.usuario.casaId,{attributes:['id','calle','calleCorrecta','numero','nombre']}) : null;
         return res.status(200).json({ok:true,usuario:perfil});
     } catch (error) {
         console.error('Error al consultar perfil:', error);

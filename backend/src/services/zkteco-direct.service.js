@@ -1208,7 +1208,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
 
     const candidates=await Casa.findAll({
       where:{numero:String(numero).trim()},
-      attributes:['id','calle','numero','controles'],
+      attributes:['id','calle','calleCorrecta','numero','controles'],
       order:[['calle','ASC'],['numero','ASC']]
     });
     houses=candidates.filter(h=>normalizeDepartmentKey(h.calle,h.numero)===normalizeDepartmentKey(calle,numero));
@@ -1216,7 +1216,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
     // reconciled to a physical department record.
     if(houseIds.length){
       const additional=await Casa.findAll({where:{id:{[Op.in]:houseIds}},
-        attributes:['id','calle','numero','controles']});
+        attributes:['id','calle','calleCorrecta','numero','controles']});
       const have=new Set(houses.map(h=>Number(h.id)));
       for(const house of additional){
         if(!have.has(Number(house.id))){houses.push(house);have.add(Number(house.id));}
@@ -1238,7 +1238,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
     if(numero) where.numero={ [Op.like]: `%${numero}%` };
     houses=await Casa.findAll({
       where,
-      attributes:['id','calle','numero','controles'],
+      attributes:['id','calle','calleCorrecta','numero','controles'],
       order:[['calle','ASC'],['numero','ASC']]
     });
   }
@@ -1301,6 +1301,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       return {
         id:h.id,
         calle:canonicalStreet(h.calle),
+        calleCorrecta:h.calleCorrecta||canonicalStreet(h.calle),
         numero:h.numero,
         departamentoBusqueda:searchByDepartment?`${canonicalStreet(calle)} ${String(numero).trim()}`:null,
         filtroTag:tagQuery||null,

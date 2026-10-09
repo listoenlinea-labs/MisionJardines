@@ -60,6 +60,7 @@ function obtenerInclude() {
                 'id',
                 'numero',
                 'calle',
+                'calleCorrecta',
                 'nombre',
                 'correo',
                 'telefono',
@@ -157,7 +158,7 @@ async function listarCuotas(req, res) {
                         model: Casa,
                         as: 'casa'
                     },
-                    'calle',
+                    'calleCorrecta',
                     'ASC'
                 ],
                 [

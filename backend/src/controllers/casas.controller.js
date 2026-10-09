@@ -29,13 +29,13 @@ const obtenerCasas = async (req, res) => {
 
         const casas = await Casa.findAll({
             attributes: esSeguridad
-                ? ['id', 'calle', 'numero']
+                ? ['id', 'calle', 'calleCorrecta', 'numero']
                 : [
-                    'id', 'calle', 'numero', 'nombre', 'controles', 'pago',
+                    'id', 'calle', 'calleCorrecta', 'numero', 'nombre', 'controles', 'pago',
                     'enRenta', 'telefono', 'correo', 'observaciones'
                 ],
             include,
-            order: [['calle', 'ASC'], ['numero', 'ASC']]
+            order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']]
         });
 
         return res.status(200).json({ ok: true, total: casas.length, casas });
@@ -87,6 +87,7 @@ const actualizarAccesosCasa = async (req, res) => {
             data: {
                 id: casa.id,
                 calle: casa.calle,
+                calleCorrecta: casa.calleCorrecta || casa.calle,
                 numero: casa.numero,
                 permisosAcceso: {
                     pluma: permisos.pluma,

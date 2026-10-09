@@ -30,8 +30,8 @@
       const house = user.casa || null;
       $('residentName').textContent = fullName(user);
       if (house) {
-        $('houseText').textContent = (house.calle || '') + ' · Casa ' + (house.numero || '');
-        $('residentStreet').value = house.calle || '';
+        $('houseText').textContent = (house.calleCorrecta || house.calle || '') + ' · Casa ' + (house.numero || '');
+        $('residentStreet').value = house.calleCorrecta || house.calle || '';
         $('residentNumber').value = house.numero || '';
         return Boolean(house.calle || house.numero);
       }
@@ -40,7 +40,7 @@
 
     function syncBankReference() {
       const house = profile?.casa || profile?.vivienda || storedUser()?.casa || storedUser()?.vivienda;
-      const street = (house?.calle || $('residentStreet')?.value || '').trim();
+      const street = (house?.calleCorrecta || house?.calle || $('residentStreet')?.value || '').trim();
       const number = String(house?.numero || $('residentNumber')?.value || '').trim();
       $('bankReference').textContent = street && number ? street + ' · Casa ' + number : 'Selecciona una vivienda';
     }
@@ -81,7 +81,7 @@
       const period=receiptPeriod(p),status=({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus||'';
       return '<article class="receipt-item"><div class="receipt-main"><strong>'+esc(p.reciboFolio||p.folioReporte||'Recibo')+
         '</strong><p><b class="receipt-period-label">'+esc(period.label)+'</b><br>'+esc(p.concepto||'Pago registrado')+'<br>'+
-        esc(p.calleSnapshot)+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
+        esc((p.casa?.calleCorrecta || p.calleSnapshot))+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
         '</span><span class="pill">'+esc(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':'Mantenimiento')+
         '</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b><button class="receipt-view-btn" type="button" data-receipt-detail="'+Number(p.id)+'">Ver detalle</button></div></article>';
     }
@@ -116,7 +116,7 @@
       const p=receiptItems.find(x=>Number(x.id)===Number(id));
       if(!p)return toast('No se encontró el pago');
       const fields=[
-        ['Vivienda',String(p.calleSnapshot||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
+        ['Vivienda',String((p.casa?.calleCorrecta || p.calleSnapshot)||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
         ['Folio del reporte',p.folioReporte],['Folio del recibo',p.reciboFolio||'Pendiente'],
         ['Folio bancario',p.folioOperacion],['Fecha de operación',p.fechaOperacion],
         ['Hora',p.horaOperacion],['Monto depositado',money(p.monto)],
@@ -322,7 +322,7 @@
       return pendingItems.filter(p => {
         const date = String(p.fechaOperacion || '').slice(0, 10);
         const parts = date.split('-');
-        return (!street || String(p.calleSnapshot || '').toLocaleLowerCase('es-MX').includes(street))
+        return (!street || String((p.casa?.calleCorrecta || p.calleSnapshot) || '').toLocaleLowerCase('es-MX').includes(street))
           && (!house || String(p.numeroCasaSnapshot || '').toLocaleLowerCase('es-MX').includes(house))
           && (!pendingFilters.month || parts[1] === pendingFilters.month)
           && (!pendingFilters.year || parts[0] === pendingFilters.year);
@@ -348,8 +348,8 @@
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'pending-mini-card';
-        card.setAttribute('aria-label', 'Revisar comprobante de ' + p.calleSnapshot + ', casa ' + p.numeroCasaSnapshot);
-        card.innerHTML = '<span class="pending-mini-details"><strong>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
+        card.setAttribute('aria-label', 'Revisar comprobante de ' + (p.casa?.calleCorrecta || p.calleSnapshot) + ', casa ' + p.numeroCasaSnapshot);
+        card.innerHTML = '<span class="pending-mini-details"><strong>' + esc((p.casa?.calleCorrecta || p.calleSnapshot)) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
           '</strong><span class="pending-mini-month">Mes del depósito: <b>' + esc(paymentMonthLabel(p.fechaOperacion)) + '</b></span><small>' + esc(p.fechaOperacion || 'Sin fecha') + ' · ' + esc(p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento') +
           '</small><small>Folio ' + esc(p.folioOperacion || '—') + '</small></span><span class="pending-mini-right"><b>' + money(p.monto) +
           '</b><span>Ver detalle ›</span></span>';
@@ -362,7 +362,7 @@
       const body = $('pendingDetailBody');
       const type = p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : 'Mantenimiento';
       body.innerHTML =
-        '<div class="pending-detail-heading"><strong>' + esc(p.calleSnapshot) + ' · Casa ' + esc(p.numeroCasaSnapshot) + '</strong><b>' + money(p.monto) + '</b></div>' +
+        '<div class="pending-detail-heading"><strong>' + esc((p.casa?.calleCorrecta || p.calleSnapshot)) + ' · Casa ' + esc(p.numeroCasaSnapshot) + '</strong><b>' + money(p.monto) + '</b></div>' +
         '<div class="pending-detail-meta"><div><small>Folio / operación</small><strong>' + esc(p.folioOperacion || '—') + '</strong></div>' +
         '<div><small>Fecha</small><strong>' + esc(p.fechaOperacion || '—') + '</strong></div>' +
         '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
@@ -456,7 +456,7 @@
       $('adminPayments').hidden = false;
       try {
         const d = await api('/casas', { headers: headers() });
-        for (const h of d.casas || []) { const option = document.createElement('option'); option.value = h.id; option.textContent = h.calle + ' · Casa ' + h.numero; $('setupHouse').append(option); }
+        for (const h of d.casas || []) { const option = document.createElement('option'); option.value = h.id; option.textContent = (h.calleCorrecta || h.calle) + ' · Casa ' + h.numero; $('setupHouse').append(option); }
       } catch (e) { toast(e.message); }
       await loadPending();
     }

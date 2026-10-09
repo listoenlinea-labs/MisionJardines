@@ -175,13 +175,14 @@ async function obtenerDashboard(req, res) {
         consultaSegura(
             'actividad_pagos',
             `SELECT
-                COALESCE(fecha_pago, fecha_confirmacion, actualizado_en) AS fecha,
-                calle_snapshot AS calle,
-                numero_casa_snapshot AS numero,
+                COALESCE(c.fecha_pago, c.fecha_confirmacion, c.actualizado_en) AS fecha,
+                COALESCE(d.calle_correcta, c.calle_snapshot) AS calle,
+                c.numero_casa_snapshot AS numero,
                 monto_pagado AS monto
-             FROM cuotas
-             WHERE monto_pagado > 0
-             ORDER BY COALESCE(fecha_pago, fecha_confirmacion, actualizado_en) DESC
+             FROM cuotas c
+             LEFT JOIN direcciones d ON d.id = c.casa_id
+             WHERE c.monto_pagado > 0
+             ORDER BY COALESCE(c.fecha_pago, c.fecha_confirmacion, c.actualizado_en) DESC
              LIMIT 4`,
             {},
             errores
@@ -190,7 +191,7 @@ async function obtenerDashboard(req, res) {
             'actividad_visitas',
             `SELECT
                 COALESCE(v.fecha_entrada, v.actualizado_en, v.creado_en) AS fecha,
-                d.calle, d.numero,
+                d.calle_correcta AS calle, d.numero,
                 v.estatus
              FROM visitas_programadas v
              INNER JOIN direcciones d ON d.id = v.casa_id
@@ -202,7 +203,7 @@ async function obtenerDashboard(req, res) {
         ),
         consultaSegura(
             'actividad_accesos',
-            `SELECT a.fecha_entrada AS fecha, d.calle, d.numero, a.tipo
+            `SELECT a.fecha_entrada AS fecha, d.calle_correcta AS calle, d.numero, a.tipo
              FROM accesos_seguridad a
              INNER JOIN direcciones d ON d.id = a.casa_id
              ORDER BY a.fecha_entrada DESC
@@ -212,7 +213,7 @@ async function obtenerDashboard(req, res) {
         ),
         consultaSegura(
             'actividad_residentes',
-            `SELECT c.creado_en AS fecha, d.calle, d.numero
+            `SELECT c.creado_en AS fecha, d.calle_correcta AS calle, d.numero
              FROM condominos c
              INNER JOIN direcciones d ON d.id = c.direccion_id
              WHERE c.activo = 1

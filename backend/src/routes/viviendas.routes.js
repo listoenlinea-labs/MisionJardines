@@ -7,7 +7,7 @@ const {admin,hash,fallo,gestionar,invitacion,vincular}=require('../services/vivi
 const crypto=require('crypto');
 const {enviarInvitacionCasa}=require('../services/email.service');
 const run=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){console.error('Viviendas:',e.message);res.status(e.status||500).json({ok:false,message:e.status?e.message:'No fue posible completar la operación'});}};
-const casaFields=['id','calle','numero'];
+const casaFields=['id','calle','calleCorrecta','numero'];
 const id=value=>{if(!/^[1-9][0-9]*$/.test(String(value)))throw fallo(400,'Identificador no válido');return String(value);};
 router.get('/invitacion/:token',rateLimit({windowMs:60000,limit:30}),run(async(req,res)=>{
  const inv=await invitacion(req.params.token);
@@ -21,7 +21,7 @@ router.get('/mias',run(async(req,res)=>{
 }));
 router.get('/administracion/casas',run(async(req,res)=>{
  if(!admin(req.usuario.rol))throw fallo(403,'Solo Administración');
- res.json({ok:true,casas:await Casa.findAll({attributes:casaFields,order:[['calle','ASC'],['numero','ASC']]})});
+ res.json({ok:true,casas:await Casa.findAll({attributes:casaFields,order:[['calleCorrecta','ASC'],['numero','ASC']]})});
 }));
 router.get('/:casaId/miembros',run(async(req,res)=>{
  const casaId=id(req.params.casaId); await gestionar(req.usuario,casaId);

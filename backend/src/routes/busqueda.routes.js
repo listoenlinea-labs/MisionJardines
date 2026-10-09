@@ -12,7 +12,7 @@ const personnel = ['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD'
 const finance = ['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'CONDOMINO'];
 const like = value => `%${value.replace(/[\\%_]/g, '\\$&')}%`;
 const normalize = value => typeof value === 'string' ? value.trim().slice(0, 80) : '';
-const house = { model: Casa, as: 'casa', attributes: ['id', 'calle', 'numero'] };
+const house = { model: Casa, as: 'casa', attributes: ['id', 'calle', 'calleCorrecta', 'numero'] };
 const fields = (term, names) => ({ [Op.or]: names.map(name => ({ [name]: { [Op.like]: term } })) });
 
 router.get('/', async (req, res) => {
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
   try {
     const queries = [];
     if (personnel.includes(role)) {
-      queries.push(Casa.findAll({ attributes: ['id', 'calle', 'numero'], where: fields(term, ['calle', 'numero', 'nombre', 'telefono', 'correo']), limit: 5, order: [['calle', 'ASC'], ['numero', 'ASC']] }).then(rows => { result.casas = rows; }));
+      queries.push(Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], where: fields(term, ['calleCorrecta', 'numero', 'nombre', 'telefono', 'correo']), limit: 5, order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']] }).then(rows => { result.casas = rows; }));
       queries.push(Condomino.findAll({ attributes: ['id', 'nombreCompleto'], where: { activo: true, ...fields(term, ['nombreCompleto', 'telefono', 'correo']) }, include: [house], limit: 5, order: [['nombreCompleto', 'ASC']] }).then(rows => { result.residentes = rows; }));
       if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) queries.push(Acceso.findAll({ attributes: ['id', 'nombre', 'tipo', 'placas', 'fechaEntrada'], where: fields(term, ['nombre', 'placas', 'proveedor', 'motivo', 'telefono', 'tipo']), include: [house], limit: 5, order: [['fechaEntrada', 'DESC']] }).then(rows => { result.accesos = rows; }));
     }
@@ -191,8 +191,8 @@ router.get('/conmutador/telefono', autorizarRoles(...personnel), async (req, res
 
 router.get('/conmutador/opciones', autorizarRoles(...personnel), async (_req, res) => {
   try {
-    const casas = await Casa.findAll({ attributes: ['calle', 'numero'], order: [['calle', 'ASC'], ['numero', 'ASC']], raw: true });
-    return res.json({ ok: true, casas });
+    const casas = await Casa.findAll({ attributes: ['calle', 'calleCorrecta', 'numero'], order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']], raw: true });
+    return res.json({ ok: true, casas: casas.map(casa => ({ ...casa, calle: casa.calleCorrecta || casa.calle })) });
   } catch (error) {
     console.error('Error al cargar domicilios del conmutador:', error);
     return res.status(500).json({ ok: false, message: 'No fue posible cargar los domicilios' });
@@ -205,13 +205,13 @@ router.get('/conmutador', autorizarRoles(...personnel), async (req, res) => {
   if (!calle && !numero) return res.json({ ok: true, casas: [] });
   try {
     const casas = await Casa.findAll({
-      attributes: ['id', 'calle', 'numero'],
-      where: { ...(calle && { calle: { [Op.like]: like(calle) } }), ...(numero && { numero: { [Op.like]: like(numero) } }) },
+      attributes: ['id', 'calle', 'calleCorrecta', 'numero'],
+      where: { ...(calle && { calleCorrecta: { [Op.like]: like(calle) } }), ...(numero && { numero: { [Op.like]: like(numero) } }) },
       include: [{ model: Condomino, as: 'condominos', where: { activo: true }, required: false, attributes: ['nombreCompleto', 'telefono'] }],
       limit: 40,
-      order: [['calle', 'ASC'], ['numero', 'ASC']]
+      order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']]
     });
-    return res.json({ ok: true, casas });
+    return res.json({ ok: true, casas: casas.map(casa => ({ ...casa.toJSON(), calle: casa.calleCorrecta || casa.calle })) });
   } catch (error) {
     console.error('Error del conmutador:', error);
     return res.status(500).json({ ok: false, message: 'No fue posible consultar el conmutador' });
