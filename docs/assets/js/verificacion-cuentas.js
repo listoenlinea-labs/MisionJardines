@@ -108,7 +108,7 @@
       if (version !== houseVersion || active !== item || !$('reviewDialog').open) return;
       const previous = $('verifiedHouse').value;
       $('verifiedHouse').replaceChildren(new Option(data.viviendas.length ? 'Selecciona una vivienda…' : 'Sin coincidencias. Prueba otra búsqueda.', ''));
-      for (const house of data.viviendas) $('verifiedHouse').append(new Option(house.calle + ' · ' + house.numero, house.id));
+      for (const house of [...data.viviendas].sort((a,b)=>String(a?.calleCorrecta||a?.calle||'').localeCompare(String(b?.calleCorrecta||b?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a?.numero||'').localeCompare(String(b?.numero||''),'es-MX',{numeric:true}))) $('verifiedHouse').append(new Option((house.calleCorrecta||house.calle) + ' · ' + house.numero, house.id));
       const suggested = data.viviendas.find(house => String(house.id) === String(item.casaSugeridaId) ||
         (normalize(house.calle) === normalize(item.calle) && normalize(house.numero) === normalize(item.numeroCasa)));
       if (data.viviendas.some(house => String(house.id) === previous)) $('verifiedHouse').value = previous;

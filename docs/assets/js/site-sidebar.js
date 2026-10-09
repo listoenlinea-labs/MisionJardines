@@ -215,7 +215,7 @@
       const response=await fetch((window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api')+'/viviendas/mias',{headers:{Authorization:'Bearer '+token}});
       const data=await response.json(); if(!response.ok||!data.ok)throw Error();
       const links=data.viviendas||[];
-      for(const link of links){const option=document.createElement('option');option.value=link.casaId;option.textContent=link.casa.calle+' '+link.casa.numero;selector.append(option);}
+      for(const link of [...links].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true}))){const option=document.createElement('option');option.value=link.casaId;option.textContent=(link.casa.calleCorrecta||link.casa.calle)+' '+link.casa.numero;selector.append(option);}
       const selected=sessionStorage.getItem('mjCasaSeleccionada');
       if(links.some(l=>String(l.casaId)===selected))selector.value=selected;
       else if(selected && !['viviendas.html','cuenta.html'].includes(page())) {sessionStorage.removeItem('mjCasaSeleccionada');location.replace('viviendas.html');return;}

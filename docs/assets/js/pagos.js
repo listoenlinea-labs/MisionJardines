@@ -326,7 +326,7 @@
           && (!house || String(p.numeroCasaSnapshot || '').toLocaleLowerCase('es-MX').includes(house))
           && (!pendingFilters.month || parts[1] === pendingFilters.month)
           && (!pendingFilters.year || parts[0] === pendingFilters.year);
-      });
+      }).sort((a,b)=>String(a.casa?.calleCorrecta||a.calleSnapshot||'').localeCompare(String(b.casa?.calleCorrecta||b.calleSnapshot||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.numeroCasaSnapshot||'').localeCompare(String(b.numeroCasaSnapshot||''),'es-MX',{numeric:true})||String(b.fechaOperacion||'').localeCompare(String(a.fechaOperacion||'')));
     }
     function paymentMonthLabel(value) {
       const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ''));
@@ -456,7 +456,7 @@
       $('adminPayments').hidden = false;
       try {
         const d = await api('/casas', { headers: headers() });
-        for (const h of d.casas || []) { const option = document.createElement('option'); option.value = h.id; option.textContent = (h.calleCorrecta || h.calle) + ' · Casa ' + h.numero; $('setupHouse').append(option); }
+        for (const h of [...(d.casas || [])].sort((a,b)=>String(a?.calleCorrecta||a?.calle||'').localeCompare(String(b?.calleCorrecta||b?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a?.numero||'').localeCompare(String(b?.numero||''),'es-MX',{numeric:true}))) { const option = document.createElement('option'); option.value = h.id; option.textContent = (h.calleCorrecta || h.calle) + ' · Casa ' + h.numero; $('setupHouse').append(option); }
       } catch (e) { toast(e.message); }
       await loadPending();
     }
