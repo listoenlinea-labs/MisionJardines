@@ -198,7 +198,7 @@
       } catch (e) {
         if (revision !== quoteRevision) return;
         $('summaryLate').textContent = 'No disponible';
-        $('paymentPreview').textContent = e.message;
+        $('paymentPreview').textContent = 'No se pudo cotizar: ' + e.message + '. Revisa la conexión al controlador y vuelve a seleccionar la fecha.';
       }
     }
 
@@ -218,7 +218,36 @@
       if (!m) return '';
       return m[1].padStart(2, '0') + ':' + m[2] + ':' + (m[3] || '00');
     }
-    function extract(text) { const lines = String(text || '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean); const all = lines.join(' '); let folio = ''; for (const re of [/(?:folio|clave\s+de\s+rastreo|operaci[oó]n|movimiento|referencia)\s*[:#-]?\s*([A-Z0-9-]{5,})/i]) { const m = all.match(re); if (m) { folio = m[1]; break } } const dm = all.match(/\b(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}|\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4})\b/); const tm = all.match(/\b([01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\b/); let amount = ''; const am = all.match(/(?:monto|importe|total|cantidad)\s*(?:pagad[oa])?\s*[:$ ]+\s*\$?\s*([0-9][0-9.,]*)/i); if (am) amount = normalizeAmount(am[1]); if (!amount) { const values = [...all.matchAll(/\$\s*([0-9][0-9.,]*)/g)].map(m => Number(normalizeAmount(m[1]))).filter(Number.isFinite); if (values.length) amount = Math.max(...values).toFixed(2) } return { folio, date: dm ? normalizeDate(dm[1]) : '', time: tm ? normalizeTime(tm[0]) : '', amount } }
+    function extract(text) {
+      const lines = String(text || '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean);
+      const all = lines.join(' ').replace(/\s+/g, ' ');
+      const labelled = (label, value) => {
+        const pattern = new RegExp('(?:^|\\b)(?:' + label + ')\\s*[:#-]?\\s*(' + value + ')', 'i');
+        return (all.match(pattern) || [])[1] || '';
+      };
+      // Do not confuse a payment reference, transaction concept, or tracking key with its folio.
+      const folio = labelled('folio\\s*(?:de\\s*)?(?:operaci[oó]n|transacci[oó]n|transferencia)|n[uú]mero\\s*de\\s*operaci[oó]n', '[A-Z0-9-]{5,}')
+        || labelled('folio', '[A-Z0-9-]{5,}')
+        || labelled('clave\\s*de\\s*rastreo', '[A-Z0-9-]{5,}');
+      const amountRaw = labelled('monto\\s*(?:transferido|pagado|enviado|de\\s*la\\s*operaci[oó]n)?|importe\\s*(?:transferido|pagado)?|total\\s*(?:transferido|pagado)', '\\$?\\s*[0-9][0-9.,]*');
+      let amount = amountRaw ? normalizeAmount(amountRaw) : '';
+      if (!amount) {
+        const values = [...all.matchAll(/\$\s*([0-9][0-9.,]*)/g)].map(m => Number(normalizeAmount(m[1]))).filter(Number.isFinite);
+        if (values.length === 1) amount = values[0].toFixed(2);
+      }
+      const months = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
+      const parseDate = raw => {
+        const named = String(raw).match(/\b(\d{1,2})\s*(?:de\s*)?(ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:sto)?|sep(?:tiembre)?|setiembre|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\s*(?:de\s*)?(20\d{2})\b/i);
+        if (named) return named[3] + '-' + String(months[named[2].slice(0,3).toLowerCase()] || 9).padStart(2,'0') + '-' + named[1].padStart(2,'0');
+        const numeric = String(raw).match(/\b(?:\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}|\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4})\b/);
+        return numeric ? normalizeDate(numeric[0]) : '';
+      };
+      const operationDate = (all.match(/fecha\s*(?:de\s*)?(?:operaci[oó]n|transferencia|pago)\s*[:#-]?\s*([^\n]{0,50})/i) || [])[1] || '';
+      const date = parseDate(operationDate) || parseDate(all);
+      const timeText = operationDate || all;
+      const time = (timeText.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\b/) || [])[0] || '';
+      return { folio, date, time: normalizeTime(time), amount };
+    }
     async function runOcr() { if (!proofData) return toast('Primero adjunta un comprobante.'); if (!window.Tesseract) return toast('El lector automático no está disponible.'); $('retryOcr').disabled = true; $('ocrState').textContent = 'Leyendo comprobante…'; $('ocrBar').style.width = '5%'; try { const result = await Tesseract.recognize(proofData, 'spa+eng', { logger: m => { if (m.status === 'recognizing text') { $('ocrBar').style.width = Math.round((m.progress || 0) * 100) + '%'; $('ocrState').textContent = 'Leyendo texto… ' + Math.round((m.progress || 0) * 100) + '%' } } }); ocrText = result?.data?.text || ''; const f = extract(ocrText); if (f.folio) $('operationFolio').value = f.folio; if (f.date) $('operationDate').value = f.date; if (f.time) $('operationTime').value = normalizeTime(f.time); else if (!$('operationTime').value) $('operationTime').value = currentMexicoTime(); if (f.amount) $('amount').value = f.amount; updatePaymentSummary(); $('ocrBar').style.width = '100%'; $('ocrState').textContent = 'Lectura terminada. Revisa los datos antes de enviar.'; toast('Comprobante leído automáticamente.') } catch (e) { console.error(e); $('ocrState').textContent = 'No fue posible leer automáticamente. Puedes completar los campos manualmente.' } finally { $('retryOcr').disabled = false } }
 
     $('proofInput').addEventListener('change', async e => {
