@@ -5,6 +5,7 @@
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const headers = (json = false) => ({ Authorization: 'Bearer ' + token, ...(json ? { 'Content-Type': 'application/json' } : {}) });
     let validity = null;
+    let quote = null, quoteRevision = 0;
     let profile = null, config = null, proofData = '', ocrText = '', proofMeta = { name: '', mime: '' }, paymentType = 'MANTENIMIENTO', extras = [], selectedExtra = null;
 
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
@@ -168,12 +169,37 @@
       const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
       return values.hour + ':' + values.minute + ':' + values.second;
     }
-    function updatePaymentSummary() {
+    async function updatePaymentSummary() {
+      const revision = ++quoteRevision;
+      quote = null;
       const date = $('operationDate').value;
       if (paymentType === 'EXTRAORDINARIO') {
         const amount = Number(selectedExtra?.monto || 0); $('summaryBase').textContent = selectedExtra ? money(amount) : 'Selecciona una cuota'; $('summaryLate').textContent = money(0); $('lateRow').hidden = true; $('summaryTotal').textContent = money(amount); $('amount').min = amount || 1; $('officialConcept').value = selectedExtra ? 'Pago extraordinario correspondiente a ' + selectedExtra.concepto : 'Selecciona una cuota extraordinaria'; return;
       }
-      const base = Number(config?.mantenimiento?.montoBase || 300); const limit = Number(config?.mantenimiento?.diaLimite || 10); const lateFee = Number(config?.mantenimiento?.recargoTardio || 50); const day = date ? Number(date.slice(-2)) : 0; const late = day > limit; const total = base + (late ? lateFee : 0); $('lateRow').hidden = false; $('summaryBase').textContent = money(base); $('summaryLate').textContent = money(late ? lateFee : 0); $('lateRow').classList.toggle('late', late); $('summaryTotal').textContent = money(total); $('ruleAmount').textContent = money(total); $('amount').min = String(total); $('officialConcept').value = 'Mantenimiento desde octubre 2026 (mensualidades completas, meses pendientes primero)'; updatePreview();
+      $('lateRow').hidden = false;
+      $('summaryBase').textContent = money(300);
+      $('summaryLate').textContent = 'Consultando…';
+      $('summaryTotal').textContent = '—';
+      $('ruleAmount').textContent = 'Consultando recargos';
+      $('amount').min = '0.01';
+      $('officialConcept').value = 'Mantenimiento: recargos por cortes vencidos y mensualidades';
+      updatePreview();
+      if (!date) { $('summaryLate').textContent = 'Selecciona fecha'; return; }
+      try {
+        const result = await api('/pagos/cotizacion?fechaOperacion=' + encodeURIComponent(date), { headers: headers() });
+        if (revision !== quoteRevision || paymentType !== 'MANTENIMIENTO') return;
+        quote = { ...result.data, fechaOperacion: date };
+        $('summaryLate').textContent = money(quote.recargo);
+        $('lateRow').classList.toggle('late', quote.recargo > 0);
+        $('summaryTotal').textContent = money(quote.minimo);
+        $('ruleAmount').textContent = money(quote.minimo);
+        $('amount').min = String(quote.minimo);
+        updatePreview();
+      } catch (e) {
+        if (revision !== quoteRevision) return;
+        $('summaryLate').textContent = 'No disponible';
+        $('paymentPreview').textContent = e.message;
+      }
     }
 
     function setTab(type) {
@@ -234,9 +260,9 @@
       const date=$('operationDate').value;
       const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       if(!date || date<'2026-10-01' || date>today)return toast('Selecciona una fecha real desde octubre 2026, no futura.');
-      const price=Number(date.slice(-2))>10?350:300;
-      if(Math.round(amount*100)<price*100 || Math.round(amount*100)%(price*100)!==0)
-        return toast('Para esa fecha se requieren mensualidades completas de '+money(price)+'. Revisa el monto del banco.');
+      if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a seleccionar la fecha.');
+      if (Math.round(amount * 100) < Math.round(quote.minimo * 100))
+        return toast('Para cubrir los recargos y una mensualidad necesitas al menos ' + money(quote.minimo) + '.');
     } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); $('previewBox').classList.remove('show'); proofData = ''; ocrText = ''; selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
     document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
@@ -296,22 +322,19 @@
     }
     function updatePreview() {
       if (paymentType !== 'MANTENIMIENTO') return;
-      const operationDate=$('operationDate').value;
-      const fee=Number(operationDate?.slice(-2)||0)>10?350:300;
-      const amount=Math.round(Number($('amount').value||0)*100);
-      const unit=fee*100;
-      if(!operationDate || amount<=0){
-        $('paymentPreview').textContent='Los meses se aplicarán después de validar el pago, desde la fecha actual de cada TAG.';
-        return;
+      const amount = Math.round(Number($('amount').value || 0) * 100);
+      if (!quote) { $('paymentPreview').textContent = 'Selecciona la fecha del depósito para consultar los recargos de la vivienda.'; return; }
+      const net = amount - Math.round(quote.recargo * 100);
+      const available = net + Math.round(quote.saldoParcial * 100);
+      if (net <= 0 || available < 30000) {
+        $('paymentPreview').textContent = 'Recargos pendientes: ' + money(quote.recargo) + '. Importe mínimo con saldo a favor: ' + money(quote.minimo) + '.'; return;
       }
-      if(amount%unit!==0 || amount<unit){
-        $('paymentPreview').textContent='Para esta fecha, cada mensualidad completa cuesta '+money(fee)+'. No se admiten importes inferiores o parciales.';
-        return;
-      }
-      const months=amount/unit;
-      $('paymentPreview').textContent='Estimación: '+months+' mensualidad(es), descontando los recargos. Al aprobar el pago se leerá la fecha actual de cada TAG en el C3 y se incrementará ese número de meses, con corte el día 10.';
-
+      const months = Math.floor(available / 30000), balance = (available % 30000) / 100;
+      $('paymentPreview').textContent = 'Estimación: ' + months + ' mensualidad(es), ' + money(quote.recargo) +
+        ' de recargos por cortes vencidos y ' + money(balance) + ' de saldo a favor. Fecha consultada en C3: ' + quote.fechaFinalC3 +
+        '. El backend volverá a comprobar el estado antes de registrar el pago.';
     }
+
     let pendingItems = [];
     const pendingFilters = { street: '', house: '', month: '', year: '' };
     function filterPending() {

@@ -11,7 +11,7 @@ const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.s
 const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
 const pagosPruebas = require('../config/pagos-pruebas');
-const mensualidades = require('../services/mensualidades-mantenimiento');
+const recargosService = require('../services/recargos-mantenimiento.service');
 const BASE_MANTENIMIENTO = 300;
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
@@ -50,10 +50,6 @@ function basePublicaBackend(req) {
 
 function construirUrlRecibo(req, pagoId) {
     return basePublicaBackend(req) + '/api/pagos/' + pagoId + '/recibo';
-}
-
-function montoMantenimiento(fechaOperacion, monto) {
-    return mensualidades.cotizar(fechaOperacion,monto);
 }
 
 function conceptoMantenimiento() {
@@ -327,6 +323,7 @@ async function reportarPago(req, res) {
         }
 
         let cuotaExtraordinaria = null;
+        let cortesRecargo = null;
         let requerido;
         let recargo = 0;
         let concepto;
@@ -361,12 +358,14 @@ async function reportarPago(req, res) {
             // Validar en el backend, no confiar en importes del navegador ni OCR.
             // El recibo solo registra una solicitud: hasta validar contra el banco
             // no se activan TAGs físicos.
-            const rule = montoMantenimiento(fechaOperacion, req.body.monto);
+            transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
+            const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
+            cortesRecargo = rule.cortesRecargo;
             requerido = rule.total;
             recargo = rule.recargo;
             concepto = 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ' +
                 '(desde octubre de 2026, pendientes primero). ' +
-                (rule.tardio ? 'Incluye recargo de $50 por mensualidad.' : 'Sin recargo.');
+                (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
         }
 
         if (!Number.isFinite(monto) || monto <= 0 || (tipoPago === 'EXTRAORDINARIO' && Math.abs(monto - requerido) > 0.009)) {
@@ -376,7 +375,7 @@ async function reportarPago(req, res) {
             });
         }
 
-        transaction = await sequelize.transaction();
+        if (!transaction) transaction = await sequelize.transaction();
 
         const year = new Date().getFullYear();
         const folio = await generarSiguienteFolio(year, transaction);
@@ -397,6 +396,7 @@ async function reportarPago(req, res) {
             monto,
             montoRequerido: requerido,
             recargo: Math.min(recargo, monto),
+            cortesRecargo,
             calleSnapshot: casa.calle,
             numeroCasaSnapshot: casa.numero,
             nombreReportante: nombreCompleto(usuario) || 'Residente',
@@ -414,6 +414,7 @@ async function reportarPago(req, res) {
             fechaEmisionRecibo: now
         }, { transaction });
 
+        if (pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN && tipoPago === 'MANTENIMIENTO') await recargosService.confirmar(pago, transaction);
         const vigenciaAcceso = pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN && tipoPago === 'MANTENIMIENTO'
             ? await vigenciaService.actualizar(casaId, usuarioId, transaction, { origen: 'PAGO', registro: pago }) : null;
 
@@ -545,7 +546,7 @@ module.exports = {
     crearCuotaExtraordinaria,
     desactivarCuotaExtraordinaria,
     reportarPago,
-    descargarRecibo, obtenerComprobantePropio, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
+    descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
 };
 
 async function obtenerVigencia(req, res) {
@@ -579,7 +580,7 @@ async function revisarPago(req, res) {
                 if (pago.estatus !== req.body.estatus) throw Object.assign(new Error('El pago ya tiene otra resolución'), { status: 409 });
                 return { pago: pagoSeguro(req, pago), vigencia: await vigenciaService.estadoCasa(pago.casaId, transaction) };
             }
-            // La tarifa y el recargo se fijan según la fecha e importe del banco.
+            // Los cortes vencidos cotizados se conservan con el comprobante.
             // No permitir que el modal reescriba el recargo y extienda accesos.
             const recargo = pago.recargo;
             if (req.body.recargo !== undefined && centavos(req.body.recargo) !== centavos(recargo))
@@ -588,6 +589,7 @@ async function revisarPago(req, res) {
             if (pago.tipoPago === 'EXTRAORDINARIO' && centavos(recargo) !== 0) throw Object.assign(new Error('La cuota extraordinaria no lleva recargo de mantenimiento'), { status: 400 });
             await pago.update({ estatus: req.body.estatus, recargo, validadoPorUsuarioId: req.usuario.usuarioId,
                 fechaValidacion: new Date(), actualizadoEn: new Date(), observacionesRevision: limpiarTexto(req.body.observaciones, 600) }, { transaction });
+            if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') await recargosService.confirmar(pago, transaction);
             const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
                 ? await vigenciaService.actualizar(pago.casaId, req.usuario.usuarioId, transaction, { origen: 'PAGO', registro: pago }) : null;
             return { pago: pagoSeguro(req, pago), vigencia };
@@ -603,4 +605,14 @@ async function obtenerComprobante(req, res) {
         res.setHeader('Cache-Control', 'no-store');
         return res.json({ ok: true, data: { comprobanteData: row.comprobanteData } });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar el comprobante' }); }
+}
+
+async function cotizacionMantenimiento(req,res) {
+    try {
+        if (!req.usuario.casaId) return res.status(400).json({ ok:false, message:'Selecciona una vivienda' });
+        const data = await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
+            recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
+        res.setHeader('Cache-Control','private, no-store');
+        return res.json({ ok:true, data });
+    } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible leer el C3 para calcular recargos. Intenta nuevamente.' }); }
 }
