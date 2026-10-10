@@ -7,7 +7,9 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "importar:julio": "node src/scripts/importar-julio-2026.js",
-    "postinstall": "node scripts/preparar-ocr.js"
+    "postinstall": "node scripts/preparar-ocr.js",
+    "test:usuarios": "node scripts/pruebas-usuarios.js",
+    "test:flujos": "node --test test/pruebas-usuarios.test.js test/permissions.test.js test/auth-permissions.test.js test/cuentas-verificacion.test.js test/viviendas.test.js test/viviendas-routes.test.js test/recargos-mantenimiento.test.js test/pagos-pruebas.test.js test/pagos-acceso-c3.test.js test/comprobante-parser.test.js test/comprobante-lector.test.js"
   },
   "keywords": [],
   "author": "",

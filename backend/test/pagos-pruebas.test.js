@@ -3,6 +3,8 @@ const assert=require('node:assert/strict');
 Object.assign(process.env,{DB_HOST:'localhost',DB_PORT:'3306',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'unused',JWT_SECRET:'test-secret'});
 require('../src/services/folios.service').generarSiguienteFolio=async()=> 'MJ-2026-TEST';
 require('../src/services/pago-reportado-pdf.service').generarReciboPagoReportado=async()=>({buffer:Buffer.from('pdf'),fileName:'test.pdf',mimeType:'application/pdf'});
+// Este archivo prueba el flujo de pagos; el OCR real se verifica en comprobante-lector.test.js.
+require('../src/services/comprobante-lector.service').comprobarDestino=async()=>({texto:'comprobante simulado',extraido:{}});
 const controller=require('../src/controllers/pagos.controller');
 const models=require('../src/models');
 const db=require('../src/config/database');
