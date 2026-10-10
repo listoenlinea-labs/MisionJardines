@@ -1,0 +1,62 @@
+name: Pruebas de cuentas y pagos
+on:
+  pull_request:
+    paths: ['backend/**', 'docs/assets/js/permissions.js', '.github/workflows/pruebas-usuarios.yml']
+  workflow_dispatch:
+    inputs:
+      probar_servidor:
+        description: Comprobar cuentas de prueba en el servidor configurado
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  flujos:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run test:flujos
+        env:
+          DB_PORT: '3306'
+  cuentas-servidor:
+    if: github.event_name == 'workflow_dispatch' && inputs.probar_servidor && github.ref == 'refs/heads/main'
+    needs: flujos
+    runs-on: ubuntu-latest
+    environment: pruebas
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run test:usuarios
+        env:
+          PRUEBAS_API_URL: ${{ vars.PRUEBAS_API_URL }}
+          PRUEBAS_CASA_ID: ${{ vars.PRUEBAS_CASA_ID }}
+          PRUEBAS_CONDOMINO_CORREO: ${{ secrets.PRUEBAS_CONDOMINO_CORREO }}
+          PRUEBAS_CONDOMINO_CLAVE: ${{ secrets.PRUEBAS_CONDOMINO_CLAVE }}
+          PRUEBAS_SEGURIDAD_CORREO: ${{ secrets.PRUEBAS_SEGURIDAD_CORREO }}
+          PRUEBAS_SEGURIDAD_CLAVE: ${{ secrets.PRUEBAS_SEGURIDAD_CLAVE }}
+          PRUEBAS_ADMINISTRADOR_CORREO: ${{ secrets.PRUEBAS_ADMINISTRADOR_CORREO }}
+          PRUEBAS_ADMINISTRADOR_CLAVE: ${{ secrets.PRUEBAS_ADMINISTRADOR_CLAVE }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultado-cuentas-prueba
+          path: backend/reports/pruebas-usuarios.json
+          if-no-files-found: ignore
+          retention-days: 7
