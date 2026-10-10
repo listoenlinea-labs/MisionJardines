@@ -15,7 +15,7 @@ body.mj-shared-sidebar-enabled .mj-shared-sidebar {
 .mj-shared-sidebar .mj-side-inner { background:#fff!important; }
 .mj-shared-sidebar .mj-side-group { border-bottom:1px solid #f0f2f4!important;padding-bottom:10px!important; }
 .mj-shared-sidebar .mj-side-group:last-child { border-bottom:0!important; }
-.mj-shared-sidebar .mj-side-logo { height:90px!important;flex-basis:90px!important;background:#f5f7f8!important;border:1px solid #eef0f0!important; }
+.mj-shared-sidebar .mj-side-logo { height:90px!important;flex-basis:90px!important;background:#fff!important;border:0!important; }
 .mj-shared-sidebar .mj-side-logo img { width:198px!important;height:100px!important;max-width:198px!important; }
 .mj-shared-sidebar .mj-side-community { padding:17px 11px 19px!important; }
 .mj-shared-sidebar .mj-side-community strong { font-size:17px!important;letter-spacing:-.025em!important; }
