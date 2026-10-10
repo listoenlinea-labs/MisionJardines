@@ -913,7 +913,7 @@
     const searchParams = new URLSearchParams(location.search); $('filterText').value = searchParams.get('buscar') || '';
     Promise.all([loadHouses(), loadVisits()]).then(applyRole).catch(error => { $('apiStatus').textContent = 'Sin conexión'; $('apiStatus').classList.add('off'); toast(error.message) });
   </script>
-  <script src="assets/js/site-sidebar.js?v=20261009-logo-vivienda"></script>
+  <script src="assets/js/site-sidebar.js?v=20261009-admin-grupo"></script>
 </body>
 
 </html>
