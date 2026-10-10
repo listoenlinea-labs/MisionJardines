@@ -44,17 +44,14 @@
     ]}
   ];
 
-  // Classify using the effective policy rather than legacy roles on menu items.
+  // Keep resident sections together; group the remaining operational pages below.
   function navigationGroups() {
-    const otherRoles = ['SEGURIDAD', 'CONDOMINO', 'MESA_DIRECTIVA', 'MANTENIMIENTO'];
     const administration = [], community = [], primary = [];
     for (const group of groups) {
       for (const item of group.items) {
-        const onlyAdministrators = MJPermissions.admins.some(role => MJPermissions.canAccess(role, item.page)) &&
-          !otherRoles.some(role => MJPermissions.canAccess(role, item.page));
-        if (onlyAdministrators) administration.push(item);
-        else if (!group.label) primary.push(item);
-        else community.push(item);
+        if (['index.html', 'viviendas.html'].includes(item.page)) primary.push(item);
+        else if (MJPermissions.canAccess('CONDOMINO', item.page)) community.push(item);
+        else administration.push(item);
       }
     }
     return [{ label: '', items: primary }, { label: 'Comunidad', items: community }, { label: 'Administración', items: administration }];
