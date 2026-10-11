@@ -4,9 +4,10 @@ const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO'
 const indexMonth = new Map(MESES.map((name,i)=>[name,i+1]));
 const numeric = (a,b) => String(a).localeCompare(String(b),'es-MX',{numeric:true,sensitivity:'base'});
 function resumenVivienda(casa, registros, fecha=new Date()) {
-  const ahora = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit'})
-    .format(fecha);
-  const [year, month] = ahora.split('-').map(Number);
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Mexico_City',year:'numeric',month:'numeric'})
+    .formatToParts(fecha);
+  const year=Number(parts.find(p=>p.type==='year')?.value);
+  const month=Number(parts.find(p=>p.type==='month')?.value);
   const periodo = year*12+month;
   let ultimo=null,fechaUltima=null,actual=false,pendienteAnterior=false;
   for(const cuota of registros) {
