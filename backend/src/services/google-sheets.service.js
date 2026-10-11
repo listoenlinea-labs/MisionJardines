@@ -13,7 +13,7 @@ function config() {
   }
   let key;
   try{key=JSON.parse(Buffer.from(base64,'base64').toString('utf8'));}catch(e){const err=new Error('Credenciales de Google Sheets inválidas');err.status=503;throw err;}
-  if(key.type!=='service_account'||!key.client_email||!key.private_key||!key.token_uri?.startsWith('https://oauth2.googleapis.com/')){
+  if(key.type!=='service_account'||!key.client_email||!key.private_key||key.token_uri!=='https://oauth2.googleapis.com/token'){
     const error=new Error('La cuenta de servicio de Google Sheets no es válida');error.status=503;throw error;
   }
   return {spreadsheetId,key};
