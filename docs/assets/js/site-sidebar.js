@@ -108,7 +108,7 @@
       <div class="mj-side-community"><strong>Misión Jardines</strong><span>Zapopan, Jalisco</span></div>
       <nav class="mj-side-nav" aria-label="Navegación principal">${nav}</nav>
       <a class="mj-side-account${active === 'cuenta.html' ? ' active' : ''}" href="cuenta.html">${icons.account}<span><strong>${account.name}</strong><small>${account.role} · Editar cuenta</small></span></a>
-      <div class="mj-side-support"><div class="mj-side-support-head">${icons.headset}<span>¿Necesitas ayuda?</span></div><p>Soporte disponible<br>Lun - Vie 9:00 - 18:00</p><a href="mailto:soluciones@listoenlinea.com">Contactar soporte</a></div>
+      <details class="mj-side-support"><summary>${icons.headset}<span>¿Necesitas ayuda?</span></summary><p>Soporte disponible · Lun - Vie 9:00 - 18:00</p><a href="mailto:soluciones@listoenlinea.com">Contactar soporte</a></details>
       <button class="mj-side-logout" type="button">${icons.logout}<span>Cerrar sesión</span></button>
     </div>`;
   }
@@ -149,6 +149,14 @@
       theme.rel = 'stylesheet';
       theme.href = 'assets/css/app-design.css?v=20260926';
       document.head.appendChild(theme);
+    }
+    // Overrides loaded after the legacy per-page styles and shared base theme.
+    if (!document.getElementById('mjProductUI')) {
+      const productUI = document.createElement('link');
+      productUI.id = 'mjProductUI';
+      productUI.rel = 'stylesheet';
+      productUI.href = 'assets/css/product-ui.css?v=20261011-product';
+      document.head.appendChild(productUI);
     }
   }
 
