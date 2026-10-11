@@ -213,6 +213,11 @@
     button.setAttribute('aria-label', collapsed ? 'Mostrar menú lateral' : 'Ocultar menú lateral');
     const scrim=document.querySelector('.mj-mobile-scrim');
     if (scrim) scrim.hidden=collapsed || !matchMedia(MOBILE).matches;
+    const sidebar=document.getElementById('sidebar');
+    if (sidebar) {
+      sidebar.inert=collapsed;
+      sidebar.setAttribute('aria-hidden', String(collapsed));
+    }
     if (persist) try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (_) {}
   }
 
