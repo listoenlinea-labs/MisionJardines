@@ -22,12 +22,16 @@ test('All main authenticated screens use the same unified theme', () => {
 });
 
 test('Obsolete banners removed, leaving operational forms', () => {
-  const conexion = read('docs/conexion.html');
+  const sidebar = read('docs/assets/js/site-sidebar.js');
+  const security = read('docs/seguridad.html');
+  const policy = read('docs/assets/js/permissions.js');
+  assert.equal(fs.existsSync(path.join(root, 'docs/conexion.html')), false);
+  assert.equal(sidebar.includes('conexion.html'), false);
+  assert.equal(security.includes("location.href='conexion.html'"), false);
+  assert.equal(policy.includes('conexion.html'), false);
+  assert.ok(security.includes('/conexion/estado'));
   const pagos = read('docs/pagos.html');
   const cuentas = read('docs/verificacion-cuentas.html');
-  assert.doesNotMatch(conexion, /la pluma ya no depende de un gateway local/i);
-  assert.match(conexion, /data-form="PLUMAS"/);
-  assert.match(conexion, /data-form="CAMARAS"/);
   assert.doesNotMatch(cuentas, /Tú autorizas cada cuenta\./);
   assert.match(cuentas, /id="approvalForm"/);
   assert.doesNotMatch(pagos, /id="validityDate"/);

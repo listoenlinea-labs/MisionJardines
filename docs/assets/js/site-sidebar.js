@@ -38,7 +38,6 @@
     ]},
     { label: 'Administración', items: [
       { page: 'seguridad.html', label: 'Seguridad', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD' },
-      { page: 'conexion.html', label: 'Conexión', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR' },
       { page: 'analisis-cuotas.html', label: 'Análisis de cuotas', icon: 'reports' },
       { page: 'verificacion-cuentas.html', label: 'Verificación de cuentas', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR' }
     ]}
@@ -163,7 +162,7 @@
       const unified = document.createElement('link');
       unified.id = 'mjUnifiedUI';
       unified.rel = 'stylesheet';
-      unified.href = 'assets/css/ui-unificada.css?v=20261011-inicio-reportes';
+      unified.href = 'assets/css/ui-unificada.css?v=20261011-sin-iconos';
       document.head.appendChild(unified);
     }
   }
@@ -238,7 +237,7 @@
   function loadHomeDashboard() {
     if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
-    script.src = 'assets/js/home-dashboard.js?v=20261011-reportes-kpis';
+    script.src = 'assets/js/home-dashboard.js?v=20261011-sin-iconos';
     script.defer = true;
     script.dataset.mjHomeDashboard = 'true';
     document.body.appendChild(script);
