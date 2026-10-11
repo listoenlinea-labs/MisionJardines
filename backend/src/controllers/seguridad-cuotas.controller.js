@@ -9,13 +9,14 @@ function resumenVivienda(casa, registros, fecha=new Date()) {
   const year=Number(parts.find(p=>p.type==='year')?.value);
   const month=Number(parts.find(p=>p.type==='month')?.value);
   const periodo = year*12+month;
-  let ultimo=null,fechaUltima=null,actual=false,pendienteAnterior=false;
+  let ultimo=null,fechaUltima=null,actual=false,pendienteAnterior=false,hayHistorico=false;
   for(const cuota of registros) {
     const m=indexMonth.get(String(cuota.mes||'').toUpperCase());
     const y=Number(cuota.anio);
     if(!m||!Number.isInteger(y))continue;
     const position=y*12+m;
     if(position>periodo)continue;
+    hayHistorico=true;
     if(cuota.estatusPago==='PAGADO'){
       if(!ultimo||position>ultimo.position)ultimo={position,anio:y,mes:MESES[m-1]};
       const fp=cuota.fechaPago ? new Date(cuota.fechaPago) : null;
@@ -26,7 +27,7 @@ function resumenVivienda(casa, registros, fecha=new Date()) {
     }
   }
   let estado='SIN_DATOS';
-  if(registros.length)estado=actual&&!pendienteAnterior?'AL_CORRIENTE':'DEUDOR';
+  if(hayHistorico)estado=actual&&!pendienteAnterior?'AL_CORRIENTE':'DEUDOR';
   return {
     calle:String(casa.calleCorrecta||casa.calle||''),
     numero:String(casa.numero||''),
