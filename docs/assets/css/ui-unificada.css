@@ -328,8 +328,8 @@ body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview .role-note{
   body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview{width:100%!important}
 }
 
-/* Inicio: replica el patrón visual de indicadores de Reportes.
-   Solo se afectan las cuatro tarjetas del tablero principal. */
+/* Inicio: tarjetas minimalistas SIN iconos.
+   Mantiene cuatro KPIs y los tonos pastel de la referencia de Reportes. */
 body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis {
   display:grid!important;
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
@@ -338,15 +338,14 @@ body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis {
 }
 body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-report-kpi {
   display:flex!important;
-  flex-direction:row!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
-  gap:13px!important;
-  box-sizing:border-box!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
   min-width:0!important;
-  min-height:111px!important;
+  min-height:102px!important;
   height:auto!important;
-  padding:16px!important;
+  padding:16px 19px!important;
+  gap:0!important;
   border:1px solid #d4e8f6!important;
   border-top:3px solid #f2a04e!important;
   border-radius:17px!important;
@@ -373,32 +372,17 @@ body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-kpi-tone-lilac {
   border-color:#ead9f4!important;
   border-top-color:#dbace6!important;
 }
-body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-icon {
-  display:grid!important;
-  place-items:center!important;
-  width:55px!important;
-  height:55px!important;
-  min-width:55px!important;
-  min-height:55px!important;
-  flex:0 0 55px!important;
-  padding:0!important;
-  border-radius:14px!important;
-  background:rgba(255,255,255,.88)!important;
-  color:#eb790b!important;
-  font-size:23px!important;
-  font-weight:800!important;
-  line-height:1!important;
-}
-body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>div:nth-child(2) {
+body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content {
   display:flex!important;
   flex:1 1 auto!important;
   min-width:0!important;
+  width:100%!important;
   flex-direction:column!important;
   justify-content:center!important;
   align-items:flex-start!important;
   gap:2px!important;
 }
-body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>div:nth-child(2)>span {
+body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>span {
   display:block!important;
   margin:0!important;
   color:#63758f!important;
@@ -408,12 +392,12 @@ body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>div:nth-child(2
 }
 body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi strong {
   display:block!important;
-  margin:1px 0!important;
+  margin:2px 0!important;
   color:#142b48!important;
   font-size:27px!important;
   font-weight:850!important;
-  letter-spacing:-.035em!important;
   line-height:1.1!important;
+  letter-spacing:-.035em!important;
   font-variant-numeric:tabular-nums;
 }
 body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi small {
@@ -430,40 +414,31 @@ body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi small {
   }
 }
 @media(max-width:820px){
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis {
-    gap:8px!important;
-  }
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-report-kpi {
-    min-height:95px!important;
-    padding:10px!important;
-    gap:9px!important;
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis{gap:8px!important}
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-report-kpi{
+    min-height:88px!important;
+    padding:12px!important;
     border-radius:13px!important;
   }
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-icon {
-    width:42px!important;height:42px!important;
-    min-width:42px!important;min-height:42px!important;
-    flex-basis:42px!important;
-    border-radius:11px!important;font-size:19px!important;
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi strong{
+    font-size:23px!important;
   }
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi strong {
-    font-size:22px!important;
-  }
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>div:nth-child(2)>span {
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>span{
     font-size:11px!important;
   }
 }
 @media(max-width:420px){
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-report-kpi {
-    min-height:92px!important;
-    padding:9px!important;
-    gap:7px!important;
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-report-kpi{
+    min-height:84px!important;
+    padding:10px!important;
   }
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-icon {
-    width:34px!important;height:34px!important;
-    min-width:34px!important;min-height:34px!important;
-    flex-basis:34px!important;font-size:17px!important;
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi strong{
+    font-size:20px!important;
   }
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>div:nth-child(2)>span {font-size:10px!important}
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi strong {font-size:20px!important}
-  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi small {font-size:9px!important}
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>span{
+    font-size:10px!important;
+  }
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi small{
+    font-size:9px!important;
+  }
 }
