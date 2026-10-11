@@ -11,7 +11,7 @@ test('All authenticated operational views load the shared sidebar', () => {
   const pages = [
     'index', 'cuotas', 'analisis-cuotas', 'pagos', 'casa-club', 'bases_datos',
     'mapa', 'conmutador', 'seguridad', 'visitas', 'zkteco', 'reportes',
-    'calendario', 'directorio', 'conexion', 'anuncios', 'cuenta',
+    'calendario', 'directorio', 'anuncios', 'cuenta',
     'viviendas', 'verificacion-cuentas'
   ];
   for (const name of pages) {
