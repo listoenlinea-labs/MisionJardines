@@ -28,11 +28,15 @@ test('Inicio tiene cuatro tarjetas con diseño de Reportes', () => {
   assert.doesNotThrow(() => new Function(js));
 });
 
-test('Solo Inicio usa el diseño de tarjetas con iconos blancos, sin afectar Reportes', () => {
+test('Solo Inicio usa tarjetas sin iconos, sin alterar Reportes', () => {
   const css = load('docs/assets/css/ui-unificada.css');
   assert.match(css, /body\.mj-home\.mj-shared-sidebar-enabled \.dashboard \.hl-kpis>\.hl-report-kpi/);
-  assert.match(css, /\.hl-report-kpi>\.hl-kpi-icon/);
-  assert.match(css, /background:rgba\(255,255,255,\.88\)!important/);
+  assert.match(css, /\.hl-report-kpi>\.hl-kpi-content/);
+  const js = load('docs/assets/js/home-dashboard.js');
+  const start = js.indexOf('<section class="hl-kpis"');
+  const cards = js.slice(start, js.indexOf('</section>', start));
+  assert.equal((cards.match(/class="hl-kpi-content"/g) || []).length, 4);
+  assert.doesNotMatch(cards, /hl-kpi-icon/);
   assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
   assert.match(css, /@media\(max-width:420px\)/);
   let braces = 0;
