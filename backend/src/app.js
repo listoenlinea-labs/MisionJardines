@@ -157,6 +157,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/casa-club', require('./routes/casa-club.routes'));
 app.use('/api/finanzas', require('./routes/finanzas.routes'));
+app.use('/api/seguridad-cuotas',require('./routes/seguridad-cuotas.routes'));
+app.use('/api/google-sheets',require('./routes/google-sheets.routes'));
 app.use('/api/busqueda', busquedaRoutes);
 app.use('/api/telefonia', require('./routes/telefonia.routes'));
 app.use('/api/conexion', conexionRoutes);
