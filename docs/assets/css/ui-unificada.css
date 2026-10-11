@@ -1,0 +1,329 @@
+/* Misión Jardines | Diseño operativo homogéneo
+   Referencia: tarjeta y encabezado compacto de Cuotas.
+   NO modifica ni oculta formularios, permisos, errores, ni acciones sensibles. */
+body.mj-shared-sidebar-enabled {
+  --mj-ui-blue:#eef7fd;
+  --mj-ui-green:#eef9f2;
+  --mj-ui-peach:#fff7ec;
+  --mj-ui-lilac:#f8f3fc;
+  --mj-ui-line:#e2e8ef;
+}
+/* Cabeceras mínimas; se respetan el título y botones operativos. */
+body.mj-shared-sidebar-enabled :is(
+  .hl-welcome,.cuotas-hero,.analysis-hero,.club-hero,.map-hero,
+  .sec-hero,.hero,.directory-hero,.mj-page-heading
+) {
+  min-height:0!important;
+  margin:0 0 12px!important;
+  padding:12px 17px!important;
+  border:1px solid #e9e3e6!important;
+  border-radius:15px!important;
+  border-left:1px solid #e9e3e6!important;
+  background:linear-gradient(110deg,#fffbf8,#fbfaff 65%,#f6fbfa)!important;
+  box-shadow:0 3px 12px rgba(25,42,64,.035)!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-welcome,.cuotas-hero,.analysis-hero,.club-hero,.map-hero,
+  .sec-hero,.hero,.directory-hero,.mj-page-heading
+) :is(h1) {
+  font-size:clamp(21px,2.1vw,27px)!important;
+  line-height:1.15!important;
+  letter-spacing:-.035em!important;
+  margin:2px 0 4px!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-welcome,.cuotas-hero,.analysis-hero,.club-hero,.map-hero,
+  .sec-hero,.hero,.directory-hero,.mj-page-heading
+) :is(p,.lead) {
+  font-size:11px!important;
+  line-height:1.45!important;
+  margin:0!important;
+  max-width:820px;
+}
+body.mj-shared-sidebar-enabled :is(.eyebrow,.kicker,.hl-eyebrow,.cuotas-eyebrow,.directory-eyebrow) {
+  font-size:10px!important;letter-spacing:.07em!important;font-weight:800!important;
+}
+body.mj-shared-sidebar-enabled :is(.hero-card,.source-card,.shift-card,.role-card,.cuotas-period-card){
+  padding:8px 11px!important;min-height:0!important;
+  border-radius:11px!important;box-shadow:none!important;
+}
+body.mj-shared-sidebar-enabled :is(.hero-card,.source-card,.shift-card,.role-card,.cuotas-period-card) :is(span,small,p) {
+  font-size:10px!important;line-height:1.3!important;
+}
+body.mj-shared-sidebar-enabled :is(.hero-card,.source-card,.shift-card,.role-card,.cuotas-period-card) strong {
+  font-size:13px!important;line-height:1.25!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .hl-welcome {
+  display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .hl-welcome .hl-actions{
+  gap:6px!important;flex-wrap:wrap;
+}
+body.mj-home.mj-shared-sidebar-enabled .hl-welcome :is(.hl-action,.hl-refresh){
+  min-height:33px!important;padding:6px 10px!important;font-size:11px!important;
+}
+
+/* Métricas pastel muy delgadas, mismo orden cromático en todo el producto. */
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpis,.cuotas-metrics-grid,.metric-grid,.metrics,.kpi-grid
+) {
+  gap:9px!important;margin-bottom:11px!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card
+) {
+  box-sizing:border-box!important;
+  min-width:0!important;
+  min-height:74px!important;
+  height:auto!important;
+  padding:10px 12px!important;
+  border:1px solid #dceaf5!important;
+  border-top:1px solid #dceaf5!important;
+  border-radius:13px!important;
+  background:var(--mj-ui-blue)!important;
+  box-shadow:none!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card
+):nth-child(4n + 2){
+  background:var(--mj-ui-green)!important;border-color:#d6eadf!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card
+):nth-child(4n + 3){
+  background:var(--mj-ui-peach)!important;border-color:#f0dfc7!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card
+):nth-child(4n){
+  background:var(--mj-ui-lilac)!important;border-color:#e7dcef!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card
+) strong {
+  font-variant-numeric:tabular-nums;
+  font-size:clamp(18px,1.7vw,22px)!important;
+  line-height:1.15!important;
+  margin:2px 0!important;
+  color:#22344b!important;
+  overflow-wrap:anywhere;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card
+) :is(span,small) {
+  line-height:1.32!important;
+}
+body.mj-shared-sidebar-enabled :is(
+  .hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card
+) small {font-size:10px!important;color:#61758b!important}
+body.mj-shared-sidebar-enabled :is(.metric-icon,.cuotas-metric-icon,.hl-kpi-icon,.kpi-icon) {
+  width:33px!important;height:33px!important;min-width:33px!important;min-height:33px!important;
+  border-radius:10px!important;
+}
+body.mj-shared-sidebar-enabled :is(.metric-icon,.cuotas-metric-icon,.hl-kpi-icon,.kpi-icon) svg {
+  width:18px!important;height:18px!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .hl-kpi{
+  grid-template-columns:34px minmax(0,1fr)!important;
+  gap:8px!important;
+  align-content:center!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .hl-kpi-foot{
+  grid-column:2!important;min-height:0!important;
+  margin:0!important;padding:0!important;
+  border:0!important;font-size:9px!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .hl-kpi :is(span,small){font-size:10px!important}
+body.mj-home.mj-shared-sidebar-enabled .hl-kpi strong{font-size:21px!important}
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric{gap:8px!important}
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric-content strong{font-size:21px!important}
+body.page-analisis.mj-shared-sidebar-enabled .metric{padding:10px 12px!important}
+body.page-analisis.mj-shared-sidebar-enabled .metric small{margin:0 0 4px!important}
+body.page-analisis.mj-shared-sidebar-enabled .metric strong{font-size:21px!important}
+body.page-calendario.mj-shared-sidebar-enabled .grid .metric{
+  padding:10px 12px!important;min-height:74px!important;
+}
+body.page-calendario.mj-shared-sidebar-enabled .grid .metric :is(strong,small,.hint){
+  margin:2px 0!important;line-height:1.25!important;
+}
+body.page-seguridad-v2.mj-shared-sidebar-enabled .quick-grid{gap:8px!important;margin:0 0 11px!important}
+body.page-seguridad-v2.mj-shared-sidebar-enabled .quick-card{min-height:0!important;padding:9px 11px!important}
+/* Los encabezados de panel también son operativos, no banners. */
+body.mj-shared-sidebar-enabled :is(.panel-head,.card-head,.admin-payments-head,.cuotas-section-heading){
+  min-height:0!important;padding:11px 14px!important;gap:8px!important;
+}
+body.mj-shared-sidebar-enabled :is(.panel-head,.card-head,.admin-payments-head,.cuotas-section-heading) h2{
+  font-size:17px!important;line-height:1.25!important;margin:2px 0!important;
+}
+body.mj-shared-sidebar-enabled :is(.panel-head,.card-head,.admin-payments-head,.cuotas-section-heading) p{
+  font-size:11px!important;line-height:1.35!important;margin:0!important;
+}
+/* Conexión: elimina el espacio anterior ocupado por el aviso obsoleto. */
+body.mj-shared-sidebar-enabled .wrap>.mj-page-heading{margin:0 0 12px!important}
+body.mj-shared-sidebar-enabled .wrap>.grid{gap:11px!important}
+body.mj-shared-sidebar-enabled .wrap>.grid>.card>.head{padding:12px 14px!important}
+body.mj-shared-sidebar-enabled .wrap>.grid>.card>.body{padding:12px 14px!important}
+body.mj-shared-sidebar-enabled .wrap>.grid>.card>.head h2{font-size:17px!important}
+
+/* Verificación: descripción breve sobre filtros, sin doble aviso. */
+body.account-review.mj-shared-sidebar-enabled .review-main{max-width:none;padding:88px 24px 35px!important}
+body.account-review.mj-shared-sidebar-enabled .review-heading{
+  display:flex!important;align-items:center;justify-content:space-between;
+  margin:0 0 12px!important;padding:12px 16px!important;
+  border:1px solid #e7e8ed;border-radius:14px;background:linear-gradient(110deg,#fffbf8,#fbfaff);
+}
+body.account-review.mj-shared-sidebar-enabled .review-heading h1{font-size:clamp(21px,2vw,26px)!important;margin:2px 0 4px!important}
+body.account-review.mj-shared-sidebar-enabled .review-heading p{font-size:11px!important;line-height:1.35;margin:0}
+body.account-review.mj-shared-sidebar-enabled .review-heading .account-eyebrow{margin:0;font-size:10px!important}
+body.account-review.mj-shared-sidebar-enabled .review-panel{
+  padding:14px!important;border-radius:14px!important;
+}
+body.account-review.mj-shared-sidebar-enabled :is(.review-toolbar,.account-search-row){gap:9px!important;margin-bottom:12px!important}
+/* Pagos: espacio ganado llega al formulario operativo sin ocultar notas de validación. */
+body.payments-v2.mj-shared-sidebar-enabled .shell{padding-top:82px!important}
+body.payments-v2.mj-shared-sidebar-enabled .top{min-height:0!important;margin-bottom:10px!important;padding:4px 6px!important}
+body.payments-v2.mj-shared-sidebar-enabled .admin-payments-head{padding:12px 16px!important}
+body.payments-v2.mj-shared-sidebar-enabled .admin-payments-head h2{font-size:17px!important}
+body.payments-v2.mj-shared-sidebar-enabled .admin-panel{padding:12px!important}
+body.payments-v2.mj-shared-sidebar-enabled .admin-panel-head{padding:7px 0!important}
+/* Directorio: antes su hero estaba debajo de la búsqueda; usar la misma cabecera. */
+body.page-directorio.mj-shared-sidebar-enabled .directory-page {
+  box-sizing:border-box;
+  width:calc(100% - 42px)!important;max-width:1500px!important;
+  margin:0 auto!important;padding:86px 0 16px!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-page>.directory-hero{
+  position:relative!important;inset:auto!important;
+  display:block!important;width:100%!important;max-width:100%!important;
+  margin:0 0 12px!important;padding:12px 16px!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-hero h1{
+  font-size:clamp(21px,2vw,27px)!important;text-align:left!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-hero p{
+  max-width:none!important;text-align:left!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-page>.section{
+  margin:0 0 12px!important;padding:0!important;max-width:100%!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-page>.section>.card{
+  padding:12px 14px!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-board{
+  padding:0!important;border:1px solid #e3e8ef;border-radius:14px;background:#fff;
+  overflow:hidden;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-board>summary{
+  cursor:pointer;list-style:none;display:flex;justify-content:space-between;
+  align-items:center;gap:12px;padding:12px 15px;
+  font-size:14px;font-weight:800;color:#23344b;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-board>summary::-webkit-details-marker{display:none}
+body.page-directorio.mj-shared-sidebar-enabled .directory-board>summary:after{content:"▾";color:#d47312}
+body.page-directorio.mj-shared-sidebar-enabled .directory-board[open]>summary:after{content:"▴"}
+body.page-directorio.mj-shared-sidebar-enabled .directory-board summary small{
+  font-size:10px;color:#79869a;font-weight:500;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-board .person-grid{padding:12px!important}
+body.page-directorio.mj-shared-sidebar-enabled .section-title{margin:0 0 10px!important}
+body.page-directorio.mj-shared-sidebar-enabled .section-title h2{font-size:18px!important;margin:0 0 3px!important}
+
+/* Responsive: los bloques no deben convertirse en scroll infinito. */
+@media(max-width:1050px){
+  body.mj-shared-sidebar-enabled :is(.metric-grid,.metrics,.hl-kpis,.cuotas-metrics-grid,.kpi-grid){
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:820px){
+  body.mj-shared-sidebar-enabled :is(
+    .hl-welcome,.cuotas-hero,.analysis-hero,.club-hero,.map-hero,.sec-hero,.hero,.directory-hero,.mj-page-heading
+  ){padding:10px 12px!important;margin-bottom:9px!important;border-radius:12px!important}
+  body.mj-shared-sidebar-enabled :is(
+    .hl-welcome,.cuotas-hero,.analysis-hero,.club-hero,.map-hero,.sec-hero,.hero,.directory-hero,.mj-page-heading
+  ) h1{font-size:21px!important}
+  body.mj-shared-sidebar-enabled :is(.metric-grid,.metrics,.hl-kpis,.cuotas-metrics-grid,.kpi-grid){
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;
+  }
+  body.mj-shared-sidebar-enabled :is(.hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card){
+    min-height:69px!important;padding:9px!important;
+  }
+  body.mj-shared-sidebar-enabled :is(.hl-kpi,.cuotas-metric,.metric,.kpi-card,.metric-card,.stat-card) strong{
+    font-size:17px!important;
+  }
+  body.mj-shared-sidebar-enabled :is(.metric-icon,.cuotas-metric-icon,.hl-kpi-icon,.kpi-icon){
+    width:29px!important;height:29px!important;min-width:29px!important;min-height:29px!important;
+  }
+  body.mj-home.mj-shared-sidebar-enabled .hl-welcome{align-items:stretch!important;flex-direction:column!important}
+  body.mj-home.mj-shared-sidebar-enabled .hl-welcome .hl-actions{width:100%;gap:6px!important}
+  body.mj-home.mj-shared-sidebar-enabled .hl-welcome .hl-action,
+  body.mj-home.mj-shared-sidebar-enabled .hl-welcome .hl-refresh{flex:1 1 auto}
+  body.account-review.mj-shared-sidebar-enabled .review-main{padding:76px 10px 22px!important}
+  body.account-review.mj-shared-sidebar-enabled .review-heading{align-items:flex-start;flex-direction:column;gap:8px}
+  body.account-review.mj-shared-sidebar-enabled .review-panel{padding:10px!important}
+  body.payments-v2.mj-shared-sidebar-enabled .shell{padding-top:75px!important}
+  body.page-directorio.mj-shared-sidebar-enabled .directory-page{
+    padding-top:77px!important;width:calc(100% - 20px)!important;
+  }
+  body.page-directorio.mj-shared-sidebar-enabled .directory-board summary{flex-wrap:wrap}
+  body.page-directorio.mj-shared-sidebar-enabled .directory-page>.section>.card{padding:10px!important}
+}
+@media(max-width:440px){
+  body.mj-shared-sidebar-enabled :is(.metric-icon,.cuotas-metric-icon,.hl-kpi-icon,.kpi-icon){
+    width:25px!important;height:25px!important;min-width:25px!important;min-height:25px!important;
+  }
+  body.mj-shared-sidebar-enabled :is(.metric-grid,.metrics,.hl-kpis,.cuotas-metrics-grid,.kpi-grid){gap:6px!important}
+  body.mj-shared-sidebar-enabled :is(.metric,.hl-kpi,.cuotas-metric){padding:8px!important}
+  body.mj-shared-sidebar-enabled :is(.metric,.hl-kpi,.cuotas-metric) small{font-size:9px!important}
+  body.page-directorio.mj-shared-sidebar-enabled .directory-board summary small{flex-basis:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  body.mj-shared-sidebar-enabled :is(.hl-kpi,.cuotas-metric,.metric){transition:none!important}
+}
+
+/* Especificidad adicional para vistas que tenían fondos forzados. */
+body.page-analisis.mj-shared-sidebar-enabled .metric {
+  border:1px solid #dceaf5!important;border-top:1px solid #dceaf5!important;
+  background:var(--mj-ui-blue)!important;
+}
+body.page-analisis.mj-shared-sidebar-enabled .metric:nth-child(4n + 2){
+  background:var(--mj-ui-green)!important;border-color:#d6eadf!important;
+}
+body.page-analisis.mj-shared-sidebar-enabled .metric:nth-child(4n + 3){
+  background:var(--mj-ui-peach)!important;border-color:#f0dfc7!important;
+}
+body.page-analisis.mj-shared-sidebar-enabled .metric:nth-child(4n){
+  background:var(--mj-ui-lilac)!important;border-color:#e7dcef!important;
+}
+/* Los estados de advertencia y alarma conservan semántica visual. */
+body.mj-shared-sidebar-enabled .metric.bad,
+body.mj-shared-sidebar-enabled .metric.error,
+body.mj-shared-sidebar-enabled .metric.danger{
+  background:#fff1f1!important;border-color:#efcccc!important;
+}
+body.mj-shared-sidebar-enabled .metric.good,
+body.mj-shared-sidebar-enabled .metric.success{
+  background:#ecf9f0!important;border-color:#c7e8d1!important;
+}
+/* La elección de vista de prueba es opcional y nunca ocupa media cabecera. */
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview {
+  width:min(225px,100%)!important;padding:7px 9px!important;min-width:0;
+}
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview summary {
+  list-style:none;display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;font-size:11px;font-weight:800;color:#5a6a82;
+}
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview summary::-webkit-details-marker{display:none}
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview summary:after{content:"▾";color:#bf710f}
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview[open] summary:after{content:"▴"}
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview label{
+  display:block;margin:9px 0 4px;font-size:10px;
+}
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview select{
+  min-width:0;width:100%;min-height:35px;
+}
+body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview .role-note{
+  display:block;margin-top:6px;font-size:9px;
+}
+@media(max-width:820px) {
+  body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview{width:100%!important}
+}

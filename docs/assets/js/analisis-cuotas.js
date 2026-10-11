@@ -30,7 +30,7 @@
   const houses=data.casas||0;
   const financialCards=[
    ['Casas en padrón',houses],['Pagadas',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Pendientes',data.pendientes],['Ingresos validados',fmt(data.ingresosValidados)],
+   ['Pendientes',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Ingresos validados',fmt(data.ingresosValidados)],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
    ['Egresos registrados',fmt(data.totalEgresos)],['Saldo parcial conciliable',fmt(data.balanceReportado)],
