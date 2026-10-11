@@ -1034,22 +1034,7 @@
           <div class="actions"><button id="openGate" class="btn btn-primary">Abrir</button><button id="closeGate"
               class="btn btn-danger">Cerrar</button></div>
         </article>
-        <article class="panel panel-pad">
-          <div class="panel-head">
-            <div><span class="eyebrow">COMUNICACIÓN DIRECTA</span>
-              <h3>Administración</h3>
-              <p>Contacta a un encargado durante el turno.</p>
-            </div>
-          </div>
-          <div class="admin-list">
-            <div class="admin-row"><span class="admin-avatar">AD</span>
-              <div><b id="adminName">Administración Misión Jardines</b><small id="adminSchedule">Disponible · 9:00 a
-                  18:00</small></div>
-            </div>
-          </div>
-          <div class="actions"><a id="adminWhatsapp" class="btn btn-primary" href="#">WhatsApp</a><a id="adminEmail"
-              class="btn" href="#">Correo</a></div>
-        </article>
+
       </div>
     </section>
     <section class="panel panel-pad" id="seguridadCuotasPanel" aria-labelledby="seguridadCuotasTitulo">
@@ -1076,6 +1061,22 @@
         <button type="button" class="btn" id="segCuotasNext">Siguiente</button>
       </div>
     </section>
+    <aside class="panel panel-pad security-contact-compact" aria-label="Comunicación directa con Administración">
+      <div class="security-contact-heading">
+        <span class="eyebrow">COMUNICACIÓN DIRECTA</span>
+        <h3>Administración</h3>
+      </div>
+      <div class="admin-list">
+        <div class="admin-row"><span class="admin-avatar">AD</span>
+          <div><b id="adminName">Administración Misión Jardines</b>
+            <small id="adminSchedule">Disponible · 9:00 a 18:00</small></div>
+        </div>
+      </div>
+      <div class="actions">
+        <a id="adminWhatsapp" class="btn btn-primary" href="#">WhatsApp</a>
+        <a id="adminEmail" class="btn" href="#">Correo</a>
+      </div>
+    </aside>
   </main>
 
   <div id="incomeModal" class="modal-shell" hidden>
@@ -1355,7 +1356,7 @@
     $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); loadCameraConfig(); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
   <script src="assets/js/seguridad-cuotas.js?v=20261011"></script>
-  <script src="assets/js/site-sidebar.js?v=20261011-mobile-prod"></script>
+  <script src="assets/js/site-sidebar.js?v=20261011-seguridad-fichas"></script>
 </body>
 
 </html>
