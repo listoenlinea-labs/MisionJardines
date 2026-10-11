@@ -63,9 +63,9 @@ async function readSheet(tipo) {
   const text=x=>String(x??'').trim().slice(0,400);
   const encabezados=(values[0]||[]).slice(0,40).map(text);
   if(!encabezados.length){return{tipo,encabezados:[],filas:[],total:0,range,spreadsheetId};}
-  const filas=values.slice(1,5001).filter(v=>v.some(x=>text(x))).map((values,index)=>({
-    fila:index+2,valores:encabezados.map((_,i)=>text(values[i])),
-  }));
+  const filas=values.slice(1,5001).map((row,index)=>({
+    fila:index+2,valores:encabezados.map((_,i)=>text(row[i])),
+  })).filter(v=>v.valores.some(Boolean));
   return {tipo,encabezados,filas,total:filas.length,range,spreadsheetId};
 }
 module.exports={readSheet,assertType,config};
