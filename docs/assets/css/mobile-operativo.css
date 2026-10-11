@@ -224,3 +224,54 @@
  #sheetsHistoricos .sheets-controls{grid-template-columns:1fr!important;gap:8px}
  #sheetsHistoricos .sheets-controls button{width:100%;min-height:41px}
 }
+
+@media(max-width:700px) {
+  /* Directorio: fichas sin íconos, menos scroll y datos compactos. */
+  body.page-directorio .directory-grid .directory-card,
+  body.page-directorio.mj-shared-sidebar-enabled .directory-grid .directory-card {
+    padding:12px!important;min-height:0!important;max-height:none!important;
+    display:flex!important;flex-direction:column!important;gap:7px!important;
+  }
+  body.page-directorio .directory-card>.icon,
+  body.page-directorio .profile>.icon {display:none!important;}
+  body.page-directorio .directory-card h3{font-size:17px!important;margin:0!important}
+  body.page-directorio .directory-card p{
+    font-size:11px!important;line-height:1.35!important;
+    margin:0!important;max-height:3em!important;overflow:hidden!important;
+  }
+  body.page-directorio .directory-card .meta{
+    display:grid!important;grid-template-columns:1fr!important;
+    gap:4px!important;margin:0!important;padding:0!important;
+  }
+  body.page-directorio .directory-card .meta-row{
+    display:flex!important;flex-direction:row!important;
+    justify-content:space-between!important;gap:9px!important;
+    font-size:11px!important;line-height:1.3!important;margin:0!important;
+  }
+  body.page-directorio .directory-card .meta-row span{flex:0 0 auto!important}
+  body.page-directorio .directory-card .meta-row strong{
+    min-width:0!important;text-align:right!important;overflow-wrap:anywhere!important;
+  }
+  body.page-directorio .directory-card .chips{display:none!important;}
+  body.page-directorio .directory-card .actions{margin-top:4px!important;}
+
+  /* Análisis: fichas de vivienda más densas; filas de etiqueta y valor. */
+  body.page-analisis.mj-shared-sidebar-enabled .houses-scroll tbody tr{
+    gap:5px 11px!important;padding:9px!important;
+  }
+  body.page-analisis.mj-shared-sidebar-enabled .houses-scroll tbody td{
+    display:flex!important;align-items:center!important;
+    flex-wrap:wrap!important;gap:4px!important;
+    line-height:1.25!important;font-size:11px!important;
+  }
+  body.page-analisis.mj-shared-sidebar-enabled .houses-scroll tbody td[data-label]::before{
+    display:inline!important;margin:0!important;font-size:9px!important;
+  }
+  body.page-analisis.mj-shared-sidebar-enabled .houses-scroll tbody td:nth-child(3){
+    grid-column:1/-1!important;
+  }
+  body.page-analisis.mj-shared-sidebar-enabled .houses-scroll tbody td:nth-child(4){
+    grid-column:1/-1!important;
+    justify-content:space-between!important;
+  }
+}
