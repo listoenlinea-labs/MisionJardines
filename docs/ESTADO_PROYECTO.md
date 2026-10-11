@@ -1,9 +1,11 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 10/oct/2026, 21:12, America/Mexico_City.
-**SHA de main consultado:** `6995b845b500e7530d83b6d3cc6a3ab34ca62697`.
-**Fuentes de esta revisión:** código y commits de main; resultados locales de pruebas;
-confirmaciones del usuario en la conversación y exportaciones identificadas en el índice.
+**Última revisión:** 10/oct/2026, 23:27, America/Mexico_City.
+**SHA de main consultado:** `8ec5019f24aea496ca8d829f96678d64e4021b7a`.
+**Fuentes de esta revisión:** comparación de main desde la revisión anterior, metadatos de
+PR y checks de GitHub; historial de pruebas ya documentado; transcripción de conversación
+aportada en este turno. Las capturas de esa transcripción no están disponibles como imágenes
+inspeccionables aquí; no se certifican sus resultados desde descripciones del asistente.
 No se consultaron MySQL ni el C3 de producción durante esta revisión.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
@@ -25,10 +27,15 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Conmutador | Integración futura | No se confirmó funcionamiento con hardware en esta revisión; consultar configuración antes de habilitar telefonía |
 | Confirmación por correo bancario | Propuesta | Sin conexión de buzón ni conciliador implementado. Falta revisar una notificación real y datos de operación |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
+| Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
 | Continuidad documental | Disponible en main | AGENTS.md e índice publicados en `6995b845b500e7530d83b6d3cc6a3ab34ca62697`; este archivo agrega estado y bitácora |
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
+Desde `6995b84` solo se incorporó `8ec5019`, que creó este estado y sus enlaces;
+se excluye del trabajo de producto. **Sin cambios nuevos verificables de producto en main.**
+La búsqueda de PR abiertos devolvió cero; #129–#131 están fusionados desde antes
+de la revisión anterior y #132 sigue fusionado en su historial, pero revertido en main.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -42,6 +49,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | Alta directa de TAG | El usuario informó apertura con un TAG de otra vivienda | Hubo otro caso que requirió ZKAccess; no considerar todas las altas físicas confirmadas |
 | Lirios 7 | Confirmó COMMIT, conservación del ID 113 y eliminación del duplicado 726 | Corrección reportada por el usuario, no nueva consulta en vivo |
 | Jardines 12/120, 16/160, 36/360, 38/380 | Confirmó que se resolvieron | Distintos de los posibles duplicados 21/201, 25/205, 29/209, 37/307 |
+| Depuración adicional de tres pares de viviendas | El usuario respondió «ccreo que ya quedo» después de ejecutar el bloque y aportar una captura | Reporte del usuario accesible en la transcripción del 10/oct; captura no inspeccionada en esta revisión. COMMIT, persistencia, respaldo y modo seguro no confirmados de forma independiente; no acredita cambios físicos en C3 |
 | Nueve TAGs sin casa | El usuario dijo resueltos | Sigue discrepancia con 42-3.csv: nueve casa_id NULL; falta confirmar versión/consulta actual |
 
 ## Pruebas automatizadas con resultado conocido
@@ -50,6 +58,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | --- | --- | --- | --- |
 | 10/oct/2026 | Rama del PR #132, `DB_PORT=3306 npm run test:flujos` | 80 aprobadas, 0 fallidas | **Histórico:** ese PR fue revertido. Incluía un ajuste de simulación de OCR; no implica que main actual tenga 80 pruebas verdes |
 | 10/oct/2026 | main `5828fca`, `DB_PORT=3306 node --test backend/test/pagos-acceso-c3.test.js backend/test/recargos-mantenimiento.test.js backend/test/zkteco-vigencias.test.js backend/test/zkteco-autosync.test.js` | **35 aprobadas, 2 fallidas** | SQL/TCP simulados; no se escribió al C3 ni a MySQL de producción |
+| 10/oct/2026, 00:15–00:16, America/Mexico_City | PR #132, head `e9b85ad`; desde backend, `DB_PORT=3306 npm run test:flujos`; [Actions 38030320492](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/38030320492) | **80 aprobadas, 0 fallidas**; job `flujos` success; `cuentas-servidor` skipped | Logs recuperados en esta revisión; resultado histórico de código revertido, no prueba de main actual ni del servidor |
 | 10/oct/2026 | Documentación de continuidad: enlaces relativos y `git diff --check` | Sin errores | Solo valida archivos/enlaces; no funcionamiento de backend o equipo |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
@@ -61,6 +70,10 @@ En ambos casos el C3 simulado conservó EndTime `20260910`, cuando se esperaba
 `20261110`. Falta investigar código y preparación de la prueba; no se corrigió
 al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
+
+En el SHA de main leído, GitHub devolvió cero estados de commit y cero ejecuciones
+PR de Actions. Esto no equivale a pruebas aprobadas: el conector de ejecuciones solo
+consulta eventos de PR y su primera página. No se ejecutó de nuevo la suite en esta revisión.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -77,7 +90,12 @@ Las 27 viviendas del padrón sin TAG y los 8 registros externos se enumeran en
 [el índice](INDICE_DOCUMENTOS.md#estado-del-cotejo-fotografía-del-10-de-octubre).
 Sin una lista anterior comparable, no afirmar cuáles de las antiguas 42 se
 resolvieron solo por diferencia de conteos. Una vivienda real puede no tener
-TAG entregado; confirmar antes de asignar. Ninguna fila fue borrada en este cotejo.
+TAG entregado; confirmar antes de asignar. Ninguna fila fue borrada durante el cotejo inicial.
+Posteriormente el usuario reportó completada la fusión de tres pares. Conservar los conteos
+anteriores como fotografía histórica, sin restar filas para inferir el estado actual de SQL.
+El índice conserva la hipótesis antigua de coincidencia de residente para uno de los pares;
+la conversación posterior la retiró y dejó ese destino sin confirmar. Este proceso no modifica
+el índice ni publica datos personales o contenido adicional del padrón.
 
 ## Pendientes y próxima evidencia necesaria
 
@@ -85,8 +103,9 @@ TAG entregado; confirmar antes de asignar. Ninguna fila fue borrada en este cote
 | --- | --- |
 | Dos pruebas fallidas de edición de TAG | Diagnosticar y repetir pruebas pertinentes, sin debilitar validaciones reales |
 | 27 viviendas del padrón sin TAG | Confirmar entrega/posesión y asociación; nueva consulta/exportación tras ajustes |
-| 8 registros fuera del padrón + Jardines 142 | Revisar referencias de pagos, cuentas, TAGs y otros módulos antes de corregir/fusionar/eliminar |
-| Jardines 21/25/29/37 | Cotejar con 201/205/209/307; coincidencia de residente es indicio, no prueba final |
+| Tres pares con fusión reportada | Confirmar COMMIT y persistencia desde otra conexión; verificar respaldo y modo seguro. No dar por cerrado a partir de la frase del usuario o del resumen de una captura |
+| Cinco registros fuera del padrón aún pendientes + vivienda marcada inexistente | Identificar destinos y conservar referencias. La conversación reporta cuotas/historial en tres y un residente/permiso en otro; falta revisar evidencia original antes de actuar |
+| Correspondencia descartada en el cotejo posterior | Residentes distintos según la conversación; no trasladar automáticamente al destino inicialmente propuesto |
 | Nueve TAGs y discrepancia CSV | Confirmar que el export es posterior a los cambios y repetir consulta de asociaciones |
 | Asociación previa de 35 TAGs a 20 viviendas | Confirmación del COMMIT no documentada; verificar persistencia con consulta nueva |
 | Rosas 33, ID 97 | Leer fecha real del C3 para TAGs 9909769 y 9909783; CSV de asociaciones no incluye fechas |
@@ -131,3 +150,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 - Validación local: 35 pruebas aprobadas, 2 fallidas de edición manual; pendientes de diagnóstico.
 - Se creó este archivo y se programó su revisión/publicación a las 23:30.
   La creación de la tarea no prueba que su primera ejecución haya ocurrido.
+- Revisión de las 23:27, America/Mexico_City: main leído `8ec5019f24aea496ca8d829f96678d64e4021b7a`.
+  Desde `6995b84`, solo hay el commit documental de creación del estado; sin cambios
+  nuevos verificables de producto. Cero PR abiertos; historial de #132 revertido conservado.
+- Checks: main sin estados ni runs PR devueltos. Se recuperaron logs históricos de Actions
+  del PR #132: `DB_PORT=3306 npm run test:flujos`, 80 aprobadas y cero fallidas;
+  `cuentas-servidor` omitido. No sustituyen los 35 éxitos y dos fallos conocidos de main.
+- Evidencia de conversación: el usuario reportó completada una fusión de tres pares.
+  Se mantiene pendiente el COMMIT explícito y la verificación de persistencia; las imágenes
+  no fueron inspeccionadas en esta revisión. Cinco registros externos aún pendientes según
+  el intercambio; se retiró una correspondencia de residente previamente afirmada.
+- No se consultó ni modificó producción, ni se ejecutaron pagos, escrituras de TAG o
+  pruebas físicas. Se conserva el historial y una sola entrada para esta fecha.
