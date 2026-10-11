@@ -1,7 +1,9 @@
 # Misión Jardines: instrucciones para agentes
 
 Ámbito: todo el repositorio. Reglas verificadas contra `main` el 10 de octubre de 2026.
-Leer este archivo y [docs/INDICE_DOCUMENTOS.md](docs/INDICE_DOCUMENTOS.md) antes de trabajar.
+Leer este archivo, [docs/INDICE_DOCUMENTOS.md](docs/INDICE_DOCUMENTOS.md) y
+[docs/ESTADO_PROYECTO.md](docs/ESTADO_PROYECTO.md) antes de trabajar.
+El estado registra evidencias y pendientes; no convierte una exportación antigua en estado en vivo.
 Las instrucciones nuevas del usuario tienen prioridad. Si el código, un documento y un
 acuerdo difieren, señalar la discrepancia; no restaurar silenciosamente un flujo antiguo.
 

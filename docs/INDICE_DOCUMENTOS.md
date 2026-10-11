@@ -9,6 +9,7 @@ actual del C3 ni a una consulta en vivo de MySQL.
 
 | Documento | Uso | Estado / precaución |
 | --- | --- | --- |
+| [Estado del proyecto](ESTADO_PROYECTO.md) | Resumen operativo, pruebas confirmadas, pendientes y bitácora diaria | Leer antes de continuar; actualización programada a las 23:30, America/Mexico_City |
 | [AGENTS.md](../AGENTS.md) | Reglas para agentes: pagos, recargos, C3, OCR y trabajo seguro | Vigente; leer antes de editar |
 | [Pagos y acceso C3](PAGOS_ACCESO_C3.md) | Cálculo desde fecha física, diario de aplicación, reintentos y cortes pagados | Referencia vigente del flujo financiero/C3 |
 | [OCR del destinatario](../backend/docs/PAGOS_OCR_DESTINO.md) | Tesseract.js, idiomas, instalación y comprobantes pendientes | Vigente; OCR no confirma recepción bancaria |
