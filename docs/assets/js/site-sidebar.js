@@ -108,7 +108,7 @@
       <div class="mj-side-community"><strong>Misión Jardines</strong><span>Zapopan, Jalisco</span></div>
       <nav class="mj-side-nav" aria-label="Navegación principal">${nav}</nav>
       <a class="mj-side-account${active === 'cuenta.html' ? ' active' : ''}" href="cuenta.html">${icons.account}<span><strong>${account.name}</strong><small>${account.role} · Editar cuenta</small></span></a>
-      <div class="mj-side-support"><div class="mj-side-support-head">${icons.headset}<span>¿Necesitas ayuda?</span></div><p>Soporte disponible<br>Lun - Vie 9:00 - 18:00</p><a href="mailto:soluciones@listoenlinea.com">Contactar soporte</a></div>
+      <details class="mj-side-support"><summary>${icons.headset}<span>¿Necesitas ayuda?</span></summary><p>Soporte disponible · Lun - Vie 9:00 - 18:00</p><a href="mailto:soluciones@listoenlinea.com">Contactar soporte</a></details>
       <button class="mj-side-logout" type="button">${icons.logout}<span>Cerrar sesión</span></button>
     </div>`;
   }
@@ -149,6 +149,14 @@
       theme.rel = 'stylesheet';
       theme.href = 'assets/css/app-design.css?v=20260926';
       document.head.appendChild(theme);
+    }
+    // Overrides loaded after the legacy per-page styles and shared base theme.
+    if (!document.getElementById('mjProductUI')) {
+      const productUI = document.createElement('link');
+      productUI.id = 'mjProductUI';
+      productUI.rel = 'stylesheet';
+      productUI.href = 'assets/css/product-ui.css?v=20261011-product';
+      document.head.appendChild(productUI);
     }
   }
 
@@ -203,6 +211,13 @@
     button.textContent = collapsed ? '›' : '‹';
     button.setAttribute('aria-expanded', String(!collapsed));
     button.setAttribute('aria-label', collapsed ? 'Mostrar menú lateral' : 'Ocultar menú lateral');
+    const scrim=document.querySelector('.mj-mobile-scrim');
+    if (scrim) scrim.hidden=collapsed || !matchMedia(MOBILE).matches;
+    const sidebar=document.getElementById('sidebar');
+    if (sidebar) {
+      sidebar.inert=collapsed;
+      sidebar.setAttribute('aria-hidden', String(collapsed));
+    }
     if (persist) try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (_) {}
   }
 
@@ -270,6 +285,13 @@
     }
 
     document.querySelector('.mj-side-tab')?.remove();
+    document.querySelector('.mj-mobile-scrim')?.remove();
+    const scrim = document.createElement('button');
+    scrim.type = 'button';
+    scrim.className = 'mj-mobile-scrim';
+    scrim.setAttribute('aria-label', 'Cerrar menú');
+    scrim.hidden = true;
+    document.body.appendChild(scrim);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'mj-side-tab';
@@ -282,6 +304,11 @@
     let collapsed = stored === '1';
     if (stored !== '1' && stored !== '0' && matchMedia(MOBILE).matches) collapsed = true;
     button.addEventListener('click', () => collapse(body, button, !body.classList.contains('mj-shared-sidebar-collapsed')));
+    scrim.addEventListener('click', () => collapse(body, button, true));
+    matchMedia(MOBILE).addEventListener('change', () => {
+      if (!matchMedia(MOBILE).matches) scrim.hidden = true;
+      else scrim.hidden = body.classList.contains('mj-shared-sidebar-collapsed');
+    });
     aside.addEventListener('click', event => {
       if (matchMedia(MOBILE).matches && event.target.closest('a')) collapse(body, button, true);
     });

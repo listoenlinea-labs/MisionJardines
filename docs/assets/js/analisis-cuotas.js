@@ -8,6 +8,8 @@
  const moment=new Date();$('financeYear').value=moment.getFullYear();$('financeMonth').value=String(moment.getMonth()+1);
  $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(moment);
  let data=null;
+ let housePage=1;
+ const HOUSE_PAGE_SIZE=12;
  const notice=(msg)=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;};
  async function request(path,body){
   const response=await fetch(API+'/finanzas'+path,{method:body?'POST':'GET',
@@ -26,7 +28,7 @@
  function render(){
   if(!data)return;
   const houses=data.casas||0;
-  $('financialSummary').innerHTML=[
+  const financialCards=[
    ['Casas en padrón',houses],['Pagadas',data.pagadas+' · '+data.porcentaje+'%'],
    ['Pendientes',data.pendientes],['Ingresos validados',fmt(data.ingresosValidados)],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
@@ -36,7 +38,9 @@
    ['Casa Club · limpieza',fmt(data.casaClub?.limpieza)],
    ['Garantías recibidas',fmt(data.casaClub?.garantiasRecibidas)],
    ['Garantías devueltas',fmt(data.casaClub?.garantiasDevueltas)]
-  ].map(([n,v])=>financialCard(n,v)).join('');
+  ];
+  $('financialSummary').innerHTML=financialCards.slice(0,4).map(([n,v])=>financialCard(n,v)).join('');
+  $('financialSecondary').innerHTML=financialCards.slice(4).map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent',data.porcentaje+'%');
   $('financeDonutText').innerHTML=esc(data.porcentaje)+'%<small>Casas pagadas</small>';
   $('financeLegend').innerHTML='<div>Pagadas <b>'+data.pagadas+'</b></div><div>Pendientes <b>'+data.pendientes+'</b></div><div>Total <b>'+houses+'</b></div>';
@@ -49,7 +53,7 @@
   const cat=Object.entries(data.egresosCategorias);
   const maxCategory=Math.max(1,...cat.map(([,v])=>v));
   $('financeExpenseChart').innerHTML=cat.map(([n,v])=>bar(n,v,maxCategory,true,fmt(v))).join('');
-  $('financeExpenseRows').innerHTML=data.egresos.length?data.egresos.map(e=>'<tr><td>'+esc(e.fecha)+'</td><td>'+esc(e.categoria)+'</td><td>'+esc(e.concepto)+'</td><td>'+esc(e.referencia||'—')+'</td><td>'+fmt(e.monto)+'</td></tr>').join(''):'<tr><td colspan="5">No hay egresos registrados para este mes.</td></tr>';
+  $('financeExpenseRows').innerHTML=data.egresos.length?data.egresos.map(e=>'<tr><td data-label="Fecha">'+esc(e.fecha)+'</td><td data-label="Categoría">'+esc(e.categoria)+'</td><td data-label="Concepto">'+esc(e.concepto)+'</td><td data-label="Referencia">'+esc(e.referencia||'—')+'</td><td data-label="Monto">'+fmt(e.monto)+'</td></tr>').join(''):'<tr><td colspan="5">No hay egresos registrados para este mes.</td></tr>';
   const select=$('financeStreet'),selected=select.value;
   select.innerHTML='<option value="">Todas las calles</option>'+[...data.calles].sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'})).map(c=>'<option value="'+esc(c.calle)+'">'+esc(c.calle)+'</option>').join('');
   select.value=data.calles.some(x=>x.calle===selected)?selected:'';
@@ -64,7 +68,13 @@
    return (!query||hay.includes(query))&&(!street||h.calle===street)&&(!status||(status==='PAGADO'?h.pagada:!h.pagada));
   }).sort((a,b)=>String(a?.calleCorrecta||a?.calle||'').localeCompare(String(b?.calleCorrecta||b?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a?.numero||'').localeCompare(String(b?.numero||''),'es-MX',{numeric:true}));
   $('financeHouseCount').textContent=filtered.length+' de '+data.viviendas.length+' casas';
-  $('financeHouseRows').innerHTML=filtered.length?filtered.map(h=>'<tr><td>'+esc(h.calle)+'</td><td>'+esc(h.numero)+'</td><td>'+esc(h.nombre)+'</td><td><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td>'+fmt(h.montoPagado)+'</td><td>'+fmt(h.saldoPendiente)+'</td></tr>').join(''):'<tr><td colspan="6">No hay viviendas que coincidan con estos filtros.</td></tr>';
+  const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
+  housePage=Math.min(Math.max(housePage,1),totalPages);
+  const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
+  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr><td data-label="Calle">'+esc(h.calle)+'</td><td data-label="Casa">'+esc(h.numero)+'</td><td data-label="Residente">'+esc(h.nombre)+'</td><td data-label="Estado"><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td data-label="Pagado">'+fmt(h.montoPagado)+'</td><td data-label="Saldo pendiente">'+fmt(h.saldoPendiente)+'</td></tr>').join(''):'<tr><td colspan="6">No hay viviendas que coincidan con estos filtros.</td></tr>';
+  $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
+  $('financePrev').disabled=housePage===1;
+  $('financeNext').disabled=housePage>=totalPages;
  }
  async function load(){
   $('updateFinance').disabled=true;$('financeNotice').hidden=true;
@@ -76,9 +86,11 @@
   finally{$('updateFinance').disabled=false;}
  }
  $('updateFinance').addEventListener('click',load);
- for(const id of ['financeSearch','financeStreet','financeStatus'])$(id).addEventListener(id==='financeSearch'?'input':'change',renderHouses);
+ for(const id of ['financeSearch','financeStreet','financeStatus'])$(id).addEventListener(id==='financeSearch'?'input':'change',()=>{housePage=1;renderHouses();});
+ $('financePrev').addEventListener('click',()=>{housePage=Math.max(1,housePage-1);renderHouses();});
+ $('financeNext').addEventListener('click',()=>{housePage++;renderHouses();});
  $('financeClear').addEventListener('click',()=>{
-  ['financeSearch','financeStreet','financeStatus'].forEach(id=>$(id).value='');renderHouses();
+  ['financeSearch','financeStreet','financeStatus'].forEach(id=>$(id).value='');housePage=1;renderHouses();
  });
  $('newExpense').addEventListener('submit',async e=>{
   e.preventDefault();
