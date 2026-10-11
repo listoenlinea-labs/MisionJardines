@@ -173,6 +173,13 @@
       compact.href = 'assets/css/kpi-compact.css?v=20261011-kpis';
       document.head.appendChild(compact);
     }
+    if (!document.getElementById('mjMobileOperativo')) {
+      const sheet=document.createElement('link');
+      sheet.id='mjMobileOperativo';
+      sheet.rel='stylesheet';
+      sheet.href='assets/css/mobile-operativo.css?v=20261011-b';
+      document.head.appendChild(sheet);
+    }
   }
 
   function createSidebar() {
