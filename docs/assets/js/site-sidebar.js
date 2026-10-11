@@ -165,6 +165,14 @@
       unified.href = 'assets/css/ui-unificada.css?v=20261011-sin-iconos';
       document.head.appendChild(unified);
     }
+    // Solo KPIs numéricos: etiqueta + valor en una fila sin microdescripciones.
+    if (!document.getElementById('mjKpiCompact')) {
+      const compact = document.createElement('link');
+      compact.id = 'mjKpiCompact';
+      compact.rel = 'stylesheet';
+      compact.href = 'assets/css/kpi-compact.css?v=20261011-kpis';
+      document.head.appendChild(compact);
+    }
   }
 
   function createSidebar() {
