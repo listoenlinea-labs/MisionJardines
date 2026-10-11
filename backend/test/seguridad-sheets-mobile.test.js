@@ -83,3 +83,15 @@ test('elementos de seguridad y Google Sheets disponibles sin filtrar identificad
    assert.doesNotThrow(()=>new Function(read(file)),file);
  }
 });
+
+test('arranque del C3-200 no depende de crear tablas ni de Google Sheets',()=>{
+ const server=read('backend/src/server.js');
+ const app=read('backend/src/app.js');
+ assert.doesNotMatch(server,/GoogleSheetsHistorico|google-sheets/);
+ assert.match(server,/asegurarEsquemaZkteco\(\)/);
+ assert.match(server,/zkteco-vigencias\.service'\)\.start\(\)/);
+ assert.match(server,/zkteco-autosync\.service'\)\.startZktecoAutoSync\(\)/);
+ assert.match(app,/app\.use\('\/api\/zkteco', zktecoRoutes\)/);
+ assert.match(app,/app\.use\('\/api\/conexion', conexionRoutes\)/);
+ assert.match(app,/GOOGLE_SHEETS_ENABLED === 'true'/);
+});
