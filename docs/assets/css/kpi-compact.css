@@ -1,0 +1,192 @@
+/* Misión Jardines · indicadores operativos compactos
+   Solo afecta KPI/resúmenes numéricos. No oculta avisos, estatus, formularios,
+   contenido de tablas, descripciones de reportes ni controles de hardware. */
+
+/* Inicio: un renglón con etiqueta a la izquierda y valor a la derecha. */
+body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-report-kpi {
+  min-height:58px!important;
+  height:auto!important;
+  padding:10px 14px!important;
+  justify-content:center!important;
+  align-items:stretch!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content {
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:space-between!important;
+  gap:8px!important;min-width:0!important;width:100%!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>small {
+  display:none!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>span {
+  flex:1 1 auto!important;min-width:0!important;
+  color:#526680!important;font-size:12px!important;font-weight:750!important;
+  margin:0!important;line-height:1.25!important;
+}
+body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>strong {
+  flex:0 0 auto!important;min-width:0!important;
+  margin:0!important;text-align:right!important;
+  font-size:21px!important;line-height:1.1!important;
+}
+
+/* Residentes, Reportes, Seguridad, Visitas y ZKTeco:
+   ícono opcional, título y cifra en una sola fila sin texto de apoyo. */
+body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric {
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:space-between!important;
+  gap:9px!important;min-width:0!important;
+  min-height:58px!important;height:auto!important;
+  padding:10px 12px!important;
+}
+body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric>.metric-icon {
+  flex:0 0 30px!important;width:30px!important;height:30px!important;
+  min-width:30px!important;min-height:30px!important;
+  margin:0!important;
+}
+body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric>div:not(.metric-icon) {
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:space-between!important;
+  flex:1 1 auto!important;min-width:0!important;gap:7px!important;
+}
+body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric>div:not(.metric-icon)>span {
+  display:none!important;
+}
+body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric :is(small) {
+  flex:1 1 auto!important;min-width:0!important;
+  color:#526680!important;font-size:11px!important;
+  font-weight:750!important;line-height:1.25!important;
+  margin:0!important;
+}
+body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric strong {
+  flex:0 0 auto!important;min-width:0!important;
+  margin:0 0 0 auto!important;
+  text-align:right!important;white-space:nowrap!important;
+  font-size:21px!important;line-height:1.1!important;
+}
+
+/* Cuotas: el valor queda junto al nombre, sin tercera fila. */
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metrics-grid>.cuotas-metric {
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:space-between!important;
+  gap:8px!important;min-height:58px!important;height:auto!important;
+  padding:10px 12px!important;
+}
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric>.cuotas-metric-icon {
+  width:30px!important;height:30px!important;min-width:30px!important;
+  min-height:30px!important;flex:0 0 30px!important;margin:0!important;
+}
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric>.cuotas-metric-content {
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:space-between!important;
+  flex:1 1 auto!important;min-width:0!important;gap:7px!important;
+}
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric-content>span {
+  display:none!important;
+}
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric-content>small {
+  flex:1 1 auto!important;min-width:0!important;
+  font-size:11px!important;font-weight:750!important;margin:0!important;
+  line-height:1.25!important;
+}
+body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric-content>strong {
+  flex:0 0 auto!important;min-width:0!important;
+  text-align:right!important;white-space:nowrap!important;
+  font-size:20px!important;margin:0 0 0 auto!important;
+}
+
+/* Calendario: las cuatro métricas solo muestran nombre y número. */
+body.page-calendario.mj-shared-sidebar-enabled .grid>.metric {
+  display:flex!important;flex-direction:row!important;
+  justify-content:space-between!important;align-items:center!important;
+  min-height:58px!important;height:auto!important;
+  padding:10px 12px!important;gap:7px!important;
+}
+body.page-calendario.mj-shared-sidebar-enabled .grid>.metric>.hint {
+  display:none!important;
+}
+body.page-calendario.mj-shared-sidebar-enabled .grid>.metric>small {
+  flex:1 1 auto!important;min-width:0!important;
+  font-size:11px!important;font-weight:750!important;line-height:1.25!important;
+  margin:0!important;
+}
+body.page-calendario.mj-shared-sidebar-enabled .grid>.metric>strong {
+  flex:0 0 auto!important;margin:0 0 0 auto!important;
+  text-align:right!important;font-size:21px!important;line-height:1.15!important;
+}
+
+/* Paneles numéricos de resumen de envío de recibos. */
+body.page-cuotas.mj-shared-sidebar-enabled .receipt-summary-card {
+  display:flex!important;flex-direction:row!important;gap:8px!important;
+  justify-content:space-between!important;align-items:center!important;
+  min-height:50px!important;height:auto!important;padding:10px 12px!important;
+}
+body.page-cuotas.mj-shared-sidebar-enabled .receipt-summary-card>span{
+  min-width:0;font-size:11px!important;font-weight:700!important;
+}
+body.page-cuotas.mj-shared-sidebar-enabled .receipt-summary-card>strong{
+  flex:0 0 auto;margin:0!important;font-size:18px!important;
+}
+
+/* Directorio no es una portada. Evita el grid implícito heredado de .hero
+   y recupera sus filtros, la mesa y los contactos inmediatamente debajo. */
+body.page-directorio.mj-shared-sidebar-enabled .directory-page>.directory-hero {
+  box-sizing:border-box!important;
+  position:relative!important;display:flex!important;flex-direction:column!important;
+  justify-content:flex-start!important;align-items:flex-start!important;
+  grid-template-columns:none!important;grid-template-rows:none!important;
+  align-content:initial!important;gap:4px!important;
+  min-height:0!important;height:auto!important;max-height:none!important;
+  padding:12px 16px!important;margin:0 0 12px!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-page>.directory-hero :is(h1,p){
+  margin:0!important;max-width:100%!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-page>.directory-hero .directory-eyebrow {
+  font-size:10px!important;font-weight:800!important;
+  color:#bc610b!important;
+}
+body.page-directorio.mj-shared-sidebar-enabled .directory-page>.section{
+  position:relative!important;min-height:0!important;
+  margin:0 0 12px!important;
+}
+
+/* Para pantallas estrechas, no cortar números ni ocultar etiquetas largas.
+   Se mantienen dos columnas, usando salto interno solo si no cabe realmente. */
+@media(max-width:820px){
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis>.hl-report-kpi,
+  body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric,
+  body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metrics-grid>.cuotas-metric,
+  body.page-calendario.mj-shared-sidebar-enabled .grid>.metric{
+    min-height:51px!important;padding:9px 10px!important;gap:6px!important;
+  }
+  body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric>.metric-icon,
+  body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric>.cuotas-metric-icon{
+    display:none!important;
+  }
+  body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric strong,
+  body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric-content>strong,
+  body.page-calendario.mj-shared-sidebar-enabled .grid>.metric>strong{
+    font-size:18px!important;
+  }
+}
+@media(max-width:520px){
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content,
+  body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric>div:not(.metric-icon),
+  body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric>.cuotas-metric-content{
+    flex-wrap:wrap!important;
+  }
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>span,
+  body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric small,
+  body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric-content>small{
+    font-size:10px!important;overflow-wrap:anywhere!important;
+  }
+  body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-report-kpi>.hl-kpi-content>strong,
+  body.mj-shared-sidebar-enabled :is(.metrics,.metric-grid)>.metric strong,
+  body.page-cuotas.mj-shared-sidebar-enabled .cuotas-metric-content>strong,
+  body.page-calendario.mj-shared-sidebar-enabled .grid>.metric>strong{
+    font-size:16px!important;
+  }
+  body.page-directorio.mj-shared-sidebar-enabled .directory-page>.directory-hero{
+    padding:10px 12px!important;
+  }
+}
