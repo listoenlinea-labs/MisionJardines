@@ -56,3 +56,49 @@ node --test tests/ui-responsive.test.cjs
 ```
 
 Estas comprobaciones validan presencia de rutas, enlace a la hoja responsive, estructura del menú y del Análisis, y sintaxis de scripts. **No equivalen a pruebas visuales ni a pruebas en hardware.**
+
+## Homologación visual adicional · 11/oct/2026
+
+A partir de la sección **Cuotas** como referencia, todos los encabezados de vistas
+autenticadas pasan a una cabecera compacta, y los indicadores de estado/cantidad
+adoptan tarjetas pastel de altura reducida. La hoja de estilos compartida
+`assets/css/ui-unificada.css` se carga tras `product-ui.css`.
+
+### Cambios de contenido solicitados
+
+- Conexión: retirado el aviso extenso sobre port forwarding / gateway local.
+- Verificación de cuentas: retirado el bloque informativo repetido; formularios y
+  permisos de aprobación permanecen.
+- Pagos: retirado el resumen superior de vigencia, **sin retirar** la consulta
+  `/pagos/vigencia` ni sus datos para vista previa de pago.
+- Directorio: cabecera debajo de la búsqueda, igual que el resto de vistas;
+  miembros ilustrativos de la mesa directiva en un panel cerrado por defecto.
+  No se presentan esos nombres como datos oficiales.
+- Análisis de cuotas: Pendientes muestra número de viviendas y porcentaje, con
+  denominador protegido si el padrón está vacío.
+- Residentes, Reportes y ZKTeco: textos decorativos y explicaciones repetidas
+  acortadas. Visitas: vista de prueba en desplegable.
+- Las métricas `good` y `bad` conservan colores de éxito/advertencia por
+  encima de los colores decorativos pastel.
+
+### Comprobaciones antes del merge
+
+1. Comparar **Inicio, Residentes, ZKTeco, Reportes, Seguridad, Visitas, Cuotas,
+   Calendario y Análisis** lado a lado a 390, 768 y 1440 px: tarjetas delgadas,
+   etiquetas y valores visibles, sin elementos superpuestos.
+2. Directorio: el título no debe quedar debajo del buscador; contactos y mesa
+   directiva permanecen accesibles en escritorio y celular.
+3. Pagos: abrir, cotizar y revisar un pago de mantenimiento; la consulta de
+   vigencia no debe buscar nodos inexistentes ni cambiar recargos o fechas.
+4. Verificación de cuentas: buscar, filtrar y abrir diálogo de aprobación;
+   mantener validación de identidad y permisos.
+5. Conexión: guardar configuraciones de plumas/cámaras y validar mensajes de
+   error en entorno seguro. Sin tocar físicamente controlador real.
+6. Análisis: `Pendientes` debe mostrar `31 · 13%` para 31 de 231,
+   `239 · 100%` para 239 de 239 y `0 · 0%` con padrón vacío.
+7. Confirmar que advertencias de TAGs y acceso no se reinterpretan como éxito
+   solo por el nuevo tono pastel.
+
+Prueba estructural opcional: `node --test tests/ui-unificada.test.cjs`.
+La comprobación estática y el merge **no son evidencia** de validación visual
+en un dispositivo real ni de pruebas financieras o TCP.
