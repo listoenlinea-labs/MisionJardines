@@ -497,3 +497,41 @@ body.mj-shared-sidebar-enabled .house-grid{padding:10px 14px 14px!important}
   }
   body.mj-shared-sidebar-enabled .modal-shell{padding:8px!important}
 }
+
+/* Flujos públicos de acceso: mismo lenguaje visual, sin alterar validaciones. */
+.login-page{min-height:0;max-width:min(1120px,calc(100vw - 40px));border-radius:20px;box-shadow:0 13px 38px rgba(26,43,60,.09)}
+.login-page .login-showcase{min-height:560px;padding:32px}
+.login-page .login-form-section{min-width:0}
+.registration-shell{max-width:1120px;margin:22px auto;border-radius:20px;box-shadow:0 12px 32px rgba(30,47,66,.07)}
+.registration-shell .registration-story{padding:32px;gap:23px}
+.registration-shell .registration-content{padding:30px 34px}
+.registration-shell .back-link{margin-bottom:20px}
+.registration-shell .registration-content h2{font-size:29px}
+.page-invitacion{min-width:0}
+.page-invitacion>main{width:min(680px,calc(100% - 24px));max-width:680px!important;margin:28px auto;padding:18px}
+.page-invitacion .panel{padding:16px;border-radius:13px}
+.page-invitacion .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.page-invitacion input{min-width:0}
+@media(max-width:980px){
+  .login-page{width:min(640px,calc(100% - 28px));max-width:640px}
+  .login-page .login-showcase{min-height:0;padding:22px}
+  .registration-shell{margin:14px}
+}
+@media(max-width:760px){
+  .registration-shell .registration-story{padding:18px;gap:10px}
+  .registration-shell .registration-content{padding:20px}
+  .registration-shell .story-copy h1{font-size:25px}
+  .registration-shell .account-subtitle{font-size:12px;margin-bottom:14px}
+}
+@media(max-width:600px){
+  .login-page{width:100%;max-width:100%;min-height:100dvh;border-radius:0;box-shadow:none}
+  .login-page .login-showcase{display:none}
+  .login-page .login-form-section{min-height:100dvh;padding:24px 18px}
+  .login-page .login-heading h2{font-size:26px}
+  .page-invitacion>main{width:calc(100% - 18px);padding:10px;margin:12px auto}
+  .page-invitacion .grid{grid-template-columns:minmax(0,1fr);gap:4px}
+  .page-invitacion h1{font-size:24px}
+  .registration-shell{margin:8px;border-radius:14px}
+  .registration-shell .registration-content{padding:18px 16px}
+  .registration-shell .story-copy h1{font-size:23px}
+}
