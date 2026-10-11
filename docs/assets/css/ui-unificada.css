@@ -328,6 +328,27 @@ body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview .role-note{
   body.page-visitas-v2.mj-shared-sidebar-enabled .mj-role-preview{width:100%!important}
 }
 
+/* Seguridad: al retirar Conexión quedan tres acciones equilibradas. */
+body.page-seguridad-v2.mj-shared-sidebar-enabled .quick-grid {
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+@media(max-width:820px) {
+  body.page-seguridad-v2.mj-shared-sidebar-enabled .quick-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  body.page-seguridad-v2.mj-shared-sidebar-enabled .quick-grid>.quick-card:last-child {
+    grid-column:1/-1;
+  }
+}
+@media(max-width:520px) {
+  body.page-seguridad-v2.mj-shared-sidebar-enabled .quick-grid {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  body.page-seguridad-v2.mj-shared-sidebar-enabled .quick-grid>.quick-card:last-child {
+    grid-column:auto;
+  }
+}
+
 /* Inicio: tarjetas minimalistas SIN iconos.
    Mantiene cuatro KPIs y los tonos pastel de la referencia de Reportes. */
 body.mj-home.mj-shared-sidebar-enabled .dashboard .hl-kpis {
