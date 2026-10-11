@@ -32,7 +32,7 @@ Usar al menos **360 × 800**, **390 × 844**, **768 × 1024**, **1366 × 768** y
 | Reportes | Filtros, tabla, nueva incidencia y estado |
 | Calendario | Cambiar mes, detalle del día y eventos |
 | Directorio | Búsqueda y tarjetas |
-| Conexión | Formularios y secciones de canales |
+
 | Anuncios, cuenta, Mis viviendas, verificación | Campos, botones, estados vacíos y permisos |
 | Inicio de sesión, registro, invitación | Tamaño del formulario, validaciones, teclado del teléfono y botones accesibles |
 
@@ -92,8 +92,8 @@ adoptan tarjetas pastel de altura reducida. La hoja de estilos compartida
    vigencia no debe buscar nodos inexistentes ni cambiar recargos o fechas.
 4. Verificación de cuentas: buscar, filtrar y abrir diálogo de aprobación;
    mantener validación de identidad y permisos.
-5. Conexión: guardar configuraciones de plumas/cámaras y validar mensajes de
-   error en entorno seguro. Sin tocar físicamente controlador real.
+5. Confirmar que Seguridad sigue mostrando el monitoreo de cámaras y que
+   ZKTeco mantiene sus controles, aunque la pantalla Conexión ya no esté disponible.
 6. Análisis: `Pendientes` debe mostrar `31 · 13%` para 31 de 231,
    `239 · 100%` para 239 de 239 y `0 · 0%` con padrón vacío.
 7. Confirmar que advertencias de TAGs y acceso no se reinterpretan como éxito
@@ -102,3 +102,17 @@ adoptan tarjetas pastel de altura reducida. La hoja de estilos compartida
 Prueba estructural opcional: `node --test tests/ui-unificada.test.cjs`.
 La comprobación estática y el merge **no son evidencia** de validación visual
 en un dispositivo real ni de pruebas financieras o TCP.
+
+## Ajuste del portal · Inicio sin iconos / Conexión retirada
+
+- Inicio: cuatro KPI con colores pastel, títulos y valores, **sin iconos**.
+- Conexión: eliminadas la página `docs/conexion.html`, su opción del menú y
+  el botón de acceso desde Seguridad. Los enlaces a la pantalla retirada no
+  deben aparecer tampoco en la búsqueda global.
+- Se mantienen los servicios existentes de cámaras, controlador C3-200 y
+  telefonía; **la configuración previamente guardada no se elimina**.
+  Sin la página Conexión ya no existe un formulario para editar esos parámetros
+  desde el portal; cualquier reconfiguración futura requerirá otra interfaz
+  autorizada o una implementación posterior.
+- Los tests `ui-responsive`, `ui-unificada` y `ui-inicio-kpis-reportes`
+  se adaptaron a esta eliminación. Pruebas de HTML/CSS no validan hardware.
