@@ -1,7 +1,8 @@
 # Misión Jardines · revisión de interfaz responsive
 
-Este PR se centra en la aplicación **autenticada** (pantallas con `site-sidebar.js`).
-No modifica permisos, endpoints, consultas MySQL ni comandos TCP hacia ZKTeco.
+Este PR cubre las vistas autenticadas con `site-sidebar.js` y los accesos públicos
+de inicio de sesión, registro e invitación. No modifica permisos, endpoints,
+consultas MySQL ni comandos TCP hacia ZKTeco.
 
 ## Objetivo visual y operativo
 
@@ -33,6 +34,7 @@ Usar al menos **360 × 800**, **390 × 844**, **768 × 1024**, **1366 × 768** y
 | Directorio | Búsqueda y tarjetas |
 | Conexión | Formularios y secciones de canales |
 | Anuncios, cuenta, Mis viviendas, verificación | Campos, botones, estados vacíos y permisos |
+| Inicio de sesión, registro, invitación | Tamaño del formulario, validaciones, teclado del teléfono y botones accesibles |
 
 ### Criterios de aceptación
 
