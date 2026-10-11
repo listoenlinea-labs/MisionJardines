@@ -30,6 +30,12 @@ test('The shared UI theme is loaded and offers mobile layouts', () => {
   assert.match(style, /\.cuotas-hero/);
 });
 
+test('Public account flows use the responsive product layer', () => {
+  for (const name of ['login', 'registro', 'invitacion']) {
+    assert.match(read('docs/' + name + '.html'), /assets\/css\/product-ui\.css/, name);
+  }
+});
+
 test('Mobile drawer can be dismissed and offscreen links are inert', () => {
   const sidebar = read('docs/assets/js/site-sidebar.js');
   assert.match(sidebar, /\.mj-mobile-scrim/);
