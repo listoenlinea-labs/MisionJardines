@@ -64,7 +64,7 @@ test('Pending financial KPI includes count, percentage and division-by-zero guar
 test('Directory heading is visible and demo board is collapsed without losing its data hook', () => {
   const html = read('docs/directorio.html');
   assert.match(html, /<main class="directory-page">/);
-  assert.match(html, /<header class="hero directory-hero">/);
+  assert.match(html, /<header class="directory-hero">/);
   assert.match(html, /<details class="section directory-board">/);
   assert.match(html, /id="boardGrid"/);
   assert.match(html, /id="directoryGrid"/);
