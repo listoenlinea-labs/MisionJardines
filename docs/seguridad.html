@@ -1330,7 +1330,7 @@
     $('filterText').value = new URLSearchParams(location.search).get('buscar') || '';
     $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); loadCameraConfig(); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
-  <script src="assets/js/site-sidebar.js?v=20261011-sin-conexion"></script>
+  <script src="assets/js/site-sidebar.js?v=20261011-kpis-compact"></script>
 </body>
 
 </html>

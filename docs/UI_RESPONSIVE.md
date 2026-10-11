@@ -116,3 +116,36 @@ en un dispositivo real ni de pruebas financieras o TCP.
   autorizada o una implementación posterior.
 - Los tests `ui-responsive`, `ui-unificada` y `ui-inicio-kpis-reportes`
   se adaptaron a esta eliminación. Pruebas de HTML/CSS no validan hardware.
+
+## KPIs horizontales y Directorio recuperado (octubre 2026)
+
+- **Alcance:** los indicadores numéricos de Inicio, Residentes, Cuotas,
+  Análisis, ZKTeco, Reportes, Seguridad, Visitas, Calendario y resúmenes de
+  envío de recibos comparten el mismo formato **etiqueta | valor**.
+  Se oculta el texto explicativo terciario de esas tarjetas, pero no el
+  título, la cifra, los estados de control, los mensajes de error ni las
+  acciones del sistema.
+- **Estilo:** `docs/assets/css/kpi-compact.css`, cargado después de
+  `ui-unificada.css` en todas las vistas internas. La tarjeta se hace más
+  baja y mantiene la paleta pastel original.
+- **Móvil:** en dos columnas los valores no deben quedar cortados. Si una
+  etiqueta extremadamente larga no cabe, se permite un salto de línea
+  interno; no se oculta el importe ni se desborda la pantalla.
+- **Directorio:** se retiró la clase genérica `hero` de la cabecera para
+  evitar que herede un grid de portada; permanece el buscador, categorías,
+  mesa directiva desplegable y las tarjetas de contacto con acciones.
+
+### Revisión previa al merge
+
+1. Verificar a 360, 390, 768 y 1440 px que las etiquetas y cifras de
+   las tarjetas numéricas están en el mismo renglón cuando cabe.
+2. Confirmar que Alertas, Sin conexión, TAG bloqueado, Comprobantes
+   rechazados y otras advertencias funcionales **no** desaparecen.
+3. En Directorio, comprobar sin hacer scroll que se ve el buscador debajo
+   del encabezado, y que la lista responde a sus filtros.
+4. En Calendario y Análisis, comprobar que los indicadores aún cambian al
+   recibir datos y al seleccionar otro mes.
+5. Las tarjetas de contactos, registros y formularios conservan sus
+   descripciones; no forman parte del diseño KPI de una sola fila.
+
+Prueba estática: `node --test tests/ui-kpi-compact.test.cjs`.
