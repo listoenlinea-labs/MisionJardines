@@ -1,0 +1,157 @@
+/* Ajustes móviles puntuales, no modifican las versiones de escritorio. */
+@media (max-width: 700px) {
+  /* Inicio: SVG fluido de 6 meses, no usar min-width 600px. */
+  body.mj-home .hl-chart-wrap {
+    width:100%!important;min-width:0!important;
+    padding:4px 6px!important;overflow-x:hidden!important;
+  }
+  body.mj-home .hl-chart {
+    display:block!important;width:100%!important;
+    min-width:0!important;max-width:100%!important;
+    height:auto!important;aspect-ratio:640/270;
+  }
+  body.mj-home .hl-money-row {gap:5px!important;}
+  body.mj-home .hl-main-grid>*{min-width:0!important;}
+  body.mj-home .hl-card-head{gap:7px!important;}
+  body.mj-home .hl-data-note{font-size:10px!important;}
+
+  /* ZKTeco: domicilio a ancho completo, estado/lectura y acciones eficientes. */
+  body.page-zkteco .house-top,
+  body.mj-shared-sidebar-enabled .house-top {
+    display:grid!important;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr)!important;
+    align-items:center!important;gap:7px 10px!important;
+    padding:11px!important;
+  }
+  body.page-zkteco .house-address,
+  body.mj-shared-sidebar-enabled .house-address {
+    grid-column:1/-1!important;
+  }
+  body.page-zkteco .house-state,
+  body.mj-shared-sidebar-enabled .house-state {
+    grid-column:1!important;width:auto!important;min-width:0!important;
+    justify-self:start!important;
+  }
+  body.page-zkteco .house-last,
+  body.mj-shared-sidebar-enabled .house-last {
+    grid-column:2!important;min-width:0!important;
+  }
+  body.page-zkteco .house-actions,
+  body.mj-shared-sidebar-enabled .house-actions {
+    display:flex!important;grid-column:1/-1!important;
+    flex-direction:row!important;flex-wrap:nowrap!important;
+    align-items:stretch!important;justify-content:space-between!important;
+    gap:5px!important;min-width:0!important;width:100%!important;
+  }
+  body.page-zkteco .house-actions>.mobile-label,
+  body.mj-shared-sidebar-enabled .house-actions>.mobile-label{display:none!important}
+  body.page-zkteco .house-actions>.btn,
+  body.mj-shared-sidebar-enabled .house-actions>.btn{
+    flex:1 1 0!important;min-width:0!important;max-width:none!important;
+    padding:8px 3px!important;font-size:10px!important;
+    white-space:normal!important;text-align:center!important;
+    line-height:1.15!important;min-height:39px!important;
+  }
+  body.page-zkteco .house-top .mobile-label{font-size:9px!important;}
+  body.page-zkteco .house-address span{margin-top:2px!important;}
+  body.page-zkteco .house-card{border-radius:12px!important;}
+  body.page-zkteco .tag-toggle{padding:8px 11px!important;}
+
+  /* Análisis: KPI números menos pesados y donut con texto siempre en su interior. */
+  body.page-analisis .metric-grid{gap:7px!important;}
+  body.page-analisis .metric-grid>.metric {
+    min-height:54px!important;padding:9px 10px!important;
+  }
+  body.page-analisis .metric-grid>.metric :is(small,strong){
+    line-height:1.15!important;letter-spacing:-.025em!important;
+  }
+  body.page-analisis .metric-grid>.metric strong {
+    font-size:clamp(14px,3.7vw,19px)!important;font-weight:750!important;
+  }
+  body.page-analisis .donut-wrapper{
+    display:grid!important;grid-template-columns:1fr!important;
+    justify-items:center!important;gap:12px!important;min-height:0!important;
+  }
+  body.page-analisis .donut{
+    width:min(198px,75vw)!important;height:auto!important;
+    aspect-ratio:1!important;display:grid!important;place-items:center!important;
+  }
+  body.page-analisis .donut:before{inset:25%!important;}
+  body.page-analisis .donut>div{
+    position:relative!important;z-index:1!important;
+    width:48%!important;height:48%!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    flex-direction:column!important;gap:2px!important;
+    font-size:clamp(23px,6vw,30px)!important;line-height:1!important;
+  }
+  body.page-analisis .donut small {
+    font-size:10px!important;line-height:1.12!important;
+    white-space:normal!important;max-width:100%!important;
+  }
+  body.page-analisis .legend-block{
+    display:flex!important;flex-wrap:wrap!important;justify-content:center!important;
+    gap:10px!important;line-height:1.5!important;
+  }
+
+  /* Casa Club: cinco indicadores son píldoras de etiqueta + cifra. */
+  body.page-club #tab-administracion #clubTotals.stat-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;
+  }
+  body.page-club #tab-administracion #clubTotals.stat-grid .stat{
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    justify-content:space-between!important;
+    min-height:56px!important;height:auto!important;
+    padding:10px!important;gap:7px!important;
+  }
+  body.page-club #tab-administracion #clubTotals.stat-grid .stat small{
+    flex:1 1 auto!important;min-width:0!important;
+    font-size:11px!important;line-height:1.2!important;
+  }
+  body.page-club #tab-administracion #clubTotals.stat-grid .stat strong{
+    flex:0 0 auto!important;margin:0!important;
+    font-size:clamp(14px,3.7vw,19px)!important;
+    font-weight:750!important;text-align:right!important;
+  }
+
+  /* Conmutador: todas las calles quedan visibles sin scroll lateral. */
+  body.page-conmutador .street-tabs,
+  body.mj-shared-sidebar-enabled .street-tabs {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:4px!important;padding:6px!important;overflow:visible!important;
+  }
+  body.page-conmutador .street-tab,
+  body.mj-shared-sidebar-enabled .street-tab {
+    min-width:0!important;width:100%!important;min-height:40px!important;
+    padding:7px 5px!important;font-size:12px!important;
+    border:1px solid #e2e6ec!important;border-radius:9px!important;
+    white-space:normal!important;line-height:1.15!important;
+  }
+  body.page-conmutador .street-tab.active,
+  body.mj-shared-sidebar-enabled .street-tab.active{
+    background:#fff3e6!important;border-color:#df922e!important;
+    box-shadow:inset 0 0 0 1px #e7b36c!important;
+  }
+  body.page-conmutador .street-tab.active:after,
+  body.mj-shared-sidebar-enabled .street-tab.active:after{display:none!important}
+  body.page-conmutador .house-grid,
+  body.mj-shared-sidebar-enabled .house-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:7px!important;
+  }
+  body.page-conmutador .house-btn.exterior,
+  body.mj-shared-sidebar-enabled .house-btn.exterior{grid-column:span 1!important;}
+
+  /* Seguridad y Visitas: aire leve a ambos lados del tablero. */
+  body.page-seguridad-v2 .metric-grid,
+  body.page-visitas-v2 .metric-grid{
+    box-sizing:border-box!important;
+    padding-inline:10px!important;margin-inline:0!important;
+  }
+}
+@media(max-width:380px){
+  body.page-club #tab-administracion #clubTotals.stat-grid .stat{
+    padding:8px!important;
+  }
+  body.page-conmutador .street-tabs,
+  body.mj-shared-sidebar-enabled .street-tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
