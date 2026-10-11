@@ -1,0 +1,10 @@
+'use strict';
+const router=require('express').Router();
+const {autenticarToken}=require('../middlewares/auth.middleware');
+const {autorizarRoles}=require('../middlewares/roles.middleware');
+const controller=require('../controllers/google-sheets.controller');
+router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
+router.get('/preview',controller.preview);
+router.get('/historico',controller.reviewList);
+router.post('/preparar-historico',controller.stage);
+module.exports=router;
