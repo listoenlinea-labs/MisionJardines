@@ -211,6 +211,8 @@
     button.textContent = collapsed ? '›' : '‹';
     button.setAttribute('aria-expanded', String(!collapsed));
     button.setAttribute('aria-label', collapsed ? 'Mostrar menú lateral' : 'Ocultar menú lateral');
+    const scrim=document.querySelector('.mj-mobile-scrim');
+    if (scrim) scrim.hidden=collapsed || !matchMedia(MOBILE).matches;
     if (persist) try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (_) {}
   }
 
@@ -278,6 +280,13 @@
     }
 
     document.querySelector('.mj-side-tab')?.remove();
+    document.querySelector('.mj-mobile-scrim')?.remove();
+    const scrim = document.createElement('button');
+    scrim.type = 'button';
+    scrim.className = 'mj-mobile-scrim';
+    scrim.setAttribute('aria-label', 'Cerrar menú');
+    scrim.hidden = true;
+    document.body.appendChild(scrim);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'mj-side-tab';
@@ -290,6 +299,11 @@
     let collapsed = stored === '1';
     if (stored !== '1' && stored !== '0' && matchMedia(MOBILE).matches) collapsed = true;
     button.addEventListener('click', () => collapse(body, button, !body.classList.contains('mj-shared-sidebar-collapsed')));
+    scrim.addEventListener('click', () => collapse(body, button, true));
+    matchMedia(MOBILE).addEventListener('change', () => {
+      if (!matchMedia(MOBILE).matches) scrim.hidden = true;
+      else scrim.hidden = body.classList.contains('mj-shared-sidebar-collapsed');
+    });
     aside.addEventListener('click', event => {
       if (matchMedia(MOBILE).matches && event.target.closest('a')) collapse(body, button, true);
     });
