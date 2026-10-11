@@ -44,17 +44,25 @@
     ]}
   ];
 
-  // Keep resident sections together; group the remaining operational pages below.
+  // Keep resident sections together and place the security workflows in their own group.
   function navigationGroups() {
-    const administration = [], community = [], primary = [];
+    const administration = [], community = [], security = [], primary = [];
+    const securityPages = ['conmutador.html', 'seguridad.html', 'visitas.html'];
     for (const group of groups) {
       for (const item of group.items) {
         if (['index.html', 'viviendas.html'].includes(item.page)) primary.push(item);
+        else if (securityPages.includes(item.page)) security.push(item);
         else if (MJPermissions.canAccess('CONDOMINO', item.page)) community.push(item);
         else administration.push(item);
       }
     }
-    return [{ label: '', items: primary }, { label: 'Comunidad', items: community }, { label: 'Administración', items: administration }];
+    security.sort((a, b) => securityPages.indexOf(a.page) - securityPages.indexOf(b.page));
+    return [
+      { label: '', items: primary },
+      { label: 'Comunidad', items: community },
+      { label: 'Seguridad', items: security },
+      { label: 'Administración', items: administration }
+    ];
   }
 
   const page = () => location.pathname.split('/').pop() || 'index.html';
@@ -123,7 +131,7 @@
       .mj-side-inner{width:var(--mj-side-width)!important;height:100%!important;display:flex!important;flex-direction:column!important;margin:0!important;padding:23px 15px 16px!important;overflow:hidden!important;background:#fff!important}
       .mj-shared-sidebar .mj-side-logo{width:100%!important;height:82px!important;display:grid!important;place-items:center!important;flex:0 0 82px!important;margin:0!important;padding:0!important;overflow:hidden!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important}.mj-shared-sidebar .mj-side-logo img{width:100%!important;height:100%!important;max-width:100%!important;display:block!important;border:0!important;border-radius:0!important;box-shadow:none!important;object-fit:cover!important;object-position:center!important;filter:none!important}
       .mj-side-community{width:100%!important;flex:0 0 auto!important;margin:0!important;padding:15px 13px 14px!important;border-bottom:1px solid var(--mj-side-line)!important}.mj-side-community strong{display:block!important;margin:0!important;color:var(--mj-side-ink)!important;font-size:15px!important;font-weight:700!important}.mj-side-community span{display:block!important;margin-top:2px!important;color:#8b95a7!important;font-size:12px!important}
-      .mj-side-nav{width:100%!important;max-width:none!important;min-height:0!important;display:block!important;flex:1 1 auto!important;overflow-y:auto!important;margin:0!important;padding:15px 0 8px!important;background:transparent!important;scrollbar-width:thin}.mj-side-group{width:100%!important;display:block!important;margin:0 0 15px!important}.mj-side-label{display:block!important;margin:0!important;padding:0 13px 7px!important;color:#8994a8!important;font-size:10px!important;font-weight:700!important;letter-spacing:.035em!important;text-transform:uppercase!important}
+      .mj-side-nav{width:100%!important;max-width:none!important;min-height:0!important;display:block!important;flex:1 1 auto!important;overflow-y:auto!important;margin:0!important;padding:15px 0 8px!important;background:transparent!important;scrollbar-width:thin}.mj-side-group{width:100%!important;display:block!important;margin:0 0 15px!important}.mj-side-group[hidden]{display:none!important}.mj-side-label{display:block!important;margin:0!important;padding:0 13px 7px!important;color:#8994a8!important;font-size:10px!important;font-weight:700!important;letter-spacing:.035em!important;text-transform:uppercase!important}
       .mj-side-link{width:100%!important;height:38px!important;position:relative!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:13px!important;margin:1px 0!important;padding:0 13px!important;border:0!important;border-radius:9px!important;color:#526077!important;background:transparent!important;box-shadow:none!important;font-family:inherit!important;font-size:13px!important;font-weight:600!important;line-height:1.2!important;text-align:left!important;text-decoration:none!important;white-space:nowrap!important;transition:background .16s ease,color .16s ease!important}.mj-side-link:hover{color:var(--mj-side-orange)!important;background:#fff8f2!important}.mj-side-link.active{color:var(--mj-side-orange)!important;background:#fff5ec!important;font-weight:750!important}.mj-side-link.active:before{content:""!important;width:3px!important;position:absolute!important;inset:0 auto 0 -1px!important;border-radius:0 3px 3px 0!important;background:var(--mj-side-orange)!important}.mj-side-link[hidden]{display:none!important}
       .mj-side-icon{width:18px!important;height:18px!important;min-width:18px!important;flex:0 0 18px!important;display:block!important;margin:0!important;padding:0!important;stroke:currentColor!important;stroke-width:1.8!important;fill:none!important;stroke-linecap:round!important;stroke-linejoin:round!important}
       .mj-side-account{width:calc(100% - 2px)!important;min-height:49px!important;display:flex!important;align-items:center!important;gap:10px!important;margin:3px 1px 7px!important;padding:9px 11px!important;border:1px solid #e4e8ef!important;border-radius:11px!important;color:var(--mj-side-ink)!important;background:#fafbfe!important;text-decoration:none!important}.mj-side-account:hover,.mj-side-account.active{border-color:#f1c99f!important;background:#fff7ef!important}.mj-side-account>.mj-side-icon{color:var(--mj-side-orange)!important}.mj-side-account>span{min-width:0!important}.mj-side-account strong,.mj-side-account small{display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}.mj-side-account strong{font-size:10px!important;font-weight:800!important}.mj-side-account small{margin-top:3px!important;color:#7c879a!important;font-size:8px!important}
@@ -183,6 +191,10 @@
     aside.querySelectorAll('[data-roles]').forEach(el => {
       const allowed = el.dataset.roles.split(',').map(x => x.trim());
       el.hidden = !allowed.includes(currentRole);
+    });
+    // Do not show empty group headings to roles without access to their links.
+    aside.querySelectorAll('.mj-side-group').forEach(group => {
+      group.hidden = [...group.querySelectorAll('.mj-side-link')].every(link => link.hidden);
     });
   }
 
