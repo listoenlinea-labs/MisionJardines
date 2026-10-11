@@ -15,6 +15,7 @@
 5. En el **backend de Hostinger** (variables de entorno del servicio Node, o `backend/.env.production` en el servidor, **nunca** en `docs/`), configura:
 
 ```dotenv
+GOOGLE_SHEETS_ENABLED=true
 GOOGLE_SHEETS_SPREADSHEET_ID=EL_ID_DE_LA_URL
 GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON_BASE64=CONTENIDO_BASE64_DEL_JSON_DE_CUENTA_SERVICIO
 GOOGLE_SHEETS_RANGO_PAGOS=Pagos!A1:H500
@@ -30,7 +31,7 @@ Para generar el valor Base64 **localmente en PowerShell** (no pegues el resultad
 [Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\\ruta\\cuenta-de-servicio.json'))
 ```
 
-Reinicia el backend Node en Hostinger. No cambies `JWT_SECRET`, credenciales MySQL, el bridge ZKTeco ni `FRONTEND_URL` para configurar Sheets.
+**IMPORTANTE:** deja `GOOGLE_SHEETS_ENABLED=false` (o sin definir) hasta que tengamos el archivo real y hayamos aplicado la migración opcional. Cuando esté lista la hoja, cambia el valor a `true` y reinicia el backend Node en Hostinger. No cambies `JWT_SECRET`, credenciales MySQL, el bridge ZKTeco ni `FRONTEND_URL` para configurar Sheets.
 
 ## Código exacto
 
@@ -38,7 +39,7 @@ Reinicia el backend Node en Hostinger. No cambies `JWT_SECRET`, credenciales MyS
 - **Dónde se leen/almacenan históricos:** `backend/src/controllers/google-sheets.controller.js` → `preview()`, `stage()` y `reviewList()`.
 - **Dónde se autoriza el acceso:** `backend/src/routes/google-sheets.routes.js` (solo administrador/superadministrador).
 - **Dónde se habilita la API:** `backend/src/app.js` → `app.use('/api/google-sheets', ...)`.
-- **Dónde se crea la tabla aislada de trabajo:** `backend/src/models/GoogleSheetsHistorico.js` y `backend/src/server.js`. El backend intenta crearla en el inicio; si la cuenta de MySQL no tiene permiso `CREATE`, el resto de la API sigue iniciado, pero preparar históricos fallará hasta crear la tabla bajo el DBA.
+- **Dónde está el esquema de históricos:** `backend/src/models/GoogleSheetsHistorico.js`. La migración SQL se ejecuta **manualmente**, cuando configuremos Google Sheets: `backend/sql/google_sheets_historico_opcional.sql`. El arranque de la aplicación y del ZKTeco **no** crean esta tabla ni esperan su instalación.
 - **Dónde se muestra en pantalla:** `docs/analisis-cuotas.html` y `docs/assets/js/google-sheets-historicos.js`.
 
 ## Flujo de datos / seguridad
