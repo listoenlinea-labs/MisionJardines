@@ -397,19 +397,17 @@
       await Promise.allSettled([loadExtras(), loadReceipts(), loadValidity(), loadAdministration()]);
       setTab('MANTENIMIENTO');
     }
+    // El resumen extenso de vigencia fue retirado de la UI. Conservamos esta
+    // consulta porque el saldo parcial y el estado C3 siguen siendo necesarios.
     async function loadValidity() {
       try {
-        const d = await api('/pagos/vigencia', { headers: headers() }); validity = d.data;
-        $('validityDate').textContent = validity.pendienteConfiguracion ? 'Sin TAGs vinculados' : validity.fechaFinal ? 'Última fecha observada: ' + validity.fechaFinal : 'Consulta las fechas de cada TAG en ZKTeco';
-        $('validitySync').textContent = ({ COMPLETADO: 'Última aplicación de pago completada.',
-          PENDIENTE: 'Incremento por pago pendiente.', PREPARADO: 'Incremento preparado; pendiente de confirmar en el controlador.',
-          ERROR: 'Incremento pendiente; se reintentará automáticamente.',
-          CONFLICTO: 'Administración debe revisar un cambio en el TAG antes de continuar.',
-          SIN_TAGS: 'Pago registrado sin TAGs destinatarios. Administración debe revisar el acceso.',
-          SIMULACION: 'Incremento en modo de prueba.', REFERENCIA_C3: 'Referencia de la última lectura del controlador.' })[validity.sincronizacion] || 'Consulta el estado de tus TAGs en ZKTeco.';
-        $('validityDetail').textContent = 'Cada pago suma meses desde la fecha que tenga el TAG en el controlador. Saldo parcial: ' + money(validity.saldoParcial);
+        const result = await api('/pagos/vigencia', { headers: headers() });
+        validity = result.data;
         updatePreview();
-      } catch (e) { $('validityDate').textContent = 'No fue posible consultar la vigencia'; $('validityDetail').textContent = e.message; }
+      } catch (error) {
+        // La cotización del pago conserva sus propios errores y validaciones.
+        console.warn('No fue posible consultar la vigencia del TAG:', error);
+      }
     }
     function updatePreview() {
       if (paymentType !== 'MANTENIMIENTO') return;
