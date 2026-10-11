@@ -177,7 +177,7 @@
       const sheet=document.createElement('link');
       sheet.id='mjMobileOperativo';
       sheet.rel='stylesheet';
-      sheet.href='assets/css/mobile-operativo.css?v=20261011-b';
+      sheet.href='assets/css/mobile-operativo.css?v=20261011-seguridad-fichas';
       document.head.appendChild(sheet);
     }
   }
