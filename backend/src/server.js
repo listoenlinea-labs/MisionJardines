@@ -29,12 +29,6 @@ async function iniciarServidor() {
         await require('./services/cuentas-schema.service').asegurarCuentas();
         await require('./services/casa-club-schema.service').asegurarCasaClub();
         await require('./services/finanzas-schema.service').asegurarFinanzas();
-        try {
-            await require('./models/GoogleSheetsHistorico').sync();
-        } catch (error) {
-            // No poner fuera de línea pagos y accesos si falta el permiso CREATE.
-            console.error('Importación Google Sheets deshabilitada hasta crear tabla:', error.message);
-        }
         await require('./services/viviendas-schema.service').asegurarViviendas();
         await require('./services/zkteco-schema.service').asegurarEsquemaZkteco();
         try {
