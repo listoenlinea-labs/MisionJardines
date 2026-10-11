@@ -59,9 +59,9 @@
     security.sort((a, b) => securityPages.indexOf(a.page) - securityPages.indexOf(b.page));
     return [
       { label: '', items: primary },
+      { label: 'Administración', items: administration },
       { label: 'Comunidad', items: community },
-      { label: 'Seguridad', items: security },
-      { label: 'Administración', items: administration }
+      { label: 'Seguridad', items: security }
     ];
   }
 
