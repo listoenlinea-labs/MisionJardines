@@ -158,7 +158,16 @@ app.use('/api/pagos', pagosRoutes);
 app.use('/api/casa-club', require('./routes/casa-club.routes'));
 app.use('/api/finanzas', require('./routes/finanzas.routes'));
 app.use('/api/seguridad-cuotas',require('./routes/seguridad-cuotas.routes'));
-app.use('/api/google-sheets',require('./routes/google-sheets.routes'));
+// Google Sheets remains disabled until the private source and database staging
+// have been configured; no external or schema dependency during ZKTeco startup.
+if (process.env.GOOGLE_SHEETS_ENABLED === 'true') {
+    app.use('/api/google-sheets', require('./routes/google-sheets.routes'));
+} else {
+    app.use('/api/google-sheets', (_req, res) => res.status(503).json({
+        ok: false,
+        message: 'Google Sheets pendiente de configurar por Administración'
+    }));
+}
 app.use('/api/busqueda', busquedaRoutes);
 app.use('/api/telefonia', require('./routes/telefonia.routes'));
 app.use('/api/conexion', conexionRoutes);
