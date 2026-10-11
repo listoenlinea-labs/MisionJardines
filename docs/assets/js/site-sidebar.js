@@ -163,7 +163,7 @@
       const unified = document.createElement('link');
       unified.id = 'mjUnifiedUI';
       unified.rel = 'stylesheet';
-      unified.href = 'assets/css/ui-unificada.css?v=20261011a';
+      unified.href = 'assets/css/ui-unificada.css?v=20261011-inicio-reportes';
       document.head.appendChild(unified);
     }
   }
@@ -238,7 +238,7 @@
   function loadHomeDashboard() {
     if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
-    script.src = 'assets/js/home-dashboard.js?v=20260930b';
+    script.src = 'assets/js/home-dashboard.js?v=20261011-reportes-kpis';
     script.defer = true;
     script.dataset.mjHomeDashboard = 'true';
     document.body.appendChild(script);

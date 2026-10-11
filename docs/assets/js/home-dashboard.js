@@ -351,25 +351,25 @@
       </section>
 
       <section class="hl-kpis" aria-label="Indicadores conectados a la base de datos">
-        <article class="hl-card hl-kpi">
-          <div class="hl-kpi-icon green">$</div>
+        <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-blue">
+          <div class="hl-kpi-icon" aria-hidden="true">$</div>
           <div><span>Cuotas al corriente</span><strong>${pct === null || pct === undefined ? '—' : `${Number(pct).toLocaleString('es-MX')}%`}</strong><small>${fuentes.cuotas ? `${integer.format(q.alCorriente || 0)} de ${integer.format(q.total || 0)} cuotas del periodo` : 'Fuente no disponible'}</small></div>
-          <div class="hl-kpi-foot">${sourceBadge('cuotas', fuentes.cuotas)}${deltaLabel(q.variacionPuntos, 'pts')}</div>
+          
         </article>
-        <article class="hl-card hl-kpi">
-          <div class="hl-kpi-icon orange">↳</div>
+        <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-mint">
+          <div class="hl-kpi-icon" aria-hidden="true">↳</div>
           <div><span>Visitas hoy</span><strong>${fuentes.visitas ? integer.format(v.hoy || 0) : '—'}</strong><small>${fuentes.visitas ? `${integer.format(v.programadas || 0)} programadas · ${integer.format(v.enCurso || 0)} en curso` : 'Fuente no disponible'}</small></div>
-          <div class="hl-kpi-foot">${sourceBadge('visitas_programadas', fuentes.visitas)}</div>
+          
         </article>
-        <article class="hl-card hl-kpi">
-          <div class="hl-kpi-icon red">⇄</div>
+        <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-peach">
+          <div class="hl-kpi-icon" aria-hidden="true">⇄</div>
           <div><span>Accesos activos</span><strong>${fuentes.accesos ? integer.format(a.activos || 0) : '—'}</strong><small>${fuentes.accesos ? `${integer.format(a.entradasHoy || 0)} entradas registradas hoy` : 'Fuente no disponible'}</small></div>
-          <div class="hl-kpi-foot">${sourceBadge('accesos_seguridad', fuentes.accesos)}</div>
+          
         </article>
-        <article class="hl-card hl-kpi">
-          <div class="hl-kpi-icon blue">⌂</div>
+        <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-lilac">
+          <div class="hl-kpi-icon" aria-hidden="true">⌂</div>
           <div><span>Residentes activos</span><strong>${fuentes.residentes ? integer.format(r.activos || 0) : '—'}</strong><small>${fuentes.residentes ? `${integer.format(r.viviendasOcupadas || 0)} de ${integer.format(r.viviendasTotales || 0)} viviendas con residente activo` : 'Fuente no disponible'}</small></div>
-          <div class="hl-kpi-foot">${sourceBadge('condominos + direcciones', fuentes.residentes)}</div>
+          
         </article>
       </section>
 
