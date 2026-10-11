@@ -158,6 +158,14 @@
       productUI.href = 'assets/css/product-ui.css?v=20261011-product';
       document.head.appendChild(productUI);
     }
+    // Hoja final de homologación: sobreescribe versiones demo sin afectar la lógica.
+    if (!document.getElementById('mjUnifiedUI')) {
+      const unified = document.createElement('link');
+      unified.id = 'mjUnifiedUI';
+      unified.rel = 'stylesheet';
+      unified.href = 'assets/css/ui-unificada.css?v=20261011a';
+      document.head.appendChild(unified);
+    }
   }
 
   function createSidebar() {
