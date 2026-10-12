@@ -37,6 +37,7 @@
       }
       if (!MJPermissions.canAccess(role,page)) { location.replace(MJPermissions.landing(role)); return false; }
       window.MJVerifiedRole = role;
+      if (role === 'SEGURIDAD') sessionStorage.removeItem('mjCasaSeleccionada');
       function filterLinks() {
         document.querySelectorAll('a[href]').forEach(link => {
           const url = new URL(link.href,location.href);

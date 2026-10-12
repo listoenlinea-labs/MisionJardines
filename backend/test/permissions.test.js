@@ -5,7 +5,10 @@ test('administrators can access every application page', () => {
   for (const role of ['SUPER_ADMIN','ADMINISTRADOR']) for (const page of pages) assert.equal(canAccess(role,page),true);
 });
 test('security has exactly the requested operational pages plus account', () => {
-  assert.deepEqual(pages.filter(p=>canAccess('SEGURIDAD',p)).sort(), ['index.html','bases_datos.html','mapa.html','visitas.html','conmutador.html','reportes.html','reporte.html','seguridad.html','conexion.html','cuenta.html','viviendas.html','zkteco.html'].sort());
+  assert.deepEqual(pages.filter(p=>canAccess('SEGURIDAD',p)).sort(), ['bases_datos.html','mapa.html','visitas.html','conmutador.html','reportes.html','reporte.html','seguridad.html','cuenta.html','zkteco.html'].sort());
+  assert.equal(landing('SEGURIDAD'),'seguridad.html');
+  assert.equal(canAccess('SEGURIDAD','index.html'),false);
+  assert.equal(canAccess('SEGURIDAD','viviendas.html'),false);
 });
 test('residents have complementary pages, no operational access', () => {
   assert.deepEqual(pages.filter(p=>canAccess('CONDOMINO',p)).sort(), ['cuotas.html','pagos.html','casa-club.html','anuncios.html','calendario.html','directorio.html','cuenta.html','viviendas.html'].sort());
@@ -25,6 +28,9 @@ test('backend policy is self-contained and matches frontend permissions', () => 
     for (const page of pages) assert.equal(backend.canAccess(role,page),canAccess(role,page));
     assert.equal(backend.landing(role),landing(role));
   }
+  // Connection is an internal API capability; its public page was removed.
+  assert.equal(backend.canAccess('SEGURIDAD','conexion.html'),true);
+  assert.equal(canAccess('SEGURIDAD','conexion.html'),false);
   const fs = require('node:fs');
   const os = require('node:os');
   const path = require('node:path');

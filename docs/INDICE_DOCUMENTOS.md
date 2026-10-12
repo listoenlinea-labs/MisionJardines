@@ -17,7 +17,7 @@ actual del C3 ni a una consulta en vivo de MySQL.
 | [Tablas por módulo](BASE_DATOS_MODULOS.md) | Relaciones de tablas y gestión de residentes | Inventario del código, no certificación del esquema de producción |
 | [Mis viviendas](VIVIENDAS.md) | Cuentas, responsables, miembros e invitaciones | Referencia para vínculos; no confundir residente con cuenta de login |
 | [Verificación de cuentas](../backend/docs/verificacion-cuentas.md) | Registro, aprobación, rechazo y asignación de roles | Consultar también rutas y política actuales |
-| [Roles](ROLES.md) | Descripción de permisos | Resumen parcial: omite páginas añadidas como Casa Club/ZKTeco para algunos roles; la política actual está en los dos archivos permissions.js |
+| [Roles](ROLES.md) | Descripción de permisos | Navegación de Seguridad actualizada el 12/oct; la política completa está en los dos archivos permissions.js |
 | [Vigencia de mantenimiento](../backend/docs/vigencia-mantenimiento.md) | Historia de implementaciones y API heredada | **Histórico y mixto.** Sus secciones de fecha base, total acumulado, corte general, autoaprobación y reenvío SQL al C3 no son las reglas vigentes. Leer AGENTS.md y PAGOS_ACCESO_C3.md en su lugar |
 | [Cambios visuales](README_CAMBIOS.md) | Contexto de una migración de estilos | Histórico; no describe toda la interfaz actual |
 | [Telefonía](../telefonia/README.md) | Motor y futura conexión del conmutador | Consultar el flag/configuración actual antes de habilitarlo |

@@ -1,7 +1,7 @@
 # Permisos de acceso
 
 - SUPER_ADMIN y ADMINISTRADOR: todas las secciones.
-- SEGURIDAD: Inicio, Residentes, Mapa, Visitas, Conmutador, Reportes, Seguridad y Conexión.
+- SEGURIDAD: menú limitado al grupo Seguridad (Conmutador, Seguridad, Visitas, Mapa y Reportes); entrada directa en Seguridad. Inicio y Mis viviendas están denegados también en la API. Residentes y ZKTeco conservan sus permisos operativos, utilizados por el centro de Seguridad, pero no aparecen en el menú del guardia. La consulta interna de Conexión sigue disponible.
 - CONDOMINO: Cuotas, Pagos, Anuncios, Calendario y Directorio; entrada en Cuotas.
 - Mi cuenta y cerrar sesión: disponibles para todos los roles reconocidos.
 - Mesa directiva y Mantenimiento conservan su navegación anterior.

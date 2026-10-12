@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { Usuario, Rol } = require('../models');
 const { seleccionarCasa } = require('../services/viviendas.service');
 const { canAccess } = require('../config/permissions');
-const modules = { casas:'bases_datos.html', cuotas:'cuotas.html', eventos:'calendario.html', accesos:'seguridad.html', visitas:'visitas.html', dashboard:'index.html', pagos:'pagos.html', conexion:'conexion.html' };
+const modules = { casas:'bases_datos.html', cuotas:'cuotas.html', eventos:'calendario.html', accesos:'seguridad.html', visitas:'visitas.html', dashboard:'index.html', viviendas:'viviendas.html', pagos:'pagos.html', conexion:'conexion.html' };
 
 async function autenticarToken(req, res, next) {
     const authorizationHeader = req.headers.authorization;
@@ -41,7 +41,7 @@ async function autenticarToken(req, res, next) {
 
         // Account/household management remains reachable after membership revocation.
         const identityOnly = req.baseUrl.endsWith('/viviendas') || (req.baseUrl.endsWith('/auth') && req.path !== '/perfil');
-        req.usuario.casaId = await seleccionarCasa(user.id, identityOnly ? undefined : req.headers['x-casa-id']);
+        req.usuario.casaId = await seleccionarCasa(user.id, identityOnly || req.usuario.rol === 'SEGURIDAD' ? undefined : req.headers['x-casa-id']);
         const scoped = ['cuotas','pagos','eventos','busqueda'].includes(req.baseUrl.split('/').pop());
         if (scoped && !req.usuario.casaId && !['SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD','MESA_DIRECTIVA','MANTENIMIENTO'].includes(req.usuario.rol)) {
             return res.status(403).json({ok:false,message:'No tienes una vivienda activa. Revisa Mis viviendas.'});

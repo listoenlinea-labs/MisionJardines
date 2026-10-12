@@ -145,6 +145,21 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ## Bitácora
 
+### 2026-10-12
+
+- Navegación del rol SEGURIDAD: únicamente el grupo Seguridad, con Conmutador,
+  Seguridad, Visitas, Mapa y Reportes. Mapa y Reportes se trasladan a ese grupo para
+  todos los roles. El login de guardia entra directamente en seguridad.html.
+- Inicio y Mis viviendas quedan denegados en la política del navegador y en las API
+  dashboard/viviendas. Mi cuenta permanece accesible. Se retira el selector de vivienda
+  del guardia y se ignora su contexto de vivienda heredado en autenticación.
+- Residentes/ZKTeco conservan permisos operativos requeridos por el centro de Seguridad;
+  no aparecen en el menú del guardia. Conexión conserva su API interna, sin página pública.
+- Validación local: 23 pruebas aprobadas de permisos, autenticación, navegación/login,
+  interfaz unificada y rutas de viviendas; git diff --check sin errores. Son simulaciones,
+  no pruebas con cuentas reales ni confirmación de despliegue de frontend/backend.
+
+
 ### 2026-10-11
 
 - Main avanzó desde `8ec5019` hasta `ebed7ff`; se fusionaron los PR #133–#141. Se excluyó
