@@ -1,12 +1,13 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 10/oct/2026, 23:27, America/Mexico_City.
-**SHA de main consultado:** `8ec5019f24aea496ca8d829f96678d64e4021b7a`.
-**Fuentes de esta revisión:** comparación de main desde la revisión anterior, metadatos de
-PR y checks de GitHub; historial de pruebas ya documentado; transcripción de conversación
-aportada en este turno. Las capturas de esa transcripción no están disponibles como imágenes
-inspeccionables aquí; no se certifican sus resultados desde descripciones del asistente.
-No se consultaron MySQL ni el C3 de producción durante esta revisión.
+**Última revisión:** 11/oct/2026, 23:37, America/Mexico_City.
+**SHA de main consultado:** `ebed7ff3603b0f50b915c34df9eccae72befd0af`.
+**Fuentes de esta revisión:** comparación de main desde `8ec5019f24aea496ca8d829f96678d64e4021b7a`,
+metadatos de los PR #133–#141 y sus estados/checks en GitHub, pruebas locales de estructura
+y regresión, historial ya documentado y transcripción de conversación disponible. Las capturas
+de esa transcripción no están disponibles como imágenes inspeccionables aquí; no se certifican
+sus resultados desde descripciones del asistente. No se consultaron MySQL, Hostinger, Google
+Sheets ni el C3 de producción durante esta revisión.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
@@ -28,14 +29,18 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Confirmación por correo bancario | Propuesta | Sin conexión de buzón ni conciliador implementado. Falta revisar una notificación real y datos de operación |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
+| Interfaz responsive | Implementada en main; validación visual pendiente | PR #133–#141 reorganizan navegación, compactan vistas/KPI, retiran la página Conexión y corrigen móvil. Un merge no acredita que Hostinger ya sirva estos assets ni sustituye pruebas en navegador |
+| Cuotas para Seguridad | Implementado en main; producción no verificada | PR #140 añade ruta autenticada y tabla paginada sin nombres/teléfonos. Calcula desde `direcciones`/`cuotas`, no desde TAGs ni Sheets; no se consultó la DB real |
+| Históricos Google Sheets | Staging opcional en main; no activado/verificado | PR #140 añade lectura OAuth de solo lectura y preparación idempotente. Está deshabilitado por defecto, requiere migración SQL manual y no escribe directamente en cuotas, pagos ni egresos |
 | Continuidad documental | Disponible en main | AGENTS.md e índice publicados en `6995b845b500e7530d83b6d3cc6a3ab34ca62697`; este archivo agrega estado y bitácora |
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
-Desde `6995b84` solo se incorporó `8ec5019`, que creó este estado y sus enlaces;
-se excluye del trabajo de producto. **Sin cambios nuevos verificables de producto en main.**
-La búsqueda de PR abiertos devolvió cero; #129–#131 están fusionados desde antes
-de la revisión anterior y #132 sigue fusionado en su historial, pero revertido en main.
+Desde el SHA anterior se incorporaron los PR #133–#141. Los #133–#139 son cambios de
+navegación y presentación; #140 añade mejoras móviles, consulta de cuotas para Seguridad y
+staging opcional de Google Sheets; #141 corrige distribución visual en Seguridad/Análisis.
+El commit documental `e987281` se excluye del trabajo de producto. La búsqueda de PR abiertos
+devolvió cero. El PR #132 sigue fusionado en el historial, pero su entrega fue revertida en main.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -60,6 +65,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 10/oct/2026 | main `5828fca`, `DB_PORT=3306 node --test backend/test/pagos-acceso-c3.test.js backend/test/recargos-mantenimiento.test.js backend/test/zkteco-vigencias.test.js backend/test/zkteco-autosync.test.js` | **35 aprobadas, 2 fallidas** | SQL/TCP simulados; no se escribió al C3 ni a MySQL de producción |
 | 10/oct/2026, 00:15–00:16, America/Mexico_City | PR #132, head `e9b85ad`; desde backend, `DB_PORT=3306 npm run test:flujos`; [Actions 38030320492](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/38030320492) | **80 aprobadas, 0 fallidas**; job `flujos` success; `cuentas-servidor` skipped | Logs recuperados en esta revisión; resultado histórico de código revertido, no prueba de main actual ni del servidor |
 | 10/oct/2026 | Documentación de continuidad: enlaces relativos y `git diff --check` | Sin errores | Solo valida archivos/enlaces; no funcionamiento de backend o equipo |
+| 11/oct/2026, 23:36, America/Mexico_City | main `ebed7ff`; `node --test tests/ui-responsive.test.cjs tests/ui-unificada.test.cjs tests/ui-inicio-kpis-reportes.test.cjs tests/ui-kpi-compact.test.cjs tests/ui-seguridad-analisis-distribucion.test.cjs backend/test/seguridad-sheets-mobile.test.js` | **26 aprobadas, 3 fallidas** | Pruebas locales/estructurales. Los tres fallos esperan versiones antiguas de cache busting (`sin-conexion`, `kpis-compact`, `mobile-operativo ...-b`) reemplazadas por versiones posteriores; la suite de main queda roja hasta actualizar/conciliar esas expectativas |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -71,9 +77,11 @@ En ambos casos el C3 simulado conservó EndTime `20260910`, cuando se esperaba
 al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
-En el SHA de main leído, GitHub devolvió cero estados de commit y cero ejecuciones
-PR de Actions. Esto no equivale a pruebas aprobadas: el conector de ejecuciones solo
-consulta eventos de PR y su primera página. No se ejecutó de nuevo la suite en esta revisión.
+Para los heads de los PR #133–#141, GitHub devolvió cero check-runs y cero estados de
+commit; por tanto, no hay CI acreditado para esas fusiones. Los cuerpos de los PR documentan
+comprobaciones estáticas y pruebas propuestas, además de revisión visual/producción pendiente,
+pero no sustituyen el resultado local anterior. No se ejecutaron suites contra DB, Google Sheets,
+Hostinger o hardware real.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -102,6 +110,9 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
 | Dos pruebas fallidas de edición de TAG | Diagnosticar y repetir pruebas pertinentes, sin debilitar validaciones reales |
+| Tres regresiones estructurales posteriores a los PR #138–#141 | Actualizar o conciliar expectativas de versiones de assets y repetir la suite hasta obtener un resultado explicado; no ocultar los fallos como simple éxito visual |
+| PR #133–#141 sin checks de GitHub | Añadir/ejecutar CI apropiado y validar en navegador 360/390/430/768/1440 px; comprobar despliegue real por separado |
+| Google Sheets histórico | Ejecutar migración opcional solo al decidir activarlo, configurar credenciales/rangos en backend y validar lectura/staging con una hoja y MySQL de prueba; acordar conciliación antes de afectar contabilidad oficial |
 | 27 viviendas del padrón sin TAG | Confirmar entrega/posesión y asociación; nueva consulta/exportación tras ajustes |
 | Tres pares con fusión reportada | Confirmar COMMIT y persistencia desde otra conexión; verificar respaldo y modo seguro. No dar por cerrado a partir de la frase del usuario o del resumen de una captura |
 | Cinco registros fuera del padrón aún pendientes + vivienda marcada inexistente | Identificar destinos y conservar referencias. La conversación reporta cuotas/historial en tres y un residente/permiso en otro; falta revisar evidencia original antes de actuar |
@@ -133,6 +144,25 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-11
+
+- Main avanzó desde `8ec5019` hasta `ebed7ff`; se fusionaron los PR #133–#141. Se excluyó
+  `e987281`, que solo actualizó esta bitácora, de la lista de trabajo de producto.
+- #133–#139: nueva agrupación/orden del menú y rediseño responsive compacto; KPIs
+  horizontales, Directorio recuperado y página `conexion.html` retirada. El endpoint interno
+  de estado usado por Seguridad no fue eliminado. Falta validación visual y de despliegue.
+- #140: incorporó consulta autenticada de cuotas por vivienda para Seguridad, mejoras móviles
+  y una integración Google Sheets de solo lectura con staging aislado. Sheets queda deshabilitado
+  por defecto y la migración es manual; no se confirmó configuración ni ejecución en producción.
+- #141: reordenó Seguridad para colocar Cuotas antes de Comunicación directa y alineó fichas
+  móviles de Análisis. Solo cambió frontend/pruebas; no acredita operaciones de pagos o C3.
+- GitHub no devolvió check-runs ni estados de commit para los heads de #133–#141; cero PR abiertos.
+- Ejecución local de seis archivos de pruebas relevantes: 26 aprobadas y 3 fallidas. Los fallos
+  corresponden a expectativas de cache busting antiguas que no reconocen las versiones finales
+  de assets tras PR posteriores; deben corregirse o explicarse antes de declarar la suite verde.
+- No se consultó ni modificó producción, Hostinger, Google Sheets, DB o C3; no se realizaron
+  pagos, escrituras de TAG ni pruebas físicas. Se conservan pendientes y confirmaciones anteriores.
 
 ### 2026-10-10
 
