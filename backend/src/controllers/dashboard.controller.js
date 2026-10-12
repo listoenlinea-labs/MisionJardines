@@ -11,6 +11,12 @@ const MESES_CORTOS = [
     'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
 ];
 
+const ROLES_ADMINISTRATIVOS = new Set([
+    'SUPER_ADMIN',
+    'ADMINISTRADOR',
+    'MESA_DIRECTIVA'
+]);
+
 function fechaLocalISO(date = new Date()) {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/Mexico_City',
@@ -69,13 +75,26 @@ async function obtenerDashboard(req, res) {
     const anterior = periodoDesdeOffset(ahora, -1);
     const periodosSerie = Array.from({ length: 6 }, (_, index) => periodoDesdeOffset(ahora, index - 5));
     const errores = {};
+    const rol = req.usuario.rol;
+    const esResidente = rol === 'CONDOMINO';
+    const esSeguridad = rol === 'SEGURIDAD';
+    const puedeVerFinanzas = ROLES_ADMINISTRATIVOS.has(rol) || esResidente;
+    const casaId = Number(req.usuario.casaId) || -1;
+    const filtroCasaCuota = esResidente ? ' AND casa_id = :casaId' : '';
+    const filtroCasaVisita = esResidente ? ' AND casa_id = :casaId' : '';
+    const filtroCasaAcceso = esResidente ? ' WHERE casa_id = :casaId' : '';
+    const filtroActividadCuota = esResidente ? ' AND c.casa_id = :casaId' : '';
+    const filtroActividadVisita = esResidente ? ' AND v.casa_id = :casaId' : '';
+    const filtroActividadAcceso = esResidente ? ' WHERE a.casa_id = :casaId' : '';
+    const filtroActividadResidente = esResidente ? ' AND c.direccion_id = :casaId' : '';
 
     const replacementsPeriodo = {
         anioActual: actual.anio,
         mesActual: actual.mes,
         anioAnterior: anterior.anio,
         mesAnterior: anterior.mes,
-        hoy
+        hoy,
+        casaId
     };
 
     const [
@@ -92,7 +111,7 @@ async function obtenerDashboard(req, res) {
         accesosActividad,
         residentesActividad
     ] = await Promise.all([
-        consultaSegura(
+        puedeVerFinanzas ? consultaSegura(
             'cuotas',
             `SELECT
                 COALESCE(SUM(CASE WHEN estatus_pago <> 'CANCELADO' THEN 1 ELSE 0 END), 0) AS total_consideradas,
@@ -100,31 +119,31 @@ async function obtenerDashboard(req, res) {
                 COALESCE(SUM(CASE WHEN estatus_pago IN ('PENDIENTE','PAGO_PARCIAL') THEN 1 ELSE 0 END), 0) AS pendientes,
                 COALESCE(SUM(CASE WHEN estatus_pago <> 'CANCELADO' THEN monto_pagado ELSE 0 END), 0) AS recaudado
              FROM cuotas
-             WHERE anio = :anioActual AND mes = :mesActual`,
+             WHERE anio = :anioActual AND mes = :mesActual${filtroCasaCuota}`,
             replacementsPeriodo,
             errores
-        ),
-        consultaSegura(
+        ) : Promise.resolve([]),
+        puedeVerFinanzas ? consultaSegura(
             'cuotas_anterior',
             `SELECT
                 COALESCE(SUM(CASE WHEN estatus_pago <> 'CANCELADO' THEN 1 ELSE 0 END), 0) AS total_consideradas,
                 COALESCE(SUM(CASE WHEN estatus_pago IN ('PAGADO','CONDONADO') THEN 1 ELSE 0 END), 0) AS al_corriente,
                 COALESCE(SUM(CASE WHEN estatus_pago <> 'CANCELADO' THEN monto_pagado ELSE 0 END), 0) AS recaudado
              FROM cuotas
-             WHERE anio = :anioAnterior AND mes = :mesAnterior`,
+             WHERE anio = :anioAnterior AND mes = :mesAnterior${filtroCasaCuota}`,
             replacementsPeriodo,
             errores
-        ),
-        consultaSegura(
+        ) : Promise.resolve([]),
+        puedeVerFinanzas ? consultaSegura(
             'recaudacion',
             `SELECT anio, mes,
                     COALESCE(SUM(CASE WHEN estatus_pago <> 'CANCELADO' THEN monto_pagado ELSE 0 END), 0) AS total
              FROM cuotas
-             WHERE anio >= :anioDesde
+             WHERE anio >= :anioDesde${filtroCasaCuota}
              GROUP BY anio, mes`,
-            { anioDesde: periodosSerie[0].anio },
+            { anioDesde: periodosSerie[0].anio, casaId },
             errores
-        ),
+        ) : Promise.resolve([]),
         consultaSegura(
             'visitas_programadas',
             `SELECT
@@ -132,8 +151,8 @@ async function obtenerDashboard(req, res) {
                 COALESCE(SUM(CASE WHEN estatus = 'PROGRAMADA' THEN 1 ELSE 0 END), 0) AS programadas,
                 COALESCE(SUM(CASE WHEN estatus = 'EN_CURSO' THEN 1 ELSE 0 END), 0) AS en_curso
              FROM visitas_programadas
-             WHERE fecha_programada = :hoy`,
-            { hoy },
+             WHERE fecha_programada = :hoy${filtroCasaVisita}`,
+            { hoy, casaId },
             errores
         ),
         consultaSegura(
@@ -141,17 +160,22 @@ async function obtenerDashboard(req, res) {
             `SELECT
                 COALESCE(SUM(CASE WHEN fecha_salida IS NULL THEN 1 ELSE 0 END), 0) AS activos,
                 COALESCE(SUM(CASE WHEN DATE(fecha_entrada) = :hoy THEN 1 ELSE 0 END), 0) AS entradas_hoy
-             FROM accesos_seguridad`,
-            { hoy },
+             FROM accesos_seguridad${filtroCasaAcceso}`,
+            { hoy, casaId },
             errores
         ),
         consultaSegura(
             'condominos',
-            `SELECT
-                (SELECT COUNT(*) FROM condominos WHERE activo = 1) AS residentes_activos,
-                (SELECT COUNT(DISTINCT direccion_id) FROM condominos WHERE activo = 1) AS viviendas_ocupadas,
-                (SELECT COUNT(*) FROM direcciones) AS viviendas_totales`,
-            {},
+            esResidente
+                ? `SELECT
+                    (SELECT COUNT(*) FROM condominos WHERE activo = 1 AND direccion_id = :casaId) AS residentes_activos,
+                    (SELECT COUNT(DISTINCT direccion_id) FROM condominos WHERE activo = 1 AND direccion_id = :casaId) AS viviendas_ocupadas,
+                    (SELECT COUNT(*) FROM direcciones WHERE id = :casaId) AS viviendas_totales`
+                : `SELECT
+                    (SELECT COUNT(*) FROM condominos WHERE activo = 1) AS residentes_activos,
+                    (SELECT COUNT(DISTINCT direccion_id) FROM condominos WHERE activo = 1) AS viviendas_ocupadas,
+                    (SELECT COUNT(*) FROM direcciones) AS viviendas_totales`,
+            { casaId },
             errores
         ),
         consultaSegura(
@@ -172,7 +196,7 @@ async function obtenerDashboard(req, res) {
             { hoy },
             errores
         ),
-        consultaSegura(
+        puedeVerFinanzas ? consultaSegura(
             'actividad_pagos',
             `SELECT
                 COALESCE(c.fecha_pago, c.fecha_confirmacion, c.actualizado_en) AS fecha,
@@ -181,12 +205,12 @@ async function obtenerDashboard(req, res) {
                 monto_pagado AS monto
              FROM cuotas c
              LEFT JOIN direcciones d ON d.id = c.casa_id
-             WHERE c.monto_pagado > 0
+             WHERE c.monto_pagado > 0${filtroActividadCuota}
              ORDER BY COALESCE(c.fecha_pago, c.fecha_confirmacion, c.actualizado_en) DESC
              LIMIT 4`,
-            {},
+            { casaId },
             errores
-        ),
+        ) : Promise.resolve([]),
         consultaSegura(
             'actividad_visitas',
             `SELECT
@@ -195,10 +219,10 @@ async function obtenerDashboard(req, res) {
                 v.estatus
              FROM visitas_programadas v
              INNER JOIN direcciones d ON d.id = v.casa_id
-             WHERE v.estatus <> 'CANCELADA'
+             WHERE v.estatus <> 'CANCELADA'${filtroActividadVisita}
              ORDER BY COALESCE(v.fecha_entrada, v.actualizado_en, v.creado_en) DESC
              LIMIT 4`,
-            {},
+            { casaId },
             errores
         ),
         consultaSegura(
@@ -206,9 +230,10 @@ async function obtenerDashboard(req, res) {
             `SELECT a.fecha_entrada AS fecha, d.calle_correcta AS calle, d.numero, a.tipo
              FROM accesos_seguridad a
              INNER JOIN direcciones d ON d.id = a.casa_id
+             ${filtroActividadAcceso}
              ORDER BY a.fecha_entrada DESC
              LIMIT 4`,
-            {},
+            { casaId },
             errores
         ),
         consultaSegura(
@@ -216,10 +241,10 @@ async function obtenerDashboard(req, res) {
             `SELECT c.creado_en AS fecha, d.calle_correcta AS calle, d.numero
              FROM condominos c
              INNER JOIN direcciones d ON d.id = c.direccion_id
-             WHERE c.activo = 1
+             WHERE c.activo = 1${filtroActividadResidente}
              ORDER BY c.creado_en DESC
              LIMIT 4`,
-            {},
+            { casaId },
             errores
         )
     ]);
@@ -291,14 +316,14 @@ async function obtenerDashboard(req, res) {
         .slice(0, 6);
 
     const fuentes = {
-        cuotas: !errores.cuotas && !errores.recaudacion,
+        cuotas: puedeVerFinanzas && !errores.cuotas && !errores.recaudacion,
         visitas: !errores.visitas_programadas,
         accesos: !errores.accesos_seguridad,
         residentes: !errores.condominos,
         eventos: !errores.eventos
     };
 
-    if (req.usuario.rol === 'SEGURIDAD') {
+    if (esSeguridad) {
         return res.json({ok:true, generadoEn:new Date().toISOString(),
             kpis:{visitas:{hoy:numero(visitas.total_hoy),programadas:numero(visitas.programadas),enCurso:numero(visitas.en_curso)},
                 accesos:{activos:numero(accesos.activos),entradasHoy:numero(accesos.entradas_hoy)},
