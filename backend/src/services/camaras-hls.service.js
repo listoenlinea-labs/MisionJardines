@@ -36,7 +36,11 @@ function gateway(env = process.env) {
   try {
     const url = new URL(raw.endsWith('/') ? raw : raw + '/');
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+    // Un gateway HTTPS externo sin autenticación dejaría las cámaras públicas.
+    // Exigir autenticación del reverse proxy con token del servidor. Para
+    // loopback local se admite HTTP únicamente dentro del mismo host.
     if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) ||
+        (!local && !String(env.CAMERAS_UPSTREAM_BEARER_TOKEN || '').trim()) ||
         url.username || url.password || url.search || url.hash) return null;
     return url;
   } catch (_) { return null; }
