@@ -29,7 +29,7 @@ function renderChart(mobile, filter, width = 310) {
 
 test('Mobile SVG contiene los diez meses y las tres líneas sin ancho forzado', () => {
   const html = renderChart(true, 'todas');
-  assert.match(html, /viewBox="0 0 310 286"/);
+  assert.match(html, /viewBox="0 0 310 322"/);
   for (const mes of months) assert.ok(html.includes('>' + mes + '</text>'), 'Falta ' + mes);
   assert.match(html, /<span>2026<\/span>/);
   assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
@@ -48,7 +48,7 @@ test('Filtrar una serie mantiene todos los meses visibles en móvil', () => {
 
 test('Escritorio conserva el SVG ancho y las etiquetas completas', () => {
   const html = renderChart(false, 'todas');
-  assert.match(html, /viewBox="0 0 850 300"/);
+  assert.match(html, /viewBox="0 0 850 310"/);
   assert.match(html, />Ene 2026<\/text>/);
   assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
 });
@@ -57,7 +57,7 @@ test('CSS móvil elimina scroll horizontal y redibuja al girar el teléfono', ()
   assert.doesNotMatch(source, /\.hl-chart\{min-width:600px\}/);
   assert.doesNotMatch(source, /\.hl-finance-plot\{min-width:600px\}/);
   assert.match(source, /\.hl-chart-wrap\{overflow-x:hidden/);
-  assert.match(source, /\.hl-chart\{width:100%;min-width:0;max-width:100%;height:286px\}/);
+  assert.match(source, /\.hl-chart\{width:100%;min-width:0;max-width:100%;height:322px\}/);
   assert.match(source, /mobileMedia\.addEventListener\('change', redrawChart\)/);
   assert.match(source, /removeFinanceMediaListener\(\)/);
   assert.doesNotThrow(() => new Function(source));
@@ -66,7 +66,7 @@ test('CSS móvil elimina scroll horizontal y redibuja al girar el teléfono', ()
 test('El tamaño visual se adapta al ancho disponible sin empequeñecer los ejes', () => {
   for (const width of [235, 260, 310, 355, 620]) {
     const html = renderChart(true, 'todas', width);
-    assert.ok(html.includes('viewBox="0 0 ' + width + ' 286"'), 'Ancho incorrecto: ' + width);
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' 322"'), 'Ancho incorrecto: ' + width);
     assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
     for (const month of months) assert.ok(html.includes('>' + month + '</text>'));
     assert.doesNotMatch(html, /<polygon/, 'Los rellenos no deben tapar la serie opuesta en móvil');
@@ -74,9 +74,35 @@ test('El tamaño visual se adapta al ancho disponible sin empequeñecer los ejes
   const ingresos = renderChart(true, 'ingresos', 260);
   assert.match(ingresos, /<polygon/);
   assert.match(source, /const tickCount = compact \? 4 : 5/);
-  assert.match(source, /chartWrap\.clientWidth - 18/);
+  assert.match(source, /chartWrap\.clientWidth - padLeft - padRight - 2/);
   assert.match(source, /resizeObserver\?\.observe\(chartWrap\)/);
   assert.match(source, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(source, /hl-chart-mobile-heading/);
-  assert.match(source, /height:286px!important/);
+  assert.match(source, /height:322px!important/);
+});
+
+
+test('El gráfico usa todo el ancho real del dashboard con la barra lateral abierta o cerrada', () => {
+  for (const width of [680, 850, 1040, 1320]) {
+    const html = renderChart(false, 'todas', width);
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' 310"'));
+    const first = html.match(/data-index="0" data-series="ingresos" cx="([^"]+)"/);
+    const last = html.match(/data-index="9" data-series="ingresos" cx="([^"]+)"/);
+    assert.ok(first && last, 'Faltan puntos de Inicio o del mes actual');
+    assert.equal(Number(first[1]), 58, 'Margen útil izquierdo fijo para las etiquetas');
+    assert.equal(Number(last[1]), width - 16, 'El último mes debe llegar al borde derecho de la gráfica');
+  }
+  assert.match(source, /chartWrap\.clientWidth - padLeft - padRight - 2/);
+  assert.match(source, /const width = Math\.max\(compact \? 220 : 420/);
+  assert.match(source, /Math\.abs\(nextWidth - lastChartWidth\) >= 2/);
+  assert.match(source, /resizeObserver\?\.observe\(chartWrap\)/);
+});
+
+test('Los puntos en teléfonos tienen una zona táctil más grande y muestran la selección', () => {
+  const html = renderChart(true, 'todas', 285);
+  assert.match(html, /r="19" fill="transparent"/);
+  assert.match(html, /data-index="9" data-series="disponible"/);
+  assert.match(source, /touchLayout \? 29 : 21/);
+  assert.match(source, /showTooltip\(hit\)/);
+  assert.match(source, /\.hl-chart-hit\.is-selected/);
 });
