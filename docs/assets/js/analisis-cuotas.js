@@ -67,7 +67,7 @@
   // Los egresos y totales provienen del mes/año seleccionado. Filtros de
   // consulta: no alteran ni los datos guardados ni los indicadores contables.
   const egresos=Array.isArray(data.egresos)?data.egresos:[];
-  const normalize=v=>String(v??'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const concept=normalize($('expenseFilterConcept').value.trim());
   const category=$('expenseFilterCategory').value;
   const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value;
