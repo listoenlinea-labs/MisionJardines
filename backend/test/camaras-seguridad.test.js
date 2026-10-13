@@ -69,8 +69,10 @@ test('Seguridad reutiliza el POST de ZKTeco y no presenta estado físico inventa
   assert.match(zkteco, /'\/zkteco\/pluma'/);
   assert.match(html, /ORDEN ENVIADA/);
   assert.match(html, /no una lectura física de posición/);
-  assert.match(html, /API_BASE_URL\+'\/camaras'/);
-  assert.match(html, /data-watch/);
+  assert.doesNotMatch(html, /cameraGrid|reloadCameras|data-watch|hls\\.js/);
+  assert.ok(html.indexOf('id="seguridadCuotasPanel"') > 0);
+  assert.ok(html.indexOf('id="seguridadCuotasPanel"') < html.indexOf('class="sec-hero"'));
+  assert.ok(html.indexOf('id="openGate"') < html.indexOf('class="sec-hero"'));
   assert.doesNotMatch(html, /rtsp:\/\/admin:/);
   assert.doesNotMatch(html, /192\.168\.1\.101/);
   assert.match(app, /app\.use\('\/api\/camaras'/);
