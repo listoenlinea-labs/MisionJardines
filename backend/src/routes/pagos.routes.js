@@ -21,7 +21,13 @@ const lecturaPagos = autorizarRoles(
     'CONDOMINO'
 );
 const soloAdministracion = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR');
+const { crearHistorialController } = require('../controllers/pagos-historial.controller');
+const { PagoReportado, ZkTarjeta } = require('../models');
+const listarHistorial = crearHistorialController({ PagoReportado, ZkTarjeta,
+    PagoAccesoC3: require('../models/PagoAccesoC3'),
+    PagoAccesoTagC3: require('../models/PagoAccesoTagC3') });
 
+router.get('/historial', soloAdministracion, listarHistorial);
 router.get('/cotizacion', lecturaPagos, cotizacionMantenimiento);
 router.get('/vigencia', lecturaPagos, obtenerVigencia);
 router.put('/vigencia/:casaId', soloAdministracion, inicializarVigencia);

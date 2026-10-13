@@ -520,6 +520,7 @@
           toast(result.data?.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : 'Revisión guardada.');
           dialog.close();
           await Promise.all([loadPending(), loadReceipts(), loadValidity()]);
+          document.dispatchEvent(new Event('pagos:actualizados'));
         } catch (e) { toast(e.message); buttons.forEach(b => b.disabled = false); }
       }));
       try {

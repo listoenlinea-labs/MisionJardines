@@ -1026,6 +1026,17 @@
     .proof-validation.invalid{border-color:#f0caca;background:#fff6f6;color:#a43d3d}
     .proof-validation[hidden]{display:none}
     @media(max-width:560px){.proof-validation{font-size:12px}.remove-proof{min-width:32px;min-height:32px}.preview{grid-template-columns:82px minmax(0,1fr);gap:13px;align-items:center}}
+    .payment-history[hidden]{display:none!important}
+    .history-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:18px 0}
+    .history-controls label{min-width:190px}
+    .history-scroll{overflow-x:auto;border:1px solid #e1e5eb;border-radius:12px}
+    .history-table{width:100%;min-width:1000px;border-collapse:collapse;text-align:left;font-size:12px}
+    .history-table th{background:#f1f4f8;color:#42526b;padding:12px;white-space:nowrap}
+    .history-table td{padding:12px;vertical-align:top;border-top:1px solid #e5e9ef;color:#26344d}
+    .history-table tbody tr:nth-child(even){background:#fafbfc}
+    .history-table small{display:block;color:#69768a;margin-top:5px;line-height:1.5}
+    .history-pages{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:15px}
+    .history-pages button:disabled{opacity:.45;cursor:default}
 </style>
 </head>
 
@@ -1073,6 +1084,14 @@
     </article>
 
     <dialog id="pendingDetail" class="pending-detail-dialog" aria-label="Detalle del comprobante"><div class="pending-detail-top"><h2>Revisión de comprobante</h2><button id="closePendingDetail" type="button" aria-label="Cerrar detalle">×</button></div><div id="pendingDetailBody"></div></dialog><dialog id="pendingPhotoZoom" class="pending-photo-zoom" aria-label="Comprobante ampliado"><div class="pending-zoom-head"><strong>Comprobante bancario ampliado</strong><button id="closePendingPhotoZoom" type="button" aria-label="Cerrar imagen ampliada">×</button></div><div class="pending-zoom-image"><img id="pendingZoomImage" alt="Comprobante bancario ampliado"></div><p>Presiona Esc o selecciona × para regresar a la revisión.</p></dialog>
+    <article id="adminPaymentHistory" class="card pad payment-history" hidden>
+      <div class="admin-payments-head"><div><span class="eyebrow">ADMINISTRACIÓN</span><h2>Historial de pagos por periodo</h2><p>Consulta todos los comprobantes por fecha de depósito, incluidos abonos y pagos con recargos. El estado distingue los depósitos validados de los pendientes o rechazados.</p></div><span class="admin-security-badge">Solo administración</span></div>
+      <div class="history-controls"><label for="historyPeriod">Mes de inicio del periodo<input id="historyPeriod" type="month" min="2000-01" max="2099-12"></label><button id="historyRefresh" class="btn admin-refresh" type="button">Actualizar historial</button></div>
+      <p id="historyRange" aria-live="polite"></p>
+      <p class="hint">Cada periodo comienza el día 10 y termina el día 9 del siguiente mes. La vigencia del TAG es la última registrada en el sistema; no es una consulta en vivo al controlador.</p>
+      <div class="history-scroll" role="region" aria-label="Historial de pagos" tabindex="0"><table class="history-table"><thead><tr><th scope="col">Folio de pago</th><th scope="col">Depósito</th><th scope="col">Subido al sistema</th><th scope="col">Monto</th><th scope="col">Reportado por / vivienda</th><th scope="col">Estado</th><th scope="col">Meses de vigencia</th><th scope="col">Vigencia TAG (última lectura)</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+      <div class="history-pages"><button id="historyPrev" class="btn admin-refresh" type="button" disabled>Anterior</button><span id="historyPage" aria-live="polite"></span><button id="historyNext" class="btn admin-refresh" type="button" disabled>Siguiente</button></div>
+    </article>
     <div class="tabs">
       <button class="tab active" type="button" data-tab="MANTENIMIENTO">Pago de mantenimiento</button>
       <button class="tab" type="button" data-tab="EXTRAORDINARIO">Pago extraordinario</button>
@@ -1233,7 +1252,8 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261012-monto-2"></script>
-  <script src="assets/js/pagos.js?v=20261013-ocr-lectura-1"></script>
+  <script src="assets/js/pagos.js?v=20261013-historial-1"></script>
+  <script src="assets/js/pagos-historial.js?v=20261013-historial-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261012-seguridad"></script>
 </body>
 
