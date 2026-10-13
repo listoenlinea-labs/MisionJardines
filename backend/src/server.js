@@ -25,6 +25,7 @@ async function iniciarServidor() {
             'Conexión con MySQL correcta'
         );
 
+        await require('./services/auto-users-schema.service').asegurarAutoUsers();
         await asegurarEsquemaPagos();
         await require('./services/cuentas-schema.service').asegurarCuentas();
         await require('./services/casa-club-schema.service').asegurarCasaClub();

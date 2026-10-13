@@ -11,7 +11,7 @@ test('security has exactly the requested operational pages plus account', () => 
   assert.equal(canAccess('SEGURIDAD','viviendas.html'),false);
 });
 test('residents have complementary pages, no operational access', () => {
-  assert.deepEqual(pages.filter(p=>canAccess('CONDOMINO',p)).sort(), ['cuotas.html','pagos.html','casa-club.html','anuncios.html','calendario.html','directorio.html','cuenta.html','viviendas.html'].sort());
+  assert.deepEqual(pages.filter(p=>canAccess('CONDOMINO',p)).sort(), ['index.html','cuotas.html','pagos.html','casa-club.html','anuncios.html','calendario.html','directorio.html','cuenta.html','viviendas.html'].sort());
   assert.equal(landing('CONDOMINO'),'cuotas.html');
   assert.equal(canAccess('CONDOMINO','analisis-cuotas.html'),false);
   assert.equal(canAccess('SEGURIDAD','casa-club.html'),false);
@@ -41,3 +41,4 @@ test('backend policy is self-contained and matches frontend permissions', () => 
     execFileSync(process.execPath,['-e',"const p=require('./permissions');if(!p.canAccess('ADMINISTRADOR','index.html'))process.exit(1)"],{cwd:directory});
   } finally { fs.rmSync(directory,{recursive:true,force:true}); }
 });
+

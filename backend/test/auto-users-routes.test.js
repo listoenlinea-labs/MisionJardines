@@ -1,0 +1,27 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+Object.assign(process.env, { DB_HOST: 'localhost', DB_PORT: '3306', DB_NAME: 'test', DB_USER: 'test', DB_PASSWORD: 'unused', JWT_SECRET: 'synthetic-route-secret' });
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const models = require('../src/models');
+const router = require('../src/routes/auto-users.routes');
+test('HTTP routes refuse anonymous/resident/forged-admin requests and allow authoritative administrator', async t => {
+  let currentRole = 'CONDOMINO', queried = 0;
+  t.mock.method(models.Usuario, 'findByPk', async () => ({ id: 1, casaId: 10, rolId: 3, estatus: 'ACTIVO', cuentaAceptada: true, sesionVersion: 0, rol: { nombre: currentRole, activo: true } }));
+  t.mock.method(models.UsuarioCasa, 'findOne', async () => ({ casaId: 10 }));
+  t.mock.method(models.Condomino, 'findAll', async () => { queried++; return []; });
+  const app = express(); app.use(express.json()); app.use('/api/auto-users', router);
+  const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
+  const base = 'http://127.0.0.1:' + server.address().port + '/api/auto-users';
+  const forged = jwt.sign({ usuarioId: 1, rol: 'SUPER_ADMIN', sesionVersion: 0 }, process.env.JWT_SECRET);
+  const send = (url, authorization) => fetch(base + url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: 'Bearer ' + authorization } : {}) }, body: '{}' });
+  try {
+    assert.equal((await send('/crear')).status, 401);
+    assert.equal((await send('/crear', forged)).status, 403); assert.equal(queried, 0);
+    currentRole = 'ADMINISTRADOR'; const allowed = await send('/crear', forged);
+    assert.equal(allowed.status, 200); assert.equal((await allowed.json()).siguiente, null); assert.equal(queried, 1);
+    assert.equal((await send('/0/invitacion', forged)).status, 400);
+    const invalid = await send('/invitacion/consultar'); assert.equal(invalid.status, 410);
+    assert.equal(invalid.headers.get('cache-control'), 'no-store');
+  } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+});

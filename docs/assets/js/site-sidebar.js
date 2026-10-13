@@ -39,7 +39,8 @@
     { label: 'Administración', items: [
       { page: 'seguridad.html', label: 'Seguridad', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD' },
       { page: 'analisis-cuotas.html', label: 'Análisis de cuotas', icon: 'reports' },
-      { page: 'verificacion-cuentas.html', label: 'Verificación de cuentas', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR' }
+      { page: 'verificacion-cuentas.html', label: 'Verificación de cuentas', icon: 'shield', roles: 'SUPER_ADMIN,ADMINISTRADOR' },
+      { page: 'auto-users.html', label: 'Auto-users', icon: 'residents', roles: 'SUPER_ADMIN,ADMINISTRADOR' }
     ]}
   ];
 

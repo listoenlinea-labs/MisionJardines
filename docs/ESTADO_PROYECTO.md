@@ -155,6 +155,21 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-13
 
+- Auto-users preparado en PR: prerregistro por condómino con vínculo único a
+  vivienda/usuario, cuenta_aceptada=false y credenciales aleatorias no entregadas.
+  Creación por lotes idempotente; datos ambiguos/inactivos requieren revisión.
+  Invitaciones únicas, reemplazables, con hash y caducidad; confirmación del número
+  de casa, contraseña, activación transaccional y sesión hacia Inicio. Reportes,
+  corrección de datos/vivienda y reenvío individual o de pendientes no aceptados.
+- Auto-users requiere migración incremental (preserva cuentas existentes aceptadas),
+  frontend/backend y configuración de WhatsApp Business con plantilla de 3 parámetros.
+  Sin configuración no simula envíos. No se crearon usuarios ni se enviaron mensajes
+  reales; MySQL/Hostinger/C3 de producción no consultados. Inicio se habilita para
+  Condómino; Seguridad sigue sin Inicio y Auto-users queda exclusivo de administración.
+- Validación: 56 pruebas aprobadas de flujo, HTTP local, DOM, login, permisos,
+  migración/proveedor simulados y compatibilidad de registro/revocación. Sintaxis y
+  diff sin errores. Revisión visual y prueba de migración/WhatsApp reales pendientes.
+
 - Fecha anterior al pago preparada en PR de seguimiento: se muestran las fechas
   físicas guardadas en fecha_antes por TAG y movimiento de ese comprobante; no se
   sustituye por la vigencia actual. Sin lectura se indica No registrada; abonos sin

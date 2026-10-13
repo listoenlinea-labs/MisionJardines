@@ -23,10 +23,10 @@ async function autenticarToken(req, res, next) {
         );
 
         const user = await Usuario.findByPk(payload.usuarioId, {
-            attributes: ['id','casaId','rolId','estatus','sesionVersion'],
+            attributes: ['id','casaId','rolId','estatus','sesionVersion','cuentaAceptada'],
             include: [{ model: Rol, as: 'rol', attributes: ['nombre','activo'] }]
         });
-        if (!user || user.estatus !== 'ACTIVO' || !user.rol?.activo) {
+        if (!user || user.estatus !== 'ACTIVO' || user.cuentaAceptada === false || !user.rol?.activo) {
             return res.status(403).json({ok:false,message:'El usuario ya no tiene acceso'});
         }
         // Cuenta reactivada: rechazar JWT emitidos antes de la baja, aunque vuelvan a estar ACTIVA.

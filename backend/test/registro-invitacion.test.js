@@ -68,7 +68,7 @@ test('seguridad no requiere vivienda ni obtiene permisos automáticamente', asyn
 });
 test('correo duplicado no produce cuentas ni solicitudes', async t => {
   // El duplicado se verifica dentro de la transacción, antes de insertar.
-  t.mock.method(db,'transaction',async cb=>cb({}));
+  t.mock.method(db,'transaction',async cb=>cb({LOCK:{UPDATE:'UPDATE'}}));
   t.mock.method(bcrypt,'hash',async()=> 'hash');
   t.mock.method(m.Usuario,'findOne',async()=>({id:3}));
   const res=respuesta();
@@ -98,3 +98,4 @@ test('antigua ruta de verificación por código queda inhabilitada', async () =>
   await verificarRegistro({body:{correo:'nuevo@example.com',codigo:'123456'}},res);
   assert.equal(res.statusCode,410);
 });
+

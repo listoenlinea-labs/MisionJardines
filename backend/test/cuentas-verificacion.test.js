@@ -97,7 +97,7 @@ test('una cuenta revocada puede volver a registrarse con el mismo correo sin per
     t.mock.method(db, 'transaction', async cb => cb(tx));
     t.mock.method(models.Usuario, 'findOne', async options => {
         assert.equal(options.lock, 'UPDATE');
-        assert.equal(options.where.correo, 'ana@example.com');
+        assert.deepEqual(options.where[require('sequelize').Op.or], [{ correo: 'ana@example.com' }, { nombreUsuario: 'ana@example.com' }]);
         return account;
     });
     t.mock.method(models.Rol, 'findOne', async () => ({ id: 3 }));
@@ -243,7 +243,7 @@ test('rejection requires a reason, is audited and never grants access', async t 
 });
 test('pending account cannot obtain a login token, even with the correct password', async t => {
     const user = row({ estatus: 'PENDIENTE', contrasenaHash: await bcrypt.hash('Prueba1234', 4) });
-    t.mock.method(models.Usuario, 'scope', () => ({ findOne: async () => user }));
+    t.mock.method(models.Usuario, 'scope', () => ({ findAll: async () => [user] }));
     const res = response(); await auth.iniciarSesion({ body: { correo: 'ana@example.com', contrasena: 'Prueba1234' } }, res);
     assert.equal(res.code, 403); assert.equal(res.body.token, undefined); assert.match(res.body.message, /pendiente/);
     const invalid = response(); await auth.iniciarSesion({ body: { correo: 'ana@example.com', contrasena: 'incorrecta' } }, invalid);
@@ -266,3 +266,4 @@ test('verification routes and page are restricted to administrators', () => {
         assert.equal(policy.canAccess('CONDOMINO', 'verificacion-cuentas.html'), false);
     }
 });
+
