@@ -34,6 +34,53 @@ router.get('/', ...access, security, (req, res) => {
   });
 });
 
+// Diagnóstico de conectividad (no devuelve rutas internas, usuario ni contraseña).
+// Solo valida la disponibilidad de la playlist; reproducir segmentos es otra prueba.
+router.get('/diagnostico', ...access, security, async (_req, res) => {
+  const configured = camera.enabled();
+  const first = camera.channels()[0];
+  if (!configured || !first) {
+    return res.json({
+      ok: true, configured: false, reachable: false,
+      message: 'Configura el gateway HLS, el token del proxy, la llave de firma y los canales en Hostinger.'
+    });
+  }
+  const url = camera.sourceUrl(first, 'index.m3u8');
+  try {
+    const upstream = await fetch(url, {
+      method: 'GET',
+      redirect: 'error',
+      signal: AbortSignal.timeout(6000),
+      headers: process.env.CAMERAS_UPSTREAM_BEARER_TOKEN
+        ? { Authorization: 'Bearer ' + process.env.CAMERAS_UPSTREAM_BEARER_TOKEN }
+        : {}
+    });
+    if (!upstream.ok) {
+      await upstream.body?.cancel();
+      return res.json({
+        ok: true, configured: true, reachable: false,
+        message: 'Hostinger no pudo leer la playlist HLS del primer canal. Comprueba el puente, el túnel y la autenticación.'
+      });
+    }
+    const type = String(upstream.headers.get('content-type') || '').toLowerCase();
+    // La respuesta a la solicitud se cierra de inmediato: no iniciar streaming
+    // continuo desde una ruta de diagnóstico.
+    await upstream.body?.cancel();
+    return res.json({
+      ok: true, configured: true, reachable: !type.includes('html'),
+      message: type.includes('html')
+        ? 'El gateway respondió HTML en lugar de una playlist; verifica el proxy.'
+        : 'El gateway respondió al primer canal. Prueba Reproducir en Seguridad para validar video y segmentos.',
+      playlistLikely: !type.includes('html')
+    });
+  } catch (_) {
+    return res.json({
+      ok: true, configured: true, reachable: false,
+      message: 'No hay comunicación desde Hostinger al gateway HLS. Revisar DNS, HTTPS y túnel de caseta.'
+    });
+  }
+});
+
 // Los videos solo se solicitan a la puerta de enlace fija en el entorno del
 // servidor. La URL solicitada por el navegador nunca determina el host destino.
 // Ticket firmado: acceso temporal para video/segmentos, compatible con <video>

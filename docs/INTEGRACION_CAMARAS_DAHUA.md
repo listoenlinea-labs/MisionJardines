@@ -102,3 +102,36 @@ real playing en el elemento de video.
 Documentación de formatos:
 - Dahua RTSP: https://www.dahuawiki.com/index.php?curid=732&title=Remote_Access%2FRTSP_via_VLC
 - MediaMTX HLS: https://mediamtx.org/docs/read/web-browsers
+
+## Configuración real verificada el 13 de octubre de 2026
+
+- NVR: Dahua en `192.168.1.101`, puerto RTSP `554`.
+- La cámara 1, JARDINES-1, se reprodujo realmente en VLC con `subtype=1`.
+- Se creó un usuario de integración `misionjardines` en grupo `user`, con visualización de los canales 1–11, que también reprodujo la cámara en VLC. **No guardar ni pegar la contraseña en GitHub, HTML, capturas o mensajes.**
+- La IP `192.168.1.101` es LOCAL: Hostinger NO puede acceder a ella por la IP pública del módem sin un enlace establecido. El P2P Dahua no es una URL de streaming para servidores propios.
+- El alojamiento actual es Hostinger **sitio web Node.js administrado**; el panel indica recursos asignados, no permiso para instalar daemon MediaMTX ni VPN.
+- El router Telmex HG8145V5V3 presenta port forwarding, port trigger y DMZ; **no se debe habilitar ninguno para 554, 80, 37777 ni para la interfaz del grabador**. Conservar intacta la regla del ZKTeco.
+
+### Pasos reales de despliegue (no basta configurar variables en Hostinger)
+
+1. Proveer pasarela HLS **permanente** que tenga acceso al RTSP local: por ejemplo MediaMTX en una mini-PC en caseta, con salida a un túnel HTTPS autenticado y sin exposición pública del NVR; alternativamente, solución de pasarela remota con enlace privado desde caseta.
+2. En la configuración PRIVADA de esa pasarela, guardar usuario Dahua `misionjardines` y su contraseña, y registrar `channel=1` a `channel=11` con `subtype=1`. Evitar contraseñas con caracteres especiales en URL sin percent-encoding; preferir secret manager. H.264 recomendado.
+3. Proteger el gateway HTTPS con autenticación Bearer **real en el gateway** (la variable de Hostinger por sí sola no activa ese control). Solo permitir solicitudes autorizadas del backend.
+4. En Hostinger → Sitios web → `api-misionjardines.listoenlinea.host` → **Variables de entorno**, añadir:
+
+   - `CAMERAS_HLS_GATEWAY_URL`: URL HTTPS base de la pasarela, terminada en `/` (ej. `https://video-gateway.example/`).
+   - `CAMERAS_UPSTREAM_BEARER_TOKEN`: token acordado con el proxy del gateway.
+   - `CAMERAS_STREAM_SIGNING_KEY`: valor aleatorio criptográficamente fuerte de al menos 32 caracteres, distinto del token.
+   - `CAMERAS_CHANNELS_JSON`: pegar en una sola línea el siguiente JSON, sin credenciales:
+
+```json
+[{"id":"jardines-1","name":"JARDINES-1","path":"jardines-1"},{"id":"porton-1","name":"PORTON-1","path":"porton-1"},{"id":"magnolias","name":"MAGNOLIAS","path":"magnolias"},{"id":"rosas","name":"ROSAS","path":"rosas"},{"id":"porton-2","name":"PORTON-2","path":"porton-2"},{"id":"cancha","name":"CANCHA","path":"cancha"},{"id":"jardines-2","name":"JARDINES-2","path":"jardines-2"},{"id":"gardenias","name":"GARDENIAS","path":"gardenias"},{"id":"lirios","name":"LIRIOS","path":"lirios"},{"id":"peatonal-1","name":"PEATONAL 1","path":"peatonal-1"},{"id":"peatonal-2","name":"PEATONAL 2","path":"peatonal-2"}]
+```
+
+5. Redesplegar backend y abrir `Seguridad → Cámaras` como usuario autorizado. El endpoint autenticado `GET /api/camaras/diagnostico` responde:
+   - `configured: false`: falta alguna variable obligatoria.
+   - `configured: true, reachable: false`: las variables están, pero la pasarela aún no entrega playlist.
+   - `configured: true, reachable: true`: la pasarela responde al primer canal; validar segmentos y reproducción en la UI para confirmar.
+6. Verificar `JARDINES-1` en la aplicación desde datos móviles, después los demás canales.
+
+**No configurar `CAMERAS_DAHUA_PASSWORD` en Hostinger suponiendo que abrirá el video:** la autenticación RTSP debe ser utilizada por la pasarela que realmente llegue al grabador. Un mero par usuario/contraseña en el backend web no establece red privada ni transcodifica RTSP.
