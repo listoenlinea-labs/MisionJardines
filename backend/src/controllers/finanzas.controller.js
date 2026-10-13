@@ -4,6 +4,7 @@ const { compararDirecciones }=require('../services/direccion-sort.service');
 const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
 const {Casa,Cuota,PagoReportado}=require('../models');
 const Egreso=require('../models/Egreso');
+const {referenciaEgreso}=require('../services/egreso-referencia.service');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
 const mesNombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const categorias=['LUZ','AGUA','JARDINERIA','MANTENIMIENTO','PROYECTOS','OTROS'];
@@ -76,11 +77,18 @@ async function analizar(req,res){
 }
 async function registrarEgreso(req,res){
  try{
-  const fecha=String(req.body?.fecha||''),categoria=String(req.body?.categoria||''),concepto=String(req.body?.concepto||'').trim(),monto=Number(req.body?.monto),referencia=String(req.body?.referencia||'').trim();
+  const fecha=String(req.body?.fecha||''),categoria=String(req.body?.categoria||''),concepto=String(req.body?.concepto||'').trim(),monto=Number(req.body?.monto);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||new Date(fecha+'T12:00:00Z').toISOString().slice(0,10)!==fecha
-     ||!categorias.includes(categoria)||!concepto||concepto.length>250||!Number.isFinite(monto)||monto<=0||monto>100000000||referencia.length>120)throw fail(400,'Completa fecha, categoría, concepto y monto válidos');
-  const row=await Egreso.create({fecha,categoria,concepto,monto,referencia:referencia||null,registradoPor:req.usuario.usuarioId});
-  return res.status(201).json({ok:true,id:row.id,message:'Egreso registrado'});
+     ||!categorias.includes(categoria)||!concepto||concepto.length>250||!Number.isFinite(monto)||monto<=0||monto>100000000)throw fail(400,'Completa fecha, categoría, concepto y monto válidos');
+  // Crear y asignar la referencia dentro de una sola transacción. Se deriva
+  // del ID persistido; dos egresos concurrentes no comparten referencia.
+  const saved=await sequelize.transaction(async transaction=>{
+   const row=await Egreso.create({fecha,categoria,concepto,monto,referencia:null,registradoPor:req.usuario.usuarioId},{transaction});
+   const referencia=referenciaEgreso(fecha,row.id);
+   await row.update({referencia},{transaction});
+   return {id:row.id,referencia};
+  });
+  return res.status(201).json({ok:true,...saved,message:'Egreso registrado con referencia automática'});
  }catch(e){return sendErr(res,e);}
 }
 module.exports={analizar,registrarEgreso};

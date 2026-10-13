@@ -56,11 +56,39 @@
   const cat=Object.entries(data.egresosCategorias);
   const maxCategory=Math.max(1,...cat.map(([,v])=>v));
   $('financeExpenseChart').innerHTML=cat.map(([n,v])=>bar(n,v,maxCategory,true,fmt(v))).join('');
-  $('financeExpenseRows').innerHTML=data.egresos.length?data.egresos.map(e=>'<tr><td data-label="Fecha">'+esc(e.fecha)+'</td><td data-label="Categoría">'+esc(e.categoria)+'</td><td data-label="Concepto">'+esc(e.concepto)+'</td><td data-label="Referencia">'+esc(e.referencia||'—')+'</td><td data-label="Monto">'+fmt(e.monto)+'</td></tr>').join(''):'<tr><td colspan="5">No hay egresos registrados para este mes.</td></tr>';
+  renderExpenses();
   const select=$('financeStreet'),selected=select.value;
   select.innerHTML='<option value="">Todas las calles</option>'+[...data.calles].sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'})).map(c=>'<option value="'+esc(c.calle)+'">'+esc(c.calle)+'</option>').join('');
   select.value=data.calles.some(x=>x.calle===selected)?selected:'';
   renderHouses();
+ }
+ function renderExpenses(){
+  if(!data)return;
+  // Los egresos y totales provienen del mes/año seleccionado. Filtros de
+  // consulta: no alteran ni los datos guardados ni los indicadores contables.
+  const egresos=Array.isArray(data.egresos)?data.egresos:[];
+  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const concept=normalize($('expenseFilterConcept').value.trim());
+  const category=$('expenseFilterCategory').value;
+  const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value;
+  const order=$('expenseSort').value;
+  const result=egresos.filter(e=>(!concept||normalize(e.concepto).includes(concept))
+    &&(!category||e.categoria===category)
+    &&(!from||String(e.fecha)>=from)
+    &&(!to||String(e.fecha)<=to));
+  result.sort((a,b)=>{
+    let cmp=0;
+    if(order==='monto_asc')cmp=Number(a.monto)-Number(b.monto);
+    else if(order==='monto_desc')cmp=Number(b.monto)-Number(a.monto);
+    else if(order==='categoria_asc')cmp=String(a.categoria).localeCompare(String(b.categoria),'es-MX');
+    else if(order==='categoria_desc')cmp=String(b.categoria).localeCompare(String(a.categoria),'es-MX');
+    else if(order==='fecha_asc')cmp=String(a.fecha).localeCompare(String(b.fecha));
+    else cmp=String(b.fecha).localeCompare(String(a.fecha));
+    return cmp||String(b.fecha).localeCompare(String(a.fecha))||Number(b.id)-Number(a.id);
+  });
+  $('expenseResultCount').textContent='Mostrando '+result.length+' de '+egresos.length+' egresos del período seleccionado';
+  $('financeExpenseRows').innerHTML=result.length?result.map(e=>'<tr><td data-label="Fecha">'+esc(e.fecha)+'</td><td data-label="Categoría">'+esc(e.categoria)+'</td><td data-label="Concepto">'+esc(e.concepto)+'</td><td data-label="Referencia">'+esc(e.referencia||'—')+'</td><td data-label="Monto">'+fmt(e.monto)+'</td></tr>').join(''):
+    '<tr><td colspan="5">'+(egresos.length?'No hay egresos que coincidan con los filtros.':'No hay egresos registrados para este mes.')+'</td></tr>';
  }
  function renderHouses(){
   if(!data)return;
@@ -89,6 +117,14 @@
   finally{$('updateFinance').disabled=false;}
  }
  $('updateFinance').addEventListener('click',load);
+ $('expenseFilterConcept').addEventListener('input',renderExpenses);
+ for(const id of ['expenseFilterCategory','expenseFilterFrom','expenseFilterTo','expenseSort'])
+  $(id).addEventListener('change',renderExpenses);
+ $('expenseClearFilters').addEventListener('click',()=>{
+  for(const id of ['expenseFilterConcept','expenseFilterCategory','expenseFilterFrom','expenseFilterTo'])$(id).value='';
+  $('expenseSort').value='fecha_desc';
+  renderExpenses();
+ });
  for(const id of ['financeSearch','financeStreet','financeStatus'])$(id).addEventListener(id==='financeSearch'?'input':'change',()=>{housePage=1;renderHouses();});
  $('financePrev').addEventListener('click',()=>{housePage=Math.max(1,housePage-1);renderHouses();});
  $('financeNext').addEventListener('click',()=>{housePage++;renderHouses();});
@@ -98,10 +134,16 @@
  $('newExpense').addEventListener('submit',async e=>{
   e.preventDefault();
   const body={fecha:$('expenseDate').value,categoria:$('expenseCategory').value,
-   monto:Number($('expenseAmount').value),concepto:$('expenseConcept').value.trim(),referencia:$('expenseReference').value.trim()};
+   monto:Number($('expenseAmount').value),concepto:$('expenseConcept').value.trim()};
   if(!confirm('¿Confirmas este egreso de '+fmt(body.monto)+' por '+body.concepto+'?'))return;
   $('saveExpense').disabled=true;
-  try{await request('/egresos',body);$('newExpense').reset();notice('Egreso registrado.');await load();}
+  try{
+   const saved=await request('/egresos',body);
+   $('newExpense').reset();
+   $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   await load();
+   notice('Egreso registrado correctamente. Referencia: '+(saved.referencia||'generada'));
+  }
   catch(e){notice(e.message);}
   finally{$('saveExpense').disabled=false;}
  });
