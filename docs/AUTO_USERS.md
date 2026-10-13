@@ -110,3 +110,18 @@ existente, token reemplazado/caducado/usado, número incorrecto, manipulación d
 vivienda/rol, reporte/corrección/reenvío, contraseña, sesión, permisos y privacidad.
 Quedan pendientes revisión visual en navegador, MySQL real y envío de prueba desde
 el remitente configurado; no se envió WhatsApp ni se modificó producción en este PR.
+
+## Prueba individual sin WhatsApp
+
+En Auto-users, utiliza **Prueba individual · sin WhatsApp** antes de operar el padrón completo.
+
+1. Selecciona una vivienda dedicada a pruebas (calle con la palabra `Prueba` o número que empiece por `TEST-`). Si no existe, regístrala primero en Viviendas; no renombres una vivienda real.
+2. Presiona **Crear cuenta de prueba**. Se guarda un condómino ficticio sin teléfono y una sola cuenta pendiente con e-mail `example.com`. No se recorren los condóminos reales. Repetir en la misma sesión de administrador conserva esa cuenta, incluso después de editarla o aceptarla.
+3. Presiona **Generar enlace sin enviar** y **Copiar enlace**. Abre el enlace en incógnito para conservar la sesión administrativa. No requiere configuración de WhatsApp. Cada generación reemplaza el enlace anterior, dura 14 días y guarda solamente su hash.
+4. Comprueba campos de vivienda de solo lectura, edición de usuario/e-mail, contraseñas, botón NO y rechazo de número de casa incorrecto. La cuenta debe continuar pendiente.
+5. Prueba **Reportar error**: verifica el reporte en Administración, corrígelo con **Editar**, y vuelve a **Generar enlace sin enviar** en la sección de prueba. No uses Enviar; las cuentas de prueba se excluyen de WhatsApp, aunque se les agregue un teléfono. Su vivienda solo puede corregirse hacia otra vivienda de pruebas.
+6. Con el nuevo enlace, confirma el número correcto: debe iniciar sesión en Inicio, mostrar Cuenta aceptada = Sí y dejar inutilizable ese enlace. Repetir Crear cuenta de prueba en la misma sesión no duplica la cuenta aceptada.
+
+Estos botones crean registros ficticios persistentes en la base, pero no envían mensajes ni modifican cuentas reales, pagos o fechas de TAGs. La clave de repetición se conserva en `sessionStorage` de esa pestaña; otra sesión puede crear otra prueba. La vivienda elegida recibe un vínculo activo al aceptar: úsala exclusivamente para pruebas. No se ofrece reiniciar cuentas aceptadas.
+
+Rutas administrativas: `GET /api/auto-users/prueba/viviendas`, `POST /prueba/crear` (`casaId`, `clavePrueba` de 32 hex), `POST /prueba/:id/enlace`. La URL usa `AUTO_USERS_FRONTEND_URL` si está configurada; de lo contrario acepta la ruta del portal enviada por el administrador solo cuando su origen coincide con el encabezado Origin, con HTTPS salvo localhost. Los enlaces son privados y no deben publicarse.

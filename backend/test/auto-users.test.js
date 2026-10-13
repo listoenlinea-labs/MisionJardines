@@ -147,3 +147,52 @@ test('listing does not expose token hashes/passwords and preserves correction re
   assert.equal(data.reportes.length, 1); assert.equal(data.reportes[0].usuario.id, 1);
   assert.ok(!JSON.stringify(data).includes('contrasenaHash')); assert.ok(!JSON.stringify(data).includes('tokenHash'));
 });
+
+test('prueba individual crea exactamente una cuenta ficticia, idempotente, sin WhatsApp configurado', async () => {
+  const f = fixture(); f.enabled(false);
+  assert.deepEqual((await f.service.viviendasPrueba()).map(c => c.id), [10]);
+  const key = 'a'.repeat(32);
+  const [first, repeated] = await Promise.all([f.service.crearPrueba(10, key), f.service.crearPrueba(10, key)]);
+  assert.equal(first.usuarioId, repeated.usuarioId);
+  assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Condomino.length, 2);
+  assert.equal(f.tables.Condomino[0].correo, 'persona1@example.com');
+  assert.equal(f.tables.Usuario[0].telefono, null);
+  const link = await f.service.enlacePrueba(first.usuarioId, 'https://example.com/portal/');
+  const token = new URLSearchParams(new URL(link.enlace).hash.slice(1)).get('invitacion');
+  assert.equal((await f.service.consultar(token)).numero, '5');
+  assert.equal(f.tables.Invitacion[0].envioEstado, 'PRUEBA_SIN_ENVIO');
+  assert.ok(!JSON.stringify(f.tables).includes(token));
+  await assert.rejects(f.service.aceptar(token, { ...acceptBody, numeroConfirmado: 'wrong' }), { status: 400 });
+  assert.equal(f.tables.Usuario[0].cuentaAceptada, false);
+  await f.service.aceptar(token, acceptBody);
+  assert.equal(f.tables.Usuario[0].cuentaAceptada, true);
+  await assert.rejects(f.service.enlacePrueba(first.usuarioId, 'https://example.com'), { status: 409 });
+  await assert.rejects(f.service.consultar(token), { status: 410 });
+  assert.equal((await f.service.crearPrueba(10, key)).cuentaAceptada, true);
+  assert.equal(f.tables.Usuario.length, 1); assert.equal(f.sent.length, 0);
+});
+test('prueba rechaza viviendas reales, revoca enlaces, exige corregir reportes y excluye envíos masivos', async () => {
+  const f = fixture();
+  await assert.rejects(f.service.crearPrueba(11, 'b'.repeat(32)), { status: 400 });
+  assert.equal(f.tables.Condomino.length, 1);
+  const trial = await f.service.crearPrueba(10, 'b'.repeat(32));
+  const getToken = async () => new URLSearchParams(new URL((await f.service.enlacePrueba(trial.usuarioId, 'https://example.com')).enlace).hash.slice(1)).get('invitacion');
+  const old = await getToken(), next = await getToken();
+  await assert.rejects(f.service.consultar(old), { status: 410 });
+  await f.service.reportar(next, 'Quiero corregir mi nombre de prueba.');
+  await assert.rejects(getToken(), { status: 409 });
+  await assert.rejects(f.service.editar(trial.usuarioId, { ...acceptBody, nombreCompleto: 'Prueba Corregida', casaId: 11 }, 100), { status: 400 });
+  await f.service.editar(trial.usuarioId, { ...acceptBody, nombreCompleto: 'Prueba Corregida', casaId: 10, telefono: '3312345678' }, 100);
+  const corrected = await getToken();
+  assert.equal((await f.service.consultar(corrected)).nombre, 'Prueba Corregida');
+  const results = await f.service.enviarLote();
+  assert.equal(results.resultados[0].resultado, 'PRUEBA_SIN_ENVIO');
+  assert.equal(f.sent.length, 0);
+  assert.equal((await f.service.consultar(corrected)).numero, '5');
+  await assert.rejects(f.service.enlacePrueba(trial.usuarioId, 'http://evil.example'), { status: 400 });
+});
+test('fallo creando prueba revierte también el condómino ficticio', async () => {
+  const f = fixture(); f.tables.Rol[0].activo = false;
+  await assert.rejects(f.service.crearPrueba(10, 'c'.repeat(32)), { status: 503 });
+  assert.equal(f.tables.Condomino.length, 1); assert.equal(f.tables.Usuario.length, 0);
+});

@@ -9,7 +9,7 @@
   if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role)) { $('adminAccess').textContent = 'Esta página es exclusiva de Administración.'; return; }
   const API = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'http://localhost:3000/api' : 'https://api-misionjardines.listoenlinea.host/api';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const labels = { CREADO: 'Creadas', EXISTENTE: 'Ya existentes', VINCULADO_EXISTENTE: 'Vinculadas a cuenta existente', ENVIADO: 'Enviado a WhatsApp', ERROR: 'Error', REVISAR: 'Revisar', ACEPTADA_O_NO_ELEGIBLE: 'Cuenta ya aceptada o no disponible', SIN_ENVIAR: 'Sin enviar', ENVIANDO: 'Enviando', REQUIERE_CORRECCION: 'Corrección pendiente', ABIERTO: 'Abierto', CORREGIDO: 'Corregido' };
+  const labels = { PRUEBA_SIN_ENVIO: 'Prueba sin envío', CREADO: 'Creadas', EXISTENTE: 'Ya existentes', VINCULADO_EXISTENTE: 'Vinculadas a cuenta existente', ENVIADO: 'Enviado a WhatsApp', ERROR: 'Error', REVISAR: 'Revisar', ACEPTADA_O_NO_ELEGIBLE: 'Cuenta ya aceptada o no disponible', SIN_ENVIAR: 'Sin enviar', ENVIANDO: 'Enviando', REQUIERE_CORRECCION: 'Corrección pendiente', ABIERTO: 'Abierto', CORREGIDO: 'Corregido' };
   const name = u => [u.nombre, u.apellidoPaterno, u.apellidoMaterno].filter(Boolean).join(' ');
   let page = 1, total = 0, reportPage = 1, reportTotal = 0, busy = false, rows = [], reports = [], houses = [];
   async function api(path, body, method = 'GET') {
@@ -18,6 +18,37 @@
     if (!response.ok || !data.ok) throw Error(data.message || 'No fue posible completar la operación.');
     return data;
   }
+  let trialId = null, trialAccepted = false, trialAvailable = false;
+  let trialKey = sessionStorage.getItem('autoUsersTrialKey');
+  if (!trialKey) { trialKey = crypto.randomUUID().replace(/-/g, ''); sessionStorage.setItem('autoUsersTrialKey', trialKey); }
+  function trialButtons() {
+    $('createTrial').disabled = busy || !trialAvailable;
+    $('generateTrialLink').disabled = busy || !trialId || trialAccepted;
+    $('copyTrialLink').disabled = busy || !$('trialLink').value;
+  }
+  async function trialAction(create) {
+    if (busy) return;
+    setBusy(true); $('trialLink').value = '';
+    try {
+      if (create) {
+        const data = await api('/prueba/crear', { casaId: Number($('trialHouse').value), clavePrueba: trialKey }, 'POST');
+        trialId = data.usuarioId; trialAccepted = data.cuentaAceptada;
+        $('trialStatus').textContent = 'Cuenta de prueba #' + trialId + (trialAccepted ? ' · Aceptada: prueba completada.' : ' · Pendiente. Genera su enlace sin enviar.');
+      } else {
+        const data = await api('/prueba/' + trialId + '/enlace', { frontendUrl: new URL('.', location.href).href }, 'POST');
+        $('trialLink').value = data.enlace;
+        $('trialStatus').textContent = 'Enlace generado. No se envió ningún WhatsApp. Cópialo y ábrelo en incógnito.';
+      }
+      await load();
+    } catch (error) { $('trialStatus').textContent = error.message; }
+    finally { setBusy(false); }
+  }
+  $('createTrial').addEventListener('click', () => trialAction(true));
+  $('generateTrialLink').addEventListener('click', () => trialAction(false));
+  $('copyTrialLink').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('trialLink').value); $('trialStatus').textContent = 'Enlace copiado. Ábrelo en incógnito.'; }
+    catch { $('trialLink').focus(); $('trialLink').select(); $('trialStatus').textContent = 'Copia el enlace seleccionado y ábrelo en incógnito.'; }
+  });
   function buttons(u) {
     if (u.cuentaAceptada || u.estatus && u.estatus !== 'PENDIENTE') return '—';
     return '<button type="button" data-edit="' + esc(u.id) + '">Editar</button><button type="button" data-invite="' + esc(u.id) + '">Enviar</button>';
@@ -43,6 +74,7 @@
     for (const button of document.querySelectorAll('#adminWorkspace button')) button.disabled = value;
     if (!value) { $('usersPrevious').disabled = page <= 1; $('usersNext').disabled = page * 50 >= total;
       $('reportsPrevious').disabled = reportPage <= 1; $('reportsNext').disabled = reportPage * 50 >= reportTotal; }
+    trialButtons();
   }
   async function runBatch(path) {
     if (busy) return;
@@ -101,7 +133,11 @@
   $('reportsNext').addEventListener('click', () => { if (!busy && reportPage * 50 < reportTotal) { reportPage++; load().catch(e => { $('adminStatus').textContent = e.message; }); } });
   try {
     // API authorization is authoritative; do not expose localStorage-only content.
-    const [config, list] = await Promise.all([api('/config'), api('/viviendas')]);
+    const [config, list, trials] = await Promise.all([api('/config'), api('/viviendas'), api('/prueba/viviendas')]);
+    trialAvailable = trials.viviendas.length > 0;
+    for (const casa of trials.viviendas) { const option = document.createElement('option'); option.value = casa.id; option.textContent = (casa.calleCorrecta || casa.calle) + ' · ' + casa.numero; $('trialHouse').append(option); }
+    if (!trialAvailable) $('trialStatus').textContent = 'Primero registra una vivienda dedicada a pruebas: calle con la palabra Prueba o número TEST-001. No selecciones viviendas reales.';
+    trialButtons();
     houses = list.viviendas;
     for (const casa of houses) { const option = document.createElement('option'); option.value = casa.id; option.textContent = (casa.calleCorrecta || casa.calle) + ' · ' + casa.numero; $('editHouse').append(option); }
     $('whatsappState').textContent = config.whatsappDisponible ? 'WhatsApp Business configurado. ENVIADO indica que el proveedor aceptó el mensaje; no confirma que se haya leído.' : config.mensaje;

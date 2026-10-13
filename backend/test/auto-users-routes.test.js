@@ -16,11 +16,16 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
   const forged = jwt.sign({ usuarioId: 1, rol: 'SUPER_ADMIN', sesionVersion: 0 }, process.env.JWT_SECRET);
   const send = (url, authorization) => fetch(base + url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: 'Bearer ' + authorization } : {}) }, body: '{}' });
   try {
-    assert.equal((await send('/crear')).status, 401);
+    for (const path of ['/crear', '/prueba/crear', '/prueba/1/enlace']) {
+      assert.equal((await send(path)).status, 401);
+      assert.equal((await send(path, forged)).status, 403);
+    }
     assert.equal((await send('/crear', forged)).status, 403); assert.equal(queried, 0);
     currentRole = 'ADMINISTRADOR'; const allowed = await send('/crear', forged);
     assert.equal(allowed.status, 200); assert.equal((await allowed.json()).siguiente, null); assert.equal(queried, 1);
     assert.equal((await send('/0/invitacion', forged)).status, 400);
+    assert.equal((await send('/prueba/crear', forged)).status, 400);
+    assert.equal((await send('/prueba/1/enlace', forged)).status, 400);
     const invalid = await send('/invitacion/consultar'); assert.equal(invalid.status, 410);
     assert.equal(invalid.headers.get('cache-control'), 'no-store');
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

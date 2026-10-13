@@ -33,6 +33,17 @@ router.post('/invitacion/consultar', publicLimiter, handle(async req => ({ regis
 router.post('/invitacion/aceptar', publicLimiter, handle(req => service.aceptar(req.body.token, req.body)));
 router.post('/invitacion/reportar', publicLimiter, handle(req => service.reportar(req.body.token, req.body.comentario)));
 router.use(autenticarToken, autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR'));
+router.get('/prueba/viviendas', handle(async () => ({ viviendas: await service.viviendasPrueba() })));
+router.post('/prueba/crear', handle(req => service.crearPrueba(positive(req.body.casaId), req.body.clavePrueba)));
+router.post('/prueba/:id/enlace', handle(req => {
+    const configured = process.env.AUTO_USERS_FRONTEND_URL;
+    if (!configured) {
+        let origin;
+        try { origin = new URL(req.body.frontendUrl).origin; } catch { /* validated below */ }
+        if (!origin || origin !== req.headers.origin) throw Object.assign(new Error('Usa la dirección del portal desde el que abriste esta página.'), { status: 400 });
+    }
+    return service.enlacePrueba(positive(req.params.id), configured || req.body.frontendUrl);
+}));
 router.get('/', handle(req => service.listar(Math.max(1, number(req.query.pagina, 1)), Math.max(1, number(req.query.paginaReportes, 1)))));
 router.get('/viviendas', handle(async () => ({ viviendas: await Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], order: [['calle', 'ASC'], ['numero', 'ASC']] }) })));
 router.get('/config', handle(async () => {
