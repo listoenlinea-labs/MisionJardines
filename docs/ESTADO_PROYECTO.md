@@ -147,6 +147,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-12
 
+- OCR del monto: el lector de navegador/servidor solo toma valores monetarios
+  asociados a Monto/Importe/Total; no usa terminaciones de cuenta ni atraviesa
+  secciones Destino/Origen/Folio/Fecha. Si la lectura es ambigua, deja el importe
+  vacío para completarlo. La validación independiente del servidor se conserva.
+  Se cambia la versión del asset en pagos.html para actualizar el lector en caché.
+  Pruebas: parser en ambos entornos, llenado del formulario y OCR sintético del servidor.
+  No se consultaron ni modificaron comprobantes, DB o C3 de producción.
+
 - Pagos: se admiten abonos parciales positivos que cubran recargos pendientes. El caso
   $300 depositados después del corte aplica $50 al recargo y conserva $250 netos;
   tras validar, un complemento de $50 en Mantenimiento completa un mes sin repetir

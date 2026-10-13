@@ -48,6 +48,30 @@
     const value = Number(n);
     return Number.isFinite(value) && value > 0 ? value.toFixed(2) : '';
   }
+  function montoCerca(lines, labels) {
+    const otherField = /\b(?:ORIGEN|DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA|CLABE|TARJETA|COMISION|SALDO|CONCEPTO|REFERENCIA|FOLIO|CLAVE|FECHA|HORA)\b/;
+    const amountOnly = /^(?:(?:MXN|M\.N\.|PESOS)\s*)?\$?\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\s*(?:MXN|M\.N\.|PESOS)?[.;]?$/;
+    for (const label of labels) for (let i = 0; i < lines.length; i++) {
+      const line = normal(lines[i]);
+      const found = line.match(label);
+      if (!found || otherField.test(line.slice(0, found.index))) continue;
+      const remainder = line.slice(found.index + found[0].length).replace(/^\s*[:#=.-]\s*/, '').trim();
+      for (const sample of [remainder, normal(lines[i + 1] || ''), normal(lines[i + 2] || '')]) {
+        if (!sample) continue;
+        const field = sample.match(otherField);
+        const candidate = (field ? sample.slice(0, field.index) : sample).trim();
+        // Never interpret an account suffix, reference or date as money. A mixed
+        // OCR row needs explicit monetary evidence before another field starts.
+        const token = candidate.match(amountOnly);
+        if (token && (!field || /\$|[.,]\d{2}(?:\D|$)|MXN|PESOS|M\.N\./.test(candidate))) {
+          const amount = monto(token[1]);
+          if (amount) return amount;
+        }
+        if (field) break;
+      }
+    }
+    return '';
+  }
   function valueNear(lines, labels, type) {
     for (const label of labels) for (let i = 0; i < lines.length; i++) {
       const m = normal(lines[i]).match(label);
@@ -58,9 +82,6 @@
         if (type === 'folio') {
           const token = sample.match(/\b([A-Z0-9][A-Z0-9-]{4,})\b/);
           if (token && /\d/.test(token[1]) && !/^(REFERENCIA|CONCEPTO|FECHA|CLAVE|RASTREO)$/.test(token[1])) return token[1];
-        }
-        if (type === 'amount') {
-          const a = monto(sample); if (a) return a;
         }
         if (type === 'date') {
           const d = fecha(sample); if (d) return { date: d, time: hora(sample) || hora(normal(lines[i+1] || '')) };
@@ -73,7 +94,7 @@
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(s => s.trim()).filter(Boolean);
     // Do not use "Referencia", "Concepto" or "Clave de rastreo" if a folio exists.
     const folio = valueNear(lines, [/\bFOLIO\s+(?:DE\s+)?(?:OPERACION|TRANSACCION|TRANSFERENCIA)\b/, /\bNUMERO\s+DE\s+OPERACION\b/, /\bFOLIO\b/], 'folio');
-    const amount = valueNear(lines, [/\bMONTO\s+(?:TRANSFERIDO|PAGADO|ENVIADO)\b/, /\bIMPORTE\s+(?:TRANSFERIDO|PAGADO)\b/, /\b(?:MONTO|IMPORTE|TOTAL)\b/], 'amount');
+    const amount = montoCerca(lines, [/\bMONTO\s+(?:TRANSFERIDO|PAGADO|ENVIADO)\b/, /\bIMPORTE\s+(?:TRANSFERIDO|PAGADO)\b/, /\b(?:MONTO|IMPORTE|TOTAL)\b/]);
     const when = valueNear(lines, [/\bFECHA\s+(?:DE\s+)?(?:OPERACION|TRANSFERENCIA|PAGO)\b/, /\bFECHA\b/], 'date');
     return { folio, amount, date: when.date, time: when.time };
   }

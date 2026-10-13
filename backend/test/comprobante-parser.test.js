@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { extract, verifyDestination } = require('../src/services/comprobante-parser');
+const browserParser = require('../../docs/assets/js/comprobante-parser');
 
 const bank = [
   'Transferencia exitosa',
@@ -37,3 +38,25 @@ test('Amount, date and folio recognize other bank layouts, including thousands',
     folio: '0000234567', amount: '1200.00', date: '2026-10-09', time: '10:23:00'
   });
 });
+
+for (const [name, parser] of [['servidor', { extract }], ['navegador', browserParser]]) {
+  test(name + ': el monto no toma la terminación de cuenta ni atraviesa otra sección', () => {
+    for (const text of [
+      'Monto transferido\nDestino Cuenta -1234',
+      'Monto transferido Cuenta destino -1234',
+      'Monto transferido\nOrigen Cuenta -9876\n$650.00',
+      'Monto transferido\nCuenta destino\n1234',
+      'Monto transferido\nFolio 0000012345',
+      'Monto transferido\nFecha 08 oct 2026',
+      'Comisión total: $25.00\nDestino cuenta -1234'
+    ]) assert.equal(parser.extract(text).amount, '', text);
+  });
+  test(name + ': ignora una etiqueta ambigua y usa el monto con evidencia bancaria', () => {
+    assert.equal(parser.extract('Monto transferido\nDestino cuenta -1234\nMonto pagado: $650.00').amount, '650.00');
+    assert.equal(parser.extract('Monto transferido: $650.00 Destino cuenta -1234').amount, '650.00');
+    for (const [value, expected] of [['$650.00', '650.00'], ['100', '100.00'], ['1,250.50 MXN', '1250.50'], ['1.250,50 PESOS', '1250.50']]) {
+      assert.equal(parser.extract('Monto transferido\n' + value + '\nDestino cuenta -1234').amount, expected);
+    }
+    assert.equal(parser.extract(bank).amount, '300.00');
+  });
+}
