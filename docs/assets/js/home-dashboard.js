@@ -86,7 +86,7 @@
     const area = `${left},${top + plotHeight} ${line} ${left + plotWidth},${top + plotHeight}`;
     const ticks = [0, ceiling / 2, ceiling];
 
-    return `<svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Recaudación real de los últimos seis meses">
+    return `<svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Recaudación real de los últimos doce meses">
       <defs><linearGradient id="hlArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f97316" stop-opacity=".20"/><stop offset="1" stop-color="#f97316" stop-opacity="0"/></linearGradient></defs>
       ${ticks.map((tick, index) => {
         const y = top + plotHeight - ((tick / ceiling) * plotHeight);
@@ -371,7 +371,7 @@
 
       <section class="hl-main-grid">
         <article class="hl-card hl-collection">
-          <div class="hl-card-head"><div><span class="hl-eyebrow">FINANZAS</span><h2>Recaudación de cuotas</h2></div><span class="hl-period">Últimos 6 meses</span></div>
+          <div class="hl-card-head"><div><span class="hl-eyebrow">FINANZAS</span><h2>Recaudación de cuotas</h2></div><span class="hl-period">Últimos 12 meses</span></div>
           <div class="hl-money-row"><div><small>Total recaudado · ${escapeHtml(data.periodo?.actual?.etiqueta || 'periodo actual')}</small><strong>${fuentes.cuotas ? money.format(data.recaudacion?.totalMes || 0) : '—'}</strong></div>${fuentes.cuotas ? deltaLabel(data.recaudacion?.variacionPorcentaje) : ''}</div>
           <div class="hl-chart-wrap">${fuentes.cuotas ? chartSvg(data.recaudacion?.serie || []) : '<div class="hl-chart-empty"><strong>Cuotas no disponible</strong><span>No fue posible consultar la tabla.</span></div>'}</div>
           <div class="hl-data-note">${sourceBadge('cuotas.monto_pagado', fuentes.cuotas)}<span>Cada punto se calcula con la suma real del periodo.</span></div>
