@@ -114,6 +114,9 @@ app.use(
     rateLimit({
         windowMs: 15 * 60 * 1000,
         limit: 500,
+        // HLS descarga pequeñas partes constantemente; tiene su limitador
+        // específico y tickets firmados. No consumir el límite de login/pagos.
+        skip: req => req.path.startsWith('/camaras/stream/'),
         standardHeaders: true,
         legacyHeaders: false
     })
