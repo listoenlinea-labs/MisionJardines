@@ -1,10 +1,10 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 11/oct/2026, 23:37, America/Mexico_City.
-**SHA de main consultado:** `ebed7ff3603b0f50b915c34df9eccae72befd0af`.
-**Fuentes de esta revisión:** comparación de main desde `8ec5019f24aea496ca8d829f96678d64e4021b7a`,
-metadatos de los PR #133–#141 y sus estados/checks en GitHub, pruebas locales de estructura
-y regresión, historial ya documentado y transcripción de conversación disponible. Las capturas
+**Última revisión:** 12/oct/2026, 23:31, America/Mexico_City.
+**SHA de main consultado:** `3d25888592a4a2996d7fca70edb66a95b6efbf7a`.
+**Fuentes de esta revisión:** comparación de main desde `ebed7ff3603b0f50b915c34df9eccae72befd0af`,
+metadatos de los PR #142–#153, commits directos y estados/checks en GitHub, historial ya
+documentado y transcripción de conversación disponible. Las capturas
 de esa transcripción no están disponibles como imágenes inspeccionables aquí; no se certifican
 sus resultados desde descripciones del asistente. No se consultaron MySQL, Hostinger, Google
 Sheets ni el C3 de producción durante esta revisión.
@@ -20,7 +20,7 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | --- | --- | --- |
 | Pagos de mantenimiento | Implementado en main | Mensualidad $300; recargos $50 por corte vencido no cubierto; meses desde fecha física C3; saldo remanente; corte inclusivo día 10. Ver AGENTS.md |
 | Confirmación de comprobantes | Revisión administrativa activa | `VALIDAR_PAGOS_SIN_ADMIN=false`; un recibo provisional no confirma depósito ni entrega de fecha al C3 |
-| OCR | Tesseract.js en servidor | Reprocesa imagen y coteja destino; no prueba recepción del dinero. PR #125 incorporó el cambio |
+| OCR | Tesseract.js en servidor; monto corregido en main | Reprocesa imagen y coteja destino; `3d25888` evita llenar el monto con terminaciones de cuenta y deja vacío lo ambiguo. No prueba recepción del dinero ni reemplaza la validación independiente |
 | Escritura C3 por pago | DIRECT con diario e idempotencia | Sin bridge en ese flujo; no asigna puertas ni elimina bloqueos manuales. Estado financiero y entrega física son distintos |
 | Edición manual de TAGs | Implementada; validación pendiente | Dos pruebas simuladas de edición fallan en main; no está diagnosticado el motivo ni confirmado un fallo equivalente en producción |
 | Inventario C3 | Lectura periódica y manual | Reflejo SQL; no volver a usar fechas heredadas para sobreescribir el controlador |
@@ -29,18 +29,21 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Confirmación por correo bancario | Propuesta | Sin conexión de buzón ni conciliador implementado. Falta revisar una notificación real y datos de operación |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
-| Interfaz responsive | Implementada en main; validación visual pendiente | PR #133–#141 reorganizan navegación, compactan vistas/KPI, retiran la página Conexión y corrigen móvil. Un merge no acredita que Hostinger ya sirva estos assets ni sustituye pruebas en navegador |
+| Interfaz responsive | Implementada en main; validación visual pendiente | PR #133–#141 reorganizan navegación y vistas; #149 y #152–#153 añaden interacción y rediseño móvil de la gráfica financiera. Un merge no acredita que Hostinger ya sirva estos assets ni sustituye pruebas en navegador |
+| Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#147 conectan cuotas históricas, egresos, ingresos manuales y saldo inicial; #151 limita el indicador de cumplimiento al padrón documentado sin borrar movimientos. Las cifras descritas por los PR dependen del esquema MySQL y despliegue reales |
 | Cuotas para Seguridad | Implementado en main; producción no verificada | PR #140 añade ruta autenticada y tabla paginada sin nombres/teléfonos. Calcula desde `direcciones`/`cuotas`, no desde TAGs ni Sheets; no se consultó la DB real |
 | Históricos Google Sheets | Staging opcional en main; no activado/verificado | PR #140 añade lectura OAuth de solo lectura y preparación idempotente. Está deshabilitado por defecto, requiere migración SQL manual y no escribe directamente en cuotas, pagos ni egresos |
 | Continuidad documental | Disponible en main | AGENTS.md e índice publicados en `6995b845b500e7530d83b6d3cc6a3ab34ca62697`; este archivo agrega estado y bitácora |
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
-Desde el SHA anterior se incorporaron los PR #133–#141. Los #133–#139 son cambios de
-navegación y presentación; #140 añade mejoras móviles, consulta de cuotas para Seguridad y
-staging opcional de Google Sheets; #141 corrige distribución visual en Seguridad/Análisis.
-El commit documental `e987281` se excluye del trabajo de producto. La búsqueda de PR abiertos
-devolvió cero. El PR #132 sigue fusionado en el historial, pero su entrega fue revertida en main.
+Desde el SHA anterior main avanzó 45 commits. Además de los cambios directos de Seguridad,
+abonos parciales y OCR ya registrados abajo, se fusionaron los PR #143–#149 y #151–#153.
+Los #143–#147 conectan históricos y series financieras; #148–#149 mejoran la gráfica; #151
+corrige el denominador del padrón; #152–#153 rediseñan la vista móvil. El PR #142 fue cerrado
+sin merge y el #150 sigue abierto: ninguno forma parte de main. El commit documental `05aab7c`
+se excluye del trabajo de producto. El PR #132 sigue fusionado en el historial, pero su entrega
+fue revertida en main.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -78,10 +81,13 @@ al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
 Para los heads de los PR #133–#141, GitHub devolvió cero check-runs y cero estados de
-commit; por tanto, no hay CI acreditado para esas fusiones. Los cuerpos de los PR documentan
-comprobaciones estáticas y pruebas propuestas, además de revisión visual/producción pendiente,
-pero no sustituyen el resultado local anterior. No se ejecutaron suites contra DB, Google Sheets,
-Hostinger o hardware real.
+commit; por tanto, no hay CI acreditado para esas fusiones. En esta revisión, los commits de merge
+de #143–#147, #149 y #151–#153 también devolvieron cero estados y cero workflow runs. La consulta
+del estado combinado de #148 tuvo un error transitorio, pero sus workflow runs fueron cero; no se
+le atribuye CI. Los cuerpos de los PR documentan comprobaciones estáticas o pruebas pendientes,
+no una ejecución independiente sobre main. El commit OCR documenta pruebas del parser/UI y OCR
+sintético, conservadas en la bitácora, pero no se repitieron aquí. No se ejecutaron suites contra
+DB, Google Sheets, Hostinger o hardware real.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -111,7 +117,9 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | --- | --- |
 | Dos pruebas fallidas de edición de TAG | Diagnosticar y repetir pruebas pertinentes, sin debilitar validaciones reales |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Actualizar o conciliar expectativas de versiones de assets y repetir la suite hasta obtener un resultado explicado; no ocultar los fallos como simple éxito visual |
-| PR #133–#141 sin checks de GitHub | Añadir/ejecutar CI apropiado y validar en navegador 360/390/430/768/1440 px; comprobar despliegue real por separado |
+| PR #133–#153 fusionados sin CI acreditado | Añadir/ejecutar CI apropiado; para la gráfica validar filtros, puntos, tarjeta Agenda y anchos 235/320/375/390/430/620/720/768/1440 px; comprobar despliegue real por separado |
+| PR #150 abierto y #142 cerrado sin merge | Decidir si #150 debe integrarse tras pruebas; no atribuir a main su conservación de selección ni Agenda sin cuotas. #142 no forma parte de main |
+| Finanzas históricas y saldo inicial | Confirmar que producción usa el esquema esperado, que existen las tablas/asientos requeridos y cotejar API Inicio/Análisis con MySQL sin doble conteo; las cifras de los PR son valores esperados, no verificación de esta revisión |
 | Google Sheets histórico | Ejecutar migración opcional solo al decidir activarlo, configurar credenciales/rangos en backend y validar lectura/staging con una hoja y MySQL de prueba; acordar conciliación antes de afectar contabilidad oficial |
 | 27 viviendas del padrón sin TAG | Confirmar entrega/posesión y asociación; nueva consulta/exportación tras ajustes |
 | Tres pares con fusión reportada | Confirmar COMMIT y persistencia desde otra conexión; verificar respaldo y modo seguro. No dar por cerrado a partir de la frase del usuario o del resumen de una captura |
@@ -146,6 +154,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 ## Bitácora
 
 ### 2026-10-12
+
+- Main quedó en `3d25888592a4a2996d7fca70edb66a95b6efbf7a`, 45 commits por delante del SHA revisado el día anterior. Se excluyó `05aab7c`, que solo actualizó esta bitácora.
+- PR #143–#147 fusionados: conectan cuotas históricas, egresos, ingresos manuales y saldo inicial al dashboard/Análisis, con protección contra doble conteo. Requieren comprobar tablas, asientos, API y cifras en el MySQL realmente usado por producción; el merge no confirma esos datos ni el despliegue.
+- PR #148–#149 y #152–#153 fusionados: gradientes, filtros, tooltips, detalle mensual, tarjeta Agenda y rediseño de la gráfica financiera para móvil. La validación visual y la ejecución de las pruebas UI en un checkout completo siguen pendientes.
+- PR #151 fusionado: el porcentaje de viviendas pagadas usa el padrón documentado para Atotonilco, Guadalajara y Valle de México, excluye Prueba y deduplica el indicador sin borrar ni trasladar cuotas, pagos o direcciones. Falta cotejo con nombres/números reales de producción.
+- PR #142 fue cerrado sin merge. PR #150 permanece abierto; sus seis líneas de ajuste no están en main.
+- GitHub no acreditó estados ni workflow runs para #143–#147, #149 y #151–#153. #148 devolvió cero runs y un error transitorio al consultar el estado combinado. No se ejecutaron pruebas nuevas contra Hostinger, MySQL real o C3 en esta revisión.
 
 - OCR del monto: el lector de navegador/servidor solo toma valores monetarios
   asociados a Monto/Importe/Total; no usa terminaciones de cuenta ni atraviesa
