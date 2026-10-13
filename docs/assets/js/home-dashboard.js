@@ -86,11 +86,12 @@
     const lines = tracks.map(track => {
       const points = clean.map((row, i) => `${x(i).toFixed(1)},${y(row[track.key]).toFixed(1)}`).join(' ');
       const dots = clean.map((row, i) => `<circle cx="${x(i)}" cy="${y(row[track.key])}" r="4" fill="#fff" stroke="${track.color}" stroke-width="2.5"><title>${escapeHtml(row.label)} · ${escapeHtml(track.name)}: ${escapeHtml(money.format(row[track.key]))}</title></circle>`).join('');
-      return `<polyline points="${points}" fill="none" stroke="${track.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+      const fillPoints = `${x(0)},${y(0)} ${points} ${x(clean.length - 1)},${y(0)}`;
+      return `<polygon points="${fillPoints}" fill="url(#hl-finance-${track.key})" stroke="none"/><polyline points="${points}" fill="none" stroke="${track.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
     }).join('');
     const labels = clean.map((row, i) => `<text x="${x(i)}" y="${height-14}" text-anchor="middle" fill="#7d8798" font-size="10">${escapeHtml(row.label)}</text>`).join('');
     const legend = tracks.map(track => `<span style="display:inline-flex;align-items:center;gap:7px"><i aria-hidden="true" style="display:inline-block;width:20px;border-top:3px solid ${track.color}"></i>${escapeHtml(track.name)}</span>`).join('');
-    return `<div class="hl-finance-legend" style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#526174;margin:8px 0 12px">${legend}</div><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Total de recursos, egresos y saldo disponible mensual desde enero de 2026">${grid}${lines}${labels}</svg>`;
+    return `<div class="hl-finance-legend" style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#526174;margin:8px 0 12px">${legend}</div><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Total de recursos, egresos y saldo disponible mensual desde enero de 2026"><defs>${tracks.map(track => `<linearGradient id="hl-finance-${track.key}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${track.color}" stop-opacity=".20"/><stop offset="1" stop-color="${track.color}" stop-opacity=".025"/></linearGradient>`).join('')}</defs>${grid}${lines}${labels}</svg>`;
   }
 
   function compactMoney(value) {
