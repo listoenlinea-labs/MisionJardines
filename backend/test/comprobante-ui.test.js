@@ -7,13 +7,28 @@ const frontend = path.join(__dirname, '../../docs/assets/js');
 const source = fs.readFileSync(path.join(frontend, 'pagos.js'), 'utf8');
 const runOcr = source.slice(source.indexOf('    async function runOcr()'), source.indexOf("    $('proofInput').addEventListener"));
 
-async function scan(text) {
+async function scan(text, failure = false) {
   const fields = new Map();
   const $ = id => {
     if (!fields.has(id)) fields.set(id, { value: '', style: {}, disabled: false, textContent: '' });
     return fields.get(id);
   };
-  const Tesseract = { recognize: async () => ({ data: { text } }) };
+  const calls = [];
+  const Tesseract = {
+    PSM: { AUTO: '3' },
+    createWorker: async (languages, engine) => {
+      calls.push(['create', languages, engine]);
+      return {
+        setParameters: async parameters => { calls.push(['parameters', parameters.tessedit_pageseg_mode]); },
+        recognize: async image => {
+          calls.push(['recognize', image]);
+          if (failure) throw new Error('OCR failed');
+          return { data: { text } };
+        },
+        terminate: async () => { calls.push(['terminate']); }
+      };
+    }
+  };
   const context = {
     window: { Tesseract }, Tesseract, $, proofData: 'synthetic-image',
     scanRevision: 0, proofConfirmed: false, ocrText: '',
@@ -25,8 +40,24 @@ async function scan(text) {
   context.MJComprobante = context.window.MJComprobante;
   vm.runInContext(runOcr, context);
   await context.runOcr();
-  return { $, context };
+  return { $, context, calls };
 }
+
+test('detecta bloques de distinto tamaño antes de leer y libera el worker', async () => {
+  const { $, context, calls } = await scan('Transferencia exitosa\nMonto transferido\n$300.00\nOrigen Cuenta -9876\nDestino PERSONA DE PRUEBA Cuenta -1234');
+  assert.equal(context.proofConfirmed, true);
+  assert.equal($('amount').value, '300.00');
+  assert.deepEqual(calls, [
+    ['create', 'spa+eng', 1], ['parameters', '3'],
+    ['recognize', 'synthetic-image'], ['terminate']
+  ]);
+});
+
+test('libera el worker y mantiene el comprobante sin confirmar si falla el OCR', async () => {
+  const { context, calls } = await scan('', true);
+  assert.equal(context.proofConfirmed, false);
+  assert.deepEqual(calls.at(-1), ['terminate']);
+});
 
 test('OCR del navegador llena monto depositado con el importe, sin intercambiarlo con destino', async () => {
   const { $, context } = await scan([

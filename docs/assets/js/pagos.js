@@ -260,7 +260,7 @@
       setDestinationStatus('Verificando nombre y terminación bancaria en Destino…');
       try {
         if (!window.Tesseract || !window.MJComprobante) throw Error('El lector OCR no se ha cargado. Revisa tu conexión.');
-        const result = await Tesseract.recognize(proofData, 'spa+eng', {
+        const worker = await Tesseract.createWorker('spa+eng', 1, {
           logger: m => {
             if (scanRevision !== revision) return;
             if (m.status === 'recognizing text') {
@@ -270,6 +270,15 @@
             }
           }
         });
+        let result;
+        try {
+          // Receipts mix large amount text with small, separate bank-detail blocks.
+          // SINGLE_BLOCK can omit the amount entirely; detect the page layout.
+          await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO });
+          result = await worker.recognize(proofData);
+        } finally {
+          await worker.terminate();
+        }
         if (scanRevision !== revision) return;
         ocrText = result?.data?.text || '';
         const beneficiary = config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ';

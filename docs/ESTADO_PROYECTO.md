@@ -153,6 +153,19 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ## Bitácora
 
+### 2026-10-13
+
+- OCR del navegador: se reprodujo que SINGLE_BLOCK omite el importe grande en un
+  comprobante con bloques de tamaños distintos. Se crea el worker explícitamente y
+  se configura PSM.AUTO antes de reconocer; se termina también ante un error.
+- Prueba local con el comprobante aportado: el flujo runOcr llenó 300.00 y verificó
+  destino. La imagen y el texto bancario no se incorporan al repositorio.
+- Validación: 15 pruebas aprobadas de parser, interfaz y OCR independiente del servidor;
+  sintaxis JavaScript y diff sin errores. La prueba de imagen usó Tesseract.js local;
+  no acredita despliegue ni ejecución en el navegador de producción.
+- Asset pagos.js versionado para renovar caché. Solo requiere desplegar frontend;
+  backend, reglas financieras, MySQL y C3 no se modificaron.
+
 ### 2026-10-12
 
 - Main quedó en `3d25888592a4a2996d7fca70edb66a95b6efbf7a`, 45 commits por delante del SHA revisado el día anterior. Se excluyó `05aab7c`, que solo actualizó esta bitácora.
