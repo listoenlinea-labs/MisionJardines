@@ -16,6 +16,8 @@ const series = months.map((mes, i) => ({
   disponible: 1000 + i * 600
 }));
 
+const mobileHeight = width => Math.max(252, Math.min(310, Math.round(width * 0.82)));
+
 function renderChart(mobile, filter, width = 310) {
   const context = {
     window: { matchMedia: query => ({ matches: mobile && query === '(max-width: 720px)' }) },
@@ -29,7 +31,7 @@ function renderChart(mobile, filter, width = 310) {
 
 test('Mobile SVG contiene los diez meses y las tres líneas sin ancho forzado', () => {
   const html = renderChart(true, 'todas');
-  assert.match(html, /viewBox="0 0 310 310"/);
+  assert.match(html, /viewBox="0 0 310 254"/);
   for (const mes of months) assert.ok(html.includes('>' + mes + '</text>'), 'Falta ' + mes);
   assert.match(html, /<span>2026<\/span>/);
   assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
@@ -57,7 +59,7 @@ test('CSS móvil elimina scroll horizontal y redibuja al girar el teléfono', ()
   assert.doesNotMatch(source, /\.hl-chart\{min-width:600px\}/);
   assert.doesNotMatch(source, /\.hl-finance-plot\{min-width:600px\}/);
   assert.match(source, /\.hl-chart-wrap\{overflow-x:hidden/);
-  assert.match(source, /\.hl-chart\{width:100%;min-width:0;max-width:100%;height:310px\}/);
+  assert.match(source, /\.hl-chart\{width:100%;min-width:0;max-width:100%;height:auto\}/);
   assert.match(source, /mobileMedia\.addEventListener\('change', redrawChart\)/);
   assert.match(source, /removeFinanceMediaListener\(\)/);
   assert.doesNotThrow(() => new Function(source));
@@ -66,7 +68,7 @@ test('CSS móvil elimina scroll horizontal y redibuja al girar el teléfono', ()
 test('El tamaño visual se adapta al ancho disponible sin empequeñecer los ejes', () => {
   for (const width of [235, 260, 310, 355, 620]) {
     const html = renderChart(true, 'todas', width);
-    assert.ok(html.includes('viewBox="0 0 ' + width + ' 310"'), 'Ancho incorrecto: ' + width);
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' ' + mobileHeight(width) + '"'), 'Ancho incorrecto: ' + width);
     assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
     for (const month of months) assert.ok(html.includes('>' + month + '</text>'));
     assert.doesNotMatch(html, /<polygon/, 'Los rellenos no deben tapar la serie opuesta en móvil');
@@ -78,14 +80,14 @@ test('El tamaño visual se adapta al ancho disponible sin empequeñecer los ejes
   assert.match(source, /resizeObserver\?\.observe\(chartWrap\)/);
   assert.match(source, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(source, /hl-chart-mobile-heading/);
-  assert.match(source, /height:310px!important/);
+  assert.match(source, /height:auto!important/);
 });
 
 
 test('El gráfico usa todo el ancho real del dashboard con la barra lateral abierta o cerrada', () => {
   for (const width of [680, 850, 1040, 1320]) {
     const html = renderChart(false, 'todas', width);
-    assert.ok(html.includes('viewBox="0 0 ' + width + ' 310"'));
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' ' + mobileHeight(width) + '"'));
     const first = html.match(/data-index="0" data-series="ingresos" cx="([^"]+)"/);
     const last = html.match(/data-index="9" data-series="ingresos" cx="([^"]+)"/);
     assert.ok(first && last, 'Faltan puntos de Inicio o del mes actual');
@@ -108,13 +110,13 @@ test('Los puntos en teléfonos tienen una zona táctil más grande y muestran la
 });
 
 test('El SVG móvil escala su altura proporcional al ancho, sin centrar un gráfico pequeño', () => {
-  assert.match(source, /\.hl-chart\{width:100%!important;height:310px!important;max-width:100%;display:block;aspect-ratio:auto;min-width:0\}/);
+  assert.match(source, /\.hl-chart\{width:100%!important;height:auto!important;max-width:100%;display:block;min-width:0\}/);
   assert.match(source, /\.hl-chart-wrap\{overflow-x:hidden/);
-  assert.doesNotMatch(source, /height:auto!important/);
+  assert.doesNotMatch(source, /preserveAspectRatio="none"/);
   assert.match(source, /window\.requestAnimationFrame\(\(\) =>/);
   for (const width of [230, 275, 310, 355]) {
     const html = renderChart(true, 'todas', width);
-    assert.ok(html.includes('viewBox="0 0 ' + width + ' 310"'));
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' ' + mobileHeight(width) + '"'));
     assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
   }
 });
@@ -142,16 +144,33 @@ test('El selector táctil permite consultar cualquier mes sin acertar a un punto
 test('El SVG ocupa todo el rectángulo móvil sin franjas laterales', () => {
   for (const width of [230, 265, 310, 390]) {
     const html = renderChart(true, 'todas', width);
-    assert.match(html, /preserveAspectRatio="none"/);
-    assert.ok(html.includes('viewBox="0 0 ' + width + ' 310"'));
+    assert.match(html, /preserveAspectRatio="xMidYMid meet"/);
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' ' + mobileHeight(width) + '"'));
     const first = html.match(/data-index="0" data-series="ingresos" cx="([^"]+)"/);
     const last = html.match(/data-index="9" data-series="ingresos" cx="([^"]+)"/);
-    assert.equal(Number(first?.[1]), 38);
-    assert.equal(Number(last?.[1]), width - 12);
+    assert.equal(Number(first?.[1]), 36);
+    assert.equal(Number(last?.[1]), width - 11);
     assert.equal((html.match(/class="hl-chart-hit"/g)||[]).length, 30);
   }
   const laptop = renderChart(false, 'todas', 950);
   assert.match(laptop, /preserveAspectRatio="xMidYMid meet"/);
-  assert.match(source, /height:310px!important/);
+  assert.match(source, /height:auto!important/);
   assert.match(source, /renderedWidth = Math\.round\(chartWrap\.querySelector\('\.hl-finance-plot'\)/);
+});
+
+
+test('Tipografía y marcadores no se estiran al mostrar los diez meses completos', () => {
+  for (const width of [230, 260, 310, 355, 390, 430]) {
+    const html = renderChart(true, 'todas', width);
+    assert.match(html, /preserveAspectRatio="xMidYMid meet"/);
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' ' + mobileHeight(width) + '"'));
+    assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
+    assert.match(html, /font-size="10">Ene<\/text>/);
+    assert.match(html, /font-size="10">Oct<\/text>/);
+    assert.match(html, /r="5" fill="#fff"/);
+  }
+  assert.match(source, /Math\.round\(width \* 0\.82\)/);
+  assert.match(source, /\.hl-chart\{width:100%!important;height:auto!important/);
+  assert.match(source, /const renderedWidth = Math\.round\(chartWrap\.querySelector\('\.hl-finance-plot'\)\?\.clientWidth/);
+  assert.doesNotMatch(source, /preserveAspectRatio="\$\{compact \? 'none'/);
 });
