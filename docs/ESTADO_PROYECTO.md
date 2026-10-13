@@ -155,6 +155,12 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-13
 
+- Corrección del historial solicitada después de integrar PR #160: periodos
+  inclusivos 11–10 (fin exclusivo día 11); selector por hora de México. Meses
+  aplicados destacados junto al monto, con entregas parciales/pendientes separadas
+  y vista móvil sin desplazamiento horizontal. No se altera el corte de cobro
+  inclusivo del día 10 ni el cálculo financiero. Preparado en PR de seguimiento.
+
 - Historial administrativo de pagos preparado para revisión en PR: selector por
   fecha bancaria en periodos 10–9, tabla de todos los estados/abonos, folios,
   fecha de subida existente (`creadoEn`), monto/reportante y diario de meses.

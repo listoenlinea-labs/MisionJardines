@@ -17,23 +17,26 @@
   };
   let page = 1, total = 0, revision = 0;
   const now = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).map(p => [p.type, p.value]));
-  const start = new Date(Date.UTC(Number(now.year), Number(now.month) - 1 - (Number(now.day) < 10 ? 1 : 0), 10));
+  const start = new Date(Date.UTC(Number(now.year), Number(now.month) - 1 - (Number(now.day) < 11 ? 1 : 0), 11));
   $('historyPeriod').value = start.toISOString().slice(0, 7);
   function months(payment) {
-    if (payment.tipoPago === 'EXTRAORDINARIO') return '0 · Extraordinario';
-    if (!payment.movimientos.length) return 'Sin aumento registrado';
-    return payment.movimientos.map(m => {
-      if (!m.meses) return '0 · Abono sin avance';
-      if (m.estado === 'COMPLETADO' && m.tagsTotal && m.tagsAplicados === m.tagsTotal) return esc(m.meses) + ' · Aplicados';
+    if (payment.tipoPago === 'EXTRAORDINARIO') return '<strong class="history-month-count">0</strong><small>Extraordinario</small>';
+    if (!payment.movimientos.length) return '<strong class="history-month-count">—</strong><small>Sin aumento registrado</small>';
+    const completed = m => m.estado === 'COMPLETADO' && m.tagsTotal > 0 && m.tagsAplicados === m.tagsTotal;
+    const total = payment.movimientos.filter(completed).reduce((sum, m) => sum + Number(m.meses || 0), 0);
+    const detail = payment.movimientos.map(m => {
+      if (!m.meses) return 'Abono sin avance';
+      if (completed(m)) return esc(m.meses) + ' · Aplicados a todos los TAGs';
       if (m.tagsAplicados) return esc(m.meses) + ' · Aplicados a ' + esc(m.tagsAplicados) + '/' + esc(m.tagsTotal) + ' TAGs';
       const label = { PENDIENTE: 'pendiente', ERROR: 'error de sincronización', CONFLICTO: 'requiere revisión', SIN_TAGS: 'sin TAGs' }[m.estado] || 'requiere revisión';
       return esc(m.meses) + ' · Sin entrega confirmada (' + label + ')';
     }).join('<br>');
+    return '<strong class="history-month-count">' + total + '</strong><small>Meses completos aplicados</small><small>' + detail + '</small>';
   }
   function row(p) {
     const status = { VALIDADO: 'Validado', PENDIENTE_VALIDACION: 'Pendiente de validación', RECHAZADO: 'Rechazado' }[p.estatus] || 'Sin estado';
     const tags = p.tags.length ? p.tags.map(t => '<div>TAG ' + esc(t.numeroTarjeta) + ': <b>' + esc(t.fechaFin || 'Sin fecha') + '</b><small>Última lectura: ' + esc(stamp(t.ultimaLectura)) + (t.enControlador ? '' : ' · Presencia no confirmada') + '</small></div>').join('') : 'Sin TAGs asociados';
-    return '<tr><td><b>' + esc(p.folioReporte) + '</b><small>Banco: ' + esc(p.folioOperacion) + '</small></td><td>' + esc(p.fechaOperacion) + '<small>' + esc(p.horaOperacion) + '</small></td><td>' + esc(stamp(p.creadoEn)) + '</td><td>' + esc(money(p.monto)) + '<small>Recargo: ' + esc(money(p.recargo)) + '</small></td><td>' + esc(p.nombreReportante || 'No registrado') + '<small>' + esc(p.calleSnapshot) + ' · ' + esc(p.numeroCasaSnapshot) + '</small></td><td>' + status + '</td><td>' + months(p) + '</td><td>' + tags + '</td></tr>';
+    return '<tr><td data-label="Folio de pago"><b>' + esc(p.folioReporte) + '</b><small>Banco: ' + esc(p.folioOperacion) + '</small></td><td data-label="Depósito">' + esc(p.fechaOperacion) + '<small>' + esc(p.horaOperacion) + '</small></td><td data-label="Monto">' + esc(money(p.monto)) + '<small>Recargo: ' + esc(money(p.recargo)) + '</small></td><td data-label="Meses aplicados" class="history-months">' + months(p) + '</td><td data-label="Reportado por / vivienda">' + esc(p.nombreReportante || 'No registrado') + '<small>' + esc(p.calleSnapshot) + ' · ' + esc(p.numeroCasaSnapshot) + '</small></td><td data-label="Subido al sistema">' + esc(stamp(p.creadoEn)) + '</td><td data-label="Estado">' + status + '</td><td data-label="Vigencia TAG (última lectura)">' + tags + '</td></tr>';
   }
   async function load() {
     const current = ++revision;
