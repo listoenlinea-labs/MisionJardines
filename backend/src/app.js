@@ -173,6 +173,8 @@ app.use('/api/telefonia', require('./routes/telefonia.routes'));
 app.use('/api/conexion', conexionRoutes);
 app.use('/api/entorno', entornoRoutes);
 app.use('/api/zkteco', zktecoRoutes);
+app.use('/api/camaras', require('./routes/camaras.routes'));
+
 
 app.use((req, res) => {
     res.status(404).json({
