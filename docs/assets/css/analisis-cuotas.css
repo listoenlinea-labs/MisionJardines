@@ -92,3 +92,17 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   .analysis-page nav.analysis-tabs{gap:6px!important;padding:5px!important}
   .analysis-page nav.analysis-tabs > a{flex:1 1 0;min-width:0;padding:10px 12px}
 }
+
+
+/* Registro de egresos: referencia automática, filtros y orden */
+.expense-reference-note{display:flex;flex-direction:column;justify-content:center;gap:5px;padding:10px 13px;min-height:43px;border-radius:10px;border:1px solid #dbede2;background:#f6fbf8;color:#376d50;font-size:11px}
+.expense-reference-note strong{font-weight:850}.expense-reference-note span{font-size:10px;color:#688675}
+.expense-filters{display:grid;grid-template-columns:minmax(150px,1.35fr) repeat(3,minmax(115px,1fr)) minmax(185px,1.2fr) auto;gap:10px;align-items:end;padding:16px;margin:4px 0 8px;border:1px solid #e9e7f0;border-radius:13px;background:#fdfbff}
+.expense-filters label{min-width:0;font-size:10px;font-weight:850;color:#667893}
+.expense-filters input,.expense-filters select{display:block;width:100%;min-width:0;margin-top:6px;padding:10px 12px;height:43px;border:1px solid #d8e1ed;border-radius:10px;background-color:#fff;color:#2d3d59}
+.expense-filters button{min-height:43px;white-space:nowrap}
+.expense-results{font-size:11px;color:#6a7991;margin:9px 1px 11px}
+.expense-table-scroll{max-height:520px;overflow:auto}
+@media(max-width:1250px){.expense-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.expense-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:11px}.expense-filters label:first-child{grid-column:span 2}.expense-filters button{grid-column:span 2}}
+@media(max-width:420px){.expense-filters{grid-template-columns:1fr}.expense-filters label:first-child,.expense-filters button{grid-column:auto}}
