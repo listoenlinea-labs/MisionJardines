@@ -15,6 +15,10 @@ const Usuario = sequelize.define(
             allowNull: true,
             field: 'casa_id'
         },
+        condominoId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, unique: true, field: 'condomino_id',
+            references: { model: 'condominos', key: 'id' }, onDelete: 'RESTRICT', onUpdate: 'CASCADE' },
+        nombreUsuario: { type: DataTypes.STRING(190), allowNull: true, unique: true, field: 'nombre_usuario' },
+        cuentaAceptada: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true, field: 'cuenta_aceptada' },
 
         rolId: {
             type: DataTypes.BIGINT.UNSIGNED,
@@ -46,7 +50,7 @@ const Usuario = sequelize.define(
 
         correo: {
             type: DataTypes.STRING(150),
-            allowNull: false,
+            allowNull: true,
             unique: true,
             validate: {
                 isEmail: true

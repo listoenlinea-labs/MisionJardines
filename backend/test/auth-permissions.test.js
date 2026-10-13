@@ -8,7 +8,7 @@ async function check(role,baseUrl, options={}) {
   const previous = Usuario.findByPk;
   const oldMembership=UsuarioCasa.findOne;
   UsuarioCasa.findOne=async()=>({casaId:7});
-  Usuario.findByPk = async () => options.missing ? null : ({id:1,casaId:7,rolId:2,estatus:options.status||'ACTIVO',sesionVersion:options.sessionVersion||0,rol:{nombre:role,activo:true}});
+  Usuario.findByPk = async () => options.missing ? null : ({id:1,casaId:7,rolId:2,estatus:options.status||'ACTIVO',cuentaAceptada:options.accepted,sesionVersion:options.sessionVersion||0,rol:{nombre:role,activo:true}});
   const req = {baseUrl,headers:{authorization:'Bearer '+jwt.sign({usuarioId:1,rol:'SUPER_ADMIN',casaId:99,sesionVersion:options.tokenVersion||0},process.env.JWT_SECRET)}};
   let status = 200, nextCalled = false;
   const res = {status(code){status=code;return this;},json(){return this;}};
@@ -29,13 +29,17 @@ test('old administrator JWT cannot bypass current security permissions',async()=
   assert.equal((await check('SEGURIDAD','/api/conexion')).nextCalled,true);
 });
 test('resident cannot load operational APIs; current house replaces token claim',async()=>{
-  for(const section of ['casas','visitas','accesos','conexion','dashboard']) assert.equal((await check('CONDOMINO','/api/'+section)).status,403);
+  for(const section of ['casas','visitas','accesos','conexion']) assert.equal((await check('CONDOMINO','/api/'+section)).status,403);
+  assert.equal((await check('CONDOMINO','/api/dashboard')).nextCalled,true);
   const result=await check('CONDOMINO','/api/cuotas');
   assert.equal(result.nextCalled,true); assert.equal(result.user.casaId,7);
 });
 test('inactive and removed accounts lose existing sessions',async()=>{
   assert.equal((await check('SUPER_ADMIN','/api/cuotas',{status:'SUSPENDIDO'})).status,403);
   assert.equal((await check('SUPER_ADMIN','/api/cuotas',{missing:true})).status,403);
+});
+test('an unaccepted preregistration cannot use a JWT even if status was manually set active', async () => {
+  assert.equal((await check('CONDOMINO', '/api/cuotas', { accepted: false, status: 'ACTIVO' })).status, 403);
 });
 test('administrators retain access across modules',async()=>{
   for(const role of ['ADMINISTRADOR','SUPER_ADMIN']) for(const section of ['casas','cuotas','eventos','accesos','visitas','dashboard','pagos','conexion']) assert.equal((await check(role,'/api/'+section)).nextCalled,true);
@@ -56,3 +60,4 @@ test('un JWT anterior a la revocación no revive al volver a aprobar al mismo us
   const nuevo=await check('CONDOMINO','/api/auth',{sessionVersion:2,tokenVersion:2});
   assert.equal(nuevo.nextCalled,true);
 });
+

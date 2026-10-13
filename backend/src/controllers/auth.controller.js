@@ -60,21 +60,22 @@ function perfilInclude() {
 
 async function iniciarSesion(req, res) {
     try {
-        const correo = req.body.correo?.trim().toLowerCase();
+        const correo = String(req.body.nombreUsuario || req.body.correo || '').trim().toLowerCase();
         const contrasena = req.body.contrasena;
 
         if (!correo || !contrasena) {
             return res.status(400).json({
                 ok: false,
-                message: 'Correo y contraseña son obligatorios'
+                message: 'Usuario o correo y contraseña son obligatorios'
             });
         }
 
-        const usuario = await Usuario
+        const candidatos = await Usuario
             .scope('conContrasena')
-            .findOne({
+            .findAll({
+                limit: 2,
                 where: {
-                    correo
+                    [Op.or]: [{ correo }, { nombreUsuario: correo }]
                 },
                 include: [
                     {
@@ -99,6 +100,8 @@ async function iniciarSesion(req, res) {
                 ]
             });
 
+        // A conflicting legacy/manual identifier must not pick an arbitrary account.
+        const usuario = candidatos.length === 1 ? candidatos[0] : null;
         if (!usuario) {
             return res.status(401).json({
                 ok: false,
@@ -118,7 +121,7 @@ async function iniciarSesion(req, res) {
             });
         }
 
-        if (usuario.estatus !== 'ACTIVO') {
+        if (usuario.estatus !== 'ACTIVO' || usuario.cuentaAceptada === false) {
             return res.status(403).json({ ok: false, message: usuario.estatus === 'PENDIENTE'
                 ? 'Tu cuenta está pendiente de verificación por Administración. Aún no tienes acceso al portal.'
                 : 'Tu cuenta no tiene acceso. Contacta a Administración.' });
@@ -268,11 +271,11 @@ async function solicitarRegistro(req, res) {
             // volver a solicitar autorización sin recuperar su acceso anterior.
             // El lock evita solicitudes simultáneas con el mismo correo.
             const existente = await Usuario.findOne({
-                where: { correo },
-                attributes: ['id', 'estatus', 'sesionVersion'],
+                where: { [Op.or]: [{ correo }, { nombreUsuario: correo }] },
+                attributes: ['id', 'correo', 'estatus', 'sesionVersion'],
                 transaction, lock: transaction.LOCK.UPDATE
             });
-            if (existente && existente.estatus !== 'BAJA') {
+            if (existente && (existente.estatus !== 'BAJA' || normalizarCorreo(existente.correo) !== correo)) {
                 throw Object.assign(new Error('Ese correo ya tiene una cuenta o solicitud registrada. Contacta a Administración.'), { status: 409 });
             }
             let invitacionRegistro = null;
@@ -398,7 +401,7 @@ async function solicitarCambioCorreo(req, res) {
             return res.status(401).json({ ok: false, message: 'La contraseña actual no es correcta' });
         }
         if (correo === usuario.correo) return res.status(400).json({ ok: false, message: 'Ese ya es tu correo actual' });
-        if (await Usuario.findOne({ where: { correo } })) {
+        if (await Usuario.findOne({ where: { [Op.or]: [{ correo }, { nombreUsuario: correo }] } })) {
             return res.status(409).json({ ok: false, message: 'Ese correo ya está registrado' });
         }
         const codigo = generarCodigo();
@@ -438,7 +441,7 @@ async function verificarCambioCorreo(req, res) {
             await transaction.commit();
             return res.status(400).json({ ok: false, message: 'El código no es correcto' });
         }
-        if (await Usuario.findOne({ where: { correo, id: { [Op.ne]: req.usuario.usuarioId } }, transaction })) {
+        if (await Usuario.findOne({ where: { [Op.or]: [{ correo }, { nombreUsuario: correo }], id: { [Op.ne]: req.usuario.usuarioId } }, transaction })) {
             await transaction.rollback();
             return res.status(409).json({ ok: false, message: 'Ese correo ya fue registrado' });
         }
