@@ -67,7 +67,7 @@ router.get('/diagnostico', ...access, security, async (_req, res) => {
     // continuo desde una ruta de diagnóstico.
     await upstream.body?.cancel();
     return res.json({
-      ok: true, configured: true, reachable: true,
+      ok: true, configured: true, reachable: !type.includes('html'),
       message: type.includes('html')
         ? 'El gateway respondió HTML en lugar de una playlist; verifica el proxy.'
         : 'El gateway respondió al primer canal. Prueba Reproducir en Seguridad para validar video y segmentos.',
