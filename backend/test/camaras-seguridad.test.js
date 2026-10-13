@@ -71,8 +71,20 @@ test('Seguridad reutiliza el POST de ZKTeco y no presenta estado físico inventa
   assert.match(html, /no una lectura física de posición/);
   assert.doesNotMatch(html, /cameraGrid|reloadCameras|data-watch|hls\\.js/);
   assert.ok(html.indexOf('id="seguridadCuotasPanel"') > 0);
-  assert.ok(html.indexOf('id="seguridadCuotasPanel"') < html.indexOf('class="sec-hero"'));
-  assert.ok(html.indexOf('id="openGate"') < html.indexOf('class="sec-hero"'));
+  // El orden visual requerido: hero -> métricas -> accesos rápidos ->
+  // cuotas a la izquierda y pluma a la derecha -> contacto de Administración.
+  const indexes = [
+    'class="sec-hero"',
+    'class="metric-grid"',
+    'class="quick-grid"',
+    'id="seguridadCuotasPanel"',
+    'id="openGate"',
+    'class="panel panel-pad security-contact-compact"'
+  ].map(marker => html.indexOf(marker));
+  assert.ok(indexes.every(index => index >= 0), 'Todos los paneles deben existir');
+  assert.ok(indexes.every((index, i) => i === 0 || index > indexes[i - 1]),
+    'Las cuotas y plumas deben ir justo después de accesos rápidos');
+  assert.equal((html.match(/id="seguridadCuotasPanel"/g) || []).length, 1);
   assert.doesNotMatch(html, /rtsp:\/\/admin:/);
   assert.doesNotMatch(html, /192\.168\.1\.101/);
   assert.match(app, /app\.use\('\/api\/camaras'/);
