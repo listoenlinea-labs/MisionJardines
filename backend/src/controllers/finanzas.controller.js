@@ -1,6 +1,7 @@
 const {Op,QueryTypes}=require('sequelize');
 const sequelize=require('../config/database');
 const { compararDirecciones }=require('../services/direccion-sort.service');
+const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
 const {Casa,Cuota,PagoReportado}=require('../models');
 const Egreso=require('../models/Egreso');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
@@ -27,8 +28,9 @@ async function analizar(req,res){
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT})
   ]);
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
+  const padron=seleccionarPadronAnalisis(casas,cuotas);
   const streets=new Map();
-  const residences=casas.map(h=>{
+  const residences=padron.casas.map(h=>{
    const q=byHouse.get(String(h.id));
    const status=q?.estatusPago||'PENDIENTE';
    const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0);
@@ -62,6 +64,8 @@ async function analizar(req,res){
    casas:residences.length,pagadas,pendientes:residences.length-pagadas,
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),
+   padronExcluidos:padron.excluidas,padronDuplicados:padron.duplicadas,
+   avisoPadron:padron.excluidas ? 'El porcentaje de cumplimiento excluye '+padron.excluidas+' registros auxiliares, fuera del padrón o de prueba. Los registros, cuotas y pagos originales permanecen en la base de datos.' : '',
    cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,
    ingresosParaBalance,ingresosAdicionales,saldoInicial,ingresosManuales,
    ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
