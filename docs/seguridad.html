@@ -961,6 +961,13 @@
         padding: 17px !important
       }
     }
+    /* Panel prioritario: cuotas a la izquierda y pluma a la derecha. */
+    .page-seguridad-v2 .dashboard {margin: 0 0 18px; grid-template-columns: minmax(0, 1.9fr) minmax(290px, .8fr);}
+    .page-seguridad-v2 .dashboard > *, .page-seguridad-v2 .dashboard .side-stack {min-width: 0;}
+    .page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-scroll {overflow: auto; max-height: 440px;}
+    .page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-table {min-width: 590px;}
+    @media(max-width:1050px){.page-seguridad-v2 .dashboard{grid-template-columns:minmax(0,1fr);}}
+    @media(max-width:720px){.page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-table{min-width: 590px;}}
   </style>
 </head>
 
@@ -970,6 +977,48 @@
       <div><span class="kicker">Administración y control</span><strong>Seguridad del fraccionamiento</strong></div><span
         id="apiStatus" class="online">Operación normal</span>
     </div>
+    <section class="dashboard" aria-label="Mantenimiento y control de acceso">
+    <section class="panel panel-pad" id="seguridadCuotasPanel" aria-labelledby="seguridadCuotasTitulo">
+      <div class="panel-head">
+        <div><span class="eyebrow">ESTADO DE MANTENIMIENTO</span>
+          <h2 id="seguridadCuotasTitulo">Cuotas por vivienda</h2>
+          <p>Solo calle, casa, estado, última fecha de pago y último mes pagado. Información de MySQL, no del TAG.</p>
+        </div><button type="button" class="btn" id="segCuotasRefresh">Actualizar</button>
+      </div>
+      <div class="seg-cuotas-filters">
+        <label>Calle<input type="search" id="segCuotasCalle" placeholder="Filtrar calle"></label>
+        <label>Número<input type="search" id="segCuotasNumero" placeholder="Casa"></label>
+        <label>Estado<select id="segCuotasEstado"><option value="">Todos</option><option value="AL_CORRIENTE">Al corriente</option><option value="DEUDOR">Deudor</option><option value="SIN_DATOS">Sin historial</option></select></label>
+      </div>
+      <p class="seg-cuotas-message" id="segCuotasStatus" role="status" aria-live="polite">Consultando…</p>
+      <div class="seg-cuotas-scroll">
+        <table class="seg-cuotas-table"><thead><tr><th>Calle</th><th>Casa</th><th>Estado</th><th>Último pago</th><th>Mes pagado</th></tr></thead>
+          <tbody id="segCuotasRows"></tbody>
+        </table>
+      </div>
+      <div class="seg-cuotas-pagination">
+        <button type="button" class="btn" id="segCuotasPrev">Anterior</button>
+        <span id="segCuotasPage"></span>
+        <button type="button" class="btn" id="segCuotasNext">Siguiente</button>
+      </div>
+    </section>
+      <div class="side-stack">
+        <article class="panel panel-pad">
+          <div class="panel-head">
+            <div><span class="eyebrow">ACCESO PRINCIPAL</span>
+              <h3>Control de pluma</h3>
+              <p>Apertura y cierre desde caseta.</p>
+            </div>
+          </div>
+          <div id="gateScene" class="gate-scene">
+            <div class="gate-post"></div>
+            <div class="gate-arm"></div><span id="gateState" class="gate-state">SIN VERIFICAR</span>
+          </div>
+          <div class="actions"><button id="openGate" class="btn btn-primary">Abrir</button><button id="closeGate"
+              class="btn btn-danger">Cerrar</button></div><p class="gate-help">Mismos controles del C3-200 que ZKTeco. La animación representa la última orden, no una lectura física de posición.</p>
+        </article>
+      </div>
+    </section>
     <section class="sec-hero">
       <div><span class="eyebrow">CENTRO DE SEGURIDAD</span>
         <h1>Control claro, <span>comunidad protegida.</span></h1>
@@ -1015,58 +1064,6 @@
               d="M12 9v4M12 17h.01M10.3 3.8 2.4 18a2 2 0 0 0 1.8 3h15.6a2 2 0 0 0 1.8-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
           </svg></i><span><b>Incidencias</b><small>Registrar y revisar reportes de seguridad</small></span><span
           class="arrow">›</span></button></section>
-    <section class="dashboard">
-      <article class="panel panel-pad">
-        <div class="panel-head">
-          <div><span class="eyebrow">MONITOREO EN VIVO</span>
-            <h2>Cámaras de seguridad</h2>
-            <p>Canales Dahua del fraccionamiento. Selecciona una cámara para verla en vivo.</p>
-          </div><button class="btn" id="reloadCameras">Actualizar</button>
-        </div>
-        <div id="cameraGrid" class="camera-grid"></div><p id="cameraStatus" class="camera-message" role="status" aria-live="polite">Consultando puente de video…</p>
-      </article>
-      <div class="side-stack">
-        <article class="panel panel-pad">
-          <div class="panel-head">
-            <div><span class="eyebrow">ACCESO PRINCIPAL</span>
-              <h3>Control de pluma</h3>
-              <p>Apertura y cierre desde caseta.</p>
-            </div>
-          </div>
-          <div id="gateScene" class="gate-scene">
-            <div class="gate-post"></div>
-            <div class="gate-arm"></div><span id="gateState" class="gate-state">SIN VERIFICAR</span>
-          </div>
-          <div class="actions"><button id="openGate" class="btn btn-primary">Abrir</button><button id="closeGate"
-              class="btn btn-danger">Cerrar</button></div><p class="gate-help">Mismos controles del C3-200 que ZKTeco. La animación representa la última orden, no una lectura física de posición.</p>
-        </article>
-
-      </div>
-    </section>
-    <section class="panel panel-pad" id="seguridadCuotasPanel" aria-labelledby="seguridadCuotasTitulo">
-      <div class="panel-head">
-        <div><span class="eyebrow">ESTADO DE MANTENIMIENTO</span>
-          <h2 id="seguridadCuotasTitulo">Cuotas por vivienda</h2>
-          <p>Solo calle, casa, estado, última fecha de pago y último mes pagado. Información de MySQL, no del TAG.</p>
-        </div><button type="button" class="btn" id="segCuotasRefresh">Actualizar</button>
-      </div>
-      <div class="seg-cuotas-filters">
-        <label>Calle<input type="search" id="segCuotasCalle" placeholder="Filtrar calle"></label>
-        <label>Número<input type="search" id="segCuotasNumero" placeholder="Casa"></label>
-        <label>Estado<select id="segCuotasEstado"><option value="">Todos</option><option value="AL_CORRIENTE">Al corriente</option><option value="DEUDOR">Deudor</option><option value="SIN_DATOS">Sin historial</option></select></label>
-      </div>
-      <p class="seg-cuotas-message" id="segCuotasStatus" role="status" aria-live="polite">Consultando…</p>
-      <div class="seg-cuotas-scroll">
-        <table class="seg-cuotas-table"><thead><tr><th>Calle</th><th>Casa</th><th>Estado</th><th>Último pago</th><th>Mes pagado</th></tr></thead>
-          <tbody id="segCuotasRows"></tbody>
-        </table>
-      </div>
-      <div class="seg-cuotas-pagination">
-        <button type="button" class="btn" id="segCuotasPrev">Anterior</button>
-        <span id="segCuotasPage"></span>
-        <button type="button" class="btn" id="segCuotasNext">Siguiente</button>
-      </div>
-    </section>
     <aside class="panel panel-pad security-contact-compact" aria-label="Comunicación directa con Administración">
       <div class="security-contact-heading">
         <span class="eyebrow">COMUNICACIÓN DIRECTA</span>
@@ -1265,17 +1262,12 @@
   </div>
   <div id="toast" class="toast"></div>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
   <script>
     const API_BASE_URL = 'https://api-misionjardines.listoenlinea.host/api';
     const MEXICO_TIME_ZONE = 'America/Mexico_City';
     const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
     const INCIDENT_KEY = 'mision_jardines_seguridad_incidentes';
 
-    const CAMERA_LABELS = ['Jardines 1','Portón 1','Magnolias','Rosas','Portón 2','Cancha','Jardines 2','Gardenias','Lirios','Peatonal 1','Peatonal 2'];
-    let CAMERA_CONFIG = CAMERA_LABELS.map((name,index)=>({id:'dahua-'+(index+1),name,playbackPath:null}));
-    const cameraPlayers=new Map();
-    let cameraRenewTimer=null;
     // CONTACTO DE ADMINISTRACIÓN: cambia únicamente estos datos.
     const ADMIN_CONTACT = { name: 'Administración Misión Jardines', schedule: 'Disponible · 9:00 a 18:00', whatsapp: '', email: 'administracion@misionjardines.com' };
 
@@ -1286,103 +1278,6 @@
     async function api(url, options = {}) { const response = await fetch(url, options); let result = {}; try { result = await response.json() } catch { } if (response.status === 401) { localStorage.removeItem('misionJardinesToken'); sessionStorage.removeItem('misionJardinesToken'); location.replace('login.html'); throw new Error('La sesión expiró') } if (!response.ok || !result.ok) throw new Error(result.message || 'No fue posible completar la solicitud'); return result }
     function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' } function closeModal(el) { el.closest('.modal-shell').hidden = true; document.body.style.overflow = '' }
     function parseControls(raw) { try { const data = typeof raw === 'string' ? JSON.parse(raw) : raw || {}; return { pluma: data.pluma !== false, porton1: data.porton1 !== false, porton2: data.porton2 !== false, porton3: data.porton3 !== false } } catch { return { pluma: true, porton1: true, porton2: true, porton3: true } } }
-    function stopCameraPlayers() {
-      if(cameraRenewTimer)clearTimeout(cameraRenewTimer);
-      cameraRenewTimer=null;
-      for(const player of cameraPlayers.values()) try {player.destroy()} catch(_){}
-      cameraPlayers.clear();
-      document.querySelectorAll('#cameraGrid video').forEach(video=>{
-        try {video.pause();video.removeAttribute('src');video.load()}catch(_){}
-      });
-    }
-    function renderCameras() {
-      $('cameraGrid').innerHTML=CAMERA_CONFIG.map((cam,index)=>{
-        const empty='<div class="camera-empty"><div><svg viewBox="0 0 24 24"><path d="M15 10l4.5-2.5v9L15 14M3 6h12v12H3z"/></svg>'+
-          '<b>'+esc(cam.name)+'</b><span>'+(cam.playbackPath?'Transmisión disponible bajo demanda':'Pendiente del puente de video')+'</span>'+
-          (cam.playbackPath?'<button class="camera-control" type="button" data-watch="'+esc(cam.id)+'">Ver en vivo</button>':'')+'</div></div>';
-        return '<article class="camera" data-camera-id="'+esc(cam.id)+'">'+empty+
-          '<div class="camera-label"><span>'+esc(cam.name)+'</span><i aria-hidden="true"></i></div></article>';
-      }).join('');
-    }
-    function playbackUrl(path) {
-      if(typeof path!=='string'||!/^\/api\/camaras\/stream\/[a-z0-9_-]+\/index\.m3u8\?ticket=[A-Za-z0-9._-]+$/i.test(path)){
-        throw new Error('La dirección de video no está autorizada');
-      }
-      return API_BASE_URL.replace(/\/api$/,'')+path;
-    }
-    function watchCamera(id) {
-      const channel=CAMERA_CONFIG.find(item=>item.id===id);
-      if(!channel||!channel.playbackPath)return;
-      stopCameraPlayers();
-      renderCameras();
-      const card=Array.from($('cameraGrid').querySelectorAll('[data-camera-id]')).find(node=>node.dataset.cameraId===id);
-      if(!card)return;
-      const video=document.createElement('video');
-      video.className='camera-media';
-      video.muted=true;
-      video.autoplay=true;
-      video.playsInline=true;
-      video.controls=true;
-      video.setAttribute('aria-label','En vivo: '+channel.name);
-      card.querySelector('.camera-empty').replaceWith(video);
-      let url;
-      try{url=playbackUrl(channel.playbackPath)}catch(error){$('cameraStatus').textContent=error.message;renderCameras();return}
-      video.addEventListener('playing',()=>{
-        card.classList.add('is-playing');
-        $('cameraStatus').textContent='Reproduciendo '+channel.name+' desde el puente privado.';
-      });
-      video.addEventListener('error',()=>{
-        card.classList.remove('is-playing');
-        $('cameraStatus').textContent='No se pudo reproducir '+channel.name+'. Revisa el puente HLS y el códec.';
-      });
-      $('cameraStatus').textContent='Conectando con '+channel.name+'…';
-      if(video.canPlayType('application/vnd.apple.mpegurl')){
-        video.src=url;
-        video.play().catch(()=>$('cameraStatus').textContent='Pulsa reproducir para ver '+channel.name);
-      }else if(window.Hls&&window.Hls.isSupported()){
-        const player=new window.Hls({enableWorker:true,lowLatencyMode:true});
-        cameraPlayers.set(id,player);
-        player.on(window.Hls.Events.ERROR,(_event,data)=>{
-          if(!data.fatal)return;
-          card.classList.remove('is-playing');
-          $('cameraStatus').textContent='El puente no responde o el video no es compatible.';
-          player.destroy();cameraPlayers.delete(id);
-        });
-        player.loadSource(url);player.attachMedia(video);
-        player.on(window.Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>{
-          $('cameraStatus').textContent='Pulsa reproducir para ver '+channel.name;
-        }));
-      }else{
-        $('cameraStatus').textContent='Este navegador requiere soporte HLS para mostrar video.';
-      }
-      // Renovar el enlace antes de que venza su firma (15 min), sin mantener
-      // tickets permanentes ni credenciales de cámaras en el navegador.
-      if(video.src || cameraPlayers.has(id)) {
-        cameraRenewTimer=setTimeout(async()=>{
-          await loadCameraConfig();
-          if(CAMERA_CONFIG.some(item=>item.id===id&&item.playbackPath))watchCamera(id);
-        },12*60*1000);
-      }
-    }
-    async function loadCameraConfig() {
-      stopCameraPlayers();
-      $('cameraStatus').textContent='Consultando servicio de video…';
-      try{
-        const result=await api(API_BASE_URL+'/camaras',{headers:headers()});
-        CAMERA_CONFIG=Array.isArray(result.channels)&&result.channels.length
-          ? result.channels : CAMERA_LABELS.map((name,index)=>({id:'dahua-'+(index+1),name,playbackPath:null}));
-        $('cameraStatus').textContent=result.configured?'Canales configurados. Pulsa «Ver en vivo».':
-          (result.message||'Puente de video pendiente de configurar.');
-      }catch(error){
-        CAMERA_CONFIG=CAMERA_LABELS.map((name,index)=>({id:'dahua-'+(index+1),name,playbackPath:null}));
-        $('cameraStatus').textContent='No se pudieron consultar las cámaras: '+error.message;
-      }
-      renderCameras();
-    }
-    $('cameraGrid').addEventListener('click',event=>{
-      const btn=event.target.closest('[data-watch]');
-      if(btn)watchCamera(btn.dataset.watch);
-    });
     async function controlGate(action) {
       const accion=action==='open'?'ABRIR':action==='close'?'CERRAR':null;
       if(!accion)return;
@@ -1421,9 +1316,9 @@
     function saveIncident() { const item = { date: fmt(new Date()), type: $('incidentType').value, location: $('incidentLocation').value.trim(), reporter: $('incidentReporter').value.trim(), priority: $('incidentPriority').value, description: $('incidentDescription').value.trim() }; if (!item.location || !item.reporter || !item.description) { toast('Completa ubicación, reportado por y descripción.'); return } incidents.unshift(item); localStorage.setItem(INCIDENT_KEY, JSON.stringify(incidents));['incidentLocation', 'incidentReporter', 'incidentDescription'].forEach(id => $(id).value = ''); renderIncidents(); toast('Incidencia registrada.') }
     function setAdminContact() { $('adminName').textContent = ADMIN_CONTACT.name; $('adminSchedule').textContent = ADMIN_CONTACT.schedule; $('adminEmail').href = `mailto:${ADMIN_CONTACT.email}`; if (ADMIN_CONTACT.whatsapp) { $('adminWhatsapp').href = `https://wa.me/${ADMIN_CONTACT.whatsapp.replace(/\D/g, '')}`; $('adminWhatsapp').target = '_blank' } else { $('adminWhatsapp').href = '#'; $('adminWhatsapp').addEventListener('click', e => { e.preventDefault(); toast('Agrega el número en ADMIN_CONTACT.whatsapp.') }) } }
     document.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openModal(b.dataset.open))); document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b))); document.querySelectorAll('.modal-shell').forEach(m => m.addEventListener('click', e => { if (e.target === m) { m.hidden = true; document.body.style.overflow = '' } })); document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-shell:not([hidden])').forEach(m => { m.hidden = true; document.body.style.overflow = '' }) });
-    $('reloadCameras').addEventListener('click', loadCameraConfig); $('openGate').addEventListener('click', () => controlGate('open')); $('closeGate').addEventListener('click', () => controlGate('close')); $('accessStreet').addEventListener('change', fillNumbers); $('accessForm').addEventListener('submit', saveAccess); $('clearAccess').addEventListener('click', () => { $('accessForm').reset(); fillNumbers() }); $('refreshAccess').addEventListener('click', loadAccesses);['filterText', 'filterHouse'].forEach(id => $(id).addEventListener('input', renderAccesses));['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).addEventListener('change', renderAccesses)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterHouse'].forEach(id => $(id).value = '');['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).value = ''); renderAccesses() }); $('houseAccessStreet').addEventListener('change', renderHouseAccess); $('houseAccessNumber').addEventListener('input', renderHouseAccess); $('clearHouseAccess').addEventListener('click', () => { $('houseAccessStreet').value = ''; $('houseAccessNumber').value = ''; renderHouseAccess() }); $('saveIncident').addEventListener('click', saveIncident);
+$('openGate').addEventListener('click', () => controlGate('open')); $('closeGate').addEventListener('click', () => controlGate('close')); $('accessStreet').addEventListener('change', fillNumbers); $('accessForm').addEventListener('submit', saveAccess); $('clearAccess').addEventListener('click', () => { $('accessForm').reset(); fillNumbers() }); $('refreshAccess').addEventListener('click', loadAccesses);['filterText', 'filterHouse'].forEach(id => $(id).addEventListener('input', renderAccesses));['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).addEventListener('change', renderAccesses)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterHouse'].forEach(id => $(id).value = '');['filterStreet', 'filterType', 'filterStatus'].forEach(id => $(id).value = ''); renderAccesses() }); $('houseAccessStreet').addEventListener('change', renderHouseAccess); $('houseAccessNumber').addEventListener('input', renderHouseAccess); $('clearHouseAccess').addEventListener('click', () => { $('houseAccessStreet').value = ''; $('houseAccessNumber').value = ''; renderHouseAccess() }); $('saveIncident').addEventListener('click', saveIncident);
     $('filterText').value = new URLSearchParams(location.search).get('buscar') || '';
-    $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); loadCameraConfig(); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
+    $('currentDate').textContent = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: MEXICO_TIME_ZONE }).format(new Date()); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
   <script src="assets/js/seguridad-cuotas.js?v=20261011"></script>
   <script src="assets/js/site-sidebar.js?v=20261012-seguridad"></script>
