@@ -76,3 +76,11 @@ test('Seguridad reutiliza el POST de ZKTeco y no presenta estado físico inventa
   assert.match(app, /app\.use\('\/api\/camaras'/);
   assert.match(app, /skip: req => req\.path\.startsWith\('\/camaras\/stream\/'\)/);
 });
+
+test('Diagnóstico de Dahua exige roles y nunca devuelve credenciales al navegador', () => {
+  const routes = fs.readFileSync(path.resolve(__dirname, '../src/routes/camaras.routes.js'), 'utf8');
+  assert.match(routes, /router\.get\('\/diagnostico', \.\.\.access, security/);
+  assert.match(routes, /AbortSignal\.timeout\(6000\)/);
+  assert.match(routes, /upstream\.body\?\.cancel\(\)/);
+  assert.doesNotMatch(routes, /res\.json\(\{[^}]*CAMERAS_UPSTREAM_BEARER_TOKEN/);
+});
