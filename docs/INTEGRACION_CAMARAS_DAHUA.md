@@ -47,11 +47,14 @@ en la configuración privada de MediaMTX, NUNCA en GitHub/HTML/MySQL.
 
 Un ejemplo de configuración PRIVADA de MediaMTX, fuera del repo:
 
+    hlsVariant: mpegts
     paths:
       jardines-1:
         source: rtsp://USUARIO_VISOR:CLAVE_PRIVADA@192.168.1.101:554/cam/realmonitor?channel=1&subtype=1
       porton-1:
         source: rtsp://USUARIO_VISOR:CLAVE_PRIVADA@192.168.1.101:554/cam/realmonitor?channel=2&subtype=1
+
+Configurar HLS MPEG-TS inicialmente (hlsVariant: mpegts) para evitar dependencias de funciones Low-Latency que requieren parámetros adicionales en el proxy.
 
 Comprobar en la máquina local:
     http://127.0.0.1:8888/jardines-1/index.m3u8
@@ -90,7 +93,7 @@ real playing en el elemento de video.
 - Verificar H.264; H.265 no funciona en todos los navegadores.
 - El video HLS tiene más latencia que WebRTC.
 - El navegador requiere HLS nativo o la biblioteca hls.js de versión fija.
-- Cuando el ticket expire, pulsar Actualizar para generar otro.
+- Si la cámara permanece abierta, la pantalla intenta renovar automáticamente el ticket unos minutos antes del vencimiento. Si la renovación falla, pulsar Actualizar.
 - No se ha probado contra la red ni el NVR real: instalación y
   credenciales deben configurarse en el entorno de Administración.
 - Para probar plumas físicas, coordinar una ventana segura en caseta;
