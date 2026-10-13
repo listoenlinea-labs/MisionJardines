@@ -67,7 +67,10 @@ async function obtenerDashboard(req, res) {
     const hoy = fechaLocalISO(ahora);
     const actual = periodoDesdeOffset(ahora, 0);
     const anterior = periodoDesdeOffset(ahora, -1);
-    const periodosSerie = Array.from({ length: 12 }, (_, index) => periodoDesdeOffset(ahora, index - 11));
+    const periodosSerie = Array.from({ length: Math.max(1, (actual.anio - 2026) * 12 + actual.indiceMes + 1) }, (_, index) => {
+        const d = new Date(2026, index, 1);
+        return periodoDesdeOffset(d, 0);
+    });
     const errores = {};
 
     const replacementsPeriodo = {
@@ -82,6 +85,7 @@ async function obtenerDashboard(req, res) {
         cuotaActualRows,
         cuotaAnteriorRows,
         recaudacionRows,
+        egresosSerieRows,
         visitasRows,
         accesosRows,
         residentesRows,
@@ -123,6 +127,16 @@ async function obtenerDashboard(req, res) {
              WHERE anio >= :anioDesde
              GROUP BY anio, mes`,
             { anioDesde: periodosSerie[0].anio },
+            errores
+        ),
+        consultaSegura(
+            'egresos_serie',
+            `SELECT YEAR(fecha) AS anio, MONTH(fecha) AS mes_numero,
+                    COALESCE(SUM(monto), 0) AS total
+             FROM egresos_fraccionamiento
+             WHERE fecha >= '2026-01-01' AND fecha <= :hoy
+             GROUP BY YEAR(fecha), MONTH(fecha)`,
+            { hoy },
             errores
         ),
         consultaSegura(
@@ -245,12 +259,18 @@ async function obtenerDashboard(req, res) {
         })
     );
 
-    const serie = periodosSerie.map(periodo => ({
-        anio: periodo.anio,
-        mes: periodo.mes,
-        etiqueta: periodo.etiqueta,
-        total: recaudacionMap.get(periodo.key) || 0
-    }));
+    const egresosMap = new Map(egresosSerieRows.map(row => [
+        `${row.anio}-${String(row.mes_numero).padStart(2, '0')}`, numero(row.total)
+    ]));
+    // El saldo es acumulado desde enero de 2026. No se inventa saldo previo.
+    let disponible = 0;
+    const serie = periodosSerie.map(periodo => {
+        const ingresos = recaudacionMap.get(periodo.key) || 0;
+        const egresos = egresosMap.get(periodo.key) || 0;
+        disponible += ingresos - egresos;
+        return { anio: periodo.anio, mes: periodo.mes, etiqueta: periodo.etiqueta,
+            total: ingresos, ingresos, egresos, disponible };
+    });
 
     const totalMes = numero(cuotaActual.recaudado);
     const totalMesAnterior = numero(cuotaAnterior.recaudado);
@@ -291,7 +311,7 @@ async function obtenerDashboard(req, res) {
         .slice(0, 6);
 
     const fuentes = {
-        cuotas: !errores.cuotas && !errores.recaudacion,
+        cuotas: !errores.cuotas && !errores.recaudacion && !errores.egresos_serie,
         visitas: !errores.visitas_programadas,
         accesos: !errores.accesos_seguridad,
         residentes: !errores.condominos,

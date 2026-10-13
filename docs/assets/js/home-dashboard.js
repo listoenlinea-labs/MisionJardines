@@ -57,46 +57,40 @@
   }
 
   function chartSvg(series) {
-    const clean = Array.isArray(series) ? series.map(item => ({
-      label: item.etiqueta || '',
-      value: Number(item.total) || 0
-    })) : [];
+    const clean = (Array.isArray(series) ? series : []).map(item => ({
+      label: String(item.etiqueta || ''),
+      ingresos: Number(item.ingresos ?? item.total) || 0,
+      egresos: Number(item.egresos) || 0,
+      disponible: Number(item.disponible) || 0
+    }));
+    if (!clean.length) return '<div class="hl-chart-empty">Sin periodos disponibles desde enero de 2026.</div>';
 
-    if (!clean.length || clean.every(item => item.value === 0)) {
-      return '<div class="hl-chart-empty"><strong>Sin recaudación registrada</strong><span>La gráfica aparecerá en cuanto existan pagos en la tabla de cuotas.</span></div>';
-    }
-
-    const width = 680;
-    const height = 250;
-    const left = 66;
-    const right = 20;
-    const top = 20;
-    const bottom = 46;
-    const plotWidth = width - left - right;
-    const plotHeight = height - top - bottom;
-    const maxValue = Math.max(...clean.map(item => item.value));
-    const ceiling = maxValue <= 0 ? 1 : maxValue * 1.12;
-    const step = clean.length > 1 ? plotWidth / (clean.length - 1) : plotWidth;
-    const points = clean.map((item, index) => {
-      const x = left + (index * step);
-      const y = top + plotHeight - ((item.value / ceiling) * plotHeight);
-      return { ...item, x, y };
-    });
-    const line = points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
-    const area = `${left},${top + plotHeight} ${line} ${left + plotWidth},${top + plotHeight}`;
-    const ticks = [0, ceiling / 2, ceiling];
-
-    return `<svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Recaudación real de los últimos doce meses">
-      <defs><linearGradient id="hlArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f97316" stop-opacity=".20"/><stop offset="1" stop-color="#f97316" stop-opacity="0"/></linearGradient></defs>
-      ${ticks.map((tick, index) => {
-        const y = top + plotHeight - ((tick / ceiling) * plotHeight);
-        return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}" stroke="#e8ebef" stroke-width="1"/><text x="${left - 10}" y="${y + 4}" text-anchor="end" fill="#7d8798" font-size="10">${escapeHtml(compactMoney(tick))}</text>`;
-      }).join('')}
-      <polygon points="${area}" fill="url(#hlArea)"/>
-      <polyline points="${line}" fill="none" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      ${points.map(point => `<circle cx="${point.x}" cy="${point.y}" r="4" fill="#fff" stroke="#f97316" stroke-width="3"><title>${escapeHtml(point.label)}: ${escapeHtml(money.format(point.value))}</title></circle>`).join('')}
-      ${points.map(point => `<text x="${point.x}" y="${height - 15}" text-anchor="middle" fill="#7d8798" font-size="10">${escapeHtml(point.label)}</text>`).join('')}
-    </svg>`;
+    const tracks = [
+      { key: 'ingresos', name: 'Ingresos por cuotas', color: '#f97316' },
+      { key: 'egresos', name: 'Egresos', color: '#a78bfa' },
+      { key: 'disponible', name: 'Disponible al cierre', color: '#16a085' }
+    ];
+    const width = 850, height = 300, left = 76, right = 24, top = 24, bottom = 50;
+    const plotWidth = width - left - right, plotHeight = height - top - bottom;
+    const values = clean.flatMap(row => tracks.map(track => row[track.key]));
+    const min = Math.min(0, ...values), max = Math.max(0, ...values);
+    const margin = Math.max(1, (max - min) * 0.1);
+    const low = min < 0 ? min - margin : 0, high = max + margin;
+    const span = Math.max(1, high - low);
+    const x = index => left + (clean.length === 1 ? plotWidth / 2 : index * plotWidth / (clean.length - 1));
+    const y = amount => top + (high - amount) / span * plotHeight;
+    const grid = Array.from({ length: 5 }, (_, index) => {
+      const amount = low + (span * index / 4), cy = y(amount);
+      return `<line x1="${left}" y1="${cy}" x2="${width-right}" y2="${cy}" stroke="#e8ebef"/><text x="${left-10}" y="${cy+4}" text-anchor="end" fill="#7d8798" font-size="11">${escapeHtml(compactMoney(amount))}</text>`;
+    }).join('');
+    const lines = tracks.map(track => {
+      const points = clean.map((row, i) => `${x(i).toFixed(1)},${y(row[track.key]).toFixed(1)}`).join(' ');
+      const dots = clean.map((row, i) => `<circle cx="${x(i)}" cy="${y(row[track.key])}" r="4" fill="#fff" stroke="${track.color}" stroke-width="2.5"><title>${escapeHtml(row.label)} · ${escapeHtml(track.name)}: ${escapeHtml(money.format(row[track.key]))}</title></circle>`).join('');
+      return `<polyline points="${points}" fill="none" stroke="${track.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+    }).join('');
+    const labels = clean.map((row, i) => `<text x="${x(i)}" y="${height-14}" text-anchor="middle" fill="#7d8798" font-size="10">${escapeHtml(row.label)}</text>`).join('');
+    const legend = tracks.map(track => `<span style="display:inline-flex;align-items:center;gap:7px"><i aria-hidden="true" style="display:inline-block;width:20px;border-top:3px solid ${track.color}"></i>${escapeHtml(track.name)}</span>`).join('');
+    return `<div class="hl-finance-legend" style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#526174;margin:8px 0 12px">${legend}</div><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Ingresos, egresos y saldo disponible mensual desde enero de 2026">${grid}${lines}${labels}</svg>`;
   }
 
   function compactMoney(value) {
@@ -371,10 +365,10 @@
 
       <section class="hl-main-grid">
         <article class="hl-card hl-collection">
-          <div class="hl-card-head"><div><span class="hl-eyebrow">FINANZAS</span><h2>Recaudación de cuotas</h2></div><span class="hl-period">Últimos 12 meses</span></div>
+          <div class="hl-card-head"><div><span class="hl-eyebrow">FINANZAS</span><h2>Ingresos, egresos y disponible</h2></div><span class="hl-period">Desde enero de 2026</span></div>
           <div class="hl-money-row"><div><small>Total recaudado · ${escapeHtml(data.periodo?.actual?.etiqueta || 'periodo actual')}</small><strong>${fuentes.cuotas ? money.format(data.recaudacion?.totalMes || 0) : '—'}</strong></div>${fuentes.cuotas ? deltaLabel(data.recaudacion?.variacionPorcentaje) : ''}</div>
           <div class="hl-chart-wrap">${fuentes.cuotas ? chartSvg(data.recaudacion?.serie || []) : '<div class="hl-chart-empty"><strong>Cuotas no disponible</strong><span>No fue posible consultar la tabla.</span></div>'}</div>
-          <div class="hl-data-note">${sourceBadge('cuotas.monto_pagado', fuentes.cuotas)}<span>Cada punto se calcula con la suma real del periodo.</span></div>
+          <div class="hl-data-note">${sourceBadge('cuotas.monto_pagado', fuentes.cuotas)}<span>Ingresos de cuotas por periodo, egresos registrados y saldo acumulado desde enero de 2026; no incluye saldos iniciales ni ingresos sin recibo.</span></div>
         </article>
 
         <article class="hl-card hl-events">
