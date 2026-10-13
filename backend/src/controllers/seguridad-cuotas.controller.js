@@ -17,11 +17,11 @@ function resumenVivienda(casa, registros, fecha=new Date()) {
     const position=y*12+m;
     if(position>periodo)continue;
     hayHistorico=true;
-    if(cuota.estatusPago==='PAGADO'){
+    if(['PAGADO','PAGO_PARCIAL'].includes(cuota.estatusPago) && Number(cuota.montoPagado)>0){
       if(!ultimo||position>ultimo.position)ultimo={position,anio:y,mes:MESES[m-1]};
       const fp=cuota.fechaPago ? new Date(cuota.fechaPago) : null;
       if(fp && !Number.isNaN(fp.getTime()) && (!fechaUltima || fp>fechaUltima))fechaUltima=fp;
-      if(position===periodo)actual=true;
+      if(position===periodo && cuota.estatusPago==='PAGADO')actual=true;
     }else if(['PENDIENTE','PAGO_PARCIAL'].includes(cuota.estatusPago)&&position<periodo){
       pendienteAnterior=true;
     }
@@ -45,7 +45,7 @@ async function consultar(req,res) {
     if(estado&&!['AL_CORRIENTE','DEUDOR','SIN_DATOS'].includes(estado))return res.status(400).json({ok:false,message:'Estado inválido'});
     const [casas,cuotas]=await Promise.all([
       Casa.findAll({attributes:['id','calle','calleCorrecta','numero']}),
-      Cuota.findAll({attributes:['casaId','anio','mes','estatusPago','fechaPago']})
+      Cuota.findAll({attributes:['casaId','anio','mes','estatusPago','fechaPago','montoPagado']})
     ]);
     const agrupadas=new Map();
     for(const cuota of cuotas){const key=String(cuota.casaId);if(!agrupadas.has(key))agrupadas.set(key,[]);agrupadas.get(key).push(cuota);}

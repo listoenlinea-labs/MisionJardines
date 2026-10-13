@@ -360,7 +360,7 @@ body.page-cuotas .cuotas-shell{
         </div>
         <div>
           <span>Periodo activo</span>
-          <strong id="periodoCuotasHero">JULIO 2026</strong>
+          <strong id="periodoCuotasHero">Periodo actual</strong>
         </div>
       </div>
     </section>
@@ -493,7 +493,7 @@ body.page-cuotas .cuotas-shell{
         <div>
           <span class="cuotas-eyebrow">REGISTRO OPERATIVO</span>
           <h2>Tabla de cuotas</h2>
-          <p id="periodoCuotasLabel">Periodo: JULIO 2026</p>
+          <p id="periodoCuotasLabel">Periodo actual</p>
         </div>
 
         <div class="actions cuotas-actions">
@@ -784,8 +784,9 @@ body.page-cuotas .cuotas-shell{
     let enviandoRecibos = false;
     let temporizadorBorrador = null;
     let intervaloAutoguardado = null;
-    let anioConsulta = 2026;
-    let mesConsulta = 'JULIO';
+    const fechaPeriodoActual = new Intl.DateTimeFormat('en-US', { timeZone: MEXICO_TIME_ZONE, year: 'numeric', month: 'numeric' }).formatToParts(new Date());
+    let anioConsulta = Number(fechaPeriodoActual.find(p => p.type === 'year').value);
+    let mesConsulta = MESES[Number(fechaPeriodoActual.find(p => p.type === 'month').value) - 1];
 
     if (!token) {
       window.location.replace('login.html');

@@ -67,7 +67,7 @@ async function obtenerDashboard(req, res) {
     const hoy = fechaLocalISO(ahora);
     const actual = periodoDesdeOffset(ahora, 0);
     const anterior = periodoDesdeOffset(ahora, -1);
-    const periodosSerie = Array.from({ length: 6 }, (_, index) => periodoDesdeOffset(ahora, index - 5));
+    const periodosSerie = Array.from({ length: 12 }, (_, index) => periodoDesdeOffset(ahora, index - 11));
     const errores = {};
 
     const replacementsPeriodo = {

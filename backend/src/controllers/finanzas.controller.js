@@ -19,7 +19,7 @@ async function analizar(req,res){
   const {anio,mes,mesName,start,end}=filters(req);
   const [casas,cuotas,pagos,egresos,reservasClub]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre']}),
-   Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','estatusPago','montoPagado','montoCuota','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador']}),
+   Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','estatusPago','montoPagado','montoCuota','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
    ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']})
@@ -29,7 +29,8 @@ async function analizar(req,res){
   const residences=casas.map(h=>{
    const q=byHouse.get(String(h.id));
    const status=q?.estatusPago||'PENDIENTE';
-   const pagada=status==='PAGADO';
+   const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0);
+   // Pago parcial cuenta como vivienda con algún pago, pero se conserva su estatus.
    const calle=String(h.calleCorrecta||h.calle||'Sin calle');
    if(!streets.has(calle))streets.set(calle,{calle,total:0,pagadas:0,pendientes:0,abonos:0});
    const st=streets.get(calle);
@@ -43,6 +44,9 @@ async function analizar(req,res){
   const categoriasGasto=Object.fromEntries(categorias.map(c=>[c,0]));
   for(const e of egresos)categoriasGasto[e.categoria]+=num(e.monto);
   const ingresosValidados=ingresosReportados.mantenimiento+ingresosReportados.extraordinarios;
+  const cobrosHistoricos=cuotas.reduce((a,q)=>a+num(q.montoPagado),0);
+  const esCargaHistorica=cuotas.some(q=>String(q.origenImportacion||'').startsWith('EXCEL_'));
+  const ingresosParaBalance=esCargaHistorica ? cobrosHistoricos : ingresosValidados;
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
   for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
@@ -53,10 +57,11 @@ async function analizar(req,res){
    casas:residences.length,pagadas,pendientes:residences.length-pagadas,
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),
-   cobrosCuotasRegistrados:cuotas.reduce((a,q)=>a+num(q.montoPagado),0),
-   ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosValidados-totalEgresos,
+   cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,
+   ingresosParaBalance,
+   ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosParaBalance-totalEgresos,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>e.toJSON()),
-   avisoConciliacion:'El balance usa solo depósitos VALIDADOS en Pagos y egresos capturados; las cuotas de la tabla se muestran por separado porque podrían duplicar depósitos. Los cobros de Casa Club se presentan por separado y no se suman automáticamente para evitar duplicarlos con transferencias; tampoco incluye ingresos no bancarizados.'
+   avisoConciliacion:esCargaHistorica?'Periodo histórico: el balance usa los importes de cuotas importadas menos egresos capturados. Los depósitos bancarios validados se muestran aparte y NO se suman de nuevo. No incluye ingresos manuales sin recibo ni saldo anterior.':'El balance usa solo depósitos VALIDADOS en Pagos y egresos capturados; las cuotas se muestran por separado para evitar duplicados. No incluye ingresos sin recibo ni saldo anterior.'
   }});
  }catch(e){return sendErr(res,e);}
 }
