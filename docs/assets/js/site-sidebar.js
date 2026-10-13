@@ -253,7 +253,7 @@
   function loadHomeDashboard() {
     if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
-    script.src = 'assets/js/home-dashboard.js?v=20261013-movil-tipografia-nitida';
+    script.src = 'assets/js/home-dashboard.js?v=20261013-movil-ejes-html';
     script.defer = true;
     script.dataset.mjHomeDashboard = 'true';
     document.body.appendChild(script);
