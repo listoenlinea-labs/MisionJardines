@@ -155,6 +155,16 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-13
 
+- Historial administrativo de pagos preparado para revisión en PR: selector por
+  fecha bancaria en periodos 10–9, tabla de todos los estados/abonos, folios,
+  fecha de subida existente (`creadoEn`), monto/reportante y diario de meses.
+  TAGs muestran todas las fechas registradas y última lectura; no se consulta TCP.
+  API paginada, roles SUPER_ADMIN/ADMINISTRADOR en servidor y página; sin migración.
+- Validación del historial: 6 pruebas nuevas y 11 de permisos aprobadas. La suite
+  requerida de pagos/C3: 37 aprobadas y los dos fallos previos de edición manual.
+  Sintaxis/diff sin errores. Validación visual pendiente (Chromium no disponible
+  en este entorno); producción/MySQL/C3 no consultados. Requiere ambos despliegues.
+
 - Datos bancarios de condóminos: folio, monto, fecha y hora se muestran de solo
   lectura y se llenan por OCR. Una lectura incompleta no habilita el reporte;
   se pide releer, una imagen clara o ayuda administrativa. Campos de vivienda y
