@@ -286,9 +286,9 @@ async function obtenerDashboard(req, res) {
         const cuotas = recaudacionMap.get(periodo.key) || 0;
         const adicionales = ingresoExtraMap.get(periodo.key) || 0;
         const saldoInicial = saldoInicialMap.get(periodo.key) || 0;
-        const ingresos = cuotas + adicionales;
+        const ingresos = cuotas + adicionales + saldoInicial;
         const egresos = egresosMap.get(periodo.key) || 0;
-        disponible += ingresos + saldoInicial - egresos;
+        disponible += ingresos - egresos;
         return { anio: periodo.anio, mes: periodo.mes, etiqueta: periodo.etiqueta,
             total: ingresos, ingresos, cuotas, ingresosAdicionales: adicionales, saldoInicial,
             egresos, disponible };

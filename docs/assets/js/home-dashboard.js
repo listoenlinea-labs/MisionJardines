@@ -66,7 +66,7 @@
     if (!clean.length) return '<div class="hl-chart-empty">Sin periodos disponibles desde enero de 2026.</div>';
 
     const tracks = [
-      { key: 'ingresos', name: 'Ingresos por cuotas', color: '#f97316' },
+      { key: 'ingresos', name: 'Total de recursos', color: '#f97316' },
       { key: 'egresos', name: 'Egresos', color: '#a78bfa' },
       { key: 'disponible', name: 'Disponible al cierre', color: '#16a085' }
     ];
@@ -90,7 +90,7 @@
     }).join('');
     const labels = clean.map((row, i) => `<text x="${x(i)}" y="${height-14}" text-anchor="middle" fill="#7d8798" font-size="10">${escapeHtml(row.label)}</text>`).join('');
     const legend = tracks.map(track => `<span style="display:inline-flex;align-items:center;gap:7px"><i aria-hidden="true" style="display:inline-block;width:20px;border-top:3px solid ${track.color}"></i>${escapeHtml(track.name)}</span>`).join('');
-    return `<div class="hl-finance-legend" style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#526174;margin:8px 0 12px">${legend}</div><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Ingresos, egresos y saldo disponible mensual desde enero de 2026">${grid}${lines}${labels}</svg>`;
+    return `<div class="hl-finance-legend" style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#526174;margin:8px 0 12px">${legend}</div><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Total de recursos, egresos y saldo disponible mensual desde enero de 2026">${grid}${lines}${labels}</svg>`;
   }
 
   function compactMoney(value) {
