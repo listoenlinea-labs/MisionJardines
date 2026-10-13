@@ -86,6 +86,7 @@ async function obtenerDashboard(req, res) {
         cuotaAnteriorRows,
         recaudacionRows,
         egresosSerieRows,
+        ingresosManualesRows,
         visitasRows,
         accesosRows,
         residentesRows,
@@ -136,6 +137,16 @@ async function obtenerDashboard(req, res) {
              FROM egresos_fraccionamiento
              WHERE fecha >= '2026-01-01' AND fecha <= :hoy
              GROUP BY YEAR(fecha), MONTH(fecha)`,
+            { hoy },
+            errores
+        ),
+        consultaSegura(
+            'ingresos_manuales_serie',
+            `SELECT YEAR(fecha) AS anio, MONTH(fecha) AS mes_numero, tipo,
+                    COALESCE(SUM(monto), 0) AS total
+             FROM ingresos_fraccionamiento
+             WHERE fecha >= '2026-01-01' AND fecha <= :hoy
+             GROUP BY YEAR(fecha), MONTH(fecha), tipo`,
             { hoy },
             errores
         ),
@@ -262,14 +273,25 @@ async function obtenerDashboard(req, res) {
     const egresosMap = new Map(egresosSerieRows.map(row => [
         `${row.anio}-${String(row.mes_numero).padStart(2, '0')}`, numero(row.total)
     ]));
-    // El saldo es acumulado desde enero de 2026. No se inventa saldo previo.
+    const ingresoExtraMap = new Map();
+    const saldoInicialMap = new Map();
+    for (const row of ingresosManualesRows) {
+        const key = `${row.anio}-${String(row.mes_numero).padStart(2, '0')}`;
+        const target = row.tipo === 'SALDO_INICIAL' ? saldoInicialMap : ingresoExtraMap;
+        target.set(key, (target.get(key) || 0) + numero(row.total));
+    }
+    // El saldo inicial se incorpora una sola vez en el mes registrado.
     let disponible = 0;
     const serie = periodosSerie.map(periodo => {
-        const ingresos = recaudacionMap.get(periodo.key) || 0;
+        const cuotas = recaudacionMap.get(periodo.key) || 0;
+        const adicionales = ingresoExtraMap.get(periodo.key) || 0;
+        const saldoInicial = saldoInicialMap.get(periodo.key) || 0;
+        const ingresos = cuotas + adicionales;
         const egresos = egresosMap.get(periodo.key) || 0;
-        disponible += ingresos - egresos;
+        disponible += ingresos + saldoInicial - egresos;
         return { anio: periodo.anio, mes: periodo.mes, etiqueta: periodo.etiqueta,
-            total: ingresos, ingresos, egresos, disponible };
+            total: ingresos, ingresos, cuotas, ingresosAdicionales: adicionales, saldoInicial,
+            egresos, disponible };
     });
 
     const totalMes = numero(cuotaActual.recaudado);
@@ -311,7 +333,7 @@ async function obtenerDashboard(req, res) {
         .slice(0, 6);
 
     const fuentes = {
-        cuotas: !errores.cuotas && !errores.recaudacion && !errores.egresos_serie,
+        cuotas: !errores.cuotas && !errores.recaudacion && !errores.egresos_serie && !errores.ingresos_manuales_serie,
         visitas: !errores.visitas_programadas,
         accesos: !errores.accesos_seguridad,
         residentes: !errores.condominos,
