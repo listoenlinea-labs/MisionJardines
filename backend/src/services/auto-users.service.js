@@ -21,6 +21,8 @@ function credentials(body) {
     if (!validUsername(nombreUsuario) || !validEmail(correo)) throw fail(400, 'Escribe un usuario de 3 a 190 caracteres sin espacios y un correo válido, o deja el correo vacío si no tienes uno.');
     return { nombreUsuario, correo };
 }
+const trialHouse = casa => casa && (/\bprueba\b/i.test((casa.calleCorrecta || '') + ' ' + (casa.calle || '')) || /^TEST(?:-|$)/i.test(String(casa.numero)));
+const trialUser = user => /^AUTO_USERS_PRUEBA:[a-f0-9]{32}$/.test(user?.observaciones || '');
 function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitacion, Reporte,
     whatsapp, hashPassword = (value => bcrypt.hash(value, 12)) }) {
     const lock = transaction => ({ transaction, lock: transaction.LOCK.UPDATE });
@@ -46,8 +48,8 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
         if (!(await conflicts(withName, null, null, transaction))) return withName;
         return withName + '.' + condo.id;
     }
-    async function createOne(id) {
-        return db.transaction(async transaction => {
+    async function createOne(id, existingTransaction) {
+        const operation = async transaction => {
             const condo = await Condomino.findByPk(id, lock(transaction));
             if (!condo || !condo.activo) throw fail(409, 'Condómino inactivo; requiere revisión.');
             if (!String(condo.nombreCompleto || '').trim()) throw fail(409, 'El condómino no tiene nombre completo registrado.');
@@ -89,6 +91,47 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
                 defaults: { tipo: 'MIEMBRO', activo: false }, transaction });
             await Invitacion.create({ usuarioId: user.id, envioEstado: 'SIN_ENVIAR' }, { transaction });
             return { condominoId: id, usuarioId: user.id, resultado: 'CREADO' };
+        };
+        return existingTransaction ? operation(existingTransaction) : db.transaction(operation);
+    }
+    async function viviendasPrueba() {
+        return (await Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], order: [['id', 'ASC']] })).filter(trialHouse);
+    }
+    async function crearPrueba(casaId, clave) {
+        if (!/^[a-f0-9]{32}$/.test(String(clave || ''))) throw fail(400, 'Identificador de prueba inválido.');
+        return db.transaction(async transaction => {
+            const casa = await Casa.findByPk(casaId, lock(transaction));
+            if (!trialHouse(casa)) throw fail(400, 'Selecciona una vivienda identificada como Prueba o TEST.');
+            const observaciones = 'AUTO_USERS_PRUEBA:' + clave;
+            const existing = await Usuario.findOne({ where: { observaciones }, transaction });
+            if (existing) {
+                if (String(existing.casaId) !== String(casaId)) throw fail(409, 'Esta prueba ya pertenece a otra vivienda.');
+                return { usuarioId: existing.id, resultado: 'EXISTENTE', cuentaAceptada: existing.cuentaAceptada };
+            }
+            const condo = await Condomino.create({ direccionId: casa.id, nombreCompleto: 'Prueba Registro ' + clave.slice(0, 6),
+                correo: 'preregistro.prueba.' + clave + '@example.com', telefono: null, activo: true,
+                creadoEn: new Date(), actualizadoEn: new Date() }, { transaction });
+            const result = await createOne(condo.id, transaction);
+            await Usuario.update({ observaciones }, { where: { id: result.usuarioId }, transaction });
+            return { ...result, cuentaAceptada: false };
+        });
+    }
+    async function enlacePrueba(id, frontend) {
+        let url;
+        try { url = new URL(frontend); } catch { throw fail(400, 'Dirección del portal inválida.'); }
+        if (url.username || url.password || url.search || url.hash || !(url.protocol === 'https:' ||
+            (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))) throw fail(400, 'Dirección del portal inválida.');
+        return db.transaction(async transaction => {
+            const user = await Usuario.findByPk(id, lock(transaction));
+            if (!trialUser(user) || !pending(user)) throw fail(409, 'Solo se generan enlaces para cuentas de prueba pendientes.');
+            const casa = await Casa.findByPk(user.casaId, { transaction });
+            if (!trialHouse(casa)) throw fail(409, 'La cuenta de prueba debe permanecer en una vivienda de pruebas.');
+            if (await Reporte.findOne({ where: { usuarioId: id, estatus: 'ABIERTO' }, transaction })) throw fail(409, 'Primero corrige el reporte abierto.');
+            const [inv] = await Invitacion.findOrCreate({ where: { usuarioId: id }, defaults: { envioEstado: 'SIN_ENVIAR' }, transaction });
+            const token = crypto.randomBytes(32).toString('hex');
+            await inv.update({ tokenHash: hash(token), expiraEn: new Date(Date.now() + 14 * 86400000),
+                envioEstado: 'PRUEBA_SIN_ENVIO', ultimoError: null }, { transaction });
+            return { enlace: url.href.replace(/\/$/, '') + '/aceptar-cuenta.html#invitacion=' + token };
         });
     }
     async function crearLote(afterId = 0) {
@@ -169,6 +212,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             if (!pending(user)) throw fail(409, 'Solo se pueden corregir prerregistros todavía no aceptados.');
             const casa = await Casa.findByPk(casaId, { transaction });
             if (!casa) throw fail(400, 'La vivienda seleccionada no existe.');
+            if (trialUser(user) && !trialHouse(casa)) throw fail(400, 'Las cuentas de prueba solo pueden usar viviendas de pruebas.');
             if (await conflicts(data.nombreUsuario, data.correo, user.id, transaction)) throw fail(409, 'Usuario o correo ya registrado en otra cuenta.');
             await user.update({ ...data, ...names(nombreCompleto), casaId, telefono: telefono || null, actualizadoEn: new Date() }, { transaction });
             await Condomino.update({ direccionId: casaId, nombreCompleto, telefono: telefono || null, correo: data.correo,
@@ -181,6 +225,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
         });
     }
     async function sendOne(id) {
+        if (trialUser(await Usuario.findByPk(id))) return { usuarioId: id, resultado: 'PRUEBA_SIN_ENVIO' };
         const config = whatsapp.configuracion();
         const data = await db.transaction(async transaction => {
             const user = await Usuario.findByPk(id, lock(transaction));
@@ -238,6 +283,6 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             totalReportes: reportsResult.count, paginaReportes: reportPage,
             reportes: reportes.map(r => ({ ...r, usuario: reportUsers.find(u => String(u.id) === String(r.usuarioId)) })) };
     }
-    return { crearLote, createOne, consultar, aceptar, reportar, editar, enviarLote, sendOne, listar };
+    return { viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, aceptar, reportar, editar, enviarLote, sendOne, listar };
 }
 module.exports = { crearServicio, credentials, houseNumber, names };
