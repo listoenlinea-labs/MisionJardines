@@ -110,12 +110,12 @@
       ).join('')).join('');
       // Abreviar meses solo en la escala visual; tooltip y accesibilidad retienen mes y año.
       const labels = clean.map((row, i) => {
-        const mes = compact ? row.label.replace(/\\s+\\d{4}$/, '') : row.label;
+        const mes = compact ? row.label.replace(/\s+\d{4}$/, '') : row.label;
         return `<text x="${x(i)}" y="${height - (compact ? 23 : 14)}" text-anchor="middle" fill="#68758b" font-size="${compact ? 11 : 10}">${escapeHtml(mes)}</text>`;
       }).join('');
       const years = compact ? clean.map((row, i) => {
-        const year = row.label.match(/\\d{4}$/)?.[0];
-        const previous = i ? clean[i - 1].label.match(/\\d{4}$/)?.[0] : null;
+        const year = row.label.match(/\d{4}$/)?.[0];
+        const previous = i ? clean[i - 1].label.match(/\d{4}$/)?.[0] : null;
         return year && year !== previous
           ? `<text x="${x(i)}" y="${height - 6}" text-anchor="middle" fill="#9aa4b4" font-size="9">${escapeHtml(year)}</text>`
           : '';
