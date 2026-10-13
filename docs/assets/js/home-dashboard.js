@@ -56,42 +56,199 @@
     return Number.isNaN(date.getTime()) ? escapeHtml(value) : dateTime.format(date);
   }
 
-  function chartSvg(series) {
-    const clean = (Array.isArray(series) ? series : []).map(item => ({
-      label: String(item.etiqueta || ''),
-      ingresos: Number(item.ingresos ?? item.total) || 0,
-      egresos: Number(item.egresos) || 0,
-      disponible: Number(item.disponible) || 0
-    }));
-    if (!clean.length) return '<div class="hl-chart-empty">Sin periodos disponibles desde enero de 2026.</div>';
+  function chartSvg(series, activeFilter = 'todas') {
+      const clean = (Array.isArray(series) ? series : []).map(item => ({
+        label: String(item.etiqueta || ''),
+        ingresos: Number(item.ingresos ?? item.total) || 0,
+        egresos: Number(item.egresos) || 0,
+        disponible: Number(item.disponible) || 0
+      }));
+      if (!clean.length) return '<div class="hl-chart-empty">Sin periodos disponibles desde enero de 2026.</div>';
+  
+      const tracks = [
+        { key: 'ingresos', name: 'Ingresos', color: '#f97316' },
+        { key: 'egresos', name: 'Egresos', color: '#a78bfa' },
+        { key: 'disponible', name: 'Disponible al cierre', color: '#16a085' }
+      ];
+      const enabled = tracks.filter(track => activeFilter === 'todas' || activeFilter === track.key);
+      const width = 850, height = 300, left = 76, right = 24, top = 24, bottom = 50;
+      const plotWidth = width - left - right, plotHeight = height - top - bottom;
+      const values = clean.flatMap(row => enabled.map(track => row[track.key]));
+      const min = Math.min(0, ...values), max = Math.max(0, ...values);
+      const margin = Math.max(1, (max - min) * 0.1);
+      const low = min < 0 ? min - margin : 0, high = max + margin;
+      const span = Math.max(1, high - low);
+      const x = index => left + (clean.length === 1 ? plotWidth / 2 : index * plotWidth / (clean.length - 1));
+      const y = amount => top + (high - amount) / span * plotHeight;
+      const grid = Array.from({ length: 5 }, (_, index) => {
+        const amount = low + (span * index / 4), cy = y(amount);
+        return `<line x1="${left}" y1="${cy}" x2="${width - right}" y2="${cy}" stroke="#e8ebef"/><text x="${left - 10}" y="${cy + 4}" text-anchor="end" fill="#7d8798" font-size="11">${escapeHtml(compactMoney(amount))}</text>`;
+      }).join('');
+      const fills = enabled.map(track => {
+        const points = clean.map((row, i) => `${x(i).toFixed(1)},${y(row[track.key]).toFixed(1)}`).join(' ');
+        const fillPoints = `${x(0)},${y(0)} ${points} ${x(clean.length - 1)},${y(0)}`;
+        return `<polygon points="${fillPoints}" fill="url(#hl-finance-${track.key})" stroke="none" pointer-events="none"/>`;
+      }).join('');
+      const lines = enabled.map(track => {
+        const points = clean.map((row, i) => `${x(i).toFixed(1)},${y(row[track.key]).toFixed(1)}`).join(' ');
+        return `<polyline points="${points}" fill="none" stroke="${track.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
+      }).join('');
+      // All hit areas are rendered LAST: no chart fill or crossing line can intercept them.
+      const dots = enabled.map(track => clean.map((row, i) =>
+        `<circle class="hl-chart-dot" cx="${x(i)}" cy="${y(row[track.key])}" r="4.5" fill="#fff" stroke="${track.color}" stroke-width="2.5" pointer-events="none"/>`
+      ).join('')).join('');
+      const hits = enabled.map(track => clean.map((row, i) =>
+        `<circle class="hl-chart-hit" data-index="${i}" data-series="${track.key}" cx="${x(i)}" cy="${y(row[track.key])}" r="13" fill="transparent" stroke="none" role="button" tabindex="0" aria-label="${escapeHtml(row.label)} · ${track.name}: ${money.format(row[track.key])}. Ver detalle financiero" aria-pressed="false"/>`
+      ).join('')).join('');
+      const labels = clean.map((row, i) => `<text x="${x(i)}" y="${height - 14}" text-anchor="middle" fill="#7d8798" font-size="10">${escapeHtml(row.label)}</text>`).join('');
+      const buttons = [
+        { key: 'todas', name: 'Todas', color: '#8794a7' },
+        ...tracks
+      ].map(track =>
+        `<button class="hl-finance-filter${activeFilter === track.key ? ' active' : ''}" type="button" data-hl-finance-filter="${track.key}" aria-pressed="${activeFilter === track.key}" style="--series-color:${track.color}">${escapeHtml(track.name)}</button>`
+      ).join('');
+      return `<div class="hl-finance-filters" role="group" aria-label="Filtrar series de la gráfica">${buttons}</div><div class="hl-finance-plot"><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="group" aria-label="Ingresos, egresos y disponible al cierre, por mes. Pasa el cursor o selecciona un punto para consultar su importe."><defs>${enabled.map(track => `<linearGradient id="hl-finance-${track.key}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${track.color}" stop-opacity=".20"/><stop offset="1" stop-color="${track.color}" stop-opacity=".025"/></linearGradient>`).join('')}</defs>${grid}${fills}${lines}${dots}${hits}${labels}</svg><div class="hl-finance-tooltip" role="status" aria-live="polite" hidden></div></div>`;
+  }
 
-    const tracks = [
-      { key: 'ingresos', name: 'Total de recursos', color: '#f97316' },
-      { key: 'egresos', name: 'Egresos', color: '#a78bfa' },
-      { key: 'disponible', name: 'Disponible al cierre', color: '#16a085' }
-    ];
-    const width = 850, height = 300, left = 76, right = 24, top = 24, bottom = 50;
-    const plotWidth = width - left - right, plotHeight = height - top - bottom;
-    const values = clean.flatMap(row => tracks.map(track => row[track.key]));
-    const min = Math.min(0, ...values), max = Math.max(0, ...values);
-    const margin = Math.max(1, (max - min) * 0.1);
-    const low = min < 0 ? min - margin : 0, high = max + margin;
-    const span = Math.max(1, high - low);
-    const x = index => left + (clean.length === 1 ? plotWidth / 2 : index * plotWidth / (clean.length - 1));
-    const y = amount => top + (high - amount) / span * plotHeight;
-    const grid = Array.from({ length: 5 }, (_, index) => {
-      const amount = low + (span * index / 4), cy = y(amount);
-      return `<line x1="${left}" y1="${cy}" x2="${width-right}" y2="${cy}" stroke="#e8ebef"/><text x="${left-10}" y="${cy+4}" text-anchor="end" fill="#7d8798" font-size="11">${escapeHtml(compactMoney(amount))}</text>`;
-    }).join('');
-    const lines = tracks.map(track => {
-      const points = clean.map((row, i) => `${x(i).toFixed(1)},${y(row[track.key]).toFixed(1)}`).join(' ');
-      const dots = clean.map((row, i) => `<circle cx="${x(i)}" cy="${y(row[track.key])}" r="4" fill="#fff" stroke="${track.color}" stroke-width="2.5"><title>${escapeHtml(row.label)} · ${escapeHtml(track.name)}: ${escapeHtml(money.format(row[track.key]))}</title></circle>`).join('');
-      const fillPoints = `${x(0)},${y(0)} ${points} ${x(clean.length - 1)},${y(0)}`;
-      return `<polygon points="${fillPoints}" fill="url(#hl-finance-${track.key})" stroke="none"/><polyline points="${points}" fill="none" stroke="${track.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
-    }).join('');
-    const labels = clean.map((row, i) => `<text x="${x(i)}" y="${height-14}" text-anchor="middle" fill="#7d8798" font-size="10">${escapeHtml(row.label)}</text>`).join('');
-    const legend = tracks.map(track => `<span style="display:inline-flex;align-items:center;gap:7px"><i aria-hidden="true" style="display:inline-block;width:20px;border-top:3px solid ${track.color}"></i>${escapeHtml(track.name)}</span>`).join('');
-    return `<div class="hl-finance-legend" style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#526174;margin:8px 0 12px">${legend}</div><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Total de recursos, egresos y saldo disponible mensual desde enero de 2026"><defs>${tracks.map(track => `<linearGradient id="hl-finance-${track.key}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${track.color}" stop-opacity=".20"/><stop offset="1" stop-color="${track.color}" stop-opacity=".025"/></linearGradient>`).join('')}</defs>${grid}${lines}${labels}</svg>`;
+  function financeSummary(series, selectedIndex) {
+      const item = (Array.isArray(series) ? series : [])[selectedIndex];
+      if (!item) return '<p class="hl-finance-no-data">Sin datos financieros disponibles.</p>';
+      const cuotas = Number(item.cuotas) || 0;
+      const adicionales = Number(item.ingresosAdicionales) || 0;
+      const inicial = Number(item.saldoInicial) || 0;
+      const ingresos = Number(item.ingresos ?? item.total) || 0;
+      const egresos = Number(item.egresos) || 0;
+      const disponible = Number(item.disponible) || 0;
+      const variacion = ingresos - egresos;
+      const anterior = disponible - variacion;
+      return `<div class="hl-finance-detail" aria-live="polite">
+        <div class="hl-detail-period">${escapeHtml(item.etiqueta || '')}<span>Detalle del período</span></div>
+        <div class="hl-detail-amounts">
+          <div class="hl-detail-pill ingreso"><small>Ingresos</small><strong>${money.format(ingresos)}</strong></div>
+          <div class="hl-detail-pill egreso"><small>Egresos</small><strong>${money.format(egresos)}</strong></div>
+        </div>
+        <div class="hl-detail-breakdown">
+          <div><span>Cuotas de mantenimiento</span><b>${money.format(cuotas)}</b></div>
+          <div><span>Otros ingresos</span><b>${money.format(adicionales)}</b></div>
+          ${inicial ? `<div><span>Saldo inicial registrado</span><b>${money.format(inicial)}</b></div>` : ''}
+          <div class="hl-detail-separator"><span>Ingresos − egresos del mes</span><b class="${variacion < 0 ? 'hl-negative' : 'hl-positive'}">${money.format(variacion)}</b></div>
+          <div><span>Disponible anterior</span><b>${money.format(anterior)}</b></div>
+        </div>
+        <div class="hl-detail-closing"><small>Disponible al cierre</small><strong class="${disponible < 0 ? 'hl-negative' : 'hl-positive'}">${money.format(disponible)}</strong></div>
+        <p>Selecciona otro punto de la gráfica para cambiar de mes. Los importes provienen del dashboard conectado a MySQL.</p>
+      </div>`;
+  }
+
+  function setupFinancePanel(data) {
+      const chartWrap = document.querySelector('.hl-chart-wrap');
+      const card = document.querySelector('.hl-events');
+      if (!chartWrap || !card || !data.fuentes?.cuotas) return;
+      const series = Array.isArray(data.recaudacion?.serie) ? data.recaudacion.serie : [];
+      let filter = 'todas';
+      let selectedIndex = Math.max(0, series.length - 1);
+      let selectedKey = 'ingresos';
+      const front = card.querySelector('.hl-finance-face');
+      const back = card.querySelector('.hl-agenda-face');
+      const details = card.querySelector('#hlFinanceDetails');
+      if (details) details.innerHTML = financeSummary(series, selectedIndex);
+  
+      function showFace(agenda) {
+        const scene = card.querySelector('.hl-card-flipper');
+        scene?.classList.toggle('is-flipped', agenda);
+        front?.setAttribute('aria-hidden', String(agenda));
+        back?.setAttribute('aria-hidden', String(!agenda));
+        if (front) front.inert = agenda;
+        if (back) back.inert = !agenda;
+      }
+      showFace(false);
+      card.addEventListener('click', event => {
+        const toggle = event.target.closest('[data-hl-show-face]');
+        if (toggle) showFace(toggle.dataset.hlShowFace === 'agenda');
+      });
+  
+      function showTooltip(hit) {
+        const plot = chartWrap.querySelector('.hl-finance-plot');
+        const tooltip = plot?.querySelector('.hl-finance-tooltip');
+        if (!hit || !plot || !tooltip) return;
+        const index = Number(hit.dataset.index);
+        const row = series[index];
+        const key = hit.dataset.series;
+        const labels = { ingresos: 'Ingresos', egresos: 'Egresos', disponible: 'Disponible al cierre' };
+        if (!row || !Object.hasOwn(labels, key)) return;
+        tooltip.innerHTML = `<b>${escapeHtml(row.etiqueta || '')} · ${labels[key]}</b><strong>${money.format(Number(row[key] ?? row.total) || 0)}</strong><small>Haz clic para ver el desglose</small>`;
+        tooltip.hidden = false;
+        const dot = hit.getBoundingClientRect();
+        const bounds = plot.getBoundingClientRect();
+        const left = Math.max(6, Math.min(bounds.width - tooltip.offsetWidth - 6, dot.left + dot.width / 2 - bounds.left - tooltip.offsetWidth / 2));
+        const top = Math.max(4, dot.top - bounds.top - tooltip.offsetHeight - 12);
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+      }
+  
+      function hideTooltip() {
+        const tooltip = chartWrap.querySelector('.hl-finance-tooltip');
+        if (tooltip) tooltip.hidden = true;
+      }
+  
+      function closestPoint(event) {
+        const plot = event.target.closest('.hl-finance-plot');
+        if (!plot) return null;
+        let closest = null, minimum = 21 * 21;
+        plot.querySelectorAll('.hl-chart-hit').forEach(hit => {
+          const box = hit.getBoundingClientRect();
+          const dx = box.left + box.width / 2 - event.clientX;
+          const dy = box.top + box.height / 2 - event.clientY;
+          const distance = dx * dx + dy * dy;
+          if (distance < minimum) { minimum = distance; closest = hit; }
+        });
+        return closest;
+      }
+  
+      function selectPoint(hit) {
+        const index = Number(hit?.dataset.index);
+        if (!Number.isInteger(index) || !series[index]) return;
+        selectedIndex = index;
+        selectedKey = hit.dataset.series;
+        if (details) details.innerHTML = financeSummary(series, selectedIndex);
+        chartWrap.querySelectorAll('.hl-chart-hit').forEach(point => {
+          const pressed = Number(point.dataset.index) === selectedIndex && point.dataset.series === selectedKey;
+          point.setAttribute('aria-pressed', String(pressed));
+          point.classList.toggle('is-selected', pressed);
+        });
+        showFace(false);
+      }
+  
+      chartWrap.addEventListener('click', event => {
+        const button = event.target.closest('[data-hl-finance-filter]');
+        if (button) {
+          filter = button.dataset.hlFinanceFilter;
+          chartWrap.innerHTML = chartSvg(series, filter);
+          hideTooltip();
+          return;
+        }
+        const hit = event.target.closest('.hl-chart-hit') || closestPoint(event);
+        if (hit) selectPoint(hit);
+      });
+      chartWrap.addEventListener('pointermove', event => {
+        const hit = closestPoint(event);
+        if (hit) showTooltip(hit);
+        else hideTooltip();
+      });
+      chartWrap.addEventListener('pointerleave', hideTooltip);
+      chartWrap.addEventListener('focusin', event => {
+        const hit = event.target.closest('.hl-chart-hit');
+        if (hit) showTooltip(hit);
+      });
+      chartWrap.addEventListener('focusout', event => {
+        if (event.target.closest('.hl-chart-hit')) hideTooltip();
+      });
+      chartWrap.addEventListener('keydown', event => {
+        const hit = event.target.closest('.hl-chart-hit');
+        if (hit && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          selectPoint(hit);
+        }
+      });
   }
 
   function compactMoney(value) {
@@ -367,17 +524,26 @@
       <section class="hl-main-grid">
         <article class="hl-card hl-collection">
           <div class="hl-card-head"><div><span class="hl-eyebrow">FINANZAS</span><h2>Ingresos, egresos y disponible</h2></div><span class="hl-period">Desde enero de 2026</span></div>
-          <div class="hl-money-row"><div><small>Total recaudado · ${escapeHtml(data.periodo?.actual?.etiqueta || 'periodo actual')}</small><strong>${fuentes.cuotas ? money.format(data.recaudacion?.totalMes || 0) : '—'}</strong></div>${fuentes.cuotas ? deltaLabel(data.recaudacion?.variacionPorcentaje) : ''}</div>
+          <div class="hl-money-row"><div><small>Cuotas recaudadas · ${escapeHtml(data.periodo?.actual?.etiqueta || 'periodo actual')}</small><strong>${fuentes.cuotas ? money.format(data.recaudacion?.totalMes || 0) : '—'}</strong></div>${fuentes.cuotas ? deltaLabel(data.recaudacion?.variacionPorcentaje) : ''}</div>
           <div class="hl-chart-wrap">${fuentes.cuotas ? chartSvg(data.recaudacion?.serie || []) : '<div class="hl-chart-empty"><strong>Cuotas no disponible</strong><span>No fue posible consultar la tabla.</span></div>'}</div>
-          <div class="hl-data-note">${sourceBadge('cuotas.monto_pagado', fuentes.cuotas)}<span>Ingresos de cuotas por periodo, egresos registrados y saldo acumulado desde enero de 2026; no incluye saldos iniciales ni ingresos sin recibo.</span></div>
+          <div class="hl-data-note">${sourceBadge('cuotas.monto_pagado', fuentes.cuotas)}<span>Ingresos (cuotas, ingresos adicionales y saldo inicial registrado), egresos y disponible acumulado desde enero de 2026.</span></div>
         </article>
 
-        <article class="hl-card hl-events">
-          <div class="hl-card-head"><div><span class="hl-eyebrow">AGENDA</span><h2>Próximos eventos</h2></div><a href="calendario.html">Ver calendario</a></div>
-          <div class="hl-event-list">
-            ${renderEvents(data.eventos, fuentes.eventos)}
+        <article class="hl-card hl-events" aria-label="Resumen financiero y agenda">
+          <div class="hl-finance-flip-scene">
+            <div class="hl-card-flipper">
+              <section class="hl-flip-face hl-finance-face" aria-label="Resumen financiero">
+                <div class="hl-card-head"><div><span class="hl-eyebrow">FINANZAS</span><h2>Resumen del mes</h2></div><button type="button" class="hl-face-switch" data-hl-show-face="agenda" aria-label="Girar tarjeta para ver próximos eventos">Ver agenda ↻</button></div>
+                <div id="hlFinanceDetails" class="hl-finance-details">${fuentes.cuotas ? financeSummary(data.recaudacion?.serie || [], Math.max(0, (data.recaudacion?.serie || []).length - 1)) : '<p class="hl-finance-no-data">Información financiera no disponible.</p>'}</div>
+                <div class="hl-data-note"><span class="hl-source ok">● Resumen mensual</span><span>Datos de cuotas y finanzas de MySQL.</span></div>
+              </section>
+              <section class="hl-flip-face hl-agenda-face" aria-label="Próximos eventos" aria-hidden="true" inert>
+                <div class="hl-card-head"><div><span class="hl-eyebrow">AGENDA</span><h2>Próximos eventos</h2></div><div class="hl-agenda-actions"><a href="calendario.html">Ver calendario</a><button type="button" class="hl-face-switch" data-hl-show-face="finanzas" aria-label="Girar tarjeta para ver el resumen financiero">Ver resumen ↻</button></div></div>
+                <div class="hl-event-list">${renderEvents(data.eventos, fuentes.eventos)}</div>
+                <div class="hl-data-note">${sourceBadge('eventos', fuentes.eventos)}<span>${fuentes.eventos ? `${integer.format(data.eventosProximos7Dias || 0)} en los próximos 7 días` : 'Sin conexión con la tabla'}</span></div>
+              </section>
+            </div>
           </div>
-          <div class="hl-data-note">${sourceBadge('eventos', fuentes.eventos)}<span>${fuentes.eventos ? `${integer.format(data.eventosProximos7Dias || 0)} en los próximos 7 días` : 'Sin conexión con la tabla'}</span></div>
         </article>
       </section>
 
@@ -460,6 +626,7 @@
       if (footer) footer.textContent = 'Información operativa de seguridad';
     }
     document.getElementById('hlRefresh')?.addEventListener('click', load);
+    setupFinancePanel(data);
     initEnvironmentCard();
   }
 
@@ -556,6 +723,10 @@
       .hl-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:16px}.hl-kpi{min-width:0;padding:17px;display:grid;grid-template-columns:46px minmax(0,1fr);gap:13px}.hl-kpi-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:13px;font-size:18px;font-weight:900}.hl-kpi-icon.green{color:#087a47;background:#ecf9f2}.hl-kpi-icon.orange{color:#c86509;background:#fff4e8}.hl-kpi-icon.red{color:#b42318;background:#fff0ef}.hl-kpi-icon.blue{color:#2b67ba;background:#edf4ff}.hl-kpi>div:nth-child(2)>span{display:block;color:#77839a;font-size:10px;font-weight:700}.hl-kpi strong{display:block;margin:4px 0 3px;font-size:27px;letter-spacing:-.035em}.hl-kpi small{display:block;color:#7f8a9d;font-size:9px;line-height:1.45}.hl-kpi-foot{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid #edf0f4;flex-wrap:wrap}
       .hl-source{display:inline-flex;align-items:center;gap:5px;padding:5px 7px;border-radius:999px;font-size:7.5px;font-weight:850}.hl-source.ok{color:#14763f;background:#eef9f3}.hl-source.off{color:#b42318;background:#fff1f0}.hl-delta{font-size:8.5px;font-weight:850}.hl-delta.up{color:#087a47}.hl-delta.down{color:#b42318}.hl-delta.neutral{color:#8691a3}
       .hl-main-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:16px;margin-bottom:16px}.hl-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:17px 18px;border-bottom:1px solid #edf0f4}.hl-card-head h2{margin:4px 0 0;font-size:15px}.hl-card-head p{margin:5px 0 0;color:#8390a4;font-size:9px}.hl-card-head>a{color:#d76500;font-size:9px;font-weight:850;text-decoration:none}.hl-period{padding:6px 8px;border-radius:8px;color:#69758d;background:#f6f7f9;font-size:8px;font-weight:800}.hl-money-row{display:flex;align-items:end;justify-content:space-between;gap:14px;padding:18px 20px 4px}.hl-money-row small{display:block;color:#7f8b9f;font-size:9px}.hl-money-row strong{display:block;margin-top:4px;font-size:24px;letter-spacing:-.035em}.hl-chart-wrap{padding:4px 14px 0}.hl-chart{width:100%;height:250px;display:block}.hl-chart-empty{height:250px;display:grid;place-content:center;gap:5px;color:#69758d;text-align:center}.hl-chart-empty strong{color:#354054;font-size:13px}.hl-chart-empty span{font-size:9px}.hl-data-note{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 17px;border-top:1px solid #edf0f4;color:#8a94a6;background:#fbfcfd;font-size:8px}.hl-data-note>a{margin-left:auto;color:#d76500;font-weight:850;text-decoration:none}
+
+      .hl-finance-filters{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 12px}.hl-finance-filter{--series-color:#8794a7;display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid #e4e9f0;border-radius:9px;background:#fff;color:#68778d;font-size:10px;font-weight:750;cursor:pointer;transition:.18s}.hl-finance-filter:before{content:"";width:12px;border-top:3px solid var(--series-color)}.hl-finance-filter:hover,.hl-finance-filter.active{border-color:#d5dfe9;background:#f7f9fc;color:#263d56}.hl-finance-filter.active{box-shadow:inset 0 0 0 1px #e5eaf1}.hl-finance-plot{position:relative;min-width:0}.hl-chart-hit{cursor:pointer;pointer-events:all}.hl-chart-hit:focus-visible{stroke:#2d4262;stroke-width:2;outline:none}.hl-finance-tooltip{position:absolute;z-index:5;width:max-content;max-width:185px;padding:8px 11px;border:1px solid #e1e6ed;border-radius:11px;color:#344054;background:rgba(255,255,255,.98);box-shadow:0 8px 23px rgba(36,48,73,.12);pointer-events:none;text-align:left}.hl-finance-tooltip b,.hl-finance-tooltip strong,.hl-finance-tooltip small{display:block}.hl-finance-tooltip b{font-size:9px;color:#67758b}.hl-finance-tooltip strong{font-size:15px;margin:3px 0}.hl-finance-tooltip small{font-size:8px;color:#98a2b3}
+      .hl-events{display:flex;flex-direction:column;min-width:0;overflow:hidden}.hl-finance-flip-scene{position:relative;flex:1;min-height:450px;perspective:1400px;overflow:hidden}.hl-card-flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .65s cubic-bezier(.2,.7,.2,1)}.hl-card-flipper.is-flipped{transform:rotateY(180deg)}.hl-flip-face{position:absolute;inset:0;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:#fff;backface-visibility:hidden;-webkit-backface-visibility:hidden}.hl-agenda-face{transform:rotateY(180deg)}.hl-flip-face .hl-data-note{margin-top:auto}.hl-face-switch{flex-shrink:0;padding:6px 9px;border:1px solid #f2d8c6;border-radius:8px;background:#fff8f2;color:#bc640d;font-size:9px;font-weight:800;white-space:nowrap;cursor:pointer}.hl-face-switch:hover{background:#ffefe0}.hl-agenda-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.hl-agenda-actions a{font-size:9px;font-weight:850;color:#d76500}.hl-finance-details{flex:1;min-height:0;overflow:auto;padding:13px 16px}.hl-detail-period{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#344054;font-weight:850;font-size:13px}.hl-detail-period span{color:#919aa9;font-size:9px;font-weight:650}.hl-detail-amounts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}.hl-detail-pill{min-width:0;border:1px solid #e6edf0;border-radius:11px;padding:11px 9px;background:#f7fbfc}.hl-detail-pill.ingreso{background:#fff8f2;border-color:#f8e7d8}.hl-detail-pill.egreso{background:#f9f5ff;border-color:#ece4fa}.hl-detail-pill small{display:block;color:#66758b;font-size:9px}.hl-detail-pill strong{display:block;overflow-wrap:anywhere;margin-top:5px;font-size:clamp(12px,1vw,17px);color:#344054}.hl-detail-breakdown{display:grid;gap:9px;padding:10px 2px}.hl-detail-breakdown>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:9px;color:#708098}.hl-detail-breakdown b{font-size:10px;color:#3b485d;text-align:right;white-space:nowrap}.hl-detail-breakdown .hl-detail-separator{padding-top:10px;border-top:1px solid #edf0f5;font-weight:800}.hl-detail-closing{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding:12px 10px;border-radius:11px;background:#edf8f4}.hl-detail-closing small{font-size:9px;color:#3e7163;font-weight:800}.hl-detail-closing strong{font-size:clamp(14px,1.1vw,20px)}.hl-detail-breakdown .hl-positive,.hl-detail-closing .hl-positive{color:#0f916b}.hl-detail-breakdown .hl-negative,.hl-detail-closing .hl-negative{color:#bc463d}.hl-finance-detail p,.hl-finance-no-data{margin:10px 2px 0;color:#929baa;font-size:8px;line-height:1.5}.hl-agenda-face .hl-event-list{flex:1;min-height:0;overflow:auto}.hl-agenda-face .hl-empty{min-height:190px}
+      @media(prefers-reduced-motion:reduce){.hl-card-flipper{transition:none}}@media(max-width:720px){.hl-finance-plot{min-width:600px}.hl-finance-flip-scene{min-height:425px}.hl-detail-pill strong{font-size:15px}}
       .hl-event-list{padding:5px 14px 9px}.hl-event{display:grid;grid-template-columns:45px minmax(0,1fr);gap:11px;align-items:center;padding:11px 3px;border-bottom:1px solid #eef1f4;text-decoration:none}.hl-event:last-child{border-bottom:0}.hl-event-date{height:45px;display:grid;place-content:center;border:1px solid #f2dac2;border-radius:10px;color:#bf5f08;background:#fff7ef;text-align:center}.hl-event-date b{font-size:16px;line-height:1}.hl-event-date span{margin-top:3px;font-size:7px;font-weight:850;text-transform:uppercase}.hl-event>div:last-child strong{display:block;color:#344054;font-size:10px}.hl-event>div:last-child span{display:block;margin-top:4px;color:#8590a2;font-size:8px}.hl-empty{min-height:150px;display:grid;place-items:center;padding:18px;color:#8a94a6;font-size:9px;text-align:center}
       .hl-bottom-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,.7fr);gap:16px}.hl-map-frame{height:360px;background:#f4f6f8}.hl-map-frame iframe{width:100%;height:100%;border:0;display:block}.hl-map-link{padding:7px 9px;border:1px solid #e9d4bd;border-radius:9px;background:#fff8f1}.hl-environment-head{align-items:center}.hl-environment-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.hl-environment-tabs{display:inline-flex;gap:3px;padding:3px;border:1px solid #e1e6ed;border-radius:10px;background:#f7f8fa}.hl-environment-tabs button{min-height:30px;padding:6px 9px;border:0;border-radius:7px;color:#6c778b;background:transparent;font-size:8px;font-weight:850;cursor:pointer}.hl-environment-tabs button.active{color:#a9580c;background:#fff;box-shadow:0 3px 9px rgba(31,42,62,.08)}.hl-environment-scene{height:360px;perspective:1300px;overflow:hidden;background:#f6f8fa}.hl-environment-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .68s cubic-bezier(.2,.7,.2,1)}.hl-environment-flipper.is-flipped{transform:rotateY(180deg)}.hl-environment-face{position:absolute;inset:0;backface-visibility:hidden;background:#fff}.hl-traffic-face{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr)}.hl-news-face{transform:rotateY(180deg);padding:15px;background:radial-gradient(circle at 93% 0,#f5edff 0,transparent 30%),linear-gradient(180deg,#fff,#fbfcff)}.hl-live-map-wrap{position:relative;min-width:0;background:#eef2f5}.hl-live-map{position:absolute;inset:0}.hl-live-map iframe{width:100%;height:100%;border:0;display:block}.hl-traffic-status{position:absolute;left:12px;bottom:12px;z-index:3;max-width:265px;padding:8px 10px;border:1px solid rgba(221,228,235,.95);border-radius:10px;background:rgba(255,255,255,.94);box-shadow:0 6px 16px rgba(34,45,62,.10);backdrop-filter:blur(8px)}.hl-traffic-status b,.hl-traffic-status span{display:block}.hl-traffic-status b{color:#217149;font-size:8px}.hl-traffic-status span{margin-top:2px;color:#778399;font-size:7px;line-height:1.35}.hl-incidents{min-width:0;border-left:1px solid #e7ebf0;background:#fff}.hl-incidents-head{padding:12px;border-bottom:1px solid #edf0f4}.hl-incidents-head strong{display:block;color:#344054;font-size:10px}.hl-incidents-head span{display:block;margin-top:3px;color:#8b95a7;font-size:7.5px;line-height:1.4}.hl-incident-list{height:302px;padding:8px;overflow:auto;display:grid;gap:6px;align-content:start}.hl-incident-item{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;padding:8px;border:1px solid #e7ebf0;border-radius:10px;background:#fbfcfd}.hl-incident-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;color:#b45d0c;background:#fff1e4;font-size:11px;font-weight:900}.hl-incident-item strong{display:block;color:#344054;font-size:8.5px;line-height:1.3}.hl-incident-item p{margin:3px 0 0;color:#8490a2;font-size:7px;line-height:1.35}.hl-incident-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.hl-incident-meta span{padding:3px 5px;border-radius:999px;color:#677388;background:#eef2f6;font-size:6.5px;font-weight:800}.hl-live-empty{min-height:90px;display:grid;place-items:center;padding:14px;color:#8792a4;text-align:center;font-size:8px;line-height:1.45}.hl-news-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:11px;border-bottom:1px solid #e8ecf1}.hl-news-head strong{display:block;margin-top:4px;color:#2f3b50;font-size:13px}.hl-news-head small{display:block;margin-top:3px;color:#8490a2;font-size:8px}.hl-news-live{padding:6px 8px;border-radius:999px;color:#7a4c98;background:#f5eefb;font-size:7px;font-weight:900}.hl-news-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:11px;max-height:285px;overflow:auto}.hl-news-item{min-width:0;min-height:105px;display:flex;flex-direction:column;padding:10px;border:1px solid #e5e9ef;border-radius:11px;background:rgba(255,255,255,.94);text-decoration:none;box-shadow:0 5px 13px rgba(40,50,70,.04);transition:.17s ease}.hl-news-item:hover{border-color:#dfc9eb;transform:translateY(-1px);box-shadow:0 8px 16px rgba(40,50,70,.07)}.hl-news-item small{color:#9362b0;font-size:6.5px;font-weight:900;text-transform:uppercase}.hl-news-item strong{display:-webkit-box;margin-top:5px;overflow:hidden;color:#344054;font-size:8.5px;line-height:1.35;-webkit-line-clamp:3;-webkit-box-orient:vertical}.hl-news-item span{margin-top:auto;padding-top:7px;color:#8792a4;font-size:6.5px}.hl-activity-list{padding:7px 16px}.hl-activity-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eef1f4}.hl-activity-row:last-child{border-bottom:0}.hl-activity-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;font-size:12px;font-weight:900}.hl-activity-icon.pago{color:#087a47;background:#ecf9f2}.hl-activity-icon.visita{color:#c86509;background:#fff4e8}.hl-activity-icon.acceso{color:#b42318;background:#fff0ef}.hl-activity-icon.residente{color:#2b67ba;background:#edf4ff}.hl-activity-row strong{display:block;color:#344054;font-size:9.5px}.hl-activity-row div span{display:block;margin-top:3px;color:#8792a4;font-size:8px}.hl-activity-row time{color:#8a94a6;font-size:7.5px;white-space:nowrap}.hl-footer{display:flex;justify-content:space-between;gap:18px;padding:20px 2px 0;color:#9099a8;font-size:8px}.hl-loading,.hl-error{min-height:560px;display:grid;place-content:center;justify-items:center;gap:8px;text-align:center}.hl-loading span{width:34px;height:34px;border:3px solid #f2d3b6;border-top-color:#ef7d0b;border-radius:50%;animation:hlspin .75s linear infinite}.hl-loading strong,.hl-error strong{font-size:14px}.hl-loading small,.hl-error p{margin:0;color:#7d899d;font-size:9px}.hl-error button{margin-top:4px;padding:9px 13px;border:0;border-radius:9px;color:#fff;background:#ef7d0b;cursor:pointer;font-size:9px;font-weight:850}@keyframes hlspin{to{transform:rotate(360deg)}}
       @media(max-width:1180px){.hl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.hl-main-grid,.hl-bottom-grid{grid-template-columns:1fr}.hl-traffic-face{grid-template-columns:minmax(0,1.4fr) minmax(240px,.7fr)}}
