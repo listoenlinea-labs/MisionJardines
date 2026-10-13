@@ -155,6 +155,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-13
 
+- Fecha anterior al pago preparada en PR de seguimiento: se muestran las fechas
+  físicas guardadas en fecha_antes por TAG y movimiento de ese comprobante; no se
+  sustituye por la vigencia actual. Sin lectura se indica No registrada; abonos sin
+  avance/extraordinarios indican No aplica. Lectura tomada antes de escribir C3,
+  después de validar financieramente. No se crea una captura retroactiva.
+- Validación de fecha anterior: 9 pruebas de historial aprobadas, sintaxis y diff
+  sin errores. Suite pagos/C3: 37 aprobadas y los dos fallos anteriores de edición
+  manual/asociación. Producción no consultada; requiere frontend y backend.
+
 - Corrección del historial solicitada después de integrar PR #160: periodos
   inclusivos 11–10 (fin exclusivo día 11); selector por hora de México. Meses
   aplicados destacados junto al monto, con entregas parciales/pendientes separadas

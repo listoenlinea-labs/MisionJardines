@@ -116,3 +116,45 @@ test('meses aplicados destacan la cantidad completa y quedan junto al monto', as
   const absent = await ui('SUPER_ADMIN', [{ ...base, movimientos: [] }]);
   assert.match(absent.get('historyRows').innerHTML, /history-month-count">—<\/strong>/);
 });
+
+test('API conserva fecha anterior del intento de este pago, sin sustituirla por la fecha actual del TAG', async () => {
+  const handler = crearHistorialController({
+    PagoReportado: { findAndCountAll: async () => ({ count: 2, rows: [{ id: 1, casaId: 10 }, { id: 2, casaId: 10 }] }) },
+    PagoAccesoC3: { findAll: async () => [{ id: 91, origenId: 1, meses: 1, estado: 'COMPLETADO' }, { id: 92, origenId: 2, meses: 1, estado: 'PENDIENTE' }] },
+    PagoAccesoTagC3: { findAll: async options => {
+      assert.ok(options.attributes.includes('fechaAntes'));
+      return [
+        { pagoAccesoId: 91, numeroTarjeta: 'TEST-1', fechaAntes: '2026-09-10', fechaDespues: '2026-10-10', estado: 'COMPLETADO' },
+        { pagoAccesoId: 91, numeroTarjeta: 'TEST-2', fechaAntes: '2026-08-10', fechaDespues: '2026-09-10', estado: 'COMPLETADO' },
+        { pagoAccesoId: 92, numeroTarjeta: 'TEST-1', fechaAntes: null, fechaDespues: null, estado: 'PENDIENTE' }
+      ];
+    } },
+    ZkTarjeta: { findAll: async () => [{ casaId: 10, numeroTarjeta: 'TEST-1', fechaFin: '2026-12-10' }] }
+  });
+  const res = response(); await handler({ usuario: { rol: 'ADMINISTRADOR' }, query: { periodo: '2026-10' } }, res);
+  assert.equal(res.body.data[0].movimientos[0].tags[0].fechaAntes, '2026-09-10');
+  assert.equal(res.body.data[0].movimientos[0].tags[1].fechaAntes, '2026-08-10');
+  assert.equal(res.body.data[1].movimientos[0].tags[0].fechaAntes, null);
+  assert.equal(res.body.data[0].tags[0].fechaFin, '2026-12-10');
+});
+
+test('interfaz muestra fechas anteriores por TAG; fechas faltantes, abonos y extraordinarios quedan explícitos', async () => {
+  const base = { tipoPago: 'MANTENIMIENTO', tags: [{ numeroTarjeta: 'TEST-1', fechaFin: '2026-12-10' }],
+    movimientos: [{ meses: 1, estado: 'PENDIENTE', tagsTotal: 2, tagsAplicados: 0, tags: [
+      { numeroTarjeta: 'TEST-1', fechaAntes: '2026-09-10' }, { numeroTarjeta: 'TEST-2', fechaAntes: null }
+    ] }] };
+  const result = await ui('ADMINISTRADOR', [base]);
+  const html = result.get('historyRows').innerHTML;
+  const historical = html.split('data-label="Fecha anterior al pago">')[1].split('</td>')[0];
+  assert.match(historical, /TEST-1: <b>2026-09-10/);
+  assert.match(historical, /TEST-2: <b>No registrada/);
+  assert.doesNotMatch(historical, /2026-12-10/);
+  for (const [payment, expected] of [
+    [{ ...base, movimientos: [] }, /No registrada para este pago/],
+    [{ ...base, movimientos: [{ meses: 0 }] }, /No aplica: abono sin avance/],
+    [{ ...base, tipoPago: 'EXTRAORDINARIO' }, /No aplica: extraordinario/]
+  ]) {
+    const check = await ui('ADMINISTRADOR', [payment]);
+    assert.match(check.get('historyRows').innerHTML, expected);
+  }
+});
