@@ -1274,6 +1274,7 @@
     const CAMERA_LABELS = ['Jardines 1','Portón 1','Magnolias','Rosas','Portón 2','Cancha','Jardines 2','Gardenias','Lirios','Peatonal 1','Peatonal 2'];
     let CAMERA_CONFIG = CAMERA_LABELS.map((name,index)=>({id:'dahua-'+(index+1),name,playbackPath:null}));
     const cameraPlayers=new Map();
+    let cameraRenewTimer=null;
     // CONTACTO DE ADMINISTRACIÓN: cambia únicamente estos datos.
     const ADMIN_CONTACT = { name: 'Administración Misión Jardines', schedule: 'Disponible · 9:00 a 18:00', whatsapp: '', email: 'administracion@misionjardines.com' };
 
@@ -1285,6 +1286,8 @@
     function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' } function closeModal(el) { el.closest('.modal-shell').hidden = true; document.body.style.overflow = '' }
     function parseControls(raw) { try { const data = typeof raw === 'string' ? JSON.parse(raw) : raw || {}; return { pluma: data.pluma !== false, porton1: data.porton1 !== false, porton2: data.porton2 !== false, porton3: data.porton3 !== false } } catch { return { pluma: true, porton1: true, porton2: true, porton3: true } } }
     function stopCameraPlayers() {
+      if(cameraRenewTimer)clearTimeout(cameraRenewTimer);
+      cameraRenewTimer=null;
       for(const player of cameraPlayers.values()) try {player.destroy()} catch(_){}
       cameraPlayers.clear();
       document.querySelectorAll('#cameraGrid video').forEach(video=>{
@@ -1350,6 +1353,14 @@
         }));
       }else{
         $('cameraStatus').textContent='Este navegador requiere soporte HLS para mostrar video.';
+      }
+      // Renovar el enlace antes de que venza su firma (15 min), sin mantener
+      // tickets permanentes ni credenciales de cámaras en el navegador.
+      if(video.src || cameraPlayers.has(id)) {
+        cameraRenewTimer=setTimeout(async()=>{
+          await loadCameraConfig();
+          if(CAMERA_CONFIG.some(item=>item.id===id&&item.playbackPath))watchCamera(id);
+        },12*60*1000);
       }
     }
     async function loadCameraConfig() {
