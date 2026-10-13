@@ -96,7 +96,7 @@
         const amount = low + (span * index / (tickCount - 1)), cy = y(amount);
         const line = `<line x1="${left}" y1="${cy}" x2="${width - right}" y2="${cy}" stroke="${compact ? '#e9eef5' : '#e8ebef'}" stroke-dasharray="${compact ? '3 4' : 'none'}" pointer-events="none"/>`;
         if (compact) return line;
-        return line + `<text x="${left - 10}" y="${cy + 4}" text-anchor="end" fill="#64748b" font-weight="400" font-size="11">${escapeHtml(compactMoney(amount).replace(/^\\$-/, '-$'))}</text>`;
+        return line + `<text x="${left - 10}" y="${cy + 4}" text-anchor="end" fill="#64748b" font-weight="400" font-size="11">${escapeHtml(compactMoney(amount).replace(/^\$-/, '-$'))}</text>`;
       }).join('');
       const fills = enabled.filter(() => !compact || activeFilter !== 'todas').map(track => {
         const points = clean.map((row, i) => `${x(i).toFixed(1)},${y(row[track.key]).toFixed(1)}`).join(' ');
@@ -122,9 +122,9 @@
       const overlay = compact ? `<div class="hl-chart-mobile-overlay">
         ${Array.from({ length: tickCount }, (_, index) => {
           const amount = low + (span * index / (tickCount - 1));
-          return `<span class="hl-chart-axis-y" style="top:${(y(amount) / height * 100).toFixed(4)}%">${escapeHtml(compactMoney(amount).replace(/^\\$-/, '-$'))}</span>`;
+          return `<span class="hl-chart-axis-y" style="top:${(y(amount) / height * 100).toFixed(4)}%">${escapeHtml(compactMoney(amount).replace(/^\$-/, '-$'))}</span>`;
         }).join('')}
-        ${clean.map((row, i) => `<span class="hl-chart-axis-x" style="left:${(x(i) / width * 100).toFixed(4)}%;top:${((height - 14) / height * 100).toFixed(4)}%">${escapeHtml(row.label.replace(/\\s+\\d{4}$/, ''))}</span>`).join('')}
+        ${clean.map((row, i) => `<span class="hl-chart-axis-x" style="left:${(x(i) / width * 100).toFixed(4)}%;top:${((height - 14) / height * 100).toFixed(4)}%">${escapeHtml(row.label.replace(/\s+\d{4}$/, ''))}</span>`).join('')}
         ${enabled.map(track => clean.map((row, i) =>
           `<button type="button" class="hl-chart-hit hl-chart-mobile-point" data-index="${i}" data-series="${track.key}" style="left:${(x(i) / width * 100).toFixed(4)}%;top:${(y(row[track.key]) / height * 100).toFixed(4)}%;--point-color:${track.color}" aria-label="${escapeHtml(row.label)} · ${track.name}: ${money.format(row[track.key])}. Ver detalle financiero" aria-pressed="false"></button>`
         ).join('')).join('')}
