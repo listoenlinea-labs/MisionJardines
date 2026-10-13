@@ -142,7 +142,7 @@
   function setupFinancePanel(data) {
       const chartWrap = document.querySelector('.hl-chart-wrap');
       const card = document.querySelector('.hl-events');
-      if (!chartWrap || !card || !data.fuentes?.cuotas) return;
+      if (!chartWrap || !card) return;
       const series = Array.isArray(data.recaudacion?.serie) ? data.recaudacion.serie : [];
       let filter = 'todas';
       let selectedIndex = Math.max(0, series.length - 1);
@@ -223,6 +223,11 @@
         if (button) {
           filter = button.dataset.hlFinanceFilter;
           chartWrap.innerHTML = chartSvg(series, filter);
+          chartWrap.querySelectorAll('.hl-chart-hit').forEach(point => {
+            const pressed = Number(point.dataset.index) === selectedIndex && point.dataset.series === selectedKey;
+            point.setAttribute('aria-pressed', String(pressed));
+            point.classList.toggle('is-selected', pressed);
+          });
           hideTooltip();
           return;
         }
