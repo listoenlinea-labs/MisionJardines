@@ -57,7 +57,7 @@ test('CSS móvil elimina scroll horizontal y redibuja al girar el teléfono', ()
   assert.doesNotMatch(source, /\.hl-chart\{min-width:600px\}/);
   assert.doesNotMatch(source, /\.hl-finance-plot\{min-width:600px\}/);
   assert.match(source, /\.hl-chart-wrap\{overflow-x:hidden/);
-  assert.match(source, /\.hl-chart\{width:100%;min-width:0;max-width:100%;height:322px\}/);
+  assert.match(source, /\.hl-chart\{width:100%;min-width:0;max-width:100%;height:auto\}/);
   assert.match(source, /mobileMedia\.addEventListener\('change', redrawChart\)/);
   assert.match(source, /removeFinanceMediaListener\(\)/);
   assert.doesNotThrow(() => new Function(source));
@@ -78,7 +78,7 @@ test('El tamaño visual se adapta al ancho disponible sin empequeñecer los ejes
   assert.match(source, /resizeObserver\?\.observe\(chartWrap\)/);
   assert.match(source, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(source, /hl-chart-mobile-heading/);
-  assert.match(source, /height:322px!important/);
+  assert.match(source, /height:auto!important/);
 });
 
 
@@ -105,4 +105,35 @@ test('Los puntos en teléfonos tienen una zona táctil más grande y muestran la
   assert.match(source, /touchLayout \? 29 : 21/);
   assert.match(source, /showTooltip\(hit\)/);
   assert.match(source, /\.hl-chart-hit\.is-selected/);
+});
+
+test('El SVG móvil escala su altura proporcional al ancho, sin centrar un gráfico pequeño', () => {
+  assert.match(source, /\.hl-chart\{width:100%;height:auto!important;max-width:100%;display:block\}/);
+  assert.match(source, /\.hl-chart-wrap\{overflow-x:hidden/);
+  assert.doesNotMatch(source, /height:322px!important/);
+  assert.match(source, /window\.requestAnimationFrame\(\(\) =>/);
+  for (const width of [230, 275, 310, 355]) {
+    const html = renderChart(true, 'todas', width);
+    assert.ok(html.includes('viewBox="0 0 ' + width + ' 322"'));
+    assert.equal((html.match(/class="hl-chart-hit"/g) || []).length, 30);
+  }
+});
+
+test('El selector táctil permite consultar cualquier mes sin acertar a un punto pequeño', () => {
+  const context = {
+    window: { matchMedia: () => ({ matches: true }) },
+    money: new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }),
+    escapeHtml: value => String(value ?? ''),
+    compactMoney: value => '$' + Math.round(Number(value) / 1000) + 'k'
+  };
+  vm.runInNewContext(extract + '\nthis.chartSvg = chartSvg;', context);
+  const html = context.chartSvg(series, 'todas', 310, 9);
+  assert.match(html, /<select id="hlFinanceMonth" data-hl-finance-month/);
+  assert.match(html, /<option value="9" selected>Oct 2026<\/option>/);
+  assert.equal((html.match(/<option value=/g) || []).length, 10);
+  assert.match(source, /chartWrap\.addEventListener\('change'/);
+  assert.match(source, /details\.innerHTML = financeSummary\(series, selectedIndex\)/);
+  assert.match(source, /monthSelector\.value = String\(index\)/);
+  assert.match(source, /\.hl-mobile-month-control\{display:flex/);
+  assert.match(source, /\.hl-chart-mobile-heading,\.hl-mobile-chart-hint,\.hl-mobile-month-control\{display:none\}/);
 });
