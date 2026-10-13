@@ -4,7 +4,7 @@ function periodoActual(now = new Date()) {
     const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit'
     }).formatToParts(now).map(p => [p.type, p.value]));
-    const date = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1 - (Number(parts.day) < 10 ? 1 : 0), 10));
+    const date = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1 - (Number(parts.day) < 11 ? 1 : 0), 11));
     return date.toISOString().slice(0, 7);
 }
 
@@ -13,7 +13,7 @@ function rangoPeriodo(value) {
         throw Object.assign(new Error('Selecciona un periodo válido (AAAA-MM).'), { status: 400 });
     }
     const [year, month] = value.split('-').map(Number);
-    return { periodo: value, desde: value + '-10', hastaExclusiva: new Date(Date.UTC(year, month, 10)).toISOString().slice(0, 10) };
+    return { periodo: value, desde: value + '-11', hastaExclusiva: new Date(Date.UTC(year, month, 11)).toISOString().slice(0, 10) };
 }
 
 function crearHistorialController({ PagoReportado, PagoAccesoC3, PagoAccesoTagC3, ZkTarjeta }) {

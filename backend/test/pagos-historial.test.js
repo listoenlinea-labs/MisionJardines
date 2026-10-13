@@ -7,12 +7,13 @@ const { Op } = require('sequelize');
 const { crearHistorialController, rangoPeriodo, periodoActual } = require('../src/controllers/pagos-historial.controller');
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } });
 
-test('periodos sin solapamiento: incluye el día 10 inicial y excluye el siguiente, también en diciembre', () => {
-  assert.deepEqual(rangoPeriodo('2026-10'), { periodo: '2026-10', desde: '2026-10-10', hastaExclusiva: '2026-11-10' });
-  assert.equal(rangoPeriodo('2026-12').hastaExclusiva, '2027-01-10');
+test('periodos sin solapamiento: incluye el día 11 inicial y excluye el siguiente, también en diciembre', () => {
+  assert.deepEqual(rangoPeriodo('2026-10'), { periodo: '2026-10', desde: '2026-10-11', hastaExclusiva: '2026-11-11' });
+  assert.equal(rangoPeriodo('2026-12').hastaExclusiva, '2027-01-11');
   for (const value of ['2026-00', '2026-13', '2026-1', 'x', '2026-10 OR 1=1']) assert.throws(() => rangoPeriodo(value), { status: 400 });
-  assert.equal(periodoActual(new Date('2026-10-10T05:59:59Z')), '2026-09');
-  assert.equal(periodoActual(new Date('2026-10-10T06:00:00Z')), '2026-10');
+  assert.equal(periodoActual(new Date('2026-10-11T05:59:59Z')), '2026-09');
+  assert.equal(periodoActual(new Date('2026-10-11T06:00:00Z')), '2026-10');
+  assert.equal(periodoActual(new Date('2026-10-10T18:00:00Z')), '2026-09');
   assert.equal(periodoActual(new Date('2026-01-05T18:00:00Z')), '2025-12');
 });
 
@@ -35,8 +36,8 @@ test('filtra por depósito, pagina, conserva abonos y estatus y consulta TAGs en
   const handler = crearHistorialController({
     PagoReportado: { findAndCountAll: async options => {
       calls++;
-      assert.equal(options.where.fechaOperacion[Op.gte], '2026-10-10');
-      assert.equal(options.where.fechaOperacion[Op.lt], '2026-11-10');
+      assert.equal(options.where.fechaOperacion[Op.gte], '2026-10-11');
+      assert.equal(options.where.fechaOperacion[Op.lt], '2026-11-11');
       assert.equal(options.where.estatus, undefined);
       assert.equal(options.offset, 50); assert.equal(options.limit, 50);
       assert.ok(!options.attributes.includes('comprobanteData')); assert.ok(!options.attributes.includes('textoOcr'));
@@ -45,7 +46,7 @@ test('filtra por depósito, pagina, conserva abonos y estatus y consulta TAGs en
     PagoAccesoC3: { findAll: async options => { calls++; assert.equal(options.where.origen, 'PAGO'); return [{ id: 9, origenId: 1, meses: 0, estado: 'COMPLETADO' }]; } },
     PagoAccesoTagC3: { findAll: async () => { calls++; return []; } },
     ZkTarjeta: { findAll: async options => { calls++; assert.deepEqual(options.where.casaId[Op.in], [10, 11]); return [
-      { casaId: 10, numeroTarjeta: 'TEST-1', fechaFin: '2026-10-10', ultimaLectura: '2026-10-13T12:00:00Z' },
+      { casaId: 10, numeroTarjeta: 'TEST-1', fechaFin: '2026-10-11', ultimaLectura: '2026-10-13T12:00:00Z' },
       { casaId: 10, numeroTarjeta: 'TEST-2', fechaFin: '2026-11-10' }
     ]; } }
   });
@@ -76,7 +77,7 @@ async function ui(role, data = []) {
   let requests = 0;
   const storage = { getItem: key => key.includes('Usuario') ? JSON.stringify({ rol: role }) : 'synthetic-token' };
   const context = { document: { getElementById: get, addEventListener() {} }, localStorage: storage, sessionStorage: storage,
-    fetch: async () => { requests++; return { ok: true, json: async () => ({ ok: true, desde: '2026-10-10', hastaExclusiva: '2026-11-10', pagina: 1, limite: 50, total: data.length, data }) }; } };
+    fetch: async () => { requests++; return { ok: true, json: async () => ({ ok: true, desde: '2026-10-11', hastaExclusiva: '2026-11-11', pagina: 1, limite: 50, total: data.length, data }) }; } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../docs/assets/js/pagos-historial.js'), 'utf8'), context);
   await new Promise(resolve => setImmediate(resolve));
   return { get, requests };
@@ -98,5 +99,20 @@ test('tabla muestra abonos, lectura TAG y entregas parciales; escapa datos del r
   const html = result.get('historyRows').innerHTML;
   assert.match(html, /Abono sin avance/); assert.match(html, /Aplicados a 1\/2 TAGs/);
   assert.match(html, /2026-11-10/); assert.match(html, /&lt;script&gt;/); assert.doesNotMatch(html, /<script>/);
-  assert.match(result.get('historyRange').textContent, /2026-11-09/);
+  assert.match(result.get('historyRange').textContent, /2026-11-10/);
+});
+
+test('meses aplicados destacan la cantidad completa y quedan junto al monto', async () => {
+  const base = { monto: 600, tipoPago: 'MANTENIMIENTO', tags: [], movimientos: [
+    { meses: 2, estado: 'COMPLETADO', tagsTotal: 2, tagsAplicados: 2 },
+    { meses: 1, estado: 'PENDIENTE', tagsTotal: 2, tagsAplicados: 0 }
+  ] };
+  const result = await ui('ADMINISTRADOR', [base]);
+  const html = result.get('historyRows').innerHTML;
+  assert.match(html, /history-month-count">2<\/strong>/);
+  assert.match(html, /1 · Sin entrega confirmada/);
+  assert.ok(html.indexOf('data-label="Meses aplicados"') > html.indexOf('data-label="Monto"'));
+  assert.ok(html.indexOf('data-label="Meses aplicados"') < html.indexOf('data-label="Reportado por'));
+  const absent = await ui('SUPER_ADMIN', [{ ...base, movimientos: [] }]);
+  assert.match(absent.get('historyRows').innerHTML, /history-month-count">—<\/strong>/);
 });

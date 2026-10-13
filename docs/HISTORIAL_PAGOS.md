@@ -6,8 +6,8 @@ autenticación. No se aplica el filtro de vivienda del usuario: es un historial 
 todos los comprobantes reportados del fraccionamiento.
 
 - Selector `periodo=AAAA-MM`, por fecha bancaria (`fechaOperacion`). El periodo
-  octubre 2026 incluye 10/oct y termina 9/nov; 10/nov pertenece al siguiente.
-  El periodo inicial usa la fecha de America/Mexico_City y cambia el día 10.
+  octubre 2026 incluye 11/oct y termina 10/nov; 11/nov pertenece al siguiente.
+  El periodo inicial usa la fecha de America/Mexico_City y cambia el día 11.
 - Se muestran todos los estados (validado, pendiente, rechazado), mantenimiento y
   extraordinarios, con recargos y abonos aunque no liquiden la vivienda.
   Un registro pendiente o rechazado no confirma recepción bancaria.
@@ -36,3 +36,9 @@ Validación: `node --test test/pagos-historial.test.js` desde backend. Pruebas c
 modelos y DOM simulados: límites de fechas, permisos, paginación, abonos, fechas
 por TAG, entregas parciales y escape de texto. Validación visual en navegador y
 cotejo con MySQL real pendientes.
+
+La columna **Meses aplicados** aparece junto al monto con el total de meses cuya
+entrega a todos los TAGs está confirmada. Cero indica abono sin avance o entrega
+todavía pendiente; sin diario se muestra —, no un número inferido. Se detalla aparte
+la entrega parcial a TAGs. En móvil los registros se presentan en dos columnas,
+con monto y meses visibles sin desplazamiento horizontal.
