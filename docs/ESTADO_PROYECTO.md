@@ -147,6 +147,19 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-12
 
+- Pagos: se admiten abonos parciales positivos que cubran recargos pendientes. El caso
+  $300 depositados después del corte aplica $50 al recargo y conserva $250 netos;
+  tras validar, un complemento de $50 en Mantenimiento completa un mes sin repetir
+  el recargo del corte. Se mantiene la revisión administrativa y el bloqueo de otro
+  reporte mientras el anterior esté pendiente. Otro corte vencido puede agregar recargo.
+- Formulario: acepta el abono, muestra saldo estimado/faltante y explica cómo subir
+  el complemento con su propio folio. Sin meses completos no se prepara una escritura
+  C3. No requiere cambios de esquema para este flujo. Despliegue y prueba real pendientes.
+- Validación local de abonos: 41 pruebas aprobadas en pagos-pruebas, pagos-acceso-c3,
+  recargos-mantenimiento y recargos-ui. La suite ampliada conserva los dos fallos ya
+  documentados de edición manual/asociación en zkteco-vigencias. SQL/TCP simulados;
+  no se consultaron ni modificaron C3, MySQL o Hostinger de producción.
+
 - Navegación del rol SEGURIDAD: únicamente el grupo Seguridad, con Conmutador,
   Seguridad, Visitas, Mapa y Reportes. Mapa y Reportes se trasladan a ese grupo para
   todos los roles. El login de guardia entra directamente en seguridad.html.

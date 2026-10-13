@@ -36,11 +36,24 @@ test('recargos cubiertos no se repiten cuando el primer pago deja la fecha venci
 test('importe neto, remanentes y saldo a favor usan centavos; sin redondear meses hacia arriba',()=>{
  const x=quote('2026-10-12','1500','2026-10-10');assert.equal(x.recargo,50);assert.equal(x.meses,4);assert.equal(x.saldoParcial,250);
  const y=quote('2026-10-12','50','2027-02-10',{saldoParcial:250});assert.equal(y.meses,1);assert.equal(y.saldoParcial,0);
- assert.throws(()=>quote('2026-10-12','50','2026-10-10'));
+ const feeOnly=quote('2026-10-12','50','2026-10-10');
+ assert.equal(feeOnly.meses,0);assert.equal(feeOnly.principal,0);assert.equal(feeOnly.faltante,300);
+ assert.throws(()=>quote('2026-10-12','49.99','2026-10-10'));
+ assert.throws(()=>quote('2026-10-12','0','2026-11-10'));
  assert.throws(()=>quote('2026-10-12','300.001','2026-11-10'));
  assert.throws(()=>quote('2026-10-12','11100','2026-11-10'));
  assert.throws(()=>quote('2026-02-30','300','2026-11-10'));
  assert.throws(()=>quote('2026-10-12','300',null));
+});
+test('300 después del corte conserva 250 netos; el complemento de 50 completa un mes sin otro recargo',()=>{
+ const first=quote('2026-10-11','300','2026-10-10');
+ assert.equal(first.meses,0);assert.equal(first.recargo,50);assert.equal(first.saldoParcial,250);
+ assert.equal(first.abonoParcial,true);assert.equal(first.faltante,50);
+ const second=quote('2026-10-12','50','2026-10-10',{saldoParcial:first.saldoParcial,cortesPagados:first.cortesRecargo});
+ assert.equal(second.recargo,0);assert.equal(second.meses,1);assert.equal(second.saldoParcial,0);
+ assert.equal(second.abonoParcial,false);assert.equal(second.faltante,0);
+ const delayed=quote('2026-11-11','100','2026-10-10',{saldoParcial:first.saldoParcial,cortesPagados:first.cortesRecargo});
+ assert.equal(delayed.recargo,50);assert.equal(delayed.meses,1);
 });
 function setup(t) {
  let dates=['2026-11-10'], pendingProof=null,pendingEvent=null,saldo=0;

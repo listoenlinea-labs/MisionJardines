@@ -26,12 +26,15 @@ function cotizar(fechaOperacion, monto, { hoy = fechaMexico(), fechaFinal, corte
   const cortes = cortesVencidos(fechaFinal, fecha).filter(c => !pagados.has(c));
   const recargo = cortes.length * RECARGO, amount = centavos(monto), saldo = centavos(saldoParcial);
   const principal = amount - recargo * 100;
-  if (principal <= 0 || principal + saldo < BASE * 100)
-    throw Object.assign(new Error('El importe debe cubrir los recargos pendientes de $' + recargo.toFixed(2) + ' y al menos una mensualidad neta, considerando tu saldo a favor'), { status: 400 });
+  // A confirmed partial deposit retains its principal without buying a month.
+  // Recargos must be covered in full so their per-cutoff ledger stays unambiguous.
+  if (amount <= 0 || principal < 0)
+    throw Object.assign(new Error('El importe debe ser mayor que cero y cubrir los recargos pendientes de $' + recargo.toFixed(2)), { status: 400 });
   const meses = Math.floor((principal + saldo) / (BASE * 100));
   if (meses > MAX_MESES) throw Object.assign(new Error('Registra como máximo 36 mensualidades por movimiento'), { status: 400 });
   return { base: BASE, recargo, total: amount / 100, principal: principal / 100, meses,
     cortesRecargo: cortes, fechaFinalC3: fechaFinal, saldoParcial: ((principal + saldo) % (BASE * 100)) / 100,
-    tardio: cortes.length > 0 };
+    faltante: Math.max(0, BASE * 100 - principal - saldo) / 100,
+    abonoParcial: meses === 0, tardio: cortes.length > 0 };
 }
 module.exports = { INICIO, BASE, RECARGO, MAX_MESES, validarOperacion, cortesVencidos, cotizar };

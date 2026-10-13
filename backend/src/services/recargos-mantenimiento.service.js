@@ -29,7 +29,8 @@ async function contexto(casaId, fechaOperacion, transaction) {
   const saldoParcial = Number(ultimo?.saldoDespues || 0) / 100;
   return { fechaFinal, cortesPagados, saldoParcial, cortesRecargo: cortes,
     recargo: cortes.length * pricing.RECARGO, fechaFinalC3: fechaFinal,
-    minimo: Math.max(0.01, pricing.BASE - saldoParcial) + cortes.length * pricing.RECARGO };
+    minimoReporte: Math.max(0.01, cortes.length * pricing.RECARGO),
+    minimo: Math.max(0, pricing.BASE - saldoParcial) + cortes.length * pricing.RECARGO };
 }
 async function cotizar(casaId,fecha,monto,transaction) {
   return pricing.cotizar(fecha,monto,await contexto(casaId,fecha,transaction));

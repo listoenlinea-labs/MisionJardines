@@ -372,7 +372,7 @@ async function reportarPago(req, res) {
             cortesRecargo = rule.cortesRecargo;
             requerido = rule.total;
             recargo = rule.recargo;
-            concepto = 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ' +
+            concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
                 '(desde octubre de 2026, pendientes primero). ' +
                 (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
         }

@@ -188,12 +188,12 @@
       try {
         const result = await api('/pagos/cotizacion?fechaOperacion=' + encodeURIComponent(date), { headers: headers() });
         if (revision !== quoteRevision || paymentType !== 'MANTENIMIENTO') return;
-        quote = { ...result.data, fechaOperacion: date };
+        quote = { ...result.data, minimoReporte: result.data.minimoReporte ?? result.data.minimo, fechaOperacion: date };
         $('summaryLate').textContent = money(quote.recargo);
         $('lateRow').classList.toggle('late', quote.recargo > 0);
         $('summaryTotal').textContent = money(quote.minimo);
         $('ruleAmount').textContent = money(quote.minimo);
-        $('amount').min = String(quote.minimo);
+        $('amount').min = String(quote.minimoReporte);
         updatePreview();
       } catch (e) {
         if (revision !== quoteRevision) return;
@@ -352,8 +352,8 @@
       const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       if(!date || date<'2026-10-01' || date>today)return toast('Selecciona una fecha real desde octubre 2026, no futura.');
       if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a seleccionar la fecha.');
-      if (Math.round(amount * 100) < Math.round(quote.minimo * 100))
-        return toast('Para cubrir los recargos y una mensualidad necesitas al menos ' + money(quote.minimo) + '.');
+      if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
+        return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
     } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
     document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
@@ -415,13 +415,16 @@
       if (!quote) { $('paymentPreview').textContent = 'Selecciona la fecha del depósito para consultar los recargos de la vivienda.'; return; }
       const net = amount - Math.round(quote.recargo * 100);
       const available = net + Math.round(quote.saldoParcial * 100);
-      if (net <= 0 || available < 30000) {
-        $('paymentPreview').textContent = 'Recargos pendientes: ' + money(quote.recargo) + '. Importe mínimo con saldo a favor: ' + money(quote.minimo) + '.'; return;
+      if (amount <= 0 || net < 0) {
+        $('paymentPreview').textContent = 'Recargos pendientes: ' + money(quote.recargo) + '. Para completar una mensualidad, considerando tu saldo validado, deposita ' + money(quote.minimo) + '.'; return;
+      }
+      if (available < 30000) {
+        $('paymentPreview').textContent = 'Abono parcial: ' + money(quote.recargo) + ' de recargos y ' + money(net / 100) + ' para mantenimiento. Al validarlo tendrás ' + money(available / 100) + ' acumulados; faltarán ' + money((30000 - available) / 100) + ' para completar una mensualidad. La vigencia no avanza todavía. Cuando se valide este comprobante, reporta el complemento en Mantenimiento con su propio folio bancario.'; return;
       }
       const months = Math.floor(available / 30000), balance = (available % 30000) / 100;
       $('paymentPreview').textContent = 'Estimación: ' + months + ' mensualidad(es), ' + money(quote.recargo) +
         ' de recargos por cortes vencidos y ' + money(balance) + ' de saldo a favor. Fecha consultada en C3: ' + quote.fechaFinalC3 +
-        '. El backend volverá a comprobar el estado antes de registrar el pago.';
+        '. La vigencia se actualizará después de la validación bancaria.';
     }
 
     let pendingItems = [];

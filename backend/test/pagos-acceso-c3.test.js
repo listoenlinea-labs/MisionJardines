@@ -145,6 +145,46 @@ test('1500 minus 50 buys four months and retains 250 for the next payment withou
     const c=setup(t);c.addTag();const a=await c.pay('1500','50');assert.equal(a.meses,4);assert.equal(a.saldoParcial,'250.00');
     const b=await c.pay('50','0','bank2');assert.equal(b.meses,1);assert.equal(b.saldoParcial,'0.00');
 });
+test('300 más 50: aprobación de ambos comprobantes completa un solo mes y un solo recargo',async t=>{
+    const c=setup(t);c.addTag('123','2026-10-10');
+    const recargos=require('../src/services/recargos-mantenimiento.service');
+    const Recargos=require('../src/models/RecargoMantenimiento');
+    const controller=require('../src/controllers/pagos.controller');
+    const cuts=[];
+    t.mock.method(Recargos,'findAll',async()=>cuts);
+    t.mock.method(Recargos,'findOne',async o=>cuts.find(r=>r.casaId===o.where.casaId&&r.corte===o.where.corte));
+    t.mock.method(Recargos,'create',async v=>{cuts.push(v);return v;});
+    t.mock.method(models.PagoReportado,'findOne',async()=>c.pagos.find(p=>p.estatus==='PENDIENTE_VALIDACION')||null);
+    t.mock.method(models.PagoReportado,'findByPk',async id=>c.pagos.find(p=>String(p.id)===String(id)));
+    const firstQuote=await recargos.cotizar(7,'2026-10-11','300',c.tx);
+    const first=c.row({id:1,casaId:7,tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION',monto:'300',
+        recargo:firstQuote.recargo,cortesRecargo:firstQuote.cortesRecargo,fechaOperacion:'2026-10-11',folioOperacion:'deposito-300'});
+    c.pagos.push(first);
+    await service.actualizar(7,2,c.tx,{origen:'PAGO',registro:first});
+    assert.equal(c.events.length,0);assert.equal(c.writes.length,0);
+    await assert.rejects(()=>recargos.contexto(7,'2026-10-12',c.tx),/comprobante.*pendiente/);
+    async function approve(id) {
+        const res={code:200,status(v){this.code=v;return this;},json(v){this.body=v;return this;}};
+        await controller.revisarPago({params:{id},usuario:{usuarioId:2},body:{estatus:'VALIDADO'},headers:{},protocol:'https',get:()=> 'test'},res);
+        assert.equal(res.code,200,res.body.message);return res.body.data;
+    }
+    const a=await approve(1);assert.equal(a.vigencia.meses,0);assert.equal(a.vigencia.saldoParcial,'250.00');
+    await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.equal(c.writes.length,0);assert.equal(c.hooks.length,0);
+    assert.equal(c.physical.get('123').fechaFinal,'2026-10-10');
+    const context=await recargos.contexto(7,'2026-10-12',c.tx);
+    assert.equal(context.minimo,50);assert.equal(context.recargo,0);
+    const secondQuote=await recargos.cotizar(7,'2026-10-12','50',c.tx);
+    const second=c.row({id:2,casaId:7,tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION',monto:'50',
+        recargo:secondQuote.recargo,cortesRecargo:secondQuote.cortesRecargo,fechaOperacion:'2026-10-12',folioOperacion:'deposito-50'});
+    c.pagos.push(second);
+    const b=await approve(2);assert.equal(b.vigencia.meses,1);assert.equal(b.vigencia.saldoParcial,'0.00');
+    await worker.sincronizarCasa(7,{now,dryRun:false});
+    await approve(1);await approve(2);await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.equal(c.events.length,2);assert.equal(cuts.length,1);
+    assert.equal(c.events[0].recargoOrigen,50);assert.equal(c.events[1].recargoOrigen,0);
+    assert.deepEqual(c.writes,[{card:'123',end:'2026-11-10'}]);
+});
 test('partial principal, extraordinary charges, unapproved proof and no TAGs cannot claim physical access',async t=>{
     const c=setup(t);const p={id:1,casaId:7,monto:'300',recargo:0,estatus:'PENDIENTE_VALIDACION',tipoPago:'MANTENIMIENTO'};
     await service.actualizar(7,2,c.tx,{origen:'PAGO',registro:p});assert.equal(c.events.length,0);

@@ -3,6 +3,8 @@ const assert=require('node:assert/strict');
 Object.assign(process.env,{DB_HOST:'localhost',DB_PORT:'3306',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'unused',JWT_SECRET:'test-secret'});
 require('../src/services/folios.service').generarSiguienteFolio=async()=> 'MJ-2026-TEST';
 require('../src/services/pago-reportado-pdf.service').generarReciboPagoReportado=async()=>({buffer:Buffer.from('pdf'),fileName:'test.pdf',mimeType:'application/pdf'});
+// Controller unit tests: server OCR has its own synthetic-image integration suite.
+require('../src/services/comprobante-lector.service').comprobarDestino=async()=>({texto:'Destino sintético válido'});
 const controller=require('../src/controllers/pagos.controller');
 const models=require('../src/models');
 const db=require('../src/config/database');
@@ -52,8 +54,22 @@ test('un adelanto después del día 10 no lleva recargo',()=>{
  const one=pricing.cotizar('2026-11-11','300.00',{hoy:'2026-11-11',fechaFinal:'2026-12-10'});
  assert.equal(one.recargo,0);assert.equal(one.meses,1);
 });
-test('el backend rechaza menos de la tarifa sin registrar el comprobante',async t=>{
+test('el backend registra un abono menor a la tarifa como pendiente sin avanzar acceso',async t=>{
  const x=setup(t,{date:'2026-10-08',amount:'299.99'});
+ await controller.reportarPago(x.req,x.res);
+ assert.equal(x.res.code,201);assert.deepEqual(x.events,['create','commit']);
+ assert.equal(x.payment.estatus,'PENDIENTE_VALIDACION');assert.match(x.payment.concepto,/Abono parcial/);
+});
+test('el reporte de 300 después del corte registra 50 de recargo y conserva el faltante',async t=>{
+ const x=setup(t,{date:'2026-10-11',amount:'300.00'});
+ await controller.reportarPago(x.req,x.res);
+ assert.equal(x.res.code,201);assert.equal(x.payment.recargo,50);
+ assert.deepEqual(x.payment.cortesRecargo,['2026-10-10']);
+ assert.match(x.payment.concepto,/Faltan \$50.00/);
+ assert.equal(x.payment.estatus,'PENDIENTE_VALIDACION');
+});
+test('un depósito menor al recargo pendiente sigue rechazado y revierte la transacción',async t=>{
+ const x=setup(t,{date:'2026-10-11',amount:'49.99'});
  await controller.reportarPago(x.req,x.res);
  assert.equal(x.res.code,400);assert.deepEqual(x.events,['rollback']);
 });

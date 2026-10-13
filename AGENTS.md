@@ -42,9 +42,11 @@ acuerdo difieren, señalar la discrepancia; no restaurar silenciosamente un fluj
    excluyendo cortes ya cubiertos. No cobrar por el mero hecho de depositar después
    del día 10 si la vivienda ya está cubierta. Los meses adelantados no llevan recargo.
    Una fecha histórica física de día 11 usa el corte de cobro del día 10 de ese mes.
-7. El reporte debe cubrir los recargos y al menos una mensualidad neta, considerando
-   el saldo previo. No exige múltiplos de $300 o $350, pero tampoco acepta cualquier
-   importe positivo como abono aislado. El límite actual es 36 meses por movimiento;
+7. El reporte admite abonos parciales de mantenimiento, siempre que el importe sea
+   positivo y cubra todos los recargos pendientes. El principal validado se acumula
+   con el saldo previo; solo meses completos avanzan la vigencia. Si falta dinero,
+   registrar el complemento en Mantenimiento con un nuevo folio, después de validar
+   el comprobante anterior. Los recargos cubiertos no se repiten. El límite actual es 36 meses por movimiento;
    la fecha bancaria debe ser válida, no futura y desde el 1 de octubre de 2026.
 8. Cuotas extraordinarias no conceden meses de mantenimiento ni actualizan TAGs.
 9. Recargos históricos sin cortes identificados requieren conciliación administrativa;
@@ -58,7 +60,8 @@ Ejemplos que deben conservarse:
 | Después, pago $300 el 12/oct con fecha C3 10/nov | 10/dic, sin recargo |
 | Fecha C3 10/ene; pago el 8/mar de $700 | Dos cortes vencidos: $100; principal $600; fecha 10/mar |
 | Pago $725 sin recargos ni saldo previo | Dos meses y $125 de remanente |
-| Pago $300 con $50 de recargo y sin saldo previo | Rechazo del reporte; no se registra un abono |
+| Pago $300 con $50 de recargo y sin saldo previo | Abono: $50 de recargo y $250 de principal; no avanza la fecha |
+| Complemento $50 tras validar ese abono, sin nuevo corte vencido | Completa $300 netos; avanza un mes, sin repetir el recargo |
 | Fecha C3 11/sep; $600 netos confirmados | 10/nov |
 
 ## Confirmación bancaria y OCR
