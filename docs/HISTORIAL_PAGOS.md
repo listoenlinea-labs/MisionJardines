@@ -42,3 +42,11 @@ entrega a todos los TAGs está confirmada. Cero indica abono sin avance o entreg
 todavía pendiente; sin diario se muestra —, no un número inferido. Se detalla aparte
 la entrega parcial a TAGs. En móvil los registros se presentan en dos columnas,
 con monto y meses visibles sin desplazamiento horizontal.
+
+La columna **Fecha anterior al pago** consulta `fechaAntes` de los intentos en
+`pagos_acceso_tags_c3` asociados exclusivamente al diario de ese comprobante.
+Muestra cada TAG individualmente y conserva fechas diferentes. Es una lectura
+física tomada al preparar la entrega, después de validar el pago y antes de
+escribir su nueva fecha; no es una captura del instante previo a la validación.
+Sin lectura se indica No registrada; abonos sin avance y extraordinarios muestran
+No aplica. Nunca se usa la fecha actual del TAG para rellenar este dato histórico.

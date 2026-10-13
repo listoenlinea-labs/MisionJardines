@@ -33,14 +33,22 @@
     }).join('<br>');
     return '<strong class="history-month-count">' + total + '</strong><small>Meses completos aplicados</small><small>' + detail + '</small>';
   }
+  function previousDate(payment) {
+    if (payment.tipoPago === 'EXTRAORDINARIO') return 'No aplica: extraordinario';
+    if (!payment.movimientos.length) return 'No registrada para este pago';
+    if (payment.movimientos.every(m => !Number(m.meses))) return 'No aplica: abono sin avance';
+    const snapshots = payment.movimientos.flatMap(m => m.tags || []);
+    if (!snapshots.length) return 'No registrada para este pago';
+    return snapshots.map(t => '<div>TAG ' + esc(t.numeroTarjeta) + ': <b>' + esc(t.fechaAntes || 'No registrada') + '</b></div>').join('');
+  }
   function row(p) {
     const status = { VALIDADO: 'Validado', PENDIENTE_VALIDACION: 'Pendiente de validación', RECHAZADO: 'Rechazado' }[p.estatus] || 'Sin estado';
     const tags = p.tags.length ? p.tags.map(t => '<div>TAG ' + esc(t.numeroTarjeta) + ': <b>' + esc(t.fechaFin || 'Sin fecha') + '</b><small>Última lectura: ' + esc(stamp(t.ultimaLectura)) + (t.enControlador ? '' : ' · Presencia no confirmada') + '</small></div>').join('') : 'Sin TAGs asociados';
-    return '<tr><td data-label="Folio de pago"><b>' + esc(p.folioReporte) + '</b><small>Banco: ' + esc(p.folioOperacion) + '</small></td><td data-label="Depósito">' + esc(p.fechaOperacion) + '<small>' + esc(p.horaOperacion) + '</small></td><td data-label="Monto">' + esc(money(p.monto)) + '<small>Recargo: ' + esc(money(p.recargo)) + '</small></td><td data-label="Meses aplicados" class="history-months">' + months(p) + '</td><td data-label="Reportado por / vivienda">' + esc(p.nombreReportante || 'No registrado') + '<small>' + esc(p.calleSnapshot) + ' · ' + esc(p.numeroCasaSnapshot) + '</small></td><td data-label="Subido al sistema">' + esc(stamp(p.creadoEn)) + '</td><td data-label="Estado">' + status + '</td><td data-label="Vigencia TAG (última lectura)">' + tags + '</td></tr>';
+    return '<tr><td data-label="Folio de pago"><b>' + esc(p.folioReporte) + '</b><small>Banco: ' + esc(p.folioOperacion) + '</small></td><td data-label="Depósito">' + esc(p.fechaOperacion) + '<small>' + esc(p.horaOperacion) + '</small></td><td data-label="Monto">' + esc(money(p.monto)) + '<small>Recargo: ' + esc(money(p.recargo)) + '</small></td><td data-label="Meses aplicados" class="history-months">' + months(p) + '</td><td data-label="Fecha anterior al pago">' + previousDate(p) + '</td><td data-label="Reportado por / vivienda">' + esc(p.nombreReportante || 'No registrado') + '<small>' + esc(p.calleSnapshot) + ' · ' + esc(p.numeroCasaSnapshot) + '</small></td><td data-label="Subido al sistema">' + esc(stamp(p.creadoEn)) + '</td><td data-label="Estado">' + status + '</td><td data-label="Vigencia TAG (última lectura)">' + tags + '</td></tr>';
   }
   async function load() {
     const current = ++revision;
-    $('historyRows').innerHTML = '<tr><td colspan="8">Cargando historial…</td></tr>';
+    $('historyRows').innerHTML = '<tr><td colspan="9">Cargando historial…</td></tr>';
     $('historyPrev').disabled = $('historyNext').disabled = true;
     try {
       const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
@@ -51,13 +59,13 @@
       total = Number(result.total); page = Number(result.pagina);
       const end = new Date(result.hastaExclusiva + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() - 1);
       $('historyRange').textContent = 'Depósitos del ' + result.desde + ' al ' + end.toISOString().slice(0, 10) + ' · ' + total + ' comprobante(s).';
-      $('historyRows').innerHTML = result.data.length ? result.data.map(row).join('') : '<tr><td colspan="8">No hay pagos reportados en este periodo.</td></tr>';
+      $('historyRows').innerHTML = result.data.length ? result.data.map(row).join('') : '<tr><td colspan="9">No hay pagos reportados en este periodo.</td></tr>';
       $('historyPage').textContent = 'Página ' + page + ' de ' + Math.max(1, Math.ceil(total / result.limite));
       $('historyPrev').disabled = page <= 1;
       $('historyNext').disabled = page * result.limite >= total;
     } catch (error) {
       if (current !== revision) return;
-      $('historyRows').innerHTML = '<tr><td colspan="8">' + esc(error.message) + '</td></tr>';
+      $('historyRows').innerHTML = '<tr><td colspan="9">' + esc(error.message) + '</td></tr>';
       $('historyRange').textContent = 'Consulta no disponible. Intenta actualizar de nuevo.';
       $('historyPage').textContent = '';
     }

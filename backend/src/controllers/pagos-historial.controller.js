@@ -43,12 +43,15 @@ function crearHistorialController({ PagoReportado, PagoAccesoC3, PagoAccesoTagC3
             ]) : [[], []];
             const entregas = movimientos.length ? await PagoAccesoTagC3.findAll({
                 where: { pagoAccesoId: { [Op.in]: movimientos.map(m => m.id) } },
-                attributes: ['pagoAccesoId', 'estado'], raw: true
+                attributes: ['pagoAccesoId', 'numeroTarjeta', 'fechaAntes', 'fechaDespues', 'estado'],
+                order: [['id', 'ASC']], raw: true
             }) : [];
             const data = rows.map(p => {
                 const diario = movimientos.filter(m => String(m.origenId) === String(p.id)).map(m => {
                     const intentos = entregas.filter(t => String(t.pagoAccesoId) === String(m.id));
                     return { meses: Number(m.meses), estado: m.estado, tagsTotal: intentos.length,
+                        tags: intentos.map(t => ({ numeroTarjeta: t.numeroTarjeta, fechaAntes: t.fechaAntes,
+                            fechaDespues: t.fechaDespues, estado: t.estado })),
                         tagsAplicados: intentos.filter(t => t.estado === 'COMPLETADO').length };
                 });
                 return { ...p, movimientos: diario, tags: tags.filter(t => String(t.casaId) === String(p.casaId)) };
