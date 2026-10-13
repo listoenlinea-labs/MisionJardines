@@ -114,6 +114,9 @@ app.use(
     rateLimit({
         windowMs: 15 * 60 * 1000,
         limit: 500,
+        // HLS descarga pequeñas partes constantemente; tiene su limitador
+        // específico y tickets firmados. No consumir el límite de login/pagos.
+        skip: req => req.path.startsWith('/camaras/stream/'),
         standardHeaders: true,
         legacyHeaders: false
     })
@@ -173,6 +176,8 @@ app.use('/api/telefonia', require('./routes/telefonia.routes'));
 app.use('/api/conexion', conexionRoutes);
 app.use('/api/entorno', entornoRoutes);
 app.use('/api/zkteco', zktecoRoutes);
+app.use('/api/camaras', require('./routes/camaras.routes'));
+
 
 app.use((req, res) => {
     res.status(404).json({

@@ -400,8 +400,14 @@
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: #45dc8a
+      background: #94a3b8
     }
+    .page-seguridad-v2 .camera.is-playing .camera-label i {background:#45dc8a;box-shadow:0 0 0 3px rgba(69,220,138,.16)}
+    .page-seguridad-v2 .camera.is-playing .camera-label {bottom:auto;top:10px;right:10px;left:10px}
+    .page-seguridad-v2 .camera-control {display:inline-flex;align-items:center;margin-top:13px;padding:9px 14px;border:1px solid #e7bc99;border-radius:10px;background:#fff8ef;color:#ac5600;font-size:11px;font-weight:850;cursor:pointer}
+    .page-seguridad-v2 .camera-control:disabled {opacity:.5;cursor:not-allowed}
+    .page-seguridad-v2 .camera-message {margin:12px 0 0;color:#637289;font-size:11px;line-height:1.5}
+    .page-seguridad-v2 .gate-help {margin:10px 0 0;color:#758196;font-size:10px;line-height:1.5}
 
     .page-seguridad-v2 .gate-scene {
       position: relative;
@@ -1014,10 +1020,10 @@
         <div class="panel-head">
           <div><span class="eyebrow">MONITOREO EN VIVO</span>
             <h2>Cámaras de seguridad</h2>
-            <p>Cuatro canales preparados para conectar tus cámaras.</p>
+            <p>Canales Dahua del fraccionamiento. Selecciona una cámara para verla en vivo.</p>
           </div><button class="btn" id="reloadCameras">Actualizar</button>
         </div>
-        <div id="cameraGrid" class="camera-grid"></div>
+        <div id="cameraGrid" class="camera-grid"></div><p id="cameraStatus" class="camera-message" role="status" aria-live="polite">Consultando puente de video…</p>
       </article>
       <div class="side-stack">
         <article class="panel panel-pad">
@@ -1029,10 +1035,10 @@
           </div>
           <div id="gateScene" class="gate-scene">
             <div class="gate-post"></div>
-            <div class="gate-arm"></div><span id="gateState" class="gate-state">CERRADA</span>
+            <div class="gate-arm"></div><span id="gateState" class="gate-state">SIN VERIFICAR</span>
           </div>
           <div class="actions"><button id="openGate" class="btn btn-primary">Abrir</button><button id="closeGate"
-              class="btn btn-danger">Cerrar</button></div>
+              class="btn btn-danger">Cerrar</button></div><p class="gate-help">Mismos controles del C3-200 que ZKTeco. La animación representa la última orden, no una lectura física de posición.</p>
         </article>
 
       </div>
@@ -1259,15 +1265,17 @@
   </div>
   <div id="toast" class="toast"></div>
 
+  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
   <script>
     const API_BASE_URL = 'https://api-misionjardines.listoenlinea.host/api';
     const MEXICO_TIME_ZONE = 'America/Mexico_City';
     const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
     const INCIDENT_KEY = 'mision_jardines_seguridad_incidentes';
 
-    let CAMERA_CONFIG = [
-      { name: 'Entrada Principal', url: '', type: 'iframe' }
-    ];
+    const CAMERA_LABELS = ['Jardines 1','Portón 1','Magnolias','Rosas','Portón 2','Cancha','Jardines 2','Gardenias','Lirios','Peatonal 1','Peatonal 2'];
+    let CAMERA_CONFIG = CAMERA_LABELS.map((name,index)=>({id:'dahua-'+(index+1),name,playbackPath:null}));
+    const cameraPlayers=new Map();
+    let cameraRenewTimer=null;
     // CONTACTO DE ADMINISTRACIÓN: cambia únicamente estos datos.
     const ADMIN_CONTACT = { name: 'Administración Misión Jardines', schedule: 'Disponible · 9:00 a 18:00', whatsapp: '', email: 'administracion@misionjardines.com' };
 
@@ -1278,59 +1286,121 @@
     async function api(url, options = {}) { const response = await fetch(url, options); let result = {}; try { result = await response.json() } catch { } if (response.status === 401) { localStorage.removeItem('misionJardinesToken'); sessionStorage.removeItem('misionJardinesToken'); location.replace('login.html'); throw new Error('La sesión expiró') } if (!response.ok || !result.ok) throw new Error(result.message || 'No fue posible completar la solicitud'); return result }
     function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' } function closeModal(el) { el.closest('.modal-shell').hidden = true; document.body.style.overflow = '' }
     function parseControls(raw) { try { const data = typeof raw === 'string' ? JSON.parse(raw) : raw || {}; return { pluma: data.pluma !== false, porton1: data.porton1 !== false, porton2: data.porton2 !== false, porton3: data.porton3 !== false } } catch { return { pluma: true, porton1: true, porton2: true, porton3: true } } }
+    function stopCameraPlayers() {
+      if(cameraRenewTimer)clearTimeout(cameraRenewTimer);
+      cameraRenewTimer=null;
+      for(const player of cameraPlayers.values()) try {player.destroy()} catch(_){}
+      cameraPlayers.clear();
+      document.querySelectorAll('#cameraGrid video').forEach(video=>{
+        try {video.pause();video.removeAttribute('src');video.load()}catch(_){}
+      });
+    }
     function renderCameras() {
-      const cameras = CAMERA_CONFIG.length ? CAMERA_CONFIG : [{ name: 'Entrada Principal', url: '', type: 'iframe' }];
-      $('cameraGrid').innerHTML = cameras.map((cam, index) => `<div class="camera">${cam.url ? (cam.type === 'video' ? `<video class="camera-media" src="${esc(cam.url)}" autoplay muted controls playsinline></video>` : `<iframe class="camera-media" src="${esc(cam.url)}" allow="autoplay; fullscreen" title="${esc(cam.name)}"></iframe>`) : `<div class="camera-empty"><div><svg viewBox="0 0 24 24"><path d="M15 10l4.5-2.5v9L15 14M3 6h12v12H3z"/></svg><b>Canal ${index + 1} listo</b><span>Configura la ruta del canal en Seguridad → Conexión</span></div></div>`}<div class="camera-label"><span>${esc(cam.name || ('Canal ' + (index + 1)))}</span><i></i></div></div>`).join('');
+      $('cameraGrid').innerHTML=CAMERA_CONFIG.map((cam,index)=>{
+        const empty='<div class="camera-empty"><div><svg viewBox="0 0 24 24"><path d="M15 10l4.5-2.5v9L15 14M3 6h12v12H3z"/></svg>'+
+          '<b>'+esc(cam.name)+'</b><span>'+(cam.playbackPath?'Transmisión disponible bajo demanda':'Pendiente del puente de video')+'</span>'+
+          (cam.playbackPath?'<button class="camera-control" type="button" data-watch="'+esc(cam.id)+'">Ver en vivo</button>':'')+'</div></div>';
+        return '<article class="camera" data-camera-id="'+esc(cam.id)+'">'+empty+
+          '<div class="camera-label"><span>'+esc(cam.name)+'</span><i aria-hidden="true"></i></div></article>';
+      }).join('');
     }
-
-    function buildCameraUrl(connection, channel) {
-      const route = String(channel?.ruta || '').trim();
-      if (!route) return '';
-      if (/^https?:\/\//i.test(route)) return route;
-      const host = String(connection?.host || '').trim();
-      if (!host) return route;
-      const protocol = String(connection?.configuracion?.protocolo || '').toUpperCase();
-      if (protocol === 'HTTP') {
-        const base = /^https?:\/\//i.test(host) ? host : 'http://' + host;
-        const port = connection?.puerto ? ':' + connection.puerto : '';
-        return base.replace(/\/$/, '') + port + (route.startsWith('/') ? route : '/' + route);
+    function playbackUrl(path) {
+      if(typeof path!=='string'||!/^\/api\/camaras\/stream\/[a-z0-9_-]+\/index\.m3u8\?ticket=[A-Za-z0-9._-]+$/i.test(path)){
+        throw new Error('La dirección de video no está autorizada');
       }
-      return route;
+      return API_BASE_URL.replace(/\/api$/,'')+path;
     }
-
+    function watchCamera(id) {
+      const channel=CAMERA_CONFIG.find(item=>item.id===id);
+      if(!channel||!channel.playbackPath)return;
+      stopCameraPlayers();
+      renderCameras();
+      const card=Array.from($('cameraGrid').querySelectorAll('[data-camera-id]')).find(node=>node.dataset.cameraId===id);
+      if(!card)return;
+      const video=document.createElement('video');
+      video.className='camera-media';
+      video.muted=true;
+      video.autoplay=true;
+      video.playsInline=true;
+      video.controls=true;
+      video.setAttribute('aria-label','En vivo: '+channel.name);
+      card.querySelector('.camera-empty').replaceWith(video);
+      let url;
+      try{url=playbackUrl(channel.playbackPath)}catch(error){$('cameraStatus').textContent=error.message;renderCameras();return}
+      video.addEventListener('playing',()=>{
+        card.classList.add('is-playing');
+        $('cameraStatus').textContent='Reproduciendo '+channel.name+' desde el puente privado.';
+      });
+      video.addEventListener('error',()=>{
+        card.classList.remove('is-playing');
+        $('cameraStatus').textContent='No se pudo reproducir '+channel.name+'. Revisa el puente HLS y el códec.';
+      });
+      $('cameraStatus').textContent='Conectando con '+channel.name+'…';
+      if(video.canPlayType('application/vnd.apple.mpegurl')){
+        video.src=url;
+        video.play().catch(()=>$('cameraStatus').textContent='Pulsa reproducir para ver '+channel.name);
+      }else if(window.Hls&&window.Hls.isSupported()){
+        const player=new window.Hls({enableWorker:true,lowLatencyMode:true});
+        cameraPlayers.set(id,player);
+        player.on(window.Hls.Events.ERROR,(_event,data)=>{
+          if(!data.fatal)return;
+          card.classList.remove('is-playing');
+          $('cameraStatus').textContent='El puente no responde o el video no es compatible.';
+          player.destroy();cameraPlayers.delete(id);
+        });
+        player.loadSource(url);player.attachMedia(video);
+        player.on(window.Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>{
+          $('cameraStatus').textContent='Pulsa reproducir para ver '+channel.name;
+        }));
+      }else{
+        $('cameraStatus').textContent='Este navegador requiere soporte HLS para mostrar video.';
+      }
+      // Renovar el enlace antes de que venza su firma (15 min), sin mantener
+      // tickets permanentes ni credenciales de cámaras en el navegador.
+      if(video.src || cameraPlayers.has(id)) {
+        cameraRenewTimer=setTimeout(async()=>{
+          await loadCameraConfig();
+          if(CAMERA_CONFIG.some(item=>item.id===id&&item.playbackPath))watchCamera(id);
+        },12*60*1000);
+      }
+    }
     async function loadCameraConfig() {
-      try {
-        const result = await api(`${API_BASE_URL}/conexion/estado`, { headers: headers() });
-        const connection = (result.data || []).find(item => item.tipo === 'CAMARAS' && item.nombre === 'principal');
-        const channels = Array.isArray(connection?.configuracion?.canales) ? connection.configuracion.canales : [];
-        CAMERA_CONFIG = channels.length ? channels.map((channel, index) => ({
-          name: channel.nombre || ('Canal ' + (index + 1)),
-          url: buildCameraUrl(connection, channel),
-          type: String(connection?.configuracion?.protocolo || '').toUpperCase() === 'HTTP' ? 'iframe' : 'iframe'
-        })) : [{ name: 'Entrada Principal', url: '', type: 'iframe' }];
-      } catch (error) {
-        CAMERA_CONFIG = [{ name: 'Entrada Principal', url: '', type: 'iframe' }];
+      stopCameraPlayers();
+      $('cameraStatus').textContent='Consultando servicio de video…';
+      try{
+        const result=await api(API_BASE_URL+'/camaras',{headers:headers()});
+        CAMERA_CONFIG=Array.isArray(result.channels)&&result.channels.length
+          ? result.channels : CAMERA_LABELS.map((name,index)=>({id:'dahua-'+(index+1),name,playbackPath:null}));
+        $('cameraStatus').textContent=result.configured?'Canales configurados. Pulsa «Ver en vivo».':
+          (result.message||'Puente de video pendiente de configurar.');
+      }catch(error){
+        CAMERA_CONFIG=CAMERA_LABELS.map((name,index)=>({id:'dahua-'+(index+1),name,playbackPath:null}));
+        $('cameraStatus').textContent='No se pudieron consultar las cámaras: '+error.message;
       }
       renderCameras();
     }
+    $('cameraGrid').addEventListener('click',event=>{
+      const btn=event.target.closest('[data-watch]');
+      if(btn)watchCamera(btn.dataset.watch);
+    });
     async function controlGate(action) {
+      const accion=action==='open'?'ABRIR':action==='close'?'CERRAR':null;
+      if(!accion)return;
       const openBtn=$('openGate'),closeBtn=$('closeGate');
-      openBtn.disabled=true; closeBtn.disabled=true;
+      openBtn.disabled=true;closeBtn.disabled=true;
       $('gateState').textContent='ENVIANDO…';
       try{
-        await api(`${API_BASE_URL}/zkteco/pluma`,{
+        const result=await api(API_BASE_URL+'/zkteco/pluma',{
           method:'POST',headers:headers(true),
-          body:JSON.stringify({accion:action==='open'?'ABRIR':'CERRAR'})
+          body:JSON.stringify({accion})
         });
-        $('gateScene').classList.toggle('open',action==='open');
-        $('gateState').textContent=action==='open'?'ABIERTA':'CERRADA';
-        toast(action==='open'?'Pluma accionada correctamente.':'Cierre enviado correctamente.');
+        $('gateScene').classList.toggle('open',accion==='ABRIR');
+        $('gateState').textContent='ORDEN ENVIADA';
+        toast(result.message||'Orden enviada al C3-200');
       }catch(error){
-        $('gateState').textContent='SIN CONEXIÓN';
-        toast(error.message);
-      }finally{
-        openBtn.disabled=false; closeBtn.disabled=false;
-      }
+        $('gateState').textContent='SIN CONFIRMACIÓN';
+        toast('No se pudo operar la pluma: '+error.message);
+      }finally{openBtn.disabled=false;closeBtn.disabled=false}
     }
     function fillStreets() { const streets = [...new Set(houses.map(h => String((h.calleCorrecta || h.calle) || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })); const options = streets.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join(''); $('accessStreet').innerHTML = '<option value="">Selecciona una calle</option>' + options; $('filterStreet').innerHTML = '<option value="">Todas las calles</option>' + options; $('houseAccessStreet').innerHTML = '<option value="">Todas las calles</option>' + options }
     function fillNumbers() { const street = $('accessStreet').value; const data = houses.filter(h => (h.calleCorrecta || h.calle) === street).sort((a, b) => String(a.numero).localeCompare(String(b.numero), 'es', { numeric: true })); $('accessHouse').disabled = !street; $('accessHouse').innerHTML = street ? '<option value="">Selecciona un número</option>' + data.map(h => `<option value="${Number(h.id)}">${esc(h.numero)}</option>`).join('') : '<option value="">Primero selecciona una calle</option>' }
