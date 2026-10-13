@@ -77,7 +77,7 @@
       const width = compact ? 330 : 850;
       const height = compact ? 280 : 300;
       const left = compact ? 46 : 76;
-      const right = compact ? 10 : 24;
+      const right = compact ? 20 : 24;
       const top = 24;
       const bottom = compact ? 45 : 50;
       const plotWidth = width - left - right, plotHeight = height - top - bottom;
@@ -106,7 +106,7 @@
         `<circle class="hl-chart-dot" cx="${x(i)}" cy="${y(row[track.key])}" r="4.5" fill="#fff" stroke="${track.color}" stroke-width="2.5" pointer-events="none"/>`
       ).join('')).join('');
       const hits = enabled.map(track => clean.map((row, i) =>
-        `<circle class="hl-chart-hit" data-index="${i}" data-series="${track.key}" cx="${x(i)}" cy="${y(row[track.key])}" r="13" fill="transparent" stroke="none" role="button" tabindex="0" aria-label="${escapeHtml(row.label)} · ${track.name}: ${money.format(row[track.key])}. Ver detalle financiero" aria-pressed="false"/>`
+        `<circle class="hl-chart-hit" data-index="${i}" data-series="${track.key}" cx="${x(i)}" cy="${y(row[track.key])}" r="${compact ? 16 : 13}" fill="transparent" stroke="none" role="button" tabindex="0" aria-label="${escapeHtml(row.label)} · ${track.name}: ${money.format(row[track.key])}. Ver detalle financiero" aria-pressed="false"/>`
       ).join('')).join('');
       // Abreviar meses solo en la escala visual; tooltip y accesibilidad retienen mes y año.
       const labels = clean.map((row, i) => {
@@ -261,7 +261,7 @@
           hideTooltip();
           return;
         }
-        const hit = event.target.closest('.hl-chart-hit') || closestPoint(event);
+        const hit = closestPoint(event) || event.target.closest('.hl-chart-hit');
         if (hit) selectPoint(hit);
       });
       chartWrap.addEventListener('pointermove', event => {
