@@ -876,48 +876,6 @@
       <div><span class="kicker">Administración y control</span><strong>Seguridad del fraccionamiento</strong></div><span
         id="apiStatus" class="online">Operación normal</span>
     </div>
-    <section class="dashboard" aria-label="Mantenimiento y control de acceso">
-    <section class="panel panel-pad" id="seguridadCuotasPanel" aria-labelledby="seguridadCuotasTitulo">
-      <div class="panel-head">
-        <div><span class="eyebrow">ESTADO DE MANTENIMIENTO</span>
-          <h2 id="seguridadCuotasTitulo">Cuotas por vivienda</h2>
-          <p>Solo calle, casa, estado, última fecha de pago y último mes pagado. Información de MySQL, no del TAG.</p>
-        </div><button type="button" class="btn" id="segCuotasRefresh">Actualizar</button>
-      </div>
-      <div class="seg-cuotas-filters">
-        <label>Calle<input type="search" id="segCuotasCalle" placeholder="Filtrar calle"></label>
-        <label>Número<input type="search" id="segCuotasNumero" placeholder="Casa"></label>
-        <label>Estado<select id="segCuotasEstado"><option value="">Todos</option><option value="AL_CORRIENTE">Al corriente</option><option value="DEUDOR">Deudor</option><option value="SIN_DATOS">Sin historial</option></select></label>
-      </div>
-      <p class="seg-cuotas-message" id="segCuotasStatus" role="status" aria-live="polite">Consultando…</p>
-      <div class="seg-cuotas-scroll">
-        <table class="seg-cuotas-table"><thead><tr><th>Calle</th><th>Casa</th><th>Estado</th><th>Último pago</th><th>Mes pagado</th></tr></thead>
-          <tbody id="segCuotasRows"></tbody>
-        </table>
-      </div>
-      <div class="seg-cuotas-pagination">
-        <button type="button" class="btn" id="segCuotasPrev">Anterior</button>
-        <span id="segCuotasPage"></span>
-        <button type="button" class="btn" id="segCuotasNext">Siguiente</button>
-      </div>
-    </section>
-      <div class="side-stack">
-        <article class="panel panel-pad">
-          <div class="panel-head">
-            <div><span class="eyebrow">ACCESO PRINCIPAL</span>
-              <h3>Control de pluma</h3>
-              <p>Apertura y cierre desde caseta.</p>
-            </div>
-          </div>
-          <div id="gateScene" class="gate-scene">
-            <div class="gate-post"></div>
-            <div class="gate-arm"></div><span id="gateState" class="gate-state">SIN VERIFICAR</span>
-          </div>
-          <div class="actions"><button id="openGate" class="btn btn-primary">Abrir</button><button id="closeGate"
-              class="btn btn-danger">Cerrar</button></div><p class="gate-help">Mismos controles del C3-200 que ZKTeco. La animación representa la última orden, no una lectura física de posición.</p>
-        </article>
-      </div>
-    </section>
     <section class="sec-hero">
       <div><span class="eyebrow">CENTRO DE SEGURIDAD</span>
         <h1>Control claro, <span>comunidad protegida.</span></h1>
@@ -963,6 +921,48 @@
               d="M12 9v4M12 17h.01M10.3 3.8 2.4 18a2 2 0 0 0 1.8 3h15.6a2 2 0 0 0 1.8-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
           </svg></i><span><b>Incidencias</b><small>Registrar y revisar reportes de seguridad</small></span><span
           class="arrow">›</span></button></section>
+    <section class="dashboard" aria-label="Mantenimiento y control de acceso">
+    <section class="panel panel-pad" id="seguridadCuotasPanel" aria-labelledby="seguridadCuotasTitulo">
+      <div class="panel-head">
+        <div><span class="eyebrow">ESTADO DE MANTENIMIENTO</span>
+          <h2 id="seguridadCuotasTitulo">Cuotas por vivienda</h2>
+          <p>Solo calle, casa, estado, última fecha de pago y último mes pagado. Información de MySQL, no del TAG.</p>
+        </div><button type="button" class="btn" id="segCuotasRefresh">Actualizar</button>
+      </div>
+      <div class="seg-cuotas-filters">
+        <label>Calle<input type="search" id="segCuotasCalle" placeholder="Filtrar calle"></label>
+        <label>Número<input type="search" id="segCuotasNumero" placeholder="Casa"></label>
+        <label>Estado<select id="segCuotasEstado"><option value="">Todos</option><option value="AL_CORRIENTE">Al corriente</option><option value="DEUDOR">Deudor</option><option value="SIN_DATOS">Sin historial</option></select></label>
+      </div>
+      <p class="seg-cuotas-message" id="segCuotasStatus" role="status" aria-live="polite">Consultando…</p>
+      <div class="seg-cuotas-scroll">
+        <table class="seg-cuotas-table"><thead><tr><th>Calle</th><th>Casa</th><th>Estado</th><th>Último pago</th><th>Mes pagado</th></tr></thead>
+          <tbody id="segCuotasRows"></tbody>
+        </table>
+      </div>
+      <div class="seg-cuotas-pagination">
+        <button type="button" class="btn" id="segCuotasPrev">Anterior</button>
+        <span id="segCuotasPage"></span>
+        <button type="button" class="btn" id="segCuotasNext">Siguiente</button>
+      </div>
+    </section>
+      <div class="side-stack">
+        <article class="panel panel-pad">
+          <div class="panel-head">
+            <div><span class="eyebrow">ACCESO PRINCIPAL</span>
+              <h3>Control de pluma</h3>
+              <p>Apertura y cierre desde caseta.</p>
+            </div>
+          </div>
+          <div id="gateScene" class="gate-scene">
+            <div class="gate-post"></div>
+            <div class="gate-arm"></div><span id="gateState" class="gate-state">SIN VERIFICAR</span>
+          </div>
+          <div class="actions"><button id="openGate" class="btn btn-primary">Abrir</button><button id="closeGate"
+              class="btn btn-danger">Cerrar</button></div><p class="gate-help">Mismos controles del C3-200 que ZKTeco. La animación representa la última orden, no una lectura física de posición.</p>
+        </article>
+      </div>
+    </section>
     <aside class="panel panel-pad security-contact-compact" aria-label="Comunicación directa con Administración">
       <div class="security-contact-heading">
         <span class="eyebrow">COMUNICACIÓN DIRECTA</span>
