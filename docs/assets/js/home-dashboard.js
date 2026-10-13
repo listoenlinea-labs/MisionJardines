@@ -4,6 +4,7 @@
   const GOOGLE_SHARE_URL = 'https://share.google/XOJvMvlvdeocnd6mQ';
   const GOOGLE_EMBED_URL = 'https://www.google.com/maps?q=Misi%C3%B3n+Jardines+Fraccionamiento,+C.+Atotonilco+700,+45138+Zapopan,+Jalisco,+M%C3%A9xico&output=embed';
   let homeNewsLoaded = false;
+  let removeFinanceMediaListener = () => {};
 
   const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
   const integer = new Intl.NumberFormat('es-MX');
@@ -71,7 +72,14 @@
         { key: 'disponible', name: 'Disponible al cierre', color: '#16a085' }
       ];
       const enabled = tracks.filter(track => activeFilter === 'todas' || activeFilter === track.key);
-      const width = 850, height = 300, left = 76, right = 24, top = 24, bottom = 50;
+      // En teléfonos se dibuja en coordenadas compactas: no se recorta ni requiere arrastre horizontal.
+      const compact = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 520px)').matches;
+      const width = compact ? 330 : 850;
+      const height = compact ? 280 : 300;
+      const left = compact ? 46 : 76;
+      const right = compact ? 10 : 24;
+      const top = 24;
+      const bottom = compact ? 45 : 50;
       const plotWidth = width - left - right, plotHeight = height - top - bottom;
       const values = clean.flatMap(row => enabled.map(track => row[track.key]));
       const min = Math.min(0, ...values), max = Math.max(0, ...values);
@@ -82,7 +90,7 @@
       const y = amount => top + (high - amount) / span * plotHeight;
       const grid = Array.from({ length: 5 }, (_, index) => {
         const amount = low + (span * index / 4), cy = y(amount);
-        return `<line x1="${left}" y1="${cy}" x2="${width - right}" y2="${cy}" stroke="#e8ebef"/><text x="${left - 10}" y="${cy + 4}" text-anchor="end" fill="#7d8798" font-size="11">${escapeHtml(compactMoney(amount))}</text>`;
+        return `<line x1="${left}" y1="${cy}" x2="${width - right}" y2="${cy}" stroke="#e8ebef"/><text x="${left - 10}" y="${cy + 4}" text-anchor="end" fill="#7d8798" font-size="${compact ? 10 : 11}">${escapeHtml(compactMoney(amount))}</text>`;
       }).join('');
       const fills = enabled.map(track => {
         const points = clean.map((row, i) => `${x(i).toFixed(1)},${y(row[track.key]).toFixed(1)}`).join(' ');
@@ -100,14 +108,25 @@
       const hits = enabled.map(track => clean.map((row, i) =>
         `<circle class="hl-chart-hit" data-index="${i}" data-series="${track.key}" cx="${x(i)}" cy="${y(row[track.key])}" r="13" fill="transparent" stroke="none" role="button" tabindex="0" aria-label="${escapeHtml(row.label)} · ${track.name}: ${money.format(row[track.key])}. Ver detalle financiero" aria-pressed="false"/>`
       ).join('')).join('');
-      const labels = clean.map((row, i) => `<text x="${x(i)}" y="${height - 14}" text-anchor="middle" fill="#7d8798" font-size="10">${escapeHtml(row.label)}</text>`).join('');
+      // Abreviar meses solo en la escala visual; tooltip y accesibilidad retienen mes y año.
+      const labels = clean.map((row, i) => {
+        const mes = compact ? row.label.replace(/\\s+\\d{4}$/, '') : row.label;
+        return `<text x="${x(i)}" y="${height - (compact ? 23 : 14)}" text-anchor="middle" fill="#68758b" font-size="${compact ? 11 : 10}">${escapeHtml(mes)}</text>`;
+      }).join('');
+      const years = compact ? clean.map((row, i) => {
+        const year = row.label.match(/\\d{4}$/)?.[0];
+        const previous = i ? clean[i - 1].label.match(/\\d{4}$/)?.[0] : null;
+        return year && year !== previous
+          ? `<text x="${x(i)}" y="${height - 6}" text-anchor="middle" fill="#9aa4b4" font-size="9">${escapeHtml(year)}</text>`
+          : '';
+      }).join('') : '';
       const buttons = [
         { key: 'todas', name: 'Todas', color: '#8794a7' },
         ...tracks
       ].map(track =>
         `<button class="hl-finance-filter${activeFilter === track.key ? ' active' : ''}" type="button" data-hl-finance-filter="${track.key}" aria-pressed="${activeFilter === track.key}" style="--series-color:${track.color}">${escapeHtml(track.name)}</button>`
       ).join('');
-      return `<div class="hl-finance-filters" role="group" aria-label="Filtrar series de la gráfica">${buttons}</div><div class="hl-finance-plot"><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="group" aria-label="Ingresos, egresos y disponible al cierre, por mes. Pasa el cursor o selecciona un punto para consultar su importe."><defs>${enabled.map(track => `<linearGradient id="hl-finance-${track.key}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${track.color}" stop-opacity=".20"/><stop offset="1" stop-color="${track.color}" stop-opacity=".025"/></linearGradient>`).join('')}</defs>${grid}${fills}${lines}${dots}${hits}${labels}</svg><div class="hl-finance-tooltip" role="status" aria-live="polite" hidden></div></div>`;
+      return `<div class="hl-finance-filters" role="group" aria-label="Filtrar series de la gráfica">${buttons}</div><div class="hl-finance-plot"><svg class="hl-chart" viewBox="0 0 ${width} ${height}" role="group" aria-label="Ingresos, egresos y disponible al cierre, por mes. Pasa el cursor o selecciona un punto para consultar su importe."><defs>${enabled.map(track => `<linearGradient id="hl-finance-${track.key}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${track.color}" stop-opacity=".20"/><stop offset="1" stop-color="${track.color}" stop-opacity=".025"/></linearGradient>`).join('')}</defs>${grid}${fills}${lines}${dots}${hits}${labels}${years}</svg><div class="hl-finance-tooltip" role="status" aria-live="polite" hidden></div></div>`;
   }
 
   function financeSummary(series, selectedIndex) {
@@ -218,11 +237,27 @@
         showFace(false);
       }
   
+      function redrawChart() {
+        chartWrap.innerHTML = chartSvg(series, filter);
+        chartWrap.querySelectorAll('.hl-chart-hit').forEach(point => {
+          const pressed = Number(point.dataset.index) === selectedIndex && point.dataset.series === selectedKey;
+          point.setAttribute('aria-pressed', String(pressed));
+          point.classList.toggle('is-selected', pressed);
+        });
+      }
+      redrawChart();
+      // Al rotar el teléfono (o pasar de móvil a escritorio), recalcular el SVG.
+      const mobileMedia = window.matchMedia?.('(max-width: 520px)');
+      if (mobileMedia?.addEventListener) {
+        mobileMedia.addEventListener('change', redrawChart);
+        removeFinanceMediaListener = () => mobileMedia.removeEventListener('change', redrawChart);
+      }
+
       chartWrap.addEventListener('click', event => {
         const button = event.target.closest('[data-hl-finance-filter]');
         if (button) {
           filter = button.dataset.hlFinanceFilter;
-          chartWrap.innerHTML = chartSvg(series, filter);
+          redrawChart();
           hideTooltip();
           return;
         }
@@ -481,6 +516,8 @@
   function renderDashboard(data) {
     const container = document.querySelector('.dashboard');
     if (!container) return;
+    removeFinanceMediaListener();
+    removeFinanceMediaListener = () => {};
 
     const user = cachedUser();
     const firstName = user?.nombre || 'vecino';
@@ -726,11 +763,11 @@
 
       .hl-finance-filters{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 12px}.hl-finance-filter{--series-color:#8794a7;display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid #e4e9f0;border-radius:9px;background:#fff;color:#68778d;font-size:10px;font-weight:750;cursor:pointer;transition:.18s}.hl-finance-filter:before{content:"";width:12px;border-top:3px solid var(--series-color)}.hl-finance-filter:hover,.hl-finance-filter.active{border-color:#d5dfe9;background:#f7f9fc;color:#263d56}.hl-finance-filter.active{box-shadow:inset 0 0 0 1px #e5eaf1}.hl-finance-plot{position:relative;min-width:0}.hl-chart-hit{cursor:pointer;pointer-events:all}.hl-chart-hit:focus-visible{stroke:#2d4262;stroke-width:2;outline:none}.hl-finance-tooltip{position:absolute;z-index:5;width:max-content;max-width:185px;padding:8px 11px;border:1px solid #e1e6ed;border-radius:11px;color:#344054;background:rgba(255,255,255,.98);box-shadow:0 8px 23px rgba(36,48,73,.12);pointer-events:none;text-align:left}.hl-finance-tooltip b,.hl-finance-tooltip strong,.hl-finance-tooltip small{display:block}.hl-finance-tooltip b{font-size:9px;color:#67758b}.hl-finance-tooltip strong{font-size:15px;margin:3px 0}.hl-finance-tooltip small{font-size:8px;color:#98a2b3}
       .hl-events{display:flex;flex-direction:column;min-width:0;overflow:hidden}.hl-finance-flip-scene{position:relative;flex:1;min-height:450px;perspective:1400px;overflow:hidden}.hl-card-flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .65s cubic-bezier(.2,.7,.2,1)}.hl-card-flipper.is-flipped{transform:rotateY(180deg)}.hl-flip-face{position:absolute;inset:0;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:#fff;backface-visibility:hidden;-webkit-backface-visibility:hidden}.hl-agenda-face{transform:rotateY(180deg)}.hl-flip-face .hl-data-note{margin-top:auto}.hl-face-switch{flex-shrink:0;padding:6px 9px;border:1px solid #f2d8c6;border-radius:8px;background:#fff8f2;color:#bc640d;font-size:9px;font-weight:800;white-space:nowrap;cursor:pointer}.hl-face-switch:hover{background:#ffefe0}.hl-agenda-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.hl-agenda-actions a{font-size:9px;font-weight:850;color:#d76500}.hl-finance-details{flex:1;min-height:0;overflow:auto;padding:13px 16px}.hl-detail-period{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#344054;font-weight:850;font-size:13px}.hl-detail-period span{color:#919aa9;font-size:9px;font-weight:650}.hl-detail-amounts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}.hl-detail-pill{min-width:0;border:1px solid #e6edf0;border-radius:11px;padding:11px 9px;background:#f7fbfc}.hl-detail-pill.ingreso{background:#fff8f2;border-color:#f8e7d8}.hl-detail-pill.egreso{background:#f9f5ff;border-color:#ece4fa}.hl-detail-pill small{display:block;color:#66758b;font-size:9px}.hl-detail-pill strong{display:block;overflow-wrap:anywhere;margin-top:5px;font-size:clamp(12px,1vw,17px);color:#344054}.hl-detail-breakdown{display:grid;gap:9px;padding:10px 2px}.hl-detail-breakdown>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:9px;color:#708098}.hl-detail-breakdown b{font-size:10px;color:#3b485d;text-align:right;white-space:nowrap}.hl-detail-breakdown .hl-detail-separator{padding-top:10px;border-top:1px solid #edf0f5;font-weight:800}.hl-detail-closing{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding:12px 10px;border-radius:11px;background:#edf8f4}.hl-detail-closing small{font-size:9px;color:#3e7163;font-weight:800}.hl-detail-closing strong{font-size:clamp(14px,1.1vw,20px)}.hl-detail-breakdown .hl-positive,.hl-detail-closing .hl-positive{color:#0f916b}.hl-detail-breakdown .hl-negative,.hl-detail-closing .hl-negative{color:#bc463d}.hl-finance-detail p,.hl-finance-no-data{margin:10px 2px 0;color:#929baa;font-size:8px;line-height:1.5}.hl-agenda-face .hl-event-list{flex:1;min-height:0;overflow:auto}.hl-agenda-face .hl-empty{min-height:190px}
-      @media(prefers-reduced-motion:reduce){.hl-card-flipper{transition:none}}@media(max-width:720px){.hl-finance-plot{min-width:600px}.hl-finance-flip-scene{min-height:425px}.hl-detail-pill strong{font-size:15px}}
+      @media(prefers-reduced-motion:reduce){.hl-card-flipper{transition:none}}@media(max-width:520px){.hl-finance-filters{gap:5px;margin:4px 0 9px}.hl-finance-filter{font-size:9px;padding:6px 8px}.hl-finance-plot{width:100%;overflow:hidden}.hl-chart-hit{touch-action:manipulation}}@media(max-width:720px){.hl-finance-plot{min-width:0;width:100%;max-width:100%}.hl-finance-flip-scene{min-height:425px}.hl-detail-pill strong{font-size:15px}}
       .hl-event-list{padding:5px 14px 9px}.hl-event{display:grid;grid-template-columns:45px minmax(0,1fr);gap:11px;align-items:center;padding:11px 3px;border-bottom:1px solid #eef1f4;text-decoration:none}.hl-event:last-child{border-bottom:0}.hl-event-date{height:45px;display:grid;place-content:center;border:1px solid #f2dac2;border-radius:10px;color:#bf5f08;background:#fff7ef;text-align:center}.hl-event-date b{font-size:16px;line-height:1}.hl-event-date span{margin-top:3px;font-size:7px;font-weight:850;text-transform:uppercase}.hl-event>div:last-child strong{display:block;color:#344054;font-size:10px}.hl-event>div:last-child span{display:block;margin-top:4px;color:#8590a2;font-size:8px}.hl-empty{min-height:150px;display:grid;place-items:center;padding:18px;color:#8a94a6;font-size:9px;text-align:center}
       .hl-bottom-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,.7fr);gap:16px}.hl-map-frame{height:360px;background:#f4f6f8}.hl-map-frame iframe{width:100%;height:100%;border:0;display:block}.hl-map-link{padding:7px 9px;border:1px solid #e9d4bd;border-radius:9px;background:#fff8f1}.hl-environment-head{align-items:center}.hl-environment-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.hl-environment-tabs{display:inline-flex;gap:3px;padding:3px;border:1px solid #e1e6ed;border-radius:10px;background:#f7f8fa}.hl-environment-tabs button{min-height:30px;padding:6px 9px;border:0;border-radius:7px;color:#6c778b;background:transparent;font-size:8px;font-weight:850;cursor:pointer}.hl-environment-tabs button.active{color:#a9580c;background:#fff;box-shadow:0 3px 9px rgba(31,42,62,.08)}.hl-environment-scene{height:360px;perspective:1300px;overflow:hidden;background:#f6f8fa}.hl-environment-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .68s cubic-bezier(.2,.7,.2,1)}.hl-environment-flipper.is-flipped{transform:rotateY(180deg)}.hl-environment-face{position:absolute;inset:0;backface-visibility:hidden;background:#fff}.hl-traffic-face{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr)}.hl-news-face{transform:rotateY(180deg);padding:15px;background:radial-gradient(circle at 93% 0,#f5edff 0,transparent 30%),linear-gradient(180deg,#fff,#fbfcff)}.hl-live-map-wrap{position:relative;min-width:0;background:#eef2f5}.hl-live-map{position:absolute;inset:0}.hl-live-map iframe{width:100%;height:100%;border:0;display:block}.hl-traffic-status{position:absolute;left:12px;bottom:12px;z-index:3;max-width:265px;padding:8px 10px;border:1px solid rgba(221,228,235,.95);border-radius:10px;background:rgba(255,255,255,.94);box-shadow:0 6px 16px rgba(34,45,62,.10);backdrop-filter:blur(8px)}.hl-traffic-status b,.hl-traffic-status span{display:block}.hl-traffic-status b{color:#217149;font-size:8px}.hl-traffic-status span{margin-top:2px;color:#778399;font-size:7px;line-height:1.35}.hl-incidents{min-width:0;border-left:1px solid #e7ebf0;background:#fff}.hl-incidents-head{padding:12px;border-bottom:1px solid #edf0f4}.hl-incidents-head strong{display:block;color:#344054;font-size:10px}.hl-incidents-head span{display:block;margin-top:3px;color:#8b95a7;font-size:7.5px;line-height:1.4}.hl-incident-list{height:302px;padding:8px;overflow:auto;display:grid;gap:6px;align-content:start}.hl-incident-item{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;padding:8px;border:1px solid #e7ebf0;border-radius:10px;background:#fbfcfd}.hl-incident-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;color:#b45d0c;background:#fff1e4;font-size:11px;font-weight:900}.hl-incident-item strong{display:block;color:#344054;font-size:8.5px;line-height:1.3}.hl-incident-item p{margin:3px 0 0;color:#8490a2;font-size:7px;line-height:1.35}.hl-incident-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.hl-incident-meta span{padding:3px 5px;border-radius:999px;color:#677388;background:#eef2f6;font-size:6.5px;font-weight:800}.hl-live-empty{min-height:90px;display:grid;place-items:center;padding:14px;color:#8792a4;text-align:center;font-size:8px;line-height:1.45}.hl-news-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:11px;border-bottom:1px solid #e8ecf1}.hl-news-head strong{display:block;margin-top:4px;color:#2f3b50;font-size:13px}.hl-news-head small{display:block;margin-top:3px;color:#8490a2;font-size:8px}.hl-news-live{padding:6px 8px;border-radius:999px;color:#7a4c98;background:#f5eefb;font-size:7px;font-weight:900}.hl-news-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:11px;max-height:285px;overflow:auto}.hl-news-item{min-width:0;min-height:105px;display:flex;flex-direction:column;padding:10px;border:1px solid #e5e9ef;border-radius:11px;background:rgba(255,255,255,.94);text-decoration:none;box-shadow:0 5px 13px rgba(40,50,70,.04);transition:.17s ease}.hl-news-item:hover{border-color:#dfc9eb;transform:translateY(-1px);box-shadow:0 8px 16px rgba(40,50,70,.07)}.hl-news-item small{color:#9362b0;font-size:6.5px;font-weight:900;text-transform:uppercase}.hl-news-item strong{display:-webkit-box;margin-top:5px;overflow:hidden;color:#344054;font-size:8.5px;line-height:1.35;-webkit-line-clamp:3;-webkit-box-orient:vertical}.hl-news-item span{margin-top:auto;padding-top:7px;color:#8792a4;font-size:6.5px}.hl-activity-list{padding:7px 16px}.hl-activity-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eef1f4}.hl-activity-row:last-child{border-bottom:0}.hl-activity-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;font-size:12px;font-weight:900}.hl-activity-icon.pago{color:#087a47;background:#ecf9f2}.hl-activity-icon.visita{color:#c86509;background:#fff4e8}.hl-activity-icon.acceso{color:#b42318;background:#fff0ef}.hl-activity-icon.residente{color:#2b67ba;background:#edf4ff}.hl-activity-row strong{display:block;color:#344054;font-size:9.5px}.hl-activity-row div span{display:block;margin-top:3px;color:#8792a4;font-size:8px}.hl-activity-row time{color:#8a94a6;font-size:7.5px;white-space:nowrap}.hl-footer{display:flex;justify-content:space-between;gap:18px;padding:20px 2px 0;color:#9099a8;font-size:8px}.hl-loading,.hl-error{min-height:560px;display:grid;place-content:center;justify-items:center;gap:8px;text-align:center}.hl-loading span{width:34px;height:34px;border:3px solid #f2d3b6;border-top-color:#ef7d0b;border-radius:50%;animation:hlspin .75s linear infinite}.hl-loading strong,.hl-error strong{font-size:14px}.hl-loading small,.hl-error p{margin:0;color:#7d899d;font-size:9px}.hl-error button{margin-top:4px;padding:9px 13px;border:0;border-radius:9px;color:#fff;background:#ef7d0b;cursor:pointer;font-size:9px;font-weight:850}@keyframes hlspin{to{transform:rotate(360deg)}}
       @media(max-width:1180px){.hl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.hl-main-grid,.hl-bottom-grid{grid-template-columns:1fr}.hl-traffic-face{grid-template-columns:minmax(0,1.4fr) minmax(240px,.7fr)}}
-      @media(max-width:720px){.dashboard{padding:20px 15px 34px!important}.hl-welcome{align-items:flex-start;flex-direction:column}.hl-kpis{grid-template-columns:1fr}.hl-actions{width:100%}.hl-action,.hl-refresh{flex:1}.hl-money-row,.hl-card-head,.hl-footer{align-items:flex-start;flex-direction:column}.hl-chart-wrap{overflow-x:auto}.hl-chart{min-width:600px}.hl-map-frame{height:300px}.hl-environment-actions{width:100%;justify-content:flex-start}.hl-environment-tabs{width:100%;display:grid;grid-template-columns:1fr 1fr}.hl-environment-scene{height:600px}.hl-traffic-face{grid-template-columns:1fr;grid-template-rows:340px 260px}.hl-incidents{border-left:0;border-top:1px solid #e7ebf0}.hl-incident-list{height:205px}.hl-news-grid{grid-template-columns:1fr 1fr;max-height:515px}.hl-activity-row{grid-template-columns:34px minmax(0,1fr)}.hl-activity-row time{grid-column:2}.hl-data-note>a{margin-left:0}}
+      @media(max-width:720px){.dashboard{padding:20px 15px 34px!important}.hl-welcome{align-items:flex-start;flex-direction:column}.hl-kpis{grid-template-columns:1fr}.hl-actions{width:100%}.hl-action,.hl-refresh{flex:1}.hl-money-row,.hl-card-head,.hl-footer{align-items:flex-start;flex-direction:column}.hl-chart-wrap{overflow-x:hidden;min-width:0;max-width:100%;padding:4px 8px 0}.hl-chart{width:100%;min-width:0;max-width:100%;height:auto}.hl-map-frame{height:300px}.hl-environment-actions{width:100%;justify-content:flex-start}.hl-environment-tabs{width:100%;display:grid;grid-template-columns:1fr 1fr}.hl-environment-scene{height:600px}.hl-traffic-face{grid-template-columns:1fr;grid-template-rows:340px 260px}.hl-incidents{border-left:0;border-top:1px solid #e7ebf0}.hl-incident-list{height:205px}.hl-news-grid{grid-template-columns:1fr 1fr;max-height:515px}.hl-activity-row{grid-template-columns:34px minmax(0,1fr)}.hl-activity-row time{grid-column:2}.hl-data-note>a{margin-left:0}}
     `;
     document.head.appendChild(style);
   }
