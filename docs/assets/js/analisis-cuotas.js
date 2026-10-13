@@ -33,7 +33,8 @@
    ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],[data.esCargaHistorica?'Cuotas históricas registradas':'Ingresos bancarios validados',fmt(data.ingresosParaBalance)],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
-   ['Egresos registrados',fmt(data.totalEgresos)],['Saldo parcial conciliable',fmt(data.balanceReportado)],
+   ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
+   ['Egresos registrados',fmt(data.totalEgresos)],['Saldo disponible',fmt(data.balanceReportado)],
    ['Casa Club · recuperación',fmt(data.casaClub?.recuperacion)],
    ['Casa Club · limpieza',fmt(data.casaClub?.limpieza)],
    ['Garantías recibidas',fmt(data.casaClub?.garantiasRecibidas)],
@@ -45,7 +46,7 @@
   $('financeDonutText').innerHTML=esc(data.porcentaje)+'%<small>Casas pagadas</small>';
   $('financeLegend').innerHTML='<div>Pagadas <b>'+data.pagadas+'</b></div><div>Pendientes <b>'+data.pendientes+'</b></div><div>Total <b>'+houses+'</b></div>';
   $('financeStreetChart').innerHTML=data.calles.length?data.calles.map(c=>bar(c.calle,c.porcentaje,100,false,c.pagadas+'/'+c.total)).join(''):'Sin datos';
-  const cash=data.esCargaHistorica ? [['Mantenimiento histórico',data.ingresosHistoricos],['Egresos',data.totalEgresos]] : [['Mantenimiento validado',data.ingresosReportados.mantenimiento],['Extraordinarios validados',data.ingresosReportados.extraordinarios],['Egresos',data.totalEgresos]];
+  const cash=data.esCargaHistorica ? [['Mantenimiento histórico',data.ingresosHistoricos],['Ingresos adicionales',data.ingresosAdicionales],['Saldo inicial',data.saldoInicial],['Egresos',data.totalEgresos]] : [['Mantenimiento validado',data.ingresosReportados.mantenimiento],['Extraordinarios validados',data.ingresosReportados.extraordinarios],['Ingresos adicionales',data.ingresosAdicionales],['Saldo inicial',data.saldoInicial],['Egresos',data.totalEgresos]];
   const max=Math.max(1,...cash.map(x=>x[1]));
   $('financeCashChart').innerHTML=cash.map(([n,v],i)=>'<div class="money-row"><strong>'+esc(n)+'</strong><div class="track"><div class="fill '+(n==='Egresos'?'cost':'')+'" style="width:'+(v/max*100).toFixed(2)+'%"></div></div><strong>'+esc(fmt(v))+'</strong></div>').join('')+
     '<div class="hint">Abonos anotados en tabla de cuotas (sin duplicar en ingresos): <b>'+fmt(data.cobrosCuotasRegistrados)+'</b></div>';
