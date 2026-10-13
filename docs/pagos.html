@@ -566,9 +566,13 @@
       box-shadow: 0 0 0 3px rgba(239, 138, 36, .075)
     }
 
-    input[readonly] {
-      color: #627087;
-      background: #f7f9fc
+    #paymentForm input[readonly],
+    #paymentForm input[readonly]:focus {
+      color: #4b5563;
+      background: #e5e7eb;
+      border-color: #c4c9d1;
+      box-shadow: inset 0 1px 3px rgba(31, 41, 55, .08);
+      cursor: default
     }
 
     .hint {
