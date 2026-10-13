@@ -10,6 +10,9 @@ const access = [autenticarToken, autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 
 const security = (_req, res, next) => {
   res.set('Cache-Control', 'private, no-store');
   res.set('Referrer-Policy', 'no-referrer');
+  // El frontend de GitHub Pages y la API usan orígenes diferentes. CORS
+  // mantiene la lista permitida de app.js; CORP debe admitir media HLS.
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 };
 
