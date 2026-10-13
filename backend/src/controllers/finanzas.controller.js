@@ -1,4 +1,5 @@
-const {Op}=require('sequelize');
+const {Op,QueryTypes}=require('sequelize');
+const sequelize=require('../config/database');
 const { compararDirecciones }=require('../services/direccion-sort.service');
 const {Casa,Cuota,PagoReportado}=require('../models');
 const Egreso=require('../models/Egreso');
@@ -17,12 +18,13 @@ function filters(req){
 async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
-  const [casas,cuotas,pagos,egresos,reservasClub]=await Promise.all([
+  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','estatusPago','montoPagado','montoCuota','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
-   ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']})
+   ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']}),
+   sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT})
   ]);
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const streets=new Map();
@@ -46,7 +48,10 @@ async function analizar(req,res){
   const ingresosValidados=ingresosReportados.mantenimiento+ingresosReportados.extraordinarios;
   const cobrosHistoricos=cuotas.reduce((a,q)=>a+num(q.montoPagado),0);
   const esCargaHistorica=cuotas.some(q=>String(q.origenImportacion||'').startsWith('EXCEL_'));
-  const ingresosParaBalance=esCargaHistorica ? cobrosHistoricos : ingresosValidados;
+  const ingresosAdicionales=ingresosManuales.filter(x=>x.tipo!=='SALDO_INICIAL').reduce((a,x)=>a+num(x.monto),0);
+  const saldoInicial=ingresosManuales.filter(x=>x.tipo==='SALDO_INICIAL').reduce((a,x)=>a+num(x.monto),0);
+  const ingresosBase=esCargaHistorica ? cobrosHistoricos : ingresosValidados;
+  const ingresosParaBalance=ingresosBase+ingresosAdicionales;
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
   for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
@@ -58,10 +63,10 @@ async function analizar(req,res){
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),
    cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,
-   ingresosParaBalance,
-   ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosParaBalance-totalEgresos,
+   ingresosParaBalance,ingresosAdicionales,saldoInicial,ingresosManuales,
+   ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>e.toJSON()),
-   avisoConciliacion:esCargaHistorica?'Periodo histórico: el balance usa los importes de cuotas importadas menos egresos capturados. Los depósitos bancarios validados se muestran aparte y NO se suman de nuevo. No incluye ingresos manuales sin recibo ni saldo anterior.':'El balance usa solo depósitos VALIDADOS en Pagos y egresos capturados; las cuotas se muestran por separado para evitar duplicados. No incluye ingresos sin recibo ni saldo anterior.'
+   avisoConciliacion:esCargaHistorica?'Periodo histórico: cuotas importadas, ingresos adicionales y saldo inicial se calculan una sola vez. Depósitos bancarios validados se muestran aparte sin sumarlos de nuevo.':'Periodo actual: ingresos bancarios validados más ingresos manuales y saldo inicial registrados; las cuotas históricas se muestran aparte para no duplicar depósitos.'
   }});
  }catch(e){return sendErr(res,e);}
 }
