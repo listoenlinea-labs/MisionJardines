@@ -1,5 +1,6 @@
 'use strict';
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
 const camera = require('../services/camaras-hls.service');
@@ -34,7 +35,15 @@ router.get('/', ...access, security, (req, res) => {
 // servidor. La URL solicitada por el navegador nunca determina el host destino.
 // Ticket firmado: acceso temporal para video/segmentos, compatible con <video>
 // nativo y hls.js sin colocar el JWT de login ni la contraseña Dahua en URLs.
-router.get('/stream/:channel/:asset', security, async (req, res) => {
+const streamLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 6000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: 'Demasiadas solicitudes de video' }
+});
+
+router.get('/stream/:channel/:asset', streamLimiter, security, async (req, res) => {
   const { channel, asset } = req.params;
   const ticket = req.query.ticket;
   if (!camera.safeAsset(asset) || !camera.checkTicket(channel, ticket)) {
