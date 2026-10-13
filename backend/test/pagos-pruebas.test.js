@@ -4,7 +4,8 @@ Object.assign(process.env,{DB_HOST:'localhost',DB_PORT:'3306',DB_NAME:'test',DB_
 require('../src/services/folios.service').generarSiguienteFolio=async()=> 'MJ-2026-TEST';
 require('../src/services/pago-reportado-pdf.service').generarReciboPagoReportado=async()=>({buffer:Buffer.from('pdf'),fileName:'test.pdf',mimeType:'application/pdf'});
 // Controller unit tests: server OCR has its own synthetic-image integration suite.
-require('../src/services/comprobante-lector.service').comprobarDestino=async()=>({texto:'Destino sintético válido'});
+let ultimaVerificacion;
+require('../src/services/comprobante-lector.service').comprobarDestino=async datos=>{ultimaVerificacion=datos;return {texto:'Destino sintético válido'}};
 const controller=require('../src/controllers/pagos.controller');
 const models=require('../src/models');
 const db=require('../src/config/database');
@@ -38,6 +39,14 @@ test('subir imagen siempre deja el pago PENDIENTE_VALIDACION, sin activar acceso
  assert.equal(flags.VALIDAR_PAGOS_SIN_ADMIN,false);
  assert.equal(x.res.code,201);assert.equal(x.payment.estatus,'PENDIENTE_VALIDACION');
  assert.equal(x.payment.recargo,0);assert.deepEqual(x.events,['create','commit']);
+});
+test('reportar exige todos los campos del OCR para condómino y conserva excepción administrativa', async t => {
+ for (const rol of ['CONDOMINO', 'ADMINISTRADOR']) {
+  const x=setup(t);x.req.usuario.rol=rol;
+  await controller.reportarPago(x.req,x.res);
+  assert.equal(x.res.code,201);
+  assert.equal(ultimaVerificacion.exigirCampos,rol==='CONDOMINO');
+ }
 });
 test('8 de octubre: 300 cotiza una mensualidad sin imponer fecha al C3',()=>{
  assert.deepEqual(pricing.cotizar('2026-10-08','300.00',{hoy:'2026-11-30',fechaFinal:'2026-10-10'}).meses,1);

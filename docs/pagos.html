@@ -1174,16 +1174,17 @@
         <p id="destinationCheck" class="proof-validation" role="status" aria-live="polite" hidden></p>
 
         <form id="paymentForm">
+          <p id="proofFieldHelp">Los datos bancarios se llenan desde el comprobante y son de solo lectura. Si falta un dato, vuelve a leerlo o adjunta una imagen más clara.</p>
           <div class="form-grid">
             <div class="form-row">
-              <div><label>Folio / clave de operación *</label><input id="operationFolio" maxlength="180" required
+              <div><label>Folio / clave de operación *</label><input id="operationFolio" maxlength="180" required readonly
                   placeholder="Ej. clave de rastreo o folio"></div>
-              <div><label>Monto depositado *</label><input id="amount" type="number" min="0.01" step="0.01" required
+              <div><label>Monto depositado *</label><input id="amount" type="number" min="0.01" step="0.01" required readonly
                   placeholder="300.00"></div>
             </div>
             <div class="form-row">
-              <div><label>Fecha del depósito *</label><input id="operationDate" type="date" required></div>
-              <div><label>Hora *</label><input id="operationTime" type="time" step="1" required></div>
+              <div><label>Fecha del depósito *</label><input id="operationDate" type="date" required readonly></div>
+              <div><label>Hora *</label><input id="operationTime" type="time" step="1" required readonly></div>
             </div>
             <div><label>Concepto oficial del recibo</label><input id="officialConcept" readonly></div>
             <div class="form-row">
@@ -1228,7 +1229,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261012-monto-2"></script>
-  <script src="assets/js/pagos.js?v=20261013-ocr-auto-1"></script>
+  <script src="assets/js/pagos.js?v=20261013-ocr-lectura-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261012-seguridad"></script>
 </body>
 

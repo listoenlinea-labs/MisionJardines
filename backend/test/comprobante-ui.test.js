@@ -7,7 +7,7 @@ const frontend = path.join(__dirname, '../../docs/assets/js');
 const source = fs.readFileSync(path.join(frontend, 'pagos.js'), 'utf8');
 const runOcr = source.slice(source.indexOf('    async function runOcr()'), source.indexOf("    $('proofInput').addEventListener"));
 
-async function scan(text, failure = false) {
+async function scan(text, failure = false, userRole = 'ADMINISTRADOR') {
   const fields = new Map();
   const $ = id => {
     if (!fields.has(id)) fields.set(id, { value: '', style: {}, disabled: false, textContent: '' });
@@ -30,7 +30,7 @@ async function scan(text, failure = false) {
     }
   };
   const context = {
-    window: { Tesseract }, Tesseract, $, proofData: 'synthetic-image',
+    window: { Tesseract }, Tesseract, $, proofData: 'synthetic-image', role: () => userRole,
     scanRevision: 0, proofConfirmed: false, ocrText: '',
     config: { titular: 'PERSONA DE PRUEBA', destinoUltimos4: '1234' },
     toast() {}, setDestinationStatus() {}, updatePaymentSummary() {}
@@ -78,4 +78,37 @@ test('si el monto no es legible, el formulario deja el importe vacío en vez de 
   const { $, context } = await scan('Monto transferido\nDestino PERSONA DE PRUEBA Cuenta -1234');
   assert.equal(context.proofConfirmed, true);
   assert.equal($('amount').value, '');
+});
+
+test('condómino: muestra los cuatro datos leídos y permite reportar', async () => {
+  const { $, context } = await scan('Monto transferido $300.00\nDestino PERSONA DE PRUEBA Cuenta -1234\nFolio de operación 0000098765\nFecha de operación 12 oct 2026 12:49:23', false, 'CONDOMINO');
+  assert.equal(context.proofConfirmed, true);
+  assert.equal($('amount').value, '300.00');
+  assert.equal($('operationFolio').value, '0000098765');
+  assert.equal($('operationDate').value, '2026-10-12');
+  assert.equal($('operationTime').value, '12:49:23');
+});
+
+test('condómino: una lectura incompleta no habilita reportar ni pide edición manual', async () => {
+  const { $, context } = await scan('Monto transferido\nDestino PERSONA DE PRUEBA Cuenta -1234', false, 'CONDOMINO');
+  assert.equal(context.proofConfirmed, false);
+  assert.equal($('submitPayment').disabled, true);
+  assert.equal($('amount').value, '');
+  assert.match($('ocrState').textContent, /Lectura incompleta/);
+});
+
+test('campos de comprobante visibles y readonly por defecto; solo administración puede editarlos', () => {
+  const html = fs.readFileSync(path.join(frontend, '../../pagos.html'), 'utf8');
+  for (const id of ['operationFolio', 'amount', 'operationDate', 'operationTime']) {
+    assert.match(html, new RegExp('<input[^>]*id="' + id + '"[^>]*readonly[^>]*>'));
+  }
+  const setup = source.slice(source.indexOf("      const canEditProof ="), source.indexOf("      $('adminExtraBox').hidden", source.indexOf('    async function init()')));
+  for (const userRole of ['CONDOMINO', 'ADMINISTRADOR', 'SUPER_ADMIN']) {
+    const fields = new Map();
+    vm.runInNewContext(setup, { role: () => userRole, $: id => {
+      if (!fields.has(id)) fields.set(id, {});
+      return fields.get(id);
+    } });
+    for (const id of ['operationFolio', 'amount', 'operationDate', 'operationTime']) assert.equal(fields.get(id).readOnly, userRole === 'CONDOMINO');
+  }
 });

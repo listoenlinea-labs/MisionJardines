@@ -155,6 +155,18 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-13
 
+- Datos bancarios de condóminos: folio, monto, fecha y hora se muestran de solo
+  lectura y se llenan por OCR. Una lectura incompleta no habilita el reporte;
+  se pide releer, una imagen clara o ayuda administrativa. Campos de vivienda y
+  concepto conservan su condición de solo lectura.
+- El servidor exige detectar los cuatro campos para roles no administrativos y
+  coteja valores enviados contra su propia lectura (incluidos segundos). Administración
+  conserva captura manual si falta un dato, sin contradecir valores detectados.
+- Validación de este ajuste: 33 pruebas aprobadas de OCR, interfaz, campos y reportes;
+  sintaxis y diff sin errores. La suite requerida de pagos/C3 conserva los dos fallos
+  previamente documentados de edición manual/asociación; no se modificó esa lógica.
+  No se consultó ni modificó MySQL o C3 reales. Requiere despliegue frontend y backend.
+
 - OCR del navegador: se reprodujo que SINGLE_BLOCK omite el importe grande en un
   comprobante con bloques de tamaños distintos. Se crea el worker explícitamente y
   se configura PSM.AUTO antes de reconocer; se termina también ante un error.

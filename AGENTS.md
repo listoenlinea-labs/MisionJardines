@@ -73,6 +73,12 @@ Ejemplos que deben conservarse:
 - Verificar destino/beneficiario, titular y últimos cuatro dígitos configurados;
   comprobar los datos bancarios extraídos cuando estén disponibles. El texto OCR del
   navegador y un campo de importe editado no son evidencia bancaria independiente.
+- Los campos bancarios (folio, importe, fecha y hora) son visibles y de solo lectura
+  para condóminos. Una lectura incompleta bloquea el reporte y pide una imagen más
+  clara o ayuda de Administración. El servidor exige los cuatro datos en su OCR
+  independiente para usuarios sin rol administrativo y rechaza discrepancias,
+  incluidos segundos en la hora. Solo SUPER_ADMIN/ADMINISTRADOR conservan captura
+  manual cuando falta algún dato; nunca pueden contradecir datos detectados.
 - Un destino correcto en una imagen no demuestra recepción del dinero. El comprobante
   permanece `PENDIENTE_VALIDACION` hasta la confirmación administrativa actual.
 - Leer correos bancarios para conciliar pagos es una propuesta, **no una integración

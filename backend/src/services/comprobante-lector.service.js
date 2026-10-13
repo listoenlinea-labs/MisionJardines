@@ -45,20 +45,28 @@ function reconocerImagen(imageData) {
   });
 }
 
-async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto }) {
+async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto, exigirCampos = false }) {
   const texto = await reconocerImagen(comprobanteData);
   const titular = process.env.PAGOS_TITULAR || 'MARIA DEL ROCIO BAHENA JUAREZ';
   const terminacion = process.env.PAGOS_DESTINO_ULTIMOS4 || '4409';
   const verificacion = parser.verifyDestination(texto, titular, terminacion);
   if (!verificacion.ok) throw Object.assign(new Error(verificacion.message + ' No se registró el pago.'), { status: 422 });
   const extraido = parser.extract(texto);
+  validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos);
+  return { texto: texto.slice(0, 12000), extraido };
+}
+
+function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos = false) {
+  if (exigirCampos && ['folio', 'date', 'time', 'amount'].some(field => !extraido[field])) {
+    throw Object.assign(new Error('No se pudieron leer todos los datos bancarios del comprobante. Adjunta una imagen más clara o solicita ayuda a Administración. No se registró el pago.'), { status: 422 });
+  }
   // Check bank-labelled data when detected, not untrusted OCR text supplied by the browser.
   const same = (provided, detected) => !detected || String(provided).trim().toUpperCase() === String(detected).trim().toUpperCase();
   if (!same(folioOperacion, extraido.folio)) throw Object.assign(new Error('El folio no coincide con Folio de operación del comprobante.'), { status: 422 });
   if (!same(fechaOperacion, extraido.date)) throw Object.assign(new Error('La fecha no coincide con Fecha de operación del comprobante.'), { status: 422 });
   if (extraido.time && String(horaOperacion).slice(0, 5) !== extraido.time.slice(0, 5)) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
+  if (exigirCampos && (String(horaOperacion).length === 5 ? horaOperacion + ':00' : String(horaOperacion)) !== extraido.time) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
   if (extraido.amount && Number(monto).toFixed(2) !== extraido.amount) throw Object.assign(new Error('El monto no coincide con el monto transferido que aparece en el comprobante.'), { status: 422 });
-  return { texto: texto.slice(0, 12000), extraido };
 }
 
-module.exports = { reconocerImagen, comprobarDestino };
+module.exports = { reconocerImagen, comprobarDestino, validarCamposExtraidos };

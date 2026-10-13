@@ -300,7 +300,8 @@ async function reportarPago(req, res) {
         }
 
         const comprobado = await comprobarDestino({
-            comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto
+            comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto,
+            exigirCampos: !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario.rol)
         });
         textoOcr = comprobado.texto;
 

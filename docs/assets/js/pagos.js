@@ -198,7 +198,7 @@
       } catch (e) {
         if (revision !== quoteRevision) return;
         $('summaryLate').textContent = 'No disponible';
-        $('paymentPreview').textContent = 'No se pudo cotizar: ' + e.message + '. Revisa la conexión al controlador y vuelve a seleccionar la fecha.';
+        $('paymentPreview').textContent = 'No se pudo cotizar: ' + e.message + '. Revisa la conexión al controlador y vuelve a leer el comprobante.';
       }
     }
 
@@ -297,13 +297,20 @@
         $('amount').value = extracted.amount || '';
         $('operationDate').value = extracted.date || '';
         $('operationTime').value = extracted.time || '';
+        const missing = !extracted.folio || !extracted.date || !extracted.time || !extracted.amount;
+        if (missing && !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role())) {
+          $('ocrState').textContent = 'Lectura incompleta. Vuelve a leer o adjunta un comprobante más claro.';
+          setDestinationStatus('No se pudieron leer todos los datos bancarios. Vuelve a leer el comprobante o solicita ayuda a Administración.', 'invalid');
+          toast('Los datos se obtienen del comprobante y no pueden editarse. Adjunta una imagen más clara o solicita ayuda a Administración.');
+          return;
+        }
         proofConfirmed = true;
         $('submitPayment').disabled = false;
         $('ocrBar').style.width = '100%';
         $('ocrState').textContent = 'Lectura completada. Revisa los campos detectados.';
         setDestinationStatus('Destino comprobado en la imagen: ' + beneficiary + ' · cuenta terminación ' + suffix + '. El depósito aún requiere confirmación bancaria.', 'ok');
         updatePaymentSummary();
-        if (!extracted.folio || !extracted.date || !extracted.amount) toast('Comprobante aceptado; revisa y completa los campos que el OCR no pudo leer.');
+        if (missing) toast('Comprobante aceptado; revisa y completa los campos que el OCR no pudo leer.');
       } catch (error) {
         if (scanRevision !== revision) return;
         proofConfirmed = false;
@@ -360,7 +367,7 @@
       const date=$('operationDate').value;
       const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       if(!date || date<'2026-10-01' || date>today)return toast('Selecciona una fecha real desde octubre 2026, no futura.');
-      if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a seleccionar la fecha.');
+      if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a leer el comprobante.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
     } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.id || null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
@@ -389,6 +396,9 @@
     }));
 
     async function init() {
+      const canEditProof = ['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role());
+      for (const id of ['operationFolio', 'amount', 'operationDate', 'operationTime']) $(id).readOnly = !canEditProof;
+      if (canEditProof) $('proofFieldHelp').textContent = 'Revisa los datos leídos del comprobante. Administración puede completar o corregir la lectura.';
       $('adminExtraBox').hidden = !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role());
 
       // Mostrar el domicilio desde la sesión incluso antes de consultar el API.
