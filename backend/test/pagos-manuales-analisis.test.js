@@ -40,7 +40,7 @@ test('Finanzas almacena cuotas con una transacción y enlaza la cola ZKTeco',()=
  assert.match(controller,/sequelize\.transaction\(/);
  assert.match(controller,/vigenciaService\.actualizar\(/);
  assert.match(controller,/estatusPago:'PAGADO'/);
- assert.match(controller,/cuota\.estatusPago!=='PENDIENTE'/);
+ assert.match(controller,/clasificarCuotaParaPago\(cuota\)/);
  assert.match(controller,/t\.fechaFin>plan\.fechaFinObjetivo/);
  assert.match(sync,/fechaFinDeReferencia\(event\.referencia\)/);
  assert.match(sync,/fechaObjetivo<fechaAntes/);
