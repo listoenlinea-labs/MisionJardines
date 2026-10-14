@@ -1,10 +1,10 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 12/oct/2026, 23:31, America/Mexico_City.
-**SHA de main consultado:** `3d25888592a4a2996d7fca70edb66a95b6efbf7a`.
-**Fuentes de esta revisión:** comparación de main desde `ebed7ff3603b0f50b915c34df9eccae72befd0af`,
-metadatos de los PR #142–#153, commits directos y estados/checks en GitHub, historial ya
-documentado y transcripción de conversación disponible. Las capturas
+**Última revisión:** 13/oct/2026, 23:26, America/Mexico_City.
+**SHA de main consultado:** `13a3a2334053cdde223cea8fd9a6c89f766fe7c1`.
+**Fuentes de esta revisión:** comparación de main desde `3d25888592a4a2996d7fca70edb66a95b6efbf7a`,
+metadatos de los PR #154–#179, commits y estados/checks en GitHub, documentación vigente,
+historial ya registrado y conversación disponible. Las capturas
 de esa transcripción no están disponibles como imágenes inspeccionables aquí; no se certifican
 sus resultados desde descripciones del asistente. No se consultaron MySQL, Hostinger, Google
 Sheets ni el C3 de producción durante esta revisión.
@@ -20,7 +20,7 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | --- | --- | --- |
 | Pagos de mantenimiento | Implementado en main | Mensualidad $300; recargos $50 por corte vencido no cubierto; meses desde fecha física C3; saldo remanente; corte inclusivo día 10. Ver AGENTS.md |
 | Confirmación de comprobantes | Revisión administrativa activa | `VALIDAR_PAGOS_SIN_ADMIN=false`; un recibo provisional no confirma depósito ni entrega de fecha al C3 |
-| OCR | Tesseract.js en servidor; monto corregido en main | Reprocesa imagen y coteja destino; `3d25888` evita llenar el monto con terminaciones de cuenta y deja vacío lo ambiguo. No prueba recepción del dinero ni reemplaza la validación independiente |
+| OCR | Tesseract.js en servidor y navegador | Monto/cuenta separados; campos bancarios de condóminos son de solo lectura y el servidor exige folio, monto, fecha y hora. PR del 13/oct corrigió PSM del navegador; pruebas locales no acreditan el frontend desplegado ni recepción del dinero |
 | Escritura C3 por pago | DIRECT con diario e idempotencia | Sin bridge en ese flujo; no asigna puertas ni elimina bloqueos manuales. Estado financiero y entrega física son distintos |
 | Edición manual de TAGs | Implementada; validación pendiente | Dos pruebas simuladas de edición fallan en main; no está diagnosticado el motivo ni confirmado un fallo equivalente en producción |
 | Inventario C3 | Lectura periódica y manual | Reflejo SQL; no volver a usar fechas heredadas para sobreescribir el controlador |
@@ -29,7 +29,12 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Confirmación por correo bancario | Propuesta | Sin conexión de buzón ni conciliador implementado. Falta revisar una notificación real y datos de operación |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
-| Interfaz responsive | Implementada en main; validación visual pendiente | PR #133–#141 reorganizan navegación y vistas; #149 y #152–#153 añaden interacción y rediseño móvil de la gráfica financiera. Un merge no acredita que Hostinger ya sirva estos assets ni sustituye pruebas en navegador |
+| Interfaz responsive | Implementada en main; validación visual pendiente | PR #154–#158 sustituyen iterativamente la gráfica móvil; el estado final usa líneas SVG a ancho completo y ejes/puntos HTML táctiles. PR #179 mueve la consulta de viviendas debajo de las gráficas. Falta revisión visual real |
+| Historial administrativo de pagos | Implementado en main; producción no verificada | PR #160–#162 añaden historial 11–10, meses aplicados y fecha anterior por TAG desde el diario guardado. No es lectura TCP en vivo; requiere desplegar frontend/backend y cotejar con MySQL |
+| Pagos manuales desde Análisis | Implementado en main; uso real pendiente | PR #171 y #173–#176 registran meses en transacción, protegen pagos/referencias reales, generan una sola entrega durable C3 y cierran el modal solo tras éxito. No se probó con MySQL/C3 reales |
+| Auto-users | Implementado en main; despliegue/migración pendientes | PR #166–#170 y #172 incorporan prerregistro, aceptación, pruebas administrativas y confirmaciones masivas. No se crearon cuentas ni se enviaron WhatsApp reales; requiere migración y configuración |
+| Seguridad, pluma y cámaras | Parcialmente implementado; hardware no verificado | PR #159 reutiliza el endpoint de pluma y prepara proxy HLS; #163 añade diagnóstico. PR #164 retira el visor Dahua de Seguridad, pero conserva backend/documentación. Falta gateway RTSP→HLS y pruebas físicas |
+| Visibilidad del padrón | Filtro de lectura en main | PR #177–#178 muestran solo Guadalajara 707 y Valle de México 3614 en listados compartidos. No borran ni fusionan direcciones, pagos o TAGs; falta verificar consultas reales de producción |
 | Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#147 conectan cuotas históricas, egresos, ingresos manuales y saldo inicial; #151 limita el indicador de cumplimiento al padrón documentado sin borrar movimientos. Las cifras descritas por los PR dependen del esquema MySQL y despliegue reales |
 | Cuotas para Seguridad | Implementado en main; producción no verificada | PR #140 añade ruta autenticada y tabla paginada sin nombres/teléfonos. Calcula desde `direcciones`/`cuotas`, no desde TAGs ni Sheets; no se consultó la DB real |
 | Históricos Google Sheets | Staging opcional en main; no activado/verificado | PR #140 añade lectura OAuth de solo lectura y preparación idempotente. Está deshabilitado por defecto, requiere migración SQL manual y no escribe directamente en cuotas, pagos ni egresos |
@@ -37,13 +42,11 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
-Desde el SHA anterior main avanzó 45 commits. Además de los cambios directos de Seguridad,
-abonos parciales y OCR ya registrados abajo, se fusionaron los PR #143–#149 y #151–#153.
-Los #143–#147 conectan históricos y series financieras; #148–#149 mejoran la gráfica; #151
-corrige el denominador del padrón; #152–#153 rediseñan la vista móvil. El PR #142 fue cerrado
-sin merge y el #150 sigue abierto: ninguno forma parte de main. El commit documental `05aab7c`
-se excluye del trabajo de producto. El PR #132 sigue fusionado en el historial, pero su entrega
-fue revertida en main.
+Desde el SHA anterior main avanzó 149 commits; se fusionaron los PR #154–#179 y no
+quedaron PR abiertos al cierre de esta revisión. El commit `de57d88`, dedicado a la bitácora
+del día anterior, se excluye del trabajo de producto. Los merges acreditan presencia en main,
+no despliegue en Hostinger, migraciones, datos de MySQL ni funcionamiento físico de C3/Dahua.
+El PR #132 continúa revertido y no se restauraron sus comandos/workflow.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -80,14 +83,11 @@ En ambos casos el C3 simulado conservó EndTime `20260910`, cuando se esperaba
 al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
-Para los heads de los PR #133–#141, GitHub devolvió cero check-runs y cero estados de
-commit; por tanto, no hay CI acreditado para esas fusiones. En esta revisión, los commits de merge
-de #143–#147, #149 y #151–#153 también devolvieron cero estados y cero workflow runs. La consulta
-del estado combinado de #148 tuvo un error transitorio, pero sus workflow runs fueron cero; no se
-le atribuye CI. Los cuerpos de los PR documentan comprobaciones estáticas o pruebas pendientes,
-no una ejecución independiente sobre main. El commit OCR documenta pruebas del parser/UI y OCR
-sintético, conservadas en la bitácora, pero no se repitieron aquí. No se ejecutaron suites contra
-DB, Google Sheets, Hostinger o hardware real.
+GitHub devolvió cero estados de commit y cero workflow runs para los 26 commits de merge
+de los PR #154–#179. Por tanto, no hay CI acreditado para esas fusiones. Los resultados locales
+citados en sus descripciones y en la bitácora corresponden a ramas, simulaciones o revisiones
+estáticas; no se repitieron en esta actualización y no equivalen a una suite verde del main actual.
+No se ejecutaron pruebas contra MySQL, Hostinger, WhatsApp, NVR Dahua ni hardware C3 reales.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -116,9 +116,12 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
 | Dos pruebas fallidas de edición de TAG | Diagnosticar y repetir pruebas pertinentes, sin debilitar validaciones reales |
-| Tres regresiones estructurales posteriores a los PR #138–#141 | Actualizar o conciliar expectativas de versiones de assets y repetir la suite hasta obtener un resultado explicado; no ocultar los fallos como simple éxito visual |
-| PR #133–#153 fusionados sin CI acreditado | Añadir/ejecutar CI apropiado; para la gráfica validar filtros, puntos, tarjeta Agenda y anchos 235/320/375/390/430/620/720/768/1440 px; comprobar despliegue real por separado |
-| PR #150 abierto y #142 cerrado sin merge | Decidir si #150 debe integrarse tras pruebas; no atribuir a main su conservación de selección ni Agenda sin cuotas. #142 no forma parte de main |
+| Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
+| PR #154–#179 sin CI acreditado | Ejecutar una suite reproducible sobre el SHA actual y pruebas visuales de Inicio, Seguridad, Auto-users, historial y Análisis; comprobar despliegue por separado |
+| Pagos manuales y sincronización C3 | Probar primero con una vivienda controlada; confirmar transacción, rechazo de duplicados, un solo evento durable y estado COMPLETADO con lectura física de todos los TAGs. No usar masivamente antes |
+| Auto-users | Validar migración en copia de MySQL, permisos, aceptación, edición/borrado de pruebas y WhatsApp con plantilla aprobada; no activar cuentas cambiando solo estatus |
+| Cámaras Dahua y pluma | Para video falta gateway RTSP→HLS privado y configuración Hostinger. Para pluma, coordinar prueba física; ORDEN ENVIADA no confirma posición |
+| Guadalajara 707 / Valle de México 3614 | Verificar en producción que filtros, paginación, ZKTeco y conmutador oculten solo los domicilios previstos; los registros siguen en MySQL y requieren conciliación separada si contienen relaciones |
 | Finanzas históricas y saldo inicial | Confirmar que producción usa el esquema esperado, que existen las tablas/asientos requeridos y cotejar API Inicio/Análisis con MySQL sin doble conteo; las cifras de los PR son valores esperados, no verificación de esta revisión |
 | Google Sheets histórico | Ejecutar migración opcional solo al decidir activarlo, configurar credenciales/rangos en backend y validar lectura/staging con una hoja y MySQL de prueba; acordar conciliación antes de afectar contabilidad oficial |
 | 27 viviendas del padrón sin TAG | Confirmar entrega/posesión y asociación; nueva consulta/exportación tras ajustes |
@@ -155,7 +158,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-13
 
-- Auto-users preparado en PR: prerregistro por condómino con vínculo único a
+- Revisión de las 23:26: main leído en `13a3a2334053cdde223cea8fd9a6c89f766fe7c1`, 149 commits después del punto anterior. Se excluyó `de57d88`, que solo actualizó la bitácora del 12/oct. Los PR #154–#179 están fusionados y no quedaron PR abiertos.
+- Inicio/Análisis: #154–#158 dejan la gráfica móvil a ancho completo con ejes y puntos táctiles no deformados; #179 coloca Consulta de viviendas inmediatamente debajo de las gráficas. Validación visual en navegador/dispositivo sigue pendiente.
+- Seguridad/Dahua: #159 conecta los botones al endpoint ZKTeco existente y prepara HLS seguro; #163 añade diagnóstico. #164–#165 retiran el visor de Seguridad y reordenan cuotas/pluma. No se probó la pluma ni el NVR físicamente y el video requiere gateway externo.
+- Pagos: #160–#162 publican historial administrativo 11–10 y fechas anteriores guardadas. #171 y #173–#176 incorporan registro manual de meses, conciliación HIST/referencias protegida, una entrega durable C3 por lote y cierre seguro del modal. No se consultó MySQL/C3 real ni se confirmó el caso Lirios 13.
+- Auto-users: #166–#170 y #172 quedaron en main con prerregistro, aceptación, pruebas administrativas, diagnóstico de borrado y confirmaciones masivas. Requiere despliegue, migración validada y configuración real de WhatsApp; no se crearon cuentas ni se enviaron mensajes en producción.
+- Padrón visible: #177 restringe Guadalajara a 707 y #178 Valle de México a 3614 en listados compartidos. Son filtros de lectura: no borran ni trasladan direcciones, cuotas, pagos o TAGs.
+- Checks: los 26 merges #154–#179 devolvieron cero estados y cero workflow runs. Se conservan resultados locales documentados por cada PR, pero no hay CI de main ni pruebas nuevas de Hostinger, MySQL, WhatsApp, Dahua o C3.
+
+- Auto-users integrado en main mediante PR #166: prerregistro por condómino con vínculo único a
   vivienda/usuario, cuenta_aceptada=false y credenciales aleatorias no entregadas.
   Creación por lotes idempotente; datos ambiguos/inactivos requieren revisión.
   Invitaciones únicas, reemplazables, con hash y caducidad; confirmación del número
@@ -170,7 +181,7 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   migración/proveedor simulados y compatibilidad de registro/revocación. Sintaxis y
   diff sin errores. Revisión visual y prueba de migración/WhatsApp reales pendientes.
 
-- Fecha anterior al pago preparada en PR de seguimiento: se muestran las fechas
+- Fecha anterior al pago integrada mediante PR #162: se muestran las fechas
   físicas guardadas en fecha_antes por TAG y movimiento de ese comprobante; no se
   sustituye por la vigencia actual. Sin lectura se indica No registrada; abonos sin
   avance/extraordinarios indican No aplica. Lectura tomada antes de escribir C3,
@@ -179,13 +190,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   sin errores. Suite pagos/C3: 37 aprobadas y los dos fallos anteriores de edición
   manual/asociación. Producción no consultada; requiere frontend y backend.
 
-- Corrección del historial solicitada después de integrar PR #160: periodos
+- Corrección del historial integrada mediante PR #161 después de #160: periodos
   inclusivos 11–10 (fin exclusivo día 11); selector por hora de México. Meses
   aplicados destacados junto al monto, con entregas parciales/pendientes separadas
   y vista móvil sin desplazamiento horizontal. No se altera el corte de cobro
-  inclusivo del día 10 ni el cálculo financiero. Preparado en PR de seguimiento.
+  inclusivo del día 10 ni el cálculo financiero.
 
-- Historial administrativo de pagos preparado para revisión en PR: selector por
+- Historial administrativo de pagos integrado mediante PR #160: selector por
   fecha bancaria en periodos 10–9, tabla de todos los estados/abonos, folios,
   fecha de subida existente (`creadoEn`), monto/reportante y diario de meses.
   TAGs muestran todas las fechas registradas y última lectura; no se consulta TCP.
@@ -217,6 +228,35 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   no acredita despliegue ni ejecución en el navegador de producción.
 - Asset pagos.js versionado para renovar caché. Solo requiere desplegar frontend;
   backend, reglas financieras, MySQL y C3 no se modificaron.
+
+**Auto-users: prueba individual**
+
+- Se añade una cuenta ficticia por clave de prueba, limitada a viviendas identificadas como Prueba/TEST. Creación transaccional e idempotente en la misma pestaña.
+- Enlace individual sin WhatsApp, con expiración, rotación y el mismo flujo público de aceptación/reportes. Cuentas de prueba excluidas de envío, incluso después de editar el teléfono.
+- Validación local: 39 pruebas de Auto-users, permisos, autenticación y registro aprobadas; incluye creación concurrente, rechazo de viviendas reales, número incorrecto, corrección de reportes, aceptación única y rollback. Sin consultas/escrituras a producción ni mensajes reales. Requiere desplegar frontend y backend para probar manualmente.
+
+**Auto-users: administración de cuentas de prueba**
+
+- Auto-users incorpora tabla paginada de cuentas de prueba pendientes/aceptadas, consulta de datos y fechas, edición de perfil y vivienda de pruebas, y borrado confirmado del conjunto ficticio. Conserva viviendas e historial externo; validación de marca/rol en servidor, transacción y bloqueo por referencias.
+- Editar mantiene aceptación/contraseña/rol, actualiza condómino y vínculo, e invalida enlaces y sesiones anteriores. No incluye cuentas manuales sin marca de prueba.
+- Validación local: 43 pruebas aprobadas de Auto-users, interfaz administrativa, autenticación, permisos y registro; incluye rechazo de cuentas reales, edición aceptada, cancelación/confirmación de borrado y rollback. Sin cambios de DB de producción ni mensajes reales. Requiere despliegue de frontend/backend.
+
+**Auto-users: borrado sin respuesta visible**
+
+- El usuario reportó que Borrar no eliminaba y no mostraba mensaje. El flujo anterior salía silenciosamente al cancelar/suprimir la confirmación nativa; no se verificó la causa concreta en su navegador/DB.
+- Se sustituye confirmación nativa por dialog de la página, con ID, cancelación explícita, estado de solicitud y errores persistentes; límite de espera de 45 segundos sin reintento automático. Se distingue DELETE completado de fallo posterior refrescando la tabla y se corrige el cursor de botones deshabilitados por estado.
+- Validación local: 43 pruebas aprobadas; UI prueba cancelación, rechazo 409, respuesta HTML 404, timeout simulado, recuperación de botones y borrado confirmado. Sin cambios en DB de producción ni relajación de validaciones de borrado. Requiere actualizar frontend; el servidor sigue comprobando la marca y referencias de prueba.
+
+**Auto-users: error de servidor al borrar prueba**
+
+- Captura del usuario muestra panel de borrado de cuenta #8 y respuesta genérica de operación fallida. Confirma que el nuevo panel funciona y la petición obtiene un rechazo del backend; no revela la excepción SQL concreta.
+- Se corrige consulta de dependencias: antes seleccionaba modelos completos y asumía todas las tablas/columnas. Ahora comprueba esquema físico y proyecta solo referencias disponibles, omite módulos físicamente ausentes y mantiene bloqueo por historial/FK. Errores administrativos muestran tabla/código seguro, sin SQL ni datos privados.
+- Validación local: 45 pruebas aprobadas, incluidas tablas opcionales ausentes, campos heredados, consulta mínima, rollback y diagnóstico HTTP sanitizado. Sin acceso a DB de producción; la causa específica allí requiere confirmar tras desplegar backend o revisar el código de error.
+
+**Auto-users: confirmación antes de acciones masivas**
+
+- Crear usuarios y Mandar invitación requieren panel Sí/No antes de empezar el flujo por lotes. No/Escape no ejecuta solicitudes masivas y Sí se consume una vez para evitar repetir por clics sucesivos. No cambia los botones de pruebas ni el envío individual.
+- Validación local: 45 pruebas aprobadas; interfaz comprueba ausencia de solicitudes antes de Sí y al cancelar, selección de la operación correcta, confirmación única y creación de prueba sin panel masivo. Sin creación de cuentas ni mensajes reales en producción. Requiere actualizar frontend.
 
 ### 2026-10-12
 
@@ -308,32 +348,3 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   el intercambio; se retiró una correspondencia de residente previamente afirmada.
 - No se consultó ni modificó producción, ni se ejecutaron pagos, escrituras de TAG o
   pruebas físicas. Se conserva el historial y una sola entrada para esta fecha.
-
-### Prueba individual de Auto-users · 2026-10-13
-
-- Se añade una cuenta ficticia por clave de prueba, limitada a viviendas identificadas como Prueba/TEST. Creación transaccional e idempotente en la misma pestaña.
-- Enlace individual sin WhatsApp, con expiración, rotación y el mismo flujo público de aceptación/reportes. Cuentas de prueba excluidas de envío, incluso después de editar el teléfono.
-- Validación local: 39 pruebas de Auto-users, permisos, autenticación y registro aprobadas; incluye creación concurrente, rechazo de viviendas reales, número incorrecto, corrección de reportes, aceptación única y rollback. Sin consultas/escrituras a producción ni mensajes reales. Requiere desplegar frontend y backend para probar manualmente.
-
-### Administración de cuentas de prueba · 2026-10-13
-
-- Auto-users incorpora tabla paginada de cuentas de prueba pendientes/aceptadas, consulta de datos y fechas, edición de perfil y vivienda de pruebas, y borrado confirmado del conjunto ficticio. Conserva viviendas e historial externo; validación de marca/rol en servidor, transacción y bloqueo por referencias.
-- Editar mantiene aceptación/contraseña/rol, actualiza condómino y vínculo, e invalida enlaces y sesiones anteriores. No incluye cuentas manuales sin marca de prueba.
-- Validación local: 43 pruebas aprobadas de Auto-users, interfaz administrativa, autenticación, permisos y registro; incluye rechazo de cuentas reales, edición aceptada, cancelación/confirmación de borrado y rollback. Sin cambios de DB de producción ni mensajes reales. Requiere despliegue de frontend/backend.
-
-### Borrado de prueba sin respuesta visible · 2026-10-13
-
-- El usuario reportó que Borrar no eliminaba y no mostraba mensaje. El flujo anterior salía silenciosamente al cancelar/suprimir la confirmación nativa; no se verificó la causa concreta en su navegador/DB.
-- Se sustituye confirmación nativa por dialog de la página, con ID, cancelación explícita, estado de solicitud y errores persistentes; límite de espera de 45 segundos sin reintento automático. Se distingue DELETE completado de fallo posterior refrescando la tabla y se corrige el cursor de botones deshabilitados por estado.
-- Validación local: 43 pruebas aprobadas; UI prueba cancelación, rechazo 409, respuesta HTML 404, timeout simulado, recuperación de botones y borrado confirmado. Sin cambios en DB de producción ni relajación de validaciones de borrado. Requiere actualizar frontend; el servidor sigue comprobando la marca y referencias de prueba.
-
-### Error de servidor al borrar prueba · 2026-10-13
-
-- Captura del usuario muestra panel de borrado de cuenta #8 y respuesta genérica de operación fallida. Confirma que el nuevo panel funciona y la petición obtiene un rechazo del backend; no revela la excepción SQL concreta.
-- Se corrige consulta de dependencias: antes seleccionaba modelos completos y asumía todas las tablas/columnas. Ahora comprueba esquema físico y proyecta solo referencias disponibles, omite módulos físicamente ausentes y mantiene bloqueo por historial/FK. Errores administrativos muestran tabla/código seguro, sin SQL ni datos privados.
-- Validación local: 45 pruebas aprobadas, incluidas tablas opcionales ausentes, campos heredados, consulta mínima, rollback y diagnóstico HTTP sanitizado. Sin acceso a DB de producción; la causa específica allí requiere confirmar tras desplegar backend o revisar el código de error.
-
-### Confirmación antes de acciones masivas · 2026-10-13
-
-- Crear usuarios y Mandar invitación requieren panel Sí/No antes de empezar el flujo por lotes. No/Escape no ejecuta solicitudes masivas y Sí se consume una vez para evitar repetir por clics sucesivos. No cambia los botones de pruebas ni el envío individual.
-- Validación local: 45 pruebas aprobadas; interfaz comprueba ausencia de solicitudes antes de Sí y al cancelar, selección de la operación correcta, confirmación única y creación de prueba sin panel masivo. Sin creación de cuentas ni mensajes reales en producción. Requiere actualizar frontend.
