@@ -17,6 +17,15 @@ async function registrarPagoVivienda(req,res){
     const resultado=await sequelize.transaction({isolationLevel:'READ COMMITTED'},async transaction=>{
       const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
       if(!casa)throw fail(404,'La vivienda no existe');
+      // Prevalidación de las fechas SQL conocidas: no confirmar un pago cuya
+      // vigencia resultante acortaría una vigencia ya registrada para un TAG.
+      // El procesador hace también la validación autoritativa leyendo C3.
+      const tarjetas=await ZkTarjeta.findAll({where:{casaId},attributes:['id','fechaFin'],transaction});
+      if(tarjetas.some(t=>t.fechaFin && /^\\d{4}-\\d{2}-\\d{2}$/.test(t.fechaFin) &&
+           t.fechaFin>plan.fechaFinObjetivo)){
+        throw fail(409,'La vivienda ya tiene TAGs con vigencia posterior a la fecha solicitada ('+
+          plan.fechaFinObjetivo+'). Elige los meses correctos; no se registró el pago ni se acortaron los TAGs.');
+      }
       // Primero comprobar TODO el rango: si algún período está pagado/parcial
       // o pertenece a un movimiento bancario, abortar sin modificar nada.
       const cuotas=[];
