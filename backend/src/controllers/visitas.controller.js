@@ -1,3 +1,4 @@
+const {esViviendaVisible}=require('../services/viviendas-visibles.service');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { Visita, Casa, Usuario } = require('../models');
@@ -45,7 +46,8 @@ async function list(req, res) {
             if (numero) include[0].where.numero = { [Op.like]: `%${numero}%` };
         }
         const visits = await Visita.findAll({ where, include, order: [['fechaProgramada', 'DESC'], ['horaProgramada', 'DESC']], limit: 1000 });
-        return res.json({ ok: true, total: visits.length, data: visits });
+        const visibles=visits.filter(v=>!v.casa||esViviendaVisible(v.casa));
+        return res.json({ ok: true, total: visibles.length, data: visibles });
     } catch (error) {
         console.error('Error al consultar visitas:', error);
         return res.status(500).json({ ok: false, message: 'No fue posible consultar las visitas' });
