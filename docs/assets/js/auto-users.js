@@ -13,11 +13,22 @@
   const name = u => [u.nombre, u.apellidoPaterno, u.apellidoMaterno].filter(Boolean).join(' ');
   let page = 1, total = 0, reportPage = 1, reportTotal = 0, busy = false, rows = [], reports = [], houses = [];
   async function api(path, body, method = 'GET') {
-    const response = await fetch(API + '/auto-users' + path, { method, headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
-    const data = await response.json();
-    if (!response.ok || !data.ok) throw Error(data.message || 'No fue posible completar la operación.');
-    return data;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(API + '/auto-users' + path, { method, signal: controller.signal, headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      let data;
+      try { data = await response.json(); }
+      catch { throw Error('El servidor respondió sin un resultado válido (HTTP ' + response.status + '). Revisa que el backend esté actualizado.'); }
+      if (!response.ok || !data.ok) throw Error(data.message || 'No fue posible completar la operación (HTTP ' + response.status + ').');
+      return data;
+    } catch (error) {
+      if (error.name === 'AbortError') throw Error('No se recibió respuesta del servidor en 45 segundos. Actualiza la tabla antes de reintentar: la operación podría haberse completado.');
+      if (error instanceof TypeError) throw Error('No se pudo contactar al servidor. Revisa la conexión y actualiza la tabla antes de reintentar.');
+      throw error;
+    } finally { clearTimeout(timeout); }
   }
+
   let trialRows = [], trialPage = 1, trialTotal = 0, editingTrial = false;
   let trialId = null, trialAccepted = false, trialAvailable = false;
   let trialKey = sessionStorage.getItem('autoUsersTrialKey');
@@ -64,17 +75,43 @@
     for (const b of document.querySelectorAll('[data-trial-delete]')) b.addEventListener('click', () => deleteTrial(Number(b.dataset.trialDelete)));
     trialButtons();
   }
-  async function deleteTrial(id) {
-    if (busy || !confirm('¿Borrar permanentemente la cuenta de prueba #' + id + ', su condómino ficticio, invitación y reportes? La vivienda se conserva.')) return;
-    setBusy(true);
+  let deletingTrialId = null, deletingTrial = false;
+  function deleteTrial(id) {
+    if (busy) { $('trialStatus').textContent = 'Hay una operación en curso. Espera su resultado antes de borrar.'; return; }
+    deletingTrialId = id;
+    $('deleteTrialDescription').textContent = '¿Quieres borrar permanentemente la cuenta de prueba #' + id + '?';
+    $('deleteTrialMessage').textContent = '';
+    $('confirmDeleteTrial').disabled = false; $('cancelDeleteTrial').disabled = false;
+    $('deleteTrialDialog').showModal();
+  }
+  $('cancelDeleteTrial').addEventListener('click', () => {
+    if (deletingTrial) return;
+    deletingTrialId = null; $('deleteTrialDialog').close();
+    $('trialStatus').textContent = 'Borrado cancelado. La cuenta se conserva.';
+  });
+  $('deleteTrialDialog').addEventListener('cancel', event => {
+    if (deletingTrial) { event.preventDefault(); return; }
+    deletingTrialId = null; $('trialStatus').textContent = 'Borrado cancelado. La cuenta se conserva.';
+  });
+  $('confirmDeleteTrial').addEventListener('click', async () => {
+    if (deletingTrial || deletingTrialId === null) return;
+    const id = deletingTrialId;
+    deletingTrial = true; setBusy(true);
+    $('confirmDeleteTrial').disabled = true; $('cancelDeleteTrial').disabled = true;
+    $('deleteTrialMessage').textContent = $('trialStatus').textContent = 'Borrando cuenta de prueba #' + id + '…';
     try {
       const data = await api('/prueba/' + id, null, 'DELETE');
       if (Number(trialId) === id) { trialId = null; trialAccepted = false; $('trialLink').value = ''; }
+      deletingTrialId = null; $('deleteTrialDialog').close();
       $('trialStatus').textContent = data.mensaje;
-      await load();
-    } catch (error) { $('trialStatus').textContent = error.message; }
-    finally { setBusy(false); }
-  }
+      try { await load(); }
+      catch (error) { $('trialStatus').textContent = 'La cuenta se eliminó, pero no se pudo actualizar la tabla. ' + error.message; }
+    } catch (error) { $('deleteTrialMessage').textContent = $('trialStatus').textContent = error.message; }
+    finally {
+      deletingTrial = false; setBusy(false);
+      $('confirmDeleteTrial').disabled = false; $('cancelDeleteTrial').disabled = false;
+    }
+  });
   $('trialPrevious').addEventListener('click', () => { if (!busy && trialPage > 1) { trialPage--; loadTrials().catch(e => { $('trialStatus').textContent = e.message; }); } });
   $('trialNext').addEventListener('click', () => { if (!busy && trialPage * 50 < trialTotal) { trialPage++; loadTrials().catch(e => { $('trialStatus').textContent = e.message; }); } });
   function buttons(u) {
@@ -100,6 +137,7 @@
   }
   function setBusy(value) {
     busy = value;
+    $('adminWorkspace').setAttribute('aria-busy', String(value));
     for (const button of document.querySelectorAll('#adminWorkspace button')) button.disabled = value;
     if (!value) { $('usersPrevious').disabled = page <= 1; $('usersNext').disabled = page * 50 >= total;
       $('reportsPrevious').disabled = reportPage <= 1; $('reportsNext').disabled = reportPage * 50 >= reportTotal; }

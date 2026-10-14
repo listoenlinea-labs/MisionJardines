@@ -136,3 +136,10 @@ La sección **Prueba individual** incluye la tabla **Usuarios de prueba guardado
 Esta vista no incluye cuentas antiguas creadas manualmente que carezcan de la marca interna `AUTO_USERS_PRUEBA`; no se considera suficiente que un nombre, correo o vivienda diga Prueba. No muestra contraseñas ni hashes de invitación. Estado y aceptación se consultan; para repetir el proceso de una cuenta ya aceptada, bórrala y crea una prueba nueva.
 
 API administrativa: `GET /api/auto-users/prueba/usuarios?pagina=1`, `PATCH /api/auto-users/prueba/:id` (campos del formulario), `DELETE /api/auto-users/prueba/:id`. Sin migraciones adicionales; requiere desplegar backend y frontend.
+
+
+### Confirmación y diagnóstico del borrado
+
+Borrar abre un panel dentro de Auto-users con el ID de la cuenta y botones **Sí, borrar cuenta de prueba** / **Cancelar**. No depende de `window.confirm`, que puede ser suprimido por el navegador o su contenedor. La cancelación se muestra explícitamente. Al confirmar aparece **Borrando cuenta de prueba #…**; cualquier rechazo de la API permanece visible en el panel y en la sección de prueba, con los botones habilitados para cancelar o reintentar.
+
+Las solicitudes de Auto-users tienen límite de espera de 45 segundos. Si vence o falla la conexión, actualizar la tabla antes de reintentar, porque la operación puede haberse completado en el servidor. Una respuesta que no sea JSON informa su código HTTP y pide revisar el despliegue del backend. Si DELETE termina pero falla la actualización de la tabla, se informa que el borrado sí fue completado. El cursor de espera se usa durante operaciones en curso; los botones deshabilitados por estado muestran cursor de no disponible.
