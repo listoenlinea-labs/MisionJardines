@@ -52,6 +52,7 @@
       for (const item of group.items) {
         if (['index.html', 'viviendas.html'].includes(item.page)) primary.push(item);
         else if (securityPages.includes(item.page)) security.push(item);
+        else if (item.page === 'cuotas.html') administration.push(item);
         else if (MJPermissions.canAccess('CONDOMINO', item.page)) community.push(item);
         else administration.push(item);
       }
