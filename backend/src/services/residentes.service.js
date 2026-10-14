@@ -1,3 +1,4 @@
+const {esViviendaVisible}=require('./viviendas-visibles.service');
 const { Op } = require('sequelize');
 const db = require('../config/database');
 const { Casa, Condomino } = require('../models');
@@ -34,7 +35,7 @@ async function detalle(actor, casaId) {
     if (!admin(actor.rol)) throw fallo(403, 'Solo Administración puede gestionar residentes');
     casaId = identificador(casaId);
     const casa = await Casa.findByPk(casaId, { attributes: ['id', 'calle', 'calleCorrecta', 'numero', 'nombre', 'telefono', 'correo', 'enRenta', 'observaciones'] });
-    if (!casa) throw fallo(404, 'Vivienda no encontrada');
+    if (!casa || !esViviendaVisible(casa)) throw fallo(404, 'Vivienda no encontrada');
     const residentes = await Condomino.findAll({ where: { direccionId: casaId, activo: true }, order: [['id', 'ASC']] });
     return { casa, residentes };
 }
