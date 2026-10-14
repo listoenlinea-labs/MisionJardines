@@ -1,4 +1,6 @@
 const ZkTarjeta=require('../models/ZkTarjeta');
+const {Op}=require('sequelize');
+const {esViviendaVisible,normalizarCalle}=require('../services/viviendas-visibles.service');
 const Casa=require('../models/Casa');
 const {
   testDirectConnection,
@@ -56,8 +58,19 @@ async function estado(req,res){
   }
 }
 async function inventario(req,res){
+  // Filtro de SOLO lectura: no elimina TAGs, no escribe en el C3.
   const rows=await ZkTarjeta.findAll({order:[['departamento','ASC'],['numeroTarjeta','ASC']],limit:2000});
-  res.json({ok:true,total:rows.length,data:rows});
+  const ids=[...new Set(rows.map(r=>Number(r.casaId)).filter(Number.isInteger).filter(Boolean))];
+  const casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','calleCorrecta','numero']}):[];
+  const map=new Map(casas.map(c=>[Number(c.id),c]));
+  const data=rows.filter(r=>{
+    const casa=map.get(Number(r.casaId));
+    if(casa)return esViviendaVisible(casa);
+    // Cuando C3 aún no tiene casa asignada, filtrar por departamento.
+    const departamento=normalizarCalle(r.departamento);
+    return !/^guadalajara(?:\s|$)/.test(departamento)||/^guadalajara\s+707$/.test(departamento);
+  });
+  res.json({ok:true,total:data.length,data});
 }
 async function diagnosticoVivienda(req,res){
   try{
