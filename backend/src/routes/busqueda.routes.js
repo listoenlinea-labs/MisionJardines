@@ -126,6 +126,9 @@ router.get('/conmutador/telefono', autorizarRoles(...personnel), async (req, res
   if (!config || !numero) {
     return res.status(400).json({ ok: false, message: 'Domicilio no válido' });
   }
+  if(grupo==='Guadalajara' && numero!=='707'){
+    return res.status(404).json({ok:false,message:'Domicilio no disponible'});
+  }
 
   try {
     const columns = await importColumns();
