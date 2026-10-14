@@ -1,6 +1,6 @@
 const ZkTarjeta=require('../models/ZkTarjeta');
 const {Op}=require('sequelize');
-const {esViviendaVisible,normalizarCalle}=require('../services/viviendas-visibles.service');
+const {esViviendaVisible,esDepartamentoVisible}=require('../services/viviendas-visibles.service');
 const Casa=require('../models/Casa');
 const {
   testDirectConnection,
@@ -66,9 +66,9 @@ async function inventario(req,res){
   const data=rows.filter(r=>{
     const casa=map.get(Number(r.casaId));
     if(casa)return esViviendaVisible(casa);
-    // Cuando C3 aún no tiene casa asignada, filtrar por departamento.
-    const departamento=normalizarCalle(r.departamento);
-    return !/^guadalajara(?:\s|$)/.test(departamento)||/^guadalajara\s+707$/.test(departamento);
+    // Cuando C3 aún no tiene casa asignada, aplicar la misma regla
+    // de visibilidad a DEPTNAME, sin cambiar la tarjeta del controlador.
+    return esDepartamentoVisible(r.departamento);
   });
   res.json({ok:true,total:data.length,data});
 }
