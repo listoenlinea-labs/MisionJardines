@@ -21,7 +21,7 @@ async function registrarPagoVivienda(req,res){
       // vigencia resultante acortaría una vigencia ya registrada para un TAG.
       // El procesador hace también la validación autoritativa leyendo C3.
       const tarjetas=await ZkTarjeta.findAll({where:{casaId},attributes:['id','fechaFin'],transaction});
-      if(tarjetas.some(t=>t.fechaFin && /^\\d{4}-\\d{2}-\\d{2}$/.test(t.fechaFin) &&
+      if(tarjetas.some(t=>t.fechaFin && /^\d{4}-\d{2}-\d{2}$/.test(t.fechaFin) &&
            t.fechaFin>plan.fechaFinObjetivo)){
         throw fail(409,'La vivienda ya tiene TAGs con vigencia posterior a la fecha solicitada ('+
           plan.fechaFinObjetivo+'). Elige los meses correctos; no se registró el pago ni se acortaron los TAGs.');
