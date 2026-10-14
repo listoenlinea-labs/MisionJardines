@@ -6,6 +6,7 @@ const Eventos = require('../models/PagoAccesoC3');
 const Aplicaciones = require('../models/PagoAccesoTagC3');
 const direct = require('./zkteco-direct.service');
 const { incrementar, fechaReal } = require('./pago-acceso-calculo');
+const {fechaFinDeReferencia}=require('./pago-manual-analisis.service');
 const terminales = ['COMPLETADO', 'SIN_TAGS'];
 let timer, running = false, draining = false;
 const queue = new Set();
@@ -49,13 +50,20 @@ async function preparar(casaId, now, dryRun) {
         const tags = await Aplicaciones.findAll({ where: { pagoAccesoId: event.id }, order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
         if (!tags.length) throw new Error('El pago no tiene TAGs destinatarios registrados');
         const snapshots = [];
+        // Únicamente las cuotas manuales marcadas con MJMAN llevan una fecha
+        // ABSOLUTA de corte. El resto de los pagos sigue sumando meses al C3.
+        // La fecha objetivo es la misma para cada TAG de la vivienda.
+        const fechaObjetivo=fechaFinDeReferencia(event.referencia);
         try {
         for (const tag of tags) {
             if (tag.fechaAntes) continue;
             await comprobarVinculo(tag, event, transaction);
             const actual = await direct.readUserValidity(tag.numeroTarjeta);
-            snapshots.push({ tag, pin: actual.pin, autorizaciones: actual.autorizaciones, fechaAntes: fechaReal(actual.fechaFinal),
-                fechaDespues: incrementar(actual.fechaFinal, Number(event.meses)) });
+            const fechaAntes=fechaReal(actual.fechaFinal);
+            if(fechaObjetivo && fechaObjetivo<fechaAntes)
+                throw Object.assign(new Error('La vigencia física ya termina después del mes confirmado; no se acortaron los TAGs. Revisar meses seleccionados.'),{status:409});
+            snapshots.push({ tag, pin: actual.pin, autorizaciones: actual.autorizaciones, fechaAntes,
+                fechaDespues: fechaObjetivo||incrementar(fechaAntes, Number(event.meses)) });
         }
         } catch (error) { error.eventId = event.id; throw error; }
         for (const { tag, ...values } of snapshots) await tag.update({ ...values, estado: 'PREPARADO', error: null }, { transaction });
