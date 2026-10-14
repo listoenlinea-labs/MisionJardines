@@ -10,7 +10,7 @@
  let data=null;
  let housePage=1;
  const HOUSE_PAGE_SIZE=12;
- const notice=(msg)=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;};
+ const notice=(msg,kind='error')=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;el.dataset.kind=kind;};
  async function request(path,body){
   const response=await fetch(API+'/finanzas'+path,{method:body?'POST':'GET',
    headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
@@ -226,17 +226,19 @@
    $('housePaymentStatus').textContent='Registrando el movimiento en MySQL…';
    try{
      const result=await request('/pagos-vivienda',payload);
-     confirmedPaymentTarget=result.data.fechaFinObjetivo;
+     // Cerramos SOLO después del éxito confirmado por el backend. A partir de
+     // aquí ningún error al refrescar la tabla debe interpretarse como error
+     // del pago ni provocar otro intento de registro.
      const message=result.message+' Referencia: '+result.data.referencia+
-       '. Revisa después el estado físico del C3.';
-     await load();
-     // Conservar la información de la operación aunque la nueva cotización
-     // indique que el período ya está cubierto.
-     $('housePaymentStatus').textContent=message;
-     currentPaymentQuote=null;
-     $('housePaymentPreview').textContent='Movimiento guardado: '+result.data.periodos.join(', ')+
-       ' · '+fmt(result.data.total)+' · Fecha final solicitada: '+result.data.fechaFinObjetivo;
-     $('housePaymentSubmit').disabled=true;
+       '. Verifica por separado las vigencias físicas en ZKTeco.';
+     closeHousePayment();
+     notice(message,'success');
+     try{
+       await load();
+     }catch(refreshError){
+       notice(message+' El pago sí quedó registrado, pero no fue posible actualizar la tabla: '+
+         refreshError.message+'. Actualiza la página para consultar los datos nuevos.','success');
+     }
    }catch(error){
      $('housePaymentStatus').textContent=error.message;
      await quoteHousePayment({resetAmount:false});

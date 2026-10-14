@@ -74,3 +74,20 @@ test('UI muestra último pagado, rango automático y total editable',()=>{
  assert.match(ui,/mesesEsperados:currentPaymentQuote\.meses/);
  assert.match(ui,/\/cotizar\?anio=/);
 });
+
+test('El modal se cierra solo si el POST confirma el pago; error de refresco no pide cobrar de nuevo',()=>{
+ const ui=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-cuotas.js'),'utf8');
+ const start=ui.indexOf('async function submitHousePayment(event)');
+ const end=ui.indexOf("'financeHouseRows'",start);
+ const flow=ui.slice(start,end);
+ const request=flow.indexOf("await request('/pagos-vivienda',payload)");
+ const close=flow.indexOf('closeHousePayment();');
+ const refresh=flow.indexOf('await load();');
+ assert.ok(request>=0&&request<close&&close<refresh,
+   'Cerrar modal después de POST exitoso y antes de recargar');
+ assert.match(flow,/notice\(message,'success'\)/);
+ assert.match(flow,/catch\(refreshError\)/);
+ assert.match(flow,/El pago sí quedó registrado/);
+ assert.match(flow,/catch\(error\)\{[\s\S]*?housePaymentStatus/);
+ assert.equal((flow.match(/request\('\/pagos-vivienda',payload\)/g)||[]).length,1);
+});
