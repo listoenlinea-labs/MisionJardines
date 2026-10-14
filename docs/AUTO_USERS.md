@@ -150,3 +150,8 @@ Las solicitudes de Auto-users tienen límite de espera de 45 segundos. Si vence 
 Antes de buscar historial, el backend consulta las tablas y columnas físicas disponibles dentro de la transacción. Consulta únicamente los campos de referencia a usuario/condómino que existen: no selecciona todos los atributos del modelo de otros módulos. Esto evita que un campo adicional pendiente de migración o una tabla opcional ausente impida borrar una prueba sin historial. Una tabla ausente no contiene registros; las referencias existentes siguen bloqueando la eliminación. No se desactivan claves foráneas ni se borran pagos/historial externos.
 
 Si falla la comprobación, el mensaje identifica la tabla y el código de error sin publicar SQL, credenciales ni datos personales. Otros fallos internos de las rutas administrativas de prueba muestran un código seguro para revisar los logs del backend. La transacción conserva los registros cuando hay un error.
+
+
+## Confirmación de acciones masivas
+
+**Crear usuarios** y **Mandar invitación** abren un segundo panel que pregunta si estás seguro y describe la operación para el padrón completo. **Sí** inicia el procesamiento habitual por lotes; **No** o Escape cancela sin crear cuentas ni enviar mensajes. La confirmación se pide una vez por operación, no por lote. Los botones individuales y los de prueba conservan su flujo; no reciben esta confirmación masiva.
