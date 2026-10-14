@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {normalizarCalle,esViviendaVisible,filtrarViviendasVisibles}=
+const {normalizarCalle,esViviendaVisible,esDepartamentoVisible,filtrarViviendasVisibles}=
   require('../src/services/viviendas-visibles.service');
 const {seleccionarPadronAnalisis}=require('../src/services/padron-finanzas.service');
 const casas=[
@@ -51,7 +51,50 @@ test('El criterio se aplica en consultas de API, no solamente en la interfaz',()
  assert.match(casas,/filtrarViviendasVisibles\(casas\)/);
  assert.match(cuotas,/cuotas\.filter\(c => esViviendaVisible\(c\.casa\)\)/);
  assert.match(buscar,/filtrarViviendasVisibles\(casas\)/);
- assert.match(buscar,/grupo==='Guadalajara' && numero!=='707'/);
+ assert.match(buscar,/esViviendaVisible\(\{calle:grupo,numero\}\)/);
  assert.match(viviendas,/filtrarViviendasVisibles/);
  assert.match(auto,/filtrarViviendasVisibles/);
+ const zkteco=read('controllers/zkteco.controller.js');
+ assert.match(zkteco,/esDepartamentoVisible\(r\.departamento\)/);
+ const padron=read('services/padron-finanzas.service.js');
+ assert.match(padron,/'valle de mexico': '3614'/);
+});
+
+test('Valle de México muestra exclusivamente 3614, independientemente del prefijo y acentos',()=>{
+  const casasValle=[
+    {id:20,calle:'Valle de México',numero:'88.5'},
+    {id:21,calle:'Av. Valle de México',numero:'3614'},
+    {id:22,calle:'Avenida Valle de Mexico',numero:'3614'},
+    {id:23,calle:'AV VALLE DE MEXICO',numero:'3615'},
+    {id:24,calle:'Valle de México',calleCorrecta:'Av. Valle de México',numero:'88.5'},
+    {id:25,calle:'Gardenias',numero:'88.5'},
+    {id:26,calle:'Guadalajara',numero:'707'}
+  ];
+  assert.equal(normalizarCalle('Avenida Valle de México'),'valle de mexico');
+  assert.deepEqual(filtrarViviendasVisibles(casasValle).map(c=>c.id),[21,22,25,26]);
+  assert.equal(esViviendaVisible({calle:'Valle de México',numero:'88.5'}),false);
+  assert.equal(esViviendaVisible({calle:'Valle de México',numero:'3614'}),true);
+  assert.equal(esViviendaVisible({calle:'Av. Guadalajara',numero:'789'}),false);
+  assert.equal(esViviendaVisible({calle:'Av. Guadalajara',numero:'707'}),true);
+});
+
+test('Departamento ZKTeco sin casaId respeta Valle 3614 y Guadalajara 707',()=>{
+  assert.equal(esDepartamentoVisible('Valle de México 88.5'),false);
+  assert.equal(esDepartamentoVisible('Av. Valle de Mexico 3614'),true);
+  assert.equal(esDepartamentoVisible('Avenida Valle de México 3615'),false);
+  assert.equal(esDepartamentoVisible('Guadalajara 789'),false);
+  assert.equal(esDepartamentoVisible('Guadalajara 707'),true);
+  assert.equal(esDepartamentoVisible('Jardines 142'),true);
+  assert.equal(esDepartamentoVisible(null),true);
+});
+
+test('El padrón financiero mantiene Valle de México 3614 y no incluye 88.5',()=>{
+  const casasValle=[
+    {id:90,calle:'Valle de México',numero:'88.5'},
+    {id:91,calle:'Av. Valle de México',numero:'3614'},
+    {id:92,calle:'Guadalajara',numero:'707'}
+  ];
+  const seleccion=seleccionarPadronAnalisis(casasValle,[]);
+  assert.deepEqual(seleccion.casas.map(c=>c.id).sort((a,b)=>a-b),[91,92]);
+  assert.equal(seleccion.excluidas,1);
 });
