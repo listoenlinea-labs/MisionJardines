@@ -1,3 +1,4 @@
+const { esViviendaVisible } = require('../services/viviendas-visibles.service');
 const { Op } = require('sequelize');
 
 const sequelize = require('../config/database');
@@ -176,8 +177,8 @@ async function listarCuotas(req, res) {
 
         return res.json({
             ok: true,
-            total: cuotas.length,
-            data: cuotas.sort((a, b) => compararDirecciones(a.casa, b.casa) || Number(a.id) - Number(b.id))
+            total: cuotas.filter(c => esViviendaVisible(c.casa)).length,
+            data: cuotas.filter(c => esViviendaVisible(c.casa)).sort((a, b) => compararDirecciones(a.casa, b.casa) || Number(a.id) - Number(b.id))
         });
     } catch (error) {
         console.error(

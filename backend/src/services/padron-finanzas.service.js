@@ -6,14 +6,14 @@
  * direcciones contiene domicilios heredados, auxiliares y de prueba. Su existencia
  * no demuestra que deban entrar al denominador de viviendas del fraccionamiento.
  * El padrón oficial cotejado en docs/INDICE_DOCUMENTOS.md identifica únicamente
- * Atotonilco 752, Guadalajara 789 y Valle de México 3614 para estas avenidas.
+ * Atotonilco 752, Guadalajara 707 y Valle de México 3614 para estas avenidas.
  *
  * IMPORTANTE: esta selección es de SOLO LECTURA. No edita direcciones,
  * cuotas, pagos, TAGs ni fechas físicas del controlador C3.
  */
 const AVENIDAS_PADRON = Object.freeze({
   atotonilco: '752',
-  guadalajara: '789',
+  guadalajara: '707',
   'valle de mexico': '3614'
 });
 

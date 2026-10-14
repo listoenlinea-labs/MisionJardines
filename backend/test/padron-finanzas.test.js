@@ -30,19 +30,19 @@ test('Normaliza prefijos de avenida y acentos sin confundir otros nombres', () =
 test('Cada avenida aporta solo su vivienda oficial y se excluye Prueba', () => {
   const snapshot = JSON.stringify(casas);
   const r = seleccionarPadronAnalisis(casas, []);
-  assert.deepEqual(r.casas.map(c => c.id).sort((a,b)=>a-b), [1,4,7,10,11,12]);
+  assert.deepEqual(r.casas.map(c => c.id).sort((a,b)=>a-b), [1,5,7,10,11,12]);
   assert.equal(r.excluidas, 6);
   assert.equal(r.duplicadas, 0);
   assert.equal(JSON.stringify(casas), snapshot, 'no modifica los objetos originales');
 });
 
 test('Avenidas oficiales con variantes de escritura nunca duplican el denominador', () => {
-  const variantes = [...casas, { id: 20, calle: 'Avenida Guadalajara', numero: '789' }];
+  const variantes = [...casas, { id: 20, calle: 'Avenida Guadalajara', numero: '707' }];
   const cuotas = [{ casaId: 20, estatusPago: 'PAGADO', montoPagado: 300 }];
   const r = seleccionarPadronAnalisis(variantes, cuotas);
   const guadalajara = r.casas.filter(c => normalizarCalle(c.calle) === 'guadalajara');
   assert.equal(guadalajara.length, 1);
-  assert.equal(guadalajara[0].id, 20, 'prioriza la cuota existente sin borrar la otra dirección');
+  assert.equal(guadalajara[0].id, 20, 'prioriza la cuota del 707 sin borrar la otra fila oficial duplicada');
   assert.equal(r.duplicadas, 1);
   assert.equal(r.excluidas, 7);
 });

@@ -1,5 +1,6 @@
 'use strict';
 const { Casa, Cuota } = require('../models');
+const { filtrarViviendasVisibles } = require('../services/viviendas-visibles.service');
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const indexMonth = new Map(MESES.map((name,i)=>[name,i+1]));
 const numeric = (a,b) => String(a).localeCompare(String(b),'es-MX',{numeric:true,sensitivity:'base'});
@@ -49,7 +50,7 @@ async function consultar(req,res) {
     ]);
     const agrupadas=new Map();
     for(const cuota of cuotas){const key=String(cuota.casaId);if(!agrupadas.has(key))agrupadas.set(key,[]);agrupadas.get(key).push(cuota);}
-    const rows=casas.map(c=>resumenVivienda(c,agrupadas.get(String(c.id))||[]))
+    const rows=filtrarViviendasVisibles(casas).map(c=>resumenVivienda(c,agrupadas.get(String(c.id))||[]))
       .filter(c=>(!calle||c.calle.toLocaleLowerCase('es-MX').includes(calle))&&
         (!numero||c.numero.includes(numero))&&(!estado||c.estado===estado))
       .sort((a,b)=>numeric(a.calle,b.calle)||numeric(a.numero,b.numero));

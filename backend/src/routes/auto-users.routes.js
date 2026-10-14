@@ -1,3 +1,4 @@
+const {filtrarViviendasVisibles}=require('../services/viviendas-visibles.service');
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { autenticarToken } = require('../middlewares/auth.middleware');
@@ -55,7 +56,7 @@ router.post('/prueba/:id/enlace', handle(req => {
     return service.enlacePrueba(positive(req.params.id), configured || req.body.frontendUrl);
 }));
 router.get('/', handle(req => service.listar(Math.max(1, number(req.query.pagina, 1)), Math.max(1, number(req.query.paginaReportes, 1)))));
-router.get('/viviendas', handle(async () => ({ viviendas: await Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], order: [['calle', 'ASC'], ['numero', 'ASC']] }) })));
+router.get('/viviendas', handle(async () => ({ viviendas: filtrarViviendasVisibles(await Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], order: [['calle', 'ASC'], ['numero', 'ASC']] })) })));
 router.get('/config', handle(async () => {
     try { require('../services/auto-users-whatsapp.service').configuracion(); return { whatsappDisponible: true }; }
     catch (error) { return { whatsappDisponible: false, mensaje: error.message }; }
