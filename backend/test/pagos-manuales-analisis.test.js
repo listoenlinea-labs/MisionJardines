@@ -3,59 +3,74 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {prepararPlan,generarReferencia,fechaFinDeReferencia}=require('../src/services/pago-manual-analisis.service');
+const {prepararPlan,prepararDesdeHistorial,generarReferencia,fechaFinDeReferencia}=require('../src/services/pago-manual-analisis.service');
+const ultimoAgosto=[{anio:2026,mes:'AGOSTO',estatusPago:'PAGADO',montoPagado:300}];
 
-test('Un mes octubre de 2026 vence el 10 de noviembre para todos los TAGs',()=>{
- const p=prepararPlan({anio:2026,mes:10,meses:1,importeMes:300});
- assert.deepEqual(p.periodos.map(x=>x.mes+' '+x.anio),['OCTUBRE 2026']);
- assert.equal(p.fechaFinObjetivo,'2026-11-10');
- assert.equal(p.total,300);
- assert.equal(p.recargo,0);
+test('Agosto pagado, octubre elegido: septiembre y octubre por $600; C3 al 10 noviembre',()=>{
+ const plan=prepararDesdeHistorial({cuotas:ultimoAgosto,anio:2026,mes:10});
+ assert.equal(plan.ultimoMesPagado.nombre,'AGOSTO');
+ assert.deepEqual(plan.periodos.map(p=>p.mes),['SEPTIEMBRE','OCTUBRE']);
+ assert.equal(plan.meses,2);
+ assert.equal(plan.montoSugerido,600);
+ assert.equal(plan.total,600);
+ assert.equal(plan.fechaFinObjetivo,'2026-11-10');
 });
-test('Pago de múltiples meses cruza el año y calcula fecha única de corte',()=>{
- const p=prepararPlan({anio:2026,mes:12,meses:3,importeMes:350});
- assert.deepEqual(p.periodos.map(x=>x.mes+' '+x.anio),['DICIEMBRE 2026','ENERO 2027','FEBRERO 2027']);
- assert.equal(p.fechaFinObjetivo,'2027-03-10');
- assert.equal(p.total,1050);
- assert.equal(p.recargo,50);
+test('Se permite un total editable con recargo distribuido sin acreditar meses adicionales',()=>{
+ const plan=prepararDesdeHistorial({cuotas:ultimoAgosto,anio:2026,mes:10,montoTotal:650});
+ assert.equal(plan.total,650);assert.equal(plan.recargo,50);
+ assert.deepEqual(plan.periodos.map(p=>p.montoCuota),[350,300]);
+ assert.equal(plan.meses,2);assert.equal(plan.fechaFinObjetivo,'2026-11-10');
 });
-test('Se rechazan montos no oficiales, meses anteriores a octubre 2026 y cantidades inválidas',()=>{
- assert.throws(()=>prepararPlan({anio:2026,mes:9,meses:1,importeMes:300}));
- assert.throws(()=>prepararPlan({anio:2026,mes:10,meses:0,importeMes:300}));
- assert.throws(()=>prepararPlan({anio:2026,mes:10,meses:37,importeMes:300}));
- assert.throws(()=>prepararPlan({anio:2026,mes:10,meses:1,importeMes:250}));
+test('No se marcan dos meses pagados con monto insuficiente o recargo mayor al permitido',()=>{
+ assert.throws(()=>prepararDesdeHistorial({cuotas:ultimoAgosto,anio:2026,mes:10,montoTotal:599}));
+ assert.throws(()=>prepararDesdeHistorial({cuotas:ultimoAgosto,anio:2026,mes:10,montoTotal:701}));
+ assert.throws(()=>prepararDesdeHistorial({cuotas:ultimoAgosto,anio:2026,mes:10,montoTotal:'600.005'}));
 });
-test('Referencia única enlaza cuotas con la misma fecha C3',()=>{
- const a=generarReferencia('2027-03-10');
- const b=generarReferencia('2027-03-10');
+test('Si septiembre ya está pagado, sólo octubre se cotiza y no se duplica septiembre',()=>{
+ const plan=prepararDesdeHistorial({cuotas:[...ultimoAgosto,{anio:2026,mes:'SEPTIEMBRE',estatusPago:'PAGADO',montoPagado:300}],anio:2026,mes:10});
+ assert.equal(plan.meses,1);assert.equal(plan.total,300);
+ assert.deepEqual(plan.periodos.map(p=>p.mes),['OCTUBRE']);
+});
+test('Tres meses cruzan el año y obtienen fecha común para todos los TAGs',()=>{
+ const plan=prepararDesdeHistorial({cuotas:[{anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',montoPagado:300}],anio:2027,mes:2,montoTotal:1050});
+ assert.deepEqual(plan.periodos.map(p=>p.mes),['DICIEMBRE','ENERO','FEBRERO']);
+ assert.equal(plan.total,1050);assert.equal(plan.fechaFinObjetivo,'2027-03-10');
+});
+test('El registro manual acepta septiembre de 2026, sin retroceder a agosto',()=>{
+ const plan=prepararPlan({anio:2026,mes:9,meses:2,montoTotal:600});
+ assert.equal(plan.fechaFinObjetivo,'2026-11-10');
+ assert.throws(()=>prepararPlan({anio:2026,mes:8,meses:1,montoTotal:300}));
+ assert.throws(()=>prepararPlan({anio:2026,mes:9,meses:0,montoTotal:300}));
+});
+test('Referencia MJMAN tiene fecha final y UUID de evento único',()=>{
+ const a=generarReferencia('2026-11-10'),b=generarReferencia('2026-11-10');
  assert.notEqual(a,b);
- assert.equal(fechaFinDeReferencia(a),'2027-03-10');
- assert.equal(fechaFinDeReferencia('BANCARIO:000011'),null);
- assert.equal(fechaFinDeReferencia('MJMAN:2027-02-31:12345678-1234-4123-8123-123456789012'),null);
+ assert.equal(fechaFinDeReferencia(a),'2026-11-10');
+ assert.equal(fechaFinDeReferencia('BANCARIO:99'),null);
 });
-test('Finanzas almacena cuotas con una transacción y enlaza la cola ZKTeco',()=>{
+test('Backend usa una transacción y un evento durable C3 por pago, no por mensualidad',()=>{
  const controller=fs.readFileSync(path.resolve(__dirname,'../src/controllers/pagos-manuales-analisis.controller.js'),'utf8');
- const sync=fs.readFileSync(path.resolve(__dirname,'../src/services/zkteco-vigencias.service.js'),'utf8');
+ const vigencia=fs.readFileSync(path.resolve(__dirname,'../src/services/vigencia-mantenimiento.service.js'),'utf8');
+ const worker=fs.readFileSync(path.resolve(__dirname,'../src/services/zkteco-vigencias.service.js'),'utf8');
  const routes=fs.readFileSync(path.resolve(__dirname,'../src/routes/finanzas.routes.js'),'utf8');
  assert.match(controller,/sequelize\.transaction\(/);
- assert.match(controller,/vigenciaService\.actualizar\(/);
- assert.match(controller,/estatusPago:'PAGADO'/);
- assert.match(controller,/clasificarCuotaParaPago\(cuota\)/);
- assert.match(controller,/t\.fechaFin>plan\.fechaFinObjetivo/);
- assert.match(sync,/fechaFinDeReferencia\(event\.referencia\)/);
- assert.match(sync,/fechaObjetivo<fechaAntes/);
- assert.match(sync,/fechaDespues: fechaObjetivo\|\|incrementar/);
- assert.match(routes,/router\.post\('\/pagos-vivienda'/);
- assert.match(routes,/router\.get\('\/pagos-vivienda\/:casaId\/estado-c3'/);
+ assert.match(controller,/Cuota\.findAll\(/);
+ assert.match(controller,/registrarLoteManual\(/);
+ assert.doesNotMatch(controller,/vigenciaService\.actualizar\(/);
+ assert.match(controller,/mesesEsperados!==plan\.meses/);
+ assert.match(vigencia,/async function registrarLoteManual/);
+ assert.match(vigencia,/for\(const t of tags\)/);
+ assert.match(worker,/fechaFinDeReferencia\(event\.referencia\)/);
+ assert.match(worker,/fechaObjetivo<fechaAntes/);
+ assert.match(routes,/\/pagos-vivienda\/:casaId\/cotizar/);
 });
-test('Análisis ofrece botón y formulario, Sidebar muestra Cuotas en Administración',()=>{
+test('UI muestra último pagado, rango automático y total editable',()=>{
  const html=fs.readFileSync(path.resolve(__dirname,'../../docs/analisis-cuotas.html'),'utf8');
  const ui=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-cuotas.js'),'utf8');
- const sidebar=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/site-sidebar.js'),'utf8');
- for(const id of ['housePaymentModal','housePaymentMonth','housePaymentYear','housePaymentCount','housePaymentAmount','housePaymentMethod','housePaymentRefreshC3']){
-  assert.match(html,new RegExp('id="'+id+'"'));
- }
- assert.match(ui,/data-pay-house/);
- assert.match(ui,/request\('\/pagos-vivienda',payload\)/);
- assert.match(sidebar,/item\.page === 'cuotas\.html'\) administration\.push/);
+ for(const id of ['houseLastPayment','housePaymentMonth','housePaymentYear','housePaymentCount','housePaymentAmount','housePaymentReview'])assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/housePaymentCount" readonly/);
+ assert.match(html,/Monto total recibido/);
+ assert.match(ui,/currentPaymentQuote/);
+ assert.match(ui,/mesesEsperados:currentPaymentQuote\.meses/);
+ assert.match(ui,/\/cotizar\?anio=/);
 });
