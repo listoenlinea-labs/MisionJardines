@@ -195,8 +195,30 @@
     finally { button.disabled = false; }
   });
   $('closeEdit').addEventListener('click', () => $('editPreregistration').close());
-  $('createUsers').addEventListener('click', () => runBatch('/crear'));
-  $('sendInvitations').addEventListener('click', () => runBatch('/invitaciones'));
+  let pendingBatch = null;
+  function confirmBatch(path) {
+    if (busy) return;
+    pendingBatch = path;
+    $('confirmBatchHeading').textContent = path === '/crear' ? 'Crear usuarios' : 'Enviar invitaciones';
+    $('confirmBatchDescription').textContent = path === '/crear'
+      ? '¿Estás seguro de crear cuentas para todos los condóminos que todavía no tengan una cuenta asociada?'
+      : '¿Estás seguro de enviar invitaciones por WhatsApp a todas las cuentas pendientes de aceptación que puedan recibirlas?';
+    $('confirmBatchDialog').showModal();
+  }
+  $('confirmBatchNo').addEventListener('click', () => {
+    pendingBatch = null; $('confirmBatchDialog').close();
+    $('adminStatus').textContent = 'Operación cancelada.';
+  });
+  $('confirmBatchDialog').addEventListener('cancel', () => {
+    pendingBatch = null; $('adminStatus').textContent = 'Operación cancelada.';
+  });
+  $('confirmBatchYes').addEventListener('click', async () => {
+    const path = pendingBatch;
+    pendingBatch = null; $('confirmBatchDialog').close();
+    if (path && !busy) await runBatch(path);
+  });
+  $('createUsers').addEventListener('click', () => confirmBatch('/crear'));
+  $('sendInvitations').addEventListener('click', () => confirmBatch('/invitaciones'));
   $('reloadUsers').addEventListener('click', () => load().catch(e => { $('adminStatus').textContent = e.message; }));
   $('usersPrevious').addEventListener('click', () => { if (!busy && page > 1) { page--; load().catch(e => { $('adminStatus').textContent = e.message; }); } });
   $('usersNext').addEventListener('click', () => { if (!busy && page * 50 < total) { page++; load().catch(e => { $('adminStatus').textContent = e.message; }); } });

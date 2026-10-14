@@ -29,6 +29,8 @@ test('administrador ve/edita pruebas aceptadas; confirma en panel propio, muestr
         deleted = true; data = { mensaje: 'Prueba eliminada.' };
       }
       else if (options.method === 'PATCH') data = {};
+      else if (url.endsWith('/prueba/crear')) data = { usuarioId: 8, cuentaAceptada: false };
+      else if (url.endsWith('/crear') || url.endsWith('/invitaciones')) data = { resultados: [], siguiente: null };
       else if (url.includes('/prueba/usuarios')) data = { registros: deleted ? [] : [trial], total: deleted ? 0 : 1 };
       else data = { registros: [], reportes: [], total: 0, totalReportes: 0 };
       return { ok: true, json: async () => ({ ok: true, ...data }) };
@@ -66,4 +68,30 @@ test('administrador ve/edita pruebas aceptadas; confirma en panel propio, muestr
   assert.match(requests.find(r => r.options.method === 'DELETE').url, /\/prueba\/8$/);
   assert.match($('trialRows').innerHTML, /No hay cuentas/);
   assert.ok(!requests.some(r => r.url.endsWith('/crear') || r.url.endsWith('/invitaciones')));
+  const batchRequests = () => requests.filter(r => /\/auto-users\/(crear|invitaciones)$/.test(r.url));
+  for (const [button, route] of [['createUsers', '/crear'], ['sendInvitations', '/invitaciones']]) {
+    const before = batchRequests().length;
+    await $(button).listeners.click();
+    assert.equal($('confirmBatchDialog').open, true);
+    assert.equal(batchRequests().length, before);
+    await $('confirmBatchNo').listeners.click();
+    assert.equal($('confirmBatchDialog').open, false);
+    assert.equal(batchRequests().length, before);
+    await $(button).listeners.click();
+    await $('confirmBatchDialog').listeners.cancel(); $('confirmBatchDialog').close();
+    await $('confirmBatchYes').listeners.click();
+    assert.equal(batchRequests().length, before);
+    await $(button).listeners.click();
+    await $('confirmBatchYes').listeners.click();
+    assert.equal(batchRequests().length, before + 1);
+    assert.ok(batchRequests().at(-1).url.endsWith(route));
+    assert.equal($('confirmBatchDialog').open, false);
+    await $('confirmBatchYes').listeners.click();
+    assert.equal(batchRequests().length, before + 1);
+  }
+  const beforeTrial = batchRequests().length;
+  await $('createTrial').listeners.click();
+  assert.ok(requests.some(r => r.url.endsWith('/prueba/crear')));
+  assert.equal($('confirmBatchDialog').open, false);
+  assert.equal(batchRequests().length, beforeTrial);
 });
