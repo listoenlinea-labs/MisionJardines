@@ -1,3 +1,27 @@
+## Nuevo flujo: del último mes pagado hasta el seleccionado (octubre de 2026)
+
+**Ejemplo Lirios 13**: Seguridad muestra último mes pagado **agosto de 2026**, mientras los dos TAGs físicos aún muestran **11/07/2026**. Los pagos se determinan **por `cuotas`**, no por la fecha de los TAGs.
+
+1. Administración → Análisis de cuotas → Lirios 13 → Registrar pago.
+2. El modal consulta `GET /api/finanzas/pagos-vivienda/:casaId/cotizar?anio=2026&mes=10`. Muestra el último mes **completamente** pagado (agosto) y autocalcula **septiembre + octubre**, `2` meses, total sugerido **$600**.
+3. Editar el campo **Monto total recibido** si corresponde. Para 2 meses completos debe ser **$600 a $700**, donde cada peso por encima de $600 se asigna a recargo de hasta $50 por mensualidad. Ejemplo $650 → $350 septiembre + $300 octubre. Para abonos parciales no se deben marcar ambas mensualidades `PAGADO`.
+4. La cuota histórica `PENDIENTE` con $0 pagados que tenga `folio = HIST-OCT26-...` y/o `referencia = HIST-OCT26-...` **no es un recibo real**. El backend acepta completar estos marcadores y conserva tanto el folio como la referencia originales en `observaciones`. El campo `folio` deja de contener la etiqueta histórica.
+5. Si la cuota HIST pendiente tiene además fechaPago/fechaConfirmacion heredada, el modal exige marcar una **confirmación administrativa explícita**, después de revisar que el pago realmente se recibió. Se rechazan folios bancarios, `reciboPdfUrl`, `confirmadoPorUsuarioId`, cuotas ya pagadas y pagos parciales. Esto **no autoriza sobrescribir un cobro real**.
+6. POST `/api/finanzas/pagos-vivienda` **vuelve a calcular la cantidad de meses dentro de una transacción con lock de vivienda**, guarda todas las cuotas y genera **un solo** evento `pagos_acceso_c3` de lote para el total, no uno por mes. La referencia MJMAN contiene la fecha de vencimiento final **2026-11-10**.
+7. El worker ZKTeco vigente lee el C3 y solicita **2026-11-10** a cada TAG de la vivienda (para Lirios 13: 2 TAGs). La API muestra el estado de la cola. La actualización puede permanecer pendiente, fallar o entrar en conflicto; **no basta la confirmación MySQL para afirmar que el hardware cambió**.
+8. Seguridad → Cuotas por vivienda → Actualizar refleja septiembre y octubre como meses abonados, aunque otras cuotas anteriores sigan afectando el estado general.
+
+**No ejecutar dos veces el cobro** si los TAGs aún no cambiaron; usar «Verificar vigencias de TAGs» y revisar el estado del evento en lugar de crear un segundo pago.
+
+### Limitaciones de conciliación
+
+- La cotización toma el **último mes completamente pagado**, no necesariamente el último que tuvo abono parcial.
+- Un registro PENDIENTE con importe positivo o evidencia de pago real sigue bloqueado, y requiere conciliación manual.
+- Un evento C3 anterior en estado `CONFLICTO` puede bloquear la cola de esta casa. Resolver el evento existente antes de esperar que la nueva escritura avance.
+- No hay escritura física transaccional para todos los TAGs: verificar que **todos** lleguen a la fecha indicada.
+- El pago administrativo no crea por sí solo un depósito bancario validado; no se debe sumar nuevamente como ingreso bancario.
+
+
 # Confirmar mensualidades desde Análisis de cuotas
 
 ## Flujo de administración

@@ -66,6 +66,41 @@ async function actualizar(casaId, usuarioId, transaction, { origen, registro, an
     return { fuente: 'C3', sincronizacion: estado, pagoAccesoId: event.id, meses,
         saldoParcial: (saldoDespues / 100).toFixed(2), pendienteConfiguracion: estado === 'SIN_TAGS' };
 }
+
+// Un cobro manual de varias mensualidades genera UN SOLO evento durable C3.
+// La referencia MJMAN incluye el día 10 de corte; el worker escribe esa misma
+// fecha en TODOS los TAGs sin sumar los meses a la fecha antigua del dispositivo.
+// No sustituye al procesamiento bancario/automático preexistente.
+async function registrarLoteManual(casaId, usuarioId, transaction, { referencia, origenId, total, recargo, meses }) {
+    if (!/^MJMAN:\d{4}-\d{2}-10:[0-9a-f-]{36}$/i.test(referencia) ||
+        !Number.isInteger(meses) || meses < 1 || meses > 36 ||
+        !Number.isFinite(total) || total < 300 * meses ||
+        !Number.isFinite(recargo) || recargo < 0 || Math.abs(total-recargo-300*meses)>0.001 ||
+        !origenId) throw Object.assign(new Error('Movimiento manual inválido'), { status: 400 });
+    // El controller ya tomó el lock de la vivienda; no crear un segundo lock.
+    const claveMovimiento=casaId+':'+createHash('sha256').update('BANCO:'+referencia.toLowerCase()).digest('hex');
+    const repetido=await PagoAcceso.findOne({where:{claveMovimiento},transaction});
+    if(repetido)throw Object.assign(new Error('Este movimiento de pago ya tiene un evento para el C3'),{status:409});
+    const ultimo=await PagoAcceso.findOne({where:{casaId},order:[['id','DESC']],transaction});
+    const saldoAntes=Number(ultimo?.saldoDespues||0);
+    const tags=await ZkTarjeta.findAll({where:{casaId},order:[['id','ASC']],transaction});
+    const estado=tags.length?'PENDIENTE':'SIN_TAGS';
+    const principal=300*meses*100;
+    const evento=await PagoAcceso.create({
+      casaId,claveMovimiento,origen:'CUOTA',origenId,referencia,
+      montoOrigen:total,recargoOrigen:recargo,principalMovimiento:principal,
+      principalAplicado:principal,meses,saldoAntes,saldoDespues:saldoAntes,
+      usuarioId,estado
+    },{transaction});
+    for(const t of tags)await AplicacionTag.create({
+      pagoAccesoId:evento.id,tarjetaId:t.id,numeroTarjeta:t.numeroTarjeta
+    },{transaction});
+    if(estado==='PENDIENTE')transaction.afterCommit(
+      ()=>require('./zkteco-vigencias.service').solicitar(casaId)
+    );
+    return {sincronizacion:estado,meses,pagoAccesoId:evento.id};
+}
+
 async function estadoCasa(casaId, transaction) {
     const tags = await ZkTarjeta.findAll({ where: { casaId }, transaction });
     const ultimo = await PagoAcceso.findOne({ where: { casaId }, order: [['id', 'DESC']], transaction });
@@ -103,4 +138,4 @@ function resumen(row) {
         saldoParcial: row.saldoParcial, soloReferencia: true, sincronizacion: row.sincronizacion,
         actualizadoEn: row.updatedAt, sincronizadoEn: row.sincronizadoEn || null };
 }
-module.exports = { inicializar, actualizar, capturarCuota, asegurarVigenciaParaAlta, estadoCasa, resumen, Vigencia };
+module.exports = { inicializar, actualizar, registrarLoteManual, capturarCuota, asegurarVigenciaParaAlta, estadoCasa, resumen, Vigencia };

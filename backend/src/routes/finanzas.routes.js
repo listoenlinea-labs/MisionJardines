@@ -7,5 +7,6 @@ router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
 router.get('/analisis',controller.analizar);
 router.post('/egresos',controller.registrarEgreso);
 router.post('/pagos-vivienda',pagosManuales.registrarPagoVivienda);
+router.get('/pagos-vivienda/:casaId/cotizar',pagosManuales.cotizarPagoVivienda);
 router.get('/pagos-vivienda/:casaId/estado-c3',pagosManuales.estadoPagoVivienda);
 module.exports=router;
