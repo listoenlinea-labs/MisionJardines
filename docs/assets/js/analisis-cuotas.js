@@ -102,11 +102,96 @@
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
   housePage=Math.min(Math.max(housePage,1),totalPages);
   const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
-  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr><td data-label="Calle">'+esc(h.calle)+'</td><td data-label="Casa">'+esc(h.numero)+'</td><td data-label="Residente">'+esc(h.nombre)+'</td><td data-label="Estado"><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td data-label="Pagado"><span class="house-amount">'+fmt(h.montoPagado)+'</span></td><td data-label="Saldo pendiente"><span class="house-amount">'+fmt(h.saldoPendiente)+'</span></td></tr>').join(''):'<tr><td colspan="6">No hay viviendas que coincidan con estos filtros.</td></tr>';
+  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr><td data-label="Calle">'+esc(h.calle)+'</td><td data-label="Casa">'+esc(h.numero)+'</td><td data-label="Residente">'+esc(h.nombre)+'</td><td data-label="Estado"><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td data-label="Pagado"><span class="house-amount">'+fmt(h.montoPagado)+'</span></td><td data-label="Saldo pendiente"><span class="house-amount">'+fmt(h.saldoPendiente)+'</span></td><td data-label="Acción"><button type="button" class="soft house-payment-button" data-pay-house="'+Number(h.casaId)+'">Registrar pago</button></td></tr>').join(''):'<tr><td colspan="7">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;
  }
+ let activePaymentHouse=null;
+ const paymentModal=$('housePaymentModal');
+ const monthsES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+ function paymentPreview(){
+  const year=Number($('housePaymentYear').value);
+  const month=Number($('housePaymentMonth').value);
+  const count=Number($('housePaymentCount').value);
+  const amount=Number($('housePaymentAmount').value);
+  const output=$('housePaymentPreview');
+  if(!Number.isInteger(year)||year<2026||year>2098||!Number.isInteger(month)||month<1||month>12||!Number.isInteger(count)||count<1||count>36){
+   output.textContent='Selecciona año, mes y de 1 a 36 mensualidades válidas.';return;
+  }
+  const first=new Date(Date.UTC(year,month-1,1));
+  const last=new Date(Date.UTC(year,month-2+count,1));
+  const end=new Date(Date.UTC(year,month-1+count,1));
+  const cutoff=end.getUTCFullYear()+'-'+String(end.getUTCMonth()+1).padStart(2,'0')+'-10';
+  output.textContent='Período: '+monthsES[first.getUTCMonth()]+' '+first.getUTCFullYear()+' a '+monthsES[last.getUTCMonth()]+' '+last.getUTCFullYear()+
+   ' · Total: '+fmt(count*amount)+' · Vigencia solicitada para todos los TAGs: '+cutoff;
+ }
+ function openHousePayment(casaId){
+  const house=data?.viviendas?.find(h=>Number(h.casaId)===Number(casaId));
+  if(!house)return;
+  activePaymentHouse=house;
+  $('housePaymentHouse').textContent=house.calle+' '+house.numero+' · '+(house.nombre||'Sin residente registrado');
+  $('housePaymentYear').value=$('financeYear').value;
+  $('housePaymentMonth').value=$('financeMonth').value;
+  $('housePaymentCount').value='1';
+  $('housePaymentAmount').value='300';
+  $('housePaymentMethod').value='EFECTIVO';
+  $('housePaymentStatus').textContent='';
+  paymentPreview();
+  paymentModal.hidden=false;
+  $('housePaymentMonth').focus();
+ }
+ function closeHousePayment(){
+  paymentModal.hidden=true;
+  activePaymentHouse=null;
+ }
+ async function refreshHousePaymentC3(){
+  if(!activePaymentHouse)return;
+  const el=$('housePaymentStatus'),btn=$('housePaymentRefreshC3');
+  btn.disabled=true;el.textContent='Consultando sincronización del controlador…';
+  try{
+   const result=await request('/pagos-vivienda/'+Number(activePaymentHouse.casaId)+'/estado-c3');
+   const state=result.data;
+   const distinct=[...new Set((state.fechasTags||[]).map(t=>t.fechaFinal||'Sin fecha'))];
+   el.textContent=state.tags?
+    'ZKTeco: '+(state.sincronizacion||'Sin estado')+' · '+state.tags+' TAG(s) · '+(state.fechaFinal?'Fecha común: '+state.fechaFinal:'Fechas diferentes o pendientes: '+distinct.join(', '))+
+    (state.errorSincronizacion?' · Problema: '+state.errorSincronizacion:'') :
+    'Esta vivienda no tiene TAGs asociados; no puede sincronizarse el C3.';
+  }catch(error){el.textContent='No fue posible comprobar el controlador: '+error.message;}
+  finally{btn.disabled=false;}
+ }
+ async function submitHousePayment(event){
+  event.preventDefault();
+  if(!activePaymentHouse)return;
+  const payload={casaId:Number(activePaymentHouse.casaId),anio:Number($('housePaymentYear').value),
+   mes:Number($('housePaymentMonth').value),meses:Number($('housePaymentCount').value),
+   importeMes:Number($('housePaymentAmount').value),formaPago:$('housePaymentMethod').value};
+  const confirmation=$('housePaymentPreview').textContent;
+  if(!confirm('¿Confirmas el pago de '+activePaymentHouse.calle+' '+activePaymentHouse.numero+'?\n'+confirmation+
+    '\nSe registrarán las cuotas y se solicitará la sincronización física de sus TAGs.'))return;
+  const btn=$('housePaymentSubmit');btn.disabled=true;
+  $('housePaymentStatus').textContent='Registrando mensualidades…';
+  try{
+   const result=await request('/pagos-vivienda',payload);
+   $('housePaymentStatus').textContent=result.message+' Referencia: '+result.data.referencia;
+   // Se actualiza el resumen financiero con los pagos persistidos.
+   await load();
+   // El estado físico requiere confirmación independiente, nunca se asume éxito.
+   await refreshHousePaymentC3();
+  }catch(e){$('housePaymentStatus').textContent=e.message;}
+  finally{btn.disabled=false;}
+ }
+ $('financeHouseRows').addEventListener('click',event=>{
+  const btn=event.target.closest('[data-pay-house]');
+  if(btn)openHousePayment(btn.dataset.payHouse);
+ });
+ $('housePaymentClose').addEventListener('click',closeHousePayment);
+ paymentModal.addEventListener('click',event=>{if(event.target===paymentModal)closeHousePayment();});
+ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!paymentModal.hidden)closeHousePayment();});
+ $('housePaymentForm').addEventListener('submit',submitHousePayment);
+ $('housePaymentRefreshC3').addEventListener('click',refreshHousePaymentC3);
+ for(const id of ['housePaymentMonth','housePaymentYear','housePaymentCount','housePaymentAmount'])
+  $(id).addEventListener('change',paymentPreview);
  async function load(){
   $('updateFinance').disabled=true;$('financeNotice').hidden=true;
   try{
