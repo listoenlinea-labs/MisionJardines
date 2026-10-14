@@ -125,3 +125,14 @@ En Auto-users, utiliza **Prueba individual · sin WhatsApp** antes de operar el 
 Estos botones crean registros ficticios persistentes en la base, pero no envían mensajes ni modifican cuentas reales, pagos o fechas de TAGs. La clave de repetición se conserva en `sessionStorage` de esa pestaña; otra sesión puede crear otra prueba. La vivienda elegida recibe un vínculo activo al aceptar: úsala exclusivamente para pruebas. No se ofrece reiniciar cuentas aceptadas.
 
 Rutas administrativas: `GET /api/auto-users/prueba/viviendas`, `POST /prueba/crear` (`casaId`, `clavePrueba` de 32 hex), `POST /prueba/:id/enlace`. La URL usa `AUTO_USERS_FRONTEND_URL` si está configurada; de lo contrario acepta la ruta del portal enviada por el administrador solo cuando su origen coincide con el encabezado Origin, con HTTPS salvo localhost. Los enlaces son privados y no deben publicarse.
+
+
+## Ver, editar y borrar cuentas de prueba
+
+La sección **Prueba individual** incluye la tabla **Usuarios de prueba guardados**, paginada de 50 en 50. Consulta cuentas pendientes y aceptadas creadas por este flujo, incluso de sesiones anteriores: IDs de cuenta/condómino, nombre, vivienda, usuario, correo, teléfono, estado y estado de invitación. **Ver / editar** abre el formulario con esos datos y fechas de creación/actualización. Se editan nombre, vivienda dedicada a pruebas, usuario, correo y teléfono; conserva aceptación, contraseña y rol, actualiza también el condómino y el vínculo, revoca enlaces anteriores y sesiones de la cuenta. Una cuenta pendiente puede obtener un nuevo **Enlace sin enviar** desde su fila.
+
+**Borrar** pide confirmación e inicia una transacción que elimina los reportes de prerregistro, invitación, vínculos usuario-vivienda, cuenta y condómino ficticio. Conserva la vivienda. Verifica la marca interna de prueba, rol Condómino y ausencia de otra cuenta para ese condómino. Si existen referencias a la cuenta/condómino en otros modelos (por ejemplo pagos o reservas), rechaza la eliminación; un error de clave foránea revierte todo. No elimina historial de otros módulos como atajo. Después de borrar puede volver a crearse una cuenta de prueba con el botón individual.
+
+Esta vista no incluye cuentas antiguas creadas manualmente que carezcan de la marca interna `AUTO_USERS_PRUEBA`; no se considera suficiente que un nombre, correo o vivienda diga Prueba. No muestra contraseñas ni hashes de invitación. Estado y aceptación se consultan; para repetir el proceso de una cuenta ya aceptada, bórrala y crea una prueba nueva.
+
+API administrativa: `GET /api/auto-users/prueba/usuarios?pagina=1`, `PATCH /api/auto-users/prueba/:id` (campos del formulario), `DELETE /api/auto-users/prueba/:id`. Sin migraciones adicionales; requiere desplegar backend y frontend.

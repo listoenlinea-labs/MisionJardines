@@ -14,6 +14,7 @@ const handle = fn => async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try { return res.json({ ok: true, ...await fn(req) }); }
     catch (error) {
+        if (error.name === 'SequelizeForeignKeyConstraintError') return res.status(409).json({ ok: false, message: 'La cuenta tiene registros asociados en otros módulos; no se eliminó ningún dato.' });
         const duplicate = error.name === 'SequelizeUniqueConstraintError';
         return res.status(error.status || (duplicate ? 409 : 503)).json({ ok: false,
             message: error.status ? error.message : duplicate ? 'Ese usuario o correo ya está registrado. Revisa los datos.' : 'No fue posible completar la operación. Intenta de nuevo.' });
@@ -33,6 +34,9 @@ router.post('/invitacion/consultar', publicLimiter, handle(async req => ({ regis
 router.post('/invitacion/aceptar', publicLimiter, handle(req => service.aceptar(req.body.token, req.body)));
 router.post('/invitacion/reportar', publicLimiter, handle(req => service.reportar(req.body.token, req.body.comentario)));
 router.use(autenticarToken, autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR'));
+router.get('/prueba/usuarios', handle(req => service.listarPruebas(Math.max(1, number(req.query.pagina, 1)))));
+router.patch('/prueba/:id', handle(req => service.editarPrueba(positive(req.params.id), req.body, req.usuario.usuarioId)));
+router.delete('/prueba/:id', handle(req => service.borrarPrueba(positive(req.params.id))));
 router.get('/prueba/viviendas', handle(async () => ({ viviendas: await service.viviendasPrueba() })));
 router.post('/prueba/crear', handle(req => service.crearPrueba(positive(req.body.casaId), req.body.clavePrueba)));
 router.post('/prueba/:id/enlace', handle(req => {

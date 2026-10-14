@@ -134,6 +134,49 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             return { enlace: url.href.replace(/\/$/, '') + '/aceptar-cuenta.html#invitacion=' + token };
         });
     }
+    async function listarPruebas(page = 1) {
+        const { count, rows } = await Usuario.findAndCountAll({ where: { observaciones: { [Op.like]: 'AUTO_USERS_PRUEBA:%' } },
+            attributes: ['id', 'condominoId', 'casaId', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'nombreUsuario', 'correo', 'telefono', 'cuentaAceptada', 'estatus', 'creadoEn', 'actualizadoEn', 'observaciones'],
+            order: [['id', 'DESC']], limit: 50, offset: (page - 1) * 50, raw: true });
+        const registros = [];
+        for (const row of rows.filter(trialUser)) {
+            const { observaciones, ...user } = row;
+            const casa = await Casa.findByPk(user.casaId, { attributes: ['id', 'calle', 'calleCorrecta', 'numero'] });
+            const condo = await Condomino.findByPk(user.condominoId, { attributes: ['id', 'nombreCompleto', 'correo', 'telefono', 'direccionId', 'activo'] });
+            const invitacion = await Invitacion.findByPk(user.id, { attributes: ['envioEstado', 'expiraEn', 'enviadoEn', 'ultimoError'] });
+            registros.push({ ...user, casa, condomino: condo, invitacion: invitacion ? { envioEstado: invitacion.envioEstado, expiraEn: invitacion.expiraEn, enviadoEn: invitacion.enviadoEn, ultimoError: invitacion.ultimoError } : null });
+        }
+        return { registros, total: count, pagina: page };
+    }
+    async function borrarPrueba(id) {
+        return db.transaction(async transaction => {
+            const user = await Usuario.findByPk(id, lock(transaction));
+            if (!trialUser(user)) throw fail(403, 'Solo puedes borrar cuentas generadas como prueba.');
+            const role = await Rol.findByPk(user.rolId, { transaction });
+            if (role?.nombre !== 'CONDOMINO') throw fail(409, 'Esta cuenta tiene otro rol y requiere revisión.');
+            const condo = await Condomino.findByPk(user.condominoId, lock(transaction));
+            if (!condo) throw fail(409, 'El vínculo del condómino requiere revisión.');
+            if (await Usuario.findOne({ where: { condominoId: condo.id, id: { [Op.ne]: id } }, transaction })) throw fail(409, 'El condómino tiene otra cuenta asociada.');
+            // Preserve financial/access history even when associations use SET NULL or CASCADE.
+            for (const model of Object.values(db.models || {})) {
+                if ([Usuario, Condomino, UsuarioCasa, Invitacion, Reporte].includes(model)) continue;
+                const conditions = [];
+                for (const [attribute, definition] of Object.entries(model.rawAttributes || {})) {
+                    const reference = definition.references?.model;
+                    const table = typeof reference === 'string' ? reference : reference?.tableName;
+                    if (table === 'usuarios' || /usuario.*Id$/i.test(attribute)) conditions.push({ [attribute]: id });
+                    else if (table === 'condominos' || /condomino.*Id$/i.test(attribute)) conditions.push({ [attribute]: condo.id });
+                }
+                if (conditions.length && await model.findOne({ where: { [Op.or]: conditions }, ...lock(transaction) })) throw fail(409, 'Esta cuenta tiene historial en otros módulos. Revisa esas referencias antes de borrarla.');
+            }
+            await Reporte.destroy({ where: { usuarioId: id }, transaction });
+            await Invitacion.destroy({ where: { usuarioId: id }, transaction });
+            await UsuarioCasa.destroy({ where: { usuarioId: id }, transaction });
+            await Usuario.destroy({ where: { id }, transaction });
+            await Condomino.destroy({ where: { id: condo.id }, transaction });
+            return { mensaje: 'Cuenta de prueba, condómino ficticio, invitación y reportes eliminados. La vivienda se conserva.' };
+        });
+    }
     async function crearLote(afterId = 0) {
         const rows = await Condomino.findAll({ where: { id: { [Op.gt]: afterId } }, order: [['id', 'ASC']], limit: 20 });
         const results = [];
@@ -202,23 +245,27 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             return { mensaje: 'Nuestro administrador revisará tu caso y te enviará otro enlace una vez cotejada la información.' };
         });
     }
-    async function editar(id, body, actorId) {
+    async function editar(id, body, actorId, onlyTrial = false) {
         const data = credentials(body), casaId = Number(body.casaId), nombreCompleto = String(body.nombreCompleto || '').trim();
         if (!Number.isSafeInteger(casaId) || casaId < 1 || !nombreCompleto || nombreCompleto.length > 180) throw fail(400, 'Selecciona una vivienda existente y revisa el nombre.');
         const telefono = String(body.telefono || '').trim();
         if (telefono.length > 25) throw fail(400, 'Revisa el teléfono (máximo 25 caracteres).');
         return db.transaction(async transaction => {
             const user = await Usuario.findByPk(id, lock(transaction));
-            if (!pending(user)) throw fail(409, 'Solo se pueden corregir prerregistros todavía no aceptados.');
+            if (onlyTrial && !trialUser(user)) throw fail(403, 'Solo puedes editar cuentas generadas como prueba.');
+            if (!pending(user) && !(onlyTrial && user?.cuentaAceptada === true && user.estatus === 'ACTIVO')) throw fail(409, 'Solo se pueden corregir prerregistros pendientes o cuentas de prueba activas.');
+            if (onlyTrial && (await Rol.findByPk(user.rolId, { transaction }))?.nombre !== 'CONDOMINO') throw fail(409, 'El rol de la cuenta requiere revisión.');
             const casa = await Casa.findByPk(casaId, { transaction });
             if (!casa) throw fail(400, 'La vivienda seleccionada no existe.');
             if (trialUser(user) && !trialHouse(casa)) throw fail(400, 'Las cuentas de prueba solo pueden usar viviendas de pruebas.');
             if (await conflicts(data.nombreUsuario, data.correo, user.id, transaction)) throw fail(409, 'Usuario o correo ya registrado en otra cuenta.');
-            await user.update({ ...data, ...names(nombreCompleto), casaId, telefono: telefono || null, actualizadoEn: new Date() }, { transaction });
+            await user.update({ ...data, ...names(nombreCompleto), casaId, telefono: telefono || null, actualizadoEn: new Date(),
+                ...(onlyTrial ? { sesionVersion: Number(user.sesionVersion || 0) + 1 } : {}) }, { transaction });
             await Condomino.update({ direccionId: casaId, nombreCompleto, telefono: telefono || null, correo: data.correo,
                 actualizadoEn: new Date() }, { where: { id: user.condominoId }, transaction });
             await UsuarioCasa.update({ activo: false }, { where: { usuarioId: user.id }, transaction });
-            await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId }, defaults: { tipo: 'MIEMBRO', activo: false }, transaction });
+            const [membership] = await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId }, defaults: { tipo: 'MIEMBRO', activo: false }, transaction });
+            await membership.update({ activo: user.cuentaAceptada === true, desvinculadoEn: null }, { transaction });
             await Invitacion.update({ tokenHash: null, expiraEn: null, envioEstado: 'SIN_ENVIAR' }, { where: { usuarioId: user.id }, transaction });
             await Reporte.update({ estatus: 'CORREGIDO', corregidoEn: new Date(), corregidoPor: actorId }, { where: { usuarioId: user.id, estatus: 'ABIERTO' }, transaction });
             return { mensaje: 'Prerregistro corregido. Envía una nueva invitación.' };
@@ -283,6 +330,6 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             totalReportes: reportsResult.count, paginaReportes: reportPage,
             reportes: reportes.map(r => ({ ...r, usuario: reportUsers.find(u => String(u.id) === String(r.usuarioId)) })) };
     }
-    return { viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, aceptar, reportar, editar, enviarLote, sendOne, listar };
+    return { listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, aceptar, reportar, editar, enviarLote, sendOne, listar };
 }
 module.exports = { crearServicio, credentials, houseNumber, names };
