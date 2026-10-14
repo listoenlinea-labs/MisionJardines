@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261014-last-paid-quote">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261014-reference-review">
 </head><body class="page-analisis">
 <main class="analysis-page">
 <header class="analysis-hero"><span class="eyebrow">ADMINISTRACIÓN Y FINANZAS</span><h1>Análisis de <em>cuotas</em></h1><p>Control mensual de cumplimiento, ingresos confirmados y egresos del fraccionamiento.</p></header>
@@ -61,7 +61,7 @@
       <label>Forma de pago<select id="housePaymentMethod"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="DEPOSITO">Depósito</option><option value="OTRO">Otro</option></select></label>
       <div id="housePaymentPreview" class="house-payment-preview" role="status" aria-live="polite">Calculando mensualidades pendientes…</div>
       <div id="housePaymentReviewWrap" class="house-payment-review" hidden>
-        <label><input type="checkbox" id="housePaymentReview"> Confirmo que revisé los registros históricos PENDIENTES con $0 y que realmente recibimos este pago. Autorizo actualizar sus fechas heredadas, conservando la información anterior en auditoría.</label>
+        <label><input type="checkbox" id="housePaymentReview"> He revisado las referencias y fechas anteriores de los meses PENDIENTES con $0. Confirmo que no representan un pago real previamente registrado, que recibimos ahora el importe indicado y autorizo conservar esos datos en auditoría al actualizar septiembre y octubre (o los meses seleccionados).</label>
         <p id="housePaymentReviewHint"></p>
       </div>
       <p class="hint house-payment-notice">Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido es $300 por mes y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado.</p>
@@ -70,4 +70,4 @@
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
   </div>
 </section>
-</main><script src="assets/js/analisis-cuotas.js?v=20261014-last-paid-quote" defer></script><script src="assets/js/google-sheets-historicos.js?v=20261011" defer></script><script src="assets/js/site-sidebar.js?v=20261012-seguridad" defer></script></body></html>
+</main><script src="assets/js/analisis-cuotas.js?v=20261014-reference-review" defer></script><script src="assets/js/google-sheets-historicos.js?v=20261011" defer></script><script src="assets/js/site-sidebar.js?v=20261012-seguridad" defer></script></body></html>

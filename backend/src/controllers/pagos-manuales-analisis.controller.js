@@ -1,6 +1,8 @@
 'use strict';
 const sequelize=require('../config/database');
-const {Casa,Cuota,ZkTarjeta}=require('../models');
+const {Op}=require('sequelize');
+const {Casa,Cuota,ZkTarjeta,PagoReportado}=require('../models');
+const PagoAcceso=require('../models/PagoAccesoC3');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
 const {prepararDesdeHistorial,generarReferencia}=require('../services/pago-manual-analisis.service');
 const {clasificarCuotaParaPago}=require('../services/cuota-pendiente-historica.service');
@@ -14,6 +16,37 @@ function evaluarPeriodos(plan,cuotas){
     return {periodo,cuota,revision};
   });
 }
+async function comprobarReferenciasVinculadas(casaId,evaluadas,transaction){
+  const refs=[...new Set(evaluadas.flatMap(({cuota})=>
+    [cuota?.referencia,cuota?.folio].map(x=>String(x||'').trim()).filter(Boolean)))];
+  const ids=evaluadas.map(({cuota})=>cuota?.id).filter(Boolean);
+  const [bancos,eventos]=await Promise.all([
+    refs.length?PagoReportado.findAll({
+      where:{casaId,[Op.or]:[{folioOperacion:{[Op.in]:refs}},{folioReporte:{[Op.in]:refs}}]},
+      attributes:['folioOperacion','folioReporte','estatus'],...(transaction?{transaction}:{})
+    }):[],
+    refs.length||ids.length?PagoAcceso.findAll({
+      where:{casaId,[Op.or]:[
+        ...(refs.length?[{referencia:{[Op.in]:refs}}]:[]),
+        ...(ids.length?[{origen:'CUOTA',origenId:{[Op.in]:ids}}]:[])
+      ]},
+      attributes:['referencia','origen','origenId','estado'],...(transaction?{transaction}:{})
+    }):[]
+  ]);
+  const refsBanco=new Set(bancos.flatMap(p=>[String(p.folioOperacion),String(p.folioReporte)]));
+  const refsC3=new Set(eventos.map(e=>String(e.referencia||'')).filter(Boolean));
+  const idsC3=new Set(eventos.filter(e=>e.origen==='CUOTA').map(e=>String(e.origenId)));
+  for(const {cuota,revision} of evaluadas){
+    if(!cuota)continue;
+    if(idsC3.has(String(cuota.id))||
+      [cuota.referencia,cuota.folio].some(x=>refsBanco.has(String(x||''))||refsC3.has(String(x||'')))){
+      revision.registrable=false;
+      revision.requiereRevision=false;
+      revision.motivo='Existe un movimiento de pago asociado en pagos_reportados o pagos_acceso_c3. Revisa la conciliación; no se creará otro cobro ni otra orden al C3.';
+    }
+  }
+}
+
 function resumirCotizacion(plan, evaluadas){
   return {
     ultimoMesPagado:plan.ultimoMesPagado?
@@ -39,9 +72,11 @@ async function cotizarPagoVivienda(req,res){
     if(!casa)throw fail(404,'Vivienda no encontrada');
     const cuotas=await Cuota.findAll({where:{casaId}});
     const plan=prepararDesdeHistorial({cuotas,anio:req.query.anio,mes:req.query.mes});
+    const evaluadas=evaluarPeriodos(plan,cuotas);
+    await comprobarReferenciasVinculadas(casaId,evaluadas);
     res.setHeader('Cache-Control','no-store');
     return res.json({ok:true,data:{casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,
-      ...resumirCotizacion(plan,evaluarPeriodos(plan,cuotas))}});
+      ...resumirCotizacion(plan,evaluadas)}});
   }catch(error){
     if(!error.status)console.error('[finanzas cotizar]',error);
     return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible consultar el historial de esta vivienda'});
@@ -69,12 +104,13 @@ async function registrarPagoVivienda(req,res){
       if(mesesEsperados!==plan.meses)
         throw fail(409,'El historial de pagos cambió. Actualiza la cotización antes de confirmar.');
       const evaluadas=evaluarPeriodos(plan,existentes);
+      await comprobarReferenciasVinculadas(casaId,evaluadas,transaction);
       for(const {periodo,revision} of evaluadas){
         if(!revision.registrable)
           throw fail(409,periodo.mes+' '+periodo.anio+': '+revision.motivo);
         if(revision.requiereRevision&&!confirmarHistorico)
           throw fail(409,periodo.mes+' '+periodo.anio+
-            ': hay fechas históricas importadas. Marca la autorización de corrección y vuelve a confirmar.');
+            ': existen referencias o datos históricos por conciliar. Confirma la revisión en el formulario antes de registrar.');
       }
       const tarjetas=await ZkTarjeta.findAll({where:{casaId},transaction});
       if(tarjetas.some(t=>t.fechaFin && /^\d{4}-\d{2}-\d{2}$/.test(String(t.fechaFin)) &&
@@ -89,7 +125,7 @@ async function registrarPagoVivienda(req,res){
           '; pago de '+plan.meses+' mensualidad(es); '+
           (revision.referenciaAnterior?'referencia histórica previa: '+revision.referenciaAnterior+'; ':'')+
           (revision.folioAnterior?'folio histórico previo: '+revision.folioAnterior+'; ':'')+
-          (revision.requiereRevision?'corrección histórica autorizada; fechaPago anterior: '+
+          (revision.requiereRevision?'conciliación administrativa de datos anteriores autorizada; fechaPago anterior: '+
             (cuota?.fechaPago||'ninguna')+'; fechaConfirmacion anterior: '+(cuota?.fechaConfirmacion||'ninguna')+'; ':'')+
           'importe del movimiento: $'+plan.total.toFixed(2);
         const valores={
