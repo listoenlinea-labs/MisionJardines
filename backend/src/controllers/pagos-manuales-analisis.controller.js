@@ -22,8 +22,8 @@ async function comprobarReferenciasVinculadas(casaId,evaluadas,transaction){
   const ids=evaluadas.map(({cuota})=>cuota?.id).filter(Boolean);
   const [bancos,eventos]=await Promise.all([
     refs.length?PagoReportado.findAll({
-      where:{casaId,folioOperacion:{[Op.in]:refs}},
-      attributes:['folioOperacion','estatus'],...(transaction?{transaction}:{})
+      where:{casaId,[Op.or]:[{folioOperacion:{[Op.in]:refs}},{folioReporte:{[Op.in]:refs}}]},
+      attributes:['folioOperacion','folioReporte','estatus'],...(transaction?{transaction}:{})
     }):[],
     refs.length||ids.length?PagoAcceso.findAll({
       where:{casaId,[Op.or]:[
@@ -33,7 +33,7 @@ async function comprobarReferenciasVinculadas(casaId,evaluadas,transaction){
       attributes:['referencia','origen','origenId','estado'],...(transaction?{transaction}:{})
     }):[]
   ]);
-  const refsBanco=new Set(bancos.map(p=>String(p.folioOperacion)));
+  const refsBanco=new Set(bancos.flatMap(p=>[String(p.folioOperacion),String(p.folioReporte)]));
   const refsC3=new Set(eventos.map(e=>String(e.referencia||'')).filter(Boolean));
   const idsC3=new Set(eventos.filter(e=>e.origen==='CUOTA').map(e=>String(e.origenId)));
   for(const {cuota,revision} of evaluadas){
