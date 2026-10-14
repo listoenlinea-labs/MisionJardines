@@ -23,7 +23,10 @@ function fixture(condos = [{ id: 1, direccionId: 10, nombreCompleto: 'Persona Un
   let tables = { Usuario: [], Condomino: condos, Casa: [{ id: 10, calle: 'Calle Prueba', numero: '5' }, { id: 11, calle: 'Otra Calle', numero: 'A-2' }],
     Rol: [{ id: 3, nombre: 'CONDOMINO', activo: true }], UsuarioCasa: [], Invitacion: [], Reporte: [] };
   let chain = Promise.resolve(), failDeleteTable = null;
-  const db = { transaction: async fn => {
+  const db = { getQueryInterface: () => ({
+    async showAllTables() { return Object.values(db.models || {}).map(model => model.getTableName()); },
+    async describeTable(table) { const model = Object.values(db.models || {}).find(model => model.getTableName() === table); return Object.fromEntries(Object.entries(model.rawAttributes).map(([key, value]) => [value.field || key, {}])); }
+  }), transaction: async fn => {
     const run = chain.then(async () => {
       const before = structuredClone(tables);
       try { return await fn({ LOCK: { UPDATE: 'UPDATE' } }); } catch (e) { tables = before; throw e; }
@@ -236,14 +239,42 @@ test('borrar prueba elimina solo registros ficticios e invalida enlace y cuenta;
 });
 test('borrado bloquea historial de otros módulos y revierte toda eliminación al fallar una FK', async () => {
   const f = fixture(); const trial = await f.service.crearPrueba(10, 'f'.repeat(32));
-  f.db.models = { Pago: { rawAttributes: { usuarioId: { references: { model: 'usuarios' } } }, async findOne() { return { id: 99 }; } } };
+  f.db.models = { Pago: { getTableName: () => 'pagos', rawAttributes: { usuarioId: { references: { model: 'usuarios' } } }, async findOne() { return { id: 99 }; } } };
   await assert.rejects(f.service.borrarPrueba(trial.usuarioId), { status: 409 });
   assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Invitacion.length, 1);
   f.db.models.Pago.findOne = async () => { throw Object.assign(Error('FK failure'), { name: 'SequelizeForeignKeyConstraintError' }); };
-  await assert.rejects(f.service.borrarPrueba(trial.usuarioId), { name: 'SequelizeForeignKeyConstraintError' });
+  await assert.rejects(f.service.borrarPrueba(trial.usuarioId), { status: 503 });
   assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Condomino.length, 2);
   f.db.models = {}; f.failDelete('Usuario');
   await assert.rejects(f.service.borrarPrueba(trial.usuarioId), { name: 'SequelizeForeignKeyConstraintError' });
   assert.equal(f.tables.Invitacion.length, 1); assert.equal(f.tables.UsuarioCasa.length, 1);
   f.failDelete(null); await f.service.borrarPrueba(trial.usuarioId); assert.equal(f.tables.Usuario.length, 0);
+});
+
+test('borrado usa solo columnas físicas de referencia y no consulta modelos/tablas ausentes', async () => {
+  const f = fixture(); const trial = await f.service.crearPrueba(10, '1'.repeat(32));
+  let checked = false;
+  f.db.models = {
+    Legacy: { getTableName: () => 'pagos_legacy', rawAttributes: {
+      usuarioId: { field: 'usuario_id', references: { model: 'usuarios' } },
+      usuarioRevisadoId: { field: 'revisado_por', references: { model: 'usuarios' } },
+      columnaNueva: { field: 'columna_nueva' }
+    }, async findOne(options) {
+      checked = true;
+      assert.deepEqual(options.attributes, ['usuarioId']);
+      assert.deepEqual(Reflect.ownKeys(options.where[Op.or][0]), ['usuarioId']);
+      assert.equal(options.transaction.LOCK.UPDATE, 'UPDATE');
+      return null;
+    } },
+    Optional: { getTableName: () => 'modulo_ausente', rawAttributes: { usuarioId: { field: 'usuario_id' } }, async findOne() { throw Error('Must not query absent table'); } }
+  };
+  f.db.getQueryInterface = () => ({ async showAllTables() { return ['pagos_legacy']; }, async describeTable() { return { id: {}, usuario_id: {} }; } });
+  await f.service.borrarPrueba(trial.usuarioId);
+  assert.equal(checked, true); assert.equal(f.tables.Usuario.length, 0);
+});
+test('error al revisar historial tiene mensaje accionable y mantiene cuenta/invitación intactas', async () => {
+  const f = fixture(); const trial = await f.service.crearPrueba(10, '2'.repeat(32));
+  f.db.models = { Legacy: { getTableName: () => 'pagos_legacy', rawAttributes: { usuarioId: { field: 'usuario_id' } }, async findOne() { throw Error('SQL must not be exposed'); } } };
+  await assert.rejects(f.service.borrarPrueba(trial.usuarioId), error => error.status === 503 && /pagos_legacy/.test(error.message) && !/SQL must/.test(error.message));
+  assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Invitacion.length, 1);
 });

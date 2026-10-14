@@ -7,7 +7,7 @@ const models = require('../src/models');
 const router = require('../src/routes/auto-users.routes');
 test('HTTP routes refuse anonymous/resident/forged-admin requests and allow authoritative administrator', async t => {
   let currentRole = 'CONDOMINO', queried = 0;
-  t.mock.method(models.Usuario, 'findByPk', async () => ({ id: 1, casaId: 10, rolId: 3, estatus: 'ACTIVO', cuentaAceptada: true, sesionVersion: 0, rol: { nombre: currentRole, activo: true } }));
+  t.mock.method(models.Usuario, 'findByPk', async () => ({ id: 1, condominoId: 9, observaciones: 'AUTO_USERS_PRUEBA:' + 'a'.repeat(32), casaId: 10, rolId: 3, estatus: 'ACTIVO', cuentaAceptada: true, sesionVersion: 0, rol: { nombre: currentRole, activo: true } }));
   t.mock.method(models.UsuarioCasa, 'findOne', async () => ({ casaId: 10 }));
   t.mock.method(models.Condomino, 'findAll', async () => { queried++; return []; });
   const app = express(); app.use(express.json()); app.use('/api/auto-users', router);
@@ -30,6 +30,14 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
     assert.equal((await send('/0/invitacion', forged)).status, 400);
     assert.equal((await send('/prueba/crear', forged)).status, 400);
     assert.equal((await send('/prueba/1/enlace', forged)).status, 400);
+    t.mock.method(require('../src/config/database'), 'transaction', async fn => fn({ LOCK: { UPDATE: 'UPDATE' } }));
+    t.mock.method(models.Rol, 'findByPk', async () => { throw Object.assign(Error('SQL and private data must not leak'), { name: 'SequelizeDatabaseError', original: { code: 'ER_BAD_FIELD_ERROR' } }); });
+    t.mock.method(console, 'error', () => {});
+    const failedDelete = await send('/prueba/1', forged, 'DELETE');
+    assert.equal(failedDelete.status, 503);
+    const diagnostic = await failedDelete.json();
+    assert.match(diagnostic.message, /ER_BAD_FIELD_ERROR/);
+    assert.doesNotMatch(diagnostic.message, /private data/);
     const invalid = await send('/invitacion/consultar'); assert.equal(invalid.status, 410);
     assert.equal(invalid.headers.get('cache-control'), 'no-store');
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

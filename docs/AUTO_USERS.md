@@ -143,3 +143,10 @@ API administrativa: `GET /api/auto-users/prueba/usuarios?pagina=1`, `PATCH /api/
 Borrar abre un panel dentro de Auto-users con el ID de la cuenta y botones **Sí, borrar cuenta de prueba** / **Cancelar**. No depende de `window.confirm`, que puede ser suprimido por el navegador o su contenedor. La cancelación se muestra explícitamente. Al confirmar aparece **Borrando cuenta de prueba #…**; cualquier rechazo de la API permanece visible en el panel y en la sección de prueba, con los botones habilitados para cancelar o reintentar.
 
 Las solicitudes de Auto-users tienen límite de espera de 45 segundos. Si vence o falla la conexión, actualizar la tabla antes de reintentar, porque la operación puede haberse completado en el servidor. Una respuesta que no sea JSON informa su código HTTP y pide revisar el despliegue del backend. Si DELETE termina pero falla la actualización de la tabla, se informa que el borrado sí fue completado. El cursor de espera se usa durante operaciones en curso; los botones deshabilitados por estado muestran cursor de no disponible.
+
+
+### Compatibilidad del borrado con el esquema real
+
+Antes de buscar historial, el backend consulta las tablas y columnas físicas disponibles dentro de la transacción. Consulta únicamente los campos de referencia a usuario/condómino que existen: no selecciona todos los atributos del modelo de otros módulos. Esto evita que un campo adicional pendiente de migración o una tabla opcional ausente impida borrar una prueba sin historial. Una tabla ausente no contiene registros; las referencias existentes siguen bloqueando la eliminación. No se desactivan claves foráneas ni se borran pagos/historial externos.
+
+Si falla la comprobación, el mensaje identifica la tabla y el código de error sin publicar SQL, credenciales ni datos personales. Otros fallos internos de las rutas administrativas de prueba muestran un código seguro para revisar los logs del backend. La transacción conserva los registros cuando hay un error.
