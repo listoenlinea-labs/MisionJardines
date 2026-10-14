@@ -18,6 +18,7 @@
     if (!response.ok || !data.ok) throw Error(data.message || 'No fue posible completar la operación.');
     return data;
   }
+  let trialRows = [], trialPage = 1, trialTotal = 0, editingTrial = false;
   let trialId = null, trialAccepted = false, trialAvailable = false;
   let trialKey = sessionStorage.getItem('autoUsersTrialKey');
   if (!trialKey) { trialKey = crypto.randomUUID().replace(/-/g, ''); sessionStorage.setItem('autoUsersTrialKey', trialKey); }
@@ -25,6 +26,7 @@
     $('createTrial').disabled = busy || !trialAvailable;
     $('generateTrialLink').disabled = busy || !trialId || trialAccepted;
     $('copyTrialLink').disabled = busy || !$('trialLink').value;
+    $('trialPrevious').disabled = busy || trialPage <= 1; $('trialNext').disabled = busy || trialPage * 50 >= trialTotal;
   }
   async function trialAction(create) {
     if (busy) return;
@@ -49,11 +51,38 @@
     try { await navigator.clipboard.writeText($('trialLink').value); $('trialStatus').textContent = 'Enlace copiado. Ábrelo en incógnito.'; }
     catch { $('trialLink').focus(); $('trialLink').select(); $('trialStatus').textContent = 'Copia el enlace seleccionado y ábrelo en incógnito.'; }
   });
+  async function loadTrials() {
+    const data = await api('/prueba/usuarios?pagina=' + trialPage);
+    trialRows = data.registros; trialTotal = Number(data.total);
+    if (!trialRows.length && trialPage > 1) { trialPage--; return loadTrials(); }
+    $('trialPage').textContent = 'Página ' + trialPage + ' · ' + trialTotal + ' cuenta(s) de prueba';
+    const selected = trialRows.find(u => Number(u.id) === Number(trialId));
+    if (selected) trialAccepted = selected.cuentaAceptada;
+    $('trialRows').innerHTML = trialRows.length ? trialRows.map(u => '<tr><td>#' + esc(u.id) + ' / #' + esc(u.condominoId) + '</td><td>' + esc(u.condomino?.nombreCompleto || name(u)) + '</td><td>' + esc(u.casa?.calleCorrecta || u.casa?.calle) + ' ' + esc(u.casa?.numero) + '</td><td>' + esc(u.nombreUsuario) + '<small>' + esc(u.correo || 'Sin e-mail') + ' · ' + esc(u.telefono || 'Sin teléfono') + '</small></td><td>' + esc(u.estatus) + '<small>Aceptada: ' + (u.cuentaAceptada ? 'Sí' : 'No') + '</small></td><td>' + esc(labels[u.invitacion?.envioEstado] || u.invitacion?.envioEstado || 'Sin invitación') + '</td><td><button type="button" data-trial-edit="' + esc(u.id) + '">Ver / editar</button>' + (!u.cuentaAceptada ? '<button type="button" data-trial-link="' + esc(u.id) + '">Enlace sin enviar</button>' : '') + '<button type="button" class="secondary" data-trial-delete="' + esc(u.id) + '">Borrar</button></td></tr>').join('') : '<tr><td colspan="7">No hay cuentas generadas como prueba.</td></tr>';
+    for (const b of document.querySelectorAll('[data-trial-edit]')) b.addEventListener('click', () => edit(b.dataset.trialEdit, true));
+    for (const b of document.querySelectorAll('[data-trial-link]')) b.addEventListener('click', () => { trialId = Number(b.dataset.trialLink); trialAccepted = false; trialAction(false); });
+    for (const b of document.querySelectorAll('[data-trial-delete]')) b.addEventListener('click', () => deleteTrial(Number(b.dataset.trialDelete)));
+    trialButtons();
+  }
+  async function deleteTrial(id) {
+    if (busy || !confirm('¿Borrar permanentemente la cuenta de prueba #' + id + ', su condómino ficticio, invitación y reportes? La vivienda se conserva.')) return;
+    setBusy(true);
+    try {
+      const data = await api('/prueba/' + id, null, 'DELETE');
+      if (Number(trialId) === id) { trialId = null; trialAccepted = false; $('trialLink').value = ''; }
+      $('trialStatus').textContent = data.mensaje;
+      await load();
+    } catch (error) { $('trialStatus').textContent = error.message; }
+    finally { setBusy(false); }
+  }
+  $('trialPrevious').addEventListener('click', () => { if (!busy && trialPage > 1) { trialPage--; loadTrials().catch(e => { $('trialStatus').textContent = e.message; }); } });
+  $('trialNext').addEventListener('click', () => { if (!busy && trialPage * 50 < trialTotal) { trialPage++; loadTrials().catch(e => { $('trialStatus').textContent = e.message; }); } });
   function buttons(u) {
     if (u.cuentaAceptada || u.estatus && u.estatus !== 'PENDIENTE') return '—';
     return '<button type="button" data-edit="' + esc(u.id) + '">Editar</button><button type="button" data-invite="' + esc(u.id) + '">Enviar</button>';
   }
   async function load() {
+    await loadTrials();
     const data = await api('?pagina=' + page + '&paginaReportes=' + reportPage);
     rows = data.registros; reports = data.reportes; total = Number(data.total);
     reportTotal = Number(data.totalReportes);
@@ -107,9 +136,13 @@
     } catch (error) { $('adminStatus').textContent = error.message; }
     finally { setBusy(false); }
   }
-  function edit(id) {
-    const u = rows.find(r => String(r.id) === String(id)) || reports.find(r => String(r.usuarioId) === String(id))?.usuario;
+  function edit(id, isTrial = false) {
+    editingTrial = isTrial;
+    $('editHeading').textContent = isTrial ? 'Ver / editar cuenta de prueba' : 'Editar prerregistro';
+    const u = isTrial ? trialRows.find(r => String(r.id) === String(id)) : rows.find(r => String(r.id) === String(id)) || reports.find(r => String(r.usuarioId) === String(id))?.usuario;
     if (!u) return;
+    $('trialDetails').hidden = !isTrial;
+    $('trialDetails').textContent = isTrial ? 'Usuario #' + u.id + ' · Condómino #' + u.condominoId + ' · ' + u.estatus + ' · Cuenta aceptada: ' + (u.cuentaAceptada ? 'Sí' : 'No') + ' · Creado: ' + new Date(u.creadoEn).toLocaleString('es-MX') + ' · Actualizado: ' + new Date(u.actualizadoEn).toLocaleString('es-MX') + '. Guardar cierra las sesiones anteriores e invalida el enlace pendiente.' : '';
     $('editUserId').value = u.id; $('editFullName').value = name(u); $('editHouse').value = u.casaId;
     $('editUsername').value = u.nombreUsuario || u.correo || ''; $('editEmail').value = u.correo || ''; $('editPhone').value = u.telefono || '';
     $('editMessage').textContent = ''; $('editPreregistration').showModal();
@@ -117,9 +150,9 @@
   $('editPreregistrationForm').addEventListener('submit', async event => {
     event.preventDefault(); const button = event.submitter; button.disabled = true;
     try {
-      await api('/' + $('editUserId').value, { nombreCompleto: $('editFullName').value, casaId: $('editHouse').value,
+      await api((editingTrial ? '/prueba/' : '/') + $('editUserId').value, { nombreCompleto: $('editFullName').value, casaId: $('editHouse').value,
         nombreUsuario: $('editUsername').value, correo: $('editEmail').value, telefono: $('editPhone').value }, 'PATCH');
-      $('editPreregistration').close(); $('adminStatus').textContent = 'Prerregistro corregido. Presiona Enviar para mandar el nuevo enlace.'; await load();
+      $('editPreregistration').close(); $('adminStatus').textContent = editingTrial ? 'Cuenta de prueba actualizada. Si sigue pendiente, genera un enlace sin enviar.' : 'Prerregistro corregido. Presiona Enviar para mandar el nuevo enlace.'; await load();
     } catch (error) { $('editMessage').textContent = error.message; }
     finally { button.disabled = false; }
   });

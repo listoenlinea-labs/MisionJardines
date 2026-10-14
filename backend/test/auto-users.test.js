@@ -10,6 +10,7 @@ function matches(row, where = {}) {
     if (key === Op.or) return where[key].some(w => matches(row, w));
     const value = where[key];
     if (value && typeof value === 'object') return Reflect.ownKeys(value).every(op => {
+      if (op === Op.like) return String(row[key] || '').startsWith(value[op].replace(/%$/, ''));
       if (op === Op.in) return value[op].some(x => String(row[key]) === String(x));
       if (op === Op.ne) return value[op] === null ? row[key] != null : String(row[key]) !== String(value[op]);
       if (op === Op.gt) return Number(row[key]) > Number(value[op]);
@@ -21,7 +22,7 @@ function matches(row, where = {}) {
 function fixture(condos = [{ id: 1, direccionId: 10, nombreCompleto: 'Persona Uno Prueba', correo: 'persona1@example.com', telefono: '3312345678', activo: true }]) {
   let tables = { Usuario: [], Condomino: condos, Casa: [{ id: 10, calle: 'Calle Prueba', numero: '5' }, { id: 11, calle: 'Otra Calle', numero: 'A-2' }],
     Rol: [{ id: 3, nombre: 'CONDOMINO', activo: true }], UsuarioCasa: [], Invitacion: [], Reporte: [] };
-  let chain = Promise.resolve();
+  let chain = Promise.resolve(), failDeleteTable = null;
   const db = { transaction: async fn => {
     const run = chain.then(async () => {
       const before = structuredClone(tables);
@@ -50,6 +51,7 @@ function fixture(condos = [{ id: 1, direccionId: 10, nombreCompleto: 'Persona Un
         const row = { ...data, ...(pk === 'id' ? { id: Math.max(0, ...tables[table].map(r => Number(r.id))) + 1 } : {}) };
         tables[table].push(row); return instance(row);
       },
+      async destroy(options) { if (table === failDeleteTable) throw Object.assign(Error('delete FK'), { name: 'SequelizeForeignKeyConstraintError' }); tables[table] = tables[table].filter(r => !matches(r, options.where)); },
       async findOrCreate(options) {
         const existing = await this.findOne({ where: options.where });
         return existing ? [existing, false] : [await this.create({ ...options.defaults, ...options.where }), true];
@@ -65,7 +67,7 @@ function fixture(condos = [{ id: 1, direccionId: 10, nombreCompleto: 'Persona Un
     async enviarInvitacion(data) { if (failSend) throw Error('provider failed'); sent.push(data); return 'synthetic-message'; }
   };
   const service = crearServicio({ db, ...Object.fromEntries(Object.keys(tables).map(key => [key, model(key)])), whatsapp, hashPassword: async p => 'synthetic-hash:' + p });
-  return { service, sent, get tables() { return tables; }, enabled(value) { enabled = value; }, failSend(value) { failSend = value; } };
+  return { service, sent, db, failDelete(table) { failDeleteTable = table; }, get tables() { return tables; }, enabled(value) { enabled = value; }, failSend(value) { failSend = value; } };
 }
 const tokenFrom = f => new URLSearchParams(new URL(f.sent.at(-1).enlace).hash.slice(1)).get('invitacion');
 const acceptBody = { nombreUsuario: 'persona1@example.com', correo: 'persona1@example.com', contrasena: 'ClavePrueba123', confirmarContrasena: 'ClavePrueba123', numeroConfirmado: '5' };
@@ -195,4 +197,53 @@ test('fallo creando prueba revierte también el condómino ficticio', async () =
   const f = fixture(); f.tables.Rol[0].activo = false;
   await assert.rejects(f.service.crearPrueba(10, 'c'.repeat(32)), { status: 503 });
   assert.equal(f.tables.Condomino.length, 1); assert.equal(f.tables.Usuario.length, 0);
+});
+
+test('vista de pruebas omite cuentas reales y secretos; edita pendiente/aceptada conservando estado y vínculos', async () => {
+  const f = fixture(); await f.service.createOne(1);
+  const trial = await f.service.crearPrueba(10, 'd'.repeat(32));
+  let list = await f.service.listarPruebas(); assert.equal(list.total, 1); assert.equal(list.registros[0].id, trial.usuarioId);
+  assert.ok(!JSON.stringify(list).includes('contrasenaHash')); assert.ok(!JSON.stringify(list).includes('AUTO_USERS_PRUEBA:'));
+  await assert.rejects(f.service.editarPrueba(1, { ...acceptBody, casaId: 10, nombreCompleto: 'Cambio indebido' }, 100), { status: 403 });
+  await f.service.editarPrueba(trial.usuarioId, { ...acceptBody, nombreUsuario: 'trial-edit', correo: 'trial-edit@example.com', casaId: 10, nombreCompleto: 'Prueba Editada', telefono: '3312345678' }, 100);
+  list = await f.service.listarPruebas(); assert.equal(list.registros[0].condomino.nombreCompleto, 'Prueba Editada');
+  assert.equal(list.registros[0].cuentaAceptada, false);
+  const link = await f.service.enlacePrueba(trial.usuarioId, 'https://example.com');
+  const token = new URLSearchParams(new URL(link.enlace).hash.slice(1)).get('invitacion');
+  assert.ok(!JSON.stringify(await f.service.listarPruebas()).includes('tokenHash'));
+  await f.service.aceptar(token, { ...acceptBody, nombreUsuario: 'trial-edit', correo: 'trial-edit@example.com' });
+  const beforeVersion = f.tables.Usuario[1].sesionVersion;
+  await f.service.editarPrueba(trial.usuarioId, { ...acceptBody, nombreUsuario: 'trial-updated', correo: 'updated@example.com', casaId: 10, nombreCompleto: 'Prueba Actualizada' }, 100);
+  assert.equal(f.tables.Usuario[1].cuentaAceptada, true); assert.equal(f.tables.Usuario[1].estatus, 'ACTIVO');
+  assert.equal(f.tables.Usuario[1].sesionVersion, beforeVersion + 1);
+  assert.equal(f.tables.UsuarioCasa.find(l => l.usuarioId === trial.usuarioId).activo, true);
+  assert.equal(f.tables.Usuario[0].nombreUsuario, 'persona1@example.com');
+  await f.service.borrarPrueba(trial.usuarioId); assert.equal(f.tables.Usuario.length, 1);
+});
+test('borrar prueba elimina solo registros ficticios e invalida enlace y cuenta; conserva vivienda y usuarios reales', async () => {
+  const f = fixture(); await f.service.createOne(1);
+  const trial = await f.service.crearPrueba(10, 'e'.repeat(32));
+  const link = await f.service.enlacePrueba(trial.usuarioId, 'https://example.com');
+  const token = new URLSearchParams(new URL(link.enlace).hash.slice(1)).get('invitacion');
+  await f.service.reportar(token, 'Reporte de prueba para borrar.');
+  await assert.rejects(f.service.borrarPrueba(1), { status: 403 });
+  await f.service.borrarPrueba(trial.usuarioId);
+  assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Condomino.length, 1);
+  assert.equal(f.tables.UsuarioCasa.length, 1); assert.equal(f.tables.Invitacion.length, 1); assert.equal(f.tables.Reporte.length, 0);
+  assert.equal(f.tables.Casa.length, 2); assert.equal((await f.service.listarPruebas()).total, 0);
+  await assert.rejects(f.service.consultar(token), { status: 410 });
+  await f.service.crearPrueba(10, 'e'.repeat(32)); assert.equal((await f.service.listarPruebas()).total, 1);
+});
+test('borrado bloquea historial de otros módulos y revierte toda eliminación al fallar una FK', async () => {
+  const f = fixture(); const trial = await f.service.crearPrueba(10, 'f'.repeat(32));
+  f.db.models = { Pago: { rawAttributes: { usuarioId: { references: { model: 'usuarios' } } }, async findOne() { return { id: 99 }; } } };
+  await assert.rejects(f.service.borrarPrueba(trial.usuarioId), { status: 409 });
+  assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Invitacion.length, 1);
+  f.db.models.Pago.findOne = async () => { throw Object.assign(Error('FK failure'), { name: 'SequelizeForeignKeyConstraintError' }); };
+  await assert.rejects(f.service.borrarPrueba(trial.usuarioId), { name: 'SequelizeForeignKeyConstraintError' });
+  assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Condomino.length, 2);
+  f.db.models = {}; f.failDelete('Usuario');
+  await assert.rejects(f.service.borrarPrueba(trial.usuarioId), { name: 'SequelizeForeignKeyConstraintError' });
+  assert.equal(f.tables.Invitacion.length, 1); assert.equal(f.tables.UsuarioCasa.length, 1);
+  f.failDelete(null); await f.service.borrarPrueba(trial.usuarioId); assert.equal(f.tables.Usuario.length, 0);
 });

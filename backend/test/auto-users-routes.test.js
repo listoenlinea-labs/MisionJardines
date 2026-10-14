@@ -14,13 +14,17 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
   const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
   const base = 'http://127.0.0.1:' + server.address().port + '/api/auto-users';
   const forged = jwt.sign({ usuarioId: 1, rol: 'SUPER_ADMIN', sesionVersion: 0 }, process.env.JWT_SECRET);
-  const send = (url, authorization) => fetch(base + url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: 'Bearer ' + authorization } : {}) }, body: '{}' });
+  const send = (url, authorization, method = 'POST') => fetch(base + url, { method, headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: 'Bearer ' + authorization } : {}) }, ...(method === 'GET' ? {} : { body: '{}' }) });
   try {
     for (const path of ['/crear', '/prueba/crear', '/prueba/1/enlace']) {
       assert.equal((await send(path)).status, 401);
       assert.equal((await send(path, forged)).status, 403);
     }
     assert.equal((await send('/crear', forged)).status, 403); assert.equal(queried, 0);
+    for (const [path, method] of [['/prueba/usuarios', 'GET'], ['/prueba/1', 'PATCH'], ['/prueba/1', 'DELETE']]) {
+      assert.equal((await send(path, undefined, method)).status, 401);
+      assert.equal((await send(path, forged, method)).status, 403);
+    }
     currentRole = 'ADMINISTRADOR'; const allowed = await send('/crear', forged);
     assert.equal(allowed.status, 200); assert.equal((await allowed.json()).siguiente, null); assert.equal(queried, 1);
     assert.equal((await send('/0/invitacion', forged)).status, 400);
