@@ -57,7 +57,7 @@
       <label>Importe por mes<select id="housePaymentAmount" required><option value="300">$300</option><option value="350">$350 (incluye $50 de recargo)</option></select></label>
       <label>Forma de pago<select id="housePaymentMethod"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="DEPOSITO">Depósito</option><option value="OTRO">Otro</option></select></label>
       <div id="housePaymentPreview" class="house-payment-preview" aria-live="polite"></div>
-      <p class="hint house-payment-notice">Se registrarán los meses en el historial de cuotas. El acceso del C3 se actualizará mediante una cola; no equivale a confirmar un depósito bancario ni una lectura física instantánea. No se permiten meses ya pagados o parcialmente abonados.</p>
+      <p class="hint house-payment-notice">Se registrarán los meses en el historial de cuotas. El acceso del C3 se actualizará mediante una cola; no equivale a confirmar un depósito bancario ni una lectura física instantánea. No se permiten meses ya pagados o parcialmente abonados. Las mensualidades PENDIENTES con $0 y referencia histórica HIST sí pueden confirmarse; el registro anterior se conserva para auditoría.</p>
       <div class="house-payment-actions"><button type="button" class="soft" id="housePaymentRefreshC3">Verificar vigencias de TAGs</button><button type="submit" class="primary" id="housePaymentSubmit">Confirmar pago</button></div>
     </form>
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>

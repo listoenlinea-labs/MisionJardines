@@ -3,6 +3,7 @@ const sequelize=require('../config/database');
 const {Casa,Cuota,ZkTarjeta}=require('../models');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
 const {prepararPlan,generarReferencia}=require('../services/pago-manual-analisis.service');
+const {clasificarCuotaParaPago}=require('../services/cuota-pendiente-historica.service');
 
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 async function registrarPagoVivienda(req,res){
@@ -32,23 +33,28 @@ async function registrarPagoVivienda(req,res){
       for(const periodo of plan.periodos){
         const cuota=await Cuota.findOne({where:{casaId,anio:periodo.anio,mes:periodo.mes},
           transaction,lock:transaction.LOCK.UPDATE});
-        if(cuota && (cuota.estatusPago!=='PENDIENTE'||
-          Number(cuota.montoPagado||0)>0||cuota.referencia||cuota.folio)){
-          throw fail(409,'La vivienda ya tiene un pago o movimiento reservado para '+periodo.mes+' '+periodo.anio+'. No se duplicó ningún cobro');
+        const revision=clasificarCuotaParaPago(cuota);
+        if(!revision.registrable){
+          throw fail(409,periodo.mes+' '+periodo.anio+': '+revision.motivo);
         }
-        cuotas.push({periodo,cuota});
+        // Se permite ocupar una cuota PENDIENTE con $0 y referencia HIST
+        // del padrón. No borrar su trazabilidad histórica.
+        cuotas.push({periodo,cuota,referenciaAnterior:revision.referenciaAnterior});
       }
       // El mismo ID de movimiento conecta el grupo sin sumar el mismo dinero
       // varias veces: vigenciaService usa marca alta de principal + outbox C3.
       const eventos=[];
-      for(const {periodo,cuota} of cuotas){
+      for(const {periodo,cuota,referenciaAnterior} of cuotas){
+        const observacionesAnteriores=String(cuota?.observaciones||'').trim();
+        const descripcion='Confirmado en Análisis de cuotas; '+plan.meses+' mensualidad(es)';
+        const auditoria=(referenciaAnterior?'Referencia histórica previa: '+referenciaAnterior+'. ':'')+descripcion;
         const valores={
           casaId,anio:periodo.anio,mes:periodo.mes,fechaPago:new Date(),
           montoCuota:plan.importeMes,montoPagado:plan.importeMes,
           recargo:plan.recargo,saldoPendiente:0,estatusPago:'PAGADO',
           tipoPago:'MANTENIMIENTO',formaPago,referencia,
           confirmadoPorUsuarioId:req.usuario.usuarioId,fechaConfirmacion:new Date(),
-          origenImportacion:'MANUAL_ANALISIS',observaciones:'Confirmado en Análisis de cuotas; '+plan.meses+' mensualidad(es)',
+          origenImportacion:'MANUAL_ANALISIS',observaciones:(observacionesAnteriores?observacionesAnteriores+'\n':'')+auditoria,
           nombrePagador:casa.nombre||null,
           numeroCasaSnapshot:casa.numero,calleSnapshot:casa.calle
         };
