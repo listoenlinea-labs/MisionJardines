@@ -109,6 +109,7 @@
  }
  let activePaymentHouse=null;
  let currentPaymentQuote=null;
+ let confirmedPaymentTarget=null;
  let quoteSequence=0;
  const paymentModal=$('housePaymentModal');
  const monthsES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -184,6 +185,7 @@
  }
  function closeHousePayment(){
    ++quoteSequence;
+   confirmedPaymentTarget=null;
    paymentModal.hidden=true;
    activePaymentHouse=null;
    currentPaymentQuote=null;
@@ -196,7 +198,7 @@
      const result=await request('/pagos-vivienda/'+Number(activePaymentHouse.casaId)+'/estado-c3');
      const state=result.data;
      const distinct=[...new Set((state.fechasTags||[]).map(t=>t.fechaFinal||'Sin fecha'))];
-     const target=currentPaymentQuote?.fechaFinObjetivo;
+     const target=confirmedPaymentTarget||currentPaymentQuote?.fechaFinObjetivo;
      const equal=Boolean(target)&&state.fechasTags?.length>0&&
        state.fechasTags.every(t=>String(t.fechaFinal)===target);
      el.textContent=state.tags?
@@ -224,6 +226,7 @@
    $('housePaymentStatus').textContent='Registrando el movimiento en MySQL…';
    try{
      const result=await request('/pagos-vivienda',payload);
+     confirmedPaymentTarget=result.data.fechaFinObjetivo;
      const message=result.message+' Referencia: '+result.data.referencia+
        '. Revisa después el estado físico del C3.';
      await load();
