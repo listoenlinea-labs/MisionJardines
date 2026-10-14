@@ -157,17 +157,42 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             const condo = await Condomino.findByPk(user.condominoId, lock(transaction));
             if (!condo) throw fail(409, 'El vínculo del condómino requiere revisión.');
             if (await Usuario.findOne({ where: { condominoId: condo.id, id: { [Op.ne]: id } }, transaction })) throw fail(409, 'El condómino tiene otra cuenta asociada.');
-            // Preserve financial/access history even when associations use SET NULL or CASCADE.
-            for (const model of Object.values(db.models || {})) {
-                if ([Usuario, Condomino, UsuarioCasa, Invitacion, Reporte].includes(model)) continue;
-                const conditions = [];
+            // Check only real tables/columns; selecting a complete model can fail
+            // on unrelated legacy fields before deletion is even attempted.
+            const models = Object.values(db.models || {}).filter(model => ![Usuario, Condomino, UsuarioCasa, Invitacion, Reporte].includes(model));
+            const candidates = models.map(model => {
+                const references = [];
                 for (const [attribute, definition] of Object.entries(model.rawAttributes || {})) {
                     const reference = definition.references?.model;
                     const table = typeof reference === 'string' ? reference : reference?.tableName;
-                    if (table === 'usuarios' || /usuario.*Id$/i.test(attribute)) conditions.push({ [attribute]: id });
-                    else if (table === 'condominos' || /condomino.*Id$/i.test(attribute)) conditions.push({ [attribute]: condo.id });
+                    const target = table === 'usuarios' || /usuario.*Id$/i.test(attribute) ? id
+                        : table === 'condominos' || /condomino.*Id$/i.test(attribute) ? condo.id : null;
+                    if (target !== null) references.push({ attribute, column: definition.field || attribute, target });
                 }
-                if (conditions.length && await model.findOne({ where: { [Op.or]: conditions }, ...lock(transaction) })) throw fail(409, 'Esta cuenta tiene historial en otros módulos. Revisa esas referencias antes de borrarla.');
+                return { model, references };
+            }).filter(candidate => candidate.references.length);
+            if (candidates.length) {
+                const qi = db.getQueryInterface();
+                const existingTables = new Set((await qi.showAllTables({ transaction })).map(table => typeof table === 'string' ? table : table.tableName));
+                for (const { model, references } of candidates) {
+                    const table = model.getTableName();
+                    const tableName = typeof table === 'string' ? table : table.tableName;
+                    if (!existingTables.has(tableName)) continue; // An absent optional module has no rows to protect.
+                    try {
+                        const columns = await qi.describeTable(table, { transaction });
+                        const present = references.filter(reference => Object.hasOwn(columns, reference.column));
+                        if (!present.length) continue;
+                        const found = await model.findOne({ attributes: present.map(reference => reference.attribute),
+                            where: { [Op.or]: present.map(reference => ({ [reference.attribute]: reference.target })) },
+                            ...lock(transaction) });
+                        if (found) throw fail(409, 'Esta cuenta tiene historial en ' + tableName + '. Revisa esas referencias antes de borrarla.');
+                    } catch (error) {
+                        if (error.status) throw error;
+                        const code = String(error.original?.code || error.parent?.code || error.name || 'ERROR_INTERNO');
+                        const safeCode = /^[A-Za-z0-9_]{1,80}$/.test(code) ? code : 'ERROR_INTERNO';
+                        throw fail(503, 'No se pudo revisar la tabla ' + tableName + ' (' + safeCode + ') antes de borrar. Revisa el esquema del backend o sus registros de error. No se eliminó ningún dato.');
+                    }
+                }
             }
             await Reporte.destroy({ where: { usuarioId: id }, transaction });
             await Invitacion.destroy({ where: { usuarioId: id }, transaction });

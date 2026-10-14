@@ -11,7 +11,7 @@ actual del C3 ni a una consulta en vivo de MySQL.
 | --- | --- | --- |
 | [Estado del proyecto](ESTADO_PROYECTO.md) | Resumen operativo, pruebas confirmadas, pendientes y bitácora diaria | Leer antes de continuar; actualización programada a las 23:30, America/Mexico_City |
 | [AGENTS.md](../AGENTS.md) | Reglas para agentes: pagos, recargos, C3, OCR y trabajo seguro | Vigente; leer antes de editar |
-| [Auto-users](AUTO_USERS.md) | Prerregistro idempotente, aceptación, reportes, WhatsApp Business y prueba individual sin envío con consulta, edición y borrado con confirmación/diagnóstico | Nuevo flujo; requiere migración, frontend/backend y configuración del remitente/plantilla |
+| [Auto-users](AUTO_USERS.md) | Prerregistro idempotente, aceptación, reportes, WhatsApp Business y prueba individual sin envío con consulta, edición y borrado con confirmación/diagnóstico y consulta del esquema real | Nuevo flujo; requiere migración, frontend/backend y configuración del remitente/plantilla |
 | [Historial administrativo de pagos](HISTORIAL_PAGOS.md) | Periodos 11–10, fecha bancaria/subida, estados, meses y última vigencia registrada por TAG | Nueva sección; requiere despliegue frontend/backend y cotejo de producción |
 | [Pagos y acceso C3](PAGOS_ACCESO_C3.md) | Cálculo desde fecha física, abonos parciales y complementos, diario de aplicación, reintentos y cortes pagados | Referencia vigente; abonos/complementos actualizados el 12/oct |
 | [OCR del destinatario](../backend/docs/PAGOS_OCR_DESTINO.md) | Tesseract.js, idiomas, instalación y comprobantes pendientes | Vigente; OCR no confirma recepción bancaria. Extracción de monto corregida el 12/oct para excluir cuentas/folios |

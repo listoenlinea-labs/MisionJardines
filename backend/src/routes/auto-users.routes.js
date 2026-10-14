@@ -16,6 +16,12 @@ const handle = fn => async (req, res) => {
     catch (error) {
         if (error.name === 'SequelizeForeignKeyConstraintError') return res.status(409).json({ ok: false, message: 'La cuenta tiene registros asociados en otros módulos; no se eliminó ningún dato.' });
         const duplicate = error.name === 'SequelizeUniqueConstraintError';
+        if (!error.status && !duplicate && req.path.startsWith('/prueba/')) {
+            const code = String(error.original?.code || error.parent?.code || error.name || 'ERROR_INTERNO');
+            const safeCode = /^[A-Za-z0-9_]{1,80}$/.test(code) ? code : 'ERROR_INTERNO';
+            console.error('[auto-users prueba]', safeCode);
+            return res.status(503).json({ ok: false, message: 'No se pudo completar la operación de prueba (' + safeCode + '). Revisa los registros del backend. No se confirmó ningún borrado.' });
+        }
         return res.status(error.status || (duplicate ? 409 : 503)).json({ ok: false,
             message: error.status ? error.message : duplicate ? 'Ese usuario o correo ya está registrado. Revisa los datos.' : 'No fue posible completar la operación. Intenta de nuevo.' });
     }
