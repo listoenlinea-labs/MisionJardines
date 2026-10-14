@@ -28,8 +28,8 @@ router.get('/', async (req, res) => {
     const queries = [];
     if (personnel.includes(role)) {
       queries.push(Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], where: fields(term, ['calleCorrecta', 'numero', 'nombre', 'telefono', 'correo']), limit: 1000, order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']] }).then(rows => { result.casas = ordenarDirecciones(filtrarViviendasVisibles(rows)).slice(0, 5); }));
-      queries.push(Condomino.findAll({ attributes: ['id', 'nombreCompleto'], where: { activo: true, ...fields(term, ['nombreCompleto', 'telefono', 'correo']) }, include: [house], limit: 5, order: [['nombreCompleto', 'ASC']] }).then(rows => { result.residentes = rows.filter(r=>esViviendaVisible(r.casa)); }));
-      if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) queries.push(Acceso.findAll({ attributes: ['id', 'nombre', 'tipo', 'placas', 'fechaEntrada'], where: fields(term, ['nombre', 'placas', 'proveedor', 'motivo', 'telefono', 'tipo']), include: [house], limit: 5, order: [['fechaEntrada', 'DESC']] }).then(rows => { result.accesos = rows.filter(r=>esViviendaVisible(r.casa)); }));
+      queries.push(Condomino.findAll({ attributes: ['id', 'nombreCompleto'], where: { activo: true, ...fields(term, ['nombreCompleto', 'telefono', 'correo']) }, include: [house], limit: 5, order: [['nombreCompleto', 'ASC']] }).then(rows => { result.residentes = rows.filter(r=>!r.casa||esViviendaVisible(r.casa)); }));
+      if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) queries.push(Acceso.findAll({ attributes: ['id', 'nombre', 'tipo', 'placas', 'fechaEntrada'], where: fields(term, ['nombre', 'placas', 'proveedor', 'motivo', 'telefono', 'tipo']), include: [house], limit: 5, order: [['fechaEntrada', 'DESC']] }).then(rows => { result.accesos = rows.filter(r=>!r.casa||esViviendaVisible(r.casa)); }));
     }
     if (finance.includes(role)) {
       const where = fields(term, ['nombrePagador', 'folio', 'calleSnapshot', 'numeroCasaSnapshot', 'mes', 'estatusPago']);
@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
         if (!req.usuario.casaId) return res.status(403).json({ ok: false, message: 'Vivienda no asignada' });
         where.casaId = req.usuario.casaId;
       }
-      queries.push(Cuota.findAll({ attributes: ['id', 'anio', 'mes', 'estatusPago', 'nombrePagador'], where, include: [house], limit: 5, order: [['anio', 'DESC'], ['id', 'DESC']] }).then(rows => { result.cuotas = rows.filter(r=>esViviendaVisible(r.casa)); }));
+      queries.push(Cuota.findAll({ attributes: ['id', 'anio', 'mes', 'estatusPago', 'nombrePagador'], where, include: [house], limit: 5, order: [['anio', 'DESC'], ['id', 'DESC']] }).then(rows => { result.cuotas = rows.filter(r=>!r.casa||esViviendaVisible(r.casa)); }));
       if (req.usuario.casaId) queries.push(PagoReportado.findAll({ attributes: ['id', 'folioReporte', 'folioOperacion', 'concepto', 'estatus'], where: { casaId: req.usuario.casaId, ...fields(term, ['folioReporte', 'folioOperacion', 'concepto', 'estatus', 'calleSnapshot', 'numeroCasaSnapshot']) }, limit: 5, order: [['creadoEn', 'DESC']] }).then(rows => { result.pagos = rows; }));
     }
     if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) {
@@ -48,7 +48,7 @@ router.get('/', async (req, res) => {
         if (!req.usuario.casaId) return res.status(403).json({ ok: false, message: 'Vivienda no asignada' });
         where.casaId = req.usuario.casaId;
       }
-      queries.push(Visita.findAll({ attributes: ['id', 'codigo', 'nombreVisitante', 'fechaProgramada', 'estatus'], where, include: [house], limit: 5, order: [['fechaProgramada', 'DESC']] }).then(rows => { result.visitas = rows.filter(r=>esViviendaVisible(r.casa)); }));
+      queries.push(Visita.findAll({ attributes: ['id', 'codigo', 'nombreVisitante', 'fechaProgramada', 'estatus'], where, include: [house], limit: 5, order: [['fechaProgramada', 'DESC']] }).then(rows => { result.visitas = rows.filter(r=>!r.casa||esViviendaVisible(r.casa)); }));
     }
     if (['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'MANTENIMIENTO', 'CONDOMINO'].includes(role)) {
       const eventWhere = { activo: true, ...fields(term, ['titulo', 'descripcion', 'ubicacion', 'tipoEvento']) };
