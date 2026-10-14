@@ -1,3 +1,4 @@
+const {filtrarViviendasVisibles,esViviendaVisible}=require('../services/viviendas-visibles.service');
 const express = require('express');
 const { Op, QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
@@ -26,9 +27,9 @@ router.get('/', async (req, res) => {
   try {
     const queries = [];
     if (personnel.includes(role)) {
-      queries.push(Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], where: fields(term, ['calleCorrecta', 'numero', 'nombre', 'telefono', 'correo']), limit: 1000, order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']] }).then(rows => { result.casas = ordenarDirecciones(rows).slice(0, 5); }));
-      queries.push(Condomino.findAll({ attributes: ['id', 'nombreCompleto'], where: { activo: true, ...fields(term, ['nombreCompleto', 'telefono', 'correo']) }, include: [house], limit: 5, order: [['nombreCompleto', 'ASC']] }).then(rows => { result.residentes = rows; }));
-      if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) queries.push(Acceso.findAll({ attributes: ['id', 'nombre', 'tipo', 'placas', 'fechaEntrada'], where: fields(term, ['nombre', 'placas', 'proveedor', 'motivo', 'telefono', 'tipo']), include: [house], limit: 5, order: [['fechaEntrada', 'DESC']] }).then(rows => { result.accesos = rows; }));
+      queries.push(Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], where: fields(term, ['calleCorrecta', 'numero', 'nombre', 'telefono', 'correo']), limit: 1000, order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']] }).then(rows => { result.casas = ordenarDirecciones(filtrarViviendasVisibles(rows)).slice(0, 5); }));
+      queries.push(Condomino.findAll({ attributes: ['id', 'nombreCompleto'], where: { activo: true, ...fields(term, ['nombreCompleto', 'telefono', 'correo']) }, include: [house], limit: 5, order: [['nombreCompleto', 'ASC']] }).then(rows => { result.residentes = rows.filter(r=>esViviendaVisible(r.casa)); }));
+      if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) queries.push(Acceso.findAll({ attributes: ['id', 'nombre', 'tipo', 'placas', 'fechaEntrada'], where: fields(term, ['nombre', 'placas', 'proveedor', 'motivo', 'telefono', 'tipo']), include: [house], limit: 5, order: [['fechaEntrada', 'DESC']] }).then(rows => { result.accesos = rows.filter(r=>esViviendaVisible(r.casa)); }));
     }
     if (finance.includes(role)) {
       const where = fields(term, ['nombrePagador', 'folio', 'calleSnapshot', 'numeroCasaSnapshot', 'mes', 'estatusPago']);
@@ -37,7 +38,7 @@ router.get('/', async (req, res) => {
         if (!req.usuario.casaId) return res.status(403).json({ ok: false, message: 'Vivienda no asignada' });
         where.casaId = req.usuario.casaId;
       }
-      queries.push(Cuota.findAll({ attributes: ['id', 'anio', 'mes', 'estatusPago', 'nombrePagador'], where, include: [house], limit: 5, order: [['anio', 'DESC'], ['id', 'DESC']] }).then(rows => { result.cuotas = rows; }));
+      queries.push(Cuota.findAll({ attributes: ['id', 'anio', 'mes', 'estatusPago', 'nombrePagador'], where, include: [house], limit: 5, order: [['anio', 'DESC'], ['id', 'DESC']] }).then(rows => { result.cuotas = rows.filter(r=>esViviendaVisible(r.casa)); }));
       if (req.usuario.casaId) queries.push(PagoReportado.findAll({ attributes: ['id', 'folioReporte', 'folioOperacion', 'concepto', 'estatus'], where: { casaId: req.usuario.casaId, ...fields(term, ['folioReporte', 'folioOperacion', 'concepto', 'estatus', 'calleSnapshot', 'numeroCasaSnapshot']) }, limit: 5, order: [['creadoEn', 'DESC']] }).then(rows => { result.pagos = rows; }));
     }
     if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) {
@@ -47,7 +48,7 @@ router.get('/', async (req, res) => {
         if (!req.usuario.casaId) return res.status(403).json({ ok: false, message: 'Vivienda no asignada' });
         where.casaId = req.usuario.casaId;
       }
-      queries.push(Visita.findAll({ attributes: ['id', 'codigo', 'nombreVisitante', 'fechaProgramada', 'estatus'], where, include: [house], limit: 5, order: [['fechaProgramada', 'DESC']] }).then(rows => { result.visitas = rows; }));
+      queries.push(Visita.findAll({ attributes: ['id', 'codigo', 'nombreVisitante', 'fechaProgramada', 'estatus'], where, include: [house], limit: 5, order: [['fechaProgramada', 'DESC']] }).then(rows => { result.visitas = rows.filter(r=>esViviendaVisible(r.casa)); }));
     }
     if (['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'MANTENIMIENTO', 'CONDOMINO'].includes(role)) {
       const eventWhere = { activo: true, ...fields(term, ['titulo', 'descripcion', 'ubicacion', 'tipoEvento']) };
@@ -193,7 +194,7 @@ router.get('/conmutador/telefono', autorizarRoles(...personnel), async (req, res
 router.get('/conmutador/opciones', autorizarRoles(...personnel), async (_req, res) => {
   try {
     const casas = await Casa.findAll({ attributes: ['calle', 'calleCorrecta', 'numero'], order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']], raw: true });
-    return res.json({ ok: true, casas: ordenarDirecciones(casas).map(casa => ({ ...casa, calle: casa.calleCorrecta || casa.calle })) });
+    return res.json({ ok: true, casas: ordenarDirecciones(filtrarViviendasVisibles(casas)).map(casa => ({ ...casa, calle: casa.calleCorrecta || casa.calle })) });
   } catch (error) {
     console.error('Error al cargar domicilios del conmutador:', error);
     return res.status(500).json({ ok: false, message: 'No fue posible cargar los domicilios' });
@@ -212,7 +213,7 @@ router.get('/conmutador', autorizarRoles(...personnel), async (req, res) => {
       limit: 1000,
       order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']]
     });
-    return res.json({ ok: true, casas: ordenarDirecciones(casas).slice(0, 40).map(casa => ({ ...casa.toJSON(), calle: casa.calleCorrecta || casa.calle })) });
+    return res.json({ ok: true, casas: ordenarDirecciones(filtrarViviendasVisibles(casas)).slice(0, 40).map(casa => ({ ...casa.toJSON(), calle: casa.calleCorrecta || casa.calle })) });
   } catch (error) {
     console.error('Error del conmutador:', error);
     return res.status(500).json({ ok: false, message: 'No fue posible consultar el conmutador' });
