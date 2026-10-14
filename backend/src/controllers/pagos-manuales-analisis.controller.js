@@ -25,7 +25,7 @@ function resumirCotizacion(plan, evaluadas){
       anio:periodo.anio,mes:periodo.mes,
       registrable:revision.registrable,requiereRevision:Boolean(revision.requiereRevision),
       advertencia:revision.advertencia||null,motivo:revision.motivo||null,
-      tipoReferencia:revision.referenciaAnterior?.startsWith('HIST-')?'HIST':revision.referenciaAnterior?'OTRA':'NINGUNA'
+      tipoReferencia:revision.folioAnterior||revision.referenciaAnterior?.startsWith('HIST-')?'HIST':revision.referenciaAnterior?'OTRA':'NINGUNA'
     })),
     bloqueado:evaluadas.some(r=>!r.revision.registrable),
     requiereRevision:evaluadas.some(r=>r.revision.requiereRevision)
@@ -88,6 +88,7 @@ async function registrarPagoVivienda(req,res){
         const auditoria='Confirmado manualmente por usuario '+req.usuario.usuarioId+
           '; pago de '+plan.meses+' mensualidad(es); '+
           (revision.referenciaAnterior?'referencia histórica previa: '+revision.referenciaAnterior+'; ':'')+
+          (revision.folioAnterior?'folio histórico previo: '+revision.folioAnterior+'; ':'')+
           (revision.requiereRevision?'corrección histórica autorizada; fechaPago anterior: '+
             (cuota?.fechaPago||'ninguna')+'; fechaConfirmacion anterior: '+(cuota?.fechaConfirmacion||'ninguna')+'; ':'')+
           'importe del movimiento: $'+plan.total.toFixed(2);
@@ -95,7 +96,7 @@ async function registrarPagoVivienda(req,res){
           casaId,anio:periodo.anio,mes:periodo.mes,fechaPago:new Date(),
           montoCuota:periodo.montoCuota,montoPagado:periodo.montoCuota,
           recargo:periodo.recargo,saldoPendiente:0,estatusPago:'PAGADO',
-          tipoPago:'MANTENIMIENTO',formaPago,referencia,
+          tipoPago:'MANTENIMIENTO',formaPago,referencia,folio:null,
           confirmadoPorUsuarioId:req.usuario.usuarioId,fechaConfirmacion:new Date(),
           origenImportacion:'MANUAL_ANALISIS',
           observaciones:(observacionesAnteriores?observacionesAnteriores+'\n':'')+auditoria,
