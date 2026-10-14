@@ -1,3 +1,4 @@
+const {filtrarViviendasVisibles,esViviendaVisible}=require('../services/viviendas-visibles.service');
 const router=require('express').Router();
 const { ordenarDirecciones, compararDirecciones }=require('../services/direccion-sort.service');
 const rateLimit=require('express-rate-limit');
@@ -13,16 +14,17 @@ const id=value=>{if(!/^[1-9][0-9]*$/.test(String(value)))throw fallo(400,'Identi
 router.get('/invitacion/:token',rateLimit({windowMs:60000,limit:30}),run(async(req,res)=>{
  const inv=await invitacion(req.params.token);
  const casa=await Casa.findByPk(inv.casaId,{attributes:casaFields});
+ if(!esViviendaVisible(casa))throw fallo(404,'Vivienda no disponible');
  res.json({ok:true,casa,tipo:inv.tipo,expiraEn:inv.expiraEn});
 }));
 router.use(autenticarToken);
 router.get('/mias',run(async(req,res)=>{
  const links=await UsuarioCasa.findAll({where:{usuarioId:req.usuario.usuarioId,activo:true},include:[{model:Casa,as:'casa',attributes:casaFields}],order:[['id','ASC']]});
- res.json({ok:true,viviendas:links.sort((a,b)=>compararDirecciones(a.casa,b.casa)),administrador:admin(req.usuario.rol)});
+ res.json({ok:true,viviendas:links.filter(l=>esViviendaVisible(l.casa)).sort((a,b)=>compararDirecciones(a.casa,b.casa)),administrador:admin(req.usuario.rol)});
 }));
 router.get('/administracion/casas',run(async(req,res)=>{
  if(!admin(req.usuario.rol))throw fallo(403,'Solo Administración');
- res.json({ok:true,casas:ordenarDirecciones(await Casa.findAll({attributes:casaFields,order:[['calleCorrecta','ASC'],['numero','ASC']] }))});
+ res.json({ok:true,casas:ordenarDirecciones(filtrarViviendasVisibles(await Casa.findAll({attributes:casaFields,order:[['calleCorrecta','ASC'],['numero','ASC']] })))});
 }));
 router.get('/:casaId/miembros',run(async(req,res)=>{
  const casaId=id(req.params.casaId); await gestionar(req.usuario,casaId);
