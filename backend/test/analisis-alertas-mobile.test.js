@@ -37,18 +37,18 @@ test('El modal destaca en rojo el texto exacto Revisar pero preserva el resumen'
  assert.match(ui,/diagnostico\/viviendas\//);
 });
 
-test('Viviendas tienen ocho parejas etiqueta-valor y mantienen su semántica',()=>{
+test('Viviendas tienen nueve parejas etiqueta-valor y mantienen su semántica',()=>{
  const ui=read('docs/assets/js/analisis-cuotas.js');
  const houses=part(ui,'function renderHouses(){','let activePaymentHouse=null;');
  assert.match(houses,/const houseCell=\(label,value\)=>/);
- assert.equal((houses.match(/houseCell\('/g)||[]).length,8);
- for(const name of ['Calle','Casa','Residente','Estado','Pagado','Último mes pagado','Saldo pendiente','TAGs']){
+ assert.equal((houses.match(/houseCell\('/g)||[]).length,9);
+ for(const name of ['Calle','Casa','Residente','Estado','Pagado','Último mes pagado','Saldo pendiente','TAGs','Pago']){
    assert.match(houses,new RegExp("houseCell\\('"+name+"'"));
  }
  assert.match(houses,/renderHouseTagCell\(h\)/);
  assert.match(houses,/h\.ultimoMesPagado/);
  assert.match(houses,/house-amount/);
- assert.match(houses,/colspan="8"/);
+ assert.match(houses,/colspan="9"/);
 });
 
 test('Egresos tienen cinco parejas etiqueta-valor, incluyendo conceptos largos',()=>{
@@ -81,12 +81,12 @@ test('Caché actualizada y controles operativos intactos',()=>{
  const html=read('docs/analisis-cuotas.html');
  const sidebar=read('docs/assets/js/site-sidebar.js');
  const ui=read('docs/assets/js/analisis-cuotas.js');
- assert.match(html,/analisis-cuotas\.css\?v=20261015-alertas-movil/);
- assert.match(html,/analisis-cuotas\.js\?v=20261015-alertas-movil/);
- assert.match(sidebar,/mobile-operativo\.css\?v=20261015-analisis-fichas/);
- for(const action of ['houseTagsEdit','houseTagsPay','houseTagsRefresh']){
+ assert.match(html,/analisis-cuotas\.css\?v=20261015-columna-pago/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261015-columna-pago/);
+ assert.match(sidebar,/mobile-operativo\.css\?v=20261015-safari-fechas-compactas/);
+ for(const action of ['houseTagsEdit','houseTagsRefresh']){
    assert.match(html,new RegExp('id="'+action+'"'));
  }
- assert.match(ui,/openHousePayment\(id\)/);
+ assert.match(ui,/openHousePayment\(btn\.dataset\.payHouse\)/);
  assert.match(ui,/URLSearchParams\(\{casaId:/);
 });
