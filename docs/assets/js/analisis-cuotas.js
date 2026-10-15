@@ -90,6 +90,135 @@
   $('financeExpenseRows').innerHTML=result.length?result.map(e=>'<tr><td data-label="Fecha">'+esc(e.fecha)+'</td><td data-label="Categoría">'+esc(e.categoria)+'</td><td data-label="Concepto">'+esc(e.concepto)+'</td><td data-label="Referencia">'+esc(e.referencia||'—')+'</td><td data-label="Monto">'+fmt(e.monto)+'</td></tr>').join(''):
     '<tr><td colspan="5">'+(egresos.length?'No hay egresos que coincidan con los filtros.':'No hay egresos registrados para este mes.')+'</td></tr>';
  }
+
+ // Resumen ligero desde MySQL; al abrir el detalle se solicita lectura física C3.
+ const c3Key=v=>{const value=String(v??'').trim(),digits=value.replace(/\D/g,'');return digits?digits.replace(/^0+(?=\d)/,''):value.toLowerCase();};
+ const todayC3=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ function tagStateForHouse(tag,diagnosis){
+   if(!diagnosis)return tag.estado||{codigo:'SIN_CONFIRMAR',etiqueta:'Por verificar'};
+   const reading=(diagnosis.tarjetas||[]).find(d=>c3Key(d.numeroTarjeta)===c3Key(tag.numeroTarjeta));
+   if(!reading||!reading.fisicamenteObservado)return {codigo:'SIN_CONFIRMAR',etiqueta:'No observado en esta lectura'};
+   if(reading.estadoFisico==='PRESENTE_AUTORIZACION_DESCONOCIDA')
+     return {codigo:'SIN_CONFIRMAR',etiqueta:'Permisos C3 sin confirmar'};
+   if(reading.estadoFisico==='PRESENTE_SIN_AUTORIZACION')
+     return {codigo:'INACTIVO',etiqueta:'Sin autorización en C3'};
+   if(reading.estadoFisico!=='PRESENTE_AUTORIZADO')
+     return {codigo:'SIN_CONFIRMAR',etiqueta:'Estado C3 por verificar'};
+   if(reading.fechaFinC3&&String(reading.fechaFinC3).slice(0,10)<todayC3())
+     return {codigo:'INACTIVO',etiqueta:'Vigencia C3 vencida'};
+   return tag.bloqueado
+     ? {codigo:'ACTIVO',etiqueta:'ALERTA: autorizado en C3 pese a bloqueo'}
+     : {codigo:'ACTIVO',etiqueta:'Autorizado en C3'};
+ }
+ function tagsView(h){
+   const t=h.tags||{detalle:[],controlesNoEnlazados:[]};
+   const detail=(t.detalle||[]).map(item=>({...item,estadoVista:tagStateForHouse(item,h.tagDiagnostico)}));
+   return {detail,unlinked:t.controlesNoEnlazados||[],
+     activos:detail.filter(x=>x.estadoVista.codigo==='ACTIVO').length,
+     inactivos:detail.filter(x=>x.estadoVista.codigo==='INACTIVO').length,
+     sinConfirmar:detail.filter(x=>x.estadoVista.codigo==='SIN_CONFIRMAR').length};
+ }
+ function tagMismatch(h,view){
+   if(Number(h.saldoPendiente)>0&&view.activos>0)return 'Revisar: deuda y TAG activo';
+   if(Number(h.saldoPendiente)===0&&view.inactivos>0)return 'Revisar: sin deuda y TAG inactivo';
+   return '';
+ }
+ function renderHouseTagCell(h){
+   const v=tagsView(h),count=v.detail.length;
+   const parts=[v.activos?v.activos+' activos':'',v.inactivos?v.inactivos+' inactivos':'',
+     v.sinConfirmar?v.sinConfirmar+' sin confirmar':'',v.unlinked.length?v.unlinked.length+' sin enlazar':''].filter(Boolean);
+   const alert=tagMismatch(h,v);
+   return '<button type="button" class="house-tags-button" data-tags-house="'+Number(h.casaId)+'" aria-label="Ver '+count+' TAGs de '+esc(h.calle)+' '+esc(h.numero)+'">'+
+     '<strong>'+count+' '+(count===1?'TAG':'TAGs')+'</strong>'+
+     '<span class="tags-cell-meta">'+esc(parts.join(' · ')||'Sin controles')+'</span>'+
+     (alert?'<span class="tags-cell-alert">'+esc(alert)+'</span>':'')+'</button>';
+ }
+ let openedTagsHouse=null;
+ let tagVerificationSequence=0;
+ const tagsModal=$('houseTagsModal');
+ function renderTagsModal(){
+   const h=openedTagsHouse;
+   if(!h)return;
+   const v=tagsView(h);
+   const mismatch=tagMismatch(h,v);
+   $('houseTagsAddress').textContent=h.calle+' '+h.numero+' · '+(h.nombre||'Sin residente');
+   $('houseTagsSummary').textContent=v.detail.length+' TAG(s) · '+v.activos+' activos · '+v.inactivos+
+     ' inactivos · '+v.sinConfirmar+' sin confirmar'+(mismatch?' · '+mismatch:'');
+   $('houseTagsRows').innerHTML=v.detail.length?v.detail.map(t=>{
+     const d=(h.tagDiagnostico?.tarjetas||[]).find(x=>c3Key(x.numeroTarjeta)===c3Key(t.numeroTarjeta));
+     const fechaC3=d?.fisicamenteObservado?(d.fechaFinC3||'No disponible en lectura'):'—';
+     const estado=t.estadoVista;
+     const cls=estado.codigo==='ACTIVO'?'is-active':estado.codigo==='INACTIVO'?'is-inactive':'is-unknown';
+     return '<article class="tags-detail-item">'+
+       '<div><small>TAG</small><strong>'+esc(t.numeroTarjeta)+'</strong>'+
+       '<span>'+esc(t.nombre||'Sin etiqueta')+'</span></div>'+
+       '<div><small>Estado</small><span class="tags-state '+cls+'">'+esc(estado.etiqueta)+'</span></div>'+
+       '<div><small>Fecha final guardada</small><strong>'+esc(t.fechaFin||'Sin fecha')+'</strong></div>'+
+       '<div><small>Fecha final leída del C3</small><strong>'+esc(fechaC3)+'</strong></div></article>';
+   }).join(''):'<p class="tags-empty">Esta vivienda no tiene TAGs vinculados en MySQL.</p>';
+   if(v.unlinked.length)$('houseTagsRows').innerHTML+='<p class="tags-check-note">Controles registrados sin vínculo confirmado: '+
+     esc(v.unlinked.join(', '))+'. Revisa la asignación en ZKTeco.</p>';
+ }
+ async function verifyHouseTags(){
+   const h=openedTagsHouse;
+   if(!h)return;
+   const requestId=++tagVerificationSequence;
+   $('houseTagsC3Status').textContent='Consultando ahora el inventario y las autorizaciones físicas del C3-200…';
+   $('houseTagsRefresh').disabled=true;
+   try{
+     const response=await fetch(API+'/zkteco/diagnostico/viviendas/'+Number(h.casaId),{
+       headers:{Authorization:'Bearer '+token},cache:'no-store'
+     });
+     const json=await response.json().catch(()=>({}));
+     if(!response.ok||!json.ok)throw Error(json.message||'No fue posible verificar el C3');
+     if(requestId!==tagVerificationSequence||openedTagsHouse!==h)return;
+     h.tagDiagnostico=json.data;
+     $('houseTagsC3Status').textContent=json.data?.panel?.permisosConfiables
+       ? 'Lectura directa del C3 completada. Los TAGs no observados siguen como sin confirmar; una lectura parcial no demuestra su baja.'
+       : 'C3 leído, pero las autorizaciones no fueron comprobables. Los estados dudosos se muestran sin confirmar.';
+     renderTagsModal();renderHouses();
+   }catch(error){
+     if(requestId!==tagVerificationSequence||openedTagsHouse!==h)return;
+     h.tagDiagnostico=null;
+     $('houseTagsC3Status').textContent='No se pudo verificar el C3: '+error.message+
+       '. Mostrando únicamente la última información guardada; no se confirma el acceso físico.';
+     renderTagsModal();renderHouses();
+   }finally{
+     if(requestId===tagVerificationSequence)$('houseTagsRefresh').disabled=false;
+   }
+ }
+ function openHouseTags(casaId){
+   const h=data?.viviendas?.find(item=>Number(item.casaId)===Number(casaId));
+   if(!h)return;
+   openedTagsHouse=h;
+   tagsModal.hidden=false;
+   $('houseTagsC3Status').textContent='Datos guardados en MySQL; esperando verificación física C3.';
+   renderTagsModal();
+   $('houseTagsClose').focus();
+   verifyHouseTags();
+ }
+ function closeHouseTags(){
+   ++tagVerificationSequence;
+   tagsModal.hidden=true;
+   openedTagsHouse=null;
+   $('houseTagsRefresh').disabled=false;
+ }
+ $('houseTagsClose').addEventListener('click',closeHouseTags);
+ $('houseTagsRefresh').addEventListener('click',verifyHouseTags);
+ tagsModal.addEventListener('click',event=>{if(event.target===tagsModal)closeHouseTags();});
+ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!tagsModal.hidden)closeHouseTags();});
+ $('houseTagsEdit').addEventListener('click',()=>{
+   const h=openedTagsHouse;if(!h)return;
+   const params=new URLSearchParams({casaId:String(h.casaId),calle:h.calle,numero:String(h.numero)});
+   window.location.assign('zkteco.html?'+params.toString());
+ });
+ $('houseTagsPay').addEventListener('click',()=>{
+   const id=openedTagsHouse?.casaId;
+   if(!id)return;
+   closeHouseTags();
+   openHousePayment(id);
+ });
+
  function renderHouses(){
   if(!data)return;
   const query=$('financeSearch').value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),
@@ -102,7 +231,7 @@
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
   housePage=Math.min(Math.max(housePage,1),totalPages);
   const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
-  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr><td data-label="Calle">'+esc(h.calle)+'</td><td data-label="Casa">'+esc(h.numero)+'</td><td data-label="Residente">'+esc(h.nombre)+'</td><td data-label="Estado"><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td data-label="Pagado"><span class="house-amount">'+fmt(h.montoPagado)+'</span></td><td data-label="Saldo pendiente"><span class="house-amount">'+fmt(h.saldoPendiente)+'</span></td><td data-label="Acción"><button type="button" class="soft house-payment-button" data-pay-house="'+Number(h.casaId)+'">Registrar pago</button></td></tr>').join(''):'<tr><td colspan="8">No hay viviendas que coincidan con estos filtros.</td></tr>';
+  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr><td data-label="Calle">'+esc(h.calle)+'</td><td data-label="Casa">'+esc(h.numero)+'</td><td data-label="Residente">'+esc(h.nombre)+'</td><td data-label="Estado"><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td data-label="Pagado"><span class="house-amount">'+fmt(h.montoPagado)+'</span></td><td data-label="Último mes pagado">'+esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago confirmado')+'</td><td data-label="Saldo pendiente"><span class="house-amount">'+fmt(h.saldoPendiente)+'</span></td><td data-label="TAGs">'+renderHouseTagCell(h)+'</td></tr>').join(''):'<tr><td colspan="8">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;
@@ -247,6 +376,8 @@
    }finally{btn.disabled=true;}
  }
  $('financeHouseRows').addEventListener('click',event=>{
+  const tagButton=event.target.closest('[data-tags-house]');
+  if(tagButton){openHouseTags(tagButton.dataset.tagsHouse);return;}
   const btn=event.target.closest('[data-pay-house]');
   if(btn)openHousePayment(btn.dataset.payHouse);
  });
