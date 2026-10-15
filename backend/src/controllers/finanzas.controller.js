@@ -28,7 +28,7 @@ async function analizar(req,res){
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
    ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']}),
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT}),
-   Cuota.findAll({where:{anio:{[Op.lte]:anio},tipoPago:{[Op.or]:[null,'MANTENIMIENTO']}},attributes:['casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']})
+   Cuota.findAll({where:{anio:{[Op.lte]:anio}},attributes:['casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']})
   ]);
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const padron=seleccionarPadronAnalisis(casas,cuotas);
