@@ -88,7 +88,8 @@
       { label: 'Comunidad', items: community },
       { label: 'Seguridad', items: security }
     ];
-    return role() === 'SEGURIDAD' ? navigation.filter(group => group.label === 'Seguridad') : navigation;
+    // Seguridad también necesita acceder al Inicio operativo (no financiero).
+    return role() === 'SEGURIDAD' ? navigation.filter(group => group.label === '' || group.label === 'Seguridad') : navigation;
   }
 
   const page = () => location.pathname.split('/').pop() || 'index.html';
