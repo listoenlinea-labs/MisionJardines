@@ -107,7 +107,7 @@ test('El dashboard administrador sigue separado y operativo se resuelve antes de
  assert.ok(start>=0&&role>start&&finance>role);
  assert.match(controller,/return obtenerDashboardOperativo\(req, res\)/);
  assert.match(controller,/recaudacionRows/);
- assert.match(controller,/fuentes:\s*\{/);
+ assert.match(controller,/const fuentes = \{/);
 });
 
 test('Frontend usa la respuesta operativa antes del dashboard financiero',()=>{
