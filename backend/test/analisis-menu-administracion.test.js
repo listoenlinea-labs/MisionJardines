@@ -75,6 +75,6 @@ test('Permanecen el análisis, egresos, pagos, TAGs y el menú actualizado', () 
   ]) {
     assert.match(html, new RegExp('id="'+id+'"'));
   }
-  assert.match(html, /site-sidebar\.js\?v=20261015-menu-admin/);
+  assert.match(html, /site-sidebar\.js\?v=20261015-comunidad-orden/);
   assert.match(sidebar, /\{ page: 'verificacion-cuentas\.html', label: 'Verificación de cuentas'/);
 });
