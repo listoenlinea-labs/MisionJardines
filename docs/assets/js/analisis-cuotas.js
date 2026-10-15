@@ -127,6 +127,16 @@
    if(Number(h.saldoPendiente)===0&&view.inactivos>0)return 'Revisar: sin deuda y TAG inactivo';
    return '';
  }
+ // El filtro usa exactamente las mismas alertas que el botón pastel y el modal.
+ // Los TAGs SIN_CONFIRMAR nunca se presumen activos/inactivos.
+ function houseMatchesStatus(h,status){
+   if(!status)return true;
+   if(status==='ADVERTENCIAS')return Boolean(tagMismatch(h,tagsView(h)));
+   const pagadoCompleto=String(h.estatus||'').toUpperCase()==='PAGADO';
+   if(status==='PAGADO')return pagadoCompleto;
+   if(status==='PENDIENTE')return !pagadoCompleto; // incluye PAGO_PARCIAL
+   return false;
+ }
  function renderHouseTagCell(h){
    const v=tagsView(h),count=v.detail.length;
    const parts=[v.activos?v.activos+' activos':'',v.inactivos?v.inactivos+' inactivos':'',
@@ -237,7 +247,7 @@
     street=$('financeStreet').value,status=$('financeStatus').value;
   const filtered=data.viviendas.filter(h=>{
    const hay=[h.calle,h.numero,h.nombre].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-   return (!query||hay.includes(query))&&(!street||h.calle===street)&&(!status||(status==='PAGADO'?h.pagada:!h.pagada));
+   return (!query||hay.includes(query))&&(!street||h.calle===street)&&houseMatchesStatus(h,status);
   }).sort((a,b)=>String(a?.calleCorrecta||a?.calle||'').localeCompare(String(b?.calleCorrecta||b?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a?.numero||'').localeCompare(String(b?.numero||''),'es-MX',{numeric:true}));
   $('financeHouseCount').textContent=filtered.length+' de '+data.viviendas.length+' casas';
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
@@ -247,7 +257,7 @@
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
-    houseCell('Estado','<span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
+    houseCell('Estado','<span class="'+(String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
     houseCell('Pagado','<span class="house-amount">'+esc(fmt(h.montoPagado))+'</span>')+
     houseCell('Último mes pagado',esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount">'+esc(fmt(h.saldoPendiente))+'</span>')+
