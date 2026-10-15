@@ -46,14 +46,12 @@ async function obtenerDashboardOperativo(req, res) {
         where: visitsToday, include: casaInclude,
         attributes: ['id', 'nombreVisitante', 'fechaProgramada', 'horaProgramada',
           'fechaEntrada', 'estatus'],
-        order: [['horaProgramada', 'ASC'], ['id', 'DESC']],
-        limit: 15
+        order: [['horaProgramada', 'ASC'], ['id', 'DESC']]
       }),
       Acceso.findAll({
         where: activeAccess, include: casaInclude,
         attributes: ['id', 'nombre', 'tipo', 'fechaEntrada'],
-        order: [['fechaEntrada', 'DESC'], ['id', 'DESC']],
-        limit: 15
+        order: [['fechaEntrada', 'DESC'], ['id', 'DESC']]
       })
     ]);
     return res.json({
