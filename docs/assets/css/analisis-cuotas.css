@@ -169,3 +169,29 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .tags-modal-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
 @media(max-width:700px){.tags-modal-footer{flex-wrap:wrap}.tags-modal-actions{width:100%}}
 @media(max-width:420px){.tags-modal-footer>button{width:100%}.tags-modal-actions button{flex:1}}
+
+/* Inconsistencias cuotas/C3: señal visual suave, sin textos extra en la tabla. */
+.house-tags-button.is-warning{
+  border-color:#eeaaa0;
+  background:linear-gradient(120deg,#fff0e8,#ffe4e2);
+  color:#9f4238;
+}
+.house-tags-button.is-warning strong{color:#973a32}
+.house-tags-button.is-warning:hover,.house-tags-button.is-warning:focus-visible{
+  border-color:#d98978;
+  background:linear-gradient(120deg,#ffe6db,#ffd6d1);
+  outline-offset:2px;
+}
+/* La alerta detallada se lee en rojo dentro del modal, distinta del resumen. */
+.tags-summary-alert{
+  display:inline-block;
+  margin:3px 0 0 5px;
+  padding:5px 9px;
+  border:1px solid #f0b8b7;
+  border-radius:8px;
+  background:#fff0ef;
+  color:#ab3543;
+  font-size:11px;
+  font-weight:900;
+  line-height:1.5;
+}
