@@ -28,17 +28,6 @@
 </div>
 <p id="expenseResultCount" class="expense-results" role="status" aria-live="polite"></p>
 <div class="table-scroll expense-table-scroll"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Referencia</th><th>Monto</th></tr></thead><tbody id="financeExpenseRows"></tbody></table></div></section>
-<section class="analysis-card" id="sheetsHistoricos">
-  <div class="heading"><div><span class="eyebrow">CONCILIACIÓN HISTÓRICA</span><h2>Importar desde Google Sheets</h2>
-  <p>Consulta datos anteriores y guárdalos en revisión. No se acreditan cuotas ni se alteran saldos automáticamente.</p></div></div>
-  <div class="sheets-controls">
-    <label>Tipo de datos<select id="sheetsTipo"><option value="pagos">Pagos anteriores</option><option value="ingresos">Ingresos</option><option value="egresos">Egresos</option></select></label>
-    <button type="button" class="soft" id="sheetsPreview">Consultar hoja</button>
-    <button type="button" class="primary" id="sheetsStage" disabled>Preparar históricos para revisión</button>
-  </div>
-  <p id="sheetsStatus" role="status" aria-live="polite">Configura primero la cuenta de servicio en el backend.</p>
-  <div class="table-scroll" id="sheetsPreviewScroll" hidden><table><thead id="sheetsHead"></thead><tbody id="sheetsRows"></tbody></table></div>
-</section>
 <section id="houseTagsModal" class="finance-pay-overlay" hidden aria-label="Estado de TAGs de vivienda">
   <div class="finance-pay-dialog tags-dialog" role="dialog" aria-modal="true" aria-labelledby="houseTagsTitle" tabindex="-1">
     <div class="finance-pay-heading"><div><span class="eyebrow">ZKTECO · CONSULTA DE ACCESOS</span>
@@ -88,4 +77,4 @@
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
   </div>
 </section>
-</main><script src="assets/js/analisis-cuotas.js?v=20261015-fechas-safari-compactas" defer></script><script src="assets/js/google-sheets-historicos.js?v=20261011" defer></script><script src="assets/js/site-sidebar.js?v=20261015-fechas-safari-compactas" defer></script></body></html>
+</main><script src="assets/js/analisis-cuotas.js?v=20261015-fechas-safari-compactas" defer></script><script src="assets/js/site-sidebar.js?v=20261015-menu-admin" defer></script></body></html>
