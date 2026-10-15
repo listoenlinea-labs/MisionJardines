@@ -195,3 +195,61 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   font-weight:900;
   line-height:1.5;
 }
+
+/* iPhone / móviles: filtros de egresos en filas completas.
+   A 421-700px el diseño anterior aún dividía los date inputs en dos columnas,
+   y el control nativo de Safari podía invadir el select adyacente. */
+@media(max-width:700px){
+  body.page-analisis .expense-filters{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+    grid-auto-flow:row!important;
+    grid-auto-rows:max-content!important;
+    align-items:stretch!important;
+    gap:12px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    padding:13px!important;
+  }
+  body.page-analisis .expense-filters>label,
+  body.page-analisis .expense-filters>button{
+    display:block!important;
+    grid-column:1/-1!important;
+    grid-row:auto!important;
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    margin:0!important;
+  }
+  body.page-analisis .expense-filters>label{
+    overflow-wrap:anywhere!important;
+    font-size:11px!important;
+    line-height:1.35!important;
+  }
+  body.page-analisis .expense-filters :is(input,select){
+    display:block!important;
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    min-height:44px!important;
+    height:44px!important;
+    margin:6px 0 0!important;
+    font-size:16px!important;
+    line-height:1.2!important;
+  }
+  body.page-analisis .expense-filters input[type="date"]{
+    -webkit-min-logical-width:0;
+    padding-inline:11px!important;
+    overflow:hidden;
+    font-variant-numeric:tabular-nums;
+  }
+  body.page-analisis .expense-filters>button{
+    min-height:44px!important;
+    margin-top:2px!important;
+    text-align:center!important;
+  }
+}
