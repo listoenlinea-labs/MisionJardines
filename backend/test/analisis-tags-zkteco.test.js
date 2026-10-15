@@ -46,18 +46,20 @@ test('Las viviendas sin TAGs tienen contador cero explícito',()=>{
  const r=tagsParaViviendas([{id:5,controles:null}],[],opciones).get('5');
  assert.equal(r.total,0);assert.equal(r.sinConfirmar,0);
 });
-test('Análisis muestra TAGs y conserva registro de pago dentro del modal',()=>{
+test('Análisis separa Pago y TAGs sin mezclar las acciones',()=>{
  const html=fs.readFileSync(path.resolve(__dirname,'../../docs/analisis-cuotas.html'),'utf8');
  const ui=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-cuotas.js'),'utf8');
- assert.match(html,/<th>TAGs<\/th>/);
+ assert.match(html,/<th>TAGs<\/th><th>Pago<\/th>/);
  assert.doesNotMatch(html,/<th>Acción<\/th>/);
- for(const id of ['houseTagsModal','houseTagsRows','houseTagsRefresh','houseTagsPay','houseTagsEdit']){
+ for(const id of ['houseTagsModal','houseTagsRows','houseTagsRefresh','houseTagsEdit','housePaymentModal']){
    assert.match(html,new RegExp('id="'+id+'"'));
  }
+ assert.doesNotMatch(html,/id="houseTagsPay"/);
  assert.match(ui,/data-tags-house/);
+ assert.match(ui,/data-pay-house/);
  assert.match(ui,/diagnostico\/viviendas\//);
  assert.match(ui,/h\.ultimoMesPagado/);
- assert.match(ui,/openHousePayment\(id\)/);
+ assert.match(ui,/openHousePayment\(btn\.dataset\.payHouse\)/);
  assert.match(ui,/URLSearchParams\(\{casaId:/);
 });
 test('ZKTeco consume casaId y solo pierde filtro exacto al buscar o limpiar',()=>{
