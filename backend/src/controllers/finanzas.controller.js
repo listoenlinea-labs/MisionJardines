@@ -3,7 +3,8 @@ const sequelize=require('../config/database');
 const { compararDirecciones }=require('../services/direccion-sort.service');
 const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
 const { calcularAdeudoVivienda }=require('../services/adeudo-vivienda-analisis.service');
-const {Casa,Cuota,PagoReportado}=require('../models');
+const {tagsParaViviendas}=require('../services/analisis-tags.service');
+const {Casa,Cuota,PagoReportado,ZkTarjeta}=require('../models');
 const Egreso=require('../models/Egreso');
 const {referenciaEgreso}=require('../services/egreso-referencia.service');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
@@ -21,14 +22,15 @@ function filters(req){
 async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
-  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas]=await Promise.all([
-   Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre']}),
+  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas]=await Promise.all([
+   Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','estatusPago','montoPagado','montoCuota','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
    ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']}),
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT}),
-   Cuota.findAll({where:{anio:{[Op.lte]:anio}},attributes:['casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']})
+   Cuota.findAll({where:{anio:{[Op.lte]:anio}},attributes:['casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']}),
+   ZkTarjeta.findAll({attributes:['id','casaId','numeroTarjeta','nombreDispositivo','departamento','fechaInicio','fechaFin','bloqueado','enControlador','puertasAutorizadas','ultimaLectura']})
   ]);
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const padron=seleccionarPadronAnalisis(casas,cuotas);
@@ -38,6 +40,7 @@ async function analizar(req,res){
    if(!historiales.has(id))historiales.set(id,[]);
    historiales.get(id).push(cuota);
   }
+  const tagsPorCasa=tagsParaViviendas(padron.casas,tarjetas);
   const streets=new Map();
   const residences=padron.casas.map(h=>{
    const q=byHouse.get(String(h.id));
@@ -50,7 +53,8 @@ async function analizar(req,res){
    const st=streets.get(calle);
    st.total++;if(pagada)st.pagadas++;else st.pendientes++;
    st.abonos+=num(q?.montoPagado);
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',estatus:status,pagada,montoPagado:num(q?.montoPagado),saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes};
+   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',estatus:status,pagada,montoPagado:num(q?.montoPagado),saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+    tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
   const ingresosReportados={mantenimiento:0,extraordinarios:0};
