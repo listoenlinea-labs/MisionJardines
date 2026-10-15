@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261015-filtros-egresos-iphone">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261015-fechas-safari-compactas">
 </head><body class="page-analisis">
 <main class="analysis-page">
 <header class="analysis-hero"><span class="eyebrow">ADMINISTRACIÓN Y FINANZAS</span><h1>Análisis de <em>cuotas</em></h1><p>Control mensual de cumplimiento, ingresos confirmados y egresos del fraccionamiento.</p></header>
@@ -17,12 +17,12 @@
 <div class="analysis-columns"><section class="analysis-card"><span class="eyebrow">MOVIMIENTOS</span><h2>Ingresos y egresos</h2><div id="financeCashChart" class="money-bars"></div><p class="hint" id="financeWarning"></p></section>
 <section class="analysis-card"><span class="eyebrow">EGRESOS</span><h2>Gastos por categoría</h2><div id="financeExpenseChart" class="bars"></div></section></div>
 <section class="analysis-card"><div class="heading"><div><span class="eyebrow">REGISTRO DE EGRESOS</span><h2>Registrar un gasto</h2><p>Captura luz, agua, jardinería y gastos de proyectos sin modificar cuotas históricas.</p></div></div>
-<form id="newExpense" class="expense-form"><label>Fecha<input id="expenseDate" type="date" required></label><label>Categoría<select id="expenseCategory" required><option value="LUZ">Luz</option><option value="AGUA">Agua</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTOS">Proyectos</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min=".01" step=".01" required></label><label>Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><div class="expense-reference-note" role="note"><strong>Referencia automática</strong><span>Al guardar, el sistema genera un folio único para este egreso.</span></div><button id="saveExpense" class="primary">Registrar egreso</button></form>
+<form id="newExpense" class="expense-form"><label>Fecha<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input id="expenseDate" type="date" required></div></label><label>Categoría<select id="expenseCategory" required><option value="LUZ">Luz</option><option value="AGUA">Agua</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTOS">Proyectos</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min=".01" step=".01" required></label><label>Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><div class="expense-reference-note" role="note"><strong>Referencia automática</strong><span>Al guardar, el sistema genera un folio único para este egreso.</span></div><button id="saveExpense" class="primary">Registrar egreso</button></form>
 <div class="expense-filters" role="search" aria-label="Filtrar y ordenar egresos">
   <label>Buscar concepto<input type="search" id="expenseFilterConcept" placeholder="Ej. Internet, limpieza"></label>
   <label>Categoría<select id="expenseFilterCategory"><option value="">Todas</option><option value="LUZ">Luz</option><option value="AGUA">Agua</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTOS">Proyectos</option><option value="OTROS">Otros</option></select></label>
-  <label>Fecha desde<input type="date" id="expenseFilterFrom"></label>
-  <label>Fecha hasta<input type="date" id="expenseFilterTo"></label>
+  <label>Fecha desde<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input type="date" id="expenseFilterFrom"></div></label>
+  <label>Fecha hasta<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input type="date" id="expenseFilterTo"></div></label>
   <label>Ordenar por<select id="expenseSort"><option value="fecha_desc">Fecha: más reciente</option><option value="fecha_asc">Fecha: más antigua</option><option value="monto_asc">Monto: menor a mayor</option><option value="monto_desc">Monto: mayor a menor</option><option value="categoria_asc">Categoría: A–Z</option><option value="categoria_desc">Categoría: Z–A</option></select></label>
   <button type="button" class="soft" id="expenseClearFilters">Limpiar filtros</button>
 </div>
@@ -88,4 +88,4 @@
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
   </div>
 </section>
-</main><script src="assets/js/analisis-cuotas.js?v=20261015-gastos-dona-alertas" defer></script><script src="assets/js/google-sheets-historicos.js?v=20261011" defer></script><script src="assets/js/site-sidebar.js?v=20261012-seguridad" defer></script></body></html>
+</main><script src="assets/js/analisis-cuotas.js?v=20261015-fechas-safari-compactas" defer></script><script src="assets/js/google-sheets-historicos.js?v=20261011" defer></script><script src="assets/js/site-sidebar.js?v=20261015-fechas-safari-compactas" defer></script></body></html>

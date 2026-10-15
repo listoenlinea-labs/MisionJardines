@@ -7,6 +7,23 @@
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  const moment=new Date();$('financeYear').value=moment.getFullYear();$('financeMonth').value=String(moment.getMonth()+1);
  $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(moment);
+ // Texto de fecha independiente del ancho intrínseco del date picker iOS.
+ // El input de tipo date permanece funcional y es el único valor enviado.
+ const MONTHS_ABBR=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+ function syncExpenseDateDisplay(input){
+  const text=input.previousElementSibling;
+  if(!text||!text.classList.contains('mj-date-display'))return;
+  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(input.value);
+  const valid=Boolean(match&&Number(match[2])>=1&&Number(match[2])<=12);
+  text.textContent=valid?Number(match[3])+' '+MONTHS_ABBR[Number(match[2])-1]+' '+match[1]:'Elegir fecha';
+  text.classList.toggle('is-empty',!valid);
+ }
+ const expenseDateInputs=['expenseDate','expenseFilterFrom','expenseFilterTo'].map($);
+ expenseDateInputs.forEach(input=>{
+  input.addEventListener('input',()=>syncExpenseDateDisplay(input));
+  input.addEventListener('change',()=>syncExpenseDateDisplay(input));
+  syncExpenseDateDisplay(input);
+ });
  let data=null;
  let housePage=1;
  const HOUSE_PAGE_SIZE=12;
@@ -435,6 +452,7 @@
   $(id).addEventListener('change',renderExpenses);
  $('expenseClearFilters').addEventListener('click',()=>{
   for(const id of ['expenseFilterConcept','expenseFilterCategory','expenseFilterFrom','expenseFilterTo'])$(id).value='';
+  expenseDateInputs.forEach(syncExpenseDateDisplay);
   $('expenseSort').value='fecha_desc';
   renderExpenses();
  });
@@ -454,6 +472,7 @@
    const saved=await request('/egresos',body);
    $('newExpense').reset();
    $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   expenseDateInputs.forEach(syncExpenseDateDisplay);
    await load();
    notice('Egreso registrado correctamente. Referencia: '+(saved.referencia||'generada'));
   }

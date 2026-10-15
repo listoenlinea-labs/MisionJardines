@@ -253,3 +253,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     text-align:center!important;
   }
 }
+
+/* El control contenedor es neutro en escritorio: el input nativo conserva
+   todas sus funciones y el diseño original. Solo iOS/móvil usa la vista compacta. */
+.mj-date-control{display:contents}
+.mj-date-control>.mj-date-display{display:none}
