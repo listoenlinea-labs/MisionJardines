@@ -94,8 +94,8 @@ test('Visitas del día excluyen canceladas; activos exigen ausencia de salida',a
    if(typeof q.where.estatus==='object')assert.equal(q.where.estatus[Op.ne],'CANCELADA');
   }
   for(const q of spy.access) assert.equal(q.where.fechaSalida,null);
-  assert.ok(spy.visits.find(q=>q.limit===15));
-  assert.ok(spy.access.find(q=>q.limit===15));
+  assert.ok(spy.visits.some(q=>q.order && !('limit' in q)), 'Todas las visitas visibles');
+  assert.ok(spy.access.some(q=>q.order && !('limit' in q)), 'Todos los accesos activos');
  });
 });
 
