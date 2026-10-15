@@ -73,6 +73,14 @@
       return (aOrder < 0 ? administrationOrder.length : aOrder) -
         (bOrder < 0 ? administrationOrder.length : bOrder);
     });
+    // El grupo Comunidad mantiene un orden estable sin alterar roles ni rutas.
+    const communityOrder = ['pagos.html', 'casa-club.html', 'anuncios.html', 'calendario.html', 'directorio.html'];
+    community.sort((a, b) => {
+      const aIndex = communityOrder.indexOf(a.page);
+      const bIndex = communityOrder.indexOf(b.page);
+      return (aIndex < 0 ? communityOrder.length : aIndex) -
+        (bIndex < 0 ? communityOrder.length : bIndex);
+    });
     security.sort((a, b) => securityPages.indexOf(a.page) - securityPages.indexOf(b.page));
     const navigation = [
       { label: '', items: primary },
