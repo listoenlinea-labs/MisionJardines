@@ -361,7 +361,7 @@
     const role = currentRole();
     const actions = [
       { href: 'visitas.html', label: 'Registrar visita', icon: '＋', roles: ['SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD','CONDOMINO'] },
-      { href: 'cuotas.html', label: 'Ver cuotas', icon: '$', roles: ['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA','CONDOMINO'] },
+      { href: 'analisis-cuotas.html', label: 'Ver cuotas', icon: '$', roles: ['SUPER_ADMIN','ADMINISTRADOR'] },
       { href: 'reportes.html', label: 'Nuevo reporte', icon: '!', roles: ['SUPER_ADMIN','ADMINISTRADOR','MANTENIMIENTO','SEGURIDAD','CONDOMINO'] }
     ];
     return actions.filter(action => !role || action.roles.includes(role)).slice(0, 2);
@@ -577,7 +577,170 @@
     loadIncidents();
   }
 
+  // Se reutiliza literalmente el mapa existente, sin modificar el Inicio
+  // financiero de administradores.
+  function renderEnvironmentMarkup() {
+    return `
+        <article class="hl-card hl-map-card hl-environment-card">
+          <div class="hl-card-head hl-environment-head">
+            <div>
+              <span class="hl-eyebrow">ENTORNO EN VIVO</span>
+              <h2>Misión Jardines Fraccionamiento</h2>
+              <p>C. Atotonilco 700, C.P. 45138, Zapopan, Jalisco.</p>
+            </div>
+            <div class="hl-environment-actions">
+              <div class="hl-environment-tabs" role="tablist" aria-label="Entorno del fraccionamiento">
+                <button class="active" type="button" data-hl-environment="traffic">Tráfico e incidencias</button>
+                <button type="button" data-hl-environment="news">Noticias</button>
+              </div>
+              <a class="hl-map-link" href="${GOOGLE_SHARE_URL}" target="_blank" rel="noopener">Google Maps ↗</a>
+            </div>
+          </div>
+
+          <div class="hl-environment-scene">
+            <div class="hl-environment-flipper">
+              <section class="hl-environment-face hl-traffic-face" aria-label="Tráfico e incidencias cercanas">
+                <div class="hl-live-map-wrap">
+                  <div id="hlLiveTrafficMap" class="hl-live-map"></div>
+                  <div id="hlTrafficStatus" class="hl-traffic-status">
+                    <b>Preparando tráfico</b><span>Consultando el entorno del fraccionamiento…</span>
+                  </div>
+                </div>
+                <aside class="hl-incidents">
+                  <div class="hl-incidents-head">
+                    <strong>Incidencias cercanas</strong>
+                    <span id="hlIncidentUpdated">Accidentes, obras, cierres y congestión cercanos.</span>
+                  </div>
+                  <div id="hlIncidentList" class="hl-incident-list">
+                    <div class="hl-live-empty">Consultando incidencias viales…</div>
+                  </div>
+                </aside>
+              </section>
+
+              <section class="hl-environment-face hl-news-face" aria-label="Noticias cercanas">
+                <div class="hl-news-head">
+                  <div>
+                    <span class="hl-eyebrow">NOTICIAS CERCANAS</span>
+                    <strong>Guadalajara y Zapopan en tiempo real</strong>
+                    <small id="hlNewsUpdated">Cobertura reciente de medios locales y regionales.</small>
+                  </div>
+                  <span class="hl-news-live">● EN VIVO</span>
+                </div>
+                <div id="hlNewsGrid" class="hl-news-grid">
+                  <div class="hl-live-empty">Selecciona Noticias para consultar la cobertura reciente.</div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="hl-data-note">
+            <span class="hl-source ok">● Entorno en vivo</span>
+            <span>Tráfico, incidencias y noticias públicas alrededor de Misión Jardines.</span>
+            <a href="mapa.html">Ver plano interno</a>
+          </div>
+        </article>
+    `;
+  }
+
+  function operationalHour(value) {
+    if (!value) return 'Sin hora';
+    const plain = String(value);
+    if (/^\\d{2}:\\d{2}/.test(plain)) return plain.slice(0, 5);
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return 'Sin hora';
+    return new Intl.DateTimeFormat('es-MX', {
+      timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit'
+    }).format(date);
+  }
+
+  function operationalEntry(item, kind, showHouse) {
+    const estado = kind === 'VISITA' ? String(item.estado || 'PROGRAMADA') : 'DENTRO';
+    const tone = kind === 'VISITA' && estado === 'PROGRAMADA' ? 'scheduled' : 'inside';
+    const time = kind === 'VISITA' ? operationalHour(item.entrada || item.hora) : operationalHour(item.entrada);
+    const address = showHouse && item.vivienda ? '<span class="hl-op-house">' + escapeHtml(item.vivienda) + '</span>' : '';
+    return '<li class="hl-op-entry"><div class="hl-op-person"><strong>' +
+      escapeHtml(item.nombre || 'Sin nombre') + '</strong><span>' +
+      (kind === 'VISITA' ? 'Visita · ' : 'Acceso · ') + escapeHtml(time) +
+      '</span>' + address + '</div><span class="hl-op-status ' + tone + '">' +
+      escapeHtml(estado.replaceAll('_', ' ')) + '</span></li>';
+  }
+
+  function renderOperationalDashboard(data) {
+    const container = document.querySelector('.dashboard');
+    if (!container) return;
+    const role = currentRole();
+    const isSecurity = data.alcance === 'FRACCIONAMIENTO';
+    const visitor = data.kpis?.visitas || {};
+    const access = data.kpis?.accesos || {};
+    const visits = Array.isArray(data.operativo?.visitas) ? data.operativo.visitas : [];
+    const inside = Array.isArray(data.operativo?.accesos) ? data.operativo.accesos : [];
+    const available = data.fuentes || {};
+    const firstName = cachedUser()?.nombre || (isSecurity ? 'Seguridad' : 'vecino');
+    const scope = isSecurity ? 'Todo el fraccionamiento' : 'Mis viviendas';
+    const count = value => integer.format(Math.max(0, Number(value) || 0));
+    const empty = message => '<li class="hl-op-empty">' + escapeHtml(message) + '</li>';
+    removeFinanceMediaListener();
+    removeFinanceMediaListener = () => {};
+    container.innerHTML = `
+      <section class="hl-welcome">
+        <div><span class="hl-eyebrow">INICIO · ACCESOS EN VIVO</span>
+          <h1>Hola, ${escapeHtml(firstName)}.</h1>
+          <p>${isSecurity ? 'Consulta de visitas y personas que permanecen dentro del fraccionamiento.' :
+            'Consulta tus visitas programadas y las personas que han ingresado a tus viviendas.'}</p>
+        </div>
+        <div class="hl-actions">
+          ${isSecurity ? '<a class="hl-action primary" href="visitas.html">＋ Ver visitas</a>' : ''}
+          <button class="hl-refresh" type="button" id="hlRefresh">↻ Actualizar</button>
+        </div>
+      </section>
+      <section class="hl-op-scope" aria-label="Alcance de los datos">
+        <strong>${escapeHtml(scope)}</strong>
+        <span>${isSecurity ? 'Registros de las viviendas del fraccionamiento' : 'Registros de viviendas vinculadas a tu cuenta'}</span>
+      </section>
+      <section class="hl-kpis hl-op-kpis" aria-label="Indicadores de visitas y accesos">
+        <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-mint">
+          <div class="hl-kpi-content"><span>Visitas hoy</span>
+          <strong>${available.visitas ? count(visitor.hoy) : '—'}</strong>
+          <small>${available.visitas ? count(visitor.programadas) + ' programadas · ' + count(visitor.enCurso) + ' en curso' : 'Datos no disponibles'}</small></div>
+        </article>
+        <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-peach">
+          <div class="hl-kpi-content"><span>Accesos activos</span>
+          <strong>${available.accesos ? count(access.activos) : '—'}</strong>
+          <small>Personas dentro, sin salida registrada</small></div>
+        </article>
+      </section>
+      <section class="hl-op-grid" aria-label="Detalle operativo de visitas y accesos">
+        <article class="hl-card hl-op-panel">
+          <div class="hl-card-head"><div><span class="hl-eyebrow">VISITAS DE HOY</span>
+            <h2>${isSecurity ? 'Visitas registradas en el fraccionamiento' : 'Mis visitas programadas'}</h2></div>
+            <span class="hl-op-total">${count(visitor.hoy)} en total</span></div>
+          <ul class="hl-op-list">${visits.length ?
+            visits.map(item => operationalEntry(item, 'VISITA', isSecurity)).join('') :
+            empty('No hay visitas programadas para hoy.')}</ul>
+          ${Number(visitor.hoy) > visits.length ? '<p class="hl-op-more">Mostrando las primeras ' +
+            count(visits.length) + ' visitas.</p>' : ''}
+        </article>
+        <article class="hl-card hl-op-panel">
+          <div class="hl-card-head"><div><span class="hl-eyebrow">DENTRO AHORA</span>
+            <h2>${isSecurity ? 'Personas dentro del fraccionamiento' : 'Personas que ingresaron a mi vivienda'}</h2></div>
+            <span class="hl-op-total">${count(access.activos)} activos</span></div>
+          <ul class="hl-op-list">${inside.length ?
+            inside.map(item => operationalEntry(item, 'ACCESO', isSecurity)).join('') :
+            empty('No hay accesos activos registrados.')}</ul>
+          ${Number(access.activos) > inside.length ? '<p class="hl-op-more">Mostrando los últimos ' +
+            count(inside.length) + ' accesos activos.</p>' : ''}
+        </article>
+      </section>
+      <section class="hl-op-map">${renderEnvironmentMarkup()}</section>
+      <footer class="hl-footer"><span>Actualizado: ${formatWhen(data.generadoEn)}</span>
+        <span>${escapeHtml(scope)} · Visitas y accesos registrados en MySQL</span></footer>
+    `;
+    document.getElementById('hlRefresh')?.addEventListener('click', load);
+    initEnvironmentCard();
+  }
+
   function renderDashboard(data) {
+    if (data?.vista === 'OPERATIVA') return renderOperationalDashboard(data);
     const container = document.querySelector('.dashboard');
     if (!container) return;
     removeFinanceMediaListener();
@@ -649,64 +812,7 @@
       </section>
 
       <section class="hl-bottom-grid">
-        <article class="hl-card hl-map-card hl-environment-card">
-          <div class="hl-card-head hl-environment-head">
-            <div>
-              <span class="hl-eyebrow">ENTORNO EN VIVO</span>
-              <h2>Misión Jardines Fraccionamiento</h2>
-              <p>C. Atotonilco 700, C.P. 45138, Zapopan, Jalisco.</p>
-            </div>
-            <div class="hl-environment-actions">
-              <div class="hl-environment-tabs" role="tablist" aria-label="Entorno del fraccionamiento">
-                <button class="active" type="button" data-hl-environment="traffic">Tráfico e incidencias</button>
-                <button type="button" data-hl-environment="news">Noticias</button>
-              </div>
-              <a class="hl-map-link" href="${GOOGLE_SHARE_URL}" target="_blank" rel="noopener">Google Maps ↗</a>
-            </div>
-          </div>
-
-          <div class="hl-environment-scene">
-            <div class="hl-environment-flipper">
-              <section class="hl-environment-face hl-traffic-face" aria-label="Tráfico e incidencias cercanas">
-                <div class="hl-live-map-wrap">
-                  <div id="hlLiveTrafficMap" class="hl-live-map"></div>
-                  <div id="hlTrafficStatus" class="hl-traffic-status">
-                    <b>Preparando tráfico</b><span>Consultando el entorno del fraccionamiento…</span>
-                  </div>
-                </div>
-                <aside class="hl-incidents">
-                  <div class="hl-incidents-head">
-                    <strong>Incidencias cercanas</strong>
-                    <span id="hlIncidentUpdated">Accidentes, obras, cierres y congestión cercanos.</span>
-                  </div>
-                  <div id="hlIncidentList" class="hl-incident-list">
-                    <div class="hl-live-empty">Consultando incidencias viales…</div>
-                  </div>
-                </aside>
-              </section>
-
-              <section class="hl-environment-face hl-news-face" aria-label="Noticias cercanas">
-                <div class="hl-news-head">
-                  <div>
-                    <span class="hl-eyebrow">NOTICIAS CERCANAS</span>
-                    <strong>Guadalajara y Zapopan en tiempo real</strong>
-                    <small id="hlNewsUpdated">Cobertura reciente de medios locales y regionales.</small>
-                  </div>
-                  <span class="hl-news-live">● EN VIVO</span>
-                </div>
-                <div id="hlNewsGrid" class="hl-news-grid">
-                  <div class="hl-live-empty">Selecciona Noticias para consultar la cobertura reciente.</div>
-                </div>
-              </section>
-            </div>
-          </div>
-
-          <div class="hl-data-note">
-            <span class="hl-source ok">● Entorno en vivo</span>
-            <span>Tráfico, incidencias y noticias públicas alrededor de Misión Jardines.</span>
-            <a href="mapa.html">Ver plano interno</a>
-          </div>
-        </article>
+        ${renderEnvironmentMarkup()}
 
         <article class="hl-card hl-activity">
           <div class="hl-card-head"><div><span class="hl-eyebrow">MOVIMIENTOS</span><h2>Actividad reciente</h2></div></div>
@@ -718,14 +824,6 @@
       <footer class="hl-footer"><span>Actualizado: ${formatWhen(data.generadoEn)}</span><span>Fuentes: cuotas · visitas_programadas · accesos_seguridad · condominos · direcciones · eventos</span></footer>
     `;
 
-    if (currentRole() === 'SEGURIDAD') {
-      container.querySelector('.hl-kpis > article')?.remove();
-      container.querySelectorAll('.hl-collection,.hl-events').forEach(el => el.remove());
-      const note = container.querySelector('.hl-activity .hl-data-note span:last-child');
-      if (note) note.textContent = 'Visitas, accesos y altas recientes.';
-      const footer = container.querySelector('.hl-footer span:last-child');
-      if (footer) footer.textContent = 'Información operativa de seguridad';
-    }
     document.getElementById('hlRefresh')?.addEventListener('click', load);
     setupFinancePanel(data);
     initEnvironmentCard();
@@ -753,7 +851,7 @@
   function renderLoading() {
     const container = document.querySelector('.dashboard');
     if (!container) return;
-    container.innerHTML = `<div class="hl-loading"><span></span><strong>Consultando la base de datos…</strong><small>Cuotas, visitas, accesos, residentes y eventos</small></div>`;
+    container.innerHTML = `<div class="hl-loading"><span></span><strong>Consultando la base de datos…</strong><small>${['SUPER_ADMIN','ADMINISTRADOR'].includes(currentRole()) ? 'Cuotas, visitas, accesos, residentes y eventos' : 'Visitas y accesos de tus viviendas o del fraccionamiento'}</small></div>`;
   }
 
   function renderError(message) {
