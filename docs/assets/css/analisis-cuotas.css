@@ -258,3 +258,16 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
    todas sus funciones y el diseño original. Solo iOS/móvil usa la vista compacta. */
 .mj-date-control{display:contents}
 .mj-date-control>.mj-date-display{display:none}
+
+/* En Análisis la navegación Cuotas/Análisis está conservada, pero oculta.
+   Se necesita !important para prevalecer sobre el display:flex!important del
+   tema compartido, que se inserta después de esta hoja. */
+body.page-analisis.mj-shared-sidebar-enabled .analysis-page nav.analysis-tabs[hidden],
+body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+}
