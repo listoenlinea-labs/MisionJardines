@@ -206,6 +206,15 @@ const canAdmin=['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA'].includes(role);
 let currentRows=[];
 const PAGE_SIZE=8;
 let currentPage=1;
+// Enlace preciso desde Análisis de cuotas; el ID prevalece sobre la búsqueda
+// por nombres de calles y se libera cuando se cambian manualmente los filtros.
+const linkParams=new URLSearchParams(window.location.search);
+const queryCasaId=Number(linkParams.get('casaId'));
+let linkedCasaId=Number.isSafeInteger(queryCasaId)&&queryCasaId>0?queryCasaId:null;
+if(linkedCasaId){
+  $('street').value=String(linkParams.get('calle')||'').slice(0,120);
+  $('houseNumber').value=String(linkParams.get('numero')||'').slice(0,30);
+}
 let pagination={page:1,limit:PAGE_SIZE,total:0,totalPages:1,hasPrev:false,hasNext:false};
 let pageRefreshInFlight=false;
 function toast(message,duration=3500){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(window.zkToast);window.zkToast=setTimeout(()=>$('toast').style.display='none',duration)}
@@ -407,6 +416,7 @@ async function loadRows(){
   if($('street').value.trim())q.set('calle',$('street').value.trim());
   if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
   if($('tagNumber').value.trim())q.set('tag',$('tagNumber').value.trim());
+  if(linkedCasaId)q.set('casaId',String(linkedCasaId));
   q.set('pagina',String(currentPage));
   q.set('limite',String(PAGE_SIZE));
   const r=await api('/zkteco/viviendas?'+q.toString(),{headers:headers()});
@@ -476,11 +486,13 @@ async function goPage(page){
 window.goPage=goPage;
 async function applySearch(){
   if(pageRefreshInFlight)return;
+  linkedCasaId=null;
   currentPage=1;
   await refreshPage(1,{reason:'Buscando y actualizando resultados con ZKTeco…'});
 }
 async function clearFilters(){
   if(pageRefreshInFlight)return;
+  linkedCasaId=null;
   $('street').value='';
   $('houseNumber').value='';
   $('tagNumber').value='';
