@@ -138,3 +138,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* Mensaje verde únicamente cuando el servidor confirma el registro del pago. */
 #financeNotice[data-kind="success"]{border-color:#cae8d7;background:#f1faf5;color:#276347}
+
+/* Mantener legible la nueva columna de período, con scroll horizontal en móvil. */
+.houses-scroll table{min-width:900px}.houses-scroll th,.houses-scroll td{white-space:nowrap}
