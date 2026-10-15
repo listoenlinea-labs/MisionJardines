@@ -271,3 +271,40 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
   padding:0!important;
   border:0!important;
 }
+
+/* Consulta de viviendas: cobro directo, sin abrir primero los TAGs. */
+.houses-scroll table{min-width:1240px}
+.house-pay-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  max-width:100%;
+  padding:8px 12px;
+  border:1px solid #e6d5ee;
+  border-radius:11px;
+  background:#fbf7ff;
+  color:#6d5889;
+  font-size:11px;
+  font-weight:850;
+  line-height:1.2;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:border-color .15s ease,background .15s ease;
+}
+.house-pay-button:hover,.house-pay-button:focus-visible{
+  border-color:#b9a4d1;
+  background:#f7efff;
+  outline-offset:2px;
+}
+.tags-modal-footer{justify-content:flex-end}
+@media(max-width:700px){
+  .houses-scroll .house-pay-button{
+    max-width:100%;
+    min-height:36px;
+    padding:8px 10px;
+    font-size:11px;
+    white-space:normal;
+    text-align:center;
+  }
+}

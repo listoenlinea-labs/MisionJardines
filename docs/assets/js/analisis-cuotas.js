@@ -167,6 +167,12 @@
      '" data-tags-house="'+Number(h.casaId)+'" aria-label="'+esc(description)+
      '"><strong>'+count+' '+(count===1?'TAG':'TAGs')+'</strong></button>';
  }
+ function renderHousePayCell(h){
+   // Reutiliza openHousePayment(casaId); no duplica la lógica de cobro.
+   const houseName=[h.calle,h.numero].filter(x=>x!==null&&x!==undefined).join(' ');
+   return '<button type="button" class="house-pay-button" data-pay-house="'+Number(h.casaId)+
+     '" aria-label="Registrar pago para '+esc(houseName)+'">Registrar pago</button>';
+ }
  let openedTagsHouse=null;
  let tagVerificationSequence=0;
  const tagsModal=$('houseTagsModal');
@@ -251,14 +257,7 @@
    const params=new URLSearchParams({casaId:String(h.casaId),calle:h.calle,numero:String(h.numero)});
    window.location.assign('zkteco.html?'+params.toString());
  });
- $('houseTagsPay').addEventListener('click',()=>{
-   const id=openedTagsHouse?.casaId;
-   if(!id)return;
-   closeHouseTags();
-   openHousePayment(id);
- });
-
- function renderHouses(){
+function renderHouses(){
   if(!data)return;
   const query=$('financeSearch').value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),
     street=$('financeStreet').value,status=$('financeStatus').value;
@@ -278,7 +277,8 @@
     houseCell('Pagado','<span class="house-amount">'+esc(fmt(h.montoPagado))+'</span>')+
     houseCell('Último mes pagado',esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount">'+esc(fmt(h.saldoPendiente))+'</span>')+
-    houseCell('TAGs',renderHouseTagCell(h))+'</tr>').join(''):'<tr><td colspan="8">No hay viviendas que coincidan con estos filtros.</td></tr>';
+    houseCell('TAGs',renderHouseTagCell(h))+
+    houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;

@@ -65,9 +65,11 @@ test('Siguen presentes diagnóstico físico y botones principales sin escrituras
   assert.match(source,/diagnostico\/viviendas\//);
   assert.match(source,/tagStateForHouse/);
   assert.match(source,/tagMismatch\(h,v\)/);
-  assert.match(source,/openHousePayment\(id\)/);
-  for(const id of ['houseTagsClose','houseTagsRefresh','houseTagsPay','houseTagsEdit']){
+  assert.match(source,/openHousePayment\(btn\.dataset\.payHouse\)/);
+  for(const id of ['houseTagsClose','houseTagsRefresh','houseTagsEdit']){
     assert.match(layout,new RegExp('id="'+id+'"'));
   }
+  assert.doesNotMatch(layout,/id="houseTagsPay"/);
+  assert.match(source,/data-pay-house/);
   assert.match(source,/URLSearchParams\(\{casaId:/);
 });
