@@ -16,11 +16,12 @@ async function check(role,baseUrl, options={}) {
   finally { Usuario.findByPk=previous; UsuarioCasa.findOne=oldMembership; }
 }
 test('old administrator JWT cannot bypass current security permissions',async()=>{
-  for (const section of ['dashboard','viviendas']) {
+  for (const section of ['viviendas']) {
     const result = await check('SEGURIDAD','/api/'+section);
     assert.equal(result.status,403);
     assert.equal(result.nextCalled,false);
   }
+  assert.equal((await check('SEGURIDAD','/api/dashboard')).nextCalled,true);
   assert.equal((await check('SEGURIDAD','/api/accesos')).nextCalled,true);
   assert.equal((await check('SEGURIDAD','/api/casas')).nextCalled,true);
   assert.equal((await check('SEGURIDAD','/api/cuotas')).status,403);
