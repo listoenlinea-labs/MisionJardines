@@ -361,7 +361,7 @@
     const role = currentRole();
     const actions = [
       { href: 'visitas.html', label: 'Registrar visita', icon: '＋', roles: ['SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD','CONDOMINO'] },
-      { href: 'cuotas.html', label: 'Ver cuotas', icon: '$', roles: ['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA','CONDOMINO'] },
+      { href: ['SUPER_ADMIN','ADMINISTRADOR'].includes(role) ? 'analisis-cuotas.html' : 'cuotas.html', label: 'Ver cuotas', icon: '$', roles: ['SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA','CONDOMINO'] },
       { href: 'reportes.html', label: 'Nuevo reporte', icon: '!', roles: ['SUPER_ADMIN','ADMINISTRADOR','MANTENIMIENTO','SEGURIDAD','CONDOMINO'] }
     ];
     return actions.filter(action => !role || action.roles.includes(role)).slice(0, 2);
