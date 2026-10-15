@@ -128,10 +128,12 @@
    const parts=[v.activos?v.activos+' activos':'',v.inactivos?v.inactivos+' inactivos':'',
      v.sinConfirmar?v.sinConfirmar+' sin confirmar':'',v.unlinked.length?v.unlinked.length+' sin enlazar':''].filter(Boolean);
    const alert=tagMismatch(h,v);
-   return '<button type="button" class="house-tags-button" data-tags-house="'+Number(h.casaId)+'" aria-label="Ver '+count+' TAGs de '+esc(h.calle)+' '+esc(h.numero)+'">'+
-     '<strong>'+count+' '+(count===1?'TAG':'TAGs')+'</strong>'+
-     '<span class="tags-cell-meta">'+esc(parts.join(' · ')||'Sin controles')+'</span>'+
-     (alert?'<span class="tags-cell-alert">'+esc(alert)+'</span>':'')+'</button>';
+   const description=['Ver '+count+' '+(count===1?'TAG':'TAGs')+' de '+h.calle+' '+h.numero,
+     ...parts,alert].filter(Boolean).join('. ');
+   // La celda muestra solo el contador: detalles y alertas se conservan
+   // en el modal y en la descripción accesible del botón.
+   return '<button type="button" class="house-tags-button" data-tags-house="'+Number(h.casaId)+
+     '" aria-label="'+esc(description)+'"><strong>'+count+' '+(count===1?'TAG':'TAGs')+'</strong></button>';
  }
  let openedTagsHouse=null;
  let tagVerificationSequence=0;
@@ -144,17 +146,15 @@
    $('houseTagsAddress').textContent=h.calle+' '+h.numero+' · '+(h.nombre||'Sin residente');
    $('houseTagsSummary').textContent=v.detail.length+' TAG(s) · '+v.activos+' activos · '+v.inactivos+
      ' inactivos · '+v.sinConfirmar+' sin confirmar'+(mismatch?' · '+mismatch:'');
+   // Los tres encabezados se presentan una única vez, sobre todas las filas.
+   $('houseTagsColumns').hidden=!v.detail.length;
    $('houseTagsRows').innerHTML=v.detail.length?v.detail.map(t=>{
-     const d=(h.tagDiagnostico?.tarjetas||[]).find(x=>c3Key(x.numeroTarjeta)===c3Key(t.numeroTarjeta));
-     const fechaC3=d?.fisicamenteObservado?(d.fechaFinC3||'No disponible en lectura'):'—';
      const estado=t.estadoVista;
      const cls=estado.codigo==='ACTIVO'?'is-active':estado.codigo==='INACTIVO'?'is-inactive':'is-unknown';
      return '<article class="tags-detail-item">'+
-       '<div><small>TAG</small><strong>'+esc(t.numeroTarjeta)+'</strong>'+
-       '<span>'+esc(t.nombre||'Sin etiqueta')+'</span></div>'+
-       '<div><small>Estado</small><span class="tags-state '+cls+'">'+esc(estado.etiqueta)+'</span></div>'+
-       '<div><small>Fecha final guardada</small><strong>'+esc(t.fechaFin||'Sin fecha')+'</strong></div>'+
-       '<div><small>Fecha final leída del C3</small><strong>'+esc(fechaC3)+'</strong></div></article>';
+       '<strong class="tags-number">'+esc(t.numeroTarjeta)+'</strong>'+
+       '<span class="tags-state '+cls+'">'+esc(estado.etiqueta)+'</span>'+
+       '<strong class="tags-date">'+esc(t.fechaFin||'Sin fecha')+'</strong></article>';
    }).join(''):'<p class="tags-empty">Esta vivienda no tiene TAGs vinculados en MySQL.</p>';
    if(v.unlinked.length)$('houseTagsRows').innerHTML+='<p class="tags-check-note">Controles registrados sin vínculo confirmado: '+
      esc(v.unlinked.join(', '))+'. Revisa la asignación en ZKTeco.</p>';
@@ -231,7 +231,7 @@
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
   housePage=Math.min(Math.max(housePage,1),totalPages);
   const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
-  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr><td data-label="Calle">'+esc(h.calle)+'</td><td data-label="Casa">'+esc(h.numero)+'</td><td data-label="Residente">'+esc(h.nombre)+'</td><td data-label="Estado"><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td data-label="Pagado"><span class="house-amount">'+fmt(h.montoPagado)+'</span></td><td data-label="Último mes pagado">'+esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago confirmado')+'</td><td data-label="Saldo pendiente"><span class="house-amount">'+fmt(h.saldoPendiente)+'</span></td><td data-label="TAGs">'+renderHouseTagCell(h)+'</td></tr>').join(''):'<tr><td colspan="8">No hay viviendas que coincidan con estos filtros.</td></tr>';
+  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr><td data-label="Calle">'+esc(h.calle)+'</td><td data-label="Casa">'+esc(h.numero)+'</td><td data-label="Residente">'+esc(h.nombre)+'</td><td data-label="Estado"><span class="'+(h.pagada?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span></td><td data-label="Pagado"><span class="house-amount">'+fmt(h.montoPagado)+'</span></td><td data-label="Último mes pagado">'+esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago')+'</td><td data-label="Saldo pendiente"><span class="house-amount">'+fmt(h.saldoPendiente)+'</span></td><td data-label="TAGs">'+renderHouseTagCell(h)+'</td></tr>').join(''):'<tr><td colspan="8">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;
