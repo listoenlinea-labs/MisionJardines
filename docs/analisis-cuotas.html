@@ -1,11 +1,11 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261015-fechas-safari-compactas">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261015-sin-tabs">
 </head><body class="page-analisis">
 <main class="analysis-page">
 <header class="analysis-hero"><span class="eyebrow">ADMINISTRACIÓN Y FINANZAS</span><h1>Análisis de <em>cuotas</em></h1><p>Control mensual de cumplimiento, ingresos confirmados y egresos del fraccionamiento.</p></header>
-<nav class="analysis-tabs" aria-label="Secciones de cuotas"><a href="cuotas.html">Cuotas</a><a href="analisis-cuotas.html" class="active" aria-current="page">Análisis</a></nav>
+<nav class="analysis-tabs" hidden aria-label="Secciones de cuotas"><a href="cuotas.html">Cuotas</a><a href="analisis-cuotas.html" class="active" aria-current="page">Análisis</a></nav>
 <section class="analysis-card filters"><label>Año<input id="financeYear" type="number" min="2020" max="2100"></label><label>Mes<select id="financeMonth"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label><button id="updateFinance" class="primary">Actualizar análisis</button></section>
 <div id="financeNotice" hidden role="status"></div>
 <div id="financialSummary" class="metric-grid" aria-label="Indicadores principales"></div><details class="analysis-more"><summary>Otros indicadores financieros</summary><div id="financialSecondary" class="metric-grid" aria-label="Indicadores adicionales"></div></details>
