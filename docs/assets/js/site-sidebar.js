@@ -180,7 +180,7 @@
       const sheet=document.createElement('link');
       sheet.id='mjMobileOperativo';
       sheet.rel='stylesheet';
-      sheet.href='assets/css/mobile-operativo.css?v=20261015-analisis-fichas';
+      sheet.href='assets/css/mobile-operativo.css?v=20261015-gastos-dona-filtro';
       document.head.appendChild(sheet);
     }
   }
