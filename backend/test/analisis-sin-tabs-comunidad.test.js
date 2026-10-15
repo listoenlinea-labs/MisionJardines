@@ -60,7 +60,7 @@ test('Administración y Seguridad conservan su orden y permisos', () => {
  ]);
  assert.deepEqual(groups.find(g => g.label === 'Seguridad').items.map(x => x.page),
   ['conmutador.html', 'seguridad.html', 'visitas.html', 'mapa.html', 'reportes.html']);
- assert.deepEqual(getNavigation('SEGURIDAD').map(x => x.label), ['Seguridad']);
+ assert.deepEqual(getNavigation('SEGURIDAD').map(x => x.label), ['', 'Seguridad']);
  assert.match(sidebar, /MJPermissions\.canAccess\(r,item\.page\)/);
 });
 

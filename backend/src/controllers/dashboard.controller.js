@@ -1,5 +1,6 @@
 const { QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { obtenerDashboardOperativo } = require('./dashboard-operativo.controller');
 
 const MESES = [
     'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
@@ -63,6 +64,11 @@ async function consultaSegura(nombre, sql, replacements, errores) {
 }
 
 async function obtenerDashboard(req, res) {
+    // Seguridad y residentes reciben únicamente información operativa.
+    // Ninguna consulta ni cifra de finanzas se ejecuta para estos roles.
+    if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario.rol)) {
+        return obtenerDashboardOperativo(req, res);
+    }
     const ahora = new Date();
     const hoy = fechaLocalISO(ahora);
     const actual = periodoDesdeOffset(ahora, 0);
@@ -340,14 +346,6 @@ async function obtenerDashboard(req, res) {
         eventos: !errores.eventos
     };
 
-    if (req.usuario.rol === 'SEGURIDAD') {
-        return res.json({ok:true, generadoEn:new Date().toISOString(),
-            kpis:{visitas:{hoy:numero(visitas.total_hoy),programadas:numero(visitas.programadas),enCurso:numero(visitas.en_curso)},
-                accesos:{activos:numero(accesos.activos),entradasHoy:numero(accesos.entradas_hoy)},
-                residentes:{activos:numero(residentes.residentes_activos),viviendasOcupadas:numero(residentes.viviendas_ocupadas),viviendasTotales:numero(residentes.viviendas_totales)}},
-            actividad:actividad.filter(item => ['VISITA','ACCESO','RESIDENTE'].includes(item.tipo)),
-            fuentes:{visitas:fuentes.visitas,accesos:fuentes.accesos,residentes:fuentes.residentes}});
-    }
     return res.status(200).json({
         ok: true,
         generadoEn: new Date().toISOString(),

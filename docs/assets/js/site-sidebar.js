@@ -88,7 +88,8 @@
       { label: 'Comunidad', items: community },
       { label: 'Seguridad', items: security }
     ];
-    return role() === 'SEGURIDAD' ? navigation.filter(group => group.label === 'Seguridad') : navigation;
+    // Seguridad también necesita acceder al Inicio operativo (no financiero).
+    return role() === 'SEGURIDAD' ? navigation.filter(group => group.label === '' || group.label === 'Seguridad') : navigation;
   }
 
   const page = () => location.pathname.split('/').pop() || 'index.html';
@@ -279,7 +280,7 @@
   function loadHomeDashboard() {
     if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
-    script.src = 'assets/js/home-dashboard.js?v=20261013-movil-ejes-html';
+    script.src = 'assets/js/home-dashboard.js?v=20261014-roles-operativos';
     script.defer = true;
     script.dataset.mjHomeDashboard = 'true';
     document.body.appendChild(script);
