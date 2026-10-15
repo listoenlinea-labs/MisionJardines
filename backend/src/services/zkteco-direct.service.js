@@ -1333,7 +1333,7 @@ async function dashboard({calle,numero,tag,pagina,limite,casaId}={}){
       }
       for(const rawCard of controls){
         const card=byNormalizedCard.get(normalizeCardKey(rawCard));
-        if(card&&!seen.has(card.id)&&(!exactHouseId||!card.casaId||Number(card.casaId)===Number(h.id))&&(!searchByDepartment || Number(card.casaId||0)===Number(h.id) ||
+        if(card&&!seen.has(card.id)&&(!exactHouseId||!card.casaId||Number(card.casaId)===Number(h.id))&&(exactHouseId || !searchByDepartment || Number(card.casaId||0)===Number(h.id) ||
           departmentMatchesHouse(card.departamento,h.calle,h.numero) || !card.departamento)){
           matched.push(card);seen.add(card.id);
         }
