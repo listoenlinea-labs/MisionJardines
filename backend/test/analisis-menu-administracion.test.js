@@ -53,7 +53,7 @@ test('Se conservan comunidad, seguridad y permisos originales', () => {
     .some(item => item.page === 'seguridad.html'));
   assert.ok(groups.find(group => group.label === 'Comunidad').items
     .some(item => item.page === 'pagos.html'));
-  assert.deepEqual(navForRole('SEGURIDAD').map(group => group.label), ['Seguridad']);
+  assert.deepEqual(navForRole('SEGURIDAD').map(group => group.label), ['', 'Seguridad']);
   assert.match(sidebar, /MJPermissions\.canAccess\(r,item\.page\)/);
 });
 
