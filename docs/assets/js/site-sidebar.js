@@ -44,19 +44,35 @@
     ]}
   ];
 
-  // Keep resident sections together and place the security workflows in their own group.
+  // Administración con orden explícito; los enlaces conservan sus permisos.
+  // Cuotas se conserva en el catálogo y en cuotas.html, pero no se dibuja en
+  // el menú lateral para ningún rol (sigue accesible desde su propia página).
   function navigationGroups() {
     const administration = [], community = [], security = [], primary = [];
     const securityPages = ['conmutador.html', 'seguridad.html', 'visitas.html', 'mapa.html', 'reportes.html'];
+    const administrationOrder = [
+      'analisis-cuotas.html',
+      'zkteco.html',
+      'bases_datos.html',
+      'verificacion-cuentas.html',
+      'auto-users.html'
+    ];
     for (const group of groups) {
       for (const item of group.items) {
+        if (item.page === 'cuotas.html') continue; // Oculto, no eliminado.
         if (['index.html', 'viviendas.html'].includes(item.page)) primary.push(item);
         else if (securityPages.includes(item.page)) security.push(item);
-        else if (item.page === 'cuotas.html') administration.push(item);
+        else if (administrationOrder.includes(item.page)) administration.push(item);
         else if (MJPermissions.canAccess('CONDOMINO', item.page)) community.push(item);
         else administration.push(item);
       }
     }
+    administration.sort((a, b) => {
+      const aOrder = administrationOrder.indexOf(a.page);
+      const bOrder = administrationOrder.indexOf(b.page);
+      return (aOrder < 0 ? administrationOrder.length : aOrder) -
+        (bOrder < 0 ? administrationOrder.length : bOrder);
+    });
     security.sort((a, b) => securityPages.indexOf(a.page) - securityPages.indexOf(b.page));
     const navigation = [
       { label: '', items: primary },
