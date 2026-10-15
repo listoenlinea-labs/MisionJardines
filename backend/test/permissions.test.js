@@ -5,9 +5,9 @@ test('administrators can access every application page', () => {
   for (const role of ['SUPER_ADMIN','ADMINISTRADOR']) for (const page of pages) assert.equal(canAccess(role,page),true);
 });
 test('security has exactly the requested operational pages plus account', () => {
-  assert.deepEqual(pages.filter(p=>canAccess('SEGURIDAD',p)).sort(), ['bases_datos.html','mapa.html','visitas.html','conmutador.html','reportes.html','reporte.html','seguridad.html','cuenta.html','zkteco.html'].sort());
+  assert.deepEqual(pages.filter(p=>canAccess('SEGURIDAD',p)).sort(), ['index.html','bases_datos.html','mapa.html','visitas.html','conmutador.html','reportes.html','reporte.html','seguridad.html','cuenta.html','zkteco.html'].sort());
   assert.equal(landing('SEGURIDAD'),'seguridad.html');
-  assert.equal(canAccess('SEGURIDAD','index.html'),false);
+  assert.equal(canAccess('SEGURIDAD','index.html'),true);
   assert.equal(canAccess('SEGURIDAD','viviendas.html'),false);
 });
 test('residents have complementary pages, no operational access', () => {
