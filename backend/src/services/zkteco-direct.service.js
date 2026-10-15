@@ -1232,7 +1232,11 @@ async function operateGate(action){
   });
 }
 
-async function dashboard({calle,numero,tag,pagina,limite}={}){
+async function dashboard({calle,numero,tag,pagina,limite,casaId}={}){
+  // Enlaces desde Análisis seleccionan el ID real para evitar coincidencias
+  // por direcciones duplicadas o variantes de nombre de calle.
+  const linkedId=Number(casaId);
+  const exactHouseId=casaId!==undefined&&Number.isSafeInteger(linkedId)&&linkedId>0?linkedId:null;
   const requestedPage=Math.max(1,Number.parseInt(pagina,10)||1);
   const pageSize=Math.min(8,Math.max(1,Number.parseInt(limite,10)||8));
   const cards=await ZkTarjeta.findAll({order:[['numeroTarjeta','ASC']]});
@@ -1251,7 +1255,10 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
   };
 
   let houses;
-  if(searchByDepartment){
+  if(exactHouseId){
+    houses=await Casa.findAll({where:{id:exactHouseId},
+      attributes:['id','calle','calleCorrecta','numero','controles']});
+  }else if(searchByDepartment){
     // Si DEPTNAME está vacío, no ocultar una casa que existe en direcciones.
     // ZKAccess stores the address as one value in DEPARTMENTS.DEPTNAME,
     // for example "GARDENIAS 21". Treat that field as the source of truth.
@@ -1317,7 +1324,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       // El dato físico Departamento puede faltar o ser antiguo. Priorizar
       // los tags de usuarios_casas/controles del padrón para no esconder
       // Gardenias 5 simplemente porque ZKAccess no devolvió DEPTNAME.
-      const departmentCards=searchByDepartment
+      const departmentCards=searchByDepartment&&!exactHouseId
         ? cards.filter(card=>departmentMatchesHouse(card.departamento,h.calle,h.numero))
         : [];
 
@@ -1326,7 +1333,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       }
       for(const rawCard of controls){
         const card=byNormalizedCard.get(normalizeCardKey(rawCard));
-        if(card&&!seen.has(card.id)&&(!searchByDepartment || Number(card.casaId||0)===Number(h.id) ||
+        if(card&&!seen.has(card.id)&&(!exactHouseId||!card.casaId||Number(card.casaId)===Number(h.id))&&(exactHouseId || !searchByDepartment || Number(card.casaId||0)===Number(h.id) ||
           departmentMatchesHouse(card.departamento,h.calle,h.numero) || !card.departamento)){
           matched.push(card);seen.add(card.id);
         }
@@ -1339,7 +1346,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
       }
 
       const matchedKeys=new Set(matched.map(card=>normalizeCardKey(card.numeroTarjeta)));
-      const unresolved=searchByDepartment
+      const unresolved=searchByDepartment&&!exactHouseId
         ? []
         : controls.filter(raw=>!matchedKeys.has(normalizeCardKey(raw)));
 
@@ -1374,7 +1381,7 @@ async function dashboard({calle,numero,tag,pagina,limite}={}){
         }))
       };
     })
-    .filter(row=>!tagQuery||row.tarjetas.length||row.controlesNoEnlazados.length)
+    .filter(row=>(!exactHouseId||Number(row.id)===exactHouseId)&&(!tagQuery||row.tarjetas.length||row.controlesNoEnlazados.length))
     .sort(compararDirecciones);
 
   const total=rows.length;

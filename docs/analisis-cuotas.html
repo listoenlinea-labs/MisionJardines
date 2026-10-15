@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261014-auto-close">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261014-tags-c3">
 </head><body class="page-analisis">
 <main class="analysis-page">
 <header class="analysis-hero"><span class="eyebrow">ADMINISTRACIÓN Y FINANZAS</span><h1>Análisis de <em>cuotas</em></h1><p>Control mensual de cumplimiento, ingresos confirmados y egresos del fraccionamiento.</p></header>
@@ -11,9 +11,9 @@
 <div id="financialSummary" class="metric-grid" aria-label="Indicadores principales"></div><details class="analysis-more"><summary>Otros indicadores financieros</summary><div id="financialSecondary" class="metric-grid" aria-label="Indicadores adicionales"></div></details>
 <div class="analysis-columns"><section class="analysis-card"><span class="eyebrow">CUMPLIMIENTO GENERAL</span><h2>Casas que pagaron</h2><div class="donut-wrapper"><div id="financeDonut" class="donut"><div id="financeDonutText"></div></div><div id="financeLegend" class="legend-block"></div></div><p class="hint">El porcentaje corresponde al período seleccionado y al estado de las cuotas del padrón.</p></section>
 <section class="analysis-card"><span class="eyebrow">DESGLOSE POR CALLE</span><h2>Porcentaje de viviendas pagadas</h2><div id="financeStreetChart" class="bars"></div><p id="financePadronNote" class="hint" role="status" hidden></p></section></div>
-<section class="analysis-card"><div class="heading"><div><span class="eyebrow">CONSULTA DE VIVIENDAS</span><h2>Quién pagó y quién está pendiente</h2><p>Filtra por calle, casa, residente y estado de pago.</p></div><span id="financeHouseCount"></span></div>
+<section class="analysis-card"><div class="heading"><div><span class="eyebrow">CONSULTA DE VIVIENDAS</span><h2>Quién pagó y quién está pendiente</h2><p>Filtra por calle, casa, residente y estado de pago. Los saldos corresponden al período elegido; el estado de TAGs refleja el último dato del C3 y puede verificarse en el detalle.</p></div><span id="financeHouseCount"></span></div>
 <div class="filters residences-filter"><label>Buscar casa o residente<input id="financeSearch" type="search" placeholder="Ej. Gardenias, 5, nombre"></label><label>Calle<select id="financeStreet"><option value="">Todas las calles</option></select></label><label>Estado<select id="financeStatus"><option value="">Todos</option><option value="PAGADO">Pagadas</option><option value="PENDIENTE">Pendientes y parciales</option></select></label><button id="financeClear" type="button" class="soft">Limpiar</button></div>
-<div class="table-scroll houses-scroll"><table><thead><tr><th>Calle</th><th>Casa</th><th>Residente registrado</th><th>Estado</th><th>Pagado</th><th>Último mes pagado</th><th>Saldo pendiente</th><th>Acción</th></tr></thead><tbody id="financeHouseRows"></tbody></table></div><nav class="analysis-pagination" id="financeHousePagination" aria-label="Páginas de viviendas"><button type="button" id="financePrev">Anterior</button><span id="financePageInfo" role="status" aria-live="polite"></span><button type="button" id="financeNext">Siguiente</button></nav></section>
+<div class="table-scroll houses-scroll"><table><thead><tr><th>Calle</th><th>Casa</th><th>Residente registrado</th><th>Estado</th><th>Pagado</th><th>Último mes pagado</th><th>Saldo pendiente</th><th>TAGs</th></tr></thead><tbody id="financeHouseRows"></tbody></table></div><nav class="analysis-pagination" id="financeHousePagination" aria-label="Páginas de viviendas"><button type="button" id="financePrev">Anterior</button><span id="financePageInfo" role="status" aria-live="polite"></span><button type="button" id="financeNext">Siguiente</button></nav></section>
 <div class="analysis-columns"><section class="analysis-card"><span class="eyebrow">MOVIMIENTOS</span><h2>Ingresos y egresos</h2><div id="financeCashChart" class="money-bars"></div><p class="hint" id="financeWarning"></p></section>
 <section class="analysis-card"><span class="eyebrow">EGRESOS</span><h2>Gastos por categoría</h2><div id="financeExpenseChart" class="bars"></div></section></div>
 <section class="analysis-card"><div class="heading"><div><span class="eyebrow">REGISTRO DE EGRESOS</span><h2>Registrar un gasto</h2><p>Captura luz, agua, jardinería y gastos de proyectos sin modificar cuotas históricas.</p></div></div>
@@ -38,6 +38,21 @@
   </div>
   <p id="sheetsStatus" role="status" aria-live="polite">Configura primero la cuenta de servicio en el backend.</p>
   <div class="table-scroll" id="sheetsPreviewScroll" hidden><table><thead id="sheetsHead"></thead><tbody id="sheetsRows"></tbody></table></div>
+</section>
+<section id="houseTagsModal" class="finance-pay-overlay" hidden aria-label="Estado de TAGs de vivienda">
+  <div class="finance-pay-dialog tags-dialog" role="dialog" aria-modal="true" aria-labelledby="houseTagsTitle" tabindex="-1">
+    <div class="finance-pay-heading"><div><span class="eyebrow">ZKTECO · CONSULTA DE ACCESOS</span>
+      <h2 id="houseTagsTitle">TAGs de la vivienda</h2><p id="houseTagsAddress" class="hint"></p></div>
+      <button type="button" id="houseTagsClose" class="soft">Cerrar</button></div>
+    <p id="houseTagsSummary" class="tags-summary" role="status" aria-live="polite"></p>
+    <div id="houseTagsC3Status" class="tags-check-note" role="status" aria-live="polite"></div>
+    <div id="houseTagsRows" class="tags-detail-list"></div>
+    <div class="tags-modal-footer">
+      <button type="button" id="houseTagsPay" class="soft">Registrar pago</button>
+      <div class="tags-modal-actions"><button type="button" id="houseTagsRefresh" class="soft">Verificar con C3</button>
+        <button type="button" id="houseTagsEdit" class="primary">Editar TAGs</button></div>
+    </div>
+  </div>
 </section>
 <section id="housePaymentModal" class="finance-pay-overlay" hidden aria-label="Registrar pago por vivienda">
   <div class="finance-pay-dialog" role="dialog" aria-modal="true" aria-labelledby="housePaymentTitle">
@@ -70,4 +85,4 @@
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
   </div>
 </section>
-</main><script src="assets/js/analisis-cuotas.js?v=20261014-adeudo-acumulado" defer></script><script src="assets/js/google-sheets-historicos.js?v=20261011" defer></script><script src="assets/js/site-sidebar.js?v=20261012-seguridad" defer></script></body></html>
+</main><script src="assets/js/analisis-cuotas.js?v=20261014-tags-c3" defer></script><script src="assets/js/google-sheets-historicos.js?v=20261011" defer></script><script src="assets/js/site-sidebar.js?v=20261012-seguridad" defer></script></body></html>
