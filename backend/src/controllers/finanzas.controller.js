@@ -29,7 +29,9 @@ async function analizar(req,res){
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
    ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']}),
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT}),
-   Cuota.findAll({where:{anio:{[Op.lte]:anio}},attributes:['casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']}),
+   // Historial íntegro para identificar pagos adelantados en 2027 y años posteriores.
+   // El saldo sigue limitado al corte pedido por calcularAdeudoVivienda.
+   Cuota.findAll({attributes:['casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']}),
    ZkTarjeta.findAll({attributes:['id','casaId','numeroTarjeta','nombreDispositivo','departamento','fechaInicio','fechaFin','bloqueado','enControlador','puertasAutorizadas','ultimaLectura']})
   ]);
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
