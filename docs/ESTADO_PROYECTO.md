@@ -1,9 +1,9 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 14/oct/2026, 23:32, America/Mexico_City.
-**SHA de main consultado:** `7ab74ebbc08e168f64f3f5f0dfb405ca34b1f0ea`.
-**Fuentes de esta revisión:** comparación de main desde `13a3a2334053cdde223cea8fd9a6c89f766fe7c1`,
-metadatos de los PR #180–#189, commits y estados/checks en GitHub, documentación vigente,
+**Última revisión:** 15/oct/2026, 23:28, America/Mexico_City.
+**SHA de main consultado:** `fbd6ebb7091fd114f8b4263c561536a7c156e0e4`.
+**Fuentes de esta revisión:** comparación de main desde `7ab74ebbc08e168f64f3f5f0dfb405ca34b1f0ea`,
+metadatos de los PR #190–#191, commits y estados/checks en GitHub, documentación vigente,
 historial ya registrado y conversación disponible. Las capturas
 de esa transcripción no están disponibles como imágenes inspeccionables aquí; no se certifican
 sus resultados desde descripciones del asistente. No se consultaron MySQL, Hostinger, Google
@@ -29,24 +29,24 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Confirmación por correo bancario | Propuesta | Sin conexión de buzón ni conciliador implementado. Falta revisar una notificación real y datos de operación |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
-| Interfaz responsive | Implementada en main; validación visual pendiente | PR #154–#158 dejan la gráfica móvil con líneas SVG y puntos táctiles; #179 mueve viviendas bajo las gráficas. PR #183–#186 alinean fichas, egresos, dona, filtros y fechas nativas para Safari/iPhone. Hubo emulación Chromium en 320–700 px documentada en #185; falta Safari/iPhone real y producción |
+| Interfaz responsive | Implementada en main; validación visual pendiente | PR #154–#158 dejan la gráfica móvil con líneas SVG y puntos táctiles; #179 mueve viviendas bajo las gráficas. PR #183–#186 alinean fichas, egresos, dona, filtros y fechas nativas para Safari/iPhone. PR #190 agrega la novena fila Pago y #191 alinea Mes/Año sin usar fecha nativa. Hubo emulación Chromium en #185; falta Safari/iPhone real y producción |
 | Historial administrativo de pagos | Implementado en main; producción no verificada | PR #160–#162 añaden historial 11–10, meses aplicados y fecha anterior por TAG desde el diario guardado. No es lectura TCP en vivo; requiere desplegar frontend/backend y cotejar con MySQL |
-| Pagos manuales desde Análisis | Implementado en main; uso real pendiente | PR #171 y #173–#176 registran meses en transacción, protegen pagos/referencias reales, generan una sola entrega durable C3 y cierran el modal solo tras éxito. No se probó con MySQL/C3 reales |
+| Pagos manuales desde Análisis | Implementado en main; uso real pendiente | PR #171 y #173–#176 registran meses en transacción, protegen pagos/referencias reales, generan una sola entrega durable C3 y cierran el modal solo tras éxito. PR #190 mueve «Registrar pago» a una columna propia por vivienda y lo retira del modal TAGs, reutilizando el mismo flujo sin cambiar backend. No se probó con MySQL/C3 reales |
 | Auto-users | Implementado en main; despliegue/migración pendientes | PR #166–#170 y #172 incorporan prerregistro, aceptación, pruebas administrativas y confirmaciones masivas. No se crearon cuentas ni se enviaron WhatsApp reales; requiere migración y configuración |
 | Seguridad, pluma y cámaras | Parcialmente implementado; hardware no verificado | PR #159 reutiliza el endpoint de pluma y prepara proxy HLS; #163 añade diagnóstico; #164 retira el visor Dahua de Seguridad, conservando backend/documentación. PR #189 habilita Inicio operativo a Seguridad con visitas de hoy y accesos sin salida, sin finanzas. Falta gateway RTSP→HLS, despliegue y pruebas con cuentas/hardware reales |
 | Visibilidad del padrón | Filtro de lectura en main | PR #177–#178 muestran solo Guadalajara 707 y Valle de México 3614 en listados compartidos. No borran ni fusionan direcciones, pagos o TAGs; falta verificar consultas reales de producción |
-| Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#147 conectan cuotas históricas, egresos, ingresos manuales y saldo inicial; #151 limita cumplimiento al padrón documentado. PR #180 acumula adeudo desde septiembre de 2026, abonos y recargos, y expone último mes pagado. PR #189 conserva el tablero financiero solo para SUPER_ADMIN/ADMINISTRADOR y separa la vista operativa de otros roles. Requiere cotejo con MySQL y despliegue reales |
+| Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#147 conectan cuotas históricas, egresos, ingresos manuales y saldo inicial; #151 limita cumplimiento al padrón documentado. PR #180 acumula adeudo desde septiembre de 2026. PR #189 separa el tablero financiero de la vista operativa. PR #191 muestra el último período realmente pagado incluso si es futuro, sin proyectar deuda ni usar la vigencia TAG como pago. Requiere cotejo con MySQL y despliegue reales |
 | Cuotas para Seguridad | Implementado en main; producción no verificada | PR #140 añade ruta autenticada y tabla paginada sin nombres/teléfonos. Calcula desde `direcciones`/`cuotas`, no desde TAGs ni Sheets; no se consultó la DB real |
 | Históricos Google Sheets | Backend/staging opcional conservado; controles retirados de Análisis | PR #140 añadió lectura OAuth y preparación idempotente, deshabilitadas por defecto. PR #187 retiró solo la tarjeta y el script de esa vista; no borró archivo, endpoint, tabla ni datos. Requiere decisión explícita, migración y validación antes de activar |
-| Análisis de viviendas y TAGs | Implementado en main; MySQL/C3 no verificados | PR #181–#184 incorporan resumen por vivienda, lectura C3 bajo demanda, contador/modal compacto, advertencias deuda–TAG y filtro correspondiente. Los estados antiguos o inciertos quedan «sin confirmar»; no se ejecutan escrituras C3 desde Análisis. Falta validar casas con 0/1/varios TAGs y discrepancias reales |
+| Análisis de viviendas y TAGs | Implementado en main; MySQL/C3 no verificados | PR #181–#184 incorporan resumen, lectura C3 bajo demanda, modal, advertencias y filtro. PR #190 separa el pago del modal TAGs. PR #191 añade filtro inclusivo Mes/Año de último pago confirmado y permite mostrar anticipos futuros sin alterar el saldo al corte. Los estados C3 inciertos siguen «sin confirmar» y Análisis no escribe al C3. Falta validar datos reales |
 | Navegación de Administración/Comunidad | Implementada en main; validación visual pendiente | PR #187 oculta Cuotas del menú y retira la tarjeta de conciliación; #188 oculta las pestañas de Análisis, conserva sus elementos/rutas y ordena Comunidad con Pagos primero. Son cambios de interfaz, no borrado de datos ni cambio de permisos |
 | Inicio por rol | Implementado en main; producción no verificada | PR #189 conserva finanzas para administradores; Seguridad recibe alcance general de visitas/accesos; Condómino solo viviendas vinculadas. El filtro se aplica en servidor y no se exponen finanzas a no administradores. Falta suite completa, cuentas reales y MySQL de producción |
 | Continuidad documental | Disponible en main | AGENTS.md e índice publicados en `6995b845b500e7530d83b6d3cc6a3ab34ca62697`; este archivo agrega estado y bitácora |
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
-Desde el SHA anterior main avanzó 98 commits; se fusionaron los PR #180–#189 y no
-quedaron PR abiertos al cierre de esta revisión. El commit `f8dad14`, dedicado a la bitácora
+Desde el SHA anterior main avanzó 21 commits; se fusionaron los PR #190–#191 y no
+quedaron PR abiertos al cierre de esta revisión. El commit `82496d8`, dedicado a la bitácora
 del día anterior, se excluye del trabajo de producto. Los merges acreditan presencia en main,
 no despliegue en Hostinger, migraciones, datos de MySQL ni funcionamiento físico de C3/Dahua.
 El PR #132 continúa revertido y no se restauraron sus comandos/workflow.
@@ -76,6 +76,8 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 10/oct/2026 | Documentación de continuidad: enlaces relativos y `git diff --check` | Sin errores | Solo valida archivos/enlaces; no funcionamiento de backend o equipo |
 | 11/oct/2026, 23:36, America/Mexico_City | main `ebed7ff`; `node --test tests/ui-responsive.test.cjs tests/ui-unificada.test.cjs tests/ui-inicio-kpis-reportes.test.cjs tests/ui-kpi-compact.test.cjs tests/ui-seguridad-analisis-distribucion.test.cjs backend/test/seguridad-sheets-mobile.test.js` | **26 aprobadas, 3 fallidas** | Pruebas locales/estructurales. Los tres fallos esperan versiones antiguas de cache busting (`sin-conexion`, `kpis-compact`, `mobile-operativo ...-b`) reemplazadas por versiones posteriores; la suite de main queda roja hasta actualizar/conciliar esas expectativas |
 | 14/oct/2026 | PR #180–#189; archivos de prueba y validaciones aisladas descritos en cada PR; comandos completos no publicados | #181: 11; #182: 6; #183: 6; #184: 8; #185: 5; #186: 6; #187: 5 comprobaciones satisfactorias; #180/#188/#189 sin total publicado | Resultados declarados en las ramas/PR; no se volvieron a ejecutar y GitHub no acredita CI del main |
+| 15/oct/2026 | PR #190, pruebas/sintaxis de columna Pago; comando completo no publicado | **18 comprobaciones pasaron** | Resultado declarado en el PR; sin ejecución nueva de esta revisión, MySQL ni C3 |
+| 15/oct/2026 | PR #191, filtro Mes/Año, regresión de deuda/TAG/pagos y sintaxis; comando completo no publicado | **30 comprobaciones pasaron** | Resultado declarado en el PR; falta MySQL real y revisión visual de navegador/Safari |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -88,12 +90,10 @@ al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
 GitHub devolvió cero estados de commit y cero workflow runs para los commits de merge
-de los PR #180–#189. Por tanto, no hay CI acreditado para esas fusiones. Las descripciones
-reportan validaciones aisladas o estructurales: #181 (11), #182 (6), #183 (6), #184 (8),
-#185 (5), #186 (6) y #187 (5); #180 añadió casos sin publicar un total, #188 documentó
-pruebas/sintaxis sin total y #189 simulaciones por rol sin suite completa. Los comandos exactos
-no fueron publicados y no se repitieron en esta actualización; nada de ello equivale a una
-suite verde del main actual.
+de los PR #190–#191. Por tanto, no hay CI acreditado para esas fusiones. Sus descripciones
+reportan 18 y 30 comprobaciones locales respectivamente, pero no publican los comandos
+completos y no se repitieron en esta actualización; no equivalen a una suite verde del main
+actual. Se conserva el historial anterior de pruebas y la ausencia de CI ya documentada.
 No se ejecutaron pruebas contra MySQL, Hostinger, WhatsApp, NVR Dahua ni hardware C3 reales.
 
 ## Cotejo de base: exportaciones del 10 de octubre
@@ -124,10 +124,10 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | --- | --- |
 | Dos pruebas fallidas de edición de TAG | Diagnosticar y repetir pruebas pertinentes, sin debilitar validaciones reales |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
-| PR #180–#189 sin CI acreditado | Ejecutar una suite reproducible sobre `7ab74eb`; incluir dashboard por rol, adeudos/TAGs, menús y regresiones existentes. Comprobar despliegue por separado |
+| PR #190–#191 sin CI acreditado | Ejecutar una suite reproducible sobre `fbd6ebb`; incluir columna Pago, modal TAGs, filtro Mes/Año, anticipos futuros, deuda al corte y regresiones existentes. Comprobar despliegue por separado |
 | Inicio por rol | Validar con cuentas reales de administrador, Seguridad y Condómino (una y varias viviendas): alcance de listas, ausencia de finanzas en no administradores y ausencia de datos de casas ajenas |
-| Adeudo acumulado y advertencias TAG | Cotejar contra MySQL una casa al corriente, parcial y morosa; abrir modal en casas con 0/1/varios TAGs y confirmar C3 bajo demanda sin ejecutar escrituras |
-| Safari/iPhone y navegación | Probar en Safari nativo fechas vacías/con valor, egresos 2×2, dona, fichas, pestañas ocultas y orden de Administración/Comunidad; no registrar un egreso real solo para la prueba |
+| Adeudo acumulado, anticipos y advertencias TAG | Cotejar contra MySQL una casa al corriente, parcial, morosa y con anticipo 2027; confirmar que Último mes pagado muestra el período real sin sumar deuda futura. Abrir modal en casas con 0/1/varios TAGs y confirmar C3 bajo demanda sin escrituras |
+| Safari/iPhone y navegación | Probar en Safari nativo fechas, egresos 2×2, dona, fichas, columna Pago, filtro Mes/Año, pestañas ocultas y orden de menús; comprobar que Rosas 29 abre el modal correcto sin registrar un pago solo para la prueba |
 | Pagos manuales y sincronización C3 | Probar primero con una vivienda controlada; confirmar transacción, rechazo de duplicados, un solo evento durable y estado COMPLETADO con lectura física de todos los TAGs. No usar masivamente antes |
 | Auto-users | Validar migración en copia de MySQL, permisos, aceptación, edición/borrado de pruebas y WhatsApp con plantilla aprobada; no activar cuentas cambiando solo estatus |
 | Cámaras Dahua y pluma | Para video falta gateway RTSP→HLS privado y configuración Hostinger. Para pluma, coordinar prueba física; ORDEN ENVIADA no confirma posición |
@@ -165,6 +165,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-15
+
+- Revisión de las 23:28: main leído en `fbd6ebb7091fd114f8b4263c561536a7c156e0e4`, 21 commits después del punto anterior. Se excluyó `82496d8`, que solo actualizó esta bitácora. Los PR #190–#191 están fusionados y no quedaron PR abiertos.
+- Pagos en Análisis: #190 coloca «Registrar pago» en una columna propia por vivienda y lo retira del modal TAGs. Reutiliza el flujo existente y no modifica backend, cálculos, DB ni C3. Falta validar visualmente escritorio/iPhone y apertura de la vivienda correcta sin efectuar un cobro.
+- Último mes pagado: #191 añade filtro inclusivo Mes/Año y muestra anticipos confirmados de 2027 o posteriores aunque el período financiero consultado sea anterior. El saldo conserva su corte y no proyecta meses futuros; no toma la vigencia TAG como pago. Falta cotejo con MySQL real y navegador/Safari.
+- Pruebas declaradas: #190 reporta 18 comprobaciones y #191 reporta 30, sin comandos completos publicados. GitHub devolvió cero estados y cero workflow runs para ambos merges; no se ejecutó una suite nueva sobre main.
+- No se consultó Hostinger/MySQL ni se hicieron pagos, escrituras C3 o pruebas físicas. Se conservan los pendientes anteriores y no hay nueva confirmación del usuario sobre DB o hardware.
 
 ### 2026-10-14
 
