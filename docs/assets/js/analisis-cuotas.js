@@ -77,6 +77,7 @@
   const select=$('financeStreet'),selected=select.value;
   select.innerHTML='<option value="">Todas las calles</option>'+[...data.calles].sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'})).map(c=>'<option value="'+esc(c.calle)+'">'+esc(c.calle)+'</option>').join('');
   select.value=data.calles.some(x=>x.calle===selected)?selected:'';
+  actualizarAniosUltimoPago();
   renderHouses();
  }
  function renderExpenses(){
@@ -257,13 +258,39 @@
    const params=new URLSearchParams({casaId:String(h.casaId),calle:h.calle,numero:String(h.numero)});
    window.location.assign('zkteco.html?'+params.toString());
  });
+// Las mensualidades adelantadas se comparan por año y mes real, sin
+// condicionar el último pago al año/mes de la gráfica actual.
+function indiceUltimoMesPagado(ultimo){
+  const year=Number(ultimo?.anio);
+  const month=monthsES.findIndex(name=>name.toUpperCase()===String(ultimo?.mes||'').trim().toUpperCase())+1;
+  if(!Number.isInteger(year)||year<2020||year>2100||month<1)return null;
+  return year*12+month-1;
+}
+function actualizarAniosUltimoPago(){
+  const select=$('financeLastPaidYear'),previous=Number(select.value)||moment.getFullYear();
+  const pagos=(data?.viviendas||[]).map(h=>indiceUltimoMesPagado(h.ultimoMesPagado))
+    .filter(index=>index!==null).map(index=>Math.floor(index/12));
+  const first=Math.max(2020,Math.min(2026,moment.getFullYear(),...pagos));
+  const last=Math.min(2100,Math.max(moment.getFullYear()+3,...pagos));
+  select.innerHTML=Array.from({length:last-first+1},(_,i)=>first+i)
+    .map(year=>'<option value="'+year+'">'+year+'</option>').join('');
+  select.value=String(previous>=first&&previous<=last?previous:moment.getFullYear());
+}
+function cumpleUltimoPago(h,month,year){
+  if(!month)return true;
+  const actual=indiceUltimoMesPagado(h.ultimoMesPagado);
+  return actual!==null&&actual>=year*12+month-1;
+}
 function renderHouses(){
   if(!data)return;
   const query=$('financeSearch').value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),
     street=$('financeStreet').value,status=$('financeStatus').value;
+  const ultimoMes=Number($('financeLastPaidMonth').value)||0;
+  const ultimoAnio=Number($('financeLastPaidYear').value);
   const filtered=data.viviendas.filter(h=>{
    const hay=[h.calle,h.numero,h.nombre].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-   return (!query||hay.includes(query))&&(!street||h.calle===street)&&houseMatchesStatus(h,status);
+   return (!query||hay.includes(query))&&(!street||h.calle===street)&&
+     houseMatchesStatus(h,status)&&cumpleUltimoPago(h,ultimoMes,ultimoAnio);
   }).sort((a,b)=>String(a?.calleCorrecta||a?.calle||'').localeCompare(String(b?.calleCorrecta||b?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a?.numero||'').localeCompare(String(b?.numero||''),'es-MX',{numeric:true}));
   $('financeHouseCount').textContent=filtered.length+' de '+data.viviendas.length+' casas';
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
@@ -456,11 +483,14 @@ function renderHouses(){
   $('expenseSort').value='fecha_desc';
   renderExpenses();
  });
- for(const id of ['financeSearch','financeStreet','financeStatus'])$(id).addEventListener(id==='financeSearch'?'input':'change',()=>{housePage=1;renderHouses();});
+ for(const id of ['financeSearch','financeStreet','financeStatus','financeLastPaidMonth','financeLastPaidYear'])
+  $(id).addEventListener(id==='financeSearch'?'input':'change',()=>{housePage=1;renderHouses();});
  $('financePrev').addEventListener('click',()=>{housePage=Math.max(1,housePage-1);renderHouses();});
  $('financeNext').addEventListener('click',()=>{housePage++;renderHouses();});
  $('financeClear').addEventListener('click',()=>{
-  ['financeSearch','financeStreet','financeStatus'].forEach(id=>$(id).value='');housePage=1;renderHouses();
+  ['financeSearch','financeStreet','financeStatus','financeLastPaidMonth'].forEach(id=>$(id).value='');
+  $('financeLastPaidYear').value=String(moment.getFullYear());
+  housePage=1;renderHouses();
  });
  $('newExpense').addEventListener('submit',async e=>{
   e.preventDefault();
