@@ -357,7 +357,7 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
   .residences-filter>label:first-child{grid-column:1/-1}
 }
 @media(max-width:700px){
-  body.page-analisis.mj-shared-sidebar-enabled .residences-filter,
+  body.page-analisis.mj-shared-sidebar-enabled .filters.residences-filter,
   body.page-analisis .residences-filter{
     display:grid!important;
     grid-template-columns:minmax(0,1fr)!important;
