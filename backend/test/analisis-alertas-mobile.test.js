@@ -81,8 +81,8 @@ test('Caché actualizada y controles operativos intactos',()=>{
  const html=read('docs/analisis-cuotas.html');
  const sidebar=read('docs/assets/js/site-sidebar.js');
  const ui=read('docs/assets/js/analisis-cuotas.js');
- assert.match(html,/analisis-cuotas\.css\?v=20261015-columna-pago/);
- assert.match(html,/analisis-cuotas\.js\?v=20261015-columna-pago/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261015-mes-pagado/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261015-mes-pagado/);
  assert.match(sidebar,/mobile-operativo\.css\?v=20261015-safari-fechas-compactas/);
  for(const action of ['houseTagsEdit','houseTagsRefresh']){
    assert.match(html,new RegExp('id="'+action+'"'));

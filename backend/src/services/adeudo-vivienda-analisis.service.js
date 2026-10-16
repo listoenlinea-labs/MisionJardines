@@ -31,7 +31,9 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico() }) {
     .toISOString().slice(0, 10);
   const corte = hoy < finCalendario ? hoy : finCalendario;
   const limite = Math.min(fin, indice(Number(corte.slice(0, 4)), Number(corte.slice(5, 7))));
-  const ultimo = siguienteDelUltimo(cuotas, anio, mes);
+  // El último mes pagado refleja TODO el historial confirmado, incluidos
+  // anticipos de años posteriores; no representa el corte del saldo.
+  const ultimo = siguienteDelUltimo(cuotas, 2100, 12);
   const porPeriodo = new Map();
   for (const cuota of cuotas || []) {
     const mm = MESES.indexOf(String(cuota.mes || '').toUpperCase()) + 1;
