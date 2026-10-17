@@ -1,9 +1,9 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 15/oct/2026, 23:28, America/Mexico_City.
-**SHA de main consultado:** `fbd6ebb7091fd114f8b4263c561536a7c156e0e4`.
-**Fuentes de esta revisión:** comparación de main desde `7ab74ebbc08e168f64f3f5f0dfb405ca34b1f0ea`,
-metadatos de los PR #190–#191, commits y estados/checks en GitHub, documentación vigente,
+**Última revisión:** 16/oct/2026, 23:27, America/Mexico_City.
+**SHA de main consultado:** `b3188c74117e14fd9b36f79edfeac87ceca5981f`.
+**Fuentes de esta revisión:** comparación de main desde `fbd6ebb7091fd114f8b4263c561536a7c156e0e4`,
+commits, PR abiertos y estados/checks en GitHub, documentación vigente,
 historial ya registrado y conversación disponible. Las capturas
 de esa transcripción no están disponibles como imágenes inspeccionables aquí; no se certifican
 sus resultados desde descripciones del asistente. No se consultaron MySQL, Hostinger, Google
@@ -45,9 +45,10 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
-Desde el SHA anterior main avanzó 21 commits; se fusionaron los PR #190–#191 y no
-quedaron PR abiertos al cierre de esta revisión. El commit `82496d8`, dedicado a la bitácora
-del día anterior, se excluye del trabajo de producto. Los merges acreditan presencia en main,
+Desde el SHA anterior main avanzó un commit: `b3188c7`, dedicado exclusivamente a
+actualizar esta bitácora el 15/oct; se excluye del trabajo de producto. No hubo commits ni PR
+nuevos de producto y no quedaron PR abiertos al cierre de esta revisión. Los merges ya
+registrados acreditan presencia en main,
 no despliegue en Hostinger, migraciones, datos de MySQL ni funcionamiento físico de C3/Dahua.
 El PR #132 continúa revertido y no se restauraron sus comandos/workflow.
 
@@ -90,11 +91,10 @@ al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
 GitHub devolvió cero estados de commit y cero workflow runs para los commits de merge
-de los PR #190–#191. Por tanto, no hay CI acreditado para esas fusiones. Sus descripciones
-reportan 18 y 30 comprobaciones locales respectivamente, pero no publican los comandos
-completos y no se repitieron en esta actualización; no equivalen a una suite verde del main
-actual. Se conserva el historial anterior de pruebas y la ausencia de CI ya documentada.
-No se ejecutaron pruebas contra MySQL, Hostinger, WhatsApp, NVR Dahua ni hardware C3 reales.
+de los PR #190–#191; se conserva la ausencia de CI acreditado y los resultados locales ya
+documentados. El único commit posterior fue la actualización documental `b3188c7`, también
+sin estados ni workflow runs; no aporta cambios ni pruebas de producto. No se ejecutaron
+pruebas nuevas contra MySQL, Hostinger, WhatsApp, NVR Dahua ni hardware C3 reales.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -165,6 +165,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-16
+
+- Revisión de las 23:27: main leído en `b3188c74117e14fd9b36f79edfeac87ceca5981f`.
+- Sin cambios verificables de producto desde `fbd6ebb7091fd114f8b4263c561536a7c156e0e4`. El único avance fue `b3188c7`, commit documental de la bitácora del 15/oct, excluido de la lista de trabajo de producto.
+- No hay PR abiertos. El commit documental devolvió cero estados y cero workflow runs; no hubo nuevas pruebas automatizadas ni evidencia de despliegue.
+- No se consultó Hostinger/MySQL ni se realizaron pagos, escrituras C3 o pruebas físicas. Se conservan sin cambios el resumen operativo, el historial de pruebas y todos los pendientes anteriores.
 
 ### 2026-10-15
 
