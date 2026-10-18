@@ -148,8 +148,9 @@ Ejemplos que deben conservarse:
   no pueden autenticarse. Aceptación por enlace válido activa exclusivamente rol
   CONDOMINO y su vivienda confirmada. Los enlaces son privados, reemplazables y de
   un solo uso; solo guardar hashes. No activar prerregistros cambiando estatus solo.
-  El envío por WhatsApp Business requiere configuración/plantilla; no asumir que
-  el agente de llamadas del conmutador envía estas invitaciones. Inicio queda
+  Las invitaciones se envían por correo SMTP; no usar WhatsApp Business para este flujo.
+  El teléfono orienta el login, pero no concede un enlace de activación: se entrega al correo
+  registrado. Números compartidos requieren usuario/correo o revisión administrativa. Inicio queda
   permitido para Condómino al completar el flujo; Seguridad conserva su restricción.
 
 - Releer el estado actual de main y el esquema/modelos antes de editar. No afirmar

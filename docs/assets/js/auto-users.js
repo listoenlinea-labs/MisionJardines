@@ -9,21 +9,21 @@
   if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role)) { $('adminAccess').textContent = 'Esta página es exclusiva de Administración.'; return; }
   const API = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'http://localhost:3000/api' : 'https://api-misionjardines.listoenlinea.host/api';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const labels = { PRUEBA_SIN_ENVIO: 'Prueba sin envío', CREADO: 'Creadas', EXISTENTE: 'Ya existentes', VINCULADO_EXISTENTE: 'Vinculadas a cuenta existente', ENVIADO: 'Enviado a WhatsApp', ERROR: 'Error', REVISAR: 'Revisar', ACEPTADA_O_NO_ELEGIBLE: 'Cuenta ya aceptada o no disponible', SIN_ENVIAR: 'Sin enviar', ENVIANDO: 'Enviando', REQUIERE_CORRECCION: 'Corrección pendiente', ABIERTO: 'Abierto', CORREGIDO: 'Corregido' };
+  const labels = { PRUEBA_SIN_ENVIO: 'Prueba sin envío', CREADO: 'Creadas', EXISTENTE: 'Ya existentes', VINCULADO_EXISTENTE: 'Vinculadas a cuenta existente', ENVIADO: 'Enviado a correo', ERROR: 'Error', REVISAR: 'Revisar', ACEPTADA_O_NO_ELEGIBLE: 'Cuenta ya aceptada o no disponible', SIN_ENVIAR: 'Sin enviar', ENVIANDO: 'Enviando', REQUIERE_CORRECCION: 'Corrección pendiente', ABIERTO: 'Abierto', CORREGIDO: 'Corregido' };
   const name = u => [u.nombre, u.apellidoPaterno, u.apellidoMaterno].filter(Boolean).join(' ');
   let page = 1, total = 0, reportPage = 1, reportTotal = 0, busy = false, rows = [], reports = [], houses = [];
-  async function api(path, body, method = 'GET') {
+  async function api(path, body, method = 'GET', namespace = '/auto-users') {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45000);
+    const timeout = setTimeout(() => controller.abort(), /invitacion/.test(path) ? 90000 : 45000);
     try {
-      const response = await fetch(API + '/auto-users' + path, { method, signal: controller.signal, headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      const response = await fetch(API + namespace + path, { method, signal: controller.signal, headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
       let data;
       try { data = await response.json(); }
       catch { throw Error('El servidor respondió sin un resultado válido (HTTP ' + response.status + '). Revisa que el backend esté actualizado.'); }
       if (!response.ok || !data.ok) throw Error(data.message || 'No fue posible completar la operación (HTTP ' + response.status + ').');
       return data;
     } catch (error) {
-      if (error.name === 'AbortError') throw Error('No se recibió respuesta del servidor en 45 segundos. Actualiza la tabla antes de reintentar: la operación podría haberse completado.');
+      if (error.name === 'AbortError') throw Error('No se recibió respuesta del servidor a tiempo. Actualiza la tabla antes de reintentar: la operación podría haberse completado.');
       if (error instanceof TypeError) throw Error('No se pudo contactar al servidor. Revisa la conexión y actualiza la tabla antes de reintentar.');
       throw error;
     } finally { clearTimeout(timeout); }
@@ -50,7 +50,7 @@
       } else {
         const data = await api('/prueba/' + trialId + '/enlace', { frontendUrl: new URL('.', location.href).href }, 'POST');
         $('trialLink').value = data.enlace;
-        $('trialStatus').textContent = 'Enlace generado. No se envió ningún WhatsApp. Cópialo y ábrelo en incógnito.';
+        $('trialStatus').textContent = 'Enlace generado. No se envió ningún correo. Cópialo y ábrelo en incógnito.';
       }
       await load();
     } catch (error) { $('trialStatus').textContent = error.message; }
@@ -118,7 +118,15 @@
     if (u.cuentaAceptada || u.estatus && u.estatus !== 'PENDIENTE') return '—';
     return '<button type="button" data-edit="' + esc(u.id) + '">Editar</button><button type="button" data-invite="' + esc(u.id) + '">Enviar</button>';
   }
+  async function loadRequests() {
+    try {
+      const data = await api('?estatus=PENDIENTE&pagina=1', null, 'GET', '/auth/cuentas');
+      $('pendingRequestsState').textContent = Number(data.total || 0) + ' solicitud(es) pendiente(s) de revisión administrativa.';
+      $('pendingRequestsList').innerHTML = (data.solicitudes || []).map(request => '<p><strong>' + esc(name(request.usuario || {})) + '</strong> · ' + esc(request.calle || request.tipoCuenta) + ' ' + esc(request.numeroCasa || '') + '<small>' + esc(request.usuario?.telefono || 'Sin teléfono') + ' · ' + esc(request.usuario?.correo || '') + '</small></p>').join('');
+    } catch (error) { $('pendingRequestsState').textContent = 'No se pudieron consultar las solicitudes. ' + error.message; }
+  }
   async function load() {
+    await loadRequests();
     await loadTrials();
     const data = await api('?pagina=' + page + '&paginaReportes=' + reportPage);
     rows = data.registros; reports = data.reportes; total = Number(data.total);
@@ -202,7 +210,7 @@
     $('confirmBatchHeading').textContent = path === '/crear' ? 'Crear usuarios' : 'Enviar invitaciones';
     $('confirmBatchDescription').textContent = path === '/crear'
       ? '¿Estás seguro de crear cuentas para todos los condóminos que todavía no tengan una cuenta asociada?'
-      : '¿Estás seguro de enviar invitaciones por WhatsApp a todas las cuentas pendientes de aceptación que puedan recibirlas?';
+      : '¿Estás seguro de enviar invitaciones por correo a todas las cuentas pendientes de aceptación que puedan recibirlas?';
     $('confirmBatchDialog').showModal();
   }
   $('confirmBatchNo').addEventListener('click', () => {
@@ -233,7 +241,7 @@
     trialButtons();
     houses = list.viviendas;
     for (const casa of houses) { const option = document.createElement('option'); option.value = casa.id; option.textContent = (casa.calleCorrecta || casa.calle) + ' · ' + casa.numero; $('editHouse').append(option); }
-    $('whatsappState').textContent = config.whatsappDisponible ? 'WhatsApp Business configurado. ENVIADO indica que el proveedor aceptó el mensaje; no confirma que se haya leído.' : config.mensaje;
+    $('correoState').textContent = config.correoDisponible ? 'Correo SMTP configurado. ENVIADO indica que el proveedor aceptó el mensaje; no confirma que se haya leído.' : config.mensaje;
     await load(); $('adminWorkspace').hidden = false; $('adminAccess').hidden = true;
   } catch (error) { $('adminAccess').textContent = error.message; }
 })();

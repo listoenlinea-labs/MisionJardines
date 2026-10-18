@@ -64,12 +64,12 @@ function fixture(condos = [{ id: 1, direccionId: 10, nombreCompleto: 'Persona Un
   }
   const sent = [];
   let enabled = true, failSend = false;
-  const whatsapp = {
+  const correoSender = {
     configuracion() { if (!enabled) throw Object.assign(Error('not configured'), { status: 503 }); return { frontend: 'https://example.com/portal' }; },
-    telefonoWhatsApp: phone => phone && String(phone).replace(/\D/g, '').length >= 10,
+    correoValido: correo => Boolean(correo) && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(correo),
     async enviarInvitacion(data) { if (failSend) throw Error('provider failed'); sent.push(data); return 'synthetic-message'; }
   };
-  const service = crearServicio({ db, ...Object.fromEntries(Object.keys(tables).map(key => [key, model(key)])), whatsapp, hashPassword: async p => 'synthetic-hash:' + p });
+  const service = crearServicio({ db, ...Object.fromEntries(Object.keys(tables).map(key => [key, model(key)])), correoSender, buscarTelefono: async (model, phone) => { const normalize = require('../src/services/telefono-cuenta.service').normalizarTelefono; if (!normalize(phone)) throw Object.assign(Error('Teléfono inválido'), { status: 400 }); return tables.Usuario.filter(u => normalize(u.telefono) === normalize(phone)).slice(0, 2).map(row => ({ ...row })); }, hashPassword: async p => 'synthetic-hash:' + p });
   return { service, sent, db, failDelete(table) { failDeleteTable = table; }, get tables() { return tables; }, enabled(value) { enabled = value; }, failSend(value) { failSend = value; } };
 }
 const tokenFrom = f => new URLSearchParams(new URL(f.sent.at(-1).enlace).hash.slice(1)).get('invitacion');
@@ -153,7 +153,7 @@ test('listing does not expose token hashes/passwords and preserves correction re
   assert.ok(!JSON.stringify(data).includes('contrasenaHash')); assert.ok(!JSON.stringify(data).includes('tokenHash'));
 });
 
-test('prueba individual crea exactamente una cuenta ficticia, idempotente, sin WhatsApp configurado', async () => {
+test('prueba individual crea exactamente una cuenta ficticia, idempotente, sin correo configurado', async () => {
   const f = fixture(); f.enabled(false);
   assert.deepEqual((await f.service.viviendasPrueba()).map(c => c.id), [10]);
   const key = 'a'.repeat(32);
@@ -277,4 +277,37 @@ test('error al revisar historial tiene mensaje accionable y mantiene cuenta/invi
   f.db.models = { Legacy: { getTableName: () => 'pagos_legacy', rawAttributes: { usuarioId: { field: 'usuario_id' } }, async findOne() { throw Error('SQL must not be exposed'); } } };
   await assert.rejects(f.service.borrarPrueba(trial.usuarioId), error => error.status === 503 && /pagos_legacy/.test(error.message) && !/SQL must/.test(error.message));
   assert.equal(f.tables.Usuario.length, 1); assert.equal(f.tables.Invitacion.length, 1);
+});
+
+test('acceso por teléfono distingue aceptada, prerregistro, desconocida, bloqueada y número compartido sin devolver datos privados', async () => {
+  const f = fixture();
+  assert.equal((await f.service.consultarTelefono('3312345678')).estado, 'NUEVA');
+  await f.service.createOne(1);
+  const state = await f.service.consultarTelefono('+52 (33) 1234-5678');
+  assert.deepEqual(state, { estado: 'PRERREGISTRO' }); assert.equal(f.sent.length, 0);
+  const result = await f.service.enviarPorTelefono('3312345678');
+  assert.ok(result.mensaje); assert.equal(result.enlace, undefined); assert.equal(result.registro, undefined);
+  assert.ok(!JSON.stringify(result).includes('persona1@example.com'));
+  const firstHash = f.tables.Invitacion[0].tokenHash;
+  await f.service.enviarPorTelefono('3312345678');
+  assert.equal(f.sent.length, 1); assert.equal(f.tables.Invitacion[0].tokenHash, firstHash);
+  f.tables.Usuario[0].cuentaAceptada = true; f.tables.Usuario[0].estatus = 'ACTIVO';
+  assert.deepEqual(await f.service.consultarTelefono('3312345678'), { estado: 'ACEPTADA' });
+  await assert.rejects(f.service.enviarPorTelefono('3312345678'), { status: 409 });
+  f.tables.Usuario[0].estatus = 'BLOQUEADO';
+  assert.equal((await f.service.consultarTelefono('3312345678')).estado, 'REVISION');
+  f.tables.Usuario.push({ id: 2, telefono: '52 33 1234 5678', estatus: 'ACTIVO', cuentaAceptada: true });
+  assert.equal((await f.service.consultarTelefono('3312345678')).estado, 'REVISION');
+  await assert.rejects(f.service.enviarPorTelefono('3312345678'), { status: 409 });
+  await assert.rejects(f.service.consultarTelefono('3312345678 / 3398765432'), { status: 400 });
+});
+test('invitaciones SMTP no requieren teléfono y rechazan cuentas sin correo sin simular envío', async () => {
+  const f = fixture(); await f.service.createOne(1); f.tables.Usuario[0].telefono = null;
+  assert.equal((await f.service.enviarLote()).resultados[0].resultado, 'ENVIADO');
+  assert.equal(f.sent[0].correo, 'persona1@example.com'); assert.equal(f.sent[0].telefono, undefined);
+  f.tables.Usuario[0].correo = null;
+  const before = f.tables.Invitacion[0].tokenHash;
+  const retry = await f.service.enviarLote();
+  assert.equal(retry.resultados[0].resultado, 'REVISAR'); assert.match(retry.resultados[0].mensaje, /correo/);
+  assert.equal(f.tables.Invitacion[0].tokenHash, before); assert.equal(f.sent.length, 1);
 });

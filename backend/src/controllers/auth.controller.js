@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
+const { filtroTelefono, buscarUsuariosPorTelefono } = require('../services/telefono-cuenta.service');
 const sequelize = require('../config/database');
 
 const {
@@ -61,9 +62,10 @@ function perfilInclude() {
 async function iniciarSesion(req, res) {
     try {
         const correo = String(req.body.nombreUsuario || req.body.correo || '').trim().toLowerCase();
+        const telefono = req.body.telefono;
         const contrasena = req.body.contrasena;
 
-        if (!correo || !contrasena) {
+        if ((!correo && !telefono) || !contrasena) {
             return res.status(400).json({
                 ok: false,
                 message: 'Usuario o correo y contraseña son obligatorios'
@@ -74,7 +76,7 @@ async function iniciarSesion(req, res) {
             .scope('conContrasena')
             .findAll({
                 limit: 2,
-                where: {
+                where: telefono ? filtroTelefono(telefono) : {
                     [Op.or]: [{ correo }, { nombreUsuario: correo }]
                 },
                 include: [
@@ -157,7 +159,8 @@ async function iniciarSesion(req, res) {
             usuario: usuarioSeguro
         });
     } catch (error) {
-        console.error('Error al iniciar sesión:', error);
+        if (error.status) return res.status(error.status).json({ ok: false, message: error.message });
+        console.error('Error al iniciar sesión:', error.name);
 
         return res.status(500).json({
             ok: false,
@@ -267,6 +270,10 @@ async function solicitarRegistro(req, res) {
         const contrasenaHash = await bcrypt.hash(contrasena, 12);
         // Usuario y solicitud se crean juntos, o no se crea ninguno.
         await sequelize.transaction(async transaction => {
+            if (body.origenTelefono === true) {
+                const matches = await buscarUsuariosPorTelefono(Usuario, telefono, { attributes: ['id'], transaction, lock: transaction.LOCK.UPDATE });
+                if (matches.length) throw Object.assign(new Error('Ya existe una cuenta o solicitud con ese teléfono. Vuelve al inicio de sesión o contacta a Administración.'), { status: 409 });
+            }
             // El correo sigue siendo único en usuarios. Una cuenta BAJA puede
             // volver a solicitar autorización sin recuperar su acceso anterior.
             // El lock evita solicitudes simultáneas con el mismo correo.

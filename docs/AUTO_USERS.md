@@ -1,157 +1,68 @@
-# Auto-users: prerregistro e invitaciones de condóminos
+# Auto-users: prerregistro, invitación por correo y acceso por teléfono
 
-## Flujo
+## Flujo vigente
 
-La página `auto-users.html`, en el menú Administración, solo admite SUPER_ADMIN
-y ADMINISTRADOR. Sus API administrativas están protegidas por autenticación y
-roles reales de MySQL, no por el rol guardado en el navegador.
+Auto-users es exclusivo de SUPER_ADMIN y ADMINISTRADOR, tanto en menú como en API. No sustituye el registro público manual ni modifica pagos o TAGs. Cada condómino del padrón tiene como máximo una cuenta vinculada mediante `usuarios.condomino_id` único.
 
-1. **Crear usuarios** recorre condóminos por lotes de 20. Crea una cuenta PENDIENTE,
-   `cuenta_aceptada=false`, vinculada al condómino y su vivienda. La contraseña
-   inicial es aleatoria, desconocida y solo se guarda su hash. El vínculo de
-   vivienda permanece inactivo hasta la aceptación.
-2. El usuario inicial es el correo. Sin correo, usa el teléfono; si coincide,
-   concatena el nombre sin espacios/acentos. Si también coincide el nombre, añade
-   el ID de condómino. Si no hay ningún contacto, usa `condomino<ID>` y Administración
-   debe corregir el teléfono antes de enviar. No se inventan correos.
-3. Crear otra vez no duplica cuentas ni prerregistros: bloqueo por condómino y
-   UNIQUE(condomino_id). Una cuenta activa existente se vincula únicamente si
-   contacto, nombre, vivienda y rol Condómino coinciden. Coincidencias ambiguas,
-   condóminos inactivos, correos inválidos o viviendas inexistentes se presentan
-   como incidencias para revisión; no se fusionan personas por coincidencia de teléfono.
-4. **Mandar invitación** envía por lotes de 5 exclusivamente a cuentas vinculadas,
-   PENDIENTES y no aceptadas. **Enviar** hace lo mismo para una sola cuenta.
-   Un reporte abierto bloquea su envío hasta corregirlo. Los resultados distinguen
-   aceptación del mensaje por el proveedor, error y registro que requiere revisión.
-5. Cada envío crea un enlace aleatorio de 256 bits, válido por 14 días, y reemplaza
-   el anterior. Solo se guarda SHA-256 del token; el token viaja en el fragmento
-   de la URL, no en parámetros de consulta. No se devuelve en listados ni logs.
-6. `aceptar-cuenta.html` muestra calle/número como texto. E-mail (opcional), usuario,
-   contraseña y confirmación son editables. Las advertencias rojas piden comprobar
-   la vivienda; ambos botones principales tienen el mismo color.
-7. **Crear cuenta** abre una segunda confirmación: **NO** vuelve al formulario;
-   **Confirmar** exige escribir el número exacto de casa (incluidas letras/ceros).
-   El servidor coteja el número contra la vivienda almacenada, ignora casa/rol
-   enviados por el cliente, activa la cuenta y el vínculo, marca aceptada=true,
-   consume el enlace y crea una sesión. Redirige a **Inicio**. Condóminos ahora
-   tienen permiso de lectura de Inicio/dashboard; Seguridad sigue sin ese acceso.
-   El landing habitual al iniciar sesión por el login sigue siendo Cuotas.
-8. **Reportar error** guarda comentario y datos del prerregistro, invalida el
-   enlace y muestra el acuse de revisión. Administración ve cuentas/reportes
-   paginados (50), puede editar nombre, usuario, correo, teléfono y seleccionar una
-   vivienda existente. La corrección cambia también el registro del condómino y
-   conserva el reporte con estado CORREGIDO. Luego puede enviar individualmente
-   o reenviar a todas las cuentas pendientes.
+**Crear usuarios** pide confirmación Sí/No y recorre condóminos por lotes de 20. Conserva cuentas vinculadas y crea únicamente faltantes: estado PENDIENTE, cuenta_aceptada=false, contraseña aleatoria desconocida guardada como hash y vínculo de vivienda inactivo. El usuario inicial usa el correo registrado; sin correo usa teléfono y, si coincide, concatena nombre sin espacios o ID para evitar colisión. Coincidencias ambiguas de identidad/correo no se vinculan automáticamente; se muestran para revisión. Un correo mal capturado se corrige antes de crear.
 
-No se realizan cambios financieros, de recargos o fechas de TAGs. Este flujo es
-distinto del registro público previo, que conserva aprobación administrativa.
-No se deben aprobar estos prerregistros mediante SQL/cambio manual de estatus:
-la autenticación verifica también `cuenta_aceptada`.
+**Mandar invitación** pide confirmación Sí/No y envía por **SMTP**, individualmente, a las cuentas de condóminos PENDIENTES y no aceptadas. El navegador recorre lotes de una cuenta; mantener la página abierta hasta terminar. Los envíos individuales usan el mismo remitente. No se utiliza WhatsApp Business, Meta, plantillas ni códigos QR. Las cuentas de prueba, las ya aceptadas, correos inválidos y reportes de corrección abiertos no reciben correo.
 
-## Esquema y despliegue
+Cada correo incluye nombre, domicilio y enlace personal `aceptar-cuenta.html#invitacion=…`. El token aleatorio de 256 bits dura 14 días, se almacena solo como SHA-256 y se consume al aceptar. Un reenvío reemplaza el enlace anterior. El token no viaja como query string ni se guarda en almacenamiento del navegador. Estado ENVIADO significa que SMTP aceptó el destinatario; no acredita entrega ni lectura. No hay reintento automático del envío SMTP, para evitar duplicados ante una respuesta incierta. Un fallo se registra y puede revisarse/reintentarse desde Administración.
 
-`auto-users-schema.service.js` se ejecuta antes de las demás migraciones del
-servidor. Añade a `usuarios`: `condomino_id` (único, FK a condominos con RESTRICT),
-`nombre_usuario` (único) y `cuenta_aceptada` (true para cuentas existentes).
-`correo` permite NULL sin quitar su unicidad. Crea `auto_users_invitaciones` y
-`auto_users_reportes`. No altera contraseñas, roles ni estatus de cuentas antiguas.
-El modelo y el login aceptan usuario **o** correo. Los formularios verifican colisiones de usuario/correo con identificadores de
-otras cuentas. El login deniega identificadores ambiguos existentes en los datos,
-en lugar de elegir una cuenta arbitrariamente.
+## Configuración
 
-Desplegar frontend y backend; validar la migración con un respaldo/copia del
-MySQL real antes de producción. Las pruebas del PR usan almacenamiento simulado,
-no certifican el esquema desplegado ni crean usuarios reales. El índice/FK evita
-borrar físicamente un condómino vinculado sin resolver su cuenta.
+El remitente utiliza el mismo servicio SMTP del proyecto:
 
-## WhatsApp Business
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` obligatorias.
+- `SMTP_SECURE` según el proveedor y puerto; `SMTP_FROM_NAME` opcional.
+- `AUTO_USERS_FRONTEND_URL` o `FRONTEND_APP_URL`: raíz pública HTTPS del portal, sin credenciales, parámetros o fragmentos. Si faltan ambas, se usa `https://listoenlinea-labs.github.io/MisionJardines`.
 
-No usa WhatsApp Web ni el agente de llamadas del conmutador. El envío automático
-utiliza la API de Meta y una plantilla aprobada con **tres parámetros en el body**:
-nombre, domicilio y enlace completo. Ejemplo de texto de plantilla:
+No se necesitan variables WHATSAPP_*. Validar remitente, límites de envío y recepción con el proveedor SMTP antes del envío completo. Esta implementación no certifica la configuración real del servidor.
 
-> Hola {{1}}. Misión Jardines preparó tu cuenta para {{2}}. Revisa tu vivienda y
-> completa tu cuenta en {{3}}.
+## Login por teléfono
 
-Variables privadas del backend (no pegarlas en GitHub):
+El primer campo es el teléfono; **Continuar** consulta su estado sin recibir nombres, correo, vivienda ni token:
 
-```dotenv
-AUTO_USERS_FRONTEND_URL=https://TU_DOMINIO/RUTA_DEL_PORTAL
-WHATSAPP_ACCESS_TOKEN=
-WHATSAPP_PHONE_NUMBER_ID=
-WHATSAPP_API_VERSION=
-WHATSAPP_INVITACION_TEMPLATE=
-WHATSAPP_TEMPLATE_LANGUAGE=es_MX
-```
+1. **Cuenta ACTIVA y aceptada:** aparece la contraseña. El servidor exige que coincida y vuelve a comprobar el estado actual antes de crear la sesión.
+2. **Prerregistro PENDIENTE y no aceptado:** dirige a la misma página de aceptación. Allí se envía el enlace al correo ya registrado y se pide abrirlo para revisar datos y completar la cuenta. Conocer un teléfono no autoriza a ver/activar la vivienda de otra persona.
+3. **Teléfono sin cuenta:** dirige a `registro.html` y precarga el teléfono. El formulario solicita nombre/apellidos, contacto, vivienda y contraseña; guarda una cuenta sin acceso y una solicitud PENDIENTE para revisión administrativa. No vincula ni activa una vivienda automáticamente. Al aprobar con identidad verificada, Administración crea el acceso autorizado.
+4. **Teléfono compartido, cuenta bloqueada/baja/suspendida o solicitud ya pendiente:** indica revisión administrativa. No elige arbitrariamente una cuenta, no recupera contraseñas ni crea una solicitud repetida desde ese flujo.
 
-La URL es la raíz pública que contiene `aceptar-cuenta.html`, sin query ni fragmento.
-La versión de Graph y el idioma deben corresponder a la configuración vigente
-del remitente/plantilla. Sin configuración completa el botón informa el problema;
-no finge envíos ni rota enlaces. Un timeout o rechazo queda como ERROR y permite
-reintentar; ENVIADO solo indica que Meta aceptó el mensaje, no que llegó/se leyó.
-Una cuenta aceptada ya no se selecciona para reenvío. No hay sondeo periódico ni
-enviador automático en segundo plano: el administrador ejecuta los lotes desde
-la página y puede repetirlos si se interrumpe.
+**Usar usuario o correo** conserva acceso a administradores y cuentas antiguas que no tengan teléfono o compartan número. La normalización admite formatos mexicanos de 10 dígitos, +52 y prefijo histórico +521, además de números internacionales con lada; rechaza listas/extensiones. Se comparan teléfonos con expresiones ORM, no SQL interpolado.
 
-Referencia del formato del proveedor:
-[Meta WhatsApp Cloud API](https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api).
+La consulta pública tiene límite por IP de 20 peticiones cada 15 minutos y el envío desde login de 6. Un enlace enviado recientemente y válido se reutiliza: no se reenvía/rota por consulta pública durante cinco minutos. La página no devuelve el token por conocer el teléfono, ni permite indicar otro destinatario. Si falta correo, hay reporte abierto o el envío falla, debe intervenir Administración. Los envíos administrativos conservan reenvío explícito.
 
-## Validación
+## Solicitudes y alertas para Administración
 
-Desde backend:
+Una solicitud del formulario queda en `solicitudes_cuenta`, con usuario PENDIENTE, vivienda declarada y datos de contacto; requiere revisión en **Verificación de cuentas**. La aprobación exige identidad verificada, rol autorizado y vivienda real cuando corresponda. La solicitud no concede acceso por sí misma.
 
-```sh
-DB_PORT=3306 node --test test/auto-users*.test.js test/permissions.test.js test/auth-permissions.test.js test/registro-invitacion.test.js test/cuentas-verificacion.test.js test/cuentas-baja.test.js
-```
+El menú lateral muestra el número de solicitudes pendientes solo a administradores. Consulta una vez por carga de página, sin temporizador. Auto-users muestra una sección **Alertas: solicitudes de cuenta**, con resumen de la primera página y enlace a la revisión completa. La aprobación/rechazo usa las validaciones existentes del servidor. No se genera una cuenta aceptada automáticamente por coincidencia de teléfono o correo.
 
-Pruebas de modelo/servicio, migración simulada, HTTP local, formularios/DOM y Meta
-simulado. Cubren repetición/concurrencia, correo ausente y colisiones, cuenta
-existente, token reemplazado/caducado/usado, número incorrecto, manipulación de
-vivienda/rol, reporte/corrección/reenvío, contraseña, sesión, permisos y privacidad.
-Quedan pendientes revisión visual en navegador, MySQL real y envío de prueba desde
-el remitente configurado; no se envió WhatsApp ni se modificó producción en este PR.
+## Aceptación y reporte
 
-## Prueba individual sin WhatsApp
+Con enlace válido se muestran calle y número como texto sombreado, sin inputs editables. El usuario puede editar correo y nombre de usuario, y definir/confirmar contraseña (8 caracteres, mayúscula, minúscula y número; máximo 72 bytes bcrypt).
 
-En Auto-users, utiliza **Prueba individual · sin WhatsApp** antes de operar el padrón completo.
+Crear cuenta abre una segunda confirmación de domicilio. NO cierra el panel; Confirmar exige que el número escrito coincida con la vivienda del prerregistro. En transacción se establece cuenta_aceptada=true/ACTIVO, activa solo el vínculo confirmado, invalida el enlace y devuelve la sesión para entrar a Inicio. El enlace no puede aceptarse dos veces. Inicio está permitido para Condómino; Seguridad conserva sus restricciones.
 
-1. Selecciona una vivienda dedicada a pruebas (calle con la palabra `Prueba` o número que empiece por `TEST-`). Si no existe, regístrala primero en Viviendas; no renombres una vivienda real.
-2. Presiona **Crear cuenta de prueba**. Se guarda un condómino ficticio sin teléfono y una sola cuenta pendiente con e-mail `example.com`. No se recorren los condóminos reales. Repetir en la misma sesión de administrador conserva esa cuenta, incluso después de editarla o aceptarla.
-3. Presiona **Generar enlace sin enviar** y **Copiar enlace**. Abre el enlace en incógnito para conservar la sesión administrativa. No requiere configuración de WhatsApp. Cada generación reemplaza el enlace anterior, dura 14 días y guarda solamente su hash.
-4. Comprueba campos de vivienda de solo lectura, edición de usuario/e-mail, contraseñas, botón NO y rechazo de número de casa incorrecto. La cuenta debe continuar pendiente.
-5. Prueba **Reportar error**: verifica el reporte en Administración, corrígelo con **Editar**, y vuelve a **Generar enlace sin enviar** en la sección de prueba. No uses Enviar; las cuentas de prueba se excluyen de WhatsApp, aunque se les agregue un teléfono. Su vivienda solo puede corregirse hacia otra vivienda de pruebas.
-6. Con el nuevo enlace, confirma el número correcto: debe iniciar sesión en Inicio, mostrar Cuenta aceptada = Sí y dejar inutilizable ese enlace. Repetir Crear cuenta de prueba en la misma sesión no duplica la cuenta aceptada.
+Reportar error requiere comentario y revoca el enlace. Administración ve los reportes paginados, corrige nombre/vivienda/contacto/usuario, y envía un nuevo correo. Con reporte abierto no se reenvía. Nunca cambiar solo estatus para saltarse la aceptación.
 
-Estos botones crean registros ficticios persistentes en la base, pero no envían mensajes ni modifican cuentas reales, pagos o fechas de TAGs. La clave de repetición se conserva en `sessionStorage` de esa pestaña; otra sesión puede crear otra prueba. La vivienda elegida recibe un vínculo activo al aceptar: úsala exclusivamente para pruebas. No se ofrece reiniciar cuentas aceptadas.
+## Prueba individual sin envío
 
-Rutas administrativas: `GET /api/auto-users/prueba/viviendas`, `POST /prueba/crear` (`casaId`, `clavePrueba` de 32 hex), `POST /prueba/:id/enlace`. La URL usa `AUTO_USERS_FRONTEND_URL` si está configurada; de lo contrario acepta la ruta del portal enviada por el administrador solo cuando su origen coincide con el encabezado Origin, con HTTPS salvo localhost. Los enlaces son privados y no deben publicarse.
+La sección de pruebas crea un único condómino ficticio y una cuenta pendiente en una vivienda dedicada a pruebas (calle contiene Prueba o número empieza TEST-). No selecciona IDs constantes. Usa correo example.com y no inventa teléfono. Se marca internamente como AUTO_USERS_PRUEBA y queda excluida de todos los envíos de correo, incluso al editarla.
 
+Crear cuenta de prueba es idempotente por clave de pestaña guardada en sessionStorage; no duplica la cuenta al repetir dentro de esa pestaña. Generar enlace sin enviar solo devuelve un enlace privado al administrador y no requiere SMTP; abrirlo en incógnito conserva la sesión administrativa. Cada generación revoca el enlace anterior. Tras aceptar, el enlace ya no puede regenerarse.
 
-## Ver, editar y borrar cuentas de prueba
+La tabla Usuarios de prueba guardados consulta pendientes/aceptadas, IDs, nombre, vivienda, usuario/correo/teléfono, invitación y fechas. Ver/editar modifica perfil, condómino y vínculo, conserva aceptación/rol/contraseña y revoca sesiones/enlaces anteriores. Solo permite viviendas de pruebas. Cuentas manuales sin marca interna no aparecen ni se pueden editar/borrar como pruebas.
 
-La sección **Prueba individual** incluye la tabla **Usuarios de prueba guardados**, paginada de 50 en 50. Consulta cuentas pendientes y aceptadas creadas por este flujo, incluso de sesiones anteriores: IDs de cuenta/condómino, nombre, vivienda, usuario, correo, teléfono, estado y estado de invitación. **Ver / editar** abre el formulario con esos datos y fechas de creación/actualización. Se editan nombre, vivienda dedicada a pruebas, usuario, correo y teléfono; conserva aceptación, contraseña y rol, actualiza también el condómino y el vínculo, revoca enlaces anteriores y sesiones de la cuenta. Una cuenta pendiente puede obtener un nuevo **Enlace sin enviar** desde su fila.
+Borrar abre panel propio con ID y confirmación explícita. En transacción elimina reportes, invitación, vínculos, cuenta y condómino ficticio; conserva la vivienda. Bloquea historial en otros módulos, roles incompatibles, otra cuenta para el condómino y referencias FK. La comprobación consulta tablas/columnas físicas y únicamente campos de referencia para tolerar módulos opcionales o esquemas heredados. Nunca borra pagos/historial externo como atajo. Ante error se revierte todo.
 
-**Borrar** pide confirmación e inicia una transacción que elimina los reportes de prerregistro, invitación, vínculos usuario-vivienda, cuenta y condómino ficticio. Conserva la vivienda. Verifica la marca interna de prueba, rol Condómino y ausencia de otra cuenta para ese condómino. Si existen referencias a la cuenta/condómino en otros modelos (por ejemplo pagos o reservas), rechaza la eliminación; un error de clave foránea revierte todo. No elimina historial de otros módulos como atajo. Después de borrar puede volver a crearse una cuenta de prueba con el botón individual.
+No/escape cancela; errores y progreso permanecen visibles. El timeout no confirma un fallo del servidor: actualizar la tabla antes de reintentar. DELETE confirmado con fallo posterior al refrescar se distingue de borrado fallido. Para repetir aceptación de una prueba ya aceptada, borrar y crear otra prueba. Estos registros sí persisten en DB; la vivienda debe usarse exclusivamente para pruebas.
 
-Esta vista no incluye cuentas antiguas creadas manualmente que carezcan de la marca interna `AUTO_USERS_PRUEBA`; no se considera suficiente que un nombre, correo o vivienda diga Prueba. No muestra contraseñas ni hashes de invitación. Estado y aceptación se consultan; para repetir el proceso de una cuenta ya aceptada, bórrala y crea una prueba nueva.
+## API y despliegue
 
-API administrativa: `GET /api/auto-users/prueba/usuarios?pagina=1`, `PATCH /api/auto-users/prueba/:id` (campos del formulario), `DELETE /api/auto-users/prueba/:id`. Sin migraciones adicionales; requiere desplegar backend y frontend.
+- Públicas: POST `/api/auto-users/acceso/telefono`, `/acceso/enviar`, `/invitacion/consultar`, `/invitacion/aceptar`, `/invitacion/reportar`.
+- Administrativas: GET raíz/config/viviendas, POST crear/invitaciones/:id/invitacion, PATCH :id y las rutas prueba/usuarios, prueba/viviendas, prueba/crear, prueba/:id/enlace, PATCH/DELETE prueba/:id.
+- La API de login acepta `telefono` + `contrasena` o el identificador anterior + contraseña. El formulario de solicitud sigue usando `/api/auth/registro/solicitar` y la revisión `/api/auth/cuentas`.
 
-
-### Confirmación y diagnóstico del borrado
-
-Borrar abre un panel dentro de Auto-users con el ID de la cuenta y botones **Sí, borrar cuenta de prueba** / **Cancelar**. No depende de `window.confirm`, que puede ser suprimido por el navegador o su contenedor. La cancelación se muestra explícitamente. Al confirmar aparece **Borrando cuenta de prueba #…**; cualquier rechazo de la API permanece visible en el panel y en la sección de prueba, con los botones habilitados para cancelar o reintentar.
-
-Las solicitudes de Auto-users tienen límite de espera de 45 segundos. Si vence o falla la conexión, actualizar la tabla antes de reintentar, porque la operación puede haberse completado en el servidor. Una respuesta que no sea JSON informa su código HTTP y pide revisar el despliegue del backend. Si DELETE termina pero falla la actualización de la tabla, se informa que el borrado sí fue completado. El cursor de espera se usa durante operaciones en curso; los botones deshabilitados por estado muestran cursor de no disponible.
-
-
-### Compatibilidad del borrado con el esquema real
-
-Antes de buscar historial, el backend consulta las tablas y columnas físicas disponibles dentro de la transacción. Consulta únicamente los campos de referencia a usuario/condómino que existen: no selecciona todos los atributos del modelo de otros módulos. Esto evita que un campo adicional pendiente de migración o una tabla opcional ausente impida borrar una prueba sin historial. Una tabla ausente no contiene registros; las referencias existentes siguen bloqueando la eliminación. No se desactivan claves foráneas ni se borran pagos/historial externos.
-
-Si falla la comprobación, el mensaje identifica la tabla y el código de error sin publicar SQL, credenciales ni datos personales. Otros fallos internos de las rutas administrativas de prueba muestran un código seguro para revisar los logs del backend. La transacción conserva los registros cuando hay un error.
-
-
-## Confirmación de acciones masivas
-
-**Crear usuarios** y **Mandar invitación** abren un segundo panel que pregunta si estás seguro y describe la operación para el padrón completo. **Sí** inicia el procesamiento habitual por lotes; **No** o Escape cancela sin crear cuentas ni enviar mensajes. La confirmación se pide una vez por operación, no por lote. Los botones individuales y los de prueba conservan su flujo; no reciben esta confirmación masiva.
+Actualizar frontend y backend juntos. No requiere migraciones nuevas sobre el esquema de Auto-users existente. No afecta el servicio de correo de recibos, invitaciones de vivienda ni verificación de cambio de correo. Las pruebas usan SMTP/DB simulados; no prueban entrega real ni aprobación de producción.

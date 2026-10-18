@@ -8,7 +8,7 @@ const db = require('../config/database');
 const { Usuario, Condomino, Casa, Rol, UsuarioCasa } = require('../models');
 const service = crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa,
     Invitacion: require('../models/AutoUserInvitacion'), Reporte: require('../models/AutoUserReporte'),
-    whatsapp: require('../services/auto-users-whatsapp.service') });
+    correoSender: require('../services/auto-users-email.service') });
 const router = express.Router();
 const publicLimiter = rateLimit({ windowMs: 15 * 60000, limit: 60, standardHeaders: true, legacyHeaders: false });
 const handle = fn => async (req, res) => {
@@ -37,6 +37,12 @@ const positive = value => {
     if (n < 1) throw Object.assign(new Error('Identificador no válido.'), { status: 400 });
     return n;
 };
+const phoneLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false,
+    message: { ok: false, message: 'Demasiadas consultas. Espera 15 minutos.' } });
+const mailLimiter = rateLimit({ windowMs: 15 * 60000, limit: 6, standardHeaders: true, legacyHeaders: false,
+    message: { ok: false, message: 'Demasiados envíos. Revisa el correo o espera 15 minutos.' } });
+router.post('/acceso/telefono', phoneLimiter, handle(req => service.consultarTelefono(req.body.telefono)));
+router.post('/acceso/enviar', mailLimiter, handle(req => service.enviarPorTelefono(req.body.telefono)));
 router.post('/invitacion/consultar', publicLimiter, handle(async req => ({ registro: await service.consultar(req.body.token) })));
 router.post('/invitacion/aceptar', publicLimiter, handle(req => service.aceptar(req.body.token, req.body)));
 router.post('/invitacion/reportar', publicLimiter, handle(req => service.reportar(req.body.token, req.body.comentario)));
@@ -58,8 +64,8 @@ router.post('/prueba/:id/enlace', handle(req => {
 router.get('/', handle(req => service.listar(Math.max(1, number(req.query.pagina, 1)), Math.max(1, number(req.query.paginaReportes, 1)))));
 router.get('/viviendas', handle(async () => ({ viviendas: filtrarViviendasVisibles(await Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], order: [['calle', 'ASC'], ['numero', 'ASC']] })) })));
 router.get('/config', handle(async () => {
-    try { require('../services/auto-users-whatsapp.service').configuracion(); return { whatsappDisponible: true }; }
-    catch (error) { return { whatsappDisponible: false, mensaje: error.message }; }
+    try { require('../services/auto-users-email.service').configuracion(); return { correoDisponible: true }; }
+    catch (error) { return { correoDisponible: false, mensaje: error.message }; }
 }));
 router.post('/crear', handle(req => service.crearLote(number(req.body.desdeId))));
 router.post('/invitaciones', handle(req => service.enviarLote(number(req.body.desdeId))));

@@ -47,16 +47,64 @@
                 );
             }
         });
-        function mostrarMensaje(tipo, titulo, texto) { loginMessage.className = `login-message visible ${tipo}`; messageIcon.textContent = tipo === "success" ? "✓" : "!"; messageTitle.textContent = titulo; messageText.textContent = texto }
-        function limpiarMensaje() { loginMessage.className = "login-message" }
-        function activarCarga() { loginButton.disabled = true; loginButton.classList.add("loading"); buttonText.textContent = "Verificando acceso..." }
-        function detenerCarga() { loginButton.disabled = false; loginButton.classList.remove("loading"); buttonText.textContent = "Ingresar al portal" }
-        loginForm.addEventListener("submit", async event => {
-            event.preventDefault(); limpiarMensaje(); const correo = correoInput.value.trim().toLowerCase(), contrasena = contrasenaInput.value; if (!correo || !contrasena) { mostrarMensaje("error", "Faltan datos", "Escribe tu usuario o correo y contraseña para continuar."); return } activarCarga(); try {
-                const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo, contrasena }) }); const result = await response.json(); if (!response.ok || !result.ok) throw new Error(result.message || "No fue posible iniciar sesión."); for (const previousStorage of [localStorage, sessionStorage]) { previousStorage.removeItem("misionJardinesToken"); previousStorage.removeItem("misionJardinesUsuario"); } sessionStorage.removeItem("mjCasaSeleccionada"); const storage = document.getElementById("recordarme").checked ? localStorage : sessionStorage; storage.setItem("misionJardinesToken", result.token); storage.setItem("misionJardinesUsuario", JSON.stringify(result.usuario)); mostrarMensaje("success", "Inicio de sesión correcto", "Acceso autorizado. Preparando tu portal…"); buttonText.textContent = "Acceso autorizado";
-                setTimeout(() => {
-                    const role = result.usuario?.rol?.nombre || result.usuario?.rol;
-                    window.location.href = role !== "SEGURIDAD" && sessionStorage.getItem("mjInvitacion") ? "invitacion.html" : MJPermissions.landing(role);
-                }, 1200);
-            } catch (error) { mostrarMensaje("error", "No se pudo iniciar sesión", error.message) } finally { detenerCarga() }
+        let mode = 'telefono', checkedPhone = '', busy = false;
+        const passwordFields = document.getElementById('passwordFields');
+        function showPassword(show) {
+            passwordFields.hidden = !show; contrasenaInput.disabled = !show; contrasenaInput.required = show;
+            if (!show) contrasenaInput.value = '';
+            buttonText.textContent = show ? 'Ingresar al portal' : 'Continuar';
+        }
+        document.getElementById('loginAlternative').addEventListener('click', () => {
+            if (busy) return;
+            mode = mode === 'telefono' ? 'correo' : 'telefono'; checkedPhone = '';
+            document.getElementById('identifierLabel').textContent = mode === 'telefono' ? 'Número de teléfono' : 'Usuario o correo electrónico';
+            document.getElementById('loginAlternative').textContent = mode === 'telefono' ? 'Usar usuario o correo' : 'Usar teléfono';
+            correoInput.type = mode === 'telefono' ? 'tel' : 'text';
+            correoInput.placeholder = mode === 'telefono' ? 'Teléfono con lada' : 'Tu usuario o correo';
+            correoInput.value = ''; contrasenaInput.value = ''; showPassword(mode === 'correo'); limpiarMensaje(); correoInput.focus();
+        });
+        correoInput.addEventListener('input', () => {
+            if (mode === 'telefono') { checkedPhone = ''; showPassword(false); }
+        });
+        function mostrarMensaje(tipo, titulo, texto) { loginMessage.className = `login-message visible ${tipo}`; messageIcon.textContent = tipo === 'success' ? '✓' : '!'; messageTitle.textContent = titulo; messageText.textContent = texto; }
+        function limpiarMensaje() { loginMessage.className = 'login-message'; }
+        async function request(path, body) {
+            const response = await fetch(API_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result.ok) throw Error(result.message || 'No fue posible completar la consulta. Intenta nuevamente.');
+            return result;
+        }
+        showPassword(false);
+        loginForm.addEventListener('submit', async event => {
+            event.preventDefault(); if (busy) return; limpiarMensaje();
+            const identifier = correoInput.value.trim();
+            if (!identifier) { mostrarMensaje('error', 'Faltan datos', 'Escribe tu teléfono para continuar.'); return; }
+            busy = true; loginButton.disabled = true; correoInput.disabled = true;
+            buttonText.textContent = 'Consultando…';
+            try {
+                if (mode === 'telefono' && checkedPhone !== identifier) {
+                    const result = await request('/auto-users/acceso/telefono', { telefono: identifier });
+                    if (result.estado === 'ACEPTADA') { checkedPhone = identifier; showPassword(true); contrasenaInput.focus(); return; }
+                    if (result.estado === 'PRERREGISTRO') {
+                        sessionStorage.setItem('mjTelefonoPreregistro', identifier);
+                        window.location.href = 'aceptar-cuenta.html#desde-login'; return;
+                    }
+                    if (result.estado === 'NUEVA') {
+                        sessionStorage.setItem('mjTelefonoSolicitud', identifier);
+                        window.location.href = 'registro.html#desde-login'; return;
+                    }
+                    mostrarMensaje('error', 'Revisión de cuenta', result.mensaje || 'Contacta a Administración.'); return;
+                }
+                const contrasena = contrasenaInput.value;
+                if (!contrasena) throw Error('Escribe tu contraseña para continuar.');
+                const result = await request('/auth/login', { ...(mode === 'telefono' ? { telefono: identifier } : { correo: identifier.toLowerCase() }), contrasena });
+                for (const storage of [localStorage, sessionStorage]) { storage.removeItem('misionJardinesToken'); storage.removeItem('misionJardinesUsuario'); }
+                sessionStorage.removeItem('mjCasaSeleccionada');
+                const storage = document.getElementById('recordarme').checked ? localStorage : sessionStorage;
+                storage.setItem('misionJardinesToken', result.token); storage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));
+                mostrarMensaje('success', 'Inicio de sesión correcto', 'Acceso autorizado. Preparando tu portal…');
+                const role = result.usuario?.rol?.nombre || result.usuario?.rol;
+                window.location.href = role !== 'SEGURIDAD' && sessionStorage.getItem('mjInvitacion') ? 'invitacion.html' : MJPermissions.landing(role);
+            } catch (error) { mostrarMensaje('error', 'No se pudo continuar', error.name === 'TimeoutError' ? 'El servidor tardó en responder. Intenta nuevamente.' : error.message); }
+            finally { busy = false; loginButton.disabled = false; correoInput.disabled = false; buttonText.textContent = passwordFields.hidden ? 'Continuar' : 'Ingresar al portal'; }
         });

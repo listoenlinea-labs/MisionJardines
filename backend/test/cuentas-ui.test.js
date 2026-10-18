@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '../../docs');
 
-function ui(page, script, request) {
+function ui(page, script, request, fromLogin = false) {
     const html = fs.readFileSync(path.join(root, page), 'utf8');
     function element() {
         const listeners = {};
@@ -15,6 +15,7 @@ function ui(page, script, request) {
             async emit(name, event = {}) { return listeners[name]?.({ preventDefault() {}, target: this, ...event }); },
             append(...children) { this.children.push(...children); },
             replaceChildren(...children) { this.children = children; },
+            get selectedOptions() { return this.children.filter(child => String(child.value) === String(this.value)); },
             reportValidity() { return true; }, reset() {},
             showModal() { this.open = true; }, close() { this.open = false; listeners.close?.(); }
         };
@@ -23,10 +24,10 @@ function ui(page, script, request) {
     const tabs = ['PENDIENTE', 'APROBADA', 'RECHAZADA'].map(status => Object.assign(element(), { dataset: { status } }));
     const body = { nombre: 'Ana', apellidoPaterno: 'Prueba', correo: 'ana@example.com', contrasena: 'Prueba1234', calle: 'Gardenias', numeroCasa: '5' };
     const writes = [];
-    const window = { MJAccessReady: Promise.resolve(true) };
-    const sandbox = { window, document: { getElementById: id => elements[id], querySelectorAll: () => tabs,
+    const window = { location: { hash: fromLogin ? '#desde-login' : '' }, MJAccessReady: Promise.resolve(true) };
+    const sandbox = { window, URLSearchParams, location: window.location, document: { getElementById: id => elements[id], querySelectorAll: () => tabs,
         createElement: element, createTextNode: value => ({ textContent: value }) },
-        localStorage: { getItem: () => 'fake-session' }, sessionStorage: { getItem: () => null },
+        localStorage: { getItem: () => 'fake-session' }, sessionStorage: { getItem: key => fromLogin && key === 'mjTelefonoSolicitud' ? '3312345678' : null, removeItem() {} },
         confirm: () => true,
         Option: function(text, value) { return { textContent: text, value }; },
         FormData: function() {
@@ -101,4 +102,13 @@ test('switching approval to security hides housing and never sends a stale house
     e.identityConfirmed.checked = true;
     await e.approvalForm.emit('submit'); await new Promise(resolve => setImmediate(resolve));
     assert.equal(u.writes[0].rol, 'SEGURIDAD'); assert.equal(u.writes[0].casaId, null);
+});
+
+test('formulario desde login precarga teléfono y envía solicitud con origen para revisión administrativa', async () => {
+    const u = ui('registro.html', 'registro.js', async () => ({ ok: true, message: 'Solicitud recibida' }), true);
+    assert.equal(u.elements.registerPhone.value, '3312345678'); assert.equal(u.elements.registerPhone.required, true);
+    u.elements.registerPassword.value = u.elements.confirmPassword.value = 'Prueba1234';
+    await u.elements.registerForm.emit('submit', { currentTarget: u.elements.registerForm });
+    assert.equal(u.writes[0].origenTelefono, true);
+    assert.equal(u.elements.registerSuccess.hidden, false);
 });
