@@ -132,7 +132,7 @@
 
     .tabs {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 5px;
       margin: 0 0 12px;
       padding: 5px;
@@ -145,12 +145,15 @@
 
     .tab {
       min-height: 41px;
+      min-width: 0;
+      padding: 8px 6px;
       border: 0;
       border-radius: 11px;
       color: #718097;
       background: transparent;
       font-size: 10px;
       font-weight: 850;
+      line-height: 1.25;
       cursor: pointer;
       transition: .18s ease
     }
@@ -850,8 +853,8 @@
         align-items: flex-start
       }
 
-      .tabs {
-        grid-template-columns: 1fr
+      .tabs .tab {
+        font-size: 9px
       }
 
       .pad {
