@@ -17,3 +17,13 @@ test('Inicio muestra primero Noticias, carga los datos y mantiene Tráfico a la 
   assert.match(markup, /<h3 class="hl-news-title">|id="hlNewsGrid"/);
   assert.match(js, /hl-news-title\{[^}]*font-weight:500/);
 });
+
+test('Noticias usa tres columnas en celular y dos en pantallas muy estrechas', () => {
+  const js = fs.readFileSync(path.resolve(__dirname, '../../docs/assets/js/home-dashboard.js'), 'utf8');
+  const mobile = js.slice(js.indexOf('/* Tarjetas de noticias compactas en móvil'));
+  assert.match(mobile, /@media\(max-width:720px\)\{[\s\S]*?\.hl-news-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(mobile, /@media\(max-width:360px\)\{[\s\S]*?\.hl-news-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(mobile, /\.hl-news-item\{[^}]*overflow-wrap:anywhere/);
+  assert.match(mobile, /\.hl-news-item \.hl-news-title\{[^}]*-webkit-line-clamp:5/);
+  assert.match(mobile, /\.hl-news-grid>\.hl-live-empty\{grid-column:1\/-1/);
+});
