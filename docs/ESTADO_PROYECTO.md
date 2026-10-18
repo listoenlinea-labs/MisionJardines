@@ -1,9 +1,9 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 16/oct/2026, 23:27, America/Mexico_City.
-**SHA de main consultado:** `b3188c74117e14fd9b36f79edfeac87ceca5981f`.
-**Fuentes de esta revisión:** comparación de main desde `fbd6ebb7091fd114f8b4263c561536a7c156e0e4`,
-commits, PR abiertos y estados/checks en GitHub, documentación vigente,
+**Última revisión:** 17/oct/2026, 23:33, America/Mexico_City.
+**SHA de main consultado:** `5aab812f944628022d5283b92794153ed3f8d593`.
+**Fuentes de esta revisión:** comparación de main desde `b3188c74117e14fd9b36f79edfeac87ceca5981f`,
+metadatos de los PR #192–#194, commits y estados/checks en GitHub, documentación vigente,
 historial ya registrado y conversación disponible. Las capturas
 de esa transcripción no están disponibles como imágenes inspeccionables aquí; no se certifican
 sus resultados desde descripciones del asistente. No se consultaron MySQL, Hostinger, Google
@@ -24,32 +24,33 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Escritura C3 por pago | DIRECT con diario e idempotencia | Sin bridge en ese flujo; no asigna puertas ni elimina bloqueos manuales. Estado financiero y entrega física son distintos |
 | Edición manual de TAGs | Implementada; validación pendiente | Dos pruebas simuladas de edición fallan en main; no está diagnosticado el motivo ni confirmado un fallo equivalente en producción |
 | Inventario C3 | Lectura periódica y manual | Reflejo SQL; no volver a usar fechas heredadas para sobreescribir el controlador |
-| Cuentas y viviendas | Implementado en código | Permisos, verificación y vínculos activos. No se ha ejecutado una nueva prueba real con las tres cuentas en esta revisión |
+| Cuentas y viviendas | Implementado en código | Permisos, verificación y vínculos activos. PR #193 añade sesión persistente de 90 días solo al marcar «Mantener sesión iniciada»; la sesión sin marca sigue corta. No se probó con cuentas reales ni despliegue |
 | Conmutador | Integración futura | No se confirmó funcionamiento con hardware en esta revisión; consultar configuración antes de habilitar telefonía |
 | Confirmación por correo bancario | Propuesta | Sin conexión de buzón ni conciliador implementado. Falta revisar una notificación real y datos de operación |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
-| Interfaz responsive | Implementada en main; validación visual pendiente | PR #154–#158 dejan la gráfica móvil con líneas SVG y puntos táctiles; #179 mueve viviendas bajo las gráficas. PR #183–#186 alinean fichas, egresos, dona, filtros y fechas nativas para Safari/iPhone. PR #190 agrega la novena fila Pago y #191 alinea Mes/Año sin usar fecha nativa. Hubo emulación Chromium en #185; falta Safari/iPhone real y producción |
+| Interfaz responsive | Implementada en main; validación visual pendiente | PR #154–#158 dejan la gráfica móvil con líneas SVG y puntos táctiles; #179 mueve viviendas bajo las gráficas. PR #183–#186 alinean fichas, egresos, dona, filtros y fechas para Safari/iPhone; #190–#191 agregan Pago y Mes/Año. PR #194 fuerza las tres pestañas de Pagos en una sola fila también en móvil. Falta Safari/iPhone real y producción |
 | Historial administrativo de pagos | Implementado en main; producción no verificada | PR #160–#162 añaden historial 11–10, meses aplicados y fecha anterior por TAG desde el diario guardado. No es lectura TCP en vivo; requiere desplegar frontend/backend y cotejar con MySQL |
-| Pagos manuales desde Análisis | Implementado en main; uso real pendiente | PR #171 y #173–#176 registran meses en transacción, protegen pagos/referencias reales, generan una sola entrega durable C3 y cierran el modal solo tras éxito. PR #190 mueve «Registrar pago» a una columna propia por vivienda y lo retira del modal TAGs, reutilizando el mismo flujo sin cambiar backend. No se probó con MySQL/C3 reales |
-| Auto-users | Implementado en main; despliegue/migración pendientes | PR #166–#170 y #172 incorporan prerregistro, aceptación, pruebas administrativas y confirmaciones masivas. No se crearon cuentas ni se enviaron WhatsApp reales; requiere migración y configuración |
+| Pagos manuales desde Análisis | Implementado en main; migración/uso real pendientes | PR #171 y #173–#176 implementan pagos manuales de mantenimiento; #190 separa el botón por vivienda. PR #193 amplía el registro manual por concepto y mantiene extraordinarias/casa club separadas de la vigencia física de mantenimiento. No se ejecutó la migración ni se probó con MySQL/C3 reales |
+| Auto-users | Implementado en main; cambio a correo pendiente en PR #192 | PR #166–#170 y #172 conservan en main el flujo con WhatsApp. PR #192, abierto y no fusionado, propone SMTP, login progresivo por teléfono y alertas de solicitudes; reporta 76 pruebas locales simuladas. No se enviaron correos reales ni se verificó proveedor/servidor |
 | Seguridad, pluma y cámaras | Parcialmente implementado; hardware no verificado | PR #159 reutiliza el endpoint de pluma y prepara proxy HLS; #163 añade diagnóstico; #164 retira el visor Dahua de Seguridad, conservando backend/documentación. PR #189 habilita Inicio operativo a Seguridad con visitas de hoy y accesos sin salida, sin finanzas. Falta gateway RTSP→HLS, despliegue y pruebas con cuentas/hardware reales |
 | Visibilidad del padrón | Filtro de lectura en main | PR #177–#178 muestran solo Guadalajara 707 y Valle de México 3614 en listados compartidos. No borran ni fusionan direcciones, pagos o TAGs; falta verificar consultas reales de producción |
-| Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#147 conectan cuotas históricas, egresos, ingresos manuales y saldo inicial; #151 limita cumplimiento al padrón documentado. PR #180 acumula adeudo desde septiembre de 2026. PR #189 separa el tablero financiero de la vista operativa. PR #191 muestra el último período realmente pagado incluso si es futuro, sin proyectar deuda ni usar la vigencia TAG como pago. Requiere cotejo con MySQL y despliegue reales |
+| Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#151 conectan cuotas, egresos, ingresos y saldo inicial; #180 acumula adeudo; #189 separa vistas por rol; #191 muestra anticipos sin proyectar deuda. PR #193 incorpora adeudos desglosados e indicadores por concepto. Requiere migración, padrón conciliado, cotejo MySQL y despliegue reales |
 | Cuotas para Seguridad | Implementado en main; producción no verificada | PR #140 añade ruta autenticada y tabla paginada sin nombres/teléfonos. Calcula desde `direcciones`/`cuotas`, no desde TAGs ni Sheets; no se consultó la DB real |
 | Históricos Google Sheets | Backend/staging opcional conservado; controles retirados de Análisis | PR #140 añadió lectura OAuth y preparación idempotente, deshabilitadas por defecto. PR #187 retiró solo la tarjeta y el script de esa vista; no borró archivo, endpoint, tabla ni datos. Requiere decisión explícita, migración y validación antes de activar |
 | Análisis de viviendas y TAGs | Implementado en main; MySQL/C3 no verificados | PR #181–#184 incorporan resumen, lectura C3 bajo demanda, modal, advertencias y filtro. PR #190 separa el pago del modal TAGs. PR #191 añade filtro inclusivo Mes/Año de último pago confirmado y permite mostrar anticipos futuros sin alterar el saldo al corte. Los estados C3 inciertos siguen «sin confirmar» y Análisis no escribe al C3. Falta validar datos reales |
 | Navegación de Administración/Comunidad | Implementada en main; validación visual pendiente | PR #187 oculta Cuotas del menú y retira la tarjeta de conciliación; #188 oculta las pestañas de Análisis, conserva sus elementos/rutas y ordena Comunidad con Pagos primero. Son cambios de interfaz, no borrado de datos ni cambio de permisos |
-| Inicio por rol | Implementado en main; producción no verificada | PR #189 conserva finanzas para administradores; Seguridad recibe alcance general de visitas/accesos; Condómino solo viviendas vinculadas. El filtro se aplica en servidor y no se exponen finanzas a no administradores. Falta suite completa, cuentas reales y MySQL de producción |
-| Continuidad documental | Disponible en main | AGENTS.md e índice publicados en `6995b845b500e7530d83b6d3cc6a3ab34ca62697`; este archivo agrega estado y bitácora |
+| Inicio por rol | Implementado en main; producción no verificada | PR #189 conserva finanzas para administradores; Seguridad recibe alcance general y Condómino solo viviendas vinculadas. PR #193 añade avisos/indicadores de adeudo por concepto. Falta migración, suite completa, cuentas reales y MySQL de producción |
+| Cobranza extraordinaria y casa club | Implementada en main; bloqueada hasta preparar producción | PR #193 añade cargos extraordinarios prorrateados, tres conceptos de pago, autorización/reserva de casa club y liberación de fechas vencidas sin pago. Requiere respaldo, migración SQL manual y conciliación exacta de 231 viviendas; el código bloquea la emisión si el padrón elegible no coincide. No se ejecutó en producción |
+| Continuidad documental | Disponible en main | AGENTS.md e índice publicados; PR #193 añadió guía de tres conceptos y scripts SQL/diagnóstico. Este archivo conserva estado y bitácora |
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
-Desde el SHA anterior main avanzó un commit: `b3188c7`, dedicado exclusivamente a
-actualizar esta bitácora el 15/oct; se excluye del trabajo de producto. No hubo commits ni PR
-nuevos de producto y no quedaron PR abiertos al cierre de esta revisión. Los merges ya
-registrados acreditan presencia en main,
-no despliegue en Hostinger, migraciones, datos de MySQL ni funcionamiento físico de C3/Dahua.
+Desde el SHA anterior main avanzó cinco commits. Se fusionaron los PR #193–#194; el
+PR #192 permanece abierto y no forma parte de main. El commit `a91d632`, dedicado a la
+bitácora del 16/oct, se excluye del trabajo de producto. Los merges acreditan presencia en
+main, no despliegue en Hostinger, ejecución de migraciones, datos de MySQL ni funcionamiento
+físico de C3/Dahua.
 El PR #132 continúa revertido y no se restauraron sus comandos/workflow.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
@@ -79,6 +80,9 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 14/oct/2026 | PR #180–#189; archivos de prueba y validaciones aisladas descritos en cada PR; comandos completos no publicados | #181: 11; #182: 6; #183: 6; #184: 8; #185: 5; #186: 6; #187: 5 comprobaciones satisfactorias; #180/#188/#189 sin total publicado | Resultados declarados en las ramas/PR; no se volvieron a ejecutar y GitHub no acredita CI del main |
 | 15/oct/2026 | PR #190, pruebas/sintaxis de columna Pago; comando completo no publicado | **18 comprobaciones pasaron** | Resultado declarado en el PR; sin ejecución nueva de esta revisión, MySQL ni C3 |
 | 15/oct/2026 | PR #191, filtro Mes/Año, regresión de deuda/TAG/pagos y sintaxis; comando completo no publicado | **30 comprobaciones pasaron** | Resultado declarado en el PR; falta MySQL real y revisión visual de navegador/Safari |
+| 17/oct/2026 | PR #192 abierto, suites de SMTP simulado, autenticación, login UI, prerregistro, solicitudes y permisos; comando no publicado | **76 pruebas aprobadas** | Resultado local de una rama pendiente; sin correos reales, producción ni presencia en main |
+| 17/oct/2026 | PR #193, pruebas dirigidas de adeudos, casa club, egresos, pagos, recargos, sesión y prorrateo; comando y totales no publicados | Reportadas como aprobadas; otros tests antiguos no validados por expectativas obsoletas o restricción de subprocesos | No acredita suite completa, migración, MySQL ni C3 |
+| 17/oct/2026 | PR #194, `git diff --check` y comprobación estática de pestañas/CSS | Sin errores; tres pestañas y regla de tres columnas presentes | Solo valida el cambio de presentación; falta navegador real |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -90,11 +94,11 @@ En ambos casos el C3 simulado conservó EndTime `20260910`, cuando se esperaba
 al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
-GitHub devolvió cero estados de commit y cero workflow runs para los commits de merge
-de los PR #190–#191; se conserva la ausencia de CI acreditado y los resultados locales ya
-documentados. El único commit posterior fue la actualización documental `b3188c7`, también
-sin estados ni workflow runs; no aporta cambios ni pruebas de producto. No se ejecutaron
-pruebas nuevas contra MySQL, Hostinger, WhatsApp, NVR Dahua ni hardware C3 reales.
+GitHub devolvió cero estados de commit y cero workflow runs para el head del PR #192 y
+los commits de merge de #193–#194. Por tanto, no hay CI acreditado para estos cambios.
+Los resultados anteriores son los declarados en cada PR y no se repitieron en esta revisión.
+No se ejecutaron pruebas contra MySQL, Hostinger, correo SMTP real, WhatsApp, NVR Dahua
+ni hardware C3 reales.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -124,12 +128,16 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | --- | --- |
 | Dos pruebas fallidas de edición de TAG | Diagnosticar y repetir pruebas pertinentes, sin debilitar validaciones reales |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
-| PR #190–#191 sin CI acreditado | Ejecutar una suite reproducible sobre `fbd6ebb`; incluir columna Pago, modal TAGs, filtro Mes/Año, anticipos futuros, deuda al corte y regresiones existentes. Comprobar despliegue por separado |
+| PR #192–#194 sin CI acreditado | Ejecutar una suite reproducible sobre `5aab812` para #193–#194; validar aparte el head de #192 antes de fusionar. Conservar fallos/omisiones visibles y comprobar despliegue por separado |
+| PR #192 pendiente | Resolver su integración con el main actual, revisar que SMTP reemplace WhatsApp sin exponer datos, repetir las 76 pruebas y validar envío real/controlado antes de fusionar. Hasta entonces Auto-users en main no usa ese flujo |
+| Migración de cobranza por concepto | Respaldar DB, revisar y ejecutar manualmente `backend/sql/2026-10-18-cuotas-extraordinarias-casa-club.sql` primero en prueba; después correr consultas diagnósticas. No desplegar backend/frontend nuevo antes del esquema |
+| Padrón para cuotas extraordinarias | Conciliar por qué Análisis mostraba 232 viviendas frente al requisito de 231. No excluir una vivienda arbitrariamente; la emisión debe seguir bloqueada hasta que el universo elegible sea correcto |
+| Casa club y tres conceptos | Probar roles, autorización, adeudos, fechas límite, renta/depósito/limpieza, OCR/banco, revisión de comprobantes y expiración sin pago. Confirmar que extraordinarias/casa club nunca cambien vigencias TAG/C3 |
 | Inicio por rol | Validar con cuentas reales de administrador, Seguridad y Condómino (una y varias viviendas): alcance de listas, ausencia de finanzas en no administradores y ausencia de datos de casas ajenas |
 | Adeudo acumulado, anticipos y advertencias TAG | Cotejar contra MySQL una casa al corriente, parcial, morosa y con anticipo 2027; confirmar que Último mes pagado muestra el período real sin sumar deuda futura. Abrir modal en casas con 0/1/varios TAGs y confirmar C3 bajo demanda sin escrituras |
 | Safari/iPhone y navegación | Probar en Safari nativo fechas, egresos 2×2, dona, fichas, columna Pago, filtro Mes/Año, pestañas ocultas y orden de menús; comprobar que Rosas 29 abre el modal correcto sin registrar un pago solo para la prueba |
 | Pagos manuales y sincronización C3 | Probar primero con una vivienda controlada; confirmar transacción, rechazo de duplicados, un solo evento durable y estado COMPLETADO con lectura física de todos los TAGs. No usar masivamente antes |
-| Auto-users | Validar migración en copia de MySQL, permisos, aceptación, edición/borrado de pruebas y WhatsApp con plantilla aprobada; no activar cuentas cambiando solo estatus |
+| Auto-users vigente y transición propuesta | Mientras #192 siga abierto, no asumir que main envía correo. Para la transición a SMTP: resolver integración, configurar proveedor sin publicar secretos, validar aceptación/recuperación y envío controlado; no activar cuentas cambiando solo estatus |
 | Cámaras Dahua y pluma | Para video falta gateway RTSP→HLS privado y configuración Hostinger. Para pluma, coordinar prueba física; ORDEN ENVIADA no confirma posición |
 | Guadalajara 707 / Valle de México 3614 | Verificar en producción que filtros, paginación, ZKTeco y conmutador oculten solo los domicilios previstos; los registros siguen en MySQL y requieren conciliación separada si contienen relaciones |
 | Finanzas históricas y saldo inicial | Confirmar que producción usa el esquema esperado, que existen las tablas/asientos requeridos y cotejar API Inicio/Análisis con MySQL sin doble conteo; las cifras de los PR son valores esperados, no verificación de esta revisión |
@@ -165,6 +173,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-17
+
+- Revisión de las 23:33: main leído en `5aab812f944628022d5283b92794153ed3f8d593`, cinco commits después del SHA anterior. Se excluyó `a91d632`, que solo actualizó la bitácora del 16/oct.
+- #193 quedó fusionado: cobranza separada de mantenimiento, cuota extraordinaria y casa club; pagos manuales por concepto; avisos de adeudo; sesión recordada opcional; autorización y vencimiento de reservas. Su SQL no se ejecutó en producción y el backend/frontend requieren el esquema nuevo.
+- La emisión de extraordinarias queda bloqueada hasta conciliar el padrón elegible: la evidencia del PR contrasta 232 viviendas visibles con el requisito de 231. No se documenta ninguna exclusión automática.
+- #194 quedó fusionado y mantiene las tres pestañas de Pagos en una sola fila, incluido móvil. Solo cambia CSS; su revisión visual real sigue pendiente.
+- #192 continúa abierto, no está en main: propone cambiar Auto-users de WhatsApp a SMTP, login progresivo por teléfono y alertas de solicitudes. Reporta 76 pruebas locales simuladas, sin envío de correo real ni despliegue.
+- Checks: GitHub devolvió cero estados y cero workflow runs para #192–#194. No se consultó Hostinger/MySQL ni se ejecutaron migraciones, pagos, correos reales, escrituras C3 o pruebas físicas.
 
 ### 2026-10-16
 
