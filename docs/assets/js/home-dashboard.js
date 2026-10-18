@@ -5,6 +5,9 @@
   const GOOGLE_TRAFFIC_URL = 'https://www.google.com/maps/@?api=1&map_action=map&center=20.75%2C-103.43&zoom=14&layer=traffic';
   const GOOGLE_EMBED_URL = 'https://www.google.com/maps?q=Misi%C3%B3n+Jardines+Fraccionamiento,+C.+Atotonilco+700,+45138+Zapopan,+Jalisco,+M%C3%A9xico&output=embed';
   let homeNewsLoaded = false;
+  let homeNewsSearchTimer = null;
+  let homeNewsRequest = null;
+  let homeNewsRequestId = 0;
   let environmentLeafletMap = null;
   let removeFinanceMediaListener = () => {};
 
@@ -643,29 +646,41 @@
     }
   }
 
-  async function loadLocalNews() {
+  async function loadLocalNews(query = '') {
     const grid = document.getElementById('hlNewsGrid');
     const updated = document.getElementById('hlNewsUpdated');
     if (!grid || !updated) return;
 
-    grid.innerHTML = '<div class="hl-live-empty">Buscando noticias de Zapopan, Guadalajara y choques recientes…</div>';
+    const term = query.trim();
+    grid.innerHTML = '<div class="hl-live-empty">' +
+      (term ? 'Buscando noticias relacionadas con “' + escapeHtml(term) + '”…'
+        : 'Buscando noticias de las vialidades cercanas, Zapopan y Guadalajara…') + '</div>';
 
+    homeNewsRequest?.abort();
     const controller = new AbortController();
+    homeNewsRequest = controller;
+    const requestId = ++homeNewsRequestId;
     const timeout = setTimeout(() => controller.abort(), 14000);
     try {
-      const result = await environmentApi('/entorno/noticias', { signal: controller.signal });
-      updated.textContent = 'Guadalajara · Zapopan · últimos 7 días · ' + (result.provider || 'Noticias web') + ' · ' + formatWhen(result.updatedAt);
+      const path = '/entorno/noticias' + (term ? '?q=' + encodeURIComponent(term) : '');
+      const result = await environmentApi(path, { signal: controller.signal });
+      if (requestId !== homeNewsRequestId) return;
+      updated.textContent = (term ? 'Resultados para “' + term + '”' : 'Prioridad: vialidades cercanas') +
+        ' · últimos 7 días · ' + (result.provider || 'Noticias web') + ' · ' + formatWhen(result.updatedAt);
 
       const items = Array.isArray(result.data) ? result.data : [];
       grid.innerHTML = items.length
-        ? items.slice(0, 9).map(item => `
-            <a class="hl-news-item" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
-              <small>${escapeHtml(item.category || 'Noticias')} · ${escapeHtml(item.domain || 'Medio local')}</small>
+        ? items.slice(0, 12).map(item => `
+            <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
+              <small>${item.nearbyStreet ? '📍 ' + escapeHtml(item.nearbyStreet) + ' · ' : escapeHtml(item.category || 'Noticias') + ' · '}${escapeHtml(item.domain || 'Medio local')}</small>
               <strong>${escapeHtml(item.title || 'Noticia local')}</strong>
               <span>${escapeHtml(item.dateLabel || 'Detectada')} ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
             </a>`).join('')
-        : '<div class="hl-live-empty">No se encontraron noticias sobre Guadalajara, Zapopan o choques en los últimos 7 días.</div>';
+        : '<div class="hl-live-empty">' + (term
+          ? 'No se encontraron noticias relacionadas con “' + escapeHtml(term) + '” en los últimos 7 días.'
+          : 'No se encontraron noticias recientes de la zona en los últimos 7 días.') + '</div>';
     } catch (error) {
+      if (requestId !== homeNewsRequestId) return;
       homeNewsLoaded = false; // Permitir reintento al abrir de nuevo Noticias.
       const message = error.name === 'AbortError'
         ? 'La fuente de noticias tardó demasiado en responder.'
@@ -673,10 +688,11 @@
       grid.innerHTML = '<div class="hl-live-empty"><span>' + escapeHtml(message) + '</span><button type="button" class="hl-refresh" id="hlRetryNews">Reintentar noticias</button></div>';
       grid.querySelector('#hlRetryNews')?.addEventListener('click', () => {
         homeNewsLoaded = true;
-        loadLocalNews();
+        loadLocalNews(document.getElementById('hlNewsSearchInput')?.value || '');
       });
     } finally {
       clearTimeout(timeout);
+      if (homeNewsRequest === controller) homeNewsRequest = null;
     }
   }
 
@@ -686,18 +702,52 @@
 
     const tabs = card.querySelectorAll('[data-hl-environment]');
     const flipper = card.querySelector('.hl-environment-flipper');
+    const newsSearch = card.querySelector('#hlNewsSearchInput');
+    const newsClear = card.querySelector('#hlNewsClearButton');
+    const newsForm = card.querySelector('#hlNewsSearchForm');
+
+    function searchNews() {
+      clearTimeout(homeNewsSearchTimer);
+      const query = newsSearch?.value.trim() || '';
+      newsClear.hidden = !query;
+      if (query.length === 1) {
+        document.getElementById('hlNewsGrid').innerHTML =
+          '<div class="hl-live-empty">Escribe al menos 2 caracteres para buscar noticias.</div>';
+        homeNewsRequest?.abort();
+        ++homeNewsRequestId;
+        return;
+      }
+      homeNewsLoaded = true;
+      loadLocalNews(query);
+    }
+
+    newsForm?.addEventListener('submit', event => {
+      event.preventDefault();
+      searchNews();
+    });
+    newsSearch?.addEventListener('input', () => {
+      newsClear.hidden = !newsSearch.value;
+      clearTimeout(homeNewsSearchTimer);
+      homeNewsSearchTimer = setTimeout(searchNews, 450);
+    });
+    newsClear?.addEventListener('click', () => {
+      newsSearch.value = '';
+      newsSearch.focus();
+      searchNews();
+    });
 
     tabs.forEach(button => {
       button.addEventListener('click', () => {
         const news = button.dataset.hlEnvironment === 'news';
         tabs.forEach(tab => tab.classList.toggle('active', tab === button));
         flipper?.classList.toggle('is-flipped', news);
+        card.querySelector('.hl-environment-scene')?.classList.toggle('is-news-view', news);
 
         if (!news) environmentLeafletMap?.invalidateSize();
 
         if (news && !homeNewsLoaded) {
           homeNewsLoaded = true;
-          loadLocalNews();
+          loadLocalNews(newsSearch?.value || '');
         }
       });
     });
@@ -767,6 +817,14 @@
                   </div>
                   <span class="hl-news-live">● EN VIVO</span>
                 </div>
+                <form id="hlNewsSearchForm" class="hl-news-search" role="search">
+                  <label for="hlNewsSearchInput">Buscar noticias recientes</label>
+                  <div class="hl-news-search-controls">
+                    <input id="hlNewsSearchInput" type="search" placeholder="Ej. Atotonilco, choque, Aviación…" autocomplete="off" maxlength="80" aria-label="Buscar noticias por palabras clave" />
+                    <button id="hlNewsClearButton" type="button" class="hl-news-clear" aria-label="Borrar búsqueda" hidden>✕</button>
+                    <button type="submit" class="hl-news-submit">Buscar</button>
+                  </div>
+                </form>
                 <div id="hlNewsGrid" class="hl-news-grid">
                   <div class="hl-live-empty">Selecciona Noticias para consultar la cobertura reciente.</div>
                 </div>
@@ -1093,8 +1151,20 @@
       .hl-news-head strong{font-size:16px;line-height:1.3}
       .hl-news-head small{font-size:10.5px;line-height:1.4}
       .hl-news-live{font-size:10px;white-space:nowrap}
-      .hl-news-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;max-height:280px;padding:1px 3px 5px 1px}
+      .hl-environment-scene.is-news-view{height:450px;transition:height .2s ease}
+      .hl-news-search{margin-top:10px}
+      .hl-news-search label{display:block;margin-bottom:5px;color:#53647c;font-size:11px;font-weight:800}
+      .hl-news-search-controls{display:flex;gap:7px;align-items:center}
+      .hl-news-search input{flex:1;min-width:0;height:38px;border:1px solid #d7deea;border-radius:9px;padding:8px 11px;background:#fff;color:#25334a;font:inherit;font-size:13px}
+      .hl-news-search input:focus-visible{outline:2px solid #8877c0;outline-offset:1px}
+      .hl-news-search button{flex:0 0 auto;height:38px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:800}
+      .hl-news-clear{width:38px;border:1px solid #ded8ea;background:#fff;color:#65547c}
+      .hl-news-clear[hidden]{display:none}
+      .hl-news-submit{padding:0 15px;border:1px solid #dcd0f5;background:#f1eafb;color:#604b83}
+      .hl-news-submit:hover{background:#e5d8fb}
+      .hl-news-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;max-height:290px;padding:1px 3px 5px 1px}
       .hl-news-item{min-height:143px;padding:13px 14px;border-color:#d6e4f9;background:#edf5ff;box-shadow:0 5px 15px rgba(44,56,82,.055)}
+      .hl-news-grid .hl-news-item.hl-news-nearby{border-color:#b1d5be;background:#e7f8ed;box-shadow:inset 0 3px 0 #7fbf96,0 5px 15px rgba(44,56,82,.055)}
       .hl-news-item:nth-child(4n+2){border-color:#eadcf8;background:#f6efff}
       .hl-news-item:nth-child(4n+3){border-color:#d1ece0;background:#ebfaf2}
       .hl-news-item:nth-child(4n+4){border-color:#f4ddcb;background:#fff3e7}
@@ -1111,7 +1181,7 @@
       .hl-traffic-legend span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
       .hl-traffic-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#2eab30}
       .hl-traffic-dot.orange{background:#f18237}.hl-traffic-dot.red{background:#e70704}
-      @media(max-width:720px){.hl-news-face{padding:14px}.hl-news-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;max-height:510px}.hl-news-item{min-height:140px}.hl-traffic-legend{top:8px;right:8px;padding:7px;gap:6px;font-size:9px}.hl-traffic-status{left:8px;bottom:8px;max-width:calc(100% - 16px)}}
+      @media(max-width:720px){.hl-environment-scene.is-news-view{height:650px}.hl-news-face{padding:14px}.hl-news-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;max-height:480px}.hl-news-item{min-height:140px}.hl-traffic-legend{top:8px;right:8px;padding:7px;gap:6px;font-size:9px}.hl-traffic-status{left:8px;bottom:8px;max-width:calc(100% - 16px)}}
 
       /* Inicio operativo de Seguridad/Residente: el de Administración no cambia. */
       .hl-op-scope{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:0 0 15px;padding:11px 16px;border:1px solid #dfe9f0;border-radius:12px;background:#f5f9fd;color:#485a73}

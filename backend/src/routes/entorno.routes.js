@@ -15,6 +15,14 @@ const trafficTiles = new Map();
 const trafficTileRequests = new Map();
 const TRAFFIC_TILE_TTL_MS = 60 * 1000;
 const TRAFFIC_TILE_LIMIT = 200;
+const NEWS_CACHE_LIMIT = 40;
+const newsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 15,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: req => String(req.usuario.usuarioId)
+});
 const trafficTileLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 120,
@@ -28,7 +36,9 @@ function getCached(key, maxAgeMs) {
   return item.value;
 }
 function setCached(key, value) {
+  cache.delete(key);
   cache.set(key, { at: Date.now(), value });
+  while (cache.size > NEWS_CACHE_LIMIT) cache.delete(cache.keys().next().value);
   return value;
 }
 
@@ -181,7 +191,8 @@ router.get('/incidencias', autenticarToken, async (req, res) => {
     const incidentsUrl = new URL('https://api.tomtom.com/traffic/services/5/incidentDetails');
     incidentsUrl.searchParams.set('key', key);
     incidentsUrl.searchParams.set('bbox', bbox);
-    incidentsUrl.searchParams.set('language', 'es-MX');
+    // Incident Details acepta el código ISO 639-1 "es", no la variante "es-MX".
+    incidentsUrl.searchParams.set('language', 'es');
     incidentsUrl.searchParams.set('timeValidityFilter', 'present');
 
     const payload = await fetchJson(incidentsUrl);
@@ -226,15 +237,30 @@ router.get('/incidencias', autenticarToken, async (req, res) => {
   }
 });
 
-router.get('/noticias', autenticarToken, async (req, res) => {
+router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
   try {
-    const cached = getCached('news', 15 * 60 * 1000);
+    const rawQuery = req.query?.q;
+    if (rawQuery !== undefined && typeof rawQuery !== 'string') {
+      return res.status(400).json({ ok: false, message: 'Búsqueda inválida.' });
+    }
+    const query = (rawQuery || '').trim().replace(/\s+/g, ' ');
+    if (query.length > 80 || (query.length > 0 && query.length < 2)) {
+      return res.status(400).json({ ok: false, message: 'Escribe entre 2 y 80 caracteres para buscar noticias.' });
+    }
+    const cacheKey = query ? `news:${query.toLocaleLowerCase('es')}` : 'news';
+    const cached = getCached(cacheKey, 15 * 60 * 1000);
     if (cached) return res.json(cached);
 
     // GDELT devuelve 429 de forma recurrente desde IPs de servidores compartidos.
     // FreeNewsApi permite búsquedas gratuitas y uso comercial sin credenciales,
     // y filtra sobre la fecha real de publicación de cada nota.
-    const terminos = ['Zapopan', 'Guadalajara', 'choque Zapopan', 'choque Guadalajara'];
+    // Los seis términos de calle permiten encontrar notas que no dicen
+    // "Zapopan" en el titular. La clasificación exige el nombre de la vialidad.
+    const terminos = query ? [query] : [
+      'Zapopan', 'Guadalajara', 'choque Zapopan', 'choque Guadalajara',
+      'Atotonilco', 'Valle de México', 'Avenida Guadalajara',
+      'Acueducto', 'Base Aérea', 'Aviación'
+    ];
     const consultas = terminos.map(termino => {
       const url = new URL('https://freenewsapi.ai/v1/search');
       url.searchParams.set('q', termino);
@@ -242,7 +268,7 @@ router.get('/noticias', autenticarToken, async (req, res) => {
       url.searchParams.set('lang', 'es');
       url.searchParams.set('date', '7d');
       url.searchParams.set('sort', 'date');
-      url.searchParams.set('size', termino.startsWith('choque') ? '30' : '70');
+      url.searchParams.set('size', query ? '70' : termino.startsWith('choque') ? '30' : '45');
       return fetchJson(url, 8000);
     });
     const respuestas = await Promise.allSettled(consultas);
@@ -257,11 +283,12 @@ router.get('/noticias', autenticarToken, async (req, res) => {
     const result = {
       ok: true,
       provider: 'FreeNewsApi',
+      searchQuery: query,
       queryWindow: `${VENTANA_DIAS}d`,
       data,
       updatedAt: new Date().toISOString()
     };
-    setCached('news', result);
+    setCached(cacheKey, result);
     return res.json(result);
   } catch (error) {
     console.error('Error consultando noticias locales:', error);
