@@ -1188,6 +1188,16 @@
       .hl-traffic-dot.orange{background:#f18237}.hl-traffic-dot.red{background:#e70704}
       /* Tarjetas de noticias compactas en móvil: tres columnas con texto legible. */
       @media(max-width:720px){
+        /* Safari iOS puede dibujar invertidos los controles del mapa tras un giro 3D.
+           En móvil las pestañas alternan caras sin transformar ni pintar la oculta. */
+        .hl-environment-scene{perspective:none}
+        .hl-environment-flipper,.hl-environment-flipper.is-flipped{transform:none;transform-style:flat;transition:none}
+        .hl-environment-face,.hl-environment-scene .hl-news-face{transform:none;backface-visibility:visible}
+        .hl-environment-scene.is-news-view .hl-traffic-face,
+        .hl-environment-scene:not(.is-news-view) .hl-news-face{opacity:0;visibility:hidden;pointer-events:none}
+        .hl-environment-scene.is-news-view .hl-news-face,
+        .hl-environment-scene:not(.is-news-view) .hl-traffic-face{opacity:1;visibility:visible;pointer-events:auto}
+        .hl-environment-scene.is-news-view .hl-traffic-status{display:none}
         .hl-environment-scene.is-news-view{height:650px}
         .hl-news-face{padding:12px}
         .hl-news-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:480px;padding:1px 2px 5px 1px;align-items:stretch}

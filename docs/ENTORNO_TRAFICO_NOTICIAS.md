@@ -38,6 +38,12 @@ reducidos sin perder contraste. En pantallas de **360 px o menos** utiliza
 dos columnas para mantener los textos legibles. Las tarjetas siguen siendo
 enlaces completos y el listado conserva su desplazamiento interno.
 
+En celulares, la alternancia entre **Noticias** y **Tráfico e incidencias**
+no usa el giro 3D: Safari de iPhone podía mostrar invertida una barra del mapa
+sobre las noticias. Solo se pinta la cara seleccionada; el mapa conserva su
+espacio de diseño y se actualiza al abrir Tráfico. En escritorio se conserva
+la animación de volteo.
+
 La fuente externa sigue siendo Free News API, sin nueva clave; búsquedas con
 respuesta exitosa se conservan por 15 minutos, con un máximo de 40 entradas
 en memoria y 15 solicitudes por usuario/minuto en el backend. La disponibilidad
