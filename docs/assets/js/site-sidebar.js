@@ -169,6 +169,7 @@
       .mj-account-menu-link{width:100%!important;height:38px!important;display:grid!important;place-items:center!important;margin-bottom:6px!important;border:1px solid #f0d3b5!important;border-radius:8px!important;color:#ad5709!important;background:#fffaf5!important;font-size:11px!important;font-weight:800!important;text-decoration:none!important}
       @media(max-width:1370px){:root{--mj-side-width:224px}}@media(max-width:820px){:root{--mj-side-width:min(280px,calc(100vw - 55px))}body.mj-shared-sidebar-enabled{padding-left:0!important}body.page-calendario.mj-shared-sidebar-enabled{width:100vw!important;max-width:100vw!important;padding-left:0!important;padding-right:0!important}.mj-shared-sidebar{box-shadow:20px 0 50px rgba(15,23,42,.18)!important}.mj-side-tab{top:14px!important;height:42px!important}.mj-account-top,body.mj-home .profile-wrap{display:none!important}}@media(prefers-reduced-motion:reduce){body.mj-shared-sidebar-enabled,.mj-shared-sidebar,.mj-side-tab{transition:none!important}}
     `;
+    style.textContent += '.mj-side-count{display:grid;place-items:center;min-width:22px;height:22px;margin-left:auto;padding:0 5px;border-radius:99px;background:#c9f4d9;color:#0e744a;font-size:11px;font-weight:900}.mj-side-link .mj-side-count{flex:none}';
     document.head.appendChild(style);
     if (!document.getElementById('mjAppDesign')) {
       const theme = document.createElement('link');
@@ -277,6 +278,27 @@
     location.replace('login.html');
   }
 
+  async function refreshPaymentNotices(aside) {
+    if (!MJPermissions.canAccess(role(),'pagos.html')) return;
+    const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+    if(!token)return;
+    const api=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
+    const selected=sessionStorage.getItem('mjCasaSeleccionada');
+    const headers={Authorization:'Bearer '+token,...(selected?{'X-Casa-Id':selected}:{})};
+    const decorate=(page,count)=>{
+      const link=aside.querySelector('.mj-side-link[href="'+page+'"]');
+      link?.querySelector('.mj-side-count')?.remove();
+      if(count>0&&link){const badge=document.createElement('b');badge.className='mj-side-count';badge.textContent=count>99?'99+':String(count);badge.setAttribute('aria-label',count+' avisos');link.append(badge);}
+    };
+    try{
+      const response=await fetch(api+'/pagos/adeudos',{headers,cache:'no-store'});
+      if(response.ok){const result=await response.json();if(result.ok){window.MJAdeudos=result.data;decorate('pagos.html',result.data.cantidad||0);decorate('index.html',result.data.cantidad||0);document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:result.data}));}}
+    }catch(_){/* No presentar cero cuando la API no está disponible. */}
+    if(['ADMINISTRADOR','SUPER_ADMIN'].includes(role())){
+      try{const r=await fetch(api+'/casa-club/solicitudes-pendientes',{headers,cache:'no-store'});if(r.ok){const d=await r.json();if(d.ok)decorate('casa-club.html',d.cantidad||0);}}catch(_){}
+    }
+  }
+
   function loadHomeDashboard() {
     if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
@@ -319,6 +341,7 @@
     }
 
     permissions(aside);
+    void refreshPaymentNotices(aside);
     aside.querySelector('.mj-side-logout')?.addEventListener('click', logout);
 
     if (page() === 'visitas.html' && !document.querySelector('script[data-house-fields]')) {

@@ -6,7 +6,10 @@ const pagosManuales=require('../controllers/pagos-manuales-analisis.controller')
 router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
 router.get('/analisis',controller.analizar);
 router.post('/egresos',controller.registrarEgreso);
+router.post('/egresos/:id/activar-cuota',controller.activarCuotaExistente);
 router.post('/pagos-vivienda',pagosManuales.registrarPagoVivienda);
+router.get('/pagos-concepto/:casaId',pagosManuales.opcionesPagoConcepto);
+router.post('/pagos-concepto',pagosManuales.registrarPagoConcepto);
 router.get('/pagos-vivienda/:casaId/cotizar',pagosManuales.cotizarPagoVivienda);
 router.get('/pagos-vivienda/:casaId/estado-c3',pagosManuales.estadoPagoVivienda);
 module.exports=router;

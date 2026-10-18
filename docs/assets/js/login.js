@@ -53,10 +53,36 @@
         function detenerCarga() { loginButton.disabled = false; loginButton.classList.remove("loading"); buttonText.textContent = "Ingresar al portal" }
         loginForm.addEventListener("submit", async event => {
             event.preventDefault(); limpiarMensaje(); const correo = correoInput.value.trim().toLowerCase(), contrasena = contrasenaInput.value; if (!correo || !contrasena) { mostrarMensaje("error", "Faltan datos", "Escribe tu usuario o correo y contraseña para continuar."); return } activarCarga(); try {
-                const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo, contrasena }) }); const result = await response.json(); if (!response.ok || !result.ok) throw new Error(result.message || "No fue posible iniciar sesión."); for (const previousStorage of [localStorage, sessionStorage]) { previousStorage.removeItem("misionJardinesToken"); previousStorage.removeItem("misionJardinesUsuario"); } sessionStorage.removeItem("mjCasaSeleccionada"); const storage = document.getElementById("recordarme").checked ? localStorage : sessionStorage; storage.setItem("misionJardinesToken", result.token); storage.setItem("misionJardinesUsuario", JSON.stringify(result.usuario)); mostrarMensaje("success", "Inicio de sesión correcto", "Acceso autorizado. Preparando tu portal…"); buttonText.textContent = "Acceso autorizado";
+                const recordarme = document.getElementById("recordarme").checked;
+                const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo, contrasena, recordarme }) }); const result = await response.json(); if (!response.ok || !result.ok) throw new Error(result.message || "No fue posible iniciar sesión."); for (const previousStorage of [localStorage, sessionStorage]) { previousStorage.removeItem("misionJardinesToken"); previousStorage.removeItem("misionJardinesUsuario"); } sessionStorage.removeItem("mjCasaSeleccionada"); const storage = recordarme ? localStorage : sessionStorage; storage.setItem("misionJardinesToken", result.token); storage.setItem("misionJardinesUsuario", JSON.stringify(result.usuario)); mostrarMensaje("success", "Inicio de sesión correcto", "Acceso autorizado. Preparando tu portal…"); buttonText.textContent = "Acceso autorizado";
                 setTimeout(() => {
                     const role = result.usuario?.rol?.nombre || result.usuario?.rol;
                     window.location.href = role !== "SEGURIDAD" && sessionStorage.getItem("mjInvitacion") ? "invitacion.html" : MJPermissions.landing(role);
                 }, 1200);
             } catch (error) { mostrarMensaje("error", "No se pudo iniciar sesión", error.message) } finally { detenerCarga() }
         });
+
+        // Al volver a abrir este navegador se valida el token con el servidor.
+        // Nunca se guardan ni completan automáticamente las credenciales.
+        (async () => {
+            const saved = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
+            if (!saved) return;
+            try {
+                const response = await fetch(`${API_URL}/auth/perfil`, { headers: { Authorization: `Bearer ${saved}` }, cache: 'no-store' });
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        for (const storage of [localStorage, sessionStorage]) {
+                            storage.removeItem('misionJardinesToken');
+                            storage.removeItem('misionJardinesUsuario');
+                        }
+                    }
+                    return;
+                }
+                const data = await response.json();
+                if (!data.ok) return;
+                const user = data.usuario;
+                const storage = localStorage.getItem('misionJardinesToken') === saved ? localStorage : sessionStorage;
+                storage.setItem('misionJardinesUsuario', JSON.stringify(user));
+                location.replace(MJPermissions.landing(user?.rol?.nombre || user?.rol));
+            } catch (_) { /* Sin conexión: conservar sesión para reintentar. */ }
+        })();

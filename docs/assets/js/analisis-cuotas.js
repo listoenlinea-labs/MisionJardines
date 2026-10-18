@@ -7,6 +7,13 @@
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  const moment=new Date();$('financeYear').value=moment.getFullYear();$('financeMonth').value=String(moment.getMonth()+1);
  $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(moment);
+ $('expenseStart').value=$('expenseDate').value.slice(0,7);
+ function syncExtraExpense(){
+  const extra=$('expenseCategory').value==='CUOTA_EXTRAORDINARIA';
+  document.querySelectorAll('.extra-expense-option').forEach(e=>e.hidden=!extra);
+  $('expenseMonths').required=extra;$('expenseStart').required=extra;
+ }
+ $('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpense();
  // Texto de fecha independiente del ancho intrínseco del date picker iOS.
  // El input de tipo date permanece funcional y es el único valor enviado.
  const MONTHS_ABBR=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -107,10 +114,10 @@
   $('expenseResultCount').textContent='Mostrando '+result.length+' de '+egresos.length+' egresos del período seleccionado';
   const expenseCell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
   $('financeExpenseRows').innerHTML=result.length?result.map(e=>'<tr>'+
-    expenseCell('Fecha',esc(e.fecha))+expenseCell('Categoría',esc(e.categoria))+
+    expenseCell('Fecha',esc(e.fecha))+expenseCell('Categoría',esc(e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS'?'CUOTA EXTRAORDINARIA':e.categoria))+
     expenseCell('Concepto',esc(e.concepto))+expenseCell('Referencia',esc(e.referencia||'—'))+
-    expenseCell('Monto',esc(fmt(e.monto)))+'</tr>').join(''):
-    '<tr><td colspan="5">'+(egresos.length?'No hay egresos que coincidan con los filtros.':'No hay egresos registrados para este mes.')+'</td></tr>';
+    expenseCell('Monto',esc(fmt(e.monto)))+expenseCell('Cobro',e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS'?(e.tieneCuota?'<span class="status-paid">Programado</span>':'<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>'):'—')+'</tr>').join(''):
+    '<tr><td colspan="6">'+(egresos.length?'No hay egresos que coincidan con los filtros.':'No hay egresos registrados para este mes.')+'</td></tr>';
  }
 
  // Resumen ligero desde MySQL; al abrir el detalle se solicita lectura física C3.
@@ -315,8 +322,37 @@ function renderHouses(){
  let confirmedPaymentTarget=null;
  let quoteSequence=0;
  const paymentModal=$('housePaymentModal');
+ let otherConcepts={EXTRAORDINARIO:[],CASA_CLUB:[]};
+ const isOther=()=>$('housePaymentType').value!=='MANTENIMIENTO';
+ function renderOtherConcept(){
+  const type=$('housePaymentType').value;
+  const items=otherConcepts[type]||[];
+  $('houseConceptSelect').innerHTML=items.length?items.map(c=>'<option value="'+Number(c.id)+'">'+esc(c.concepto)+' · '+esc(c.periodo)+' · '+esc(fmt(c.monto))+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</option>').join(''):'<option value="">Sin cobros disponibles</option>';
+  previewOtherConcept();
+ }
+ function previewOtherConcept(){
+  const type=$('housePaymentType').value;
+  const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
+  $('housePaymentAmount').value=item?Number(item.monto).toFixed(2):'';
+  $('housePaymentAmount').readOnly=true;
+  $('housePaymentSubmit').disabled=!item||item.estado==='EN_REVISION';
+  $('housePaymentPreview').textContent=item?(item.estado==='EN_REVISION'?'Ya existe un comprobante en revisión. Espera la respuesta de Administración.':'Se registrará '+fmt(item.monto)+' de '+item.concepto+' ('+item.periodo+'). Este concepto NO modifica los TAGs.'):'No hay conceptos pendientes en esta categoría.';
+ }
+ async function switchPaymentType(){
+  const other=isOther();
+  document.querySelectorAll('[data-maintenance-only]').forEach(el=>el.hidden=other);
+  $('houseConceptWrap').hidden=!other;
+  $('housePaymentTitle').textContent=other?'Registrar '+( $('housePaymentType').value==='CASA_CLUB'?'Casa club':'cuota extraordinaria'):'Registrar mensualidades pagadas';
+  $('housePaymentYear').required=!other;
+  if(!other){$('housePaymentAmount').readOnly=false;void quoteHousePayment();return;}
+  $('housePaymentSubmit').disabled=true;
+  $('housePaymentPreview').textContent='Consultando cargos de la vivienda…';
+  try{otherConcepts=(await request('/pagos-concepto/'+Number(activePaymentHouse.casaId))).data;renderOtherConcept();}
+  catch(e){$('housePaymentPreview').textContent=e.message;}
+ }
  const monthsES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  function paymentPreview(){
+   if(isOther()){previewOtherConcept();return;}
    const output=$('housePaymentPreview'),submit=$('housePaymentSubmit');
    submit.disabled=true;
    if(!currentPaymentQuote){output.textContent='Consultando el historial de cuotas…';return;}
@@ -334,7 +370,7 @@ function renderHouses(){
    submit.disabled=!valid||q.bloqueado||(q.requiereRevision&&!$('housePaymentReview').checked);
  }
  async function quoteHousePayment({resetAmount=true}={}){
-   if(!activePaymentHouse)return;
+   if(!activePaymentHouse||isOther())return;
    const seq=++quoteSequence;
    currentPaymentQuote=null;
    $('housePaymentCount').value='0';
@@ -381,9 +417,10 @@ function renderHouses(){
    $('housePaymentCount').value='0';
    $('housePaymentAmount').value='';
    $('housePaymentMethod').value='EFECTIVO';
+   $('housePaymentType').value='MANTENIMIENTO';
    $('housePaymentStatus').textContent='';
    paymentModal.hidden=false;
-   quoteHousePayment();
+   switchPaymentType();
    $('housePaymentMonth').focus();
  }
  function closeHousePayment(){
@@ -415,6 +452,18 @@ function renderHouses(){
  }
  async function submitHousePayment(event){
    event.preventDefault();
+   if(isOther()){
+    const type=$('housePaymentType').value;
+    const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
+    if(!activePaymentHouse||!item||item.estado==='EN_REVISION')return;
+    if(!confirm('¿Confirmas que recibiste '+fmt(item.monto)+' de '+activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+item.concepto+'?'))return;
+    $('housePaymentSubmit').disabled=true;
+    try{
+     const result=await request('/pagos-concepto',{casaId:Number(activePaymentHouse.casaId),tipoPago:type,conceptoId:Number(item.id),monto:Number(item.monto),formaPago:$('housePaymentMethod').value});
+     closeHousePayment();notice(result.message+' Referencia: '+result.data.referencia,'success');await load();
+    }catch(e){$('housePaymentStatus').textContent=e.message;await switchPaymentType();}
+    return;
+   }
    if(!activePaymentHouse||!currentPaymentQuote)return;
    const payload={casaId:Number(activePaymentHouse.casaId),
      anio:Number($('housePaymentYear').value),mes:Number($('housePaymentMonth').value),
@@ -463,6 +512,8 @@ function renderHouses(){
  for(const id of ['housePaymentMonth','housePaymentYear'])
   $(id).addEventListener('change',()=>quoteHousePayment());
  $('housePaymentAmount').addEventListener('input',paymentPreview);
+ $('housePaymentType').addEventListener('change',switchPaymentType);
+ $('houseConceptSelect').addEventListener('change',previewOtherConcept);
  $('housePaymentReview').addEventListener('change',paymentPreview);
  async function load(){
   $('updateFinance').disabled=true;$('financeNotice').hidden=true;
@@ -483,6 +534,25 @@ function renderHouses(){
   $('expenseSort').value='fecha_desc';
   renderExpenses();
  });
+ let historicalExtraId=null;
+ $('financeExpenseRows').addEventListener('click',event=>{
+  const b=event.target.closest('[data-extra-expense]');if(!b)return;
+  const item=data?.egresos?.find(e=>Number(e.id)===Number(b.dataset.extraExpense));if(!item)return;
+  historicalExtraId=item.id;
+  $('historicalExtraName').textContent=item.concepto+' · '+fmt(item.monto);
+  $('historicalExtraStart').value=$('expenseDate').value.slice(0,7);
+  $('historicalExtraStatus').textContent='';$('historicalExtraModal').hidden=false;
+ });
+ $('historicalExtraClose').addEventListener('click',()=>$('historicalExtraModal').hidden=true);
+ $('historicalExtraForm').addEventListener('submit',async event=>{
+  event.preventDefault();if(!historicalExtraId)return;
+  const meses=Number($('historicalExtraMonths').value),fechaInicio=$('historicalExtraStart').value+'-01';
+  if(!confirm('¿Generar '+meses+' mensualidad(es) del proyecto entre 231 viviendas?'))return;
+  const button=event.target.querySelector('[type=submit]');button.disabled=true;
+  try{await request('/egresos/'+Number(historicalExtraId)+'/activar-cuota',{meses,fechaInicio});$('historicalExtraModal').hidden=true;await load();notice('Se generaron los cargos mensuales sin alterar los TAGs.','success');}
+  catch(e){$('historicalExtraStatus').textContent=e.message;}
+  finally{button.disabled=false;}
+ });
  for(const id of ['financeSearch','financeStreet','financeStatus','financeLastPaidMonth','financeLastPaidYear'])
   $(id).addEventListener(id==='financeSearch'?'input':'change',()=>{housePage=1;renderHouses();});
  $('financePrev').addEventListener('click',()=>{housePage=Math.max(1,housePage-1);renderHouses();});
@@ -496,11 +566,16 @@ function renderHouses(){
   e.preventDefault();
   const body={fecha:$('expenseDate').value,categoria:$('expenseCategory').value,
    monto:Number($('expenseAmount').value),concepto:$('expenseConcept').value.trim()};
+  if(body.categoria==='CUOTA_EXTRAORDINARIA'){
+   body.meses=Number($('expenseMonths').value);body.fechaInicio=$('expenseStart').value+'-01';
+   if(!Number.isInteger(body.meses)||body.meses<1||body.meses>36||!/^20\d{2}-(0[1-9]|1[0-2])-01$/.test(body.fechaInicio))return notice('Selecciona de 1 a 36 meses y el primer mes de cobro.');
+  }
   if(!confirm('¿Confirmas este egreso de '+fmt(body.monto)+' por '+body.concepto+'?'))return;
   $('saveExpense').disabled=true;
   try{
    const saved=await request('/egresos',body);
    $('newExpense').reset();
+   syncExtraExpense();
    $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    expenseDateInputs.forEach(syncExpenseDateDisplay);
    await load();

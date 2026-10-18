@@ -81,8 +81,8 @@ test('El modal se cierra solo si el POST confirma el pago; error de refresco no 
  const end=ui.indexOf("'financeHouseRows'",start);
  const flow=ui.slice(start,end);
  const request=flow.indexOf("await request('/pagos-vivienda',payload)");
- const close=flow.indexOf('closeHousePayment();');
- const refresh=flow.indexOf('await load();');
+ const close=flow.indexOf('closeHousePayment();',request);
+ const refresh=flow.indexOf('await load();',close);
  assert.ok(request>=0&&request<close&&close<refresh,
    'Cerrar modal después de POST exitoso y antes de recargar');
  assert.match(flow,/notice\(message,'success'\)/);

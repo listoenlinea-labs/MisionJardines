@@ -1,6 +1,6 @@
 const { DataTypes, QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { Cuota, CuotaExtraordinaria, PagoReportado, FolioConsecutivo } = require('../models');
+const { Cuota, CuotaExtraordinaria, CargoExtraordinario, PagoManualConcepto, PagoReportado, FolioConsecutivo } = require('../models');
 
 async function hasConstraint(tableName, constraintName) {
     const rows = await sequelize.query(
@@ -42,6 +42,14 @@ async function asegurarEsquemaPagos() {
     await FolioConsecutivo.sync();
     await CuotaExtraordinaria.sync();
     await PagoReportado.sync();
+    const extraColumns = await queryInterface.describeTable('cuotas_extraordinarias');
+    await ensureColumn(queryInterface, 'cuotas_extraordinarias', extraColumns, 'egreso_id', {type:DataTypes.BIGINT.UNSIGNED,allowNull:true,unique:true});
+    await ensureColumn(queryInterface, 'cuotas_extraordinarias', extraColumns, 'monto_total', {type:DataTypes.DECIMAL(12,2),allowNull:true});
+    await ensureColumn(queryInterface, 'cuotas_extraordinarias', extraColumns, 'meses', {type:DataTypes.INTEGER.UNSIGNED,allowNull:false,defaultValue:1});
+    await ensureColumn(queryInterface, 'cuotas_extraordinarias', extraColumns, 'fecha_inicio', {type:DataTypes.DATEONLY,allowNull:true});
+    await ensureColumn(queryInterface, 'cuotas_extraordinarias', extraColumns, 'viviendas', {type:DataTypes.INTEGER.UNSIGNED,allowNull:false,defaultValue:231});
+    await CargoExtraordinario.sync();
+    await PagoManualConcepto.sync();
 
     const table = 'pagos_reportados';
     const current = await queryInterface.describeTable(table);
@@ -58,6 +66,8 @@ async function asegurarEsquemaPagos() {
         type: DataTypes.BIGINT.UNSIGNED,
         allowNull: true
     });
+    await ensureColumn(queryInterface, table, current, 'cargo_extraordinario_id', {type:DataTypes.BIGINT.UNSIGNED,allowNull:true});
+    await ensureColumn(queryInterface, table, current, 'reserva_casa_club_id', {type:DataTypes.BIGINT.UNSIGNED,allowNull:true});
 
     await ensureColumn(queryInterface, table, current, 'monto_requerido', {
         type: DataTypes.DECIMAL(12, 2),

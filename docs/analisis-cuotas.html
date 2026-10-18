@@ -17,17 +17,18 @@
 <div class="analysis-columns"><section class="analysis-card"><span class="eyebrow">MOVIMIENTOS</span><h2>Ingresos y egresos</h2><div id="financeCashChart" class="money-bars"></div><p class="hint" id="financeWarning"></p></section>
 <section class="analysis-card"><span class="eyebrow">EGRESOS</span><h2>Gastos por categoría</h2><div id="financeExpenseChart" class="bars"></div></section></div>
 <section class="analysis-card"><div class="heading"><div><span class="eyebrow">REGISTRO DE EGRESOS</span><h2>Registrar un gasto</h2><p>Captura luz, agua, jardinería y gastos de proyectos sin modificar cuotas históricas.</p></div></div>
-<form id="newExpense" class="expense-form"><label>Fecha<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input id="expenseDate" type="date" required></div></label><label>Categoría<select id="expenseCategory" required><option value="LUZ">Luz</option><option value="AGUA">Agua</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTOS">Proyectos</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min=".01" step=".01" required></label><label>Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><div class="expense-reference-note" role="note"><strong>Referencia automática</strong><span>Al guardar, el sistema genera un folio único para este egreso.</span></div><button id="saveExpense" class="primary">Registrar egreso</button></form>
+<form id="newExpense" class="expense-form"><label>Fecha<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input id="expenseDate" type="date" required></div></label><label>Categoría<select id="expenseCategory" required><option value="LUZ">Luz</option><option value="AGUA">Agua</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="CUOTA_EXTRAORDINARIA">Cuota extraordinaria</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min=".01" step=".01" required></label><label>Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><label class="extra-expense-option" hidden>Meses para cubrir el proyecto<input id="expenseMonths" type="number" min="1" max="36" value="1"></label><label class="extra-expense-option" hidden>Primer mes de cobro<input id="expenseStart" type="month" min="2026-10"></label><div class="expense-reference-note" role="note"><strong>Referencia automática</strong><span>Al guardar, el sistema genera un folio único para este egreso.</span></div><button id="saveExpense" class="primary">Registrar egreso</button></form>
 <div class="expense-filters" role="search" aria-label="Filtrar y ordenar egresos">
   <label>Buscar concepto<input type="search" id="expenseFilterConcept" placeholder="Ej. Internet, limpieza"></label>
-  <label>Categoría<select id="expenseFilterCategory"><option value="">Todas</option><option value="LUZ">Luz</option><option value="AGUA">Agua</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTOS">Proyectos</option><option value="OTROS">Otros</option></select></label>
+  <label>Categoría<select id="expenseFilterCategory"><option value="">Todas</option><option value="LUZ">Luz</option><option value="AGUA">Agua</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="CUOTA_EXTRAORDINARIA">Cuota extraordinaria</option><option value="OTROS">Otros</option></select></label>
   <label>Fecha desde<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input type="date" id="expenseFilterFrom"></div></label>
   <label>Fecha hasta<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input type="date" id="expenseFilterTo"></div></label>
   <label>Ordenar por<select id="expenseSort"><option value="fecha_desc">Fecha: más reciente</option><option value="fecha_asc">Fecha: más antigua</option><option value="monto_asc">Monto: menor a mayor</option><option value="monto_desc">Monto: mayor a menor</option><option value="categoria_asc">Categoría: A–Z</option><option value="categoria_desc">Categoría: Z–A</option></select></label>
   <button type="button" class="soft" id="expenseClearFilters">Limpiar filtros</button>
 </div>
 <p id="expenseResultCount" class="expense-results" role="status" aria-live="polite"></p>
-<div class="table-scroll expense-table-scroll"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Referencia</th><th>Monto</th></tr></thead><tbody id="financeExpenseRows"></tbody></table></div></section>
+<div class="table-scroll expense-table-scroll"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Referencia</th><th>Monto</th><th>Cobro</th></tr></thead><tbody id="financeExpenseRows"></tbody></table></div></section>
+<section id="historicalExtraModal" class="finance-pay-overlay" hidden aria-label="Programar cuota extraordinaria histórica"><div class="finance-pay-dialog" role="dialog" aria-modal="true"><div class="finance-pay-heading"><div><span class="eyebrow">CUOTA EXTRAORDINARIA</span><h2>Programar proyecto anterior</h2><p id="historicalExtraName" class="hint"></p></div><button id="historicalExtraClose" class="soft" type="button">Cerrar</button></div><form id="historicalExtraForm" class="house-payment-form"><label>Meses para cubrir el egreso<input id="historicalExtraMonths" type="number" min="1" max="36" value="1" required></label><label>Primer mes de cobro<input id="historicalExtraStart" type="month" min="2026-10" required></label><p class="hint">Se cobrarán las mensualidades entre las 231 viviendas del padrón, conservando cada centavo y sin actualizar TAGs.</p><button type="submit" class="primary">Generar mensualidades</button></form><p id="historicalExtraStatus" role="status"></p></div></section>
 <section id="houseTagsModal" class="finance-pay-overlay" hidden aria-label="Estado de TAGs de vivienda">
   <div class="finance-pay-dialog tags-dialog" role="dialog" aria-modal="true" aria-labelledby="houseTagsTitle" tabindex="-1">
     <div class="finance-pay-heading"><div><span class="eyebrow">ZKTECO · CONSULTA DE ACCESOS</span>
@@ -52,8 +53,10 @@
       <button type="button" id="housePaymentClose" class="soft" aria-label="Cerrar formulario">Cerrar</button>
     </div>
     <form id="housePaymentForm" class="house-payment-form">
-      <div class="house-last-payment" id="houseLastPayment" role="status">Consultando último mes pagado…</div>
-      <label>¿Hasta qué mes está pagando?
+      <label>Concepto de pago<select id="housePaymentType"><option value="MANTENIMIENTO">Cuota de mantenimiento</option><option value="EXTRAORDINARIO">Cuota extraordinaria</option><option value="CASA_CLUB">Casa club</option></select></label>
+      <label id="houseConceptWrap" hidden>Proyecto o reservación pendiente<select id="houseConceptSelect"></select></label>
+      <div class="house-last-payment" id="houseLastPayment" data-maintenance-only role="status">Consultando último mes pagado…</div>
+      <label data-maintenance-only>¿Hasta qué mes está pagando?
         <select id="housePaymentMonth" required>
         <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
         <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
@@ -61,17 +64,17 @@
         <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
         </select>
       </label>
-      <label>Año del último mes que paga<input type="number" min="2026" max="2098" id="housePaymentYear" required></label>
-      <label>Meses pendientes calculados<input type="number" id="housePaymentCount" readonly aria-readonly="true" value="0"></label>
+      <label data-maintenance-only>Año del último mes que paga<input type="number" min="2026" max="2098" id="housePaymentYear" required></label>
+      <label data-maintenance-only>Meses pendientes calculados<input type="number" id="housePaymentCount" readonly aria-readonly="true" value="0"></label>
       <label>Monto total recibido (MXN)<input type="number" id="housePaymentAmount" required min="0" step="0.01" inputmode="decimal" placeholder="Ej. 600.00"></label>
       <label>Forma de pago<select id="housePaymentMethod"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="DEPOSITO">Depósito</option><option value="OTRO">Otro</option></select></label>
       <div id="housePaymentPreview" class="house-payment-preview" role="status" aria-live="polite">Calculando mensualidades pendientes…</div>
-      <div id="housePaymentReviewWrap" class="house-payment-review" hidden>
+      <div id="housePaymentReviewWrap" class="house-payment-review" data-maintenance-only hidden>
         <label><input type="checkbox" id="housePaymentReview"> He revisado las referencias y fechas anteriores de los meses PENDIENTES con $0. Confirmo que no representan un pago real previamente registrado, que recibimos ahora el importe indicado y autorizo conservar esos datos en auditoría al actualizar septiembre y octubre (o los meses seleccionados).</label>
         <p id="housePaymentReviewHint"></p>
       </div>
-      <p class="hint house-payment-notice">Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido es $300 por mes y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado.</p>
-      <div class="house-payment-actions"><button type="button" class="soft" id="housePaymentRefreshC3">Verificar vigencias de TAGs</button><button type="submit" class="primary" id="housePaymentSubmit" disabled>Confirmar pago</button></div>
+      <p class="hint house-payment-notice" data-maintenance-only>Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido es $300 por mes y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado.</p>
+      <div class="house-payment-actions"><button type="button" class="soft" id="housePaymentRefreshC3" data-maintenance-only>Verificar vigencias de TAGs</button><button type="submit" class="primary" id="housePaymentSubmit" disabled>Confirmar pago</button></div>
     </form>
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
   </div>

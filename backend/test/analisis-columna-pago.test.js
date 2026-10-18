@@ -62,7 +62,8 @@ test('Pago usa el mismo formulario, cotización, periodo y confirmación ya exis
  assert.match(opener,/data\?\.viviendas\?\.find\(h=>Number\(h\.casaId\)===Number\(casaId\)\)/);
  assert.match(opener,/activePaymentHouse=house/);
  assert.match(opener,/paymentModal\.hidden=false/);
- assert.match(opener,/quoteHousePayment\(\)/);
+ assert.match(opener,/switchPaymentType\(\)/);
+ assert.match(js,/if\(!other\)\{\$\('housePaymentAmount'\)\.readOnly=false;void quoteHousePayment\(\)/);
  assert.match(opener,/housePaymentMonth'\)\.focus\(\)/);
 });
 
