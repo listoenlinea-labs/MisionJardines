@@ -39,7 +39,7 @@ test('usa la fecha editorial publicada por FreeNewsApi y etiqueta el medio', () 
   assert.equal(items[0].category, 'Choques');
 });
 
-test('destaca hasta cuatro notas viales y completa con noticias de la zona', () => {
+test('reserva más espacios para choques locales y completa con noticias de la zona', () => {
   const articles = Array.from({ length: 18 }, (_, index) => article(
     index < 6 ? `Accidente ${index} en Zapopan` : `Reporte ${index} Guadalajara`,
     '20261017T120000Z',
@@ -47,10 +47,10 @@ test('destaca hasta cuatro notas viales y completa con noticias de la zona', () 
   ));
   const news = prepararNoticiasLocales(articles, now);
   assert.equal(news.length, 12);
-  assert.equal(news.filter(n => n.category === 'Choques').length, 4);
+  assert.equal(news.filter(n => n.category === 'Choques').length, 6);
 });
 
-test('prioriza las seis vialidades cercanas aunque sus noticias sean menos recientes', () => {
+test('conserva las seis vialidades cercanas y presenta las noticias más recientes primero', () => {
   const calles = [
     'Calle Atotonilco', 'Avenida Valle de México', 'Av. Guadalajara',
     'Av. Acueducto', 'Avenida Base Aérea', 'Av. Aviación'
@@ -64,12 +64,13 @@ test('prioriza las seis vialidades cercanas aunque sus noticias sean menos recie
     }))
   ];
   const news = prepararNoticiasLocales(articles, now);
-  assert.deepEqual(news.slice(0, 6).map(item => item.nearbyStreet), [
+  assert.deepEqual(news.filter(item => item.nearbyStreet).map(item => item.nearbyStreet), [
     'Calle Atotonilco', 'Avenida Valle de México', 'Avenida Guadalajara',
     'Avenida Acueducto', 'Avenida Base Aérea', 'Avenida Aviación'
   ]);
-  assert.equal(news[6].category, 'Choques');
-  assert.equal(news[7].nearbyStreet, null);
+  assert.equal(news[0].title, 'Chivas gana en Guadalajara');
+  assert.equal(news[1].category, 'Choques');
+  assert.ok(news.every((item, i) => i === 0 || Date.parse(news[i - 1].seenDate) >= Date.parse(item.seenDate)));
 });
 
 test('no presenta zonas o ciudades homónimas como una calle junto al fraccionamiento', () => {
@@ -79,4 +80,41 @@ test('no presenta zonas o ciudades homónimas como una calle junto al fraccionam
   assert.equal(calleCercana('Choque sobre la Av. Base Aérea'), 'Avenida Base Aérea');
   assert.equal(calleCercana('Problemas viales en Av Aviación'), 'Avenida Aviación');
   assert.equal(calleCercana('Accidente sobre Avenida Aviación'), 'Avenida Aviación');
+});
+
+test('excluye Monterrey, notas nacionales y rutas sin ubicación local, incluso de Tráfico ZMG', () => {
+  const news = prepararNoticiasLocales([
+    { ...article('Maniquí derriba puente en avenida Constitución de Monterrey', '20261017T130000Z', 'https://traficozmg.com/monterrey'), sitename: 'Tráfico ZMG', description: 'Noticias de Guadalajara y más estados' },
+    article('Choque entre tractocamiones en la México-Guadalajara', '20261017T120000Z', 'https://medio.mx/ruta'),
+    article('Accidente grave en Puebla', '20261017T120000Z', 'https://medio.mx/puebla'),
+    { ...article('Bloqueo por obras en Tlajomulco', '20261017T120000Z', 'https://medio.mx/tlajomulco'), description: 'Jalisco, cerca de Guadalajara' },
+    article('Choque en San Juan de Ocotán', '20261017T110000Z', 'https://medio.mx/ocotan'),
+    article('Marcha hoy en Guadalajara por avenida Alcalde', '20261017T100000Z', 'https://medio.mx/marcha'),
+    article('Manifestación en Zapopan', '20261017T090000Z', 'https://medio.mx/manifestacion')
+  ], now);
+  assert.equal(news.length, 3);
+  assert.deepEqual(news.map(item => item.category), ['Choques', 'Marchas y bloqueos', 'Marchas y bloqueos']);
+});
+
+test('favorece noticias viales de Tráfico ZMG en la selección pero las ordena cronológicamente', () => {
+  const articles = Array.from({ length: 20 }, (_, i) => ({
+    title: `Evento cultural ${i} en Guadalajara`,
+    url: `https://medio.mx/cultura-${i}`,
+    published_at: new Date(now.getTime() - (i + 1) * 60000).toISOString(),
+    sitename: 'Medio regional'
+  }));
+  for (let i = 0; i < 8; i++) {
+    articles.push({
+      title: i % 2 ? `Marcha ${i} en Guadalajara` : `Choque ${i} en Zapopan`,
+      url: `https://traficozmg.com/vial-${i}`,
+      published_at: new Date(now.getTime() - (i + 30) * 60000).toISOString(),
+      sitename: 'Tráfico ZMG'
+    });
+  }
+  const news = prepararNoticiasLocales(articles, now);
+  assert.equal(news.length, 12);
+  assert.ok(news.filter(n => n.isTrafficEvent).length >= 6);
+  assert.ok(news.filter(n => n.isTraficoZmg).length >= 6);
+  assert.equal(news[0].title, 'Evento cultural 0 en Guadalajara');
+  assert.ok(news.every((item, i) => i === 0 || Date.parse(news[i - 1].seenDate) >= Date.parse(item.seenDate)));
 });

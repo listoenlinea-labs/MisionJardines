@@ -32,10 +32,12 @@ test('endpoint de noticias usa búsquedas locales y devuelve publicaciones recie
   assert.equal(res.payload.queryWindow, '7d');
   assert.equal(res.payload.data.length, 1); // Misma noticia de tres búsquedas: sin duplicados.
   assert.equal(res.payload.data[0].dateLabel, 'Publicada');
-  assert.equal(requests.length, 10);
+  assert.equal(requests.length, 12);
   assert.ok(requests.some(url => url.searchParams.get('q') === 'Atotonilco'));
   assert.ok(requests.some(url => url.searchParams.get('q') === 'Valle de México'));
   assert.ok(requests.some(url => url.searchParams.get('q') === 'Base Aérea'));
+  assert.ok(requests.some(url => url.searchParams.get('q') === 'marcha Zapopan'));
+  assert.ok(requests.some(url => url.searchParams.get('q') === 'marcha Guadalajara'));
   assert.ok(requests.every(url => url.searchParams.get('date') === '7d'));
   assert.ok(requests.every(url => url.searchParams.get('country') === 'MX'));
 });

@@ -665,16 +665,16 @@
       const path = '/entorno/noticias' + (term ? '?q=' + encodeURIComponent(term) : '');
       const result = await environmentApi(path, { signal: controller.signal });
       if (requestId !== homeNewsRequestId) return;
-      updated.textContent = (term ? 'Resultados para “' + term + '”' : 'Prioridad: vialidades cercanas') +
-        ' · últimos 7 días · ' + (result.provider || 'Noticias web') + ' · ' + formatWhen(result.updatedAt);
+      updated.textContent = (term ? 'Resultados para “' + term + '”' : 'Zapopan y Guadalajara') +
+        ' · más recientes primero · últimos 7 días · ' + (result.provider || 'Noticias web') + ' · ' + formatWhen(result.updatedAt);
 
       const items = Array.isArray(result.data) ? result.data : [];
       grid.innerHTML = items.length
         ? items.slice(0, 12).map(item => `
             <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
               <small>${item.nearbyStreet ? '📍 ' + escapeHtml(item.nearbyStreet) + ' · ' : escapeHtml(item.category || 'Noticias') + ' · '}${escapeHtml(item.domain || 'Medio local')}</small>
-              <strong>${escapeHtml(item.title || 'Noticia local')}</strong>
-              <span>${escapeHtml(item.dateLabel || 'Detectada')} ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
+              <h3 class="hl-news-title">${escapeHtml(item.title || 'Noticia local')}</h3>
+              <span class="hl-news-meta">${escapeHtml(item.dateLabel || 'Detectada')} ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
             </a>`).join('')
         : '<div class="hl-live-empty">' + (term
           ? 'No se encontraron noticias relacionadas con “' + escapeHtml(term) + '” en los últimos 7 días.'
@@ -752,6 +752,11 @@
       });
     });
 
+    // La vista inicial es Noticias: se consulta al abrir Inicio, sin esperar
+    // a que terminen de cargar los mapas de tráfico en segundo plano.
+    homeNewsLoaded = true;
+    loadLocalNews();
+
     try {
       const config = await environmentApi('/entorno/config');
       await renderTrafficMap(config.data || {});
@@ -776,15 +781,15 @@
             </div>
             <div class="hl-environment-actions">
               <div class="hl-environment-tabs" role="tablist" aria-label="Entorno del fraccionamiento">
-                <button class="active" type="button" data-hl-environment="traffic">Tráfico e incidencias</button>
-                <button type="button" data-hl-environment="news">Noticias</button>
+                <button class="active" type="button" data-hl-environment="news">Noticias</button>
+                <button type="button" data-hl-environment="traffic">Tráfico e incidencias</button>
               </div>
               <a class="hl-map-link" href="${GOOGLE_TRAFFIC_URL}" target="_blank" rel="noopener noreferrer" aria-label="Ver tráfico en vivo de Zapopan en Google Maps">Tráfico en Google Maps ↗</a>
             </div>
           </div>
 
-          <div class="hl-environment-scene">
-            <div class="hl-environment-flipper">
+          <div class="hl-environment-scene is-news-view">
+            <div class="hl-environment-flipper is-flipped">
               <section class="hl-environment-face hl-traffic-face" aria-label="Tráfico e incidencias cercanas">
                 <div class="hl-live-map-wrap">
                   <div id="hlLiveTrafficMap" class="hl-live-map"></div>
@@ -1170,9 +1175,9 @@
       .hl-news-item:nth-child(4n+4){border-color:#f4ddcb;background:#fff3e7}
       .hl-news-item:hover,.hl-news-item:focus-visible{border-color:#ad98d8;box-shadow:0 8px 18px rgba(44,56,82,.11)}
       .hl-news-item:focus-visible{outline:2px solid #7d65b5;outline-offset:2px}
-      .hl-news-item small{color:#674f8a;font-size:10px;line-height:1.35;overflow-wrap:anywhere}
-      .hl-news-item strong{margin-top:8px;color:#25334a;font-size:13.5px;line-height:1.42;-webkit-line-clamp:4;overflow-wrap:anywhere}
-      .hl-news-item span{padding-top:12px;color:#52657e;font-size:10px;line-height:1.4}
+      .hl-news-item small{color:#69587b;font-size:10.5px;font-weight:650;line-height:1.4;letter-spacing:.01em;text-transform:none;overflow-wrap:anywhere}
+      .hl-news-item .hl-news-title{display:-webkit-box;margin:8px 0 0;overflow:hidden;color:#364258;font-size:13.5px;font-weight:500;letter-spacing:-.008em;line-height:1.5;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+      .hl-news-item .hl-news-meta{padding-top:12px;color:#617087;font-size:10.5px;font-weight:400;line-height:1.5}
       .hl-traffic-status{bottom:12px;max-width:min(290px,calc(100% - 24px));padding:10px 12px}
       .hl-traffic-status b{font-size:11px;line-height:1.25}
       .hl-traffic-status span{margin-top:4px;font-size:9.5px;line-height:1.4}
