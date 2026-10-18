@@ -1198,9 +1198,14 @@
         .hl-environment-scene.is-news-view .hl-news-face,
         .hl-environment-scene:not(.is-news-view) .hl-traffic-face{opacity:1;visibility:visible;pointer-events:auto}
         .hl-environment-scene.is-news-view .hl-traffic-status{display:none}
-        .hl-environment-scene.is-news-view{height:650px}
+        /* La altura fija recortaba la última fila de tres noticias en iPhone.
+           Noticias crece con sus tarjetas y usa el scroll natural de la página. */
+        .hl-environment-scene.is-news-view,
+        .hl-op-map .hl-environment-scene.is-news-view{height:auto;overflow:visible}
+        .hl-environment-scene.is-news-view .hl-environment-flipper{height:auto}
+        .hl-environment-scene.is-news-view .hl-news-face{position:relative;inset:auto}
         .hl-news-face{padding:12px}
-        .hl-news-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:480px;padding:1px 2px 5px 1px;align-items:stretch}
+        .hl-news-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:none;overflow:visible;padding:1px 2px 5px 1px;align-items:stretch}
         .hl-news-grid>.hl-live-empty{grid-column:1/-1;font-size:11px}
         .hl-news-item{min-width:0;min-height:158px;padding:9px 8px;border-radius:10px;overflow-wrap:anywhere}
         .hl-news-item small{display:-webkit-box;overflow:hidden;font-size:9.5px;font-weight:600;line-height:1.35;-webkit-line-clamp:2;-webkit-box-orient:vertical}

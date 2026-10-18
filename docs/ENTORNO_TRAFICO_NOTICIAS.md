@@ -36,7 +36,10 @@ En celulares, Noticias muestra una cuadrícula compacta de **tres columnas**
 con tarjetas de igual ancho, títulos de hasta cinco líneas y metadatos
 reducidos sin perder contraste. En pantallas de **360 px o menos** utiliza
 dos columnas para mantener los textos legibles. Las tarjetas siguen siendo
-enlaces completos y el listado conserva su desplazamiento interno.
+enlaces completos. En móvil, la sección **crece con todas las filas de noticias**
+y utiliza el desplazamiento vertical de la página, sin recortar las últimas
+tarjetas por una altura fija o por un segundo scroll interno. En escritorio
+se conserva el desplazamiento interno del listado.
 
 En celulares, la alternancia entre **Noticias** y **Tráfico e incidencias**
 no usa el giro 3D: Safari de iPhone podía mostrar invertida una barra del mapa
