@@ -95,6 +95,6 @@ test('Responsive: LOV compacta en escritorio y en móvil, caché actualizada',()
  assert.match(css,/grid-template-columns:minmax\(0,1\.45fr\) minmax\(0,\.8fr\)/);
  assert.match(css,/body\.page-analisis\.mj-shared-sidebar-enabled \.residences-filter/);
  assert.match(css,/grid-template-columns:minmax\(0,1fr\)!important/);
- assert.match(html,/analisis-cuotas\.css\?v=20261015-mes-pagado/);
- assert.match(html,/analisis-cuotas\.js\?v=20261015-mes-pagado/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261018-tres-conceptos/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261018-tres-conceptos/);
 });

@@ -33,6 +33,7 @@
  });
  let data=null;
  let housePage=1;
+ let activeConcept='MANTENIMIENTO';
  const HOUSE_PAGE_SIZE=12;
  const notice=(msg,kind='error')=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;el.dataset.kind=kind;};
  async function request(path,body){
@@ -73,6 +74,8 @@
   const padronNote=$('financePadronNote');
   if(padronNote){padronNote.textContent=data.avisoPadron||'';padronNote.hidden=!data.avisoPadron;}
   const cash=data.esCargaHistorica ? [['Mantenimiento histórico',data.ingresosHistoricos],['Ingresos adicionales',data.ingresosAdicionales],['Saldo inicial',data.saldoInicial],['Egresos',data.totalEgresos]] : [['Mantenimiento validado',data.ingresosReportados.mantenimiento],['Extraordinarios validados',data.ingresosReportados.extraordinarios],['Ingresos adicionales',data.ingresosAdicionales],['Saldo inicial',data.saldoInicial],['Egresos',data.totalEgresos]];
+  // Solo cobros recibidos (bancarios validados + manuales), no reservas aprobadas sin pagar.
+  cash.splice(cash.length-1,0,['Casa club cobrado',Number(data.ingresosReportados.casaClub||0)+Number(data.manualesCasaClub||0)]);
   const max=Math.max(1,...cash.map(x=>x[1]));
   $('financeCashChart').innerHTML=cash.map(([n,v],i)=>'<div class="money-row"><strong>'+esc(n)+'</strong><div class="track"><div class="fill '+(n==='Egresos'?'cost':'')+'" style="width:'+(v/max*100).toFixed(2)+'%"></div></div><strong>'+esc(fmt(v))+'</strong></div>').join('')+
     '<div class="hint">Abonos anotados en tabla de cuotas (sin duplicar en ingresos): <b>'+fmt(data.cobrosCuotasRegistrados)+'</b></div>';
@@ -148,6 +151,7 @@
      sinConfirmar:detail.filter(x=>x.estadoVista.codigo==='SIN_CONFIRMAR').length};
  }
  function tagMismatch(h,view){
+   if(activeConcept!=='MANTENIMIENTO')return '';
    if(Number(h.saldoPendiente)>0&&view.activos>0)return 'Revisar: deuda y TAG activo';
    if(Number(h.saldoPendiente)===0&&view.inactivos>0)return 'Revisar: sin deuda y TAG inactivo';
    return '';
@@ -159,7 +163,7 @@
    if(status==='ADVERTENCIAS')return Boolean(tagMismatch(h,tagsView(h)));
    const pagadoCompleto=String(h.estatus||'').toUpperCase()==='PAGADO';
    if(status==='PAGADO')return pagadoCompleto;
-   if(status==='PENDIENTE')return !pagadoCompleto; // incluye PAGO_PARCIAL
+   if(status==='PENDIENTE')return ['PENDIENTE','PAGO_PARCIAL'].includes(String(h.estatus||'').toUpperCase());
    return false;
  }
  function renderHouseTagCell(h){
@@ -288,6 +292,39 @@ function cumpleUltimoPago(h,month,year){
   const actual=indiceUltimoMesPagado(h.ultimoMesPagado);
   return actual!==null&&actual>=year*12+month-1;
 }
+function elegirConcepto(concepto){
+  if(!data)return;
+  const registros=data.viviendasConceptos?.[concepto];
+  if(concepto!=='MANTENIMIENTO'&&!Array.isArray(registros)){
+    notice('El servidor todavía no ofrece el análisis de '+(concepto==='CASA_CLUB'?'Casa club':'Cuotas extraordinarias')+'. Despliega también el backend para consultar saldos reales.');
+    return;
+  }
+  const financial=new Map((registros||[]).map(h=>[String(h.casaId),h]));
+  if(concepto!=='MANTENIMIENTO'&&data.viviendasMantenimiento.some(h=>!financial.has(String(h.casaId)))){
+    notice('Faltan movimientos por vivienda en la respuesta del servidor. No se mostrarán importes incompletos.');
+    return;
+  }
+  activeConcept=concepto;
+  data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId))});
+  document.querySelectorAll('[data-finance-concept]').forEach(tab=>{
+    const selected=tab.dataset.financeConcept===concepto;
+    tab.classList.toggle('active',selected);
+    tab.setAttribute('aria-selected',String(selected));
+    tab.tabIndex=selected?0:-1;
+    if(selected)$('financeHousePanel').setAttribute('aria-labelledby',tab.id);
+  });
+  const warning=$('financeStatus').querySelector('option[value="ADVERTENCIAS"]');
+  if(warning)warning.disabled=concepto!=='MANTENIMIENTO';
+  if(concepto!=='MANTENIMIENTO'&&$('financeStatus').value==='ADVERTENCIAS')$('financeStatus').value='';
+  $('financeConceptHint').textContent={
+    MANTENIMIENTO:'Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.',
+    EXTRAORDINARIO:'Cuotas extraordinarias: solo proyectos con mensualidades configuradas. Los egresos sin repartir todavía no generan deuda.',
+    CASA_CLUB:'Casa club: solo reservas aprobadas. El saldo vence en la fecha límite de pago, no en la fecha del evento.'
+  }[concepto];
+  housePage=1;
+  actualizarAniosUltimoPago();
+  renderHouses();
+}
 function renderHouses(){
   if(!data)return;
   const query=$('financeSearch').value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),
@@ -307,7 +344,7 @@ function renderHouses(){
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
-    houseCell('Estado','<span class="'+(String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
+    houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
     houseCell('Pagado','<span class="house-amount">'+esc(fmt(h.montoPagado))+'</span>')+
     houseCell('Último mes pagado',esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount">'+esc(fmt(h.saldoPendiente))+'</span>')+
@@ -417,11 +454,12 @@ function renderHouses(){
    $('housePaymentCount').value='0';
    $('housePaymentAmount').value='';
    $('housePaymentMethod').value='EFECTIVO';
-   $('housePaymentType').value='MANTENIMIENTO';
+   $('housePaymentType').value=activeConcept;
    $('housePaymentStatus').textContent='';
    paymentModal.hidden=false;
    switchPaymentType();
    $('housePaymentMonth').focus();
+   if(activeConcept!=='MANTENIMIENTO')$('houseConceptSelect').focus();
  }
  function closeHousePayment(){
    ++quoteSequence;
@@ -520,11 +558,28 @@ function renderHouses(){
   try{
    const year=Number($('financeYear').value),month=Number($('financeMonth').value);
    const response=await request('/analisis?anio='+year+'&mes='+month);
-   data=response.data;render();
+   data=response.data;
+   data.viviendasMantenimiento=data.viviendas;
+   if(activeConcept!=='MANTENIMIENTO'&&!Array.isArray(data.viviendasConceptos?.[activeConcept]))activeConcept='MANTENIMIENTO';
+   render();
+   elegirConcepto(activeConcept);
   }catch(e){notice(e.message);}
   finally{$('updateFinance').disabled=false;}
  }
  $('updateFinance').addEventListener('click',load);
+ document.querySelectorAll('[data-finance-concept]').forEach(tab=>{
+  tab.addEventListener('click',()=>elegirConcepto(tab.dataset.financeConcept));
+  tab.addEventListener('keydown',event=>{
+   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+   const tabs=[...document.querySelectorAll('[data-finance-concept]')];
+   const index=tabs.indexOf(tab);
+   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+     (index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+   event.preventDefault();
+   elegirConcepto(tabs[next].dataset.financeConcept);
+   tabs.find(t=>t.getAttribute('aria-selected')==='true')?.focus();
+  });
+ });
  $('expenseFilterConcept').addEventListener('input',renderExpenses);
  for(const id of ['expenseFilterCategory','expenseFilterFrom','expenseFilterTo','expenseSort'])
   $(id).addEventListener('change',renderExpenses);
