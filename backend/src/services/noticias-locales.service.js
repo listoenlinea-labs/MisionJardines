@@ -4,7 +4,8 @@ const VENTANA_DIAS = 7;
 const VENTANA_MS = VENTANA_DIAS * 24 * 60 * 60 * 1000;
 const PATRON_VIAL = /\b(choques?|accidentes?|volcaduras?|atropellamientos?|colisiones?|carambolas?)\b/i;
 
-// GDELT devuelve la fecha de detección en formato 20261018T050000Z.
+// GDELT devuelve la fecha de detección en formato 20261018T050000Z;
+// FreeNewsApi devuelve la fecha editorial de publicación en ISO 8601.
 function fechaGdelt(value) {
   if (typeof value !== 'string') return null;
   const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(value);
@@ -21,7 +22,7 @@ function prepararNoticiasLocales(articles, now = new Date()) {
   const noticias = [];
 
   for (const article of Array.isArray(articles) ? articles : []) {
-    const fecha = fechaGdelt(article.seendate);
+    const fecha = fechaGdelt(article.published_at || article.seendate);
     if (!fecha || fecha.getTime() < cutoff || fecha.getTime() > fechaActual + 5 * 60 * 1000) continue;
 
     let url;
@@ -41,11 +42,12 @@ function prepararNoticiasLocales(articles, now = new Date()) {
     noticias.push({
       title,
       url: url.href,
-      domain: article.domain || url.hostname,
+      domain: article.sitename || article.domain || article.host || url.hostname,
       seenDate: fecha.toISOString(),
+      dateLabel: article.published_at ? 'Publicada' : 'Detectada',
       category: categoria,
-      sourceCountry: article.sourcecountry || '',
-      language: article.language || ''
+      sourceCountry: article.country || article.sourcecountry || '',
+      language: article.lang || article.language || ''
     });
   }
 

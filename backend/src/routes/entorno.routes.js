@@ -55,7 +55,7 @@ router.get('/config', autenticarToken, (req, res) => {
       address: ADDRESS,
       googleMapsKey: process.env.GOOGLE_MAPS_BROWSER_API_KEY || '',
       trafficIncidentsConfigured: Boolean(process.env.TOMTOM_API_KEY),
-      newsProvider: 'GDELT'
+      newsProvider: 'FreeNewsApi'
     }
   });
 });
@@ -151,20 +151,32 @@ router.get('/noticias', autenticarToken, async (req, res) => {
     const cached = getCached('news', 15 * 60 * 1000);
     if (cached) return res.json(cached);
 
-    const url = new URL('https://api.gdeltproject.org/api/v2/doc/doc');
-    url.searchParams.set('query', '(Guadalajara OR Zapopan) sourcelang:spanish');
-    url.searchParams.set('mode', 'artlist');
-    url.searchParams.set('format', 'json');
-    url.searchParams.set('maxrecords', '100');
-    url.searchParams.set('timespan', '1week');
-    url.searchParams.set('sort', 'datedesc');
-
-    const payload = await fetchJson(url, 10000);
-    const data = prepararNoticiasLocales(payload.articles, new Date());
+    // GDELT devuelve 429 de forma recurrente desde IPs de servidores compartidos.
+    // FreeNewsApi permite búsquedas gratuitas y uso comercial sin credenciales,
+    // y filtra sobre la fecha real de publicación de cada nota.
+    const terminos = ['Zapopan', 'Guadalajara', 'choque Zapopan', 'choque Guadalajara'];
+    const consultas = terminos.map(termino => {
+      const url = new URL('https://freenewsapi.ai/v1/search');
+      url.searchParams.set('q', termino);
+      url.searchParams.set('country', 'MX');
+      url.searchParams.set('lang', 'es');
+      url.searchParams.set('date', '7d');
+      url.searchParams.set('sort', 'date');
+      url.searchParams.set('size', termino.startsWith('choque') ? '30' : '70');
+      return fetchJson(url, 8000);
+    });
+    const respuestas = await Promise.allSettled(consultas);
+    const correctas = respuestas.filter(r => r.status === 'fulfilled');
+    if (!correctas.length) {
+      const detalle = respuestas[0]?.reason?.message || 'Todas las fuentes rechazaron la consulta';
+      throw new Error('No fue posible obtener noticias de la fuente: ' + detalle);
+    }
+    const articles = correctas.flatMap(r => r.value.results || []);
+    const data = prepararNoticiasLocales(articles, new Date());
 
     const result = {
       ok: true,
-      provider: 'GDELT',
+      provider: 'FreeNewsApi',
       queryWindow: `${VENTANA_DIAS}d`,
       data,
       updatedAt: new Date().toISOString()

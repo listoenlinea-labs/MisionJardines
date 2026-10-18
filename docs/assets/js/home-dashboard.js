@@ -387,10 +387,11 @@
     }
   }
 
-  async function environmentApi(path) {
+  async function environmentApi(path, options = {}) {
     const response = await fetch(API_URL + path, {
       headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: options.signal
     });
 
     const payload = await response.json().catch(() => ({}));
@@ -530,9 +531,11 @@
 
     grid.innerHTML = '<div class="hl-live-empty">Buscando noticias de Zapopan, Guadalajara y choques recientes…</div>';
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 14000);
     try {
-      const result = await environmentApi('/entorno/noticias');
-      updated.textContent = 'Guadalajara · Zapopan · últimos 7 días · ' + formatWhen(result.updatedAt);
+      const result = await environmentApi('/entorno/noticias', { signal: controller.signal });
+      updated.textContent = 'Guadalajara · Zapopan · últimos 7 días · ' + (result.provider || 'Noticias web') + ' · ' + formatWhen(result.updatedAt);
 
       const items = Array.isArray(result.data) ? result.data : [];
       grid.innerHTML = items.length
@@ -540,12 +543,21 @@
             <a class="hl-news-item" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
               <small>${escapeHtml(item.category || 'Noticias')} · ${escapeHtml(item.domain || 'Medio local')}</small>
               <strong>${escapeHtml(item.title || 'Noticia local')}</strong>
-              <span>Detectada ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
+              <span>${escapeHtml(item.dateLabel || 'Detectada')} ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
             </a>`).join('')
         : '<div class="hl-live-empty">No se encontraron noticias sobre Guadalajara, Zapopan o choques en los últimos 7 días.</div>';
     } catch (error) {
       homeNewsLoaded = false; // Permitir reintento al abrir de nuevo Noticias.
-      grid.innerHTML = '<div class="hl-live-empty">' + escapeHtml(error.message) + '</div>';
+      const message = error.name === 'AbortError'
+        ? 'La fuente de noticias tardó demasiado en responder.'
+        : error.message;
+      grid.innerHTML = '<div class="hl-live-empty"><span>' + escapeHtml(message) + '</span><button type="button" class="hl-refresh" id="hlRetryNews">Reintentar noticias</button></div>';
+      grid.querySelector('#hlRetryNews')?.addEventListener('click', () => {
+        homeNewsLoaded = true;
+        loadLocalNews();
+      });
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
