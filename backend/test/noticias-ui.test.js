@@ -27,3 +27,15 @@ test('Noticias usa tres columnas en celular y dos en pantallas muy estrechas', (
   assert.match(mobile, /\.hl-news-item \.hl-news-title\{[^}]*-webkit-line-clamp:5/);
   assert.match(mobile, /\.hl-news-grid>\.hl-live-empty\{grid-column:1\/-1/);
 });
+
+test('En Safari móvil no se pinta el reverso de Tráfico sobre Noticias', () => {
+  const js = fs.readFileSync(path.resolve(__dirname, '../../docs/assets/js/home-dashboard.js'), 'utf8');
+  const mobile = js.slice(js.indexOf('/* Tarjetas de noticias compactas en móvil'));
+  assert.match(mobile, /@media\(max-width:720px\)\{/);
+  assert.match(mobile, /\.hl-environment-flipper\.is-flipped\{transform:none;transform-style:flat/);
+  assert.match(mobile, /\.hl-environment-scene \.hl-news-face\{transform:none;backface-visibility:visible/);
+  assert.match(mobile, /\.hl-environment-scene\.is-news-view \.hl-traffic-face,[\s\S]*?\{opacity:0;visibility:hidden;pointer-events:none\}/);
+  assert.match(mobile, /\.hl-environment-scene:not\(\.is-news-view\) \.hl-traffic-face\{opacity:1;visibility:visible;pointer-events:auto\}/);
+  assert.match(mobile, /\.hl-environment-scene\.is-news-view \.hl-traffic-status\{display:none\}/);
+  assert.match(js, /\.hl-environment-flipper\.is-flipped\{transform:rotateY\(180deg\)\}/);
+});
