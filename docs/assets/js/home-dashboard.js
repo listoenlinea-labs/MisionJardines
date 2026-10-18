@@ -1186,7 +1186,25 @@
       .hl-traffic-legend span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
       .hl-traffic-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#2eab30}
       .hl-traffic-dot.orange{background:#f18237}.hl-traffic-dot.red{background:#e70704}
-      @media(max-width:720px){.hl-environment-scene.is-news-view{height:650px}.hl-news-face{padding:14px}.hl-news-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;max-height:480px}.hl-news-item{min-height:140px}.hl-traffic-legend{top:8px;right:8px;padding:7px;gap:6px;font-size:9px}.hl-traffic-status{left:8px;bottom:8px;max-width:calc(100% - 16px)}}
+      /* Tarjetas de noticias compactas en móvil: tres columnas con texto legible. */
+      @media(max-width:720px){
+        .hl-environment-scene.is-news-view{height:650px}
+        .hl-news-face{padding:12px}
+        .hl-news-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:480px;padding:1px 2px 5px 1px;align-items:stretch}
+        .hl-news-grid>.hl-live-empty{grid-column:1/-1;font-size:11px}
+        .hl-news-item{min-width:0;min-height:158px;padding:9px 8px;border-radius:10px;overflow-wrap:anywhere}
+        .hl-news-item small{display:-webkit-box;overflow:hidden;font-size:9.5px;font-weight:600;line-height:1.35;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+        .hl-news-item .hl-news-title{margin-top:7px;font-size:11.5px;font-weight:500;line-height:1.38;-webkit-line-clamp:5}
+        .hl-news-item .hl-news-meta{padding-top:7px;font-size:9.3px;line-height:1.4;overflow-wrap:anywhere}
+        .hl-traffic-legend{top:8px;right:8px;padding:7px;gap:6px;font-size:9px}
+        .hl-traffic-status{left:8px;bottom:8px;max-width:calc(100% - 16px)}
+      }
+      /* En teléfonos muy estrechos, dos columnas evitan texto demasiado apretado. */
+      @media(max-width:360px){
+        .hl-news-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .hl-news-item .hl-news-title{font-size:12px}
+        .hl-news-item .hl-news-meta{font-size:9.8px}
+      }
 
       /* Inicio operativo de Seguridad/Residente: el de Administración no cambia. */
       .hl-op-scope{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:0 0 15px;padding:11px 16px;border:1px solid #dfe9f0;border-radius:12px;background:#f5f9fd;color:#485a73}

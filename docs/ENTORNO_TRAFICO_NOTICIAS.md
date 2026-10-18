@@ -32,6 +32,12 @@ prioritarios antiguos sobre los más recientes. Las notas de calles cercanas
 se distinguen con una tarjeta verde pastel y los titulares usan un peso de
 letra moderado para facilitar la lectura.
 
+En celulares, Noticias muestra una cuadrícula compacta de **tres columnas**
+con tarjetas de igual ancho, títulos de hasta cinco líneas y metadatos
+reducidos sin perder contraste. En pantallas de **360 px o menos** utiliza
+dos columnas para mantener los textos legibles. Las tarjetas siguen siendo
+enlaces completos y el listado conserva su desplazamiento interno.
+
 La fuente externa sigue siendo Free News API, sin nueva clave; búsquedas con
 respuesta exitosa se conservan por 15 minutos, con un máximo de 40 entradas
 en memoria y 15 solicitudes por usuario/minuto en el backend. La disponibilidad
