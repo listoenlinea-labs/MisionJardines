@@ -75,6 +75,6 @@ test('Botón compacto para escritorio/móvil y sin cambios a estilos del modal d
  assert.match(css,/@media\(max-width:700px\)\{\s*\.houses-scroll \.house-pay-button\{/);
  assert.match(mobile,/#financeHouseRows>tr>td\[data-label\]::before/);
  assert.match(mobile,/content:attr\(data-label\)!important/);
- assert.match(html,/analisis-cuotas\.css\?v=20261015-mes-pagado/);
- assert.match(html,/analisis-cuotas\.js\?v=20261015-mes-pagado/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261018-tres-conceptos/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261018-tres-conceptos/);
 });

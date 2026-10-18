@@ -51,12 +51,12 @@ test('Viviendas tienen nueve parejas etiqueta-valor y mantienen su semántica',(
  assert.match(houses,/colspan="9"/);
 });
 
-test('Egresos tienen cinco parejas etiqueta-valor, incluyendo conceptos largos',()=>{
+test('Egresos tienen seis parejas etiqueta-valor, incluyendo cobro de proyectos',()=>{
  const ui=read('docs/assets/js/analisis-cuotas.js');
  const expenses=part(ui,'function renderExpenses(){','// Resumen ligero desde MySQL');
  assert.match(expenses,/const expenseCell=\(label,value\)=>/);
- assert.equal((expenses.match(/expenseCell\('/g)||[]).length,5);
- for(const name of ['Fecha','Categoría','Concepto','Referencia','Monto']){
+ assert.equal((expenses.match(/expenseCell\('/g)||[]).length,6);
+ for(const name of ['Fecha','Categoría','Concepto','Referencia','Monto','Cobro']){
    assert.match(expenses,new RegExp("expenseCell\\('"+name+"'"));
  }
  assert.match(expenses,/esc\(e\.concepto\)/);
@@ -81,8 +81,8 @@ test('Caché actualizada y controles operativos intactos',()=>{
  const html=read('docs/analisis-cuotas.html');
  const sidebar=read('docs/assets/js/site-sidebar.js');
  const ui=read('docs/assets/js/analisis-cuotas.js');
- assert.match(html,/analisis-cuotas\.css\?v=20261015-mes-pagado/);
- assert.match(html,/analisis-cuotas\.js\?v=20261015-mes-pagado/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261018-tres-conceptos/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261018-tres-conceptos/);
  assert.match(sidebar,/mobile-operativo\.css\?v=20261015-safari-fechas-compactas/);
  for(const action of ['houseTagsEdit','houseTagsRefresh']){
    assert.match(html,new RegExp('id="'+action+'"'));

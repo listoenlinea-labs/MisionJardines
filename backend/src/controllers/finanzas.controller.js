@@ -4,11 +4,12 @@ const { compararDirecciones }=require('../services/direccion-sort.service');
 const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
 const { calcularAdeudoVivienda }=require('../services/adeudo-vivienda-analisis.service');
 const {tagsParaViviendas}=require('../services/analisis-tags.service');
-const {Casa,Cuota,PagoReportado,ZkTarjeta,CuotaExtraordinaria,PagoManualConcepto}=require('../models');
+const {Casa,Cuota,PagoReportado,ZkTarjeta,CuotaExtraordinaria,CargoExtraordinario,PagoManualConcepto}=require('../models');
 const Egreso=require('../models/Egreso');
 const {referenciaEgreso}=require('../services/egreso-referencia.service');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
 const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
+const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
 const mesNombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const categorias=['LUZ','AGUA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','OTROS'];
 const num=x=>Number(x||0);
@@ -23,7 +24,7 @@ function filters(req){
 async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
-  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras]=await Promise.all([
+  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','estatusPago','montoPagado','montoCuota','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion']}),
@@ -35,7 +36,11 @@ async function analizar(req,res){
    Cuota.findAll({attributes:['casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']}),
    ZkTarjeta.findAll({attributes:['id','casaId','numeroTarjeta','nombreDispositivo','departamento','fechaInicio','fechaFin','bloqueado','enControlador','puertasAutorizadas','ultimaLectura']})
    ,PagoManualConcepto.findAll({where:{creadoEn:{[Op.between]:[start+' 00:00:00',end+' 23:59:59']}},attributes:['tipoPago','monto']})
-   ,CuotaExtraordinaria.findAll({attributes:['egresoId','id']})
+   ,CuotaExtraordinaria.findAll({attributes:['egresoId','id']}),
+   CargoExtraordinario.findAll({attributes:['id','casaId','periodo','monto'],include:[{model:CuotaExtraordinaria,as:'cuota',attributes:[],required:true,where:{activo:true}}]}),
+   PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId']}),
+   PagoManualConcepto.findAll({attributes:['tipoPago','cargoExtraordinarioId','reservaCasaClubId']}),
+   ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado']})
   ]);
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const padron=seleccionarPadronAnalisis(casas,cuotas);
@@ -62,12 +67,15 @@ async function analizar(req,res){
     tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
+  const viviendasConceptos=resumenConceptos({viviendas:residences,cargos:cargosExtraordinarios,reportados:pagosConceptoHistoricos,
+   manuales:manualesConceptoHistoricos,reservas:reservasAprobadas,anio,mes});
   const ingresosReportados={mantenimiento:0,extraordinarios:0,casaClub:0};
   for(const p of pagos)ingresosReportados[p.tipoPago==='EXTRAORDINARIO'?'extraordinarios':p.tipoPago==='CASA_CLUB'?'casaClub':'mantenimiento']+=num(p.monto);
   const categoriasGasto=Object.fromEntries(categorias.map(c=>[c,0]));
   for(const e of egresos)categoriasGasto[e.categoria==='PROYECTOS'?'CUOTA_EXTRAORDINARIA':e.categoria]+=num(e.monto);
   const ingresosValidados=ingresosReportados.mantenimiento+ingresosReportados.extraordinarios+ingresosReportados.casaClub;
   const totalManualConcepto=pagosManualesConcepto.reduce((a,p)=>a+num(p.monto),0);
+  const manualesCasaClub=pagosManualesConcepto.filter(p=>p.tipoPago==='CASA_CLUB').reduce((a,p)=>a+num(p.monto),0);
   const cobrosHistoricos=cuotas.reduce((a,q)=>a+num(q.montoPagado),0);
   const esCargaHistorica=cuotas.some(q=>String(q.origenImportacion||'').startsWith('EXCEL_'));
   const ingresosAdicionales=ingresosManuales.filter(x=>x.tipo!=='SALDO_INICIAL').reduce((a,x)=>a+num(x.monto),0);
@@ -83,12 +91,12 @@ async function analizar(req,res){
    anio,mes,periodo:mesName+' '+anio,
    casas:residences.length,pagadas,pendientes:residences.length-pagadas,
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
-   calles:calls,viviendas:residences.sort(compararDirecciones),
+   calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,
    padronExcluidos:padron.excluidas,padronDuplicados:padron.duplicadas,
    avisoPadron:padron.excluidas ? 'El porcentaje de cumplimiento excluye '+padron.excluidas+' registros auxiliares, fuera del padrón o de prueba. Los registros, cuotas y pagos originales permanecen en la base de datos.' : '',
    cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,
    ingresosParaBalance,ingresosAdicionales,totalManualConcepto,saldoInicial,ingresosManuales,
-   ingresosReportados,ingresosValidados,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
+   ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>({...e.toJSON(),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))})),
    avisoConciliacion:esCargaHistorica?'Periodo histórico: cuotas importadas, ingresos adicionales y saldo inicial se calculan una sola vez. Depósitos bancarios validados se muestran aparte sin sumarlos de nuevo.':'Periodo actual: ingresos bancarios validados más ingresos manuales y saldo inicial registrados; las cuotas históricas se muestran aparte para no duplicar depósitos.'
   }});
