@@ -27,6 +27,18 @@ test('muestra solo notas de los últimos siete días, sin duplicados y con enlac
   assert.equal(noticias[0].seenDate, '2026-10-17T12:00:00.000Z');
 });
 
+test('usa la fecha editorial publicada por FreeNewsApi y etiqueta el medio', () => {
+  const items = prepararNoticiasLocales([
+    { title: 'Choque en Guadalajara', url: 'https://traficozmg.com/choque', published_at: '2026-10-17T20:30:00Z', sitename: 'Tráfico ZMG', country: 'MX', lang: 'es' },
+    { title: 'Nota anterior a la semana', url: 'https://medio.mx/antigua', published_at: '2026-10-10T20:30:00Z' }
+  ], now);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].dateLabel, 'Publicada');
+  assert.equal(items[0].seenDate, '2026-10-17T20:30:00.000Z');
+  assert.equal(items[0].domain, 'Tráfico ZMG');
+  assert.equal(items[0].category, 'Choques');
+});
+
 test('destaca hasta cuatro notas viales y completa con noticias de la zona', () => {
   const articles = Array.from({ length: 18 }, (_, index) => article(
     index < 6 ? `Accidente ${index} en Zapopan` : `Reporte ${index} Guadalajara`,
