@@ -1,9 +1,11 @@
 (() => {
   const API_URL = window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api';
   const token = window.MJ_TOKEN || localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
-  const GOOGLE_SHARE_URL = 'https://share.google/XOJvMvlvdeocnd6mQ';
+  // Maps URLs permite abrir la capa de tráfico sin necesitar una API key.
+  const GOOGLE_TRAFFIC_URL = 'https://www.google.com/maps/@?api=1&map_action=map&center=20.75%2C-103.43&zoom=14&layer=traffic';
   const GOOGLE_EMBED_URL = 'https://www.google.com/maps?q=Misi%C3%B3n+Jardines+Fraccionamiento,+C.+Atotonilco+700,+45138+Zapopan,+Jalisco,+M%C3%A9xico&output=embed';
   let homeNewsLoaded = false;
+  let environmentLeafletMap = null;
   let removeFinanceMediaListener = () => {};
 
   const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
@@ -438,6 +440,99 @@
     return window.__mjGoogleMapsPromise;
   }
 
+  function loadLeaflet() {
+    if (window.L?.map) return Promise.resolve();
+    if (window.__mjLeafletPromise) return window.__mjLeafletPromise;
+
+    const stylesheet = new Promise((resolve, reject) => {
+      if (document.getElementById('mjLeafletStyles')) return resolve();
+      const css = document.createElement('link');
+      css.id = 'mjLeafletStyles';
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      css.onload = resolve;
+      css.onerror = () => reject(new Error('No fue posible cargar los estilos del mapa.'));
+      document.head.appendChild(css);
+    });
+    const library = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = () => window.L?.map ? resolve() : reject(new Error('Leaflet no está disponible.'));
+      script.onerror = () => reject(new Error('No fue posible cargar el mapa interactivo.'));
+      document.head.appendChild(script);
+    });
+
+    window.__mjLeafletPromise = Promise.all([stylesheet, library]).catch(error => {
+      window.__mjLeafletPromise = null;
+      throw error;
+    });
+
+    return window.__mjLeafletPromise;
+  }
+
+  async function renderTomTomTrafficMap(mapElement, status) {
+    // Reutilizamos la geocodificación del endpoint de incidencias. El proxy de
+    // imágenes mantiene la clave secreta TomTom fuera del navegador.
+    const incidents = await environmentApi('/entorno/incidencias');
+    const center = incidents.center;
+    if (!Number.isFinite(center?.lat) || !Number.isFinite(center?.lng)) {
+      throw new Error('No fue posible ubicar el fraccionamiento para mostrar el tráfico.');
+    }
+
+    // Verificar la credencial antes de mostrar una capa que podría quedar vacía.
+    const zoom = 14;
+    const x = Math.floor((center.lng + 180) / 360 * (2 ** zoom));
+    const latitudeRad = center.lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.asinh(Math.tan(latitudeRad)) / Math.PI) / 2 * (2 ** zoom));
+    const probe = await fetch(`${API_URL}/entorno/trafico/tesela/${zoom}/${x}/${y}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!probe.ok || !probe.headers.get('content-type')?.includes('image/png')) {
+      throw new Error('TomTom no devolvió información válida de tráfico. Revisa TOMTOM_API_KEY.');
+    }
+
+    await loadLeaflet();
+    mapElement.innerHTML = '';
+    const map = L.map(mapElement, { zoomControl: true, scrollWheelZoom: false, minZoom: 12, maxZoom: 17 })
+      .setView([center.lat, center.lng], 14);
+    environmentLeafletMap = map;
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Leaflet requiere imágenes, pero la ruta necesita Authorization. Descargamos
+    // cada tesela como blob autenticado, sin insertar el JWT en el URL.
+    const flow = L.tileLayer('', { minZoom: 12, maxZoom: 17, opacity: 0.95 });
+    flow.createTile = function (coords, done) {
+      const tile = document.createElement('img');
+      tile.alt = '';
+      tile.setAttribute('role', 'presentation');
+      const path = `/entorno/trafico/tesela/${coords.z}/${coords.x}/${coords.y}`;
+      fetch(API_URL + path, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(10000)
+      }).then(response => {
+        if (!response.ok) throw new Error('No disponible');
+        return response.blob();
+      }).then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
+        tile.onerror = () => { URL.revokeObjectURL(blobUrl); done(new Error('Tesela inválida'), tile); };
+        tile.src = blobUrl;
+      }).catch(error => done(error, tile));
+      return tile;
+    };
+    flow.addTo(map);
+
+    L.marker([center.lat, center.lng]).addTo(map).bindPopup('Misión Jardines Fraccionamiento');
+    status.innerHTML = '<b>Tráfico en vivo · TomTom</b><span>Calles marcadas por velocidad de circulación. Se actualiza al consultar el mapa.</span>';
+    document.getElementById('hlTrafficLegend')?.removeAttribute('hidden');
+  }
+
   async function renderTrafficMap(config) {
     const mapElement = document.getElementById('hlLiveTrafficMap');
     const status = document.getElementById('hlTrafficStatus');
@@ -447,8 +542,21 @@
     const address = config?.address || 'Misión Jardines Fraccionamiento, Zapopan, Jalisco';
 
     if (!key) {
+      if (config?.trafficFlowConfigured) {
+        try {
+          await renderTomTomTrafficMap(mapElement, status);
+          return;
+        } catch (error) {
+          console.warn('No fue posible dibujar tráfico de TomTom:', error.message);
+          environmentLeafletMap?.remove();
+          environmentLeafletMap = null;
+          mapElement.innerHTML = `<iframe title="Ubicación real de Misión Jardines" src="${GOOGLE_EMBED_URL}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
+          status.innerHTML = '<b>Mapa de ubicación · sin tráfico en vivo</b><span>' + escapeHtml(error.message) + ' · Abre Tráfico en Google Maps ↗.</span>';
+          return;
+        }
+      }
       mapElement.innerHTML = `<iframe title="Ubicación real de Misión Jardines" src="${GOOGLE_EMBED_URL}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
-      status.innerHTML = '<b>Mapa disponible</b><span>Agrega GOOGLE_MAPS_BROWSER_API_KEY para activar el tráfico en tiempo real.</span>';
+      status.innerHTML = '<b>Mapa de ubicación · sin capa de tráfico</b><span>Configura TOMTOM_API_KEY o GOOGLE_MAPS_BROWSER_API_KEY, o abre el tráfico en Google Maps ↗.</span>';
       return;
     }
 
@@ -478,10 +586,21 @@
         title: 'Misión Jardines Fraccionamiento'
       });
 
-      status.innerHTML = '<b>Tráfico actual</b><span>Google Maps · actualización automática</span>';
+      status.innerHTML = '<b>Tráfico en vivo · Google Maps</b><span>Rojo: circulación lenta · naranja: congestión moderada. Actualización automática.</span>';
+      document.getElementById('hlTrafficLegend')?.removeAttribute('hidden');
     } catch (error) {
+      if (config?.trafficFlowConfigured) {
+        try {
+          await renderTomTomTrafficMap(mapElement, status);
+          return;
+        } catch (fallbackError) {
+          console.warn('No fue posible dibujar tráfico de TomTom:', fallbackError.message);
+          environmentLeafletMap?.remove();
+          environmentLeafletMap = null;
+        }
+      }
       mapElement.innerHTML = `<iframe title="Ubicación real de Misión Jardines" src="${GOOGLE_EMBED_URL}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
-      status.innerHTML = '<b>Mapa disponible</b><span>' + escapeHtml(error.message) + '</span>';
+      status.innerHTML = '<b>Mapa de ubicación · sin capa de tráfico</b><span>' + escapeHtml(error.message) + ' · Usa el enlace Tráfico en Google Maps ↗.</span>';
     }
   }
 
@@ -574,6 +693,8 @@
         tabs.forEach(tab => tab.classList.toggle('active', tab === button));
         flipper?.classList.toggle('is-flipped', news);
 
+        if (!news) environmentLeafletMap?.invalidateSize();
+
         if (news && !homeNewsLoaded) {
           homeNewsLoaded = true;
           loadLocalNews();
@@ -608,7 +729,7 @@
                 <button class="active" type="button" data-hl-environment="traffic">Tráfico e incidencias</button>
                 <button type="button" data-hl-environment="news">Noticias</button>
               </div>
-              <a class="hl-map-link" href="${GOOGLE_SHARE_URL}" target="_blank" rel="noopener">Google Maps ↗</a>
+              <a class="hl-map-link" href="${GOOGLE_TRAFFIC_URL}" target="_blank" rel="noopener noreferrer" aria-label="Ver tráfico en vivo de Zapopan en Google Maps">Tráfico en Google Maps ↗</a>
             </div>
           </div>
 
@@ -619,6 +740,11 @@
                   <div id="hlLiveTrafficMap" class="hl-live-map"></div>
                   <div id="hlTrafficStatus" class="hl-traffic-status">
                     <b>Preparando tráfico</b><span>Consultando el entorno del fraccionamiento…</span>
+                  </div>
+                  <div class="hl-traffic-legend" id="hlTrafficLegend" aria-label="Colores de congestión vial" hidden>
+                    <span><i class="hl-traffic-dot green"></i>Fluido</span>
+                    <span><i class="hl-traffic-dot orange"></i>Lento</span>
+                    <span><i class="hl-traffic-dot red"></i>Muy lento</span>
                   </div>
                 </div>
                 <aside class="hl-incidents">
@@ -961,6 +1087,31 @@
       .hl-bottom-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,.7fr);gap:16px}.hl-map-frame{height:360px;background:#f4f6f8}.hl-map-frame iframe{width:100%;height:100%;border:0;display:block}.hl-map-link{padding:7px 9px;border:1px solid #e9d4bd;border-radius:9px;background:#fff8f1}.hl-environment-head{align-items:center}.hl-environment-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.hl-environment-tabs{display:inline-flex;gap:3px;padding:3px;border:1px solid #e1e6ed;border-radius:10px;background:#f7f8fa}.hl-environment-tabs button{min-height:30px;padding:6px 9px;border:0;border-radius:7px;color:#6c778b;background:transparent;font-size:8px;font-weight:850;cursor:pointer}.hl-environment-tabs button.active{color:#a9580c;background:#fff;box-shadow:0 3px 9px rgba(31,42,62,.08)}.hl-environment-scene{height:360px;perspective:1300px;overflow:hidden;background:#f6f8fa}.hl-environment-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .68s cubic-bezier(.2,.7,.2,1)}.hl-environment-flipper.is-flipped{transform:rotateY(180deg)}.hl-environment-face{position:absolute;inset:0;backface-visibility:hidden;background:#fff}.hl-traffic-face{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr)}.hl-news-face{transform:rotateY(180deg);padding:15px;background:radial-gradient(circle at 93% 0,#f5edff 0,transparent 30%),linear-gradient(180deg,#fff,#fbfcff)}.hl-live-map-wrap{position:relative;min-width:0;background:#eef2f5}.hl-live-map{position:absolute;inset:0}.hl-live-map iframe{width:100%;height:100%;border:0;display:block}.hl-traffic-status{position:absolute;left:12px;bottom:12px;z-index:3;max-width:265px;padding:8px 10px;border:1px solid rgba(221,228,235,.95);border-radius:10px;background:rgba(255,255,255,.94);box-shadow:0 6px 16px rgba(34,45,62,.10);backdrop-filter:blur(8px)}.hl-traffic-status b,.hl-traffic-status span{display:block}.hl-traffic-status b{color:#217149;font-size:8px}.hl-traffic-status span{margin-top:2px;color:#778399;font-size:7px;line-height:1.35}.hl-incidents{min-width:0;border-left:1px solid #e7ebf0;background:#fff}.hl-incidents-head{padding:12px;border-bottom:1px solid #edf0f4}.hl-incidents-head strong{display:block;color:#344054;font-size:10px}.hl-incidents-head span{display:block;margin-top:3px;color:#8b95a7;font-size:7.5px;line-height:1.4}.hl-incident-list{height:302px;padding:8px;overflow:auto;display:grid;gap:6px;align-content:start}.hl-incident-item{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;padding:8px;border:1px solid #e7ebf0;border-radius:10px;background:#fbfcfd}.hl-incident-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;color:#b45d0c;background:#fff1e4;font-size:11px;font-weight:900}.hl-incident-item strong{display:block;color:#344054;font-size:8.5px;line-height:1.3}.hl-incident-item p{margin:3px 0 0;color:#8490a2;font-size:7px;line-height:1.35}.hl-incident-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.hl-incident-meta span{padding:3px 5px;border-radius:999px;color:#677388;background:#eef2f6;font-size:6.5px;font-weight:800}.hl-live-empty{min-height:90px;display:grid;place-items:center;padding:14px;color:#8792a4;text-align:center;font-size:8px;line-height:1.45}.hl-news-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:11px;border-bottom:1px solid #e8ecf1}.hl-news-head strong{display:block;margin-top:4px;color:#2f3b50;font-size:13px}.hl-news-head small{display:block;margin-top:3px;color:#8490a2;font-size:8px}.hl-news-live{padding:6px 8px;border-radius:999px;color:#7a4c98;background:#f5eefb;font-size:7px;font-weight:900}.hl-news-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:11px;max-height:285px;overflow:auto}.hl-news-item{min-width:0;min-height:105px;display:flex;flex-direction:column;padding:10px;border:1px solid #e5e9ef;border-radius:11px;background:rgba(255,255,255,.94);text-decoration:none;box-shadow:0 5px 13px rgba(40,50,70,.04);transition:.17s ease}.hl-news-item:hover{border-color:#dfc9eb;transform:translateY(-1px);box-shadow:0 8px 16px rgba(40,50,70,.07)}.hl-news-item small{color:#9362b0;font-size:6.5px;font-weight:900;text-transform:uppercase}.hl-news-item strong{display:-webkit-box;margin-top:5px;overflow:hidden;color:#344054;font-size:8.5px;line-height:1.35;-webkit-line-clamp:3;-webkit-box-orient:vertical}.hl-news-item span{margin-top:auto;padding-top:7px;color:#8792a4;font-size:6.5px}.hl-activity-list{padding:7px 16px}.hl-activity-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eef1f4}.hl-activity-row:last-child{border-bottom:0}.hl-activity-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;font-size:12px;font-weight:900}.hl-activity-icon.pago{color:#087a47;background:#ecf9f2}.hl-activity-icon.visita{color:#c86509;background:#fff4e8}.hl-activity-icon.acceso{color:#b42318;background:#fff0ef}.hl-activity-icon.residente{color:#2b67ba;background:#edf4ff}.hl-activity-row strong{display:block;color:#344054;font-size:9.5px}.hl-activity-row div span{display:block;margin-top:3px;color:#8792a4;font-size:8px}.hl-activity-row time{color:#8a94a6;font-size:7.5px;white-space:nowrap}.hl-footer{display:flex;justify-content:space-between;gap:18px;padding:20px 2px 0;color:#9099a8;font-size:8px}.hl-loading,.hl-error{min-height:560px;display:grid;place-content:center;justify-items:center;gap:8px;text-align:center}.hl-loading span{width:34px;height:34px;border:3px solid #f2d3b6;border-top-color:#ef7d0b;border-radius:50%;animation:hlspin .75s linear infinite}.hl-loading strong,.hl-error strong{font-size:14px}.hl-loading small,.hl-error p{margin:0;color:#7d899d;font-size:9px}.hl-error button{margin-top:4px;padding:9px 13px;border:0;border-radius:9px;color:#fff;background:#ef7d0b;cursor:pointer;font-size:9px;font-weight:850}@keyframes hlspin{to{transform:rotate(360deg)}}
       @media(max-width:1180px){.hl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.hl-main-grid,.hl-bottom-grid{grid-template-columns:1fr}.hl-traffic-face{grid-template-columns:minmax(0,1.4fr) minmax(240px,.7fr)}}
       @media(max-width:720px){.dashboard{padding:20px 15px 34px!important}.hl-welcome{align-items:flex-start;flex-direction:column}.hl-kpis{grid-template-columns:1fr}.hl-actions{width:100%}.hl-action,.hl-refresh{flex:1}.hl-money-row,.hl-card-head,.hl-footer{align-items:flex-start;flex-direction:column}.hl-chart-wrap{overflow-x:hidden;min-width:0;max-width:100%;padding:4px 3px 0}.hl-chart{width:100%;min-width:0;max-width:100%;height:270px}.hl-map-frame{height:300px}.hl-environment-actions{width:100%;justify-content:flex-start}.hl-environment-tabs{width:100%;display:grid;grid-template-columns:1fr 1fr}.hl-environment-scene{height:600px}.hl-traffic-face{grid-template-columns:1fr;grid-template-rows:340px 260px}.hl-incidents{border-left:0;border-top:1px solid #e7ebf0}.hl-incident-list{height:205px}.hl-news-grid{grid-template-columns:1fr 1fr;max-height:515px}.hl-activity-row{grid-template-columns:34px minmax(0,1fr)}.hl-activity-row time{grid-column:2}.hl-data-note>a{margin-left:0}}
+
+      /* Lectura cómoda de noticias con tonos pastel y contraste accesible. */
+      .hl-news-face{padding:16px 18px;background:linear-gradient(145deg,#fff9f3,#fbf8ff 60%,#f3faf9)}
+      .hl-news-head strong{font-size:16px;line-height:1.3}
+      .hl-news-head small{font-size:10.5px;line-height:1.4}
+      .hl-news-live{font-size:10px;white-space:nowrap}
+      .hl-news-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;max-height:280px;padding:1px 3px 5px 1px}
+      .hl-news-item{min-height:143px;padding:13px 14px;border-color:#d6e4f9;background:#edf5ff;box-shadow:0 5px 15px rgba(44,56,82,.055)}
+      .hl-news-item:nth-child(4n+2){border-color:#eadcf8;background:#f6efff}
+      .hl-news-item:nth-child(4n+3){border-color:#d1ece0;background:#ebfaf2}
+      .hl-news-item:nth-child(4n+4){border-color:#f4ddcb;background:#fff3e7}
+      .hl-news-item:hover,.hl-news-item:focus-visible{border-color:#ad98d8;box-shadow:0 8px 18px rgba(44,56,82,.11)}
+      .hl-news-item:focus-visible{outline:2px solid #7d65b5;outline-offset:2px}
+      .hl-news-item small{color:#674f8a;font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+      .hl-news-item strong{margin-top:8px;color:#25334a;font-size:13.5px;line-height:1.42;-webkit-line-clamp:4;overflow-wrap:anywhere}
+      .hl-news-item span{padding-top:12px;color:#52657e;font-size:10px;line-height:1.4}
+      .hl-traffic-status{bottom:12px;max-width:min(290px,calc(100% - 24px));padding:10px 12px}
+      .hl-traffic-status b{font-size:11px;line-height:1.25}
+      .hl-traffic-status span{margin-top:4px;font-size:9.5px;line-height:1.4}
+      .hl-traffic-legend[hidden]{display:none}
+      .hl-traffic-legend{position:absolute;top:11px;right:11px;z-index:490;display:flex;gap:9px;flex-wrap:wrap;padding:8px 10px;border:1px solid #e0e5ec;border-radius:10px;background:rgba(255,255,255,.96);box-shadow:0 4px 14px rgba(34,45,62,.12);color:#3d4b60;font-size:10px;font-weight:800}
+      .hl-traffic-legend span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+      .hl-traffic-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#2eab30}
+      .hl-traffic-dot.orange{background:#f18237}.hl-traffic-dot.red{background:#e70704}
+      @media(max-width:720px){.hl-news-face{padding:14px}.hl-news-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;max-height:510px}.hl-news-item{min-height:140px}.hl-traffic-legend{top:8px;right:8px;padding:7px;gap:6px;font-size:9px}.hl-traffic-status{left:8px;bottom:8px;max-width:calc(100% - 16px)}}
 
       /* Inicio operativo de Seguridad/Residente: el de Administración no cambia. */
       .hl-op-scope{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:0 0 15px;padding:11px 16px;border:1px solid #dfe9f0;border-radius:12px;background:#f5f9fd;color:#485a73}
