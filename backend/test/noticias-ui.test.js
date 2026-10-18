@@ -39,3 +39,13 @@ test('En Safari móvil no se pinta el reverso de Tráfico sobre Noticias', () =>
   assert.match(mobile, /\.hl-environment-scene\.is-news-view \.hl-traffic-status\{display:none\}/);
   assert.match(js, /\.hl-environment-flipper\.is-flipped\{transform:rotateY\(180deg\)\}/);
 });
+
+test('Noticias móvil permite llegar a todas las filas sin recortar la última', () => {
+  const js = fs.readFileSync(path.resolve(__dirname, '../../docs/assets/js/home-dashboard.js'), 'utf8');
+  const mobile = js.slice(js.indexOf('/* Tarjetas de noticias compactas en móvil'));
+  assert.match(mobile, /\.hl-environment-scene\.is-news-view,[\s\S]*?\.hl-op-map \.hl-environment-scene\.is-news-view\{height:auto;overflow:visible\}/);
+  assert.match(mobile, /\.hl-environment-scene\.is-news-view \.hl-environment-flipper\{height:auto\}/);
+  assert.match(mobile, /\.hl-environment-scene\.is-news-view \.hl-news-face\{position:relative;inset:auto\}/);
+  assert.match(mobile, /\.hl-news-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\);[^}]*max-height:none;overflow:visible/);
+  assert.match(js, /\.hl-traffic-face\{grid-template-columns:1fr;grid-template-rows:340px 260px\}/);
+});
