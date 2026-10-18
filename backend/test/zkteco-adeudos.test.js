@@ -1,9 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { adeudosExigibles, comprobarHabilitacion, idsPiloto, run } = require('../src/services/zkteco-adeudos.service');
+const { adeudosExigibles, idsPiloto, run } = require('../src/services/zkteco-adeudos.service');
 
-const EMPTY = () => ({ tipos: { MANTENIMIENTO: [], EXTRAORDINARIO: [], CASA_CLUB: [] } });
 const DEBT = () => ({ tipos: {
   MANTENIMIENTO: [{ periodo: '2026-10', monto: 350 }],
   EXTRAORDINARIO: [{ periodo: '2026-10', monto: 10 }],
@@ -25,11 +24,8 @@ test('no bloquear reserva en revisión administrativa; ni proyecto futuro, ni mo
   assert.equal(adeudosExigibles(debt, '2026-10-18').total, 0);
 });
 
-test('fallar cerrado ante resultados incompletos; impedir habilitación con deuda', async () => {
+test('fallar cerrado ante resultados financieros incompletos para bloqueo automático', () => {
   assert.throws(() => adeudosExigibles(null), /incompleta/);
-  await assert.rejects(comprobarHabilitacion(25, { consultar: async () => DEBT(), hoy: '2026-10-18' }),
-    error => error.status === 409 && error.totales.CASA_CLUB === 400);
-  await comprobarHabilitacion(25, { consultar: async () => EMPTY(), hoy: '2026-10-18' });
 });
 
 test('el piloto solo admite IDs específicos', () => {
@@ -75,19 +71,31 @@ test('modo global necesita confirmación explícita y padrón validado', async (
   assert.equal(result.bloqueadas,2);
 });
 
-test('la activación manual de un TAG se deniega ANTES de conectar al C3 si hay adeudo', async t => {
-  Object.assign(process.env, { DB_HOST:'localhost', DB_PORT:'3306', DB_NAME:'test', DB_USER:'test', DB_PASSWORD:'test' });
+test('la activación manual permite rehabilitar un TAG, sin consultar saldos financieros', async t => {
+  Object.assign(process.env, { DB_HOST:'localhost', DB_PORT:'3306', DB_NAME:'test', DB_USER:'test', DB_PASSWORD:'test', ZKTECO_DIRECT_HOST:'localhost' });
   const Tags = require('../src/models/ZkTarjeta');
   const direct = require('../src/services/zkteco-direct.service');
   const { C3Client } = require('../src/services/zkteco-c3-client.service');
-  t.mock.method(Tags, 'findByPk', async () => ({ id:43, casaId:7, numeroTarjeta:'FICTICIO' }));
+  const tarjeta = { id:43, casaId:7, numeroTarjeta:'1234', bloqueado:true,
+    puertasAutorizadas:3, timezoneId:1, fechaFinOriginal:null,
+    async update(values) { Object.assign(this, values); }, async reload() { return this; } };
+  let autorizaciones = [];
   let conexiones = 0;
+  t.mock.method(Tags, 'findByPk', async () => tarjeta);
   t.mock.method(C3Client.prototype, 'connect', async () => { conexiones++; });
-  // El servicio real lee datos de adeudos, pero no hace conexión SQL aquí.
-  const original = require('../src/services/zkteco-adeudos.service');
-  t.mock.method(original, 'comprobarHabilitacion', async () => {
-    const error = new Error('Adeudo exigible'); error.status = 409; throw error;
+  t.mock.method(C3Client.prototype, 'disconnect', async () => {});
+  t.mock.method(C3Client.prototype, 'getData', async tabla => tabla === 'user'
+    ? [{ Pin:'99', CardNo:'1234', StartTime:'20200101', EndTime:'20261210' }]
+    : autorizaciones);
+  t.mock.method(C3Client.prototype, 'putRecord', async (tabla, values) => {
+    assert.equal(tabla, 'userauthorize'); autorizaciones = [values];
   });
-  await assert.rejects(direct.setCardBlocked(43, false), { status:409 });
-  assert.equal(conexiones,0);
+  const modoPrevio = process.env.ZKTECO_WRITE_MODE;
+  process.env.ZKTECO_WRITE_MODE = 'DIRECT';
+  t.after(() => { if (modoPrevio === undefined) delete process.env.ZKTECO_WRITE_MODE;
+    else process.env.ZKTECO_WRITE_MODE = modoPrevio; });
+  const resultado = await direct.setCardBlocked(43,false);
+  assert.equal(resultado.bloqueado,false);
+  assert.equal(autorizaciones[0].AuthorizeDoorId,3);
+  assert.ok(conexiones>0);
 });

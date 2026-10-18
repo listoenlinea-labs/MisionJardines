@@ -148,9 +148,10 @@ Ficha por caso para el acta de pruebas:
 2. Comprobar que auto-sync cada 60s por defecto **solo lee**; recuperación de pagos cada 5 min no aplica fechas heredadas.
 3. Probar bloqueo manual de un TAG y de una vivienda con varios TAGs en C3 de pruebas; verificar `userauthorize` y `zk_tarjetas.bloqueado` tras lectura. No borrar PIN/fechas/perfil de puertas.
 4. Por cada deuda exigible (Mantenimiento vencido desde día 11; Extraordinaria período iniciado; Casa club aprobada y plazo vencido sin comprobante en revisión), probar **monitor de adeudos**: simulación sin escritura, piloto con ID explícito y escritura autorizada, lectura posterior sin autorización. Repetir: TAG ya bloqueado no vuelve a procesarse.
-5. Con deuda, intentar desbloquear manualmente, emitir o reasignar TAG activo a esa casa: operación denegada; tras validar pagos y dejar saldo exigible cero, desbloqueo manual permitido. Nunca reactivar automáticamente TAG bloqueado por seguridad.
+5. Aun con deuda, comprobar que el administrador puede **habilitar manualmente**, emitir y reasignar TAGs sin veto financiero. Confirmar la autorización física resultante. Si el monitor de adeudos está habilitado, podrá **volver a bloquear** el TAG en el siguiente barrido; esta acción manual no crea una exención permanente.
 6. Fallos parciales C3: registrar TAG fallido, continuar máximo `ZKTECO_ADEUDOS_MAX_TAGS` por vuelta, conservar autorización/fecha si hubo error; inspeccionar respuesta y bitácora sin secretos.
-7. Una reserva cancelada por expiración deja de ser deuda de Casa club; **no** reactivar TAG automáticamente: administración concilia y habilita manualmente si no quedan otros adeudos.
+7. Una reserva cancelada por expiración deja de ser deuda de Casa club; el monitor no reautoriza por sí solo. Administración puede reactivar el TAG manualmente.
+8. Al editar directamente la vigencia del TAG, comprobar que se restaura el comportamiento previo de la ficha SQL (`bloqueado=false`, `fecha_fin_original=NULL`) y verificar **por separado** la autorización física, pues actualizar EndTime no garantiza que exista `userauthorize`.
 
 ### A15. Seguridad y registro (`seguridad.html`)
 
@@ -223,7 +224,7 @@ Ficha por caso para el acta de pruebas:
 
 | Situación financiera (casa) | Reserva Casa club | TAG si bloqueo por adeudos está activo | Prueba negativa imprescindible |
 | --- | --- | --- | --- |
-| Sin deuda exigible | Puede solicitar | No se bloquea por deuda; otros bloqueos subsisten | No reactivar un TAG bloqueado por seguridad |
+| Sin deuda exigible | Puede solicitar | No se bloquea por deuda; bloqueos físicos previos requieren revisión | Comprobar permisos físicos antes de declarar habilitado |
 | Mantenimiento del mes actual hasta el día 10 | El módulo Casa club puede exigir saldo cero incluso antes del vencimiento | No se bloquea antes del vencimiento | Revisar esta diferencia de reglas de negocio |
 | Mantenimiento impago a partir del 11 | No puede solicitar | Bloquear cada TAG activo de la vivienda | $50 solo desde el 11; no cobrar dos veces |
 | Proyecto extraordinario iniciado, cargo no pagado | No puede solicitar | Bloquear | Proyecto futuro no bloquea; comprobante pendiente no equivale a validado |
@@ -231,7 +232,7 @@ Ficha por caso para el acta de pruebas:
 | Casa club plazo vencido sin pago ni comprobante oportuno | Fecha se libera cuando se procesa expiración | Bloquear solo mientras siga aprobada y exigible | Al CANCELARSE deja de ser deuda; no auto-habilitar |
 | Casa club comprobante entregado en plazo, esperando revisión | La reserva no se cancela por demora administrativa | No bloquear por ese comprobante en revisión | Un comprobante fraudulento puede ser rechazado y reabrir deuda |
 
-**Decisión de seguridad:** el monitor desactiva autorizaciones; **no reautoriza por sí solo**, porque una tarjeta también podría estar bloqueada por pérdida, robo o motivo de Seguridad. Después de regularizar, Administración comprueba deuda cero y la habilita manualmente.
+**Operación manual:** el monitor desactiva autorizaciones y no reautoriza por sí solo. **El administrador sí puede rehabilitar un TAG aunque existan adeudos**. La edición directa de vigencia vuelve a marcar `bloqueado=false` en el espejo SQL, pero esa marca **no acredita** que las puertas estén autorizadas físicamente. Un TAG rehabilitado manualmente sin pagar puede ser bloqueado de nuevo por el monitor en su siguiente barrido; no hay exención permanente.
 
 **Activación gradual, sin writes masivos:**
 
@@ -254,7 +255,7 @@ El primer ciclo empieza **15 minutos después del arranque** por defecto; el mod
 ## 4. Criterios de aceptación / pendientes conocidos
 
 - **PASAR:** cada flujo A01–A23 con rol correcto, petición rechazada al rol incorrecto, móvil sin cortes, SQL y UI conciliados, sin referencias duplicadas.
-- **BLOQUEANTE:** resultados bancarios no validados considerados pagos, diferencia de 231 casas, corte/recargo incorrecto, TAG activo con deuda exigible tras barrido verificado, TAG autorizado involuntariamente, escritura C3 al leer inventario o deuda.
+- **BLOQUEANTE:** resultados bancarios no validados considerados pagos, diferencia de 231 casas, corte/recargo incorrecto, bloqueo automático no aplicado en vivienda del piloto sin intervención manual, TAG autorizado involuntariamente por un proceso automático o escritura C3 al leer inventario o deuda.
 - **Limitaciones reales del código:** anuncios/reportes usan almacenamiento local; noticias/tráfico y telefonía dependen de proveedores/configuración; Casa club cancela reservas expiradas cuando se invocan operaciones que ejecutan `expirarReservas()`, no por un cron autónomo; base MySQL no certificada contra producción en esta revisión.
 - **No ejecutado aquí:** pruebas end-to-end con Hostinger/MySQL/C3 reales, visual en dispositivos físicos, correo real, WhatsApp, bancos y cobertura 100% de APIs. Registrar esas evidencias antes de aprobar activación global.
 

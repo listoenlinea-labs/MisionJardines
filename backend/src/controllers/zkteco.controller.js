@@ -120,8 +120,7 @@ async function actualizarVigencia(req,res){
     const fechaInicio=String(req.body.fechaInicio||'').trim()||null;
     const fechaFin=String(req.body.fechaFin||'').trim()||null;
     await writeUserValidity(tarjeta.numeroTarjeta,fechaInicio,fechaFin);
-    // Cambiar fechas nunca rehabilita puertas: el bloqueo físico es independiente.
-    await tarjeta.update({fechaInicio,fechaFin,ultimaLectura:new Date()});
+    await tarjeta.update({fechaInicio,fechaFin,bloqueado:false,fechaFinOriginal:null,ultimaLectura:new Date()});
     res.json({ok:true,message:'Vigencia actualizada en el C3-200',data:tarjeta});
   }catch(error){
     await recordZkError(req,'EDITAR_VIGENCIA_TAG',error,{
