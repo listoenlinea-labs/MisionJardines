@@ -46,6 +46,7 @@ async function iniciarServidor() {
             );
             require('./services/zkteco-vigencias.service').start();
             require('./services/zkteco-autosync.service').startZktecoAutoSync();
+            require('./services/zkteco-adeudos.service').start();
         });
     } catch (error) {
         console.error(

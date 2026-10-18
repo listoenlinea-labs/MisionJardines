@@ -5,6 +5,7 @@ const sequelize = require('../src/config/database');
 const Vigencia = require('../src/models/VigenciaMantenimiento');
 const Tags = require('../src/models/ZkTarjeta');
 const direct = require('../src/services/zkteco-direct.service');
+const bloqueoAdeudos = require('../src/services/zkteco-adeudos.service');
 const worker = require('../src/services/zkteco-vigencias.service');
 const { C3Client } = require('../src/services/zkteco-c3-client.service');
 const now = new Date('2026-10-08T18:00:00Z');
@@ -13,6 +14,8 @@ const tx = { LOCK: { UPDATE: 'UPDATE' }, afterCommit() {} };
 for (const reassigned of [false, true]) {
     test(reassigned ? 'editing a house association never queues an old SQL cutoff' :
         'manual date edit persists without queueing the old maintenance cutoff', async t => {
+        // La reasignación requiere una consulta financiera: fixture solvente.
+        t.mock.method(bloqueoAdeudos, 'comprobarHabilitacion', async () => ({ total: 0 }));
         const Casa = require('../src/models/Casa');
         const panel = { Pin: '99158458', CardNo: '5112343', StartTime: '20200101', EndTime: '20260910' };
         const tag = { id: 1, casaId: 5, numeroTarjeta: '5112343', fechaInicio: '2020-01-01',
