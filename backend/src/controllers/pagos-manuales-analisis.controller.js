@@ -2,6 +2,10 @@
 const sequelize=require('../config/database');
 const {Op}=require('sequelize');
 const {Casa,Cuota,ZkTarjeta,PagoReportado}=require('../models');
+const {CargoExtraordinario,PagoManualConcepto}=require('../models');
+const Reserva=require('../models/ReservaCasaClub');
+const {estadoCargos}=require('../services/cargos-extraordinarios.service');
+const {randomUUID}=require('crypto');
 const PagoAcceso=require('../models/PagoAccesoC3');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
 const {prepararDesdeHistorial,generarReferencia}=require('../services/pago-manual-analisis.service');
@@ -174,4 +178,44 @@ async function estadoPagoVivienda(req,res){
     return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible consultar las vigencias'});
   }
 }
-module.exports={registrarPagoVivienda,estadoPagoVivienda,cotizarPagoVivienda};
+async function opcionesPagoConcepto(req,res){
+ try{
+  const casaId=Number(req.params.casaId);
+  if(!Number.isSafeInteger(casaId)||casaId<1||!await Casa.findByPk(casaId))throw fail(404,'Vivienda no encontrada');
+  const [cargos,reservas]=await Promise.all([
+   estadoCargos(casaId),
+   Reserva.findAll({where:{casaId,estatus:'APROBADA',pagado:false},attributes:['id','fecha','fechaLimitePago','cuotaRecuperacion','depositoGarantia','limpieza']})
+  ]);
+  const data={EXTRAORDINARIO:cargos.filter(c=>c.estado!=='PAGADO'),CASA_CLUB:reservas.map(r=>({id:r.id,periodo:r.fecha,
+   monto:Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza),concepto:'Casa club '+r.fecha,fechaLimitePago:r.fechaLimitePago}))};
+  return res.json({ok:true,data});
+ }catch(e){return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible consultar los conceptos pendientes'});}
+}
+async function registrarPagoConcepto(req,res){
+ try{
+  const casaId=Number(req.body?.casaId),tipo=String(req.body?.tipoPago||''),id=Number(req.body?.conceptoId),formaPago=String(req.body?.formaPago||'EFECTIVO').toUpperCase();
+  if(!Number.isSafeInteger(casaId)||casaId<1||!Number.isSafeInteger(id)||id<1||!['EXTRAORDINARIO','CASA_CLUB'].includes(tipo)||!['EFECTIVO','TRANSFERENCIA','DEPOSITO','OTRO'].includes(formaPago))throw fail(400,'Concepto, vivienda o forma de pago inválidos');
+  const data=await sequelize.transaction(async transaction=>{
+   const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!casa)throw fail(404,'Vivienda no encontrada');
+   const cargo=tipo==='EXTRAORDINARIO'?await CargoExtraordinario.findOne({where:{id,casaId},transaction,lock:transaction.LOCK.UPDATE}):null;
+   const reserva=tipo==='CASA_CLUB'?await Reserva.findOne({where:{id,casaId,estatus:'APROBADA',pagado:false},transaction,lock:transaction.LOCK.UPDATE}):null;
+   if(tipo==='EXTRAORDINARIO'&&!cargo||tipo==='CASA_CLUB'&&!reserva)throw fail(409,'Este concepto ya no está pendiente');
+   const where=tipo==='EXTRAORDINARIO'?{cargoExtraordinarioId:id}:{reservaCasaClubId:id};
+   const [reportado,manual]=await Promise.all([
+    PagoReportado.findOne({where:{...where,estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction}),
+    PagoManualConcepto.findOne({where,transaction})
+   ]);
+   if(reportado||manual)throw fail(409,'Ya existe un comprobante pendiente o pago confirmado para este concepto');
+   const monto=tipo==='EXTRAORDINARIO'?Number(cargo.monto):Number(reserva.cuotaRecuperacion)+Number(reserva.depositoGarantia)+Number(reserva.limpieza);
+   if(Math.round(Number(req.body.monto)*100)!==Math.round(monto*100))throw fail(409,'El importe debe coincidir con el cargo vigente: $'+monto.toFixed(2));
+   const referencia='MJ'+(tipo==='CASA_CLUB'?'CLUB':'EXTRA')+':'+randomUUID();
+   await PagoManualConcepto.create({casaId,tipoPago:tipo,cargoExtraordinarioId:cargo?.id||null,reservaCasaClubId:reserva?.id||null,
+    monto,formaPago,referencia,registradoPor:req.usuario.usuarioId},{transaction});
+   if(reserva)await reserva.update({pagado:true,fechaPago:new Date().toISOString().slice(0,10),folio:referencia,actualizadoEn:new Date()},{transaction});
+   return {casaId,tipoPago:tipo,monto,referencia};
+  });
+  return res.status(201).json({ok:true,data,message:'Pago registrado sin modificar vigencias de TAGs ni C3'});
+ }catch(e){if(!e.status)console.error('[pago manual concepto]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible registrar el pago'});}
+}
+module.exports={registrarPagoVivienda,estadoPagoVivienda,cotizarPagoVivienda,opcionesPagoConcepto,registrarPagoConcepto};

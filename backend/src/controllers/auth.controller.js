@@ -137,8 +137,9 @@ async function iniciarSesion(req, res) {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn:
-                    process.env.JWT_EXPIRES_IN || '8h'
+                // Recordar el navegador conserva la autenticación, nunca la contraseña.
+                // La revocación sigue controlada por sesionVersion en el middleware.
+                expiresIn: req.body.recordarme === true ? '90d' : (process.env.JWT_EXPIRES_IN || '8h')
             }
         );
 
@@ -154,6 +155,7 @@ async function iniciarSesion(req, res) {
             ok: true,
             message: 'Inicio de sesión correcto',
             token,
+            recordarme: req.body.recordarme === true,
             usuario: usuarioSeguro
         });
     } catch (error) {

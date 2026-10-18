@@ -14,7 +14,9 @@ const SolicitudCuenta = require('./SolicitudCuenta');
 const PagoReportado = require('./PagoReportado');
 const ConfiguracionConexion = require('./ConfiguracionConexion');
 const CuotaExtraordinaria = require('./CuotaExtraordinaria');
+const CargoExtraordinario = require('./CargoExtraordinario');
 const ZkTarjeta = require('./ZkTarjeta');
+const PagoManualConcepto = require('./PagoManualConcepto');
 
 /*
  * Casa 1 --- N Usuarios
@@ -205,6 +207,9 @@ PagoReportado.belongsTo(CuotaExtraordinaria, {
     foreignKey: 'cuotaExtraordinariaId',
     as: 'cuotaExtraordinaria'
 });
+CargoExtraordinario.belongsTo(CuotaExtraordinaria, { foreignKey: 'cuotaExtraordinariaId', as: 'cuota' });
+CuotaExtraordinaria.hasMany(CargoExtraordinario, { foreignKey: 'cuotaExtraordinariaId', as: 'cargos' });
+PagoReportado.belongsTo(CargoExtraordinario, { foreignKey: 'cargoExtraordinarioId', as: 'cargoExtraordinario' });
 
 const UsuarioCasa = require('./UsuarioCasa');
 const InvitacionCasa = require('./InvitacionCasa');
@@ -233,6 +238,8 @@ module.exports = {
     PagoReportado,
     ConfiguracionConexion,
     CuotaExtraordinaria,
+    CargoExtraordinario,
+    PagoManualConcepto,
     ZkTarjeta
 };
 

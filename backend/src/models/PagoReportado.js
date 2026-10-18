@@ -20,7 +20,7 @@ const PagoReportado = sequelize.define(
             field: 'usuario_id'
         },
         tipoPago: {
-            type: DataTypes.ENUM('MANTENIMIENTO', 'EXTRAORDINARIO'),
+            type: DataTypes.ENUM('MANTENIMIENTO', 'EXTRAORDINARIO', 'CASA_CLUB'),
             allowNull: false,
             defaultValue: 'MANTENIMIENTO',
             field: 'tipo_pago'
@@ -30,6 +30,8 @@ const PagoReportado = sequelize.define(
             allowNull: true,
             field: 'cuota_extraordinaria_id'
         },
+        cargoExtraordinarioId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true, field: 'cargo_extraordinario_id' },
+        reservaCasaClubId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true, field: 'reserva_casa_club_id' },
         folioReporte: {
             type: DataTypes.STRING(60),
             allowNull: false,

@@ -75,7 +75,10 @@
  async function mine(){
   try{const d=await api('/mias');const host=$('myReservations');host.innerHTML=d.data.length?d.data.map(r=>
    '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
-   '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>'+esc(r.motivo)+' · '+(r.pagado?'Pago registrado':'Pago sin confirmar')+'</p>'+
+   '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>'+esc(r.motivo)+' · '+(r.pagado?'Pago confirmado':r.estatus==='PENDIENTE'?'Esperando aprobación':'Pago sin confirmar')+'</p>'+
+   (r.estatus==='APROBADA'?'<div class="club-bill"><strong>'+(r.pagado?'Importes confirmados':'Autorizada · Paga antes del '+esc(r.fechaLimitePago||'plazo indicado'))+'</strong>'+
+    '<p>Renta: '+money(r.cuotaRecuperacion)+'</p><p>Depósito de garantía: '+money(r.depositoGarantia)+'</p><p>Limpieza: '+money(r.limpieza)+'</p><strong>Total: '+money(Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza))+'</strong>'+
+    (!r.pagado?'<p><a href="pagos.html?tab=CASA_CLUB" class="primary" style="display:inline-block;padding:10px 16px;text-decoration:none">Subir comprobante en Pagos</a></p>':'')+'</div>':'')+
    '<footer><small>Reserva #'+Number(r.id)+'</small>'+(['PENDIENTE','APROBADA'].includes(r.estatus)?'<button type="button" class="danger" data-cancel="'+Number(r.id)+'">Cancelar</button>':'')+'</footer></article>').join(''):'<div class="reserve-card">Todavía no tienes reservas registradas.</div>';
   }catch(e){notify(e.message,true);}
  }
@@ -86,7 +89,9 @@
  function editReview(r){
   activeReview=r;$('clubReviewTitle').textContent='Revisión · '+fmt(r.fecha);
   $('clubReviewDetails').textContent=r.solicitante+' · '+homeText(r)+' · '+r.telefono+' · '+r.motivo;
-  $('clubRecovery').value='700';$('clubGuarantee').value='700';$('clubCleaning').value='300';$('clubPaid').checked=false;$('clubNotes').value='';
+  $('clubRecovery').value='700';$('clubGuarantee').value='700';$('clubCleaning').value='0';$('clubNotes').value='';
+  $('clubDueDate').min=today();$('clubDueDate').max=new Date(Date.parse(r.fecha+'T12:00:00Z')-86400000).toISOString().slice(0,10);
+  $('clubDueDate').value=$('clubDueDate').max>=today()?$('clubDueDate').max:'';
   $('clubReviewModal').showModal();
  }
  $('closeClubReview').addEventListener('click',()=>$('clubReviewModal').close());
@@ -95,7 +100,7 @@
  async function review(action){
   if(!activeReview)return;
   if(!confirm((action==='APROBAR'?'Aprobar':'Rechazar')+' reservación de '+activeReview.solicitante+' para '+fmt(activeReview.fecha)+'?'))return;
-  const info={accion:action,cuotaRecuperacion:Number($('clubRecovery').value),depositoGarantia:Number($('clubGuarantee').value),limpieza:Number($('clubCleaning').value),pagado:$('clubPaid').checked,notas:$('clubNotes').value};
+  const info={accion:action,cuotaRecuperacion:Number($('clubRecovery').value),depositoGarantia:Number($('clubGuarantee').value),limpieza:Number($('clubCleaning').value),fechaLimitePago:$('clubDueDate').value,notas:$('clubNotes').value};
   $('clubApprove').disabled=$('clubReject').disabled=true;
   try{await api('/administracion/'+Number(activeReview.id),'PATCH',info);$('clubReviewModal').close();notify('Reserva revisada correctamente.');await Promise.all([adminList(),calendar()]);}
   catch(err){notify(err.message,true);}
@@ -114,7 +119,7 @@
    const tableRows=adminRows.filter(r=>r.estatus==='APROBADA' && (r.pagado || $('includeUnpaid').checked));
    $('clubAdminRows').innerHTML=tableRows.map(r=>'<tr>'+
     [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',r.pagado?'PAGADO':'PENDIENTE',r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
-    '<td>'+(r.estatus==='APROBADA'?'<button type="button" class="soft" data-paid="'+Number(r.id)+'">'+(r.pagado?'Editar pago':'Registrar pago')+'</button> <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="15">Aún no hay reservas registradas.</td></tr>';
+    '<td>'+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="15">Aún no hay reservas registradas.</td></tr>';
    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
     '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
     '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
@@ -137,10 +142,10 @@
   const b=e.target.closest('[data-paid]');if(!b)return;
   const r=adminRows.find(x=>Number(x.id)===Number(b.dataset.paid));if(!r)return;
   const folio=prompt('Folio de pago verificado (puede quedar vacío):',r.folio||'');if(folio===null)return;
-  const ok=confirm(r.pagado?'¿Marcar este pago como pendiente?':'¿Confirmas que el pago aparece en la cuenta bancaria?');
+  const ok=confirm('¿Confirmas que verificaste este pago en la cuenta bancaria? Se guardará como pago manual conciliado.');
   if(!ok)return;
   b.disabled=true;
-  try{await api('/administracion/'+Number(r.id),'PATCH',{accion:'PAGO',pagado:!r.pagado,folio});notify('Movimiento registrado.');await adminList();}
+  try{await api('/administracion/'+Number(r.id),'PATCH',{accion:'PAGO',pagado:true,folio});notify('Movimiento registrado.');await adminList();}
   catch(err){notify(err.message,true);}
   finally{b.disabled=false;}
  });

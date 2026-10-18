@@ -5,6 +5,11 @@ const {
     Usuario,
     CuotaExtraordinaria
 } = require('../models');
+const {CargoExtraordinario,PagoManualConcepto}=require('../models');
+const ReservaCasaClub=require('../models/ReservaCasaClub');
+const {estadoCargos}=require('../services/cargos-extraordinarios.service');
+const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
+const {fechaMexico}=require('../services/vigencia-calculo');
 const { generarSiguienteFolio } = require('../services/folios.service');
 const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.service');
 
@@ -146,12 +151,9 @@ async function listarMisPagos(req, res) {
 
 async function listarCuotasExtraordinarias(req, res) {
     try {
-        const data = await CuotaExtraordinaria.findAll({
-            where: { activo: true },
-            order: [['creadoEn', 'DESC']]
-        });
-
-        return res.json({ ok: true, data });
+        if(!req.usuario.casaId)return res.status(400).json({ok:false,message:'Selecciona una vivienda'});
+        const data=await estadoCargos(req.usuario.casaId);
+        return res.json({ ok: true, data:data.filter(c=>c.estado!=='PAGADO') });
     } catch (error) {
         console.error('Error al listar cuotas extraordinarias:', error);
         return res.status(500).json({
@@ -162,43 +164,16 @@ async function listarCuotasExtraordinarias(req, res) {
 }
 
 async function crearCuotaExtraordinaria(req, res) {
-    try {
-        const concepto = limpiarTexto(req.body.concepto, 300);
-        const monto = Number(req.body.monto);
+    return res.status(409).json({ok:false,message:'Las cuotas se generan al registrar un egreso de categoría Cuota extraordinaria en Análisis de cuotas. Así se conserva el proyecto y sus 231 cargos.'});
+}
 
-        if (!concepto) {
-            return res.status(400).json({
-                ok: false,
-                message: 'El concepto es obligatorio'
-            });
-        }
-
-        if (!Number.isFinite(monto) || monto <= 0) {
-            return res.status(400).json({
-                ok: false,
-                message: 'El monto debe ser mayor que cero'
-            });
-        }
-
-        const cuota = await CuotaExtraordinaria.create({
-            concepto,
-            monto,
-            activo: true,
-            creadoPorUsuarioId: req.usuario.usuarioId || null
-        });
-
-        return res.status(201).json({
-            ok: true,
-            message: 'Cuota extraordinaria creada',
-            data: cuota
-        });
-    } catch (error) {
-        console.error('Error al crear cuota extraordinaria:', error);
-        return res.status(500).json({
-            ok: false,
-            message: 'No fue posible crear la cuota extraordinaria'
-        });
-    }
+async function obtenerAdeudos(req,res){
+ try{
+  if(!req.usuario.casaId)return res.json({ok:true,data:{cantidad:0,total:0,tipos:{MANTENIMIENTO:[],EXTRAORDINARIO:[],CASA_CLUB:[]},totales:{}}});
+  const data=await consultarAdeudos(req.usuario.casaId);
+  res.setHeader('Cache-Control','private, no-store');
+  return res.json({ok:true,data});
+ }catch(e){console.error('[adeudos]',e);return res.status(503).json({ok:false,message:'No fue posible consultar los adeudos. Reintenta antes de reservar.'});}
 }
 
 async function desactivarCuotaExtraordinaria(req, res) {
@@ -246,7 +221,7 @@ async function reportarPago(req, res) {
 
         const tipoPago = String(req.body.tipoPago || 'MANTENIMIENTO').toUpperCase();
 
-        if (!['MANTENIMIENTO', 'EXTRAORDINARIO'].includes(tipoPago)) {
+        if (!['MANTENIMIENTO', 'EXTRAORDINARIO', 'CASA_CLUB'].includes(tipoPago)) {
             return res.status(400).json({
                 ok: false,
                 message: 'Tipo de pago no válido'
@@ -333,27 +308,25 @@ async function reportarPago(req, res) {
         }
 
         let cuotaExtraordinaria = null;
+        let cargoExtraordinario = null;
+        let reservaCasaClub = null;
         let cortesRecargo = null;
         let requerido;
         let recargo = 0;
         let concepto;
 
         if (tipoPago === 'EXTRAORDINARIO') {
-            const extraId = Number(req.body.cuotaExtraordinariaId);
+            const extraId = Number(req.body.cargoExtraordinarioId);
 
             if (!Number.isInteger(extraId) || extraId <= 0) {
                 return res.status(400).json({
                     ok: false,
-                    message: 'Selecciona una cuota extraordinaria'
+                    message: 'Selecciona una mensualidad extraordinaria pendiente'
                 });
             }
 
-            cuotaExtraordinaria = await CuotaExtraordinaria.findOne({
-                where: {
-                    id: extraId,
-                    activo: true
-                }
-            });
+            cargoExtraordinario=await CargoExtraordinario.findOne({where:{id:extraId,casaId},include:[{model:CuotaExtraordinaria,as:'cuota',required:true,where:{activo:true}}]});
+            cuotaExtraordinaria=cargoExtraordinario?.cuota;
 
             if (!cuotaExtraordinaria) {
                 return res.status(404).json({
@@ -362,8 +335,16 @@ async function reportarPago(req, res) {
                 });
             }
 
-            requerido = Number(cuotaExtraordinaria.monto);
-            concepto = 'Pago extraordinario correspondiente a ' + cuotaExtraordinaria.concepto;
+            requerido = Number(cargoExtraordinario.monto);
+            concepto = 'Cuota extraordinaria: ' + cuotaExtraordinaria.concepto+' · '+cargoExtraordinario.periodo.slice(0,7);
+        } else if(tipoPago==='CASA_CLUB'){
+            const reservaId=Number(req.body.reservaCasaClubId);
+            reservaCasaClub=await ReservaCasaClub.findOne({where:{id:reservaId,casaId,estatus:'APROBADA',pagado:false}});
+            if(!reservaCasaClub)return res.status(404).json({ok:false,message:'No existe una reserva aprobada y pendiente para esta vivienda'});
+            if(!reservaCasaClub.fechaLimitePago||fechaMexico()>reservaCasaClub.fechaLimitePago||fechaOperacion>reservaCasaClub.fechaLimitePago)
+                return res.status(409).json({ok:false,message:'Venció el plazo para subir el comprobante de casa club'});
+            requerido=Number(reservaCasaClub.cuotaRecuperacion)+Number(reservaCasaClub.depositoGarantia)+Number(reservaCasaClub.limpieza);
+            concepto='Casa club · '+reservaCasaClub.fecha+' (renta $'+reservaCasaClub.cuotaRecuperacion+', depósito $'+reservaCasaClub.depositoGarantia+', limpieza $'+reservaCasaClub.limpieza+')';
         } else {
             // Validar en el backend, no confiar en importes del navegador ni OCR.
             // El recibo solo registra una solicitud: hasta validar contra el banco
@@ -378,7 +359,7 @@ async function reportarPago(req, res) {
                 (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
         }
 
-        if (!Number.isFinite(monto) || monto <= 0 || (tipoPago === 'EXTRAORDINARIO' && Math.abs(monto - requerido) > 0.009)) {
+        if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
             return res.status(400).json({
                 ok: false,
                 message: tipoPago === 'MANTENIMIENTO' ? 'El importe debe ser mayor que cero' : 'El comprobante debe corresponder exactamente a $' + requerido.toFixed(2) + ' MXN para este concepto'
@@ -386,6 +367,18 @@ async function reportarPago(req, res) {
         }
 
         if (!transaction) transaction = await sequelize.transaction();
+        if(cargoExtraordinario||reservaCasaClub){
+          if(cargoExtraordinario)await CargoExtraordinario.findByPk(cargoExtraordinario.id,{transaction,lock:transaction.LOCK.UPDATE});
+          if(reservaCasaClub){
+            const locked=await ReservaCasaClub.findByPk(reservaCasaClub.id,{transaction,lock:transaction.LOCK.UPDATE});
+            if(!locked||locked.estatus!=='APROBADA'||locked.pagado||fechaMexico()>locked.fechaLimitePago){const e=new Error('La reservación ya no está vigente para pagar');e.status=409;throw e;}
+          }
+          // El comprobante pendiente ya bloquea ese cargo; no duplicar folios.
+          const where=cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id};
+          const existenteConcepto=await PagoReportado.findOne({where:{...where,estatus:{[require('sequelize').Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction});
+          const manual=await PagoManualConcepto.findOne({where:cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id},transaction});
+          if(existenteConcepto||manual){const e=new Error('Este concepto ya tiene un pago registrado o pendiente de validación');e.status=409;throw e;}
+        }
 
         const year = new Date().getFullYear();
         const folio = await generarSiguienteFolio(year, transaction);
@@ -396,6 +389,8 @@ async function reportarPago(req, res) {
             usuarioId,
             tipoPago,
             cuotaExtraordinariaId: cuotaExtraordinaria?.id || null,
+            cargoExtraordinarioId:cargoExtraordinario?.id||null,
+            reservaCasaClubId:reservaCasaClub?.id||null,
             folioReporte: folio,
             folioOperacion,
             fechaOperacion,
@@ -554,6 +549,7 @@ module.exports = {
     listarMisPagos,
     listarCuotasExtraordinarias,
     crearCuotaExtraordinaria,
+    obtenerAdeudos,
     desactivarCuotaExtraordinaria,
     reportarPago,
     descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
@@ -596,12 +592,17 @@ async function revisarPago(req, res) {
             if (req.body.recargo !== undefined && centavos(req.body.recargo) !== centavos(recargo))
                 throw Object.assign(new Error('El recargo del comprobante no se puede modificar al aprobar. Corrige o rechaza el reporte.'), { status: 409 });
             if (centavos(recargo) > centavos(pago.monto)) throw Object.assign(new Error('El recargo no puede superar el pago'), { status: 400 });
-            if (pago.tipoPago === 'EXTRAORDINARIO' && centavos(recargo) !== 0) throw Object.assign(new Error('La cuota extraordinaria no lleva recargo de mantenimiento'), { status: 400 });
+            if (pago.tipoPago !== 'MANTENIMIENTO' && centavos(recargo) !== 0) throw Object.assign(new Error('Este concepto no lleva recargo de mantenimiento'), { status: 400 });
             await pago.update({ estatus: req.body.estatus, recargo, validadoPorUsuarioId: req.usuario.usuarioId,
                 fechaValidacion: new Date(), actualizadoEn: new Date(), observacionesRevision: limpiarTexto(req.body.observaciones, 600) }, { transaction });
             if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') await recargosService.confirmar(pago, transaction);
             const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
                 ? await vigenciaService.actualizar(pago.casaId, req.usuario.usuarioId, transaction, { origen: 'PAGO', registro: pago }) : null;
+            if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
+                const reserva=await ReservaCasaClub.findByPk(pago.reservaCasaClubId,{transaction,lock:transaction.LOCK.UPDATE});
+                if(!reserva||reserva.estatus!=='APROBADA'||reserva.pagado)throw Object.assign(new Error('La reserva ya cambió de estado. Requiere conciliación.'),{status:409});
+                await reserva.update({pagado:true,fechaPago:pago.fechaOperacion,folio:pago.folioOperacion,actualizadoEn:new Date()},{transaction});
+            }
             return { pago: pagoSeguro(req, pago), vigencia };
         });
         return res.json({ ok: true, data: result });

@@ -1108,6 +1108,7 @@
     <div class="tabs">
       <button class="tab active" type="button" data-tab="MANTENIMIENTO">Pago de mantenimiento</button>
       <button class="tab" type="button" data-tab="EXTRAORDINARIO">Pago extraordinario</button>
+      <button class="tab" type="button" data-tab="CASA_CLUB">Casa club</button>
     </div>
 
     <section class="layout">
@@ -1163,6 +1164,12 @@
             <div class="actions"><button id="createExtra" class="btn btn-primary" type="button">Crear cuota
                 extraordinaria</button></div>
           </div>
+        </article>
+
+        <article class="card pad" id="clubPaymentCard" hidden>
+          <span class="eyebrow">CASA CLUB</span><h2>Reservas aprobadas por pagar</h2>
+          <p>Selecciona tu reservación. El total incluye renta, depósito de garantía y limpieza cuando aplique.</p>
+          <div id="clubPaymentList" class="extra-list"><div class="empty">Consultando reservaciones…</div></div>
         </article>
 
         <article class="card pad">
@@ -1251,6 +1258,22 @@
   </main>
 
   <div id="toast" class="toast"></div>
+<dialog id="debtModal" class="mj-debt-modal" aria-labelledby="debtTitle">
+ <div class="mj-debt-heading"><div><span class="eyebrow">ESTADO DE TU VIVIENDA</span><h2 id="debtTitle">Pagos pendientes</h2><p>Consulta cada concepto y regulariza los importes pendientes.</p></div><button type="button" id="closeDebtModal" aria-label="Cerrar aviso">×</button></div>
+ <div id="debtDetails" class="mj-debt-details"></div><div class="mj-debt-total"><span>Total pendiente</span><strong id="debtTotal">$0.00</strong></div>
+</dialog>
+<style>
+.card[hidden],.tabs [hidden]{display:none!important}
+.tabs .tab .mj-tab-count{display:inline-grid;place-items:center;margin-left:7px;padding:2px 7px;border-radius:99px;background:#d5f5df;color:#146c44;font-size:11px;font-weight:800}
+.mj-debt-modal{border:1px solid #eaded6;border-radius:18px;padding:24px;max-width:min(760px,94vw);width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 90px #1b254d55;color:#283449;background:#fff}
+.mj-debt-modal::backdrop{background:#2026399e;backdrop-filter:blur(4px)}
+.mj-debt-heading{display:flex;justify-content:space-between;gap:12px;margin-bottom:18px}.mj-debt-heading h2{margin:6px 0}.mj-debt-heading p{margin:0;color:#788398;font-size:13px}
+.mj-debt-heading button{width:36px;height:36px;border:1px solid #efdaea;border-radius:11px;background:#fff8fc;color:#754c69;font-size:23px;cursor:pointer}
+.mj-debt-details{display:grid;gap:9px}.mj-debt-item{display:grid;grid-template-columns:minmax(115px,1fr) minmax(125px,1.4fr) auto;align-items:center;gap:14px;padding:14px;border:1px solid #e2e8f0;border-radius:13px;background:#f3faf7}
+.mj-debt-item.extra{background:#f8f3ff;border-color:#eadcfa}.mj-debt-item.club{background:#fff5ed;border-color:#ffdfc1}.mj-debt-item strong{font-size:13px}.mj-debt-item span{font-size:13px}.mj-debt-item b{white-space:nowrap;color:#1d7a55}
+.mj-debt-item small{display:block;margin-top:4px;color:#8a6070;font-size:10px}.mj-debt-total{display:flex;justify-content:space-between;align-items:center;padding:17px 4px 0;margin-top:14px;border-top:1px solid #e6e9ef;font-weight:800}.mj-debt-total strong{color:#166e49;font-size:23px}
+@media(max-width:560px){.mj-debt-item{grid-template-columns:1fr auto;gap:7px}.mj-debt-item span{grid-column:1/3;grid-row:2}.mj-debt-item b{grid-column:2;grid-row:1}}
+</style>
 <dialog id="receiptAllModal" class="receipt-large-modal" aria-labelledby="receiptAllHeading">
 <div class="receipt-modal-top"><div><span class="eyebrow">MIS RECIBOS</span><h2 id="receiptAllHeading">Todos mis pagos</h2></div><button id="closeReceiptAll" type="button" class="receipt-close" aria-label="Cerrar">×</button></div>
 <p class="receipt-modal-hint">Los comprobantes pertenecen a la vivienda que tienes seleccionada. Filtra por el mes de operación o el período indicado.</p>
@@ -1265,7 +1288,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261012-monto-2"></script>
-  <script src="assets/js/pagos.js?v=20261013-historial-1"></script>
+  <script src="assets/js/pagos.js?v=20261018-tres-conceptos"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261015-comunidad-orden"></script>
 </body>

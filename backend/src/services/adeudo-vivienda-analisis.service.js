@@ -42,6 +42,7 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico() }) {
       porPeriodo.set(indice(yy, mm), cuota);
   }
   let pendiente = 0, recargos = 0, mesesPendientes = 0;
+  const detalles = [];
   for (let n = INICIO; n <= limite; n++) {
     const yy = Math.floor(n / 12), mm = n % 12 + 1;
     const cuota = porPeriodo.get(n);
@@ -60,12 +61,16 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico() }) {
     mesesPendientes++;
     const sinMulta = Math.max(0, BASE * 100 - pagado);
     recargos += multa ? Math.min(multa, Math.max(0, faltante - sinMulta)) : 0;
+    detalles.push({categoria:'MANTENIMIENTO',periodo:`${yy}-${String(mm).padStart(2,'0')}`,
+      monto:faltante/100,recargo:(multa ? Math.min(multa,Math.max(0,faltante-sinMulta)) : 0)/100,
+      concepto:'Mantenimiento'});
   }
   return {
     ultimoMesPagado: ultimo ? { mes: ultimo.nombre, anio: ultimo.anio } : null,
     mesesPendientes,
     recargosPendientes: recargos / 100,
     saldoPendiente: pendiente / 100
+    ,detalles
   };
 }
 

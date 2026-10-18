@@ -903,6 +903,7 @@
       }
       if (!response.ok || !data.ok) throw new Error(data.message || `Error HTTP ${response.status}`);
       renderDashboard(data);
+      showHouseDebtAlert(window.MJAdeudos);
       updateTopbar(data, true);
     } catch (error) {
       console.error('Inicio: no se pudo cargar el dashboard:', error);
@@ -910,6 +911,21 @@
       renderError(error.message);
     }
   }
+
+  function showHouseDebtAlert(data){
+    const container=document.querySelector('.dashboard');
+    if(!container)return;
+    container.querySelector('#mjHouseDebtAlert')?.remove();
+    if(!data||!data.cantidad||!data.total)return;
+    const alert=document.createElement('a');
+    alert.id='mjHouseDebtAlert';alert.href='pagos.html?tab='+
+      (data.tipos?.MANTENIMIENTO?.length?'MANTENIMIENTO':data.tipos?.EXTRAORDINARIO?.length?'EXTRAORDINARIO':'CASA_CLUB');
+    alert.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;margin:12px 0 18px;border:1px solid #f3cfac;border-radius:14px;background:#fff5eb;color:#854412;text-decoration:none;box-shadow:0 6px 18px #bd784b12';
+    const message=document.createElement('span');message.textContent='Tienes '+data.cantidad+' pago(s) pendiente(s) de tu vivienda · $'+Number(data.total).toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN';
+    const action=document.createElement('strong');action.textContent='Ver adeudos ›';alert.append(message,action);
+    container.querySelector('.hl-welcome')?.after(alert);
+  }
+  document.addEventListener('mj:adeudos',event=>showHouseDebtAlert(event.detail));
 
   function injectStyles() {
     if (document.getElementById('homeLiveStyles')) return;

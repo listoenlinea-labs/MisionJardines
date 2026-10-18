@@ -376,3 +376,4 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
     font-size:16px!important;
   }
 }
+#newExpense [hidden],#housePaymentForm [hidden],.finance-pay-overlay[hidden]{display:none!important}
