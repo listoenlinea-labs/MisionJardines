@@ -97,10 +97,11 @@
                 }
                 const contrasena = contrasenaInput.value;
                 if (!contrasena) throw Error('Escribe tu contraseña para continuar.');
-                const result = await request('/auth/login', { ...(mode === 'telefono' ? { telefono: identifier } : { correo: identifier.toLowerCase() }), contrasena });
+                const recordarme = document.getElementById('recordarme').checked;
+                const result = await request('/auth/login', { ...(mode === 'telefono' ? { telefono: identifier } : { correo: identifier.toLowerCase() }), contrasena, recordarme });
                 for (const storage of [localStorage, sessionStorage]) { storage.removeItem('misionJardinesToken'); storage.removeItem('misionJardinesUsuario'); }
                 sessionStorage.removeItem('mjCasaSeleccionada');
-                const storage = document.getElementById('recordarme').checked ? localStorage : sessionStorage;
+                const storage = recordarme ? localStorage : sessionStorage;
                 storage.setItem('misionJardinesToken', result.token); storage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));
                 mostrarMensaje('success', 'Inicio de sesión correcto', 'Acceso autorizado. Preparando tu portal…');
                 const role = result.usuario?.rol?.nombre || result.usuario?.rol;
@@ -108,3 +109,28 @@
             } catch (error) { mostrarMensaje('error', 'No se pudo continuar', error.name === 'TimeoutError' ? 'El servidor tardó en responder. Intenta nuevamente.' : error.message); }
             finally { busy = false; loginButton.disabled = false; correoInput.disabled = false; buttonText.textContent = passwordFields.hidden ? 'Continuar' : 'Ingresar al portal'; }
         });
+
+        // Restore a remembered session only after checking its current permissions.
+        // This never stores or fills a password.
+        (async () => {
+            const saved = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
+            if (!saved) return;
+            const currentToken = () => localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
+            try {
+                const response = await fetch(`${API_URL}/auth/perfil`, { headers: { Authorization: `Bearer ${saved}` }, cache: 'no-store', signal: AbortSignal.timeout(30000) });
+                // An older profile request must not redirect or erase a newly signed-in account.
+                if (currentToken() !== saved) return;
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        for (const storage of [localStorage, sessionStorage]) { storage.removeItem('misionJardinesToken'); storage.removeItem('misionJardinesUsuario'); }
+                    }
+                    return;
+                }
+                const data = await response.json();
+                if (!data.ok || currentToken() !== saved) return;
+                const user = data.usuario;
+                const storage = localStorage.getItem('misionJardinesToken') === saved ? localStorage : sessionStorage;
+                storage.setItem('misionJardinesUsuario', JSON.stringify(user));
+                window.location.replace(MJPermissions.landing(user?.rol?.nombre || user?.rol));
+            } catch (_) { /* Preserve session on a temporary network failure. */ }
+        })();

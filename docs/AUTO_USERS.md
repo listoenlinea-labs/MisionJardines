@@ -35,6 +35,12 @@ La consulta pública tiene límite por IP de 20 peticiones cada 15 minutos y el 
 
 ## Solicitudes y alertas para Administración
 
+### Compatibilidad con sesiones y avisos actuales
+
+El acceso por teléfono y el alternativo por usuario/correo conservan «Mantener sesión iniciada»: al marcarlo, el servidor emite la sesión de 90 días y el navegador usa localStorage; sin marcarlo usa sessionStorage y el vencimiento corto configurado (8 horas por defecto). Nunca se guarda la contraseña. Al volver al login se valida el token guardado con `/api/auth/perfil` y se usa el rol devuelto por el servidor antes de entrar. Un 401/403 elimina esa sesión; una falla de red la conserva. Una respuesta tardía de una sesión anterior no reemplaza ni elimina una cuenta que acaba de autenticarse.
+
+El menú conserva simultáneamente avisos de adeudos de Inicio/Pagos, solicitudes pendientes de Casa Club y solicitudes de cuentas. Los avisos administrativos mantienen sus permisos y los adeudos conservan el contexto de vivienda seleccionada.
+
 Una solicitud del formulario queda en `solicitudes_cuenta`, con usuario PENDIENTE, vivienda declarada y datos de contacto; requiere revisión en **Verificación de cuentas**. La aprobación exige identidad verificada, rol autorizado y vivienda real cuando corresponda. La solicitud no concede acceso por sí misma.
 
 El menú lateral muestra el número de solicitudes pendientes solo a administradores. Consulta una vez por carga de página, sin temporizador. Auto-users muestra una sección **Alertas: solicitudes de cuenta**, con resumen de la primera página y enlace a la revisión completa. La aprobación/rechazo usa las validaciones existentes del servidor. No se genera una cuenta aceptada automáticamente por coincidencia de teléfono o correo.

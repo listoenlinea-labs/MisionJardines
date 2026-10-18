@@ -18,6 +18,7 @@ const ReservaCasaClub = db.define('ReservaCasaClub', {
  limpieza:{type:DataTypes.DECIMAL(12,2),allowNull:false,defaultValue:0},
  pagado:{type:DataTypes.BOOLEAN,allowNull:false,defaultValue:false},
  fechaPago:{type:DataTypes.DATEONLY,allowNull:true,field:'fecha_pago'},
+ fechaLimitePago:{type:DataTypes.DATEONLY,allowNull:true,field:'fecha_limite_pago'},
  folio:{type:DataTypes.STRING(60),allowNull:true},
  notas:{type:DataTypes.STRING(600),allowNull:true},
  revisadoPor:{type:DataTypes.BIGINT.UNSIGNED,allowNull:true,field:'revisado_por'},

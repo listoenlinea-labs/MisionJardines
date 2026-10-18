@@ -17,6 +17,11 @@ const CuotaExtraordinaria = sequelize.define(
             type: DataTypes.DECIMAL(12, 2),
             allowNull: false
         },
+        egresoId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true, unique: true, field: 'egreso_id' },
+        montoTotal: { type: DataTypes.DECIMAL(12,2), allowNull: true, field: 'monto_total' },
+        meses: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 1 },
+        fechaInicio: { type: DataTypes.DATEONLY, allowNull: true, field: 'fecha_inicio' },
+        viviendas: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 231 },
         activo: {
             type: DataTypes.BOOLEAN,
             allowNull: false,

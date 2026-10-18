@@ -90,7 +90,7 @@ test('Dona mantiene el porcentaje dentro del círculo en teléfonos',()=>{
 });
 
 test('Versiones de caché actualizadas para JS, CSS y sidebar',()=>{
-  assert.match(html,/analisis-cuotas\.js\?v=20261015-gastos-dona-alertas/);
-  assert.match(html,/analisis-cuotas\.css\?v=20261015-gastos-dona-alertas/);
-  assert.match(sidebar,/mobile-operativo\.css\?v=20261015-gastos-dona-filtro/);
+  assert.match(html,/analisis-cuotas\.js\?v=20261018-tres-conceptos/);
+  assert.match(html,/analisis-cuotas\.css\?v=20261018-tres-conceptos/);
+  assert.match(sidebar,/mobile-operativo\.css\?v=20261015-safari-fechas-compactas/);
 });

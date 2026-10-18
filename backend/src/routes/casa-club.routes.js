@@ -9,5 +9,6 @@ router.get('/mias',club.mias);
 router.post('/reservas',club.crear);
 router.patch('/reservas/:id/cancelar',club.cancelar);
 router.get('/administracion',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.listar);
+router.get('/solicitudes-pendientes',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.pendientesResumen);
 router.patch('/administracion/:id',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.revisar);
 module.exports=router;

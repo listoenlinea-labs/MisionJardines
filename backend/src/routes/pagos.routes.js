@@ -5,6 +5,7 @@ const {
     listarCuotasExtraordinarias,
     crearCuotaExtraordinaria,
     desactivarCuotaExtraordinaria,
+    obtenerAdeudos,
     reportarPago,
     descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
 } = require('../controllers/pagos.controller');
@@ -36,6 +37,7 @@ router.get('/:id/comprobante', soloAdministracion, obtenerComprobante);
 router.patch('/:id/revision', soloAdministracion, revisarPago);
 router.get('/config', lecturaPagos, obtenerConfiguracion);
 router.get('/mios', lecturaPagos, listarMisPagos);
+router.get('/adeudos', lecturaPagos, obtenerAdeudos);
 router.get('/:id/recibo', lecturaPagos, descargarRecibo);
 router.get('/:id/comprobante-mio', lecturaPagos, obtenerComprobantePropio);
 router.get('/extraordinarias', lecturaPagos, listarCuotasExtraordinarias);

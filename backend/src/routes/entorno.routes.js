@@ -1,5 +1,7 @@
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const { autenticarToken } = require('../middlewares/auth.middleware');
+const { VENTANA_DIAS, prepararNoticiasLocales } = require('../services/noticias-locales.service');
 
 const router = express.Router();
 
@@ -7,13 +9,36 @@ const ADDRESS = process.env.MISION_JARDINES_ADDRESS ||
   'C. Atotonilco 700, 45138 Nuevo México, Zapopan, Jalisco, México';
 
 const cache = new Map();
+// Las teselas son imágenes públicas de tráfico, pero la API key de TomTom
+// permanece únicamente en el servidor. Límite de memoria y vigencia corta.
+const trafficTiles = new Map();
+const trafficTileRequests = new Map();
+const TRAFFIC_TILE_TTL_MS = 60 * 1000;
+const TRAFFIC_TILE_LIMIT = 200;
+const NEWS_CACHE_LIMIT = 40;
+const newsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 15,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: req => String(req.usuario.usuarioId)
+});
+const trafficTileLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: req => String(req.usuario.usuarioId)
+});
 function getCached(key, maxAgeMs) {
   const item = cache.get(key);
   if (!item || Date.now() - item.at > maxAgeMs) return null;
   return item.value;
 }
 function setCached(key, value) {
+  cache.delete(key);
   cache.set(key, { at: Date.now(), value });
+  while (cache.size > NEWS_CACHE_LIMIT) cache.delete(cache.keys().next().value);
   return value;
 }
 
@@ -54,9 +79,75 @@ router.get('/config', autenticarToken, (req, res) => {
       address: ADDRESS,
       googleMapsKey: process.env.GOOGLE_MAPS_BROWSER_API_KEY || '',
       trafficIncidentsConfigured: Boolean(process.env.TOMTOM_API_KEY),
-      newsProvider: 'GDELT'
+      trafficFlowConfigured: Boolean(process.env.TOMTOM_API_KEY),
+      newsProvider: 'FreeNewsApi'
     }
   });
+});
+
+// TomTom Traffic Flow: capa raster transparente para calles con circulación
+// lenta (naranja) y congestionada (rojo). Se limita al área metropolitana
+// cercana a Misión Jardines para no convertir el proxy en un servicio general.
+router.get('/trafico/tesela/:zoom/:x/:y', autenticarToken, trafficTileLimiter, async (req, res) => {
+  const key = process.env.TOMTOM_API_KEY;
+  if (!key) return res.status(503).json({ ok: false, message: 'Tráfico en vivo no configurado.' });
+
+  const { zoom, x, y } = req.params;
+  if (![zoom, x, y].every(value => /^\d{1,7}$/.test(String(value)))) {
+    return res.status(400).json({ ok: false, message: 'Coordenadas de mapa inválidas.' });
+  }
+  const [z, tileX, tileY] = [zoom, x, y].map(Number);
+  const limit = 2 ** z;
+  if (z < 12 || z > 17 || tileX >= limit || tileY >= limit) {
+    return res.status(400).json({ ok: false, message: 'Tesela fuera del rango permitido.' });
+  }
+
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (tileY + 0.5) / limit))) * 180 / Math.PI;
+  const lon = (tileX + 0.5) / limit * 360 - 180;
+  if (lat < 20.55 || lat > 20.95 || lon < -103.70 || lon > -103.19) {
+    return res.status(400).json({ ok: false, message: 'Tesela fuera del entorno de Misión Jardines.' });
+  }
+
+  const tileId = `${z}/${tileX}/${tileY}`;
+  const cached = trafficTiles.get(tileId);
+  let bytes;
+  try {
+    if (cached && Date.now() - cached.at < TRAFFIC_TILE_TTL_MS) {
+      bytes = cached.bytes;
+    } else {
+      let pending = trafficTileRequests.get(tileId);
+      if (!pending) {
+        pending = (async () => {
+          const url = new URL(`https://api.tomtom.com/traffic/map/4/tile/flow/relative0/${tileId}.png`);
+          url.searchParams.set('key', key);
+          const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          if (!response.ok || !response.headers.get('content-type')?.includes('image/png')) {
+            throw new Error('TomTom rechazó una tesela de tráfico.');
+          }
+          const payload = Buffer.from(await response.arrayBuffer());
+          if (payload.length > 350000) throw new Error('Tesela de tráfico demasiado grande.');
+          return payload;
+        })();
+        trafficTileRequests.set(tileId, pending);
+      }
+      try {
+        bytes = await pending;
+        trafficTiles.delete(tileId);
+        trafficTiles.set(tileId, { bytes, at: Date.now() });
+        if (trafficTiles.size > TRAFFIC_TILE_LIMIT) {
+          trafficTiles.delete(trafficTiles.keys().next().value);
+        }
+      } finally {
+        if (trafficTileRequests.get(tileId) === pending) trafficTileRequests.delete(tileId);
+      }
+    }
+    res.set('Cache-Control', 'private, max-age=60');
+    res.type('png');
+    return res.send(bytes);
+  } catch (error) {
+    console.error('No fue posible obtener la tesela TomTom:', error.message);
+    return res.status(502).json({ ok: false, message: 'No fue posible cargar el tráfico en este momento.' });
+  }
 });
 
 router.get('/incidencias', autenticarToken, async (req, res) => {
@@ -100,7 +191,8 @@ router.get('/incidencias', autenticarToken, async (req, res) => {
     const incidentsUrl = new URL('https://api.tomtom.com/traffic/services/5/incidentDetails');
     incidentsUrl.searchParams.set('key', key);
     incidentsUrl.searchParams.set('bbox', bbox);
-    incidentsUrl.searchParams.set('language', 'es-MX');
+    // Incident Details acepta el código ISO 639-1 "es", no la variante "es-MX".
+    incidentsUrl.searchParams.set('language', 'es');
     incidentsUrl.searchParams.set('timeValidityFilter', 'present');
 
     const payload = await fetchJson(incidentsUrl);
@@ -145,37 +237,59 @@ router.get('/incidencias', autenticarToken, async (req, res) => {
   }
 });
 
-router.get('/noticias', autenticarToken, async (req, res) => {
+router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
   try {
-    const cached = getCached('news', 5 * 60 * 1000);
+    const rawQuery = req.query?.q;
+    if (rawQuery !== undefined && typeof rawQuery !== 'string') {
+      return res.status(400).json({ ok: false, message: 'Búsqueda inválida.' });
+    }
+    const query = (rawQuery || '').trim().replace(/\s+/g, ' ');
+    if (query.length > 80 || (query.length > 0 && query.length < 2)) {
+      return res.status(400).json({ ok: false, message: 'Escribe entre 2 y 80 caracteres para buscar noticias.' });
+    }
+    const cacheKey = query ? `news:${query.toLocaleLowerCase('es')}` : 'news';
+    const cached = getCached(cacheKey, 15 * 60 * 1000);
     if (cached) return res.json(cached);
 
-    const url = new URL('https://api.gdeltproject.org/api/v2/doc/doc');
-    url.searchParams.set('query', '(Guadalajara OR Zapopan OR Jalisco OR "Nuevo México") sourcelang:spanish');
-    url.searchParams.set('mode', 'artlist');
-    url.searchParams.set('format', 'json');
-    url.searchParams.set('maxrecords', '15');
-    url.searchParams.set('timespan', '24h');
-    url.searchParams.set('sort', 'datedesc');
-
-    const payload = await fetchJson(url, 10000);
-    const data = (payload.articles || []).slice(0, 12).map(article => ({
-      title: article.title || 'Noticia local',
-      url: article.url,
-      domain: article.domain || '',
-      seenDate: article.seendate || null,
-      sourceCountry: article.sourcecountry || '',
-      language: article.language || ''
-    }));
+    // GDELT devuelve 429 de forma recurrente desde IPs de servidores compartidos.
+    // FreeNewsApi permite búsquedas gratuitas y uso comercial sin credenciales,
+    // y filtra sobre la fecha real de publicación de cada nota.
+    // Los seis términos de calle permiten encontrar notas que no dicen
+    // "Zapopan" en el titular. La clasificación exige el nombre de la vialidad.
+    const terminos = query ? [query] : [
+      'Zapopan', 'Guadalajara', 'choque Zapopan', 'choque Guadalajara',
+      'marcha Zapopan', 'marcha Guadalajara',
+      'Atotonilco', 'Valle de México', 'Avenida Guadalajara',
+      'Acueducto', 'Base Aérea', 'Aviación'
+    ];
+    const consultas = terminos.map(termino => {
+      const url = new URL('https://freenewsapi.ai/v1/search');
+      url.searchParams.set('q', termino);
+      url.searchParams.set('country', 'MX');
+      url.searchParams.set('lang', 'es');
+      url.searchParams.set('date', '7d');
+      url.searchParams.set('sort', 'date');
+      url.searchParams.set('size', query ? '70' : termino.startsWith('choque') ? '30' : '45');
+      return fetchJson(url, 8000);
+    });
+    const respuestas = await Promise.allSettled(consultas);
+    const correctas = respuestas.filter(r => r.status === 'fulfilled');
+    if (!correctas.length) {
+      const detalle = respuestas[0]?.reason?.message || 'Todas las fuentes rechazaron la consulta';
+      throw new Error('No fue posible obtener noticias de la fuente: ' + detalle);
+    }
+    const articles = correctas.flatMap(r => r.value.results || []);
+    const data = prepararNoticiasLocales(articles, new Date());
 
     const result = {
       ok: true,
-      provider: 'GDELT',
-      queryWindow: '24h',
+      provider: 'FreeNewsApi',
+      searchQuery: query,
+      queryWindow: `${VENTANA_DIAS}d`,
       data,
       updatedAt: new Date().toISOString()
     };
-    setCached('news', result);
+    setCached(cacheKey, result);
     return res.json(result);
   } catch (error) {
     console.error('Error consultando noticias locales:', error);

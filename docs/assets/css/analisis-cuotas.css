@@ -376,3 +376,17 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
     font-size:16px!important;
   }
 }
+#newExpense [hidden],#housePaymentForm [hidden],.finance-pay-overlay[hidden]{display:none!important}
+
+/* Tres conceptos sobre una misma consulta, filtros, TAGs y paginación. */
+.finance-concept-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:5px;margin:13px 0 7px;border:1px solid #e6e0f0;border-radius:13px;background:#f8f6fb}
+.finance-concept-tabs button{display:flex;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:transparent;color:#6c6780;font-size:12px;font-weight:760;line-height:1.3;text-align:center;overflow-wrap:break-word;cursor:pointer}
+.finance-concept-tabs button.active,.finance-concept-tabs button[aria-selected="true"]{border-color:#d4eadd;background:#ebf8f0;color:#226846;box-shadow:0 3px 10px #2c725614}
+.finance-concept-tabs button:focus-visible{outline:2px solid #916ec3;outline-offset:2px}
+.finance-concept-hint{min-height:20px;margin:7px 2px 12px;color:#697991;font-size:11px;line-height:1.45}
+.status-neutral{display:inline-flex;padding:5px 8px;border-radius:9px;background:#f0f3f8;color:#6e7b91;font-weight:800;white-space:nowrap}
+@media(max-width:700px){
+  .finance-concept-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px!important;padding:4px!important;width:100%;min-width:0}
+  .finance-concept-tabs button{min-height:52px;padding:7px 4px;font-size:clamp(9px,2.45vw,11px);line-height:1.25;hyphens:auto}
+  .finance-concept-hint{font-size:10px}
+}

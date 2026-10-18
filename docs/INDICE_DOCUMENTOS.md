@@ -10,9 +10,14 @@ actual del C3 ni a una consulta en vivo de MySQL.
 | Documento | Uso | Estado / precaución |
 | --- | --- | --- |
 | [Estado del proyecto](ESTADO_PROYECTO.md) | Resumen operativo, pruebas confirmadas, pendientes y bitácora diaria | Leer antes de continuar; actualización programada a las 23:30, America/Mexico_City |
+| [Plan de pruebas integral](PLAN_PRUEBAS_INTEGRAL_20261018.md) | 23 secciones, flujos completos, pruebas por rol/móvil, límites actuales y piloto de bloqueos C3 | Checklist de aceptación; no acredita prueba física de producción |
+| [Mapa SQL por módulo](MAPA_SQL_POR_MODULO_20261018.md) | Queries SELECT seguras, relaciones entre mantenimiento/extraordinarias/Casa club y diagnóstico de TAGs | No confundir espejo SQL con autorización física `userauthorize` del C3 |
 | [AGENTS.md](../AGENTS.md) | Reglas para agentes: pagos, recargos, C3, OCR y trabajo seguro | Vigente; leer antes de editar |
 | [Auto-users](AUTO_USERS.md) | Prerregistro, invitaciones por correo SMTP, login por teléfono, solicitudes y pruebas individuales | Requiere frontend/backend y SMTP; sin WhatsApp Business |
 | [Historial administrativo de pagos](HISTORIAL_PAGOS.md) | Periodos 11–10, fecha bancaria/subida, estados, meses y última vigencia registrada por TAG | Nueva sección; requiere despliegue frontend/backend y cotejo de producción |
+| [Tres conceptos de pago](PAGOS_TRES_CONCEPTOS_202610.md) | Sesiones recordadas, extraordinarias, adeudos, casa club y SQL de migración/diagnóstico | Rama de trabajo de 18/oct; exige SQL previo, conciliación del padrón de 231 viviendas y validación en Hostinger |
+| [Análisis por tres conceptos](ANALISIS_TRES_CONCEPTOS_20261018.md) | Pestañas Mantenimiento/Extraordinarias/Casa club, saldos por casa y barra de ingresos de Casa club | Cambios de 18/oct; requiere despliegue de frontend y backend, tablas previas y conciliación con MySQL |
+| [Tráfico y noticias del entorno](ENTORNO_TRAFICO_NOTICIAS.md) | Capa de congestión Google/TomTom, privacidad de credenciales, activación y pruebas de noticias | Cambios del 18/oct; requiere claves externas y despliegue, sin SQL |
 | [Pagos y acceso C3](PAGOS_ACCESO_C3.md) | Cálculo desde fecha física, abonos parciales y complementos, diario de aplicación, reintentos y cortes pagados | Referencia vigente; abonos/complementos actualizados el 12/oct |
 | [OCR del destinatario](../backend/docs/PAGOS_OCR_DESTINO.md) | Tesseract.js, idiomas, instalación y comprobantes pendientes | Vigente; OCR no confirma recepción bancaria. Extracción de monto corregida el 12/oct para excluir cuentas/folios |
 | [Diagnóstico de presencia C3](../backend/docs/diagnostico-presencia-c3.md) | Diferenciar inventario SQL, presencia física y autorizaciones | Diagnóstico; Gardenias 5 es el ejemplo histórico |
