@@ -1,5 +1,6 @@
 const express = require('express');
 const { autenticarToken } = require('../middlewares/auth.middleware');
+const { VENTANA_DIAS, prepararNoticiasLocales } = require('../services/noticias-locales.service');
 
 const router = express.Router();
 
@@ -147,31 +148,24 @@ router.get('/incidencias', autenticarToken, async (req, res) => {
 
 router.get('/noticias', autenticarToken, async (req, res) => {
   try {
-    const cached = getCached('news', 5 * 60 * 1000);
+    const cached = getCached('news', 15 * 60 * 1000);
     if (cached) return res.json(cached);
 
     const url = new URL('https://api.gdeltproject.org/api/v2/doc/doc');
-    url.searchParams.set('query', '(Guadalajara OR Zapopan OR Jalisco OR "Nuevo México") sourcelang:spanish');
+    url.searchParams.set('query', '(Guadalajara OR Zapopan) sourcelang:spanish');
     url.searchParams.set('mode', 'artlist');
     url.searchParams.set('format', 'json');
-    url.searchParams.set('maxrecords', '15');
-    url.searchParams.set('timespan', '24h');
+    url.searchParams.set('maxrecords', '100');
+    url.searchParams.set('timespan', '1week');
     url.searchParams.set('sort', 'datedesc');
 
     const payload = await fetchJson(url, 10000);
-    const data = (payload.articles || []).slice(0, 12).map(article => ({
-      title: article.title || 'Noticia local',
-      url: article.url,
-      domain: article.domain || '',
-      seenDate: article.seendate || null,
-      sourceCountry: article.sourcecountry || '',
-      language: article.language || ''
-    }));
+    const data = prepararNoticiasLocales(payload.articles, new Date());
 
     const result = {
       ok: true,
       provider: 'GDELT',
-      queryWindow: '24h',
+      queryWindow: `${VENTANA_DIAS}d`,
       data,
       updatedAt: new Date().toISOString()
     };
