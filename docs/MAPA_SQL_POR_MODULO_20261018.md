@@ -289,7 +289,7 @@ FROM zk_error_logs WHERE casa_id=@casa_id ORDER BY id DESC LIMIT 30;
 
 **El C3-200 NO expone sus tablas físicas `user` y `userauthorize` en Hostinger/MySQL**. `zk_tarjetas` es espejo/cache; el bloqueo real retira `userauthorize` mediante el servicio TCP con verificación de lectura posterior. La vigencia EndTime no se «corta» al bloquear: se conserva. Jamás usar SQL `UPDATE zk_tarjetas SET bloqueado=1` como sustituto de bloquear físicamente.
 
-Activación segura sin cambios de esquema: `ZKTECO_ADEUDOS_ENABLED=true`, primero `ZKTECO_ADEUDOS_DRY_RUN=true` con `ZKTECO_ADEUDOS_CASA_IDS=<ID_PILOTO>`; para escritura piloto, **ambos** `ZKTECO_DRY_RUN=false` y `ZKTECO_ADEUDOS_DRY_RUN=false`. Por defecto no se escribe nada. Para global `ZKTECO_ADEUDOS_GLOBAL_CONFIRMADO=CONFIRMO_231` exige cotejo del padrón. El monitor solo bloquea; después de liquidar, Administración debe habilitar manualmente para no remover bloqueos de seguridad.
+Activación segura sin cambios de esquema: `ZKTECO_ADEUDOS_ENABLED=true`, primero `ZKTECO_ADEUDOS_DRY_RUN=true` con `ZKTECO_ADEUDOS_CASA_IDS=<ID_PILOTO>`; para escritura piloto, **ambos** `ZKTECO_DRY_RUN=false` y `ZKTECO_ADEUDOS_DRY_RUN=false`. Por defecto no se escribe nada. Para global `ZKTECO_ADEUDOS_GLOBAL_CONFIRMADO=CONFIRMO_231` exige cotejo del padrón. El monitor solo bloquea; **un administrador puede habilitar manualmente un TAG sin que los adeudos sean un veto**, pero el próximo barrido automático podría bloquearlo de nuevo. Editar la vigencia directamente restablece `bloqueado=false` en el espejo SQL; hay que comprobar aparte `userauthorize` en el C3 físico.
 
 ## 8. Análisis de cuotas / Ingresos y egresos
 

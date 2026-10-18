@@ -11,7 +11,6 @@ const Casa = require('../src/models/Casa');
 const Tags = require('../src/models/ZkTarjeta');
 const Vigencia = require('../src/models/VigenciaMantenimiento');
 const direct = require('../src/services/zkteco-direct.service');
-const bloqueoAdeudos = require('../src/services/zkteco-adeudos.service');
 const worker = require('../src/services/zkteco-vigencias.service');
 const { C3Client } = require('../src/services/zkteco-c3-client.service');
 
@@ -22,8 +21,6 @@ function setup(t, { existingValidity = false, alreadyAuthorized = true,
     id: 702, calle: 'Guadalajara', numero: '707', controles: '5108838',
     async update(changes) { Object.assign(this, changes); }
   };
-  // El alta física se prueba aisladamente, con vivienda financiera solvente.
-  t.mock.method(bloqueoAdeudos, 'comprobarHabilitacion', async () => ({ total: 0 }));
   const user = { UID: '20', Pin: '5108833', CardNo: '5108833',
     Password: '', Group: '1', StartTime: '20261008', EndTime: physicalEnd.replace(/-/g, '') };
   let users = physicalTagExists ? [user] : [];

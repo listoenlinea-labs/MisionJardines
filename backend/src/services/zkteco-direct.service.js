@@ -554,10 +554,6 @@ async function writeUserValidity(card,fechaInicio,fechaFin,{mode=getWriteMode(),
 async function setCardBlocked(cardId,blocked){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Tarjeta no encontrada');
-  if(!blocked){
-    if(!tarjeta.casaId) throw new Error('No se puede habilitar un TAG sin vivienda verificada');
-    await require('./zkteco-adeudos.service').comprobarHabilitacion(tarjeta.casaId);
-  }
 
   const state=await readControllerWithRetry(async client=>{
     const current=await findPanelUserByCard(client,tarjeta.numeroTarjeta);
@@ -688,7 +684,6 @@ function removeControlNormalized(raw,card){
 async function setCardHouse(cardId,casaId){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Control no encontrado');
-  if(!tarjeta.bloqueado) await require('./zkteco-adeudos.service').comprobarHabilitacion(casaId);
   const target=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!target) throw new Error('Vivienda no encontrada');
   if(tarjeta.casaId&&Number(tarjeta.casaId)!==Number(casaId)){
@@ -878,7 +873,6 @@ async function provisionTagOnController({casa,requestedCard,displayName,start,en
 async function createTagForHouse(casaId,{numeroTarjeta,nombre,fechaInicio,fechaFin}={}){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('Vivienda no encontrada');
-  await require('./zkteco-adeudos.service').comprobarHabilitacion(casa.id);
 
   const requestedCard=String(numeroTarjeta||'').trim();
   if(!requestedCard) throw new Error('Captura el número del TAG/control');
@@ -983,8 +977,6 @@ async function addExistingTagToController(cardId){
   const tarjeta=await ZkTarjeta.findByPk(cardId);
   if(!tarjeta) throw new Error('Control no encontrado');
   if(!tarjeta.casaId) throw new Error('El control todavía no está vinculado a una vivienda');
-  if(tarjeta.bloqueado) throw new Error('Un TAG bloqueado debe ser revisado y habilitado explícitamente antes de volver a autorizarlo');
-  await require('./zkteco-adeudos.service').comprobarHabilitacion(tarjeta.casaId);
 
   const casa=await Casa.findByPk(tarjeta.casaId,{attributes:['id','calle','numero','controles']});
   if(!casa) throw new Error('La vivienda vinculada ya no existe');
@@ -1074,10 +1066,6 @@ async function editTag(cardId,{numeroTarjeta,calle,numero}={}){
 
   const cardChanged=normalizeCardKey(oldCard)!==normalizeCardKey(newCard);
   const houseChanged=Number(tarjeta.casaId||0)!==Number(targetHouse.id);
-  if(cardChanged&&tarjeta.bloqueado)
-    throw new Error('No se puede sustituir físicamente un TAG bloqueado; revisa primero su motivo de bloqueo');
-  if((cardChanged||houseChanged)&&!tarjeta.bloqueado)
-    await require('./zkteco-adeudos.service').comprobarHabilitacion(targetHouse.id);
   const currentPhysical=await withC3(client=>findPanelUserByCard(client,oldCard));
   let controllerResult=null;
 

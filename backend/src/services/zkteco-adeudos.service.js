@@ -33,18 +33,6 @@ function adeudosExigibles(adeudos, hoy = fechaMexico()) {
     totales, total: Math.round(Object.values(totales).reduce((a, b) => a + b, 0) * 100) / 100 };
 }
 
-async function comprobarHabilitacion(casaId, { consultar, hoy } = {}) {
-  const obtener = consultar || require('./adeudos-comunidad.service').consultarAdeudos;
-  const deuda = adeudosExigibles(await obtener(casaId), hoy || fechaMexico());
-  if (deuda.total > 0) {
-    const error = new Error('La vivienda tiene adeudos exigibles de mantenimiento, cuota extraordinaria o Casa club; no se puede habilitar el TAG. Revisa Pagos.');
-    error.status = 409;
-    error.totales = deuda.totales;
-    throw error;
-  }
-  return deuda;
-}
-
 function idsPiloto(value) {
   if (!value) return [];
   const parts = String(value).split(',').map(x => x.trim());
@@ -103,4 +91,4 @@ function start() {
   console.log('[C3 adeudos] Monitor habilitado; primer barrido en', interval, 'ms');
 }
 
-module.exports = { adeudosExigibles, comprobarHabilitacion, idsPiloto, run, start };
+module.exports = { adeudosExigibles, idsPiloto, run, start };
