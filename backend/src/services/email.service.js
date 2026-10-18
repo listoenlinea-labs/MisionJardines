@@ -264,7 +264,22 @@ async function enviarInvitacionCasa({destinatario,token,casa}) {
     });
 }
 
+async function enviarInvitacionPreregistro({ destinatario, nombre, domicilio, enlace }) {
+    if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(String(destinatario || ''))) throw new Error('Correo de invitación inválido');
+    // No automatic retry: an ambiguous SMTP result must not duplicate an invitation.
+    const info = await crearTransportador().sendMail({
+        from: { name: process.env.SMTP_FROM_NAME || 'Administración Misión Jardines', address: process.env.SMTP_FROM_EMAIL },
+        to: destinatario,
+        subject: 'Activa tu cuenta · Misión Jardines',
+        text: `Hola ${nombre},\n\nTu cuenta está preparada para ${domicilio}. Revisa que la vivienda te pertenezca y elige tu contraseña:\n${enlace}\n\nEl enlace es personal, vence en 14 días y solo puede utilizarse una vez. Si los datos no son tuyos, usa Reportar error desde el enlace.`,
+        html: '<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px"><h1>Activa tu cuenta</h1><p>Hola ' + escaparHtml(nombre) + '.</p><p>Tu cuenta está preparada para <strong>' + escaparHtml(domicilio) + '</strong>.</p><p>Revisa tu calle y número de casa antes de aceptar.</p><p><a href="' + escaparHtml(enlace) + '">Revisar y aceptar mi cuenta</a></p><p>El enlace es personal y vence en 14 días. Si la vivienda no es tuya, presiona Reportar error.</p></div>'
+    });
+    if (!info.accepted?.some(address => String(address).toLowerCase() === destinatario.toLowerCase())) throw new Error('El servidor SMTP no aceptó el destinatario');
+    return info.messageId || 'SMTP_ACEPTADO';
+}
+
 module.exports = {
+    enviarInvitacionPreregistro,
     enviarInvitacionCasa,
     enviarReciboPorCorreo,
     enviarCodigoVerificacion,

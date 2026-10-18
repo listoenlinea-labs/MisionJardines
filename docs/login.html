@@ -11,6 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Iniciar sesión | Misión Jardines</title>
     <style>
+        [hidden] { display: none !important; }
         :root {
             --primary: #f28c28;
             --primary-dark: #dc7208;
@@ -832,15 +833,15 @@
                     </p>
                 </div>
                 <form id="loginForm" novalidate>
-                    <div class="form-group"><label class="form-label" for="correo">Usuario o correo electrónico</label>
+                    <div class="form-group"><label class="form-label" id="identifierLabel" for="correo">Número de teléfono</label>
                         <div class="input-wrapper"><span class="input-icon">✉</span><input class="form-input"
-                                id="correo" name="correo" type="text" placeholder="Tu usuario o correo"
+                                id="correo" name="correo" type="tel" placeholder="Teléfono con lada"
                                 autocomplete="username" required /></div>
                     </div>
-                    <div class="form-group"><label class="form-label" for="contrasena">Contraseña</label>
+                    <div class="form-group" id="passwordFields" hidden><label class="form-label" for="contrasena">Contraseña</label>
                         <div class="input-wrapper"><span class="input-icon">🔒</span><input class="form-input"
                                 id="contrasena" name="contrasena" type="password" placeholder="Escribe tu contraseña"
-                                autocomplete="current-password" required /><button class="password-toggle"
+                                autocomplete="current-password" disabled /><button class="password-toggle"
                                 id="passwordToggle" type="button" aria-label="Mostrar contraseña"
                                 title="Mostrar contraseña">
                                 <svg id="passwordToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
@@ -857,7 +858,7 @@
                             onclick="return false;">¿Olvidaste tu contraseña?</a></div>
                     <button class="login-button" id="loginButton" type="submit"><span
                             class="button-spinner"></span><span class="button-icon">→</span><span
-                            id="buttonText">Ingresar al portal</span></button>
+                            id="buttonText">Continuar</span></button>
                     <div class="login-message" id="loginMessage" role="alert" aria-live="polite"><span
                             class="message-icon" id="messageIcon"></span>
                         <div class="message-content"><strong id="messageTitle"></strong>
@@ -865,14 +866,14 @@
                         </div>
                     </div>
                 </form>
-                <div class="register-link">¿Aún no tienes acceso? <a href="registro.html">Crear cuenta</a>
+                <div class="register-link"><button id="loginAlternative" type="button">Usar usuario o correo</button></div><div class="register-link">¿Aún no tienes acceso? <a href="registro.html">Crear cuenta</a>
                 </div>
                 <div class="login-security"><span>●</span>Conexión protegida con autenticación segura</div>
             </div>
         </section>
     </main>
     <script src="assets/js/permissions.js?v=20261012-seguridad"></script>
-    <script src="assets/js/login.js?v=20261013-auto-users-20261012-seguridad"></script>
+    <script src="assets/js/login.js?v=20261018-telefono-sesion"></script>
 </body>
 
 </html>

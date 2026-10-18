@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const { buscarUsuariosPorTelefono } = require('./telefono-cuenta.service');
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const normal = value => String(value || '').normalize('NFKC').trim().toLowerCase();
 const compact = value => normal(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
@@ -24,7 +25,7 @@ function credentials(body) {
 const trialHouse = casa => casa && (/\bprueba\b/i.test((casa.calleCorrecta || '') + ' ' + (casa.calle || '')) || /^TEST(?:-|$)/i.test(String(casa.numero)));
 const trialUser = user => /^AUTO_USERS_PRUEBA:[a-f0-9]{32}$/.test(user?.observaciones || '');
 function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitacion, Reporte,
-    whatsapp, hashPassword = (value => bcrypt.hash(value, 12)) }) {
+    correoSender, buscarTelefono = buscarUsuariosPorTelefono, hashPassword = (value => bcrypt.hash(value, 12)) }) {
     const lock = transaction => ({ transaction, lock: transaction.LOCK.UPDATE });
     const pending = user => user && user.condominoId && user.cuentaAceptada === false && user.estatus === 'PENDIENTE';
     async function conflicts(nombreUsuario, correo, id, transaction) {
@@ -296,45 +297,64 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             return { mensaje: 'Prerregistro corregido. Envía una nueva invitación.' };
         });
     }
-    async function sendOne(id) {
+    async function sendOne(id, publicRequest = false) {
         if (trialUser(await Usuario.findByPk(id))) return { usuarioId: id, resultado: 'PRUEBA_SIN_ENVIO' };
-        const config = whatsapp.configuracion();
+        const config = correoSender.configuracion();
         const data = await db.transaction(async transaction => {
             const user = await Usuario.findByPk(id, lock(transaction));
             if (!pending(user)) return null;
             if (await Reporte.findOne({ where: { usuarioId: id, estatus: 'ABIERTO' }, transaction })) throw fail(409, 'Primero corrige el reporte abierto.');
             const casa = await Casa.findByPk(user.casaId, { transaction });
-            if (!casa || !whatsapp.telefonoWhatsApp(user.telefono)) throw fail(400, 'Corrige la vivienda o el teléfono antes de enviar.');
+            if (!casa || !correoSender.correoValido(user.correo)) throw fail(400, 'Corrige la vivienda o el correo antes de enviar.');
             const [inv] = await Invitacion.findOrCreate({ where: { usuarioId: id }, defaults: { envioEstado: 'SIN_ENVIAR' }, transaction });
+            if (publicRequest && inv.enviadoEn && inv.tokenHash && new Date(inv.expiraEn) > new Date() && new Date(inv.enviadoEn).getTime() > Date.now() - 5 * 60000) return { reciente: true };
             // Avoid simultaneous clicks sending twice; a stalled request can be retried after 1 minute.
             if (inv.envioEstado === 'ENVIANDO' && inv.expiraEn && new Date(inv.expiraEn).getTime() - 14 * 86400000 > Date.now() - 60000) throw fail(409, 'Esta invitación ya se está enviando.');
             const token = crypto.randomBytes(32).toString('hex'), digest = hash(token);
             await inv.update({ tokenHash: digest, expiraEn: new Date(Date.now() + 14 * 86400000),
                 envioEstado: 'ENVIANDO', ultimoError: null }, { transaction });
-            return { digest, telefono: user.telefono, nombre: [user.nombre, user.apellidoPaterno, user.apellidoMaterno].filter(Boolean).join(' '),
+            return { digest, correo: user.correo, nombre: [user.nombre, user.apellidoPaterno, user.apellidoMaterno].filter(Boolean).join(' '),
                 domicilio: (casa.calleCorrecta || casa.calle) + ' ' + casa.numero,
                 enlace: config.frontend + '/aceptar-cuenta.html#invitacion=' + token };
         });
         if (!data) return { usuarioId: id, resultado: 'ACEPTADA_O_NO_ELEGIBLE' };
+        if (data.reciente) return { usuarioId: id, resultado: 'ENVIADO_RECIENTE' };
         try {
-            const mensajeId = await whatsapp.enviarInvitacion(data);
+            const mensajeId = await correoSender.enviarInvitacion(data);
             await Invitacion.update({ envioEstado: 'ENVIADO', enviadoEn: new Date(), mensajeId }, { where: { usuarioId: id, tokenHash: data.digest } });
             return { usuarioId: id, resultado: 'ENVIADO' };
         } catch (error) {
-            await Invitacion.update({ envioEstado: 'ERROR', ultimoError: 'No se confirmó el envío; revisa WhatsApp y reintenta.' }, { where: { usuarioId: id, tokenHash: data.digest } });
-            return { usuarioId: id, resultado: 'ERROR', mensaje: 'No se confirmó el envío; revisa el teléfono y la configuración de WhatsApp.' };
+            await Invitacion.update({ envioEstado: 'ERROR', ultimoError: 'No se confirmó el envío; revisa el correo y reintenta.' }, { where: { usuarioId: id, tokenHash: data.digest } });
+            return { usuarioId: id, resultado: 'ERROR', mensaje: 'No se confirmó el envío; revisa el destinatario y la configuración SMTP.' };
         }
     }
     async function enviarLote(afterId = 0, id = null) {
-        whatsapp.configuracion(); // No token rotation or fake success if provider is not configured.
+        correoSender.configuracion(); // No token rotation or fake success if provider is not configured.
         const rows = id ? [{ id }] : await Usuario.findAll({ where: { condominoId: { [Op.ne]: null }, cuentaAceptada: false,
-            estatus: 'PENDIENTE', id: { [Op.gt]: afterId } }, order: [['id', 'ASC']], limit: 5 });
+            estatus: 'PENDIENTE', id: { [Op.gt]: afterId } }, order: [['id', 'ASC']], limit: 1 });
         const results = [];
         for (const user of rows) {
             try { results.push(await sendOne(user.id)); }
             catch (error) { results.push({ usuarioId: user.id, resultado: 'REVISAR', mensaje: error.status ? error.message : 'No fue posible preparar la invitación.' }); }
         }
-        return { resultados: results, siguiente: !id && rows.length === 5 ? rows.at(-1).id : null };
+        return { resultados: results, siguiente: !id && rows.length === 1 ? rows.at(-1).id : null };
+    }
+    async function consultarTelefono(telefono) {
+        const users = await buscarTelefono(Usuario, telefono, { attributes: ['id', 'estatus', 'cuentaAceptada', 'condominoId'] });
+        if (!users.length) return { estado: 'NUEVA' };
+        if (users.length !== 1) return { estado: 'REVISION', mensaje: 'Ese teléfono corresponde a más de una cuenta. Usa tu usuario/correo o contacta a Administración.' };
+        const user = users[0];
+        if (user.estatus === 'ACTIVO' && user.cuentaAceptada !== false) return { estado: 'ACEPTADA' };
+        if (pending(user)) return { estado: 'PRERREGISTRO' };
+        return { estado: 'REVISION', mensaje: 'Tu cuenta requiere revisión de Administración. Si ya enviaste una solicitud, espera su autorización.' };
+    }
+    async function enviarPorTelefono(telefono) {
+        const users = await buscarTelefono(Usuario, telefono);
+        if (users.length !== 1 || !pending(users[0]) || trialUser(users[0])) throw fail(409, 'Solicita ayuda a Administración para revisar el acceso a tu cuenta.');
+        const result = await sendOne(users[0].id, true);
+        if (!['ENVIADO', 'ENVIADO_RECIENTE'].includes(result.resultado)) throw fail(503, 'No se pudo confirmar el envío del correo. Contacta a Administración.');
+        // Never return account details, address, email, or activation tokens from a phone lookup.
+        return { mensaje: 'Revisa el correo registrado para tu cuenta y abre el enlace personal. Si solicitaste uno hace poco, utiliza ese mismo enlace. Si no tienes acceso a ese correo, contacta a Administración.' };
     }
     async function listar(page = 1, reportPage = 1) {
         const { count, rows } = await Usuario.findAndCountAll({ where: { condominoId: { [Op.ne]: null } },
@@ -355,6 +375,6 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             totalReportes: reportsResult.count, paginaReportes: reportPage,
             reportes: reportes.map(r => ({ ...r, usuario: reportUsers.find(u => String(u.id) === String(r.usuarioId)) })) };
     }
-    return { listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, aceptar, reportar, editar, enviarLote, sendOne, listar };
+    return { consultarTelefono, enviarPorTelefono, listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, aceptar, reportar, editar, enviarLote, sendOne, listar };
 }
 module.exports = { crearServicio, credentials, houseNumber, names };

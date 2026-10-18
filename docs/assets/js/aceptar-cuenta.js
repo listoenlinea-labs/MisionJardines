@@ -1,6 +1,7 @@
 (async function () {
   'use strict';
   const $ = id => document.getElementById(id);
+  const fromLogin = location.hash === '#desde-login';
   const token = new URLSearchParams(location.hash.slice(1)).get('invitacion') || '';
   // Fragment tokens are not sent as query parameters/referrers or persisted in storage.
   history.replaceState(null, '', location.pathname);
@@ -10,6 +11,27 @@
     const result = await response.json();
     if (!response.ok || !result.ok) throw Error(result.message || 'No fue posible completar la operación.');
     return result;
+  }
+  if (!token && fromLogin) {
+    const telefono = sessionStorage.getItem('mjTelefonoPreregistro');
+    sessionStorage.removeItem('mjTelefonoPreregistro');
+    $('pendingEmailAccess').hidden = false;
+    $('invitationState').textContent = telefono ? 'Tu cuenta está preparada. Enviaremos el enlace a tu correo registrado.' : 'Vuelve a iniciar sesión e introduce tu teléfono para recuperar el enlace.';
+    async function sendAccess() {
+      if (!telefono) return;
+      const button = $('resendAccessEmail'); if (button.disabled) return; button.disabled = true;
+      $('invitationState').textContent = 'Enviando enlace a tu correo registrado…';
+      try {
+        const response = await fetch(API + '/auto-users/acceso/enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefono }), signal: AbortSignal.timeout(90000) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw Error(result.message || 'No se pudo confirmar el envío. Contacta a Administración.');
+        $('invitationState').textContent = result.mensaje;
+      } catch (error) { $('invitationState').textContent = error.name === 'TimeoutError' ? 'El envío tardó en responder. Revisa tu correo antes de solicitar otro enlace.' : error.message; }
+      finally { button.disabled = !telefono; }
+    }
+    $('resendAccessEmail').disabled = !telefono;
+    $('resendAccessEmail').addEventListener('click', sendAccess);
+    await sendAccess(); return;
   }
   let registration;
   try {

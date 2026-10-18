@@ -99,3 +99,12 @@ test('antigua ruta de verificación por código queda inhabilitada', async () =>
   assert.equal(res.statusCode,410);
 });
 
+test('solicitud desde teléfono queda pendiente y visible para Administración; teléfono con cuenta impide duplicar', async t => {
+  const saved = preparar(t);
+  t.mock.method(m.Usuario, 'findAll', async () => []);
+  const req = peticion(); req.body.telefono = '3312345678'; req.body.origenTelefono = true;
+  const res = respuesta(); await solicitarRegistro(req, res);
+  assert.equal(res.statusCode, 201); assert.equal(saved.user.telefono, '3312345678'); assert.equal(saved.request.estatus, 'PENDIENTE');
+  t.mock.method(m.Usuario, 'findAll', async () => [{ id: 2 }]);
+  const second = respuesta(); await solicitarRegistro(req, second); assert.equal(second.statusCode, 409);
+});

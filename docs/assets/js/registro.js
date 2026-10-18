@@ -1,8 +1,16 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const base = window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api';
+  const base = window.MJ_API_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:3000/api' : 'https://api-misionjardines.listoenlinea.host/api');
   let tipoCuenta = 'CONDOMINO';
   let busy = false;
+  const fromLogin = location.hash === '#desde-login';
+  if (fromLogin) {
+    const phone = sessionStorage.getItem('mjTelefonoSolicitud');
+    sessionStorage.removeItem('mjTelefonoSolicitud');
+    if (phone) $('registerPhone').value = phone;
+    $('registerPhone').required = true;
+    $('registerTitle').textContent = 'Solicitar cuenta a Administración';
+  }
 
   function message(text, error = false) {
     $('registerMessage').textContent = text;
@@ -60,7 +68,7 @@
       message('Incluye mayúscula, minúscula y número en la contraseña.', true);
       return;
     }
-    const body = { ...Object.fromEntries(new FormData(event.currentTarget)), tipoCuenta };
+    const body = { ...Object.fromEntries(new FormData(event.currentTarget)), tipoCuenta, ...(fromLogin ? { origenTelefono: true } : {}) };
     busy = true;
     $('registerSubmit').disabled = true;
     $('registerSubmit').textContent = 'Enviando solicitud…';

@@ -20,7 +20,8 @@ test('administrador ve/edita pruebas aceptadas; confirma en panel propio, muestr
     location: { hostname: 'example.com', href: 'https://example.com/auto-users.html' }, AbortController, setTimeout: fn => { timeoutCallback = fn; return 1; }, clearTimeout() {},
     fetch: async (url, options) => {
       requests.push({ url, options }); let data;
-      if (url.endsWith('/config')) data = { whatsappDisponible: false };
+      if (url.includes('/auth/cuentas?')) data = { total: 1, solicitudes: [{ usuario: { nombre: 'Solicitud <segura>', correo: 'new@example.com', telefono: '3312345678' }, calle: 'Prueba', numeroCasa: '5' }] };
+      else if (url.endsWith('/config')) data = { correoDisponible: false };
       else if (url.includes('/viviendas')) data = { viviendas: [{ id: 10, calle: 'Prueba', numero: 'TEST-001' }] };
       else if (options.method === 'DELETE') {
         if (deleteMode === 'failure') return { ok: false, status: 409, json: async () => ({ ok: false, message: 'Tiene historial asociado.' }) };
@@ -36,6 +37,8 @@ test('administrador ve/edita pruebas aceptadas; confirma en panel propio, muestr
       return { ok: true, json: async () => ({ ok: true, ...data }) };
     } };
   await vm.runInNewContext(source, context);
+  assert.match($('pendingRequestsState').textContent, /1 solicitud/);
+  assert.match($('pendingRequestsList').innerHTML, /Solicitud &lt;segura&gt;/);
   assert.match($('trialRows').innerHTML, /ACTIVO/); assert.match($('trialRows').innerHTML, /Aceptada: Sí/);
   assert.doesNotMatch($('trialRows').innerHTML, /data-trial-link/);
   buttons.get('[data-trial-edit]').listeners.click();
@@ -60,7 +63,7 @@ test('administrador ve/edita pruebas aceptadas; confirma en panel propio, muestr
   assert.match($('deleteTrialMessage').textContent, /Borrando/);
   assert.equal($('confirmDeleteTrial').disabled, true);
   timeoutCallback(); await pendingDelete;
-  assert.match($('deleteTrialMessage').textContent, /45 segundos/);
+  assert.match($('deleteTrialMessage').textContent, /a tiempo/);
   assert.equal($('confirmDeleteTrial').disabled, false);
   assert.equal($('cancelDeleteTrial').disabled, false);
   deleteMode = 'success'; await $('confirmDeleteTrial').listeners.click();

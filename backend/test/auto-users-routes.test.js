@@ -38,6 +38,11 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
     const diagnostic = await failedDelete.json();
     assert.match(diagnostic.message, /ER_BAD_FIELD_ERROR/);
     assert.doesNotMatch(diagnostic.message, /private data/);
+    t.mock.method(models.Usuario, 'findAll', async () => []);
+    const discovery = await fetch(base + '/acceso/telefono', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefono: '3312345678' }) });
+    assert.equal(discovery.status, 200); assert.equal((await discovery.json()).estado, 'NUEVA');
+    assert.equal(discovery.headers.get('cache-control'), 'no-store');
+    assert.equal((await send('/acceso/telefono')).status, 400);
     const invalid = await send('/invitacion/consultar'); assert.equal(invalid.status, 410);
     assert.equal(invalid.headers.get('cache-control'), 'no-store');
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

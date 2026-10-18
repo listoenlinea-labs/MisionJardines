@@ -257,6 +257,21 @@
     });
   }
 
+  async function alertAccountRequests(aside) {
+    if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role())) return;
+    const link = aside.querySelector('a[href="verificacion-cuentas.html"]');
+    if (!link) return;
+    try {
+      const token = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
+      const base = window.MJ_API_URL || (['localhost', '127.0.0.1'].includes(location.hostname) ? 'http://localhost:3000/api' : 'https://api-misionjardines.listoenlinea.host/api');
+      const response = await fetch(base + '/auth/cuentas?estatus=PENDIENTE&pagina=1', { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(15000) });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw Error();
+      const count = Number(data.total || 0);
+      if (count > 0) { const badge = document.createElement('strong'); badge.textContent = ' (' + count + ' pendientes)'; link.appendChild(badge); link.setAttribute('aria-label', 'Verificación de cuentas: ' + count + ' solicitudes pendientes'); }
+    } catch { link.title = 'Abre Verificación de cuentas para consultar solicitudes pendientes.'; }
+  }
+
   function collapse(body, button, collapsed, persist = true) {
     body.classList.toggle('mj-shared-sidebar-collapsed', collapsed);
     button.textContent = collapsed ? '›' : '‹';
@@ -342,6 +357,7 @@
 
     permissions(aside);
     void refreshPaymentNotices(aside);
+    void alertAccountRequests(aside);
     aside.querySelector('.mj-side-logout')?.addEventListener('click', logout);
 
     if (page() === 'visitas.html' && !document.querySelector('script[data-house-fields]')) {

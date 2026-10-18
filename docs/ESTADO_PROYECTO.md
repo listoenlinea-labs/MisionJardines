@@ -1,5 +1,7 @@
 # Estado actualizado de Misión Jardines
 
+**Actualización de integración del PR #192 — 18/oct/2026:** se incorporó a su rama `main` en `e42d32e356d790a9db9451e3ed633f9372f6da77` (hasta el merge #205), conservando los cambios recientes de pagos, análisis, Casa Club y noticias. El PR continúa abierto; esto no acredita fusión en main ni despliegue. Se resolvieron los cruces de login/menú: acceso por teléfono y SMTP conviven con recordar sesión 90 días, validación de sesión guardada y los avisos de adeudos/Casa Club. Se protegió el login frente a respuestas tardías de perfil de una sesión anterior. Validación local de la integración: 112 pruebas aprobadas, con DB/SMTP simulados; sin envíos reales, consultas de producción ni operaciones físicas C3. La revisión histórica siguiente conserva su fecha y alcance originales.
+
 **Última revisión:** 17/oct/2026, 23:33, America/Mexico_City.
 **SHA de main consultado:** `5aab812f944628022d5283b92794153ed3f8d593`.
 **Fuentes de esta revisión:** comparación de main desde `b3188c74117e14fd9b36f79edfeac87ceca5981f`,
@@ -399,3 +401,12 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   el intercambio; se retiró una correspondencia de residente previamente afirmada.
 - No se consultó ni modificó producción, ni se ejecutaron pagos, escrituras de TAG o
   pruebas físicas. Se conserva el historial y una sola entrada para esta fecha.
+
+
+### 2026-10-17 · Invitaciones por correo y login por teléfono
+
+- Auto-users sustituye el remitente WhatsApp Business por SMTP del proyecto, con correo HTML/texto y enlace privado de 14 días. Se retira el servicio de WhatsApp de este flujo. Confirmación Sí/No conservada y lotes de una cuenta para tiempos SMTP. Pruebas ficticias excluidas de envíos; aceptación/reportes y reenvío individual conservados.
+- Login inicia por teléfono: cuenta ACTIVA/aceptada muestra contraseña; prerregistro pendiente lleva a aceptación y entrega el enlace al correo registrado; teléfono desconocido lleva al formulario con teléfono precargado y solicitud PENDIENTE para revisión. Teléfonos compartidos/bloqueados/manuales pendientes no se asignan arbitrariamente. Se conserva acceso alternativo con usuario/correo.
+- El teléfono por sí solo no devuelve vivienda, datos privados ni token de activación. Recuperación de enlace limitada por IP y enfriamiento de cinco minutos por cuenta enviada. Administración ve contador de solicitudes en el menú y alertas/listado en Auto-users; aprobación sigue exigiendo identidad y vivienda verificadas.
+- Validación local: 76 pruebas aprobadas de SMTP simulado, login, prerregistro, permisos, solicitudes y revisión. Incluye envío sin teléfono, correo ausente, exclusión de pruebas/aceptadas, duplicidad de número, contraseña incorrecta, estados bloqueados, redirecciones y ausencia de datos privados por consulta pública. Se actualizaron simulaciones de navegador/transacción de pruebas de registro existentes para reflejar APIs reales; no se relajaron validaciones de producto.
+- Requiere desplegar frontend/backend juntos y configurar SMTP_HOST/PORT/USER/PASSWORD/FROM_EMAIL y URL pública del portal. Sin migraciones nuevas. Sin correos reales ni cambios a DB de producción durante este trabajo; recepción SMTP y límites del proveedor pendientes de comprobación en el entorno del usuario.
