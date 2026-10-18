@@ -2,7 +2,13 @@
 
 const VENTANA_DIAS = 7;
 const VENTANA_MS = VENTANA_DIAS * 24 * 60 * 60 * 1000;
-const PATRON_VIAL = /\b(choques?|accidentes?|volcaduras?|atropellamientos?|colisiones?|carambolas?)\b/i;
+const PATRON_CHOQUES = /\b(?:choques?|accidentes?|volcaduras?|atropellamientos?|colisiones?|carambolas?|percances?)\b/;
+const PATRON_MARCHAS = /\b(?:marchas?|manifestacion(?:es)?|protestas?|bloqueos?)\b/;
+const PATRON_LOCAL = /\b(?:zapopan|guadalajara|san juan de ocotan|nuevo mexico|mision jardines)\b/;
+const PATRON_RUTA_INTERURBANA = /\b(?:mexico|cdmx)\s*[-–]\s*guadalajara\b/;
+const PATRON_UBICACION_CONCRETA = /\b(?:zapopan|san juan de ocotan|nuevo mexico|mision jardines|en guadalajara|a la altura de guadalajara)\b/;
+// Solo evalúa titulares: un artículo local podría mencionar otra ciudad en su contexto.
+const PATRON_FUERA_ZONA = /\b(?:monterrey|nuevo leon|morelia|michoacan|cdmx|ciudad de mexico|queretaro|puebla|san luis potosi|tijuana|saltillo|culiacan|hermosillo|toluca|cancun|tonala|tlaquepaque|tlajomulco|puerto vallarta|tepatitlan|lagos de moreno|ocotlan)\b/;
 // Solo se marca una vía como cercana si el texto habla de una calle/avenida:
 // "Guadalajara" o "Valle de México" a secas pueden referirse a otras regiones.
 const CALLES_CERCANAS = [
@@ -14,8 +20,12 @@ const CALLES_CERCANAS = [
   { nombre: 'Avenida Aviación', patron: /\b(?:avenida|av\.?)\s+aviacion\b/ }
 ];
 
+function normalizarTexto(texto) {
+  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 function calleCercana(texto) {
-  const contenido = String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const contenido = normalizarTexto(texto);
   return CALLES_CERCANAS.find(calle => calle.patron.test(contenido))?.nombre || null;
 }
 
@@ -50,11 +60,24 @@ function prepararNoticiasLocales(articles, now = new Date()) {
     if (!title || vistas.has(url.href)) continue;
     vistas.add(url.href);
 
-    const texto = `${title} ${article.description || ''}`;
+    const titular = normalizarTexto(title);
+    const texto = normalizarTexto(`${title} ${article.description || ''}`);
     const nearbyStreet = calleCercana(texto);
-    const esVial = PATRON_VIAL.test(texto);
-    const categoria = esVial ? 'Choques' : /zapopan/i.test(title) ? 'Zapopan'
-      : /guadalajara/i.test(title) ? 'Guadalajara' : 'Noticias';
+    // "country=MX" solo filtra el país del medio, no la ciudad de la nota.
+    // Un titular sobre Monterrey no es noticia local aunque su medio sea de Jalisco.
+    if (!PATRON_LOCAL.test(texto) && !nearbyStreet) continue;
+    if (PATRON_FUERA_ZONA.test(titular)) continue;
+    // La carretera México–Guadalajara atraviesa varias regiones: no atribuir
+    // un siniestro a la ciudad si falta una ubicación precisa dentro de ella.
+    if (PATRON_RUTA_INTERURBANA.test(titular) && !PATRON_UBICACION_CONCRETA.test(texto)) continue;
+
+    const esChoque = PATRON_CHOQUES.test(texto);
+    const esMarcha = PATRON_MARCHAS.test(texto);
+    const categoria = esChoque ? 'Choques' : esMarcha ? 'Marchas y bloqueos'
+      : /zapopan/.test(texto) ? 'Zapopan' : 'Guadalajara';
+    const fuente = normalizarTexto(`${article.sitename || ''} ${article.host || ''} ${url.hostname}`);
+    const isTraficoZmg = /\btrafico\s*zmg\b/.test(fuente) ||
+      /^(?:www\.)?traficozmg\.com$/.test(url.hostname.toLowerCase());
 
     noticias.push({
       title,
@@ -64,23 +87,34 @@ function prepararNoticiasLocales(articles, now = new Date()) {
       dateLabel: article.published_at ? 'Publicada' : 'Detectada',
       category: categoria,
       nearbyStreet,
+      isTrafficEvent: esChoque || esMarcha,
+      isTraficoZmg,
       sourceCountry: article.country || article.sourcecountry || '',
       language: article.lang || article.language || ''
     });
   }
 
-  // Las vialidades identificadas tienen prioridad absoluta; después vienen
-  // hasta cuatro notas viales y finalmente la cobertura local más reciente.
+  // Reservar cupos a calles próximas, hechos viales y Tráfico ZMG permite que
+  // haya más cobertura relevante sin alterar el orden cronológico final.
   noticias.sort((a, b) => Date.parse(b.seenDate) - Date.parse(a.seenDate));
-  const cercanas = noticias.filter(n => n.nearbyStreet).slice(0, 6);
-  const viales = noticias.filter(n => !n.nearbyStreet && n.category === 'Choques').slice(0, 4);
-  const resto = noticias.filter(n => !n.nearbyStreet && n.category !== 'Choques')
-    .sort((a, b) => {
-      const categoria = { Zapopan: 0, Guadalajara: 1, Noticias: 2 };
-      return (categoria[a.category] ?? 3) - (categoria[b.category] ?? 3)
-        || Date.parse(b.seenDate) - Date.parse(a.seenDate);
-    });
-  return [...cercanas, ...viales, ...resto].slice(0, 12);
+  const seleccionadas = new Map();
+  function reservar(coincide, maximo) {
+    let agregadas = 0;
+    for (const nota of noticias) {
+      if (agregadas >= maximo || seleccionadas.size >= 12) break;
+      if (coincide(nota) && !seleccionadas.has(nota.url)) {
+        seleccionadas.set(nota.url, nota);
+        agregadas++;
+      }
+    }
+  }
+  reservar(n => Boolean(n.nearbyStreet), 4);
+  reservar(n => n.isTrafficEvent, 6);
+  const fuentesPreferidas = [...seleccionadas.values()].filter(n => n.isTraficoZmg).length;
+  reservar(n => n.isTraficoZmg, Math.max(0, 5 - fuentesPreferidas));
+  reservar(() => true, 12);
+  return [...seleccionadas.values()].sort((a, b) =>
+    Date.parse(b.seenDate) - Date.parse(a.seenDate) || Number(b.isTraficoZmg) - Number(a.isTraficoZmg));
 }
 
 module.exports = { VENTANA_DIAS, fechaGdelt, calleCercana, prepararNoticiasLocales };

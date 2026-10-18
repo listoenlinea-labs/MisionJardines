@@ -258,6 +258,7 @@ router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
     // "Zapopan" en el titular. La clasificación exige el nombre de la vialidad.
     const terminos = query ? [query] : [
       'Zapopan', 'Guadalajara', 'choque Zapopan', 'choque Guadalajara',
+      'marcha Zapopan', 'marcha Guadalajara',
       'Atotonilco', 'Valle de México', 'Avenida Guadalajara',
       'Acueducto', 'Base Aérea', 'Aviación'
     ];

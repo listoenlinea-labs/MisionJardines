@@ -6,6 +6,8 @@ modifica ninguna tabla de MySQL.
 
 ## Buscador de noticias y prioridad de vialidades
 
+La tarjeta abre **Noticias** por defecto (primera pestaña, a la izquierda);
+**Tráfico e incidencias** queda a la derecha y conserva el mapa al pulsarla.
 La pestaña **Noticias** ofrece un buscador por palabras clave (2 a 80 caracteres).
 Se consulta `GET /api/entorno/noticias?q=...` desde una sesión autenticada, con
 resultados publicados en los **últimos siete días**. Al borrar la búsqueda
@@ -13,14 +15,22 @@ vuelve la cobertura predeterminada. El navegador espera 450 ms tras escribir,
 aborta consultas anteriores y solo pinta la última respuesta, para evitar
 resultados desordenados mientras se escribe.
 
-La portada busca cobertura de Zapopan, Guadalajara, choques y los nombres de las
+La portada busca cobertura de Zapopan, Guadalajara, choques, marchas y los nombres de las
 siguientes vialidades: **Calle Atotonilco, Avenida Valle de México, Avenida
 Guadalajara, Avenida Acueducto, Avenida Base Aérea y Avenida Aviación**.
-Prioriza hasta seis noticias cuyo título o descripción mencione explícitamente
-una de estas calles o avenidas (incluidas abreviaturas como «Av.»); después
-aparecen incidentes viales y noticias municipales. Una mención genérica a
-«Guadalajara», «Valle de México» o «aviación» no se confunde con una avenida.
-Las notas prioritarias se distinguen con una tarjeta verde pastel.
+El backend descarta noticias sin evidencia textual de Zapopan, Guadalajara o
+sus calles/barrios conocidos, y titulares que claramente sitúan los hechos en
+otras ciudades (por ejemplo, Monterrey). La mención genérica a «Guadalajara»,
+«Valle de México» o «aviación» no se confunde con una avenida; tampoco se toma
+la autopista México–Guadalajara como ubicación local por sí sola.
+
+El selector reserva espacio para **vialidades cercanas**, **choques, marchas,
+manifestaciones y bloqueos** y **Tráfico ZMG** cuando hay notas válidas de ese
+medio. Después de elegir hasta 12 artículos, **se ordenan siempre por fecha
+de publicación, de más recientes a más antiguos**, sin fijar los artículos
+prioritarios antiguos sobre los más recientes. Las notas de calles cercanas
+se distinguen con una tarjeta verde pastel y los titulares usan un peso de
+letra moderado para facilitar la lectura.
 
 La fuente externa sigue siendo Free News API, sin nueva clave; búsquedas con
 respuesta exitosa se conservan por 15 minutos, con un máximo de 40 entradas
@@ -70,16 +80,19 @@ sesión válida como el resto del panel.
 3. Si aparece «Mapa de ubicación · sin capa de tráfico», verificar las claves,
    las APIs autorizadas, las restricciones del dominio y los errores de red.
 4. Abrir «Tráfico en Google Maps ↗» y verificar la capa de tráfico externa.
-5. En **Noticias** comprobar tarjetas pastel, títulos legibles y desplazamiento
-   vertical en escritorio y móvil; los enlaces abren el medio original.
+5. Comprobar que al abrir Inicio ya se ve **Noticias**, con las pestañas
+   Noticias a la izquierda y Tráfico e incidencias a la derecha. En Noticias,
+   verificar tarjetas pastel, títulos de peso medio, orden cronológico y
+   desplazamiento vertical en escritorio y móvil.
 6. Buscar «Aviación» y «Atotonilco», confirmar el filtro de siete días, la
    etiqueta de avenida cuando corresponda, el aviso sin resultados y el botón
-   de limpiar. Un choque local debe aparecer antes que una noticia deportiva
-   cuando no existan notas de las seis vialidades.
+   de limpiar. Buscar «Monterrey» y comprobar que no presenta resultados sin
+   relación expresa con Zapopan o Guadalajara; verificar que haya más espacio
+   para choques y marchas publicados por Tráfico ZMG cuando existan.
 
 Pruebas de servidor sin red ni base de datos:
 
 ```sh
 cd backend
-DB_PORT=3306 node --test test/noticias-locales.test.js test/noticias-locales-ruta.test.js test/incidencias-idioma.test.js test/trafico-teselas-ruta.test.js
+DB_PORT=3306 node --test test/noticias-locales.test.js test/noticias-locales-ruta.test.js test/noticias-ui.test.js test/incidencias-idioma.test.js test/trafico-teselas-ruta.test.js
 ```
