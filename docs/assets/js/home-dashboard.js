@@ -528,20 +528,23 @@
     const updated = document.getElementById('hlNewsUpdated');
     if (!grid || !updated) return;
 
+    grid.innerHTML = '<div class="hl-live-empty">Buscando noticias de Zapopan, Guadalajara y choques recientes…</div>';
+
     try {
       const result = await environmentApi('/entorno/noticias');
-      updated.textContent = 'Guadalajara · Zapopan · últimas 24 h · ' + formatWhen(result.updatedAt);
+      updated.textContent = 'Guadalajara · Zapopan · últimos 7 días · ' + formatWhen(result.updatedAt);
 
       const items = Array.isArray(result.data) ? result.data : [];
       grid.innerHTML = items.length
         ? items.slice(0, 9).map(item => `
             <a class="hl-news-item" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
-              <small>${escapeHtml(item.domain || 'Medio local')}</small>
+              <small>${escapeHtml(item.category || 'Noticias')} · ${escapeHtml(item.domain || 'Medio local')}</small>
               <strong>${escapeHtml(item.title || 'Noticia local')}</strong>
-              <span>${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
+              <span>Detectada ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
             </a>`).join('')
-        : '<div class="hl-live-empty">No se encontraron noticias locales recientes en este momento.</div>';
+        : '<div class="hl-live-empty">No se encontraron noticias sobre Guadalajara, Zapopan o choques en los últimos 7 días.</div>';
     } catch (error) {
+      homeNewsLoaded = false; // Permitir reintento al abrir de nuevo Noticias.
       grid.innerHTML = '<div class="hl-live-empty">' + escapeHtml(error.message) + '</div>';
     }
   }
