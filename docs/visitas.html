@@ -687,6 +687,7 @@
       }
     }
   </style>
+  <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 
 <body class="page-visitas-v2">
@@ -888,8 +889,8 @@
     function roleView() { return $('rolePreview').value }
     function statusLabel(value) { return { PROGRAMADA: 'Programada', EN_CURSO: 'En curso', FINALIZADA: 'Finalizada', CANCELADA: 'Cancelada' }[value] || value }
     function typeLabel(value) { return value ? value.charAt(0) + value.slice(1).toLowerCase() : '—' }
-    function formatDateTime(date, time) { if (!date) return '—'; const dateText = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric', timeZone: MEXICO_TIME_ZONE }).format(new Date(`${date}T12:00:00-06:00`)); return `${dateText}${time ? ' · ' + String(time).slice(0, 5) : ''}` }
-    function formatStamp(value) { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: MEXICO_TIME_ZONE }).format(date) }
+    function formatDateTime(date, time) { if (!date) return '—'; return `${window.MJDateDisplay.format(date)}${time ? ' · ' + String(time).slice(0, 5) : ''}` }
+    function formatStamp(value) { return value ? window.MJDateDisplay.formatDateTime(value) : '—' }
     function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' } function closeModal(element) { element.closest('.modal-shell').hidden = true; document.body.style.overflow = '' }
     function streets() { return [...new Set(houses.map(h => String(h.calleCorrecta || h.calle || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })) }
     function fillStreetSelects() { const options = streets().map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');['filterStreet', 'visitStreet', 'demoStreet'].forEach(id => $(id).innerHTML = `<option value="">${id === 'filterStreet' ? 'Todas las calles' : 'Selecciona una calle'}</option>${options}`) }

@@ -16,14 +16,12 @@
  $('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpense();
  // Texto de fecha independiente del ancho intrínseco del date picker iOS.
  // El input de tipo date permanece funcional y es el único valor enviado.
- const MONTHS_ABBR=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
  function syncExpenseDateDisplay(input){
   const text=input.previousElementSibling;
   if(!text||!text.classList.contains('mj-date-display'))return;
-  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(input.value);
-  const valid=Boolean(match&&Number(match[2])>=1&&Number(match[2])<=12);
-  text.textContent=valid?Number(match[3])+' '+MONTHS_ABBR[Number(match[2])-1]+' '+match[1]:'Elegir fecha';
-  text.classList.toggle('is-empty',!valid);
+  const formatted=window.MJDateDisplay?.format(input.value)||'';
+  text.textContent=formatted||'Elegir fecha';
+  text.classList.toggle('is-empty',!formatted);
  }
  const expenseDateInputs=['expenseDate','expenseFilterFrom','expenseFilterTo'].map($);
  expenseDateInputs.forEach(input=>{

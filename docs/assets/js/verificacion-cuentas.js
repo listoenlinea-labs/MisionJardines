@@ -22,7 +22,7 @@
     if (className) node.className = className; return node;
   }
   const fullName = user => [user?.nombre, user?.apellidoPaterno, user?.apellidoMaterno].filter(Boolean).join(' ') || 'Cuenta no disponible';
-  const date = value => value ? new Date(value).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  const date = value => value ? window.MJDateDisplay.formatDateTime(value) : '—';
   function card(item) {
     const node = document.createElement('article'); node.className = 'request-card' + (item.tipoCuenta === 'SEGURIDAD' ? ' security' : '');
     const top = document.createElement('div'); top.className = 'request-top';

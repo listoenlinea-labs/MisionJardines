@@ -14,7 +14,6 @@
   const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
   const integer = new Intl.NumberFormat('es-MX');
   const shortDate = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short' });
-  const dateTime = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   const escapeHtml = value => String(value ?? '')
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -59,7 +58,7 @@
   function formatWhen(value) {
     if (!value) return 'Sin fecha';
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? escapeHtml(value) : dateTime.format(date);
+    return Number.isNaN(date.getTime()) ? escapeHtml(value) : window.MJDateDisplay.formatDateTime(date);
   }
 
   function chartSvg(series, activeFilter = 'todas', availableWidth = 0, selectedIndex = -1) {

@@ -13,7 +13,7 @@
   const stamp = value => {
     if (!value) return 'No registrada';
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'No registrada' : date.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
+    return Number.isNaN(date.getTime()) ? 'No registrada' : window.MJDateDisplay.formatDateTime(date);
   };
   let page = 1, total = 0, revision = 0;
   const now = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).map(p => [p.type, p.value]));

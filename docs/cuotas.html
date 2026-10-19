@@ -314,6 +314,7 @@ body.page-cuotas .cuotas-shell{
   body.page-cuotas nav.cuotas-primary-tabs > a{flex:1 1 0;padding:10px 12px;min-width:0}
 }
 </style>
+  <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 
 <body class="page-cuotas">
@@ -856,12 +857,7 @@ body.page-cuotas .cuotas-shell{
 
     function formatDate(value) {
       if (!value) return '';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '';
-      return new Intl.DateTimeFormat('es-MX', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        timeZone: MEXICO_TIME_ZONE
-      }).format(date);
+      return window.MJDateDisplay.format(value);
     }
 
     function formatDateForInput(value) {

@@ -306,6 +306,7 @@
       .page-calendario .toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
     }
   </style>
+  <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 
 <body class="page-calendario">
@@ -597,13 +598,7 @@
     }
 
     function formatLongDate(dateString) {
-      const date = new Date(dateString + "T00:00:00");
-      return new Intl.DateTimeFormat("es-MX", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-      }).format(date);
+      return window.MJDateDisplay.format(dateString);
     }
 
     async function selectCalendarDay(dateString) {
