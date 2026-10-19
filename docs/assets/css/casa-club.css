@@ -101,3 +101,22 @@
   }
 }
 .club-bill{margin:12px 0;padding:14px;border:1px solid #e5d7f4;border-radius:12px;background:#faf6ff;color:#374056}.club-bill p{margin:5px 0;font-size:12px}.club-bill strong{display:block;margin-bottom:5px;color:#6c398e}
+
+/* Alerta de elegibilidad de reservación con desglose sin alterar TAGs. */
+.club-debt-dialog{width:min(640px,calc(100vw - 22px));padding:23px;max-height:90dvh;overflow-y:auto}
+.club-debt-dialog .dialog-head h2{margin:7px 0 5px;font-size:21px}
+.club-debt-explanation{font-size:13px;line-height:1.6;color:#6c7890;margin:10px 0 17px}
+.club-debt-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.club-debt-stat{display:flex;flex-direction:column;gap:8px;padding:15px;border-radius:14px;border:1px solid #dce8e0;background:#f2faf5}
+.club-debt-stat.extra{border-color:#e6def1;background:#faf6ff}
+.club-debt-stat small{color:#65788b;font-size:11px;font-weight:750}
+.club-debt-stat strong{color:#315b47;font-size:20px;font-variant-numeric:tabular-nums}
+.club-debt-stat.extra strong{color:#73548a}
+.club-debt-total{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px;border-radius:13px;background:#fff4e7;border:1px solid #f0d7bb}
+.club-debt-total span{font-size:12px;font-weight:750;color:#9b6b43}.club-debt-total strong{font-size:23px;color:#965a2c}
+.club-debt-details{margin-top:17px;max-height:240px;overflow-y:auto}.club-debt-details h3{font-size:13px;margin:0 0 10px;color:#40536c}
+.club-debt-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:11px 12px;border:1px solid #e8eaf0;border-radius:11px;margin:8px 0;background:#fdfdff}
+.club-debt-item>div{display:flex;flex-direction:column;gap:5px;min-width:0}.club-debt-item>div:last-child{text-align:right;flex-shrink:0}
+.club-debt-item b{font-size:12px;color:#4d6078}.club-debt-item strong{font-size:13px;color:#a45b2e}.club-debt-item small{font-size:11px;line-height:1.4;color:#8390a2}
+.club-debt-actions{display:flex;justify-content:flex-end;gap:10px;align-items:center;margin-top:20px}.club-debt-actions .primary{display:inline-flex;text-decoration:none;margin:0;justify-content:center;align-items:center;min-height:42px}.club-debt-actions .soft{min-height:42px}
+@media(max-width:520px){.club-debt-dialog{padding:17px}.club-debt-stat{padding:12px}.club-debt-stat strong{font-size:17px}.club-debt-total strong{font-size:19px}.club-debt-actions>*{flex:1}.club-debt-item{flex-wrap:wrap}.club-debt-item>div:last-child{text-align:left}}

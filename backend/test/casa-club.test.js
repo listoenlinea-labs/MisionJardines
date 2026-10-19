@@ -3,6 +3,8 @@ const assert=require('node:assert/strict');
 Object.assign(process.env,{DB_HOST:'localhost',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'test',JWT_SECRET:'test-secret'});
 const {Casa,UsuarioCasa,Cuota,CargoExtraordinario}=require('../src/models');
 const Reserva=require('../src/models/ReservaCasaClub');
+const PagoReportado=require('../src/models/PagoReportado');
+const PagoManualConcepto=require('../src/models/PagoManualConcepto');
 const club=require('../src/controllers/casa-club.controller');
 function res(){return{code:200,body:null,headers:{},status(n){this.code=n;return this;},setHeader(k,v){this.headers[k]=v;},json(v){this.body=v;return this;}};}
 const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -44,10 +46,55 @@ test('no acepta solicitudes de casa club con mantenimiento vencido',async t=>{
  t.mock.method(Reserva,'findAll',async()=>[]);
  t.mock.method(CargoExtraordinario,'findAll',async()=>[]);
  t.mock.method(Cuota,'findAll',async()=>[]);
+  t.mock.method(Casa,'findByPk',async()=>({id:5}));
+  t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
  let wrote=false;t.mock.method(Reserva,'create',async()=>{wrote=true;});
  const response=res();await club.crear(req(),response);
  assert.equal(response.code,409);assert.equal(wrote,false);
  assert.match(response.body.message,/adeudos/i);
+  assert.equal(response.body.codigo,'ADEUDOS_RESERVA');
+  assert.ok(response.body.adeudos.totales.MANTENIMIENTO>0);
+});
+test('permite reservar aunque tenga una deuda exclusiva de Casa club',async t=>{
+ const monthNames=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+ const [year,month]=day.split('-').map(Number),cuotas=[];
+ for(let y=2026;y<=year;y++)for(let m=y===2026?9:1;m<=(y===year?month:12);m++)
+  cuotas.push({anio:y,mes:monthNames[m-1],estatusPago:'PAGADO',montoPagado:300});
+ t.mock.method(Cuota,'findAll',async()=>cuotas);
+ t.mock.method(CargoExtraordinario,'findAll',async()=>[]);
+ t.mock.method(Reserva,'findAll',async options=>options.attributes?.length===1?[]:[{
+  id:100,fecha:day,fechaLimitePago:day,cuotaRecuperacion:700,depositoGarantia:700,limpieza:0
+ }]);
+ t.mock.method(PagoReportado,'findAll',async()=>[]);
+ t.mock.method(Casa,'findByPk',async()=>({id:5}));
+ t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
+ let created=false;
+ t.mock.method(Reserva,'create',async()=>{created=true;return {id:101};});
+ const response=res();await club.crear(req(),response);
+ assert.equal(response.code,201);
+ assert.equal(created,true);
+});
+test('impide reservar si hay un cargo extraordinario exigible y muestra el monto',async t=>{
+ const monthNames=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+ const [year,month]=day.split('-').map(Number),cuotas=[];
+ for(let y=2026;y<=year;y++)for(let m=y===2026?9:1;m<=(y===year?month:12);m++)
+  cuotas.push({anio:y,mes:monthNames[m-1],estatusPago:'PAGADO',montoPagado:300});
+ t.mock.method(Cuota,'findAll',async()=>cuotas);
+ t.mock.method(CargoExtraordinario,'findAll',async()=>[{
+  id:81,periodo:day.slice(0,7)+'-01',monto:123.45,cuota:{concepto:'Pintura comunitaria'},cuotaExtraordinariaId:20
+ }]);
+ t.mock.method(PagoReportado,'findAll',async()=>[]);
+ t.mock.method(PagoManualConcepto,'findAll',async()=>[]);
+ t.mock.method(Reserva,'findAll',async()=>[]);
+ t.mock.method(Casa,'findByPk',async()=>({id:5}));
+ t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
+ let created=false;
+ t.mock.method(Reserva,'create',async()=>{created=true;});
+ const response=res();await club.crear(req(),response);
+ assert.equal(response.code,409);
+ assert.equal(response.body.codigo,'ADEUDOS_RESERVA');
+ assert.equal(response.body.adeudos.totales.EXTRAORDINARIO,123.45);
+ assert.equal(created,false);
 });
 test('la colisión de fecha única produce respuesta 409 para evitar dobles reservas',async t=>{
  sinAdeudos(t);
