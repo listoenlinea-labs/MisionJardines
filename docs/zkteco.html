@@ -53,6 +53,7 @@
     }
   </style>
 <link rel="stylesheet" href="assets/css/zkteco-calles.css?v=20261009-buscador">
+  <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 <body>
 <main class="wrap">
@@ -253,7 +254,7 @@ function showModalError(id,error,title='No fue posible completar la acción'){
   el.classList.add('show');
 }
 function clearModalError(id){const el=$(id);if(!el)return;el.textContent='';el.classList.remove('show')}
-function fmt(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'short'}).format(d)}
+function fmt(v){return v?window.MJDateDisplay.formatDateTime(v):'—'}
 async function loadStatus(){
   try{
     const r=await api('/zkteco/estado',{headers:headers()});
@@ -719,7 +720,7 @@ window.openHouseValidityModal=function(id){
   const tags=house.tarjetas||[];
   $('houseValidityLabel').textContent=(house.calleCorrecta||house.calle)+' '+house.numero;
   const starts=[...new Set(tags.map(t=>t.fechaInicio).filter(Boolean))];
-  $('houseValidityStart').value=starts.length===1?starts[0]:starts.length>1?'Diferentes por TAG':'Sin fecha registrada';
+$('houseValidityStart').value=starts.length===1?window.MJDateDisplay.format(starts[0]):starts.length>1?'Diferentes por TAG':'Sin fecha registrada';
   $('houseValidityEnd').value='';
   $('houseValidityInfo').textContent=tags.length+' TAG(s) asociados. La fecha inicial de cada uno permanecerá sin cambios. Una fecha vencida puede suspender su acceso.';
   clearModalError('houseValidityError');
@@ -810,7 +811,7 @@ $('saveEditTag').onclick=async()=>{
 function formatLogDate(value){
   if(!value)return'—';
   const d=new Date(value);
-  return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{dateStyle:'medium',timeStyle:'medium'}).format(d);
+  return Number.isNaN(d.getTime())?'—':window.MJDateDisplay.formatDateTime(d);
 }
 function renderLogs(rows){
   const list=$('logsList');
