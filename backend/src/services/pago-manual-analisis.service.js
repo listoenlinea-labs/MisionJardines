@@ -52,14 +52,14 @@ function prepararPlan({anio,mes,meses,importeMes,montoTotal}){
 // contable: el NVR/C3 puede estar desincronizado con las cuotas.
 function indice(anio,mes){return Number(anio)*12+Number(mes)-1;}
 function siguienteDelUltimo(cuotas, anio, mes) {
-  const fin=indice(anio,mes);
   let ultimo=null;
   for(const c of cuotas||[]){
     const mm=MESES.indexOf(String(c.mes||'').toUpperCase())+1;
     const yy=Number(c.anio);
     if(!mm||!Number.isInteger(yy))continue;
     const n=indice(yy,mm);
-    if(n>fin)continue;
+    // Considerar también los anticipos posteriores al mes solicitado. Si se
+    // omiten, se puede intentar registrar por segunda vez un período cubierto.
     if(String(c.estatusPago||'').toUpperCase()==='PAGADO' && Number(c.montoPagado||0)>0 &&
       (!ultimo||n>ultimo.indice)){
       ultimo={indice:n,anio:yy,mes:mm,nombre:MESES[mm-1],fechaPago:c.fechaPago||null};
@@ -69,8 +69,9 @@ function siguienteDelUltimo(cuotas, anio, mes) {
 }
 function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal}){
   anio=Number(anio);mes=Number(mes);
-  if(!Number.isInteger(anio)||anio<2026||anio>2098||!Number.isInteger(mes)||mes<1||mes>12)
-    throw fail('Selecciona un mes final válido');
+  const actual=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Mexico_City',year:'numeric'}).format(new Date()));
+  if(!Number.isInteger(anio)||anio<actual||anio>2098||!Number.isInteger(mes)||mes<1||mes>12)
+    throw fail('El año del último mes que paga debe tener cuatro dígitos y ser igual o mayor al año actual');
   const ultimo=siguienteDelUltimo(cuotas,anio,mes);
   const minimo=indice(2026,9),fin=indice(anio,mes);
   const inicio=ultimo?Math.max(minimo,ultimo.indice+1):minimo;

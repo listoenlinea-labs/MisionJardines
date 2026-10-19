@@ -10,6 +10,9 @@ const PagoAcceso=require('../models/PagoAccesoC3');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
 const {prepararDesdeHistorial,generarReferencia}=require('../services/pago-manual-analisis.service');
 const {clasificarCuotaParaPago}=require('../services/cuota-pendiente-historica.service');
+const {calcularAdeudoVivienda}=require('../services/adeudo-vivienda-analisis.service');
+const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
+const {fechaMexico}=require('../services/vigencia-calculo');
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 
 function evaluarPeriodos(plan,cuotas){
@@ -178,6 +181,45 @@ async function estadoPagoVivienda(req,res){
     return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible consultar las vigencias'});
   }
 }
+async function historialPagoVivienda(req,res){
+ try{
+  const casaId=Number(req.params.casaId);
+  const tipo=String(req.query.concepto||'MANTENIMIENTO').toUpperCase();
+  if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
+  if(!['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(tipo))throw fail(400,'Concepto inválido');
+  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','nombre']});
+  if(!casa)throw fail(404,'Vivienda no encontrada');
+  let movimientos=[],deudas=[];
+  if(tipo==='MANTENIMIENTO'){
+   const [cuotas,comprobantes]=await Promise.all([
+    Cuota.findAll({where:{casaId},attributes:['id','anio','mes','montoPagado','estatusPago','recargo','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','montoCuota','saldoPendiente']}),
+    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion']})
+   ]);
+   movimientos=historialMantenimiento(cuotas,comprobantes);
+   const hoy=fechaMexico();
+   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy}).detalles;
+  }else{
+   const [reportados,manuales]=await Promise.all([
+    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion']}),
+    PagoManualConcepto.findAll({where:{casaId,tipoPago:tipo},attributes:['id','tipoPago','monto','formaPago','referencia','creadoEn']})
+   ]);
+   movimientos=historialConcepto(tipo,reportados,manuales);
+   if(tipo==='EXTRAORDINARIO'){
+    const cargos=await estadoCargos(casaId);
+    deudas=cargos.filter(c=>c.estado!=='PAGADO').map(c=>({categoria:tipo,periodo:c.periodo,concepto:c.concepto,monto:c.monto,estado:c.estado}));
+   }else{
+    const reservas=await Reserva.findAll({where:{casaId,estatus:'APROBADA',pagado:false},attributes:['fecha','cuotaRecuperacion','depositoGarantia','limpieza']});
+    deudas=reservas.map(r=>({categoria:tipo,periodo:r.fecha,concepto:'Reserva de casa club',monto:Number(r.cuotaRecuperacion||0)+Number(r.depositoGarantia||0)+Number(r.limpieza||0)}));
+   }
+  }
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,data:{casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,nombre:casa.nombre,tipoPago:tipo,
+   movimientos,deudas,saldoPendiente:Math.round(deudas.reduce((sum,d)=>sum+Number(d.monto||0),0)*100)/100}});
+ }catch(error){
+  if(!error.status)console.error('[finanzas historial vivienda]',error);
+  return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible obtener el historial de pagos'});
+ }
+}
 async function opcionesPagoConcepto(req,res){
  try{
   const casaId=Number(req.params.casaId);
@@ -218,4 +260,4 @@ async function registrarPagoConcepto(req,res){
   return res.status(201).json({ok:true,data,message:'Pago registrado sin modificar vigencias de TAGs ni C3'});
  }catch(e){if(!e.status)console.error('[pago manual concepto]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible registrar el pago'});}
 }
-module.exports={registrarPagoVivienda,estadoPagoVivienda,cotizarPagoVivienda,opcionesPagoConcepto,registrarPagoConcepto};
+module.exports={registrarPagoVivienda,estadoPagoVivienda,cotizarPagoVivienda,historialPagoVivienda,opcionesPagoConcepto,registrarPagoConcepto};

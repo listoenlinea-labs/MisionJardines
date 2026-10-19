@@ -12,7 +12,7 @@
 <div id="financialSummary" class="metric-grid" aria-label="Indicadores principales"></div><details class="analysis-more"><summary>Otros indicadores financieros</summary><div id="financialSecondary" class="metric-grid" aria-label="Indicadores adicionales"></div></details>
 <div class="analysis-columns"><section class="analysis-card"><span class="eyebrow">CUMPLIMIENTO GENERAL</span><h2>Casas que pagaron</h2><div class="donut-wrapper"><div id="financeDonut" class="donut"><div id="financeDonutText"></div></div><div id="financeLegend" class="legend-block"></div></div><p class="hint">El porcentaje corresponde al período seleccionado y al estado de las cuotas del padrón.</p></section>
 <section class="analysis-card"><span class="eyebrow">DESGLOSE POR CALLE</span><h2>Porcentaje de viviendas pagadas</h2><div id="financeStreetChart" class="bars"></div><p id="financePadronNote" class="hint" role="status" hidden></p></section></div>
-<section class="analysis-card"><div class="heading"><div><span class="eyebrow">CONSULTA DE VIVIENDAS</span><h2>Quién pagó y quién está pendiente</h2><p>Filtra por calle, casa, residente, estado y último mes pagado (mes seleccionado o posterior). Los saldos corresponden al período elegido; el estado de TAGs refleja el último dato del C3 y puede verificarse en el detalle.</p></div><span id="financeHouseCount"></span></div>
+<section class="analysis-card"><div class="heading"><div><span class="eyebrow">CONSULTA DE VIVIENDAS</span><h2>Quién pagó y quién está pendiente</h2><p>Filtra por calle, casa, residente, estado y último mes pagado (mes seleccionado o posterior). La columna Pagado muestra el último movimiento completo: tócala para consultar fechas, meses cubiertos e historial. Los saldos corresponden al período elegido; el estado de TAGs refleja el último dato del C3 y puede verificarse en el detalle.</p></div><span id="financeHouseCount"></span></div>
 <div class="finance-concept-tabs" role="tablist" aria-label="Concepto de cobro para la consulta de viviendas"><button type="button" role="tab" id="financeTabMaintenance" data-finance-concept="MANTENIMIENTO" aria-selected="true" aria-controls="financeHousePanel" class="active">Mantenimiento</button><button type="button" role="tab" id="financeTabExtra" data-finance-concept="EXTRAORDINARIO" aria-selected="false" aria-controls="financeHousePanel">Cuotas extraordinarias</button><button type="button" role="tab" id="financeTabClub" data-finance-concept="CASA_CLUB" aria-selected="false" aria-controls="financeHousePanel">Casa club</button></div>
 <p id="financeConceptHint" class="finance-concept-hint" role="status">Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.</p>
 <div class="filters residences-filter"><label>Buscar casa o residente<input id="financeSearch" type="search" placeholder="Ej. Gardenias, 5, nombre"></label><label>Calle<select id="financeStreet"><option value="">Todas las calles</option></select></label><label>Estado<select id="financeStatus"><option value="">Todos</option><option value="PAGADO">Pagadas</option><option value="PENDIENTE">Pendientes</option><option value="ADVERTENCIAS">Advertencias</option></select></label><fieldset class="paid-through-filter"><legend>Último mes pagado</legend><div class="paid-through-controls"><select id="financeLastPaidMonth" aria-label="Mes del último pago mínimo"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select><select id="financeLastPaidYear" aria-label="Año del último pago mínimo"></select></div></fieldset><button id="financeClear" type="button" class="soft">Limpiar</button></div>
@@ -40,7 +40,7 @@
     <p id="houseTagsSummary" class="tags-summary" role="status" aria-live="polite"></p>
     <div id="houseTagsC3Status" class="tags-check-note" role="status" aria-live="polite"></div>
     <div class="tags-detail-scroll">
-      <div id="houseTagsColumns" class="tags-detail-header" aria-hidden="true"><span>TAG</span><span>Estado</span><span>Fecha final guardada</span></div>
+      <div id="houseTagsColumns" class="tags-detail-header" aria-hidden="true"><span>TAG</span><span>Estado</span><span>Vigencia en C3 / MySQL</span></div>
       <div id="houseTagsRows" class="tags-detail-list"></div>
     </div>
     <div class="tags-modal-footer">
@@ -67,7 +67,7 @@
         <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
         </select>
       </label>
-      <label data-maintenance-only>Año del último mes que paga<input type="number" min="2026" max="2098" id="housePaymentYear" required></label>
+      <label data-maintenance-only>Año del último mes que paga<select id="housePaymentYear" required aria-label="Seleccionar año igual o mayor al actual"></select></label>
       <label data-maintenance-only>Meses pendientes calculados<input type="number" id="housePaymentCount" readonly aria-readonly="true" value="0"></label>
       <label>Monto total recibido (MXN)<input type="number" id="housePaymentAmount" required min="0" step="0.01" inputmode="decimal" placeholder="Ej. 600.00"></label>
       <label>Forma de pago<select id="housePaymentMethod"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="DEPOSITO">Depósito</option><option value="OTRO">Otro</option></select></label>
@@ -82,4 +82,12 @@
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
   </div>
 </section>
-</main><script src="assets/js/analisis-cuotas.js?v=20261018-tres-conceptos" defer></script><script src="assets/js/site-sidebar.js?v=20261015-comunidad-orden" defer></script></body></html>
+<section id="houseHistoryModal" class="finance-pay-overlay" hidden aria-label="Historial de pagos de vivienda">
+  <div class="finance-pay-dialog history-dialog" role="dialog" aria-modal="true" aria-labelledby="houseHistoryTitle" tabindex="-1">
+    <div class="finance-pay-heading"><div><span class="eyebrow">MOVIMIENTOS POR VIVIENDA</span><h2 id="houseHistoryTitle">Historial de pagos</h2><p id="houseHistoryAddress" class="hint"></p></div><button id="houseHistoryClose" type="button" class="soft" aria-label="Cerrar historial de pagos">Cerrar ×</button></div>
+    <div id="houseHistorySummary" class="history-summary" role="status" aria-live="polite"></div>
+    <div id="houseHistoryTimeline" class="history-timeline" aria-label="Línea de tiempo de pagos"></div>
+    <div id="houseHistoryDebts" class="history-debts"></div>
+  </div>
+</section>
+</main><script src="assets/js/analisis-cuotas.js?v=20261019-historial-pagos" defer></script><script src="assets/js/site-sidebar.js?v=20261015-comunidad-orden" defer></script></body></html>
