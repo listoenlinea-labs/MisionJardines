@@ -423,3 +423,22 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
   .finance-concept-tabs button{min-height:52px;padding:7px 4px;font-size:clamp(9px,2.45vw,11px);line-height:1.25;hyphens:auto}
   .finance-concept-hint{font-size:10px}
 }
+
+/* Solo escritorio: mismo ancho visual para Estado y Pagado en cada vivienda.
+   El estilo compacto por contenido se conserva en celulares y tabletas. */
+@media (min-width: 1024px) {
+  .houses-scroll #financeHouseRows .house-field-value > :is(.status-paid, .status-pending, .status-neutral),
+  .houses-scroll #financeHouseRows .house-paid-history {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 128px;
+    min-width: 128px;
+    max-width: 128px;
+    min-height: 36px;
+    padding-inline: 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
