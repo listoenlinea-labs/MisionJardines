@@ -75,6 +75,19 @@ test('Botón compacto para escritorio/móvil y sin cambios a estilos del modal d
  assert.match(css,/@media\(max-width:700px\)\{\s*\.houses-scroll \.house-pay-button\{/);
  assert.match(mobile,/#financeHouseRows>tr>td\[data-label\]::before/);
  assert.match(mobile,/content:attr\(data-label\)!important/);
- assert.match(html,/analisis-cuotas\.css\?v=20261018-tres-conceptos/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261019-pagado-ajustado/);
  assert.match(html,/analisis-cuotas\.js\?v=20261019-historial-pagos/);
+});
+
+test('El importe Pagado ocupa sólo el ancho de su cantidad en móvil y escritorio',()=>{
+ const cssRule=css.match(/\.house-paid-history\{([^}]+)\}/)?.[1]||'';
+ assert.match(cssRule,/display:inline-flex/);
+ assert.match(cssRule,/width:max-content/);
+ assert.match(cssRule,/min-width:0/);
+ assert.match(cssRule,/max-width:100%/);
+ assert.match(cssRule,/white-space:nowrap/);
+ assert.doesNotMatch(cssRule,/(?:^|;)min-width:100px|(?:^|;)width:100%/);
+ const pagado=between(js,"houseCell('Pagado'","houseCell('Último mes pagado'");
+ assert.match(pagado,/data-paid-history/);
+ assert.doesNotMatch(pagado,/Ver historial<\/span>/);
 });
