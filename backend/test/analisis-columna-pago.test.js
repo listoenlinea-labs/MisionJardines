@@ -76,7 +76,7 @@ test('Botón compacto para escritorio/móvil y sin cambios a estilos del modal d
  assert.match(mobile,/#financeHouseRows>tr>td\[data-label\]::before/);
  assert.match(mobile,/content:attr\(data-label\)!important/);
  assert.match(html,/analisis-cuotas\.css\?v=20261019-indicadores-desktop/);
- assert.match(html,/analisis-cuotas\.js\?v=20261019-historial-pagos/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261019-pagado-segun-estado/);
 });
 
 test('El importe Pagado mantiene el ajuste al contenido como estilo base para móvil',()=>{
@@ -102,4 +102,13 @@ test('Solo escritorio iguala los anchos de Estado y Pagado en las tres pestañas
  assert.match(desktop,/justify-content:\s*center/);
  assert.match(js,/houseCell\('Estado'/);
  assert.match(js,/houseCell\('Pagado'/);
+});
+test('Pagado usa el mismo tono pastel de Estado para pendientes y sin cargos',()=>{
+ const pagado=between(js,"houseCell('Pagado'","houseCell('Último mes pagado'");
+ assert.match(pagado,/is-pending/);
+ assert.match(pagado,/is-neutral/);
+ assert.match(pagado,/String\(h\.estatus\|\|''\)\.toUpperCase\(\)==='PAGADO'/);
+ assert.match(css,/\.house-paid-history\.is-pending\{[^}]*background:#fff0e4;color:#ad6a31/);
+ assert.match(css,/\.house-paid-history\.is-neutral\{[^}]*background:#f0f3f8;color:#6e7b91/);
+ assert.match(css,/\.house-paid-history\.is-pending:hover,\.house-paid-history\.is-pending:focus-visible/);
 });
