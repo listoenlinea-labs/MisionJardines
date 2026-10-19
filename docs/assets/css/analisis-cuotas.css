@@ -140,6 +140,11 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .house-paid-history{display:inline-flex;align-items:center;justify-content:center;width:max-content;min-width:0;max-width:100%;padding:8px 10px;border:1px solid #cfe9dc;border-radius:10px;background:#f0faf4;color:#286a4c;text-align:left;white-space:nowrap}
 .house-paid-history strong{font-size:12px;font-variant-numeric:tabular-nums}
 .house-paid-history:hover,.house-paid-history:focus-visible{border-color:#65b588;background:#e3f6ea;outline-offset:2px}
+/* Pagado toma el tono del estado, sin alterar el importe ni su historial. */
+.house-paid-history.is-pending{border-color:#f3dac4;background:#fff0e4;color:#ad6a31}
+.house-paid-history.is-pending:hover,.house-paid-history.is-pending:focus-visible{border-color:#e5b995;background:#ffe8d7}
+.house-paid-history.is-neutral{border-color:#e2e7ef;background:#f0f3f8;color:#6e7b91}
+.house-paid-history.is-neutral:hover,.house-paid-history.is-neutral:focus-visible{border-color:#c9d3e1;background:#e7ebf3}
 .house-payment-actions .primary:disabled{background:#e7eaf0!important;color:#929cad!important;opacity:1;cursor:not-allowed;box-shadow:none}
 .tags-dates{display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
 .tags-dates strong{color:#26664c;font-size:12px}
