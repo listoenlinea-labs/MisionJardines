@@ -221,11 +221,9 @@
      const cls=estado.codigo==='ACTIVO'?'is-active':estado.codigo==='INACTIVO'?'is-inactive':'is-unknown';
      const fisica=t.lecturaC3?.fisicamenteObservado?String(t.lecturaC3.fechaFinC3||'').slice(0,10):'';
      const guardada=String(t.fechaFin||'').slice(0,10);
-     const diferente=Boolean(fisica&&guardada&&fisica!==guardada);
      const vigencias='<div class="tags-dates"><strong'+(fisica?'':' class="tags-date-unverified"')+'>'+
        (fisica?'C3: '+esc(displayDate(fisica)):'C3: sin fecha física confirmada')+'</strong>'+
-       '<small>MySQL: '+esc(displayDate(guardada))+'</small>'+
-       (diferente?'<span class="tags-date-mismatch" role="note">Fechas distintas. Verifica la sincronización en ZKTeco; no se cambió ninguna vigencia.</span>':'')+'</div>';
+       '<small>MySQL: '+esc(displayDate(guardada))+'</small></div>';
      return '<article class="tags-detail-item">'+
        '<strong class="tags-number">'+esc(t.numeroTarjeta)+'</strong>'+
        '<span class="tags-state '+cls+'">'+esc(estado.etiqueta)+'</span>'+
