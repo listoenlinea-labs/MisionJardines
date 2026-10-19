@@ -6,13 +6,21 @@ const PagoReportado=require('../models/PagoReportado');
 const PagoManualConcepto=require('../models/PagoManualConcepto');
 const {randomUUID}=require('crypto');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
+const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
-const error=(status,message)=>Object.assign(new Error(message),{status});
+const error=(status,message,extra={})=>Object.assign(new Error(message),{status,...extra});
 const hoy=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const texto=(v,n=160)=>String(v||'').trim().slice(0,n);
 const dinero=v=>Number(v);
 const fechaValida=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!Number.isNaN(Date.parse(String(v)+'T12:00:00Z'))&&new Date(String(v)+'T12:00:00Z').toISOString().slice(0,10)===v;
-function manejar(res,e){if(!e.status)console.error('[casa-club]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No se pudo completar la operación'});}
+function manejar(res,e){if(!e.status)console.error('[casa-club]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No se pudo completar la operación',
+ ...(e.codigo==='ADEUDOS_RESERVA'?{codigo:e.codigo,adeudos:e.adeudos}:{})});}
+async function revisarElegibilidad(casaId){
+ const saldo=evaluarElegibilidadReserva(await consultarAdeudos(casaId));
+ if(!saldo.puedeReservar)throw error(409,'No puedes reservar Casa club: tienes adeudos por '+saldo.total.toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
+  ' entre mantenimiento y cuotas extraordinarias. Regulariza esos conceptos en Pagos.',
+  {codigo:'ADEUDOS_RESERVA',adeudos:saldo});
+}
 async function expirarReservas(){
  const vencidas=await Reserva.findAll({where:{estatus:'APROBADA',pagado:false,fechaLimitePago:{[Op.lt]:hoy()}},attributes:['id']});
  for(const item of vencidas){
@@ -56,12 +64,11 @@ async function crear(req,res){
  if(!Number.isSafeInteger(casaId)||casaId<=0)return res.status(400).json({ok:false,message:'Selecciona tu vivienda antes de reservar'});
  try{
   await expirarReservas();
-  const adeudos=await consultarAdeudos(casaId);
-  if(adeudos.total>0)throw error(409,'Tienes adeudos por $'+adeudos.total.toFixed(2)+'. Regulariza mantenimiento, cuotas extraordinarias o casa club antes de solicitar una reserva.');
   const house=await Casa.findByPk(casaId);
   if(!house)throw error(404,'La vivienda no está en el padrón');
   const membership=await UsuarioCasa.findOne({where:{usuarioId:req.usuario.usuarioId,casaId,activo:true}});
   if(!membership&&!admin(req.usuario.rol))throw error(403,'No tienes acceso a esa vivienda');
+  await revisarElegibilidad(casaId);
   const row=await Reserva.create({
    usuarioId:req.usuario.usuarioId,casaId,fecha,fechaBloqueada:fecha,
    solicitante,telefono,correo,motivo,propietario:body.propietario===true,
@@ -117,8 +124,7 @@ async function revisar(req,res){
     const fechaLimitePago=texto(req.body.fechaLimitePago,10);
     if(approved&&(!fechaValida(fechaLimitePago)||fechaLimitePago<hoy()||fechaLimitePago>=row.fecha))throw error(400,'La fecha límite de pago debe ser desde hoy y anterior al evento');
     if(approved){
-     const adeudos=await consultarAdeudos(row.casaId);
-     if(adeudos.total>0)throw error(409,'La vivienda tiene adeudos pendientes. No puede autorizarse hasta regularizar sus pagos.');
+     await revisarElegibilidad(row.casaId);
     }
     const sinCosto=approved&&(Math.round((rec+dep+clean)*100)===0);
     await row.update({estatus:approved?'APROBADA':'RECHAZADA',

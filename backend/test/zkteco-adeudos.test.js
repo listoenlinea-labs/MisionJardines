@@ -9,19 +9,18 @@ const DEBT = () => ({ tipos: {
   CASA_CLUB: [{ fechaLimitePago: '2026-10-15', monto: 400, estado: 'PENDIENTE' }]
 } });
 
-test('mantenimiento vence el día 11; extras del período actual y club solo tras su plazo', () => {
+test('ZKTeco solo contempla mantenimiento: vence el día 11', () => {
   const elDiez = adeudosExigibles(DEBT(), '2026-10-10');
-  assert.deepEqual(elDiez.totales, { MANTENIMIENTO: 0, EXTRAORDINARIO: 10, CASA_CLUB: 0 });
+  assert.deepEqual(elDiez.totales, { MANTENIMIENTO: 0 });
   const elDieciseis = adeudosExigibles(DEBT(), '2026-10-16');
-  assert.deepEqual(elDieciseis.totales, { MANTENIMIENTO: 350, EXTRAORDINARIO: 10, CASA_CLUB: 400 });
+  assert.deepEqual(elDieciseis.totales, { MANTENIMIENTO: 350 });
 });
 
-test('no bloquear reserva en revisión administrativa; ni proyecto futuro, ni montos cero', () => {
+test('las deudas extraordinarias y casa club nunca bloquean TAGs aunque estén vencidas', () => {
   const debt = DEBT();
-  debt.tipos.CASA_CLUB[0].estado = 'EN_REVISION';
-  debt.tipos.EXTRAORDINARIO[0].periodo = '2027-01';
   debt.tipos.MANTENIMIENTO[0].monto = 0;
   assert.equal(adeudosExigibles(debt, '2026-10-18').total, 0);
+  assert.equal(adeudosExigibles({tipos:{MANTENIMIENTO:[]}},'2026-10-18').total,0);
 });
 
 test('fallar cerrado ante resultados financieros incompletos para bloqueo automático', () => {
@@ -48,6 +47,16 @@ test('piloto en simulación reporta TAGs pero no modifica C3', async () => {
   assert.equal(result.estado, 'SIMULACION');
   assert.equal(result.detectadas, 2);
   assert.deepEqual(changed, []);
+});
+
+test('monitor activo no escribe en C3 por deuda exclusiva extraordinaria o casa club',async()=>{
+ const changed=[];
+ const result=await run({env:{ZKTECO_ADEUDOS_ENABLED:'true',ZKTECO_ADEUDOS_DRY_RUN:'false',
+   ZKTECO_DRY_RUN:'false',ZKTECO_ADEUDOS_CASA_IDS:'7'},obtenerTarjetas:async()=>cards,
+  consultar:async()=>({tipos:{MANTENIMIENTO:[],EXTRAORDINARIO:DEBT().tipos.EXTRAORDINARIO,CASA_CLUB:DEBT().tipos.CASA_CLUB}}),
+  bloquear:async id=>changed.push(id),hoy:'2026-10-18'});
+ assert.equal(result.bloqueadas,0);
+ assert.deepEqual(changed,[]);
 });
 
 test('escritura por piloto solo con dos flags y limitada por corrida', async () => {

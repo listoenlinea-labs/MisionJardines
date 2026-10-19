@@ -6,31 +6,20 @@
 const { fechaMexico } = require('./vigencia-calculo');
 
 function adeudosExigibles(adeudos, hoy = fechaMexico()) {
-  if (!adeudos?.tipos || !['MANTENIMIENTO', 'EXTRAORDINARIO', 'CASA_CLUB']
-    .every(tipo => Array.isArray(adeudos.tipos[tipo]))) {
-    throw new Error('Consulta de adeudos incompleta; no se puede decidir el estado del TAG');
+  if (!Array.isArray(adeudos?.tipos?.MANTENIMIENTO)) {
+    throw new Error('Consulta de mantenimiento incompleta; no se puede decidir el estado del TAG');
   }
   const tipos = adeudos?.tipos || {};
   const valido = item => Number.isFinite(Number(item?.monto)) && Number(item.monto) > 0;
   const mantenimiento = (tipos.MANTENIMIENTO || []).filter(item =>
     valido(item) && /^\d{4}-\d{2}$/.test(String(item.periodo)) &&
     `${item.periodo}-10` < hoy);
-  const extraordinario = (tipos.EXTRAORDINARIO || []).filter(item =>
-    valido(item) && /^\d{4}-\d{2}$/.test(String(item.periodo)) &&
-    item.periodo <= hoy.slice(0, 7));
-  // Una aprobación concede un plazo para pagar. Si se presentó comprobante
-  // oportunamente, la demora de Administración no debe bloquear el TAG.
-  const casaClub = (tipos.CASA_CLUB || []).filter(item =>
-    valido(item) && /^\d{4}-\d{2}-\d{2}$/.test(String(item.fechaLimitePago)) &&
-    item.fechaLimitePago < hoy && item.estado !== 'EN_REVISION');
   const centavos = lista => lista.reduce((s, x) => s + Math.round(Number(x.monto) * 100), 0);
-  const totales = {
-    MANTENIMIENTO: centavos(mantenimiento) / 100,
-    EXTRAORDINARIO: centavos(extraordinario) / 100,
-    CASA_CLUB: centavos(casaClub) / 100
-  };
-  return { tipos: { MANTENIMIENTO: mantenimiento, EXTRAORDINARIO: extraordinario, CASA_CLUB: casaClub },
-    totales, total: Math.round(Object.values(totales).reduce((a, b) => a + b, 0) * 100) / 100 };
+  const total=centavos(mantenimiento)/100;
+  // El cálculo para control de acceso excluye de manera deliberada deudas
+  // extraordinarias y casa club, aunque estén vencidas.
+  return { tipos: { MANTENIMIENTO: mantenimiento },
+    totales: { MANTENIMIENTO: total }, total };
 }
 
 function idsPiloto(value) {
@@ -60,7 +49,7 @@ async function run({ env = process.env, obtenerTarjetas, consultar, bloquear, ob
     const oficiales = global ? await (obtenerPadron || require('./cargos-extraordinarios.service').padronOficial)() : [];
     const permitidas = new Set([...piloto, ...oficiales.map(c => Number(c.id))]);
     const elegibles = tarjetas.filter(t => permitidas.has(Number(t.casaId)) && Number(t.casaId) > 0);
-    const cobrar = consultar || require('./adeudos-comunidad.service').consultarAdeudos;
+    const cobrar = consultar || require('./adeudos-comunidad.service').consultarSoloMantenimiento;
     const bloquearTag = bloquear || (id => require('./zkteco-direct.service').setCardBlocked(id, true));
     let examinadas = 0, detectadas = 0, bloqueadas = 0, fallidas = 0;
     const cache = new Map();
