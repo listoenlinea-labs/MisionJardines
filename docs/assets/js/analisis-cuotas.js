@@ -5,6 +5,18 @@
  const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
  const fmt=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+ const shortMonths=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+ const displayDate=value=>{
+  if(!value)return 'Sin fecha';
+  let date=String(value);
+  if(value instanceof Date||date.includes('T')||/\d\d:\d\d:\d\d/.test(date)){
+   const parsed=new Date(value);
+   if(!Number.isNaN(parsed.getTime()))date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(parsed);
+  }
+  const match=/^(\d{4})-(\d{2})-(\d{2})/.exec(date);
+  return match&&Number(match[2])>=1&&Number(match[2])<=12?match[3]+'-'+shortMonths[Number(match[2])-1]+'-'+match[1]:date;
+ };
+ const mexicoYear=()=>Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Mexico_City',year:'numeric'}).format(new Date()));
  const moment=new Date();$('financeYear').value=moment.getFullYear();$('financeMonth').value=String(moment.getMonth()+1);
  $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(moment);
  $('expenseStart').value=$('expenseDate').value.slice(0,7);
@@ -142,7 +154,8 @@
  }
  function tagsView(h){
    const t=h.tags||{detalle:[],controlesNoEnlazados:[]};
-   const detail=(t.detalle||[]).map(item=>({...item,estadoVista:tagStateForHouse(item,h.tagDiagnostico)}));
+   const detail=(t.detalle||[]).map(item=>({...item,estadoVista:tagStateForHouse(item,h.tagDiagnostico),
+     lecturaC3:(h.tagDiagnostico?.tarjetas||[]).find(r=>c3Key(r.numeroTarjeta)===c3Key(item.numeroTarjeta))||null}));
    return {detail,unlinked:t.controlesNoEnlazados||[],
      activos:detail.filter(x=>x.estadoVista.codigo==='ACTIVO').length,
      inactivos:detail.filter(x=>x.estadoVista.codigo==='INACTIVO').length,
@@ -206,10 +219,17 @@
    $('houseTagsRows').innerHTML=v.detail.length?v.detail.map(t=>{
      const estado=t.estadoVista;
      const cls=estado.codigo==='ACTIVO'?'is-active':estado.codigo==='INACTIVO'?'is-inactive':'is-unknown';
+     const fisica=t.lecturaC3?.fisicamenteObservado?String(t.lecturaC3.fechaFinC3||'').slice(0,10):'';
+     const guardada=String(t.fechaFin||'').slice(0,10);
+     const diferente=Boolean(fisica&&guardada&&fisica!==guardada);
+     const vigencias='<div class="tags-dates"><strong'+(fisica?'':' class="tags-date-unverified"')+'>'+
+       (fisica?'C3: '+esc(displayDate(fisica)):'C3: sin fecha física confirmada')+'</strong>'+
+       '<small>MySQL: '+esc(displayDate(guardada))+'</small>'+
+       (diferente?'<span class="tags-date-mismatch" role="note">Fechas distintas. Verifica la sincronización en ZKTeco; no se cambió ninguna vigencia.</span>':'')+'</div>';
      return '<article class="tags-detail-item">'+
        '<strong class="tags-number">'+esc(t.numeroTarjeta)+'</strong>'+
        '<span class="tags-state '+cls+'">'+esc(estado.etiqueta)+'</span>'+
-       '<strong class="tags-date">'+esc(t.fechaFin||'Sin fecha')+'</strong></article>';
+       vigencias+'</article>';
    }).join(''):'<p class="tags-empty">Esta vivienda no tiene TAGs vinculados en MySQL.</p>';
    if(v.unlinked.length)$('houseTagsRows').innerHTML+='<p class="tags-check-note">Controles registrados sin vínculo confirmado: '+
      esc(v.unlinked.join(', '))+'. Revisa la asignación en ZKTeco.</p>';
@@ -343,7 +363,7 @@ function renderHouses(){
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
     houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
-    houseCell('Pagado','<span class="house-amount">'+esc(fmt(h.montoPagado))+'</span>')+
+    houseCell('Pagado','<button type="button" class="house-paid-history" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'"><strong>'+esc(fmt(h.ultimoPago?.monto||0))+'</strong><span>Ver historial</span></button>')+
     houseCell('Último mes pagado',esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount">'+esc(fmt(h.saldoPendiente))+'</span>')+
     houseCell('TAGs',renderHouseTagCell(h))+
@@ -357,6 +377,66 @@ function renderHouses(){
  let confirmedPaymentTarget=null;
  let quoteSequence=0;
  const paymentModal=$('housePaymentModal');
+ const historyModal=$('houseHistoryModal');
+ let historySequence=0;
+ let historyReturnFocus=null;
+ function conceptTitle(type){return {MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuotas extraordinarias',CASA_CLUB:'Casa club'}[type]||type;}
+ function debtPeriod(value){
+  const match=/^(\d{4})-(\d{2})/.exec(String(value||''));
+  return match&&Number(match[2])>=1&&Number(match[2])<=12?
+   monthsES[Number(match[2])-1]+' '+match[1]:(value||'Sin período');
+ }
+ function closeHouseHistory(){
+  ++historySequence;
+  historyModal.hidden=true;
+  historyReturnFocus?.focus();
+  historyReturnFocus=null;
+ }
+ async function openHouseHistory(casaId,trigger){
+  const house=data?.viviendas?.find(h=>Number(h.casaId)===Number(casaId));
+  if(!house)return;
+  const seq=++historySequence;
+  historyReturnFocus=trigger||null;
+  historyModal.hidden=false;
+  $('houseHistoryTitle').textContent='Historial de '+conceptTitle(activeConcept).toLowerCase();
+  $('houseHistoryAddress').textContent=house.calle+' '+house.numero+' · '+(house.nombre||'Sin residente');
+  $('houseHistorySummary').textContent='Consultando pagos y saldos confirmados…';
+  $('houseHistoryTimeline').innerHTML='';
+  $('houseHistoryDebts').innerHTML='';
+  $('houseHistoryClose').focus();
+  try{
+   const {data:detail}=await request('/pagos-vivienda/'+Number(casaId)+'/historial?concepto='+activeConcept);
+   if(seq!==historySequence||historyModal.hidden)return;
+   const movements=detail.movimientos||[],debts=detail.deudas||[];
+   const total=movements.reduce((n,p)=>n+Number(p.monto||0),0);
+   $('houseHistorySummary').innerHTML='<div class="history-stat"><small>Último pago registrado</small><strong>'+esc(fmt(movements[0]?.monto||0))+'</strong></div>'+
+    '<div class="history-stat"><small>Total en movimientos</small><strong>'+esc(fmt(total))+'</strong></div>'+
+    '<div class="history-stat debt"><small>Saldo pendiente actual</small><strong>'+esc(fmt(detail.saldoPendiente))+'</strong></div>';
+   $('houseHistoryTimeline').innerHTML=movements.length?movements.map((p,index)=>{
+    const months=(p.periodos||[]).map(x=>x.mes+' '+x.anio);
+    return '<article class="history-event"><div class="history-dot" aria-hidden="true"></div><div class="history-event-card">'+
+      '<div class="history-event-top"><strong>'+esc(fmt(p.monto))+'</strong><time>'+esc(displayDate(p.fecha))+'</time></div>'+
+      '<p class="history-concept">'+esc(conceptTitle(activeConcept))+(p.meses?' · '+p.meses+' '+(p.meses===1?'mes cubierto':'meses cubiertos'):'')+'</p>'+
+      (months.length?'<div class="history-months">'+months.map(name=>'<span>'+esc(name)+'</span>').join('')+'</div>':'')+
+      (Number(p.recargo)>0?'<p class="history-penalty">Incluye '+esc(fmt(p.recargo))+' de recargo por pago tardío.</p>':'')+
+      '<small>'+esc(p.formaPago||'Pago registrado')+(p.referencia?' · Ref. '+esc(p.referencia):'')+'</small></div></article>';
+   }).join(''):'<div class="history-empty">Esta vivienda todavía no tiene pagos confirmados de este concepto.</div>';
+   $('houseHistoryDebts').innerHTML='<h3>Deudas pendientes ('+debts.length+')</h3>'+
+    (debts.length?'<div class="history-debt-list">'+debts.map(d=>'<div class="history-debt"><div><strong>'+esc(d.concepto||conceptTitle(activeConcept))+'</strong><small>'+esc(debtPeriod(d.periodo))+(d.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</small></div><div><b>'+esc(fmt(d.monto))+'</b>'+
+      (Number(d.recargo)>0?'<small>Incluye '+esc(fmt(d.recargo))+' de recargo por atraso</small>':'')+'</div></div>').join('')+'</div>':'<p class="history-paid-up">Sin deudas pendientes actualmente.</p>');
+  }catch(error){
+   if(seq===historySequence)$('houseHistorySummary').textContent='No fue posible consultar el historial: '+error.message;
+  }
+ }
+ $('houseHistoryClose').addEventListener('click',closeHouseHistory);
+ historyModal.addEventListener('click',e=>{if(e.target===historyModal)closeHouseHistory();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!historyModal.hidden)closeHouseHistory();});
+ function initializePaymentYears(){
+  const now=mexicoYear(),yearSelect=$('housePaymentYear');
+  yearSelect.innerHTML=Array.from({length:Math.max(0,2098-now+1)},(_,i)=>now+i).map(y=>'<option value="'+y+'">'+y+'</option>').join('');
+  yearSelect.value=String(now);
+ }
+ initializePaymentYears();
  let otherConcepts={EXTRAORDINARIO:[],CASA_CLUB:[]};
  const isOther=()=>$('housePaymentType').value!=='MANTENIMIENTO';
  function renderOtherConcept(){
@@ -415,6 +495,11 @@ function renderHouses(){
    $('housePaymentReview').checked=false;
    paymentPreview();
    const year=Number($('housePaymentYear').value),month=Number($('housePaymentMonth').value);
+   if(!Number.isInteger(year)||String(year).length!==4||year<mexicoYear()||year>2098||month<1||month>12){
+    $('houseLastPayment').textContent='El año debe tener cuatro dígitos y ser igual o mayor al actual.';
+    $('housePaymentPreview').textContent='Selecciona un mes y un año válidos para calcular el pago.';
+    return;
+   }
    try{
      const response=await request('/pagos-vivienda/'+Number(activePaymentHouse.casaId)+
        '/cotizar?anio='+year+'&mes='+month);
@@ -437,7 +522,9 @@ function renderHouses(){
      paymentPreview();
    }catch(error){
      if(seq!==quoteSequence)return;
-     $('houseLastPayment').textContent='No se pudo obtener el historial de esta vivienda.';
+     $('houseLastPayment').textContent=error.message.includes('ya está cubierto')?
+       'La fecha seleccionada está completamente pagada. Elige un mes posterior.':
+       'No fue posible cotizar esta fecha: '+error.message;
      $('housePaymentPreview').textContent=error.message;
      $('housePaymentSubmit').disabled=true;
    }
@@ -447,8 +534,13 @@ function renderHouses(){
    if(!house)return;
    activePaymentHouse=house;
    $('housePaymentHouse').textContent=house.calle+' '+house.numero+' · '+(house.nombre||'Sin residente registrado');
-   $('housePaymentYear').value=$('financeYear').value;
-   $('housePaymentMonth').value=$('financeMonth').value;
+   const now=mexicoYear(),last=indiceUltimoMesPagado(house.ultimoMesPagado);
+   const calendar=new Date();
+   const currentMonth=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Mexico_City',month:'numeric'}).format(calendar));
+   const target=Math.max(now*12+currentMonth-1,last===null?0:last+1);
+   const targetYear=Math.floor(target/12);
+   $('housePaymentYear').value=String(Math.min(2098,targetYear));
+   $('housePaymentMonth').value=String(target%12+1);
    $('housePaymentCount').value='0';
    $('housePaymentAmount').value='';
    $('housePaymentMethod').value='EFECTIVO';
@@ -488,6 +580,7 @@ function renderHouses(){
  }
  async function submitHousePayment(event){
    event.preventDefault();
+   if($('housePaymentSubmit').disabled)return;
    if(isOther()){
     const type=$('housePaymentType').value;
     const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
@@ -500,7 +593,7 @@ function renderHouses(){
     }catch(e){$('housePaymentStatus').textContent=e.message;await switchPaymentType();}
     return;
    }
-   if(!activePaymentHouse||!currentPaymentQuote)return;
+   if(!activePaymentHouse||!currentPaymentQuote||Number($('housePaymentYear').value)<mexicoYear())return;
    const payload={casaId:Number(activePaymentHouse.casaId),
      anio:Number($('housePaymentYear').value),mes:Number($('housePaymentMonth').value),
      mesesEsperados:currentPaymentQuote.meses,montoTotal:Number($('housePaymentAmount').value),
@@ -535,6 +628,8 @@ function renderHouses(){
    }finally{btn.disabled=true;}
  }
  $('financeHouseRows').addEventListener('click',event=>{
+  const historyButton=event.target.closest('[data-paid-history]');
+  if(historyButton){void openHouseHistory(historyButton.dataset.paidHistory,historyButton);return;}
   const tagButton=event.target.closest('[data-tags-house]');
   if(tagButton){openHouseTags(tagButton.dataset.tagsHouse);return;}
   const btn=event.target.closest('[data-pay-house]');
