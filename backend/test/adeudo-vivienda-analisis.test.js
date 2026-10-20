@@ -71,5 +71,5 @@ test('Vista y endpoint exhiben último pago y saldo acumulado sin editar cobros'
  assert.match(controller,/saldoPendiente:adeudo.saldoPendiente/);
  assert.match(html,/<th>Último mes pagado<\/th>/);
  assert.match(ui,/h.ultimoMesPagado/);
- assert.match(ui,/selectionAvailable\?10:9/);
+ assert.match(ui,/colspan="9"/);
 });

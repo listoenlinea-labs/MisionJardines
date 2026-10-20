@@ -45,7 +45,7 @@ test('nombres y referencias externas no se convierten en fórmulas en Excel', ()
  assert.equal(row[3][0], "'");
 });
 
-test('UI conserva selección exclusiva y la opción móvil sin radio ni línea verde', () => {
+test('UI permite editar un celular numérico, seleccionar filas sin radios y exportar por tarjeta', () => {
  const html = read('docs/analisis-cuotas.html');
  const js = read('docs/assets/js/analisis-cuotas.js');
  const css = read('docs/assets/css/analisis-cuotas.css');
@@ -53,10 +53,18 @@ test('UI conserva selección exclusiva y la opción móvil sin radio ni línea v
  assert.match(js, /periodoSeleccionado/);
  assert.match(js, /https:\/\/wa\.me\//);
  assert.match(js, /https:\/\/web\.whatsapp\.com\/send/);
- assert.match(js, /phones\.map/);
+ assert.match(html, /id="houseReceiptPhoneInput" type="tel" inputmode="numeric" pattern="\[0-9\]\*"/);
+ assert.match(js, /input\.value\.replace\(\/\\D\/g,''\)\.slice\(0,13\)/);
+ assert.match(js, /const phone=normalizeReceiptPhone\(\$\('houseReceiptPhoneInput'\)\.value\)/);
+ assert.match(js, /\$\('houseReceiptPhoneInput'\)\.value=phones\[0\]\?\.numero\|\|''/);
  assert.doesNotMatch(js, /Seleccionar teléfono registrado/);
- assert.match(css, /td\.house-receipt-selection-cell\[data-label="Seleccionar"\]\{display:none!important\}/);
- assert.match(css, /background:#fff0df!important/);
+ assert.doesNotMatch(html, /<th[^>]*>Seleccionar<\/th>|id="houseReceiptPrimaryPhone"/);
+ assert.doesNotMatch(js, /receiptHouseSelection|Descargar Excel ↓/);
+ assert.match(js, /data-finance-export/);
+ assert.match(js, /aria-selected=/);
+ assert.match(js, /addEventListener\('keydown',event=>/);
+ assert.match(css, /background:#f5d0a7!important/);
+ assert.doesNotMatch(css, /house-receipt-radio|house-receipt-selection-cell/);
  assert.doesNotMatch(css, /inset 3px 0 #4c9a70/);
  assert.match(html, /analisis-excel\.js\?v=20261020/);
 });
