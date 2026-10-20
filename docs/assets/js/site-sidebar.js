@@ -178,6 +178,12 @@
     `;
     style.textContent += '.mj-side-count{display:grid;place-items:center;min-width:22px;height:22px;margin-left:auto;padding:0 5px;border-radius:99px;background:#c9f4d9;color:#0e744a;font-size:11px;font-weight:900}.mj-side-link .mj-side-count{flex:none}';
     document.head.appendChild(style);
+    loadProductStyles();
+  }
+
+  // Estas hojas pertenecen al contenido de cada módulo, no a la barra lateral.
+  // También deben cargarse cuando la página se abre en el iframe de app.html.
+  function loadProductStyles() {
     if (!document.getElementById('mjAppDesign')) {
       const theme = document.createElement('link');
       theme.id = 'mjAppDesign';
@@ -435,7 +441,10 @@
       body.mj-embedded:not(.mj-home)>header{display:none!important}
     `;
     document.head.appendChild(style);
-    document.body.classList.add('mj-embedded');
+    // Mantener las mismas reglas visuales de las páginas independientes.
+    // El iframe no dibuja otra barra lateral; mj-embedded anula su espacio.
+    document.body.classList.add('mj-embedded', 'mj-shared-sidebar-enabled');
+    loadProductStyles();
     loadHomeDashboard();
     // Solo documentos y enlaces internos aprobados por la misma política de
     // roles. Los enlaces externos siguen abriéndose fuera del panel.

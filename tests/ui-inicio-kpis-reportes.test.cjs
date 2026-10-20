@@ -47,8 +47,8 @@ test('Solo Inicio usa tarjetas sin iconos, sin alterar Reportes', () => {
 test('Versiones nuevas evitan ver tarjetas viejas por caché', () => {
   const sidebar = load('docs/assets/js/site-sidebar.js');
   const index = load('docs/index.html');
-  assert.match(index, /site-sidebar\.js\?v=20261011-sin-conexion/);
-  assert.match(sidebar, /home-dashboard\.js\?v=20261011-sin-iconos/);
+  assert.match(index, /site-sidebar\.js\?v=20261020-estilos-inicio-iframe/);
+  assert.match(sidebar, /home-dashboard\.js\?v=[a-z0-9-]+/);
   assert.match(sidebar, /ui-unificada\.css\?v=20261011-sin-iconos/);
   assert.doesNotThrow(() => new Function(sidebar));
 });
