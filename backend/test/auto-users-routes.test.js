@@ -39,10 +39,10 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
     assert.match(diagnostic.message, /ER_BAD_FIELD_ERROR/);
     assert.doesNotMatch(diagnostic.message, /private data/);
     t.mock.method(models.Usuario, 'findAll', async () => []);
-    const discovery = await fetch(base + '/acceso/telefono', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefono: '3312345678' }) });
-    assert.equal(discovery.status, 200); assert.equal((await discovery.json()).estado, 'NUEVA');
-    assert.equal(discovery.headers.get('cache-control'), 'no-store');
-    assert.equal((await send('/acceso/telefono')).status, 400);
+    for (const path of ['/acceso/telefono', '/acceso/enviar']) {
+      assert.equal((await send(path)).status, 401);
+      assert.equal((await send(path, forged)).status, 404);
+    }
     const invalid = await send('/invitacion/consultar'); assert.equal(invalid.status, 410);
     assert.equal(invalid.headers.get('cache-control'), 'no-store');
     const invalidPreflight = await send('/invitacion/validar');

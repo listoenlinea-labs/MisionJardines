@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { filtroTelefono, buscarUsuariosPorTelefono } = require('../services/telefono-cuenta.service');
+const { buscarUsuariosPorTelefono } = require('../services/telefono-cuenta.service');
 const sequelize = require('../config/database');
 
 const {
@@ -62,10 +62,9 @@ function perfilInclude() {
 async function iniciarSesion(req, res) {
     try {
         const correo = String(req.body.nombreUsuario || req.body.correo || '').trim().toLowerCase();
-        const telefono = req.body.telefono;
         const contrasena = req.body.contrasena;
 
-        if ((!correo && !telefono) || !contrasena) {
+        if (!correo || !contrasena) {
             return res.status(400).json({
                 ok: false,
                 message: 'Usuario o correo y contraseña son obligatorios'
@@ -76,7 +75,7 @@ async function iniciarSesion(req, res) {
             .scope('conContrasena')
             .findAll({
                 limit: 2,
-                where: telefono ? filtroTelefono(telefono) : {
+                where: {
                     [Op.or]: [{ correo }, { nombreUsuario: correo }]
                 },
                 include: [

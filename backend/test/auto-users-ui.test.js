@@ -97,19 +97,6 @@ test('auto-users menu and page policy are exclusive to administrative roles', ()
   assert.match(routes, /router\.use\(autenticarToken, autorizarRoles\('SUPER_ADMIN', 'ADMINISTRADOR'\)\)/);
   assert.ok(routes.indexOf("router.post('/crear'") > routes.indexOf('router.use(autenticarToken'));
 });
-test('entrada desde teléfono solo solicita enlace al correo y mantiene ocultos datos/aceptación', async () => {
-  const nodes = new Map(), requests = [];
-  const $ = id => { if (!nodes.has(id)) nodes.set(id, { hidden: true, disabled: false, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; } }); return nodes.get(id); };
-  await vm.runInNewContext(source, { document: { getElementById: $ }, location: { hash: '#desde-login', pathname: '/aceptar-cuenta.html', hostname: 'example.com' }, history: { replaceState() {} }, URLSearchParams, AbortSignal,
-    sessionStorage: { getItem: () => '3312345678', removeItem() {} }, fetch: async (url, options) => { requests.push({ url, body: JSON.parse(options.body) }); return { ok: true, json: async () => ({ ok: true, mensaje: 'Revisa tu correo registrado.' }) }; } });
-  assert.equal(nodes.has('acceptAccountForm'), false); assert.equal(nodes.has('invitationStreet'), false);
-  assert.equal($('pendingEmailAccess').hidden, false);
-  assert.equal(requests.length, 1); assert.ok(requests[0].url.endsWith('/acceso/enviar'));
-  assert.equal(requests[0].body.telefono, '3312345678'); assert.equal(requests[0].body.token, undefined);
-  assert.match($('invitationState').textContent, /correo registrado/);
-});
-
-
 test('aceptación muestra todas las viviendas como texto y envía cada confirmación por ID', async () => {
   const p = await page([{ id: 10, calle: 'Calle Prueba', numero: '5' }, { id: 11, calle: 'Otra <calle>', numero: 'A-2' }]);
   assert.match(p.$('additionalHouses').innerHTML, /Otra &lt;calle&gt;/);
