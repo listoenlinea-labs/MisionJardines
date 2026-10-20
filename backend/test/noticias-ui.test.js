@@ -67,12 +67,16 @@ test('Noticias solo inserta la foto real asociada al artículo, sin rellenos y c
   assert.doesNotMatch(view, /unsplash|placeholder|picsum|source\.unsplash/i);
 });
 
-test('Las fotos son compactas junto al título en escritorio y no agrandan tarjetas en móvil', () => {
+test('Las fotos ocupan el fondo de la tarjeta con título legible, sin crecer en móvil', () => {
   const js = fs.readFileSync(path.resolve(__dirname, '../../docs/assets/js/home-dashboard.js'), 'utf8');
-  assert.match(js, /\.hl-news-item\.has-image \.hl-news-main\{display:grid;grid-template-columns:72px minmax\(0,1fr\)/);
-  assert.match(js, /\.hl-news-photo\{[^}]*object-fit:cover/);
+  assert.match(js, /\.hl-news-item\{height:143px;min-height:143px/);
+  assert.match(js, /\.hl-news-grid \.hl-news-item\.has-image\{[^}]*position:relative;isolation:isolate;overflow:hidden/);
+  assert.match(js, /\.hl-news-photo\{[^}]*position:absolute;inset:0;z-index:0;[^}]*width:100%;height:100%;object-fit:cover/);
+  assert.match(js, /\.hl-news-item\.has-image::before\{[^}]*linear-gradient/);
+  assert.match(js, /\.hl-news-item\.has-image \.hl-news-title\{color:#fff;[^}]*text-shadow/);
+  assert.match(js, /\.hl-news-item\.has-image \.hl-news-meta\{color:#f3f6fb/);
+  assert.doesNotMatch(js, /\.hl-news-item\.has-image \.hl-news-main\{display:grid;grid-template-columns:72px/);
   const mobile = js.slice(js.indexOf('/* Tarjetas de noticias compactas en móvil'));
   assert.match(mobile, /\.hl-news-item\{[^}]*height:158px;min-height:158px/);
-  assert.match(mobile, /\.hl-news-item\.has-image \.hl-news-photo\{[^}]*height:40px/);
-  assert.match(mobile, /\.hl-news-item\.has-image \.hl-news-title\{[^}]*-webkit-line-clamp:3/);
+  assert.match(mobile, /\.hl-news-item\.has-image \.hl-news-title\{[^}]*-webkit-line-clamp:4/);
 });
