@@ -94,25 +94,10 @@ function dibujarLinea(
         .restore();
 }
 
-function generarReciboPdf(cuota) {
+function generarReciboPdf(cuota, opciones = {}) {
     return new Promise((resolve, reject) => {
-        const storagePath = path.resolve(
-            process.cwd(),
-            'storage',
-            'recibos'
-        );
-
-        fs.mkdirSync(storagePath, {
-            recursive: true
-        });
-
         const nombreArchivo =
             'Recibo_' + cuota.folio + '.pdf';
-
-        const rutaArchivo = path.join(
-            storagePath,
-            nombreArchivo
-        );
 
         const document = new PDFDocument({
             size: 'LETTER',
@@ -131,11 +116,25 @@ function generarReciboPdf(cuota) {
             }
         });
 
-        const stream = fs.createWriteStream(
-            rutaArchivo
-        );
-
-        document.pipe(stream);
+        let stream;
+        let rutaArchivo;
+        if (opciones.enMemoria === true) {
+            const fragmentos = [];
+            document.on('data', fragmento => fragmentos.push(fragmento));
+            document.on('end', () => resolve({
+                buffer: Buffer.concat(fragmentos),
+                nombreArchivo
+            }));
+        } else {
+            const storagePath = path.resolve(process.cwd(), 'storage', 'recibos');
+            fs.mkdirSync(storagePath, { recursive: true });
+            rutaArchivo = path.join(storagePath, nombreArchivo);
+            stream = fs.createWriteStream(rutaArchivo);
+            document.pipe(stream);
+            stream.on('finish', () => resolve({ rutaArchivo, nombreArchivo }));
+            stream.on('error', reject);
+        }
+        document.on('error', reject);
 
         document
             .rect(11, 15, 590, 762)
@@ -304,7 +303,9 @@ function generarReciboPdf(cuota) {
             .font('Helvetica')
             .fontSize(10)
             .text(
-                'Pago de mantenimiento correspondiente al mes de ',
+                cuota.periodosVarios
+                    ? 'Pago de mantenimiento correspondiente a los meses de '
+                    : 'Pago de mantenimiento correspondiente al mes de ',
                 32,
                 334,
                 {
@@ -468,7 +469,7 @@ function generarReciboPdf(cuota) {
             .font('Helvetica-BoldOblique')
             .fontSize(13)
             .text(
-                'PAGADO',
+                cuota.sello || 'PAGADO',
                 32,
                 750,
                 {
@@ -480,15 +481,6 @@ function generarReciboPdf(cuota) {
 
         document.end();
 
-        stream.on('finish', () => {
-            resolve({
-                rutaArchivo,
-                nombreArchivo
-            });
-        });
-
-        stream.on('error', reject);
-        document.on('error', reject);
     });
 }
 

@@ -44,6 +44,7 @@
  let data=null;
  let housePage=1;
  let activeConcept='MANTENIMIENTO';
+ let selectedReceiptHouseId=null;
  const HOUSE_PAGE_SIZE=12;
  const notice=(msg,kind='error')=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;el.dataset.kind=kind;};
  async function request(path,body){
@@ -321,6 +322,10 @@ function elegirConcepto(concepto){
     return;
   }
   activeConcept=concepto;
+  if(concepto!=='MANTENIMIENTO')selectedReceiptHouseId=null;
+  $('financeReceiptToolbar').hidden=concepto!=='MANTENIMIENTO';
+  $('financeReceiptSelectHeader').hidden=concepto!=='MANTENIMIENTO';
+  $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
   data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId))});
   document.querySelectorAll('[data-finance-concept]').forEach(tab=>{
     const selected=tab.dataset.financeConcept===concepto;
@@ -356,8 +361,16 @@ function renderHouses(){
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
   housePage=Math.min(Math.max(housePage,1),totalPages);
   const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
+  const selectionAvailable=activeConcept==='MANTENIMIENTO';
+  if(!selectionAvailable||!visible.some(h=>Number(h.casaId)===selectedReceiptHouseId))selectedReceiptHouseId=null;
+  const selected=visible.find(h=>Number(h.casaId)===selectedReceiptHouseId);
+  $('financeGenerateReceipt').disabled=!selected;
+  $('financeReceiptSelection').textContent=selected
+    ? 'Vivienda seleccionada: '+selected.calle+' '+selected.numero+' · '+(selected.nombre||'Sin residente')
+    : 'Selecciona una sola vivienda para generar el recibo de su último pago registrado.';
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
-  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr>'+
+  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+(Number(h.casaId)===selectedReceiptHouseId?' class="house-receipt-selected"':'')+'>'+
+    (selectionAvailable?houseCell('Seleccionar','<input class="house-receipt-radio" type="radio" name="receiptHouseSelection" value="'+Number(h.casaId)+'" aria-label="Seleccionar '+esc(h.calle+' '+h.numero)+' para recibo"'+(Number(h.casaId)===selectedReceiptHouseId?' checked':'')+'>'):'')+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
     houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
@@ -365,7 +378,7 @@ function renderHouses(){
     houseCell('Último mes pagado',esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount">'+esc(fmt(h.saldoPendiente))+'</span>')+
     houseCell('TAGs',renderHouseTagCell(h))+
-    houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
+    houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="'+(selectionAvailable?10:9)+'">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;
@@ -429,6 +442,99 @@ function renderHouses(){
  $('houseHistoryClose').addEventListener('click',closeHouseHistory);
  historyModal.addEventListener('click',e=>{if(e.target===historyModal)closeHouseHistory();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!historyModal.hidden)closeHouseHistory();});
+ const receiptModal=$('houseReceiptModal');
+ let receiptObjectUrl=null;
+ let receiptBlob=null;
+ let receiptDetails=null;
+ let receiptSequence=0;
+ let receiptReturnFocus=null;
+ function receiptStatus(message,kind='info'){
+  const el=$('houseReceiptStatus');el.textContent=message;el.dataset.kind=kind;
+ }
+ function closeHouseReceipt(){
+  ++receiptSequence;
+  receiptModal.hidden=true;
+  $('houseReceiptPreview').src='about:blank';
+  $('houseReceiptPreview').hidden=true;
+  if(receiptObjectUrl)URL.revokeObjectURL(receiptObjectUrl);
+  receiptObjectUrl=null;receiptBlob=null;receiptDetails=null;
+  receiptReturnFocus?.focus();receiptReturnFocus=null;
+ }
+ function guardarRecibo(){
+  if(!receiptBlob||!receiptObjectUrl||!receiptDetails)return;
+  const link=document.createElement('a');
+  link.href=receiptObjectUrl;
+  link.download='Recibo_'+String(receiptDetails.folio||'Mantenimiento').replace(/[^a-zA-Z0-9._-]/g,'_')+'.pdf';
+  document.body.appendChild(link);link.click();link.remove();
+ }
+ async function openHouseReceipt(){
+  if(activeConcept!=='MANTENIMIENTO'||!selectedReceiptHouseId)return;
+  const casaId=selectedReceiptHouseId;
+  const seq=++receiptSequence;
+  receiptReturnFocus=document.activeElement;
+  receiptModal.hidden=false;
+  if(receiptObjectUrl)URL.revokeObjectURL(receiptObjectUrl);
+  receiptObjectUrl=null;receiptBlob=null;receiptDetails=null;
+  $('houseReceiptPreview').src='about:blank';
+  $('houseReceiptTitle').textContent='Generar recibo de mantenimiento';
+  $('houseReceiptAddress').textContent='Consultando vivienda…';
+  receiptStatus('Buscando el último pago registrado y preparando el PDF…');
+  $('houseReceiptPreview').hidden=true;
+  $('houseReceiptDownload').disabled=true;
+  $('houseReceiptWhatsApp').disabled=true;
+  $('houseReceiptSendSection').hidden=true;
+  $('houseReceiptPhone').innerHTML='<option value="">Seleccionar teléfono registrado</option>';
+  $('houseReceiptClose').focus();
+  try{
+   const {data:detail}=await request('/pagos-vivienda/'+casaId+'/recibo/datos');
+   if(seq!==receiptSequence||receiptModal.hidden)return;
+   const response=await fetch(API+'/finanzas/pagos-vivienda/'+casaId+'/recibo',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   });
+   if(response.status===401){location.replace('login.html');throw Error('Sesión expirada');}
+   if(!response.ok){const error=await response.json().catch(()=>({}));throw Error(error.message||'No se pudo generar el PDF');}
+   const pdf=await response.blob();
+   if(seq!==receiptSequence||receiptModal.hidden)return;
+   if(pdf.type!=='application/pdf'&&!pdf.type.includes('pdf'))throw Error('El servidor no devolvió un archivo PDF');
+   receiptBlob=pdf;
+   receiptDetails=detail;
+   receiptObjectUrl=URL.createObjectURL(pdf);
+   $('houseReceiptPreview').src=receiptObjectUrl;
+   $('houseReceiptPreview').hidden=false;
+   $('houseReceiptAddress').textContent=detail.calle+' '+detail.numero+' · '+(detail.nombre||'Sin residente');
+   $('houseReceiptTitle').textContent='Recibo '+detail.folio;
+   receiptStatus('Pago registrado: '+fmt(detail.monto)+' · '+(detail.periodo||'')+' · '+(detail.sello||'PAGADO'));
+   $('houseReceiptDownload').disabled=false;
+   const phones=(detail.telefonos||[]).filter(p=>/^52\d{10}$/.test(String(p.numero)));
+   if(phones.length){
+    $('houseReceiptPhone').innerHTML='<option value="">Seleccionar teléfono registrado</option>'+phones.map(p=>
+      '<option value="'+esc(p.numero)+'">'+esc(p.nombre)+' · +'+esc(p.numero)+' ('+esc(p.origen)+')</option>').join('');
+    $('houseReceiptSendSection').hidden=false;
+   }else{
+    receiptStatus('Recibo listo para guardar. La vivienda no tiene un teléfono mexicano válido asociado en la base de datos.');
+   }
+  }catch(error){
+   if(seq===receiptSequence)receiptStatus(error.message,'error');
+  }
+ }
+ $('financeGenerateReceipt').addEventListener('click',openHouseReceipt);
+ $('houseReceiptClose').addEventListener('click',closeHouseReceipt);
+ receiptModal.addEventListener('click',e=>{if(e.target===receiptModal)closeHouseReceipt();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!receiptModal.hidden)closeHouseReceipt();});
+ $('houseReceiptDownload').addEventListener('click',guardarRecibo);
+ $('houseReceiptPhone').addEventListener('change',()=>{
+  $('houseReceiptWhatsApp').disabled=!receiptBlob||!/^52\d{10}$/.test($('houseReceiptPhone').value);
+ });
+ $('houseReceiptWhatsApp').addEventListener('click',()=>{
+  const phone=$('houseReceiptPhone').value;
+  if(!receiptBlob||!receiptDetails||!/^52\d{10}$/.test(phone))return;
+  const message='Hola, te compartimos tu recibo de mantenimiento de Misión Jardines, folio '+receiptDetails.folio+'. Adjunto el documento PDF.';
+  const link='https://web.whatsapp.com/send?phone='+encodeURIComponent(phone)+'&text='+encodeURIComponent(message);
+  guardarRecibo();
+  const chat=window.open(link,'_blank');
+  if(chat)chat.opener=null;
+  receiptStatus(!chat?'El PDF se descargó. Autoriza las ventanas emergentes para abrir WhatsApp Web y adjuntar el recibo.':'PDF descargado y chat abierto. Adjunta el archivo en WhatsApp Web y confirma el envío.');
+ });
  function initializePaymentYears(){
   const now=mexicoYear(),yearSelect=$('housePaymentYear');
   yearSelect.innerHTML=Array.from({length:Math.max(0,2098-now+1)},(_,i)=>now+i).map(y=>'<option value="'+y+'">'+y+'</option>').join('');
@@ -631,7 +737,17 @@ function renderHouses(){
   const tagButton=event.target.closest('[data-tags-house]');
   if(tagButton){openHouseTags(tagButton.dataset.tagsHouse);return;}
   const btn=event.target.closest('[data-pay-house]');
-  if(btn)openHousePayment(btn.dataset.payHouse);
+  if(btn){openHousePayment(btn.dataset.payHouse);return;}
+  if(event.target.closest('input,button,a,select,label'))return;
+  const row=event.target.closest('[data-receipt-row]');
+  if(row&&activeConcept==='MANTENIMIENTO'){
+   selectedReceiptHouseId=Number(row.dataset.receiptRow);renderHouses();
+  }
+ });
+ $('financeHouseRows').addEventListener('change',event=>{
+  if(!event.target.matches('input[name="receiptHouseSelection"]')||activeConcept!=='MANTENIMIENTO')return;
+  selectedReceiptHouseId=Number(event.target.value);
+  renderHouses();
  });
  $('housePaymentClose').addEventListener('click',closeHousePayment);
  paymentModal.addEventListener('click',event=>{if(event.target===paymentModal)closeHousePayment();});

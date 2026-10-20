@@ -447,3 +447,27 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
     white-space: nowrap;
   }
 }
+
+/* Recibos: selección exclusiva de la pestaña Mantenimiento. */
+.finance-receipt-toolbar{display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap;margin:12px 0;padding:12px 14px;border:1px solid #e4e8ef;border-radius:13px;background:#f7faf8}
+.finance-receipt-toolbar[hidden],.finance-receipt-preview[hidden],.finance-receipt-send[hidden]{display:none!important}
+.finance-receipt-toolbar span{color:#56657a;font-size:12px;line-height:1.5}
+.finance-receipt-toolbar button{min-height:37px;padding:9px 18px;border-radius:11px;white-space:nowrap}
+.finance-receipt-toolbar button:disabled{opacity:.48;cursor:not-allowed}
+.maintenance-receipt-active .houses-scroll table{min-width:1350px}
+.house-receipt-radio{width:18px;height:18px;accent-color:#28754e;cursor:pointer}
+.house-receipt-selected{background:#edf8f0}
+.house-receipt-selected td{border-bottom-color:#c8e8d2}
+.house-receipt-selected td:first-child{box-shadow:inset 3px 0 #4c9a70}
+.finance-receipt-dialog{width:min(800px,100%)}
+.finance-receipt-status{margin:12px 0;padding:10px 13px;border:1px solid #e4e7ef;border-radius:10px;background:#f9f8fb;color:#59647a;font-size:12px;line-height:1.5}
+.finance-receipt-status[data-kind="error"]{border-color:#ecc9b5;background:#fff4ec;color:#985037}
+.finance-receipt-preview{display:block;width:100%;height:min(55vh,580px);min-height:320px;margin:12px 0;border:1px solid #dfe3e9;border-radius:12px;background:white}
+.finance-receipt-send{display:grid;gap:7px;padding:12px;border:1px solid #e5deed;border-radius:11px;background:#faf8fd}
+.finance-receipt-send label{color:#55476b;font-size:12px;font-weight:800}
+.finance-receipt-send select{width:100%;padding:11px;border:1px solid #ded6e9;border-radius:10px;background:white;color:#314258;font-size:12px}
+.finance-receipt-send small{color:#758092;font-size:11px;line-height:1.5}
+.finance-receipt-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:14px}
+.finance-receipt-actions button{padding:11px 15px;border-radius:11px}
+.finance-receipt-actions button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:600px){.finance-receipt-toolbar{align-items:stretch}.finance-receipt-toolbar button{width:100%}.finance-receipt-preview{height:50vh;min-height:280px}.finance-receipt-actions button{flex:1 1 180px}}
