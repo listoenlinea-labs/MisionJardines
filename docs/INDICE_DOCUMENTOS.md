@@ -22,7 +22,7 @@ actual del C3 ni a una consulta en vivo de MySQL.
 | [OCR del destinatario](../backend/docs/PAGOS_OCR_DESTINO.md) | Tesseract.js, idiomas, instalación y comprobantes pendientes | Vigente; OCR no confirma recepción bancaria. Extracción de monto corregida el 12/oct para excluir cuentas/folios |
 | [Diagnóstico de presencia C3](../backend/docs/diagnostico-presencia-c3.md) | Diferenciar inventario SQL, presencia física y autorizaciones | Diagnóstico; Gardenias 5 es el ejemplo histórico |
 | [Tablas por módulo](BASE_DATOS_MODULOS.md) | Relaciones de tablas y gestión de residentes | Inventario del código, no certificación del esquema de producción |
-| [Condóminos y viviendas](CONDOMINOS_VIVIENDAS.md) | Relación muchos a muchos del padrón, compatibilidad y despliegue | Tabla creada y copia verificada mediante CSV aportados el 19/oct; código requiere despliegue |
+| [Condóminos y viviendas](CONDOMINOS_VIVIENDAS.md) | Relación muchos a muchos del padrón, compatibilidad y despliegue | Tabla intermedia verificada mediante CSV; retiro de direccion_id requiere SQL 01, despliegue y SQL 02, en ese orden |
 | [Mis viviendas](VIVIENDAS.md) | Cuentas, responsables, miembros e invitaciones | Referencia para vínculos; no confundir residente con cuenta de login |
 | [Verificación de cuentas](../backend/docs/verificacion-cuentas.md) | Registro, aprobación, rechazo y asignación de roles | Consultar también rutas y política actuales |
 | [Roles](ROLES.md) | Descripción de permisos | Navegación de Seguridad actualizada el 12/oct; la política completa está en los dos archivos permissions.js |

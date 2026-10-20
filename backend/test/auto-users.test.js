@@ -20,9 +20,9 @@ function matches(row, where = {}) {
     return row[key] === value || String(row[key]) === String(value);
   });
 }
-function fixture(condos = [{ id: 1, direccionId: 10, nombreCompleto: 'Persona Uno Prueba', correo: 'persona1@example.com', telefono: '3312345678', activo: true }]) {
-  let tables = { Usuario: [], Condomino: condos, Casa: [{ id: 10, calle: 'Calle Prueba', numero: '5' }, { id: 11, calle: 'Otra Calle', numero: 'A-2' }],
-    Rol: [{ id: 3, nombre: 'CONDOMINO', activo: true }], UsuarioCasa: [], CondominoVivienda: condos.map(c => ({ condominoId: c.id, viviendaId: c.direccionId, activo: c.activo })), Invitacion: [], Reporte: [] };
+function fixture(condos = [{ id: 1, viviendaIds: [10], nombreCompleto: 'Persona Uno Prueba', correo: 'persona1@example.com', telefono: '3312345678', activo: true }]) {
+  let tables = { Usuario: [], Condomino: condos.map(({ viviendaIds, ...person }) => person), Casa: [{ id: 10, calle: 'Calle Prueba', numero: '5' }, { id: 11, calle: 'Otra Calle', numero: 'A-2' }],
+    Rol: [{ id: 3, nombre: 'CONDOMINO', activo: true }], UsuarioCasa: [], CondominoVivienda: condos.flatMap(c => c.viviendaIds.map(viviendaId => ({ condominoId: c.id, viviendaId, activo: c.activo }))), Invitacion: [], Reporte: [] };
   let chain = Promise.resolve(), failDeleteTable = null;
   const db = { getQueryInterface: () => ({
     async showAllTables() { return Object.values(db.models || {}).map(model => model.getTableName()); },
@@ -83,7 +83,7 @@ test('repetir crear o crear concurrentemente conserva una sola cuenta y un vínc
   assert.equal(f.tables.Usuario[0].nombreUsuario, 'persona1@example.com'); assert.equal(f.tables.UsuarioCasa[0].activo, false);
 });
 test('sin e-mail crea usuario por teléfono, concatena nombre en coincidencia y no inventa e-mails', async () => {
-  const f = fixture([1, 2, 3].map(id => ({ id, direccionId: id === 3 ? 11 : 10, nombreCompleto: id === 1 ? 'Persona Uno Prueba' : 'Persona Dos Prueba', telefono: '3312345678', correo: null, activo: true })));
+  const f = fixture([1, 2, 3].map(id => ({ id, viviendaIds: [id === 3 ? 11 : 10], nombreCompleto: id === 1 ? 'Persona Uno Prueba' : 'Persona Dos Prueba', telefono: '3312345678', correo: null, activo: true })));
   await f.service.crearLote(); assert.equal(f.tables.Usuario.length, 3);
   assert.equal(f.tables.Usuario[0].nombreUsuario, '3312345678');
   assert.equal(f.tables.Usuario[1].nombreUsuario, '3312345678personadosprueba');
@@ -121,7 +121,7 @@ test('error report revokes old link; correction moves household and individual r
   assert.equal(f.tables.Reporte[0].estatus, 'ABIERTO'); await assert.rejects(f.service.consultar(old), { status: 410 });
   const blocked = await f.service.enviarLote(); assert.equal(blocked.resultados[0].resultado, 'REVISAR'); assert.equal(f.sent.length, 1);
   await f.service.editar(1, { nombreCompleto: 'Persona Uno Prueba', casaId: 11, nombreUsuario: 'persona-nueva', correo: 'corregido@example.com', telefono: '3312345678' }, 100);
-  assert.equal(f.tables.Reporte[0].estatus, 'CORREGIDO'); assert.equal(f.tables.Condomino[0].direccionId, 11);
+  assert.equal(f.tables.Reporte[0].estatus, 'CORREGIDO'); assert.deepEqual(f.tables.CondominoVivienda.filter(l => l.condominoId === 1 && l.activo).map(l => l.viviendaId), [11]);
   await f.service.enviarLote(0, 1); const next = tokenFrom(f); assert.notEqual(next, old);
   await assert.rejects(f.service.aceptar(next, acceptBody), { status: 400 });
   const accepted = await f.service.aceptar(next, { ...acceptBody, nombreUsuario: 'persona-nueva', correo: 'corregido@example.com', numeroConfirmado: ' A-2 ' });
@@ -143,7 +143,7 @@ test('provider not configured does not fake sending; network error is recorded w
   assert.equal(result.resultados[0].resultado, 'ERROR'); assert.equal(f.tables.Invitacion[0].envioEstado, 'ERROR'); assert.equal(f.tables.Usuario.length, 1);
 });
 test('inactive or invalid condominium is reported without leaving partial users', async () => {
-  const f = fixture([{ id: 1, direccionId: 999, nombreCompleto: 'Persona Prueba', activo: true }, { id: 2, direccionId: 10, nombreCompleto: 'Persona Prueba', activo: false }]);
+  const f = fixture([{ id: 1, viviendaIds: [999], nombreCompleto: 'Persona Prueba', activo: true }, { id: 2, viviendaIds: [10], nombreCompleto: 'Persona Prueba', activo: false }]);
   const result = await f.service.crearLote(); assert.ok(result.resultados.every(r => r.resultado === 'REVISAR')); assert.equal(f.tables.Usuario.length, 0);
 });
 test('listing does not expose token hashes/passwords and preserves correction reports after editing', async () => {
@@ -372,4 +372,16 @@ test('borrar prueba elimina también sus vínculos de padrón y conserva la vivi
   assert.ok(!f.tables.CondominoVivienda.some(l => l.condominoId === trial.condominoId));
   assert.equal(f.tables.Casa.length, 2);
   assert.ok(f.tables.CondominoVivienda.some(l => l.condominoId === 1));
+});
+
+
+test('pruebas y correcciones guardan personas sin columna de dirección heredada', async () => {
+  const f = fixture();
+  const trial = await f.service.crearPrueba(10, 'e'.repeat(32));
+  const person = f.tables.Condomino.find(c => c.id === trial.condominoId);
+  assert.ok(!Object.hasOwn(person, 'direccionId'));
+  await f.service.editarPrueba(trial.usuarioId, { nombreCompleto: 'Persona de Prueba', casaId: 10,
+    viviendaIds: [10], nombreUsuario: 'prueba-sin-direccion', correo: 'trial@example.com' }, 99);
+  assert.ok(f.tables.Condomino.every(c => !Object.hasOwn(c, 'direccionId')));
+  assert.deepEqual(f.tables.CondominoVivienda.filter(l => l.condominoId === person.id && l.activo).map(l => l.viviendaId), [10]);
 });
