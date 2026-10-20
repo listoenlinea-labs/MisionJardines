@@ -906,6 +906,7 @@
     const visits = Array.isArray(data.operativo?.visitas) ? data.operativo.visitas : [];
     const inside = Array.isArray(data.operativo?.accesos) ? data.operativo.accesos : [];
     const available = data.fuentes || {};
+    const unavailable = !available.visitas || !available.accesos || available.viviendas === false;
     const firstName = cachedUser()?.nombre || (isSecurity ? 'Seguridad' : 'vecino');
     const scope = isSecurity ? 'Todo el fraccionamiento' : 'Mis viviendas';
     const count = value => integer.format(Math.max(0, Number(value) || 0));
@@ -928,6 +929,7 @@
         <strong>${escapeHtml(scope)}</strong>
         <span>${isSecurity ? 'Registros de las viviendas del fraccionamiento' : 'Registros de viviendas vinculadas a tu cuenta'}</span>
       </section>
+      ${unavailable ? '<p class="hl-op-warning" role="status">Parte de la información operativa no está disponible en este momento. Puedes seguir utilizando Inicio y reintentar la consulta.</p>' : ''}
       <section class="hl-kpis hl-op-kpis" aria-label="Indicadores de visitas y accesos">
         <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-mint">
           <div class="hl-kpi-content"><span>Visitas hoy</span>
@@ -944,21 +946,21 @@
         <article class="hl-card hl-op-panel">
           <div class="hl-card-head"><div><span class="hl-eyebrow">VISITAS DE HOY</span>
             <h2>${isSecurity ? 'Visitas registradas en el fraccionamiento' : 'Mis visitas programadas'}</h2></div>
-            <span class="hl-op-total">${count(visitor.hoy)} en total</span></div>
+            <span class="hl-op-total">${available.visitas ? count(visitor.hoy) + ' en total' : 'No disponible'}</span></div>
           <ul class="hl-op-list">${visits.length ?
             visits.map(item => operationalEntry(item, 'VISITA', isSecurity)).join('') :
-            empty('No hay visitas programadas para hoy.')}</ul>
-          ${Number(visitor.hoy) > visits.length ? '<p class="hl-op-more">Mostrando las primeras ' +
+            empty(available.visitas ? 'No hay visitas programadas para hoy.' : 'No fue posible consultar las visitas.')}</ul>
+          ${available.visitas && Number(visitor.hoy) > visits.length ? '<p class="hl-op-more">Mostrando las primeras ' +
             count(visits.length) + ' visitas.</p>' : ''}
         </article>
         <article class="hl-card hl-op-panel">
           <div class="hl-card-head"><div><span class="hl-eyebrow">DENTRO AHORA</span>
             <h2>${isSecurity ? 'Personas dentro del fraccionamiento' : 'Personas que ingresaron a mi vivienda'}</h2></div>
-            <span class="hl-op-total">${count(access.activos)} activos</span></div>
+            <span class="hl-op-total">${available.accesos ? count(access.activos) + ' activos' : 'No disponible'}</span></div>
           <ul class="hl-op-list">${inside.length ?
             inside.map(item => operationalEntry(item, 'ACCESO', isSecurity)).join('') :
-            empty('No hay accesos activos registrados.')}</ul>
-          ${Number(access.activos) > inside.length ? '<p class="hl-op-more">Mostrando los últimos ' +
+            empty(available.accesos ? 'No hay accesos activos registrados.' : 'No fue posible consultar los accesos.')}</ul>
+          ${available.accesos && Number(access.activos) > inside.length ? '<p class="hl-op-more">Mostrando los últimos ' +
             count(inside.length) + ' accesos activos.</p>' : ''}
         </article>
       </section>
@@ -1135,7 +1137,7 @@
       if (!response.ok || !data.ok) throw new Error(data.message || `Error HTTP ${response.status}`);
       renderDashboard(data);
       showHouseDebtAlert(window.MJAdeudos);
-      updateTopbar(data, true);
+      updateTopbar(data, data?.vista !== 'OPERATIVA' || (!!data.fuentes?.visitas && !!data.fuentes?.accesos));
     } catch (error) {
       console.error('Inicio: no se pudo cargar el dashboard:', error);
       updateTopbar(null, false);
@@ -1262,6 +1264,7 @@
       /* Inicio operativo de Seguridad/Residente: el de Administración no cambia. */
       .hl-op-scope{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:0 0 15px;padding:11px 16px;border:1px solid #dfe9f0;border-radius:12px;background:#f5f9fd;color:#485a73}
       .hl-op-scope strong{font-size:11px;color:#344761}.hl-op-scope span{font-size:10px}
+      .hl-op-warning{margin:0 0 14px;padding:11px 14px;border:1px solid #f3dfbb;border-radius:12px;background:#fff9ee;color:#8b5c18;font-size:12px;line-height:1.5}
       .hl-op-kpis{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:16px}
       .hl-op-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}
       .hl-op-panel{min-width:0;overflow:hidden}.hl-op-panel .hl-card-head{align-items:center}

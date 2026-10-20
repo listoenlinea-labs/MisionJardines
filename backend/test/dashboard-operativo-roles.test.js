@@ -86,6 +86,52 @@ test('Usuario sin vínculos no puede consultar todas las viviendas por accidente
  });
 });
 
+test('Si falla la fuente de visitas Inicio sigue disponible con accesos para Seguridad',async()=>{
+ await withMocks([],async spy=>{
+  Visita.count=async()=>{throw Error('Tabla de visitas temporalmente no disponible');};
+  const {code,body}=await call('SEGURIDAD');
+  assert.equal(code,200);
+  assert.equal(body.ok,true);
+  assert.equal(body.vista,'OPERATIVA');
+  assert.equal(body.fuentes.visitas,false);
+  assert.equal(body.fuentes.accesos,true);
+  assert.equal(body.kpis.visitas.hoy,null);
+  assert.equal(body.kpis.accesos.activos,2);
+  assert.equal(body.operativo.visitas.length,0);
+  assert.equal(body.operativo.accesos.length,1);
+  assert.equal(spy.links.length,0);
+ });
+});
+
+test('Si falla accesos el residente ve visitas únicamente de sus viviendas',async()=>{
+ await withMocks([{casaId:7}],async spy=>{
+  Acceso.findAll=async()=>{throw Error('Accesos sin conexión');};
+  const {code,body}=await call('CONDOMINO');
+  assert.equal(code,200);
+  assert.equal(body.alcance,'MIS_VIVIENDAS');
+  assert.equal(body.fuentes.visitas,true);
+  assert.equal(body.fuentes.accesos,false);
+  assert.equal(body.kpis.accesos.activos,null);
+  assert.equal(body.operativo.visitas.length,1);
+  for(const query of [...spy.visits,...spy.access])
+    assert.deepEqual(query.where.casaId[Op.in],[7]);
+ });
+});
+
+test('Si no pueden verificarse vínculos el residente recibe vista restringida sin consultas globales',async()=>{
+ await withMocks([],async spy=>{
+  UsuarioCasa.findAll=async()=>{throw Error('Relaciones no disponibles');};
+  const {code,body}=await call('CONDOMINO');
+  assert.equal(code,200);
+  assert.equal(body.vista,'OPERATIVA');
+  assert.equal(body.alcance,'MIS_VIVIENDAS');
+  assert.equal(body.fuentes.viviendas,false);
+  assert.deepEqual(body.operativo,{visitas:[],accesos:[]});
+  assert.equal(spy.visits.length,0);
+  assert.equal(spy.access.length,0);
+ });
+});
+
 test('Visitas del día excluyen canceladas; activos exigen ausencia de salida',async()=>{
  await withMocks([{casaId:7}],async spy=>{
   await call('CONDOMINO');

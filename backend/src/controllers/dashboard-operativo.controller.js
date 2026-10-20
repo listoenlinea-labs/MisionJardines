@@ -32,55 +32,79 @@ function direccion(casa) {
 }
 
 async function obtenerDashboardOperativo(req, res) {
+  let scope;
   try {
-    const scope = await alcanceViviendas(req.usuario);
-    const hoy = fechaMexico();
-    const visitsToday = { ...scope.where, fechaProgramada: hoy, estatus: { [Op.ne]: 'CANCELADA' } };
-    const activeAccess = { ...scope.where, fechaSalida: null };
-    const [totalVisitas, programadas, enCurso, totalDentro, visitas, accesos] = await Promise.all([
+    scope = await alcanceViviendas(req.usuario);
+  } catch (error) {
+    // La falta de permisos/vínculos NO puede ampliar el alcance a otras viviendas.
+    console.error('Dashboard operativo: no se pudieron resolver las viviendas de la cuenta:', error);
+    return res.json({
+      ok: true, vista: 'OPERATIVA', alcance: 'MIS_VIVIENDAS',
+      generadoEn: new Date().toISOString(), periodo: { hoy: fechaMexico() },
+      kpis: { visitas: {}, accesos: {} },
+      operativo: { visitas: [], accesos: [] },
+      fuentes: { visitas: false, accesos: false, viviendas: false }
+    });
+  }
+
+  const hoy = fechaMexico();
+  const visitsToday = { ...scope.where, fechaProgramada: hoy, estatus: { [Op.ne]: 'CANCELADA' } };
+  const activeAccess = { ...scope.where, fechaSalida: null };
+  // Las tablas de visitas y accesos pueden estar temporalmente incompletas
+  // durante una migración. Cada fuente falla de forma independiente y el
+  // dashboard sigue disponible para ambos roles, sin inventar cantidades.
+  const [visitasResultado, accesosResultado] = await Promise.all([
+    Promise.all([
       Visita.count({ where: visitsToday }),
       Visita.count({ where: { ...visitsToday, estatus: 'PROGRAMADA' } }),
       Visita.count({ where: { ...visitsToday, estatus: 'EN_CURSO' } }),
-      Acceso.count({ where: activeAccess }),
       Visita.findAll({
         where: visitsToday, include: casaInclude,
         attributes: ['id', 'nombreVisitante', 'fechaProgramada', 'horaProgramada',
           'fechaEntrada', 'estatus'],
         order: [['horaProgramada', 'ASC'], ['id', 'DESC']]
-      }),
+      })
+    ]).catch(error => {
+      console.error('Dashboard operativo: fuente visitas no disponible:', error);
+      return null;
+    }),
+    Promise.all([
+      Acceso.count({ where: activeAccess }),
       Acceso.findAll({
         where: activeAccess, include: casaInclude,
         attributes: ['id', 'nombre', 'tipo', 'fechaEntrada'],
         order: [['fechaEntrada', 'DESC'], ['id', 'DESC']]
       })
-    ]);
-    return res.json({
+    ]).catch(error => {
+      console.error('Dashboard operativo: fuente accesos no disponible:', error);
+      return null;
+    })
+  ]);
+  const [totalVisitas, programadas, enCurso, visitas] = visitasResultado || [];
+  const [totalDentro, accesos] = accesosResultado || [];
+  return res.json({
       ok: true,
       vista: 'OPERATIVA',
       alcance: scope.global ? 'FRACCIONAMIENTO' : 'MIS_VIVIENDAS',
       generadoEn: new Date().toISOString(),
       periodo: { hoy },
       kpis: {
-        visitas: { hoy: totalVisitas, programadas, enCurso },
-        accesos: { activos: totalDentro }
+        visitas: { hoy: totalVisitas ?? null, programadas: programadas ?? null, enCurso: enCurso ?? null },
+        accesos: { activos: totalDentro ?? null }
       },
       operativo: {
-        visitas: visitas.map(v => ({
+        visitas: (visitas || []).map(v => ({
           id: v.id, nombre: v.nombreVisitante,
           hora: v.horaProgramada, estado: v.estatus,
           entrada: v.fechaEntrada || null, vivienda: direccion(v.casa)
         })),
-        accesos: accesos.map(a => ({
+        accesos: (accesos || []).map(a => ({
           id: a.id, nombre: a.nombre, tipo: a.tipo,
           entrada: a.fechaEntrada, vivienda: direccion(a.casa)
         }))
       },
-      fuentes: { visitas: true, accesos: true }
+      fuentes: { visitas: !!visitasResultado, accesos: !!accesosResultado, viviendas: true }
     });
-  } catch (error) {
-    console.error('Dashboard operativo: error de datos por rol:', error);
-    return res.status(503).json({ ok: false, message: 'No fue posible consultar las visitas y accesos.' });
-  }
 }
 
 module.exports = { obtenerDashboardOperativo, alcanceViviendas, fechaMexico };

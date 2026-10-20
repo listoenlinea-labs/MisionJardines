@@ -16,11 +16,13 @@ function navigation(role) {
   vm.runInContext(sidebar.slice(0, sidebar.indexOf('  function styles()')) + 'globalThis.result = {groups:navigationGroups(), html:markup()};})();',context);
   return context.result;
 }
-test('guard navigation renders only the security group and its five links', () => {
+test('guard navigation retains Inicio and five Security links without admin or resident areas', () => {
   const {groups,html} = navigation('SEGURIDAD');
-  assert.deepEqual(Array.from(groups, g => g.label), ['Seguridad']);
-  assert.deepEqual(Array.from(groups[0].items, i => i.page), ['conmutador.html','seguridad.html','visitas.html','mapa.html','reportes.html']);
-  for (const page of ['index.html','viviendas.html','bases_datos.html','zkteco.html','cuotas.html']) assert.equal(html.includes(`href="${page}"`),false);
+  assert.deepEqual(Array.from(groups, g => g.label), ['', 'Seguridad']);
+  assert.deepEqual(Array.from(groups[0].items, i => i.page), ['index.html']);
+  assert.deepEqual(Array.from(groups[1].items, i => i.page), ['conmutador.html','seguridad.html','visitas.html','mapa.html','reportes.html']);
+  for (const page of ['viviendas.html','bases_datos.html','zkteco.html','cuotas.html']) assert.equal(html.includes(`href="${page}"`),false);
+  assert.ok(html.includes('href="index.html"'));
   assert.ok(html.includes('href="cuenta.html"'));
 });
 test('Mapa and Reportes belong to Seguridad for administrators too', () => {
@@ -34,20 +36,24 @@ test('Mapa and Reportes belong to Seguridad for administrators too', () => {
 async function signIn(role, invitation) {
   const nodes = new Map();
   const document = {getElementById(id) {
-    if (!nodes.has(id)) nodes.set(id, {value:id==='correo'?'guard@example.invalid':'password',checked:false,classList:{add(){},remove(){}},addEventListener(event,fn){this[event]=fn;}});
+    if (!nodes.has(id)) nodes.set(id, {value:id==='correo'?'guard@example.invalid':'password',checked:false,classList:{add(){},remove(){}},focus(){},addEventListener(event,fn){this[event]=fn;}});
     return nodes.get(id);
   }};
   const context = {document, MJPermissions:policy, window:{location:{hostname:'localhost'}},
     localStorage:storage(),sessionStorage:storage(invitation?{mjInvitacion:'pending'}:{}),
-    fetch:async()=>({ok:true,json:async()=>({ok:true,token:'test',usuario:{rol:{nombre:role}}})}), setTimeout:fn=>fn()};
+    fetch:async()=>({ok:true,json:async()=>({ok:true,token:'test',usuario:{rol:{nombre:role}}})}),
+    AbortSignal:{timeout:()=>({})}};
   vm.createContext(context);vm.runInContext(login,context);
+  nodes.get('loginAlternative').click();
+  nodes.get('correo').value='guard@example.invalid';
+  nodes.get('contrasena').value='password';
   await nodes.get('loginForm').submit({preventDefault(){}});
   return context.window.location.href;
 }
-test('guard signs in directly to Seguridad even with a pending invitation', async () => {
-  assert.equal(await signIn('SEGURIDAD',false),'seguridad.html');
-  assert.equal(await signIn('SEGURIDAD',true),'seguridad.html');
-  assert.equal(await signIn('CONDOMINO',false),'cuotas.html');
-  assert.equal(await signIn('ADMINISTRADOR',false),'index.html');
+test('login opens persistent portal with correct role landing and respects pending invitations', async () => {
+  assert.equal(await signIn('SEGURIDAD',false),'app.html?page=seguridad.html');
+  assert.equal(await signIn('SEGURIDAD',true),'app.html?page=seguridad.html');
+  assert.equal(await signIn('CONDOMINO',false),'app.html?page=cuotas.html');
+  assert.equal(await signIn('ADMINISTRADOR',false),'app.html?page=index.html');
   assert.equal(await signIn('CONDOMINO',true),'invitacion.html');
 });
