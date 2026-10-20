@@ -205,6 +205,9 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-20
 
+- El usuario confirmó que el scroll móvil volvió a funcionar. Se agrega deslizar hacia abajo para actualizar al estar al inicio de una sección dentro del portal: muestra indicación y recarga únicamente esa sección al soltar tras superar el umbral, conservando la sesión y el menú exterior. No se activa sobre controles, mapas, modales, menú abierto ni contenedores con scroll propio; cancela pellizcos, desplazamiento horizontal, movimientos cortos y gestos interrumpidos.
+- Validación local del gesto: 15 pruebas aprobadas de navegación, gestos táctiles simulados y login; sintaxis JS y diff sin errores. Solo frontend, sin SQL. Requiere actualizar GitHub Pages y comprobar el gesto en Safari/iPhone/Android reales; la simulación no acredita esa prueba física.
+
 - Scroll móvil: el bloqueo de fondo del menú lateral también alcanzaba a las páginas embebidas, que tenían la clase de diseño compartido sin estado de menú cerrado. Se excluye `mj-embedded` de esa regla y se marca su menú como cerrado al inicializar y al activar el iframe, incluso con scripts anteriores en caché. El menú exterior conserva el bloqueo de fondo cuando está abierto. Se renuevan versiones de assets en app/Inicio.
 - Validación local de scroll: 11 pruebas aprobadas de navegación persistente y login, sintaxis JS y diff sin errores. Se comprueba el estado de cada iframe sin duplicar menú. Sin despliegue ni comprobación física Safari/iPhone/Android; la simulación DOM no acredita por sí sola gestos reales de desplazamiento.
 
