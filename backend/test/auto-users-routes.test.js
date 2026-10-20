@@ -45,5 +45,11 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
     assert.equal((await send('/acceso/telefono')).status, 400);
     const invalid = await send('/invitacion/consultar'); assert.equal(invalid.status, 410);
     assert.equal(invalid.headers.get('cache-control'), 'no-store');
+    const invalidPreflight = await send('/invitacion/validar');
+    assert.equal(invalidPreflight.status, 400); // Ruta pública; no pide sesión administrativa.
+    assert.equal(invalidPreflight.headers.get('cache-control'), 'no-store');
+    const revokedPreflight = await fetch(base + '/invitacion/validar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'invalido', nombreUsuario: 'prueba@example.com', correo: 'prueba@example.com', contrasena: 'ClavePrueba123', confirmarContrasena: 'ClavePrueba123' }) });
+    assert.equal(revokedPreflight.status, 410);
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 });

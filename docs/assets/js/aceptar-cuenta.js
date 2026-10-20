@@ -33,7 +33,9 @@
     $('resendAccessEmail').addEventListener('click', sendAccess);
     await sendAccess(); return;
   }
-  let registration, extraHouses = [];
+  let registration, extraHouses = [], validatedCredentials = null;
+  const credentials = () => ({ nombreUsuario: $('acceptUsername').value, correo: $('acceptEmail').value,
+    contrasena: $('acceptPassword').value, confirmarContrasena: $('acceptPasswordConfirm').value });
   const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
   try {
     const result = await api('consultar'); registration = result.registro;
@@ -46,24 +48,41 @@
     $('invitationState').textContent = 'Confirma tu vivienda y elige tu contraseña para activar tu cuenta.';
     $('acceptAccountForm').hidden = false;
   } catch (error) { $('invitationState').textContent = error.message; return; }
-  $('acceptAccountForm').addEventListener('submit', event => {
-    event.preventDefault(); $('acceptMessage').textContent = '';
-    if ($('acceptPassword').value !== $('acceptPasswordConfirm').value) { $('acceptMessage').textContent = 'Las contraseñas no coinciden.'; return; }
-    $('confirmAddressText').textContent = registration.calle + ' · Casa ' + registration.numero;
-    extraHouses.forEach((_, i) => { $('confirmExtra' + i).value = ''; });
-    $('confirmHouseNumber').value = ''; $('confirmMessage').textContent = ''; $('confirmAddress').showModal(); $('confirmHouseNumber').focus();
+  $('acceptAccountForm').addEventListener('submit', async event => {
+    event.preventDefault(); const button = $('createAccount');
+    if (button.disabled) return;
+    $('acceptMessage').textContent = ''; validatedCredentials = null;
+    if (!$('acceptAccountForm').reportValidity()) return;
+    const data = credentials();
+    if (data.contrasena !== data.confirmarContrasena) { $('acceptMessage').textContent = 'Las contraseñas no coinciden.'; return; }
+    button.disabled = true;
+    try {
+      await api('validar', data);
+      if (JSON.stringify(data) !== JSON.stringify(credentials())) {
+        $('acceptMessage').textContent = 'Los datos cambiaron. Presiona Crear cuenta para revisarlos de nuevo.'; return;
+      }
+      validatedCredentials = data;
+      $('confirmAddressText').textContent = registration.calle + ' · Casa ' + registration.numero;
+      extraHouses.forEach((_, i) => { $('confirmExtra' + i).value = ''; });
+      $('confirmHouseNumber').value = ''; $('confirmMessage').textContent = ''; $('confirmAddress').showModal(); $('confirmHouseNumber').focus();
+    } catch (error) { $('acceptMessage').textContent = error.message; }
+    finally { button.disabled = false; }
   });
   $('addressNo').addEventListener('click', () => $('confirmAddress').close());
   $('confirmAddressForm').addEventListener('submit', async event => {
-    event.preventDefault(); const button = $('confirmAccount'); button.disabled = true; $('confirmMessage').textContent = '';
+    event.preventDefault(); const button = $('confirmAccount');
+    if (button.disabled) return;
+    if (!validatedCredentials || JSON.stringify(validatedCredentials) !== JSON.stringify(credentials())) {
+      $('confirmAddress').close(); $('acceptMessage').textContent = 'Presiona Crear cuenta para validar tus datos antes de confirmar la vivienda.'; return;
+    }
+    button.disabled = true; $('confirmMessage').textContent = '';
     try {
-      const result = await api('aceptar', { nombreUsuario: $('acceptUsername').value, correo: $('acceptEmail').value,
-        contrasena: $('acceptPassword').value, confirmarContrasena: $('acceptPasswordConfirm').value, numeroConfirmado: $('confirmHouseNumber').value,
+      const result = await api('aceptar', { ...validatedCredentials, numeroConfirmado: $('confirmHouseNumber').value,
         ...(registration.viviendas ? { viviendasConfirmadas: [{ id: registration.casaId, numero: $('confirmHouseNumber').value }, ...extraHouses.map((c, i) => ({ id: c.id, numero: $('confirmExtra' + i).value }))] } : {}) });
       for (const storage of [localStorage, sessionStorage]) { storage.removeItem('misionJardinesToken'); storage.removeItem('misionJardinesUsuario'); }
       sessionStorage.removeItem('mjCasaSeleccionada'); sessionStorage.removeItem('mjInvitacion');
       sessionStorage.setItem('misionJardinesToken', result.token); sessionStorage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));
-      $('acceptPassword').value = $('acceptPasswordConfirm').value = '';
+      $('acceptPassword').value = $('acceptPasswordConfirm').value = ''; validatedCredentials = null;
       // Newly accepted residents enter Inicio with their new session.
       location.replace('index.html');
     } catch (error) { $('confirmMessage').textContent = error.message; }
@@ -76,7 +95,7 @@
     try {
       await api('reportar', { comentario: $('registrationErrorComment').value });
       $('reportAddressError').close(); $('acceptAccountForm').hidden = true;
-      $('acceptPassword').value = $('acceptPasswordConfirm').value = '';
+      $('acceptPassword').value = $('acceptPasswordConfirm').value = ''; validatedCredentials = null;
       $('invitationState').textContent = 'Tu registro está en revisión. Espera una nueva invitación.';
       $('errorReportSent').showModal();
     } catch (error) { $('reportErrorMessage').textContent = error.message; }

@@ -44,6 +44,7 @@ const mailLimiter = rateLimit({ windowMs: 15 * 60000, limit: 6, standardHeaders:
 router.post('/acceso/telefono', phoneLimiter, handle(req => service.consultarTelefono(req.body.telefono)));
 router.post('/acceso/enviar', mailLimiter, handle(req => service.enviarPorTelefono(req.body.telefono)));
 router.post('/invitacion/consultar', publicLimiter, handle(async req => ({ registro: await service.consultar(req.body.token) })));
+router.post('/invitacion/validar', publicLimiter, handle(req => service.validar(req.body.token, req.body)));
 router.post('/invitacion/aceptar', publicLimiter, handle(req => service.aceptar(req.body.token, req.body)));
 router.post('/invitacion/reportar', publicLimiter, handle(req => service.reportar(req.body.token, req.body.comentario)));
 router.use(autenticarToken, autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR'));
