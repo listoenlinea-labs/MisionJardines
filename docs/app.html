@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f97316">
+  <link rel="icon" href="assets/images/favicon.ico?v=20261005">
+  <title>Misión Jardines</title>
+  <script src="assets/js/permissions.js?v=20261012-seguridad"></script>
+  <link rel="stylesheet" href="assets/css/app-shell.css?v=20261020">
+  <script>
+    window.MJ_SHELL_MODE = true;
+    window.MJ_API_URL = ['localhost', '127.0.0.1'].includes(location.hostname)
+      ? 'http://localhost:3000/api'
+      : 'https://api-misionjardines.listoenlinea.host/api';
+    window.MJ_TOKEN = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
+  </script>
+  <script src="assets/js/app-shell.js?v=20261020" defer></script>
+  <script src="assets/js/site-sidebar.js?v=20261020-app-shell" defer></script>
+</head>
+<body class="mj-app-shell">
+  <main id="mjAppContent" class="mj-app-content" aria-label="Contenido de Misión Jardines">
+    <iframe id="mjPageA" class="mj-app-frame" title="Sección actual" aria-label="Sección actual" allow="clipboard-write; fullscreen"></iframe>
+    <iframe id="mjPageB" class="mj-app-frame" title="Sección siguiente" aria-hidden="true" tabindex="-1" allow="clipboard-write; fullscreen"></iframe>
+    <div id="mjAppLoading" class="mj-app-loading" role="status" aria-live="polite">Preparando tu portal…</div>
+    <div id="mjAppError" class="mj-app-error" role="alert" hidden>
+      <strong>No fue posible abrir esta sección</strong>
+      <p>Revisa tu conexión y vuelve a intentarlo.</p>
+      <button id="mjAppRetry" type="button">Reintentar</button>
+      <a id="mjAppFallback" href="index.html">Abrir sección sin transiciones</a>
+    </div>
+  </main>
+</body>
+</html>

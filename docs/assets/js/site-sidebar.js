@@ -88,11 +88,18 @@
       { label: 'Comunidad', items: community },
       { label: 'Seguridad', items: security }
     ];
-    // Seguridad también necesita acceder al Inicio operativo (no financiero).
-    return role() === 'SEGURIDAD' ? navigation.filter(group => group.label === '' || group.label === 'Seguridad') : navigation;
+    // Inicio está disponible para Seguridad y residentes, pero sin mostrar
+    // enlaces de otros roles ni siquiera durante la carga inicial del menú.
+    const visible = role() === 'SEGURIDAD'
+      ? navigation.filter(group => group.label === '' || group.label === 'Seguridad')
+      : navigation;
+    return visible.map(group => ({ ...group, items: group.items.filter(item => MJPermissions.canAccess(role(), item.page)) }))
+      .filter(group => group.items.length);
   }
 
-  const page = () => location.pathname.split('/').pop() || 'index.html';
+  const page = () => typeof window !== 'undefined' && window.MJ_SHELL_MODE
+    ? (window.MJShell?.currentPage || new URLSearchParams(location.search).get('page') || 'index.html').split(/[?#]/)[0]
+    : location.pathname.split('/').pop() || 'index.html';
   const escapeHtml = value => String(value || '')
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
@@ -224,7 +231,7 @@
 
   function createTopAccount() {
     document.querySelector('.mj-account-top')?.remove();
-    if (page() === 'index.html') {
+    if (page() === 'index.html' && !window.MJ_SHELL_MODE) {
       const menu = document.getElementById('profileMenu');
       if (menu && !menu.querySelector('.mj-account-menu-link')) {
         const link = document.createElement('a');
@@ -315,7 +322,7 @@
   }
 
   function loadHomeDashboard() {
-    if (page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
+    if (window.MJ_SHELL_MODE || page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
     script.src = 'assets/js/home-dashboard.js?v=20261018-noticias-scroll-completo';
     script.defer = true;
@@ -347,10 +354,10 @@
         for(const link of [...links].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true}))){const option=document.createElement('option');option.value=link.casaId;option.textContent=(link.casa.calleCorrecta||link.casa.calle)+' '+link.casa.numero;selector.append(option);}
         const selected=sessionStorage.getItem('mjCasaSeleccionada');
         if(links.some(l=>String(l.casaId)===selected))selector.value=selected;
-        else if(selected && !['viviendas.html','cuenta.html'].includes(page())) {sessionStorage.removeItem('mjCasaSeleccionada');location.replace('viviendas.html');return;}
+        else if(selected && !['viviendas.html','cuenta.html'].includes(page())) {sessionStorage.removeItem('mjCasaSeleccionada');if(window.MJ_SHELL_MODE)window.MJShell?.navigate('viviendas.html',{replace:true});else location.replace('viviendas.html');return;}
         if(!links.length){const option=document.createElement('option');option.textContent='Sin vivienda vinculada';selector.append(option);}
         selector.disabled=links.length<2;
-        selector.addEventListener('change',()=>{sessionStorage.setItem('mjCasaSeleccionada',selector.value);location.reload();});
+        selector.addEventListener('change',()=>{sessionStorage.setItem('mjCasaSeleccionada',selector.value);if(window.MJ_SHELL_MODE)window.MJShell?.reload();else location.reload();});
       } catch (_) {const option=document.createElement('option');option.textContent='Consulta Mis viviendas';selector.append(option);}
 
     }
@@ -412,6 +419,65 @@
     collapse(body, button, collapsed, false);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
-  else init();
+  function initEmbedded() {
+    // Navegación persistente: el documento interior conserva sus propias
+    // funciones, pero no vuelve a dibujar la barra lateral ni el perfil global.
+    const style = document.createElement('style');
+    style.id = 'mjEmbeddedStyles';
+    style.textContent = `
+      body.mj-embedded{width:100%!important;max-width:100%!important;padding-left:0!important}
+      body.mj-embedded .mj-sidebar,body.mj-embedded #sidebar,
+      body.mj-embedded .mj-side-tab,body.mj-embedded .mj-account-top,
+      body.mj-embedded .mj-mobile-scrim,body.mj-embedded .profile-wrap{display:none!important}
+      body.mj-embedded.mj-home .mj-shell{display:block!important;grid-template-columns:none!important}
+      body.mj-embedded.mj-home #menuButton{display:none!important}
+      body.mj-embedded.mj-home #searchForm{visibility:hidden!important;pointer-events:none!important}
+      body.mj-embedded:not(.mj-home)>header{display:none!important}
+    `;
+    document.head.appendChild(style);
+    document.body.classList.add('mj-embedded');
+    loadHomeDashboard();
+    // Solo documentos y enlaces internos aprobados por la misma política de
+    // roles. Los enlaces externos siguen abriéndose fuera del panel.
+    document.addEventListener('click', event => {
+      const link = event.target.closest('a[href]');
+      if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey ||
+          event.metaKey || event.shiftKey || event.altKey || link.hasAttribute('download') ||
+          link.target === '_blank') return;
+      let href;
+      try { href = new URL(link.href, location.href); } catch (_) { return; }
+      if (href.origin !== location.origin) { link.target = '_blank'; link.rel = 'noopener noreferrer'; return; }
+      const target = href.pathname.split('/').pop();
+      if (!MJPermissions.pages.includes(target)) return;
+      event.preventDefault();
+      const roleName = window.MJVerifiedRole || role();
+      if (!MJPermissions.canAccess(roleName, target)) return;
+      href.searchParams.delete('_mjFrame');
+      window.parent.postMessage({type:'MJ_SHELL_NAVIGATE',target:target+href.search+href.hash},location.origin);
+    }, true);
+  }
+
+  function initStandalone() {
+    init();
+    // Compatibilidad con enlaces guardados a antiguas páginas HTML: el
+    // primer clic entra al portal persistente; después el marco no se recarga.
+    document.addEventListener('click', event => {
+      if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey ||
+          event.shiftKey || event.altKey) return;
+      const link = event.target.closest('a[href]');
+      if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+      let href;
+      try { href = new URL(link.href, location.href); } catch (_) { return; }
+      const target = href.pathname.split('/').pop();
+      if (href.origin !== location.origin || !MJPermissions.pages.includes(target) ||
+          !MJPermissions.canAccess(role(), target)) return;
+      event.preventDefault();
+      location.assign('app.html?page='+encodeURIComponent(target+href.search+href.hash));
+    }, true);
+  }
+
+  const embedded = window.parent !== window && new URLSearchParams(location.search).get('_mjFrame') === '1';
+  const entry = embedded ? initEmbedded : initStandalone;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', entry, { once: true });
+  else entry();
 })();
