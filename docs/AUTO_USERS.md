@@ -49,7 +49,9 @@ El menú lateral muestra el número de solicitudes pendientes solo a administrad
 
 Con enlace válido se muestran las calles y números de todas las viviendas activas como texto sombreado, sin inputs editables. El usuario puede editar correo y nombre de usuario, y definir/confirmar contraseña (8 caracteres, mayúscula, minúscula y número; máximo 72 bytes bcrypt).
 
-Crear cuenta abre una segunda confirmación de domicilio. NO cierra el panel; Confirmar exige escribir el número de cada vivienda del prerregistro; el servidor exige el conjunto completo, sin IDs extra ni repetidos. En transacción se establece cuenta_aceptada=true/ACTIVO, activa exclusivamente los vínculos confirmados, invalida el enlace y devuelve la sesión para entrar a Inicio. El enlace no puede aceptarse dos veces. Inicio está permitido para Condómino; Seguridad conserva sus restricciones.
+Crear cuenta primero comprueba el formato y disponibilidad del correo/usuario, la coincidencia de contraseñas y los requisitos de contraseña (incluido el máximo de 72 bytes). Los errores se muestran en el formulario principal. La consulta pública `/invitacion/validar` requiere enlace vigente, comparte su límite de peticiones y no guarda contraseñas, activa cuentas ni consume el enlace. Un correo vacío sigue siendo opcional.
+
+Solo con datos válidos se abre la segunda confirmación, titulada «Introduce SOLO tu numero de casa». NO cierra el panel; Confirmar exige escribir el número de cada vivienda del prerregistro; el servidor exige el conjunto completo, sin IDs extra ni repetidos. Si cambian las credenciales durante la consulta o antes de confirmar, se pide validarlas de nuevo. La aceptación vuelve a comprobar las credenciales, disponibilidad y enlace para cubrir cambios concurrentes o llamadas directas a la API. En transacción se establece cuenta_aceptada=true/ACTIVO, activa exclusivamente los vínculos confirmados, invalida el enlace y devuelve la sesión para entrar a Inicio. El enlace no puede aceptarse dos veces. Inicio está permitido para Condómino; Seguridad conserva sus restricciones.
 
 Reportar error requiere comentario y revoca el enlace. Administración ve los reportes paginados, corrige nombre/vivienda/contacto/usuario, y envía un nuevo correo. Con reporte abierto no se reenvía. Nunca cambiar solo estatus para saltarse la aceptación.
 
@@ -67,7 +69,7 @@ No/escape cancela; errores y progreso permanecen visibles. El timeout no confirm
 
 ## API y despliegue
 
-- Públicas: POST `/api/auto-users/acceso/telefono`, `/acceso/enviar`, `/invitacion/consultar`, `/invitacion/aceptar`, `/invitacion/reportar`.
+- Públicas: POST `/api/auto-users/acceso/telefono`, `/acceso/enviar`, `/invitacion/consultar`, `/invitacion/validar`, `/invitacion/aceptar`, `/invitacion/reportar`.
 - Administrativas: GET raíz/config/viviendas, POST crear/invitaciones/:id/invitacion, PATCH :id y las rutas prueba/usuarios, prueba/viviendas, prueba/crear, prueba/:id/enlace, PATCH/DELETE prueba/:id.
 - La API de login acepta `telefono` + `contrasena` o el identificador anterior + contraseña. El formulario de solicitud sigue usando `/api/auth/registro/solicitar` y la revisión `/api/auth/cuentas`.
 

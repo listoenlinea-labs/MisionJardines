@@ -203,6 +203,12 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ## Bitácora
 
+### 2026-10-20
+
+- Auto-users: Crear cuenta valida formato/disponibilidad de usuario y correo, contraseña y confirmación antes de abrir el segundo panel. Se incorpora POST público `/api/auto-users/invitacion/validar`, protegido por enlace vigente y límite de consultas; no activa cuentas, genera sesiones ni consume el enlace. La aceptación final mantiene las comprobaciones y la confirmación de todas las viviendas.
+- El segundo panel muestra «Introduce SOLO tu numero de casa». Se bloquean clics repetidos mientras se valida y se exige otra comprobación si cambian las credenciales. El frontend actualiza la versión del script para renovar caché.
+- Validación local: 41 pruebas aprobadas en auto-users, auto-users-ui y auto-users-routes; DB/SMTP simulados. Requiere desplegar frontend y backend juntos; no requiere SQL ni se consultó/modificó producción.
+
 ### 2026-10-19
 
 - Revisión de las 23:27: main leído en `9e226f5124688aaeeebe57850723b10fb3e12e40`, 32 commits después de `3fcff016`. Se excluyó `402de9951fa8fdd4f35638c93843f41154840a3f`, dedicado al estado del 18/oct.

@@ -63,18 +63,52 @@ function fixture(condos = [{ id: 1, viviendaIds: [10], nombreCompleto: 'Persona 
       async update(data, options) { for (const row of tables[table].filter(r => matches(r, options.where))) Object.assign(row, data); }
     };
   }
-  const sent = [];
+  const sent = [], hashed = [];
   let enabled = true, failSend = false;
   const correoSender = {
     configuracion() { if (!enabled) throw Object.assign(Error('not configured'), { status: 503 }); return { frontend: 'https://example.com/portal' }; },
     correoValido: correo => Boolean(correo) && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(correo),
     async enviarInvitacion(data) { if (failSend) throw Error('provider failed'); sent.push(data); return 'synthetic-message'; }
   };
-  const service = crearServicio({ db, ...Object.fromEntries(Object.keys(tables).map(key => [key, model(key)])), correoSender, buscarTelefono: async (model, phone) => { const normalize = require('../src/services/telefono-cuenta.service').normalizarTelefono; if (!normalize(phone)) throw Object.assign(Error('Teléfono inválido'), { status: 400 }); return tables.Usuario.filter(u => normalize(u.telefono) === normalize(phone)).slice(0, 2).map(row => ({ ...row })); }, hashPassword: async p => 'synthetic-hash:' + p });
-  return { service, sent, db, failDelete(table) { failDeleteTable = table; }, get tables() { return tables; }, enabled(value) { enabled = value; }, failSend(value) { failSend = value; } };
+  const service = crearServicio({ db, ...Object.fromEntries(Object.keys(tables).map(key => [key, model(key)])), correoSender, buscarTelefono: async (model, phone) => { const normalize = require('../src/services/telefono-cuenta.service').normalizarTelefono; if (!normalize(phone)) throw Object.assign(Error('Teléfono inválido'), { status: 400 }); return tables.Usuario.filter(u => normalize(u.telefono) === normalize(phone)).slice(0, 2).map(row => ({ ...row })); }, hashPassword: async p => { hashed.push(p); return 'synthetic-hash:' + p; } });
+  return { service, sent, db, hashed, failDelete(table) { failDeleteTable = table; }, get tables() { return tables; }, enabled(value) { enabled = value; }, failSend(value) { failSend = value; } };
 }
 const tokenFrom = f => new URLSearchParams(new URL(f.sent.at(-1).enlace).hash.slice(1)).get('invitacion');
 const acceptBody = { nombreUsuario: 'persona1@example.com', correo: 'persona1@example.com', contrasena: 'ClavePrueba123', confirmarContrasena: 'ClavePrueba123', numeroConfirmado: '5' };
+
+test('validar comprueba credenciales sin número, sin hash, sin activar ni consumir el enlace', async () => {
+  const f = fixture(); await f.service.crearLote(); await f.service.enviarLote(); const token = tokenFrom(f);
+  const before = structuredClone(f.tables), hashes = f.hashed.length;
+  const { numeroConfirmado, ...body } = acceptBody;
+  assert.deepEqual(await f.service.validar(token, body), { valido: true });
+  assert.deepEqual(f.tables, before); assert.equal(f.hashed.length, hashes);
+  await f.service.aceptar(token, acceptBody); // La validación no consumió el enlace.
+});
+test('validar rechaza formato, contraseñas y conflictos antes de confirmar vivienda', async () => {
+  const f = fixture(); await f.service.crearLote(); await f.service.enviarLote(); const token = tokenFrom(f);
+  const before = structuredClone(f.tables);
+  for (const patch of [{ correo: 'correo-invalido' }, { nombreUsuario: 'a b' }, { nombreUsuario: 'ab' },
+    { confirmarContrasena: 'diferente' }, ...['abc123', 'soloMinusculas', 'SOLOMAYUSCULAS123', 'solo123456', 'Aa1' + 'é'.repeat(35)].map(contrasena => ({ contrasena, confirmarContrasena: contrasena }))]) {
+    await assert.rejects(f.service.validar(token, { ...acceptBody, ...patch }), { status: 400 });
+  }
+  assert.deepEqual(f.tables, before);
+  f.tables.Usuario.push({ id: 9, nombreUsuario: 'reservado', correo: 'otro@example.com' });
+  for (const patch of [{ nombreUsuario: 'reservado' }, { correo: 'otro@example.com' }, { nombreUsuario: 'otro@example.com' }]) {
+    await assert.rejects(f.service.validar(token, { ...acceptBody, ...patch }), { status: 409 });
+  }
+  assert.equal(f.tables.Usuario[0].cuentaAceptada, false);
+});
+test('validar requiere enlace vigente y aceptar revalida disponibilidad tras una comprobación exitosa', async () => {
+  const f = fixture(); await f.service.crearLote(); await f.service.enviarLote(); const token = tokenFrom(f);
+  await assert.rejects(f.service.validar('invalido', acceptBody), { status: 410 });
+  const data = { ...acceptBody, nombreUsuario: 'nuevo-usuario' };
+  await f.service.validar(token, data);
+  f.tables.Usuario.push({ id: 9, nombreUsuario: 'nuevo-usuario', correo: null });
+  await assert.rejects(f.service.aceptar(token, data), { status: 409 });
+  assert.equal(f.tables.Usuario[0].cuentaAceptada, false); assert.ok(f.tables.Invitacion[0].tokenHash);
+  f.tables.Invitacion[0].expiraEn = new Date(0);
+  await assert.rejects(f.service.validar(token, acceptBody), { status: 410 });
+});
 
 test('repetir crear o crear concurrentemente conserva una sola cuenta y un vínculo inactivo por condómino', async () => {
   const f = fixture(); await Promise.all([f.service.createOne(1), f.service.createOne(1)]); await f.service.crearLote();

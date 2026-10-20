@@ -23,6 +23,14 @@ function credentials(body) {
     if (!validUsername(nombreUsuario) || !validEmail(correo)) throw fail(400, 'Escribe un usuario de 3 a 190 caracteres sin espacios y un correo válido, o deja el correo vacío si no tienes uno.');
     return { nombreUsuario, correo };
 }
+function acceptanceCredentials(body) {
+    const data = credentials(body), password = body.contrasena;
+    if (typeof password !== 'string' || password !== body.confirmarContrasena || password.length < 8
+        || Buffer.byteLength(password, 'utf8') > 72 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+        throw fail(400, 'La contraseña y confirmación deben coincidir; usa 8 caracteres, mayúscula, minúscula y número (máximo 72 bytes).');
+    }
+    return data;
+}
 const trialHouse = casa => casa && (/\bprueba\b/i.test((casa.calleCorrecta || '') + ' ' + (casa.calle || '')) || /^TEST(?:-|$)/i.test(String(casa.numero)));
 const trialUser = user => /^AUTO_USERS_PRUEBA:[a-f0-9]{32}$/.test(user?.observaciones || '');
 function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, UsuarioCasa, Invitacion, Reporte,
@@ -239,12 +247,17 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
         numero: casa.numero, casaId: casa.id, viviendas: casas.map(c => ({ id: c.id, calle: c.calleCorrecta || c.calle, numero: c.numero })),
         nombreUsuario: user.nombreUsuario, correo: user.correo || '' });
     async function consultar(token) { return publicData(await context(token)); }
+    async function validar(token, body) {
+        const data = acceptanceCredentials(body);
+        const { user } = await context(token);
+        if (await conflicts(data.nombreUsuario, data.correo, user.id)) throw fail(409, 'El nombre de usuario o correo ya está registrado. Usa otro.');
+        const role = await Rol.findByPk(user.rolId);
+        if (!role?.activo || role.nombre !== 'CONDOMINO') throw fail(409, 'El rol de esta cuenta requiere revisión.');
+        // Read-only preflight: never hash/save passwords, activate links or consume the invitation.
+        return { valido: true };
+    }
     async function aceptar(token, body) {
-        const data = credentials(body), password = body.contrasena;
-        if (typeof password !== 'string' || password !== body.confirmarContrasena || password.length < 8
-            || Buffer.byteLength(password, 'utf8') > 72 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-            throw fail(400, 'La contraseña y confirmación deben coincidir; usa 8 caracteres, mayúscula, minúscula y número.');
-        }
+        const data = acceptanceCredentials(body), password = body.contrasena;
         await context(token); // Refuse invalid links before expensive password hashing; recheck under lock below.
         const contrasenaHash = await hashPassword(password);
         return db.transaction(async transaction => {
@@ -406,6 +419,6 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
             totalReportes: reportsResult.count, paginaReportes: reportPage,
             reportes: reportes.map(r => ({ ...r, usuario: reportUsers.find(u => String(u.id) === String(r.usuarioId)) })) };
     }
-    return { consultarTelefono, enviarPorTelefono, listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, aceptar, reportar, editar, enviarLote, sendOne, listar };
+    return { consultarTelefono, enviarPorTelefono, listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, validar, aceptar, reportar, editar, enviarLote, sendOne, listar };
 }
 module.exports = { crearServicio, credentials, houseNumber, names };
