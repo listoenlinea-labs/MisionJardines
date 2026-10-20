@@ -456,9 +456,9 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
 .finance-receipt-toolbar button:disabled{opacity:.48;cursor:not-allowed}
 .maintenance-receipt-active .houses-scroll table{min-width:1350px}
 .house-receipt-radio{width:18px;height:18px;accent-color:#28754e;cursor:pointer}
-.house-receipt-selected{background:#edf8f0}
-.house-receipt-selected td{border-bottom-color:#c8e8d2}
-.house-receipt-selected td:first-child{box-shadow:inset 3px 0 #4c9a70}
+.house-receipt-selected{background:#fff0e2}
+.house-receipt-selected td{border-bottom-color:#f4d0ad}
+.house-receipt-selected td:first-child{box-shadow:none}
 .finance-receipt-dialog{width:min(800px,100%)}
 .finance-receipt-status{margin:12px 0;padding:10px 13px;border:1px solid #e4e7ef;border-radius:10px;background:#f9f8fb;color:#59647a;font-size:12px;line-height:1.5}
 .finance-receipt-status[data-kind="error"]{border-color:#ecc9b5;background:#fff4ec;color:#985037}
@@ -471,3 +471,23 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
 .finance-receipt-actions button{padding:11px 15px;border-radius:11px}
 .finance-receipt-actions button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:600px){.finance-receipt-toolbar{align-items:stretch}.finance-receipt-toolbar button{width:100%}.finance-receipt-preview{height:50vh;min-height:280px}.finance-receipt-actions button{flex:1 1 180px}}
+
+/* Las cuatro métricas principales son botones accesibles para descargar Excel. */
+button.finance-export-card{display:block;width:100%;font:inherit;text-align:left;cursor:pointer;color:inherit;transition:transform .15s,border-color .15s,box-shadow .15s}
+button.finance-export-card:hover{transform:translateY(-2px);border-color:#d7b89f;box-shadow:0 5px 17px #6e66561a}
+button.finance-export-card:focus-visible{outline:3px solid #efa96e;outline-offset:3px}
+button.finance-export-card:disabled{opacity:.65;cursor:wait}
+button.finance-export-card span{display:block;margin-top:9px;color:#9c6b43;font-size:11px;font-weight:800}
+.finance-receipt-period{display:grid;gap:7px;color:#55476b;font-size:12px;font-weight:800}
+.finance-receipt-period[hidden]{display:none!important}
+.finance-receipt-period select{width:100%;padding:10px 12px;border:1px solid #decfbd;border-radius:10px;background:#fffaf6;color:#314258;font-size:13px}
+.finance-receipt-send select[hidden],.finance-receipt-send label[hidden]{display:none!important}
+.finance-receipt-main-phone{color:#405d4e;font-size:12px}
+.finance-receipt-main-phone[hidden]{display:none!important}
+@media(max-width:700px){
+ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr>td.house-receipt-selection-cell[data-label="Seleccionar"]{display:none!important}
+ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr.house-receipt-selected{background:#fff0df!important;border-color:#e9b987!important;box-shadow:0 0 0 1px #f7d4af}
+ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr.house-receipt-selected>td{background:transparent!important}
+ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr.house-receipt-selected>td:first-child{box-shadow:none!important}
+ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr[data-receipt-row]{cursor:pointer}
+}

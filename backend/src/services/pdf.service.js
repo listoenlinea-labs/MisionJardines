@@ -29,6 +29,8 @@ function formatearFecha(fecha) {
 function resolverRutaLogo() {
     const candidatos = [
         process.env.RECEIPT_LOGO_PATH,
+        // Incluido en el propio despliegue del backend: Hostinger no publica docs/ aquí.
+        path.resolve(__dirname, '../assets/logo-mision-jardines.png'),
         path.resolve(
             __dirname,
             '../../../docs/assets/images/logo-mision-jardines.png'
