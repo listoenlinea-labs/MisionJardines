@@ -2,6 +2,8 @@ const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { VENTANA_DIAS, prepararNoticiasLocales } = require('../services/noticias-locales.service');
+const {randomUUID}=require('node:crypto');
+const {esImagenZmg,descargarHtmlZmg}=require('../services/noticias-imagenes-zmg.service');
 
 const router = express.Router();
 
@@ -16,6 +18,17 @@ const trafficTileRequests = new Map();
 const TRAFFIC_TILE_TTL_MS = 60 * 1000;
 const TRAFFIC_TILE_LIMIT = 200;
 const NEWS_CACHE_LIMIT = 40;
+const newsImageTokens = new Map();
+function imageTokenFor(url) {
+  const u=new URL(url);
+  if(!esImagenZmg(u.href))return null;
+  const token=randomUUID();
+  newsImageTokens.set(token,{url:u.href,at:Date.now()});
+  for(const [key,value] of newsImageTokens){
+    if(Date.now()-value.at>30*60*1000 || newsImageTokens.size>150) newsImageTokens.delete(key);
+  }
+  return token;
+}
 const newsLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 15,
@@ -237,6 +250,26 @@ router.get('/incidencias', autenticarToken, async (req, res) => {
   }
 });
 
+// Ticket aleatorio efímero: las etiquetas IMG no envían Authorization.
+router.get('/noticias/imagen/:token', rateLimit({windowMs:60000,limit:50,standardHeaders:'draft-8',legacyHeaders:false}), async (req,res)=>{
+  const item=newsImageTokens.get(req.params.token);
+  if(!item||Date.now()-item.at>30*60*1000)return res.status(404).end();
+  try {
+    const url=new URL(item.url);
+    if(!esImagenZmg(url.href))return res.status(404).end();
+    const response=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(5500),
+      headers:{'User-Agent':'Mozilla/5.0 (compatible; MisionJardinesNews/1.0)',
+        'Referer':'https://traficozmg.com/','Accept':'image/avif,image/webp,image/png,image/jpeg,image/gif'}});
+    const type=String(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
+    if(!response.ok||!['image/png','image/jpeg','image/webp','image/avif','image/gif'].includes(type)||
+       Number(response.headers.get('content-length')||0)>2000000)return res.status(404).end();
+    const bytes=Buffer.from(await response.arrayBuffer());
+    if(bytes.length>2000000)return res.status(413).end();
+    res.set('Cache-Control','public, max-age=900');
+    res.type(type);
+    return res.send(bytes);
+  }catch(error){return res.status(404).end();}
+});
 router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
   try {
     const rawQuery = req.query?.q;
@@ -280,6 +313,14 @@ router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
     }
     const articles = correctas.flatMap(r => r.value.results || []);
     const data = prepararNoticiasLocales(articles, new Date());
+    // Recuperar exclusivamente la foto publicada en la nota original.
+    await Promise.all(data.filter(n=>n.isTraficoZmg).slice(0,6).map(async n=>{
+      try{
+        const original=await descargarHtmlZmg(n.url);
+        if(original)n.imageUrl=original;
+        if(n.imageUrl)n.imageProxyToken=imageTokenFor(n.imageUrl);
+      }catch(error){ /* La nota sigue visible sin fotografía. */ }
+    }));
 
     const result = {
       ok: true,

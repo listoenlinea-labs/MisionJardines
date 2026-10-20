@@ -6,11 +6,13 @@ const PagoAcceso = require('../models/PagoAccesoC3');
 const AplicacionTag = require('../models/PagoAccesoTagC3');
 const sequelize = require('../config/database');
 const { fechaReal, neto } = require('./pago-acceso-calculo');
-const { BASE } = require('./mensualidades-mantenimiento');
+const {BASE}=require('./mensualidades-mantenimiento');
+const {tarifaParaCasa}=require('./tarifa-mantenimiento.service');
 
 async function bloquearCasa(casaId, transaction) {
     const casa = await Casa.findByPk(casaId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!casa) throw Object.assign(new Error('Vivienda no encontrada'), { status: 404 });
+    return casa;
 }
 function capturarCuota(c) {
     return { id: c.id, casaId: c.casaId, tipoPago: c.tipoPago, estatusPago: c.estatusPago,
@@ -26,7 +28,7 @@ async function actualizar(casaId, usuarioId, transaction, { origen, registro, an
     if (!['CUOTA', 'PAGO'].includes(origen) || !registro?.id)
         throw Object.assign(new Error('Se necesita un pago concreto para incrementar el acceso'), { status: 400 });
     if (Number(registro.casaId) !== Number(casaId)) throw Object.assign(new Error('El pago no pertenece a esta vivienda'), { status: 400 });
-    await bloquearCasa(casaId, transaction);
+    const casa=await bloquearCasa(casaId, transaction);
     const referencia = String(origen === 'PAGO' ? registro.folioOperacion || '' : registro.referencia || '').trim();
     const identity = referencia ? 'BANCO:' + referencia.toLowerCase() : origen + ':' + registro.id;
     const claveMovimiento = casaId + ':' + createHash('sha256').update(identity).digest('hex');
@@ -52,7 +54,7 @@ async function actualizar(casaId, usuarioId, transaction, { origen, registro, an
     if (delta <= 0) return { fuente: 'C3', sincronizacion: 'SIN_INCREMENTO', meses: 0 };
     const ultimo = await PagoAcceso.findOne({ where: { casaId }, order: [['id', 'DESC']], transaction });
     const saldoAntes = Number(ultimo?.saldoDespues || 0);
-    const disponible = saldoAntes + delta, tarifa = BASE * 100;
+    const disponible = saldoAntes + delta, tarifa = tarifaParaCasa(casa) * 100;
     const meses = Math.floor(disponible / tarifa), saldoDespues = disponible % tarifa;
     const tags = meses ? await ZkTarjeta.findAll({ where: { casaId }, order: [['id', 'ASC']], transaction }) : [];
     const estado = !meses ? 'COMPLETADO' : tags.length ? 'PENDIENTE' : 'SIN_TAGS';
@@ -72,10 +74,12 @@ async function actualizar(casaId, usuarioId, transaction, { origen, registro, an
 // fecha en TODOS los TAGs sin sumar los meses a la fecha antigua del dispositivo.
 // No sustituye al procesamiento bancario/automático preexistente.
 async function registrarLoteManual(casaId, usuarioId, transaction, { referencia, origenId, total, recargo, meses }) {
+    const casa=await bloquearCasa(casaId,transaction);
+    const tarifa=tarifaParaCasa(casa);
     if (!/^MJMAN:\d{4}-\d{2}-10:[0-9a-f-]{36}$/i.test(referencia) ||
         !Number.isInteger(meses) || meses < 1 || meses > 36 ||
-        !Number.isFinite(total) || total < 300 * meses ||
-        !Number.isFinite(recargo) || recargo < 0 || Math.abs(total-recargo-300*meses)>0.001 ||
+        !Number.isFinite(total) || total < tarifa * meses ||
+        !Number.isFinite(recargo) || recargo < 0 || Math.abs(total-recargo-tarifa*meses)>0.001 ||
         !origenId) throw Object.assign(new Error('Movimiento manual inválido'), { status: 400 });
     // El controller ya tomó el lock de la vivienda; no crear un segundo lock.
     const claveMovimiento=casaId+':'+createHash('sha256').update('BANCO:'+referencia.toLowerCase()).digest('hex');
@@ -85,7 +89,7 @@ async function registrarLoteManual(casaId, usuarioId, transaction, { referencia,
     const saldoAntes=Number(ultimo?.saldoDespues||0);
     const tags=await ZkTarjeta.findAll({where:{casaId},order:[['id','ASC']],transaction});
     const estado=tags.length?'PENDIENTE':'SIN_TAGS';
-    const principal=300*meses*100;
+    const principal=tarifa*meses*100;
     const evento=await PagoAcceso.create({
       casaId,claveMovimiento,origen:'CUOTA',origenId,referencia,
       montoOrigen:total,recargoOrigen:recargo,principalMovimiento:principal,
@@ -110,14 +114,15 @@ async function estadoCasa(casaId, transaction) {
     return { fuente: 'C3', soloReferencia: true, pendienteConfiguracion: !tags.length,
         fechaFinal: fechas.length === 1 ? fechas[0] : null,
         fechasTags: tags.map(t => ({ numeroTarjeta: t.numeroTarjeta, fechaFinal: t.fechaFin })),
-        tarifaMensual: BASE, saldoParcial: (Number(ultimo?.saldoDespues || 0) / 100).toFixed(2),
+        tarifaMensual: tarifaParaCasa(await Casa.findByPk(casaId,{transaction})), saldoParcial: (Number(ultimo?.saldoDespues || 0) / 100).toFixed(2),
         sincronizacion: pendiente?.estado || ultimo?.estado || 'REFERENCIA_C3',
         errorSincronizacion: pendiente?.error || null, pagoAccesoId: pendiente?.id || ultimo?.id || null };
 }
 // Legacy setup now records a reference only. It never sends a date to the C3.
 async function inicializar(casaId, fechaFinal, tarifa, usuarioId, transaction) {
     fechaReal(fechaFinal);
-    await bloquearCasa(casaId, transaction);
+    const casa=await bloquearCasa(casaId, transaction);
+    tarifa=tarifaParaCasa(casa);
     if (await Vigencia.findByPk(casaId, { transaction })) throw Object.assign(new Error('Ya existe una referencia de vigencia'), { status: 409 });
     return Vigencia.create({ casaId, fechaBase: fechaFinal, fechaFinal, tarifaMensual: tarifa,
         principalInicial: 0, principalConfirmado: 0, saldoParcial: 0, actualizadoPorUsuarioId: usuarioId,
@@ -125,10 +130,10 @@ async function inicializar(casaId, fechaFinal, tarifa, usuarioId, transaction) {
 }
 async function asegurarVigenciaParaAlta(casaId, fechaFinal, usuarioId = null) {
     return sequelize.transaction(async transaction => {
-        await bloquearCasa(casaId, transaction);
+        const casa=await bloquearCasa(casaId, transaction);
         const existente = await Vigencia.findByPk(casaId, { transaction });
         if (existente) return { creada: false, casaId, fechaFinal: existente.fechaFinal };
-        const row = await inicializar(casaId, fechaFinal, BASE, usuarioId, transaction);
+        const row = await inicializar(casaId, fechaFinal, tarifaParaCasa(casa), usuarioId, transaction);
         return { creada: true, casaId, fechaFinal: row.fechaFinal };
     });
 }

@@ -57,7 +57,7 @@
       syncBankReference();
       if (!painted) throw Error('Tu usuario no tiene vivienda asociada');
     }
-    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; $('bankName').textContent = configText(config.banco, 'BANCO AZTECA'); $('bankHolder').textContent = configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'); $('bankAccount').textContent = configText(config.cuenta, '00002128412440'); $('bankClabe').textContent = configText(config.clabe, '127320021284124409'); $('bankCard').textContent = configText(config.tarjeta, '4027666123124884'); $('bankReference').textContent = 'Consultando vivienda…'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = 'El artículo 1028 del Código Civil del Estado de Jalisco dispone el pago anticipado de cuotas y prevé intereses moratorios conforme al reglamento del condominio y los límites legales. Este aviso no establece por sí mismo un recargo fijo de $50.'; syncBankReference(); updatePaymentSummary() }
+    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; const base=Number(config.mantenimiento?.montoBase||300); $('maintenanceRateText').textContent=money(base)+' por mensualidad · '+money(config.mantenimiento?.recargoTardio||50)+' por corte vencido pendiente'; $('maintenancePaymentHint').textContent='Se aceptan abonos y mensualidades adelantadas. Si depositaste '+money(base)+' y correspondían '+money(base+50)+', reporta el importe depositado; una vez validado, podrás cubrir el complemento con otro comprobante. La vigencia avanza al completar la mensualidad y cubrir los recargos pendientes.'; $('bankName').textContent = configText(config.banco, 'BANCO AZTECA'); $('bankHolder').textContent = configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'); $('bankAccount').textContent = configText(config.cuenta, '00002128412440'); $('bankClabe').textContent = configText(config.clabe, '127320021284124409'); $('bankCard').textContent = configText(config.tarjeta, '4027666123124884'); $('bankReference').textContent = 'Consultando vivienda…'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = 'El artículo 1028 del Código Civil del Estado de Jalisco dispone el pago anticipado de cuotas y prevé intereses moratorios conforme al reglamento del condominio y los límites legales. Este aviso no establece por sí mismo un recargo fijo de $50.'; syncBankReference(); updatePaymentSummary() }
     async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
     async function loadReceipts() { try { const d = await api('/pagos/mios', { headers: headers() }); renderReceipts(d.data || []) } catch (e) { $('receiptList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
     async function loadDebts(){
@@ -204,7 +204,7 @@
         $('officialConcept').value=selectedClub?'Casa club '+selectedClub.periodo+' · Renta '+money(selectedClub.renta)+' + depósito '+money(selectedClub.deposito)+' + limpieza '+money(selectedClub.limpieza):'Selecciona una reservación aprobada';return;
       }
       $('lateRow').hidden = false;
-      $('summaryBase').textContent = money(300);
+      $('summaryBase').textContent = money(config?.mantenimiento?.montoBase || 300);
       $('summaryLate').textContent = 'Consultando…';
       $('summaryTotal').textContent = '—';
       $('ruleAmount').textContent = 'Consultando recargos';
@@ -216,6 +216,7 @@
         const result = await api('/pagos/cotizacion?fechaOperacion=' + encodeURIComponent(date), { headers: headers() });
         if (revision !== quoteRevision || paymentType !== 'MANTENIMIENTO') return;
         quote = { ...result.data, minimoReporte: result.data.minimoReporte ?? result.data.minimo, fechaOperacion: date };
+        $('summaryBase').textContent = money(quote.base);
         $('summaryLate').textContent = money(quote.recargo);
         $('lateRow').classList.toggle('late', quote.recargo > 0);
         $('summaryTotal').textContent = money(quote.minimo);
@@ -466,10 +467,10 @@
       if (amount <= 0 || net < 0) {
         $('paymentPreview').textContent = 'Recargos pendientes: ' + money(quote.recargo) + '. Para completar una mensualidad, considerando tu saldo validado, deposita ' + money(quote.minimo) + '.'; return;
       }
-      if (available < 30000) {
-        $('paymentPreview').textContent = 'Abono parcial: ' + money(quote.recargo) + ' de recargos y ' + money(net / 100) + ' para mantenimiento. Al validarlo tendrás ' + money(available / 100) + ' acumulados; faltarán ' + money((30000 - available) / 100) + ' para completar una mensualidad. La vigencia no avanza todavía. Cuando se valide este comprobante, reporta el complemento en Mantenimiento con su propio folio bancario.'; return;
+      if (available < Math.round(quote.base * 100)) {
+        $('paymentPreview').textContent = 'Abono parcial: ' + money(quote.recargo) + ' de recargos y ' + money(net / 100) + ' para mantenimiento. Al validarlo tendrás ' + money(available / 100) + ' acumulados; faltarán ' + money((Math.round(quote.base * 100) - available) / 100) + ' para completar una mensualidad. La vigencia no avanza todavía. Cuando se valide este comprobante, reporta el complemento en Mantenimiento con su propio folio bancario.'; return;
       }
-      const months = Math.floor(available / 30000), balance = (available % 30000) / 100;
+      const months = Math.floor(available / Math.round(quote.base * 100)), balance = (available % Math.round(quote.base * 100)) / 100;
       $('paymentPreview').textContent = 'Estimación: ' + months + ' mensualidad(es), ' + money(quote.recargo) +
         ' de recargos por cortes vencidos y ' + money(balance) + ' de saldo a favor. Fecha consultada en C3: ' + quote.fechaFinalC3 +
         '. La vigencia se actualizará después de la validación bancaria.';

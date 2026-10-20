@@ -19,6 +19,7 @@ const pagosPruebas = require('../config/pagos-pruebas');
 const recargosService = require('../services/recargos-mantenimiento.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
 const BASE_MANTENIMIENTO = 300;
+const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
 
@@ -74,6 +75,8 @@ function pagoSeguro(req, pago) {
 }
 
 async function obtenerConfiguracion(req, res) {
+    const casa=req.usuario?.casaId?await Casa.findByPk(req.usuario.casaId):null;
+    res.setHeader('Cache-Control','private, no-store');
     return res.json({
         ok: true,
         data: {
@@ -85,7 +88,7 @@ async function obtenerConfiguracion(req, res) {
             tarjeta: datoTransferencia(process.env.PAGOS_TARJETA, '4027666123124884'),
             referencia: process.env.PAGOS_REFERENCIA || 'NOMBRE DE CALLE Y NUMERO DE CASA',
             mantenimiento: {
-                montoBase: BASE_MANTENIMIENTO,
+                montoBase: casa?tarifaParaCasa(casa):BASE_MANTENIMIENTO,
                 diaLimite: DIA_LIMITE,
                 recargoTardio: RECARGO_TARDIO
             },

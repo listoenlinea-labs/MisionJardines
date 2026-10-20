@@ -26,6 +26,13 @@ const Casa = sequelize.define(
             allowNull: false
         },
 
+        cuotaPorCobrar: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: false,
+            defaultValue: 300,
+            field: 'cuota_por_cobrar'
+        },
+
         nombre: {
             type: DataTypes.STRING(150),
             allowNull: true

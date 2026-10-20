@@ -488,3 +488,21 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
  body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr.house-receipt-selected>td{background:transparent!important}
  body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr.house-receipt-selected>td:first-child{box-shadow:none!important}
 }
+
+/* El editor de tarifa se muestra al lado del historial sin sustituirlo. */
+.history-dialog-layout{width:min(1200px,100%);max-height:calc(100vh - 32px);display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.history-dialog-layout:has(.history-tariff-panel:not([hidden])){grid-template-columns:minmax(0,740px) minmax(275px,360px)}
+.history-dialog-layout>.finance-pay-dialog{width:100%;max-height:calc(100vh - 32px)}
+.history-heading-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.history-tariff-panel[hidden]{display:none!important}
+.history-tariff-panel{border-color:#eedecf;background:#fffdfb}
+.history-tariff-panel form{display:grid;gap:14px;margin-top:16px}
+.history-tariff-label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#52647e}
+.history-tariff-label input{width:100%;border:1px solid #dce3ee;border-radius:12px;padding:11px 12px;font-size:18px;font-weight:700}
+.history-tariff-panel form>.primary{width:100%}
+@media(max-width:850px){
+ .history-dialog-layout,.history-dialog-layout:has(.history-tariff-panel:not([hidden])){grid-template-columns:1fr;max-height:calc(100dvh - 20px);overflow-y:auto}
+ .history-dialog-layout>.finance-pay-dialog{max-height:none;overflow:visible}
+ .history-dialog-layout{gap:10px}
+ .history-heading-actions{justify-content:flex-start}
+}

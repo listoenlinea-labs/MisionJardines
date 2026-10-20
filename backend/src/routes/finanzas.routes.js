@@ -6,6 +6,7 @@ const pagosManuales=require('../controllers/pagos-manuales-analisis.controller')
 const recibosMantenimiento=require('../controllers/recibos-mantenimiento-analisis.controller');
 router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
 router.get('/analisis',controller.analizar);
+router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorCobrar);
 router.post('/egresos',controller.registrarEgreso);
 router.post('/egresos/:id/activar-cuota',controller.activarCuotaExistente);
 router.post('/pagos-vivienda',pagosManuales.registrarPagoVivienda);

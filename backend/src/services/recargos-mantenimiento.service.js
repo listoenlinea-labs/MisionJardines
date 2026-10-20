@@ -6,10 +6,13 @@ const Eventos = require('../models/PagoAccesoC3');
 const Recargos = require('../models/RecargoMantenimiento');
 const direct = require('./zkteco-direct.service');
 const pricing = require('./mensualidades-mantenimiento');
+const {tarifaParaCasa}=require('./tarifa-mantenimiento.service');
 const error = (message, status = 409) => Object.assign(new Error(message), { status });
 async function contexto(casaId, fechaOperacion, transaction) {
   pricing.validarOperacion(fechaOperacion);
-  if (!await Casa.findByPk(casaId, { transaction, lock: transaction.LOCK.UPDATE })) throw error('Vivienda inexistente',404);
+  const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
+  if(!casa)throw error('Vivienda inexistente',404);
+  const tarifa=tarifaParaCasa(casa);
   if (await Pago.findOne({ where: { casaId, tipoPago: 'MANTENIMIENTO', estatus: 'PENDIENTE_VALIDACION' }, transaction }))
     throw error('Hay un comprobante de mantenimiento pendiente; espera su revisión antes de reportar otro');
   if (await Eventos.findOne({ where: { casaId, estado: { [Op.notIn]: ['COMPLETADO', 'SIN_TAGS'] } }, transaction }))
@@ -27,10 +30,10 @@ async function contexto(casaId, fechaOperacion, transaction) {
   const cortesPagados = rows.map(r => r.corte);
   const cortes = pricing.cortesVencidos(fechaFinal,fechaOperacion).filter(c => !cortesPagados.includes(c));
   const saldoParcial = Number(ultimo?.saldoDespues || 0) / 100;
-  return { fechaFinal, cortesPagados, saldoParcial, cortesRecargo: cortes,
+  return { fechaFinal, cortesPagados, saldoParcial, tarifa, base:tarifa, cortesRecargo: cortes,
     recargo: cortes.length * pricing.RECARGO, fechaFinalC3: fechaFinal,
     minimoReporte: Math.max(0.01, cortes.length * pricing.RECARGO),
-    minimo: Math.max(0, pricing.BASE - saldoParcial) + cortes.length * pricing.RECARGO };
+    minimo: Math.max(0, tarifa - saldoParcial) + cortes.length * pricing.RECARGO };
 }
 async function cotizar(casaId,fecha,monto,transaction) {
   return pricing.cotizar(fecha,monto,await contexto(casaId,fecha,transaction));
