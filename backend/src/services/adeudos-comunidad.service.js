@@ -5,13 +5,17 @@ const Reserva = require('../models/ReservaCasaClub');
 const { calcularAdeudoVivienda } = require('./adeudo-vivienda-analisis.service');
 const { estadoCargos } = require('./cargos-extraordinarios.service');
 const { fechaMexico } = require('./vigencia-calculo');
+const {Casa}=require('../models');
+const {tarifaParaCasa}=require('./tarifa-mantenimiento.service');
 
 // C3 solamente consulta este resumen. No depende de proyectos, reservas ni
 // saldos de casa club; ninguna de esas deudas debe alterar los TAGs.
 async function consultarSoloMantenimiento(casaId) {
   const hoy = fechaMexico();
+  const casa=await Casa.findByPk(casaId);
+  if(!casa)throw Object.assign(new Error('Vivienda no encontrada'),{status:404});
   const cuotas = await Cuota.findAll({where:{casaId},attributes:['anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']});
-  const mantenimiento = calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy});
+  const mantenimiento = calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa)});
   return {casaId,fechaConsulta:hoy,tipos:{MANTENIMIENTO:mantenimiento.detalles},
     totales:{MANTENIMIENTO:mantenimiento.saldoPendiente},total:mantenimiento.saldoPendiente};
 }

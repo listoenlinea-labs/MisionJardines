@@ -1,7 +1,7 @@
 (function (root) {
  'use strict';
 
- const dinero=v=>Math.round(Number(v||0)*100)/100;
+ const dinero=v=>Math.round(Number(v||0));
  const fecha=v=>v?String(v).slice(0,10):'';
  const texto=v=>{
   const value=String(v??'');
@@ -13,10 +13,10 @@
   dinero(h.montoPagado),dinero(h.ultimoPago?.monto),mesUltimo(h),
   dinero(h.saldoPendiente),h.ultimoPago?.fecha?fecha(h.ultimoPago.fecha):'',
   texto(h.ultimoPago?.referencia),Array.isArray(h.mesesPendientes)?h.mesesPendientes.length:Number(h.mesesPendientes||0),
-  dinero(h.recargosPendientes),Number(h.tags?.detalle?.length||0)];
+  dinero(h.recargosPendientes),Number(h.tags?.detalle?.length||0),dinero(h.tarifaMensual||300)];
  const headersVivienda=['ID vivienda','Calle','Número','Residente','Estado del mes','Pagado en el mes (MXN)',
   'Último movimiento (MXN)','Último mes pagado','Saldo pendiente (MXN)',
-  'Fecha último movimiento','Referencia','Meses pendientes','Recargos pendientes (MXN)','TAGs'];
+  'Fecha último movimiento','Referencia','Meses pendientes','Recargos pendientes (MXN)','TAGs','Cuota mensual por cobrar (MXN)'];
 
  function prepararReporte(data,tipo){
   const todas=Array.isArray(data.viviendasMantenimiento)?data.viviendasMantenimiento:data.viviendas||[];

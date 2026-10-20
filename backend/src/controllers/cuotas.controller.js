@@ -23,6 +23,7 @@ const {
 } = require('../services/email.service');
 
 const vigenciaService = require('../services/vigencia-mantenimiento.service');
+const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
 
 const MESES = [
@@ -253,14 +254,14 @@ async function crearCuota(req, res) {
                 condomino => condomino.correo
             ) || casa.condominos?.[0];
 
+        const importeCuota=tarifaParaCasa(casa);
         const cuota = await Cuota.create({
             casaId,
             anio: Number(anio),
             mes: mesNormalizado,
-            montoCuota: Number(montoCuota || 0),
+            montoCuota: importeCuota,
             montoPagado: 0,
-            saldoPendiente:
-                Number(montoCuota || 0),
+            saldoPendiente: importeCuota,
             estatusPago: 'PENDIENTE',
             nombrePagador: null,
             numeroCasaSnapshot:

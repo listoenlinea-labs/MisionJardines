@@ -25,7 +25,10 @@ const centavos = valor => {
  * sumarlo de nuevo. Los abonos se descuentan del total de cada período.
  * 'PAGADO' con importe confirmado, 'CONDONADO' y 'CANCELADO' no se cobran.
  */
-function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico() }) {
+function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa = BASE }) {
+  if (!Number.isInteger(tarifa) || tarifa < 1 || tarifa > 10000) throw new Error('Tarifa mensual inválida');
+  const tarifaCentavos = tarifa * 100;
+  const tarifaPersonalizada = tarifa !== BASE;
   const fin = indice(anio, mes);
   const finCalendario = new Date(Date.UTC(Number(anio), Number(mes), 0))
     .toISOString().slice(0, 10);
@@ -52,14 +55,18 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico() }) {
         estado === 'CONDONADO' || estado === 'CANCELADO') continue;
     const vencimiento = String(yy) + '-' + String(mm).padStart(2, '0') + '-10';
     const multa = corte > vencimiento ? RECARGO * 100 : 0;
-    const total = Math.max(BASE * 100, centavos(cuota?.montoCuota),
-      BASE * 100 + centavos(cuota?.recargo), BASE * 100 + multa);
-    // No perder un saldo histórico explícito mayor que el importe teórico.
-    const faltante = Math.max(0, total - pagado, centavos(cuota?.saldoPendiente));
+    // Una tarifa personalizada no debe quedar anulada por importes históricos
+    // generados con la tarifa general. Los pagos acreditados se respetan.
+    const total = tarifaPersonalizada
+      ? tarifaCentavos + Math.max(multa, centavos(cuota?.recargo))
+      : Math.max(tarifaCentavos, centavos(cuota?.montoCuota),
+        tarifaCentavos + centavos(cuota?.recargo), tarifaCentavos + multa);
+    const faltante = tarifaPersonalizada ? Math.max(0,total-pagado)
+      : Math.max(0,total-pagado,centavos(cuota?.saldoPendiente));
     if (!faltante) continue;
     pendiente += faltante;
     mesesPendientes++;
-    const sinMulta = Math.max(0, BASE * 100 - pagado);
+    const sinMulta = Math.max(0, tarifaCentavos - pagado);
     recargos += multa ? Math.min(multa, Math.max(0, faltante - sinMulta)) : 0;
     detalles.push({categoria:'MANTENIMIENTO',periodo:`${yy}-${String(mm).padStart(2,'0')}`,
       monto:faltante/100,recargo:(multa ? Math.min(multa,Math.max(0,faltante-sinMulta)) : 0)/100,

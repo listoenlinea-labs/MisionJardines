@@ -13,6 +13,7 @@ const {clasificarCuotaParaPago}=require('../services/cuota-pendiente-historica.s
 const {calcularAdeudoVivienda}=require('../services/adeudo-vivienda-analisis.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
 const {fechaMexico}=require('../services/vigencia-calculo');
+const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 
 function evaluarPeriodos(plan,cuotas){
@@ -60,6 +61,7 @@ function resumirCotizacion(plan, evaluadas){
       {mes:plan.ultimoMesPagado.nombre,anio:plan.ultimoMesPagado.anio,fechaPago:plan.ultimoMesPagado.fechaPago}:null,
     desde:plan.desde,hasta:plan.hasta,meses:plan.meses,
     montoSugerido:plan.montoSugerido,total:plan.total,recargo:plan.recargo,
+    tarifaMensual:plan.tarifaMensual,montoMinimo:plan.montoMinimo,montoMaximo:plan.montoMaximo,
     fechaFinObjetivo:plan.fechaFinObjetivo,
     periodos:evaluadas.map(({periodo,revision})=>({
       anio:periodo.anio,mes:periodo.mes,
@@ -75,10 +77,10 @@ async function cotizarPagoVivienda(req,res){
   try{
     const casaId=Number(req.params.casaId);
     if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
-    const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero']});
+    const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','cuotaPorCobrar']});
     if(!casa)throw fail(404,'Vivienda no encontrada');
     const cuotas=await Cuota.findAll({where:{casaId}});
-    const plan=prepararDesdeHistorial({cuotas,anio:req.query.anio,mes:req.query.mes});
+    const plan=prepararDesdeHistorial({cuotas,anio:req.query.anio,mes:req.query.mes,tarifa:tarifaParaCasa(casa)});
     const evaluadas=evaluarPeriodos(plan,cuotas);
     await comprobarReferenciasVinculadas(casaId,evaluadas);
     res.setHeader('Cache-Control','no-store');
@@ -107,7 +109,7 @@ async function registrarPagoVivienda(req,res){
       if(!casa)throw fail(404,'La vivienda no existe');
       const existentes=await Cuota.findAll({where:{casaId},transaction,lock:transaction.LOCK.UPDATE});
       const plan=prepararDesdeHistorial({cuotas:existentes,anio:req.body?.anio,mes:req.body?.mes,
-        montoTotal:req.body?.montoTotal});
+        montoTotal:req.body?.montoTotal,tarifa:tarifaParaCasa(casa)});
       if(mesesEsperados!==plan.meses)
         throw fail(409,'El historial de pagos cambió. Actualiza la cotización antes de confirmar.');
       const evaluadas=evaluarPeriodos(plan,existentes);
@@ -187,7 +189,7 @@ async function historialPagoVivienda(req,res){
   const tipo=String(req.query.concepto||'MANTENIMIENTO').toUpperCase();
   if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
   if(!['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(tipo))throw fail(400,'Concepto inválido');
-  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','nombre']});
+  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','nombre','cuotaPorCobrar']});
   if(!casa)throw fail(404,'Vivienda no encontrada');
   let movimientos=[],deudas=[];
   if(tipo==='MANTENIMIENTO'){
@@ -197,7 +199,7 @@ async function historialPagoVivienda(req,res){
    ]);
    movimientos=historialMantenimiento(cuotas,comprobantes);
    const hoy=fechaMexico();
-   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy}).detalles;
+   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa)}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
     PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion']}),

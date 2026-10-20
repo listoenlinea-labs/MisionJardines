@@ -2,6 +2,7 @@ const {Op,QueryTypes}=require('sequelize');
 const sequelize=require('../config/database');
 const { compararDirecciones }=require('../services/direccion-sort.service');
 const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
+const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const { calcularAdeudoVivienda }=require('../services/adeudo-vivienda-analisis.service');
 const {tagsParaViviendas}=require('../services/analisis-tags.service');
 const {Casa,Cuota,PagoReportado,ZkTarjeta,CuotaExtraordinaria,CargoExtraordinario,PagoManualConcepto}=require('../models');
@@ -26,7 +27,7 @@ async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
   const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento]=await Promise.all([
-   Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles']}),
+   Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
@@ -64,7 +65,7 @@ async function analizar(req,res){
   const streets=new Map();
   const residences=padron.casas.map(h=>{
    const q=byHouse.get(String(h.id));
-   const adeudo=calcularAdeudoVivienda(historiales.get(String(h.id))||[],{anio,mes});
+   const adeudo=calcularAdeudoVivienda(historiales.get(String(h.id))||[],{anio,mes,tarifa:tarifaParaCasa(h)});
    const status=q?.estatusPago||'PENDIENTE';
    const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0);
    // Pago parcial cuenta como vivienda con algún pago, pero se conserva su estatus.
@@ -74,7 +75,7 @@ async function analizar(req,res){
    st.total++;if(pagada)st.pagadas++;else st.pendientes++;
    st.abonos+=num(q?.montoPagado);
    const ultimoPago=historialMantenimiento(historiales.get(String(h.id))||[],bancosMantenimiento.get(String(h.id))||[])[0]||null;
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
     tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
@@ -173,4 +174,24 @@ async function activarCuotaExistente(req,res){
   return res.status(201).json({ok:true,id:saved.id,message:'Mensualidades generadas para el egreso histórico'});
  }catch(e){return sendErr(res,e);}
 }
-module.exports={analizar,registrarEgreso,activarCuotaExistente};
+// Actualiza exclusivamente la tarifa futura por vivienda. No altera cobros ni TAGs.
+async function modificarCuotaPorCobrar(req,res){
+ try{
+  const casaId=Number(req.params.casaId);
+  const cuota=Number(req.body?.cuotaPorCobrar);
+  if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
+  if(!Number.isInteger(cuota)||cuota<1||cuota>10000)
+    throw fail(400,'La cuota mensual debe ser un importe entero de $1 a $10,000');
+  const resultado=await sequelize.transaction(async transaction=>{
+   const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!casa)throw fail(404,'Vivienda inexistente');
+   const anterior=tarifaParaCasa(casa);
+   if(anterior!==cuota)await casa.update({cuotaPorCobrar:cuota},{transaction});
+   return {casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,
+    cuotaPorCobrar:cuota,anterior};
+  });
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
+ }catch(error){return sendErr(res,error);}
+}
+module.exports={analizar,registrarEgreso,activarCuotaExistente,modificarCuotaPorCobrar};

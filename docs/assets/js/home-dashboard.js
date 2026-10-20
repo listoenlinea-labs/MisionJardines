@@ -11,7 +11,7 @@
   let environmentLeafletMap = null;
   let removeFinanceMediaListener = () => {};
 
-  const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+  const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const integer = new Intl.NumberFormat('es-MX');
   const shortDate = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short' });
 
@@ -356,7 +356,7 @@
 
   function compactMoney(value) {
     const number = Number(value) || 0;
-    if (Math.abs(number) >= 1000000) return `$${(number / 1000000).toFixed(1)}M`;
+    if (Math.abs(number) >= 1000000) return `$${Math.round(number / 1000000)}M`;
     if (Math.abs(number) >= 1000) return `$${Math.round(number / 1000)}k`;
     return `$${Math.round(number)}`;
   }
@@ -680,7 +680,9 @@
       const items = Array.isArray(result.data) ? result.data : [];
       grid.innerHTML = items.length
         ? items.slice(0, 12).map(item => {
-            const photo = safeNewsPhotoUrl(item.imageUrl);
+            const proxy=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(item.imageProxyToken||''))
+              ? API_URL+'/entorno/noticias/imagen/'+item.imageProxyToken : '';
+            const photo = proxy || safeNewsPhotoUrl(item.imageUrl);
             return `
             <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''}${photo ? ' has-image' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
               <small>${item.nearbyStreet ? '📍 ' + escapeHtml(item.nearbyStreet) + ' · ' : escapeHtml(item.category || 'Noticias') + ' · '}${escapeHtml(item.domain || 'Medio local')}</small>
@@ -1150,7 +1152,7 @@
     alert.id='mjHouseDebtAlert';alert.href='pagos.html?tab='+
       (data.tipos?.MANTENIMIENTO?.length?'MANTENIMIENTO':data.tipos?.EXTRAORDINARIO?.length?'EXTRAORDINARIO':'CASA_CLUB');
     alert.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;margin:12px 0 18px;border:1px solid #f3cfac;border-radius:14px;background:#fff5eb;color:#854412;text-decoration:none;box-shadow:0 6px 18px #bd784b12';
-    const message=document.createElement('span');message.textContent='Tienes '+data.cantidad+' pago(s) pendiente(s) de tu vivienda · $'+Number(data.total).toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN';
+    const message=document.createElement('span');message.textContent='Tienes '+data.cantidad+' pago(s) pendiente(s) de tu vivienda · $'+Number(data.total).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+' MXN';
     const action=document.createElement('strong');action.textContent='Ver adeudos ›';alert.append(message,action);
     container.querySelector('.hl-welcome')?.after(alert);
   }

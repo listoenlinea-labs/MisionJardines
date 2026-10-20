@@ -3,7 +3,7 @@
  const $=id=>document.getElementById(id);
  const API=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
  const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
- const fmt=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+ const fmt=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  const shortMonths=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
  const displayDate=value=>{
@@ -47,8 +47,8 @@
  let selectedReceiptHouseId=null;
  const HOUSE_PAGE_SIZE=12;
  const notice=(msg,kind='error')=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;el.dataset.kind=kind;};
- async function request(path,body){
-  const response=await fetch(API+'/finanzas'+path,{method:body?'POST':'GET',
+ async function request(path,body,method=body?'POST':'GET'){
+  const response=await fetch(API+'/finanzas'+path,{method,
    headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
    ...(body?{body:JSON.stringify(body)}:{})});
   const json=await response.json().catch(()=>({}));
@@ -390,6 +390,8 @@ function renderHouses(){
  const historyModal=$('houseHistoryModal');
  let historySequence=0;
  let historyReturnFocus=null;
+ let currentHistoryHouseId=null;
+ const tariffPanel=$('houseTariffPanel');
  function conceptTitle(type){return {MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuotas extraordinarias',CASA_CLUB:'Casa club'}[type]||type;}
  function debtPeriod(value){
   const match=/^(\d{4})-(\d{2})/.exec(String(value||''));
@@ -397,6 +399,8 @@ function renderHouses(){
    monthsES[Number(match[2])-1]+' '+match[1]:(value||'Sin período');
  }
  function closeHouseHistory(){
+  tariffPanel.hidden=true;
+  currentHistoryHouseId=null;
   ++historySequence;
   historyModal.hidden=true;
   historyReturnFocus?.focus();
@@ -407,6 +411,9 @@ function renderHouses(){
   if(!house)return;
   const seq=++historySequence;
   historyReturnFocus=trigger||null;
+  currentHistoryHouseId=Number(casaId);
+  tariffPanel.hidden=true;
+  $('houseTariffOpen').hidden=activeConcept!=='MANTENIMIENTO';
   historyModal.hidden=false;
   $('houseHistoryTitle').textContent='Historial de '+conceptTitle(activeConcept).toLowerCase();
   $('houseHistoryAddress').textContent=house.calle+' '+house.numero+' · '+(house.nombre||'Sin residente');
@@ -439,8 +446,48 @@ function renderHouses(){
   }
  }
  $('houseHistoryClose').addEventListener('click',closeHouseHistory);
+ $('houseTariffOpen').addEventListener('click',()=>{
+  if(!currentHistoryHouseId||activeConcept!=='MANTENIMIENTO')return;
+  const h=data?.viviendas?.find(x=>Number(x.casaId)===currentHistoryHouseId);
+  if(!h)return;
+  $('houseTariffAddress').textContent=h.calle+' '+h.numero;
+  $('houseTariffInput').value=String(h.tarifaMensual||300);
+  $('houseTariffStatus').textContent='';
+  tariffPanel.hidden=false;
+  $('houseTariffInput').focus();
+ });
+ $('houseTariffClose').addEventListener('click',()=>{
+  tariffPanel.hidden=true;
+  $('houseTariffOpen').focus();
+ });
+ $('houseTariffForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const casaId=currentHistoryHouseId;
+  const cuota=Number($('houseTariffInput').value);
+  if(!casaId||!Number.isInteger(cuota)||cuota<1||cuota>10000){
+   $('houseTariffStatus').textContent='Ingresa una cuota mensual entera de $1 a $10,000.';
+   return;
+  }
+  const boton=$('houseTariffSave');
+  boton.disabled=true;
+  $('houseTariffStatus').textContent='Guardando cuota de la vivienda…';
+  try{
+   await request('/viviendas/'+casaId+'/cuota-por-cobrar',{cuotaPorCobrar:cuota},'PATCH');
+   await load();
+   if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
+   const foco=historyReturnFocus;
+   await openHouseHistory(casaId,foco);
+   tariffPanel.hidden=false;
+   const casaActual=data.viviendas.find(h=>Number(h.casaId)===casaId);
+   $('houseTariffAddress').textContent=(casaActual?.calle||'')+' '+(casaActual?.numero||'');
+   $('houseTariffInput').value=String(cuota);
+   $('houseTariffStatus').textContent='Tarifa de '+fmt(cuota)+' guardada. Se actualizó el adeudo sin borrar pagos.';
+   $('houseTariffInput').focus();
+  }catch(error){$('houseTariffStatus').textContent=error.message;}
+  finally{boton.disabled=false;}
+ });
  historyModal.addEventListener('click',e=>{if(e.target===historyModal)closeHouseHistory();});
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!historyModal.hidden)closeHouseHistory();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!historyModal.hidden){if(!tariffPanel.hidden){tariffPanel.hidden=true;$('houseTariffOpen').focus();}else closeHouseHistory();}});
  const receiptModal=$('houseReceiptModal');
  let receiptObjectUrl=null;
  let receiptBlob=null;
@@ -636,14 +683,14 @@ function renderHouses(){
    if(!currentPaymentQuote){output.textContent='Consultando el historial de cuotas…';return;}
    const q=currentPaymentQuote;
    const total=Number($('housePaymentAmount').value);
-   const valid=Number.isFinite(total)&&Math.round(total*100)>=q.meses*30000 &&
-     Math.round(total*100)<=q.meses*35000;
+   const valid=Number.isFinite(total)&&Math.round(total*100)>=Math.round(q.montoMinimo*100) &&
+     Math.round(total*100)<=Math.round(q.montoMaximo*100);
    const names=q.periodos.map(p=>p.mes+' '+p.anio);
    const errors=q.periodos.filter(p=>!p.registrable).map(p=>p.mes+' '+p.anio+': '+p.motivo);
    output.textContent='Mensualidades: '+names.join(', ')+'. Total sugerido: '+fmt(q.montoSugerido)+
      '. Importe recibido: '+(Number.isFinite(total)?fmt(total):'inválido')+
      '. Fecha final solicitada para todos los TAGs: '+q.fechaFinObjetivo+'.'+
-     (!valid?' El monto para '+q.meses+' meses debe estar entre '+fmt(q.meses*300)+' y '+fmt(q.meses*350)+'.':'')+
+     (!valid?' El monto para '+q.meses+' meses debe estar entre '+fmt(q.montoMinimo)+' y '+fmt(q.montoMaximo)+'.':'')+
      (errors.length?' BLOQUEADO: '+errors.join(' | '):'');
    submit.disabled=!valid||q.bloqueado||(q.requiereRevision&&!$('housePaymentReview').checked);
  }
@@ -669,6 +716,7 @@ function renderHouses(){
      if(seq!==quoteSequence||!activePaymentHouse)return;
      const q=response.data;
      currentPaymentQuote=q;
+     $('housePaymentNotice').textContent='Se calcula desde el último mes completamente pagado hasta el mes seleccionado. Tarifa de esta vivienda: '+fmt(q.tarifaMensual)+' por mes. Se puede agregar hasta '+fmt(50)+' de recargo por mes. Los pagos parciales, comprobantes y cobros previos requieren conciliación; los TAGs se verifican por separado.';
      $('houseLastPayment').textContent='Último mes completamente pagado: '+
        (q.ultimoMesPagado?q.ultimoMesPagado.mes+' '+q.ultimoMesPagado.anio:
          'sin pago anterior confirmado en el historial')+
