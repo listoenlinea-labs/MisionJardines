@@ -682,12 +682,16 @@
         ? items.slice(0, 12).map(item => {
             const proxy=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(item.imageProxyToken||''))
               ? API_URL+'/entorno/noticias/imagen/'+item.imageProxyToken : '';
-            const photo = proxy || safeNewsPhotoUrl(item.imageUrl);
+            // El origen público suele entregar la miniatura sin pasar por Hostinger.
+            // Si bloquea la carga directa, probar el proxy de ESA MISMA imagen.
+            const direct = safeNewsPhotoUrl(item.imageUrl);
+            const photo = direct || proxy;
+            const fallback = direct && proxy && direct !== proxy ? proxy : '';
             return `
             <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''}${photo ? ' has-image' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
               <small>${item.nearbyStreet ? '📍 ' + escapeHtml(item.nearbyStreet) + ' · ' : escapeHtml(item.category || 'Noticias') + ' · '}${escapeHtml(item.domain || 'Medio local')}</small>
               <div class="hl-news-main">
-                ${photo ? `<img class="hl-news-photo" src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async" width="96" height="72">` : ''}
+                ${photo ? `<img class="hl-news-photo" src="${escapeHtml(photo)}" data-news-fallback="${escapeHtml(fallback)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="96" height="72">` : ''}
                 <h3 class="hl-news-title">${escapeHtml(item.title || 'Noticia local')}</h3>
               </div>
               <span class="hl-news-meta">${escapeHtml(item.dateLabel || 'Detectada')} ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
@@ -700,10 +704,16 @@
       // sin imágenes de relleno, sin romper el alto fijo de las tarjetas.
       grid.querySelectorAll('.hl-news-photo').forEach(image => {
         const hideUnavailablePhoto = () => {
+          const fallback = image.dataset.newsFallback;
+          if (fallback) {
+            delete image.dataset.newsFallback;
+            image.src = fallback;
+            return;
+          }
           image.closest('.hl-news-item')?.classList.remove('has-image');
           image.remove();
         };
-        image.addEventListener('error', hideUnavailablePhoto, { once: true });
+        image.addEventListener('error', hideUnavailablePhoto);
         if (image.complete && image.naturalWidth === 0) hideUnavailablePhoto();
       });
     } catch (error) {

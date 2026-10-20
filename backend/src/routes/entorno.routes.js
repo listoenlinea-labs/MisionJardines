@@ -3,7 +3,7 @@ const { rateLimit } = require('express-rate-limit');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { VENTANA_DIAS, prepararNoticiasLocales } = require('../services/noticias-locales.service');
 const {randomUUID}=require('node:crypto');
-const {esImagenZmg,descargarHtmlZmg}=require('../services/noticias-imagenes-zmg.service');
+const {esImagenZmg,descargarHtmlZmg,descargarImagenWordPressZmg}=require('../services/noticias-imagenes-zmg.service');
 
 const router = express.Router();
 
@@ -313,10 +313,12 @@ router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
     }
     const articles = correctas.flatMap(r => r.value.results || []);
     const data = prepararNoticiasLocales(articles, new Date());
-    // Recuperar exclusivamente la foto publicada en la nota original.
+    // Preferir la miniatura oficial asociada al artículo mediante WordPress.
+    // Si su API no responde, intentar el og:image de esa MISMA nota.
     await Promise.all(data.filter(n=>n.isTraficoZmg).slice(0,6).map(async n=>{
       try{
-        const original=await descargarHtmlZmg(n.url);
+        const oficial=await descargarImagenWordPressZmg(n.url,{timeoutMs:3000}).catch(()=>null);
+        const original=oficial || await descargarHtmlZmg(n.url,{timeoutMs:2000}).catch(()=>null);
         if(original)n.imageUrl=original;
         if(n.imageUrl)n.imageProxyToken=imageTokenFor(n.imageUrl);
       }catch(error){ /* La nota sigue visible sin fotografía. */ }

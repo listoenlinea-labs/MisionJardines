@@ -55,9 +55,13 @@ test('Noticias solo inserta la foto real asociada al artículo, sin rellenos y c
   const start = js.indexOf('async function loadLocalNews(');
   const view = js.slice(start, js.indexOf('async function initEnvironmentCard()', start));
   assert.match(view, /safeNewsPhotoUrl\(item\.imageUrl\)/);
-  assert.match(view, /photo \? '[ ]has-image' : ''/);
+  assert.match(view, /photo \? ' has-image' : ''/);
   assert.match(view, /photo \? `<img class="hl-news-photo"/);
   assert.match(view, /loading="lazy" decoding="async"/);
+  assert.match(view, /const photo = direct \|\| proxy;/);
+  assert.match(view, /data-news-fallback/);
+  assert.match(view, /image\.src = fallback/);
+  assert.match(view, /referrerpolicy="no-referrer"/);
   assert.match(view, /image\.addEventListener\('error'/);
   assert.match(view, /image\.remove\(\)/);
   assert.doesNotMatch(view, /unsplash|placeholder|picsum|source\.unsplash/i);

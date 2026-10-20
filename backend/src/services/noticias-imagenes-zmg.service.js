@@ -8,7 +8,7 @@ function esImagenZmg(value) {
   try{
     const u=new URL(value);
     return u.protocol==='https:'&&!u.username&&!u.password&&
-      (esDominioZmg(u.hostname) ||
+      ((esDominioZmg(u.hostname)&&u.pathname.startsWith('/wp-content/uploads/')) ||
        (/^i[0-3]\.wp\.com$/i.test(u.hostname)&&
         decodeURIComponent(u.pathname).startsWith('/traficozmg.com/wp-content/uploads/')));
   }catch{return false;}
@@ -19,6 +19,7 @@ function esArticuloZmg(value) {
 }
 function normalizarImagen(value,articuloUrl) {
   try {
+    if (typeof value !== 'string' || !value.trim()) return null;
     const u=new URL(String(value||'').trim().replaceAll('&amp;','&'),articuloUrl);
     return u.protocol==='https:'&&!u.username&&!u.password&&u.href.length<=2048?u.href:null;
   }catch{return null;}
@@ -34,6 +35,52 @@ function imagenDesdeMetadatos(html,articuloUrl) {
     if(image)return image;
   }
   return null;
+}
+function slugArticuloZmg(articuloUrl) {
+  if (!esArticuloZmg(articuloUrl)) return null;
+  try {
+    const ruta = new URL(articuloUrl).pathname.split('/').filter(Boolean);
+    const slug = ruta.at(-1) || '';
+    return /^[a-z0-9][a-z0-9-]{2,180}$/.test(slug) ? slug : null;
+  } catch { return null; }
+}
+
+// WordPress publica la imagen destacada de la nota y sus tamaños reducidos.
+// Comprobar slug Y enlace evita adjudicar una foto de otra noticia.
+function imagenDesdeWordPress(posts, articuloUrl) {
+  const slug = slugArticuloZmg(articuloUrl);
+  if (!slug || !Array.isArray(posts)) return null;
+  const ruta = new URL(articuloUrl).pathname.replace(/\/+$/, '');
+  const post = posts.find(item => {
+    try {
+      return item?.slug === slug && esArticuloZmg(item.link) &&
+        new URL(item.link).pathname.replace(/\/+$/, '') === ruta;
+    } catch { return false; }
+  });
+  if (!post || !Number.isSafeInteger(Number(post.featured_media)) || Number(post.featured_media) <= 0) return null;
+  const media = post._embedded?.['wp:featuredmedia']?.find(item =>
+    Number(item.id) === Number(post.featured_media));
+  if (!media) return null;
+  const sizes = media.media_details?.sizes || {};
+  return [sizes.medium?.source_url, sizes.thumbnail?.source_url, media.source_url]
+    .map(url => normalizarImagen(url, articuloUrl))
+    .find(url => url && esImagenZmg(url)) || null;
+}
+
+async function descargarImagenWordPressZmg(articuloUrl,{fetchImpl=fetch,timeoutMs=3500}={}) {
+  const slug = slugArticuloZmg(articuloUrl);
+  if (!slug) return null;
+  const endpoint = new URL('https://traficozmg.com/wp-json/wp/v2/posts');
+  endpoint.searchParams.set('slug', slug);
+  endpoint.searchParams.set('_embed', 'wp:featuredmedia');
+  const response = await fetchImpl(endpoint.href, {
+    redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MisionJardinesNews/1.0)',
+      Accept: 'application/json' }
+  });
+  if (!response.ok || !String(response.headers?.get('content-type') || '').includes('application/json') ||
+    Number(response.headers?.get('content-length') || 0) > 200000) return null;
+  return imagenDesdeWordPress(await response.json(), articuloUrl);
 }
 async function descargarHtmlZmg(url,{fetchImpl=fetch,timeoutMs=3500}={}) {
   if(!esArticuloZmg(url))return null;
@@ -72,4 +119,5 @@ async function descargarHtmlZmg(url,{fetchImpl=fetch,timeoutMs=3500}={}) {
   }
   return null;
 }
-module.exports={esDominioZmg,esImagenZmg,esArticuloZmg,normalizarImagen,imagenDesdeMetadatos,descargarHtmlZmg};
+module.exports={esDominioZmg,esImagenZmg,esArticuloZmg,normalizarImagen,imagenDesdeMetadatos,
+  slugArticuloZmg,imagenDesdeWordPress,descargarImagenWordPressZmg,descargarHtmlZmg};
