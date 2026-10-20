@@ -10,7 +10,7 @@ for (const name of ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']) {
 }
 process.env.DB_PORT ||= '3306';
 
-const { datosDeMovimiento, normalizarTelefonoMX, generarPdf } =
+const { datosDeMovimiento, periodosPagados, normalizarTelefonoMX, generarPdf } =
     require('../src/services/recibo-mantenimiento-analisis.service');
 
 const casa = { id: 5, calle: 'Gardenias', numero: '5', nombre: 'Persona de prueba' };
@@ -22,16 +22,28 @@ const cuota = (id, mes, montoPagado, extras = {}) => ({
     origenImportacion: 'MANUAL_ANALISIS', ...extras
 });
 
-test('agrupa un solo movimiento de varios meses y conserva un folio estable', () => {
+test('genera un recibo individual por mes pagado, del más reciente al más antiguo', () => {
     const cuotas = [cuota(11, 'OCTUBRE', 300), cuota(12, 'NOVIEMBRE', 300)];
     const primero = datosDeMovimiento(casa, cuotas, [], new Date('2026-10-20T12:00:00Z'));
     const segundo = datosDeMovimiento(casa, cuotas, [], new Date('2026-10-21T12:00:00Z'));
-    assert.equal(primero.resumen.monto, 600);
-    assert.equal(primero.recibo.periodosVarios, true);
-    assert.equal(primero.recibo.mes, 'OCTUBRE 2026 A NOVIEMBRE 2026');
+    assert.equal(primero.resumen.monto, 300);
+    assert.equal(primero.recibo.periodosVarios, false);
+    assert.equal(primero.recibo.mes, 'NOVIEMBRE 2026');
     assert.equal(primero.resumen.folio, segundo.resumen.folio);
-    assert.match(primero.resumen.folio, /^MJ-AN-5-[0-9A-F]{10}$/);
+    assert.match(primero.resumen.folio, /^MJ-AN-5-[0-9A-F]{10}-202611$/);
     assert.equal(primero.recibo.sello, 'PAGADO');
+    assert.deepEqual(primero.periodosDisponibles.map(p=>p.valor),['2026-11','2026-10']);
+    const octubre=datosDeMovimiento(casa,cuotas,[],new Date('2026-10-20T12:00:00Z'),'2026-10');
+    assert.equal(octubre.resumen.periodo,'OCTUBRE 2026');
+    assert.equal(octubre.resumen.monto,300);
+    assert.notEqual(octubre.resumen.folio,primero.resumen.folio);
+    assert.throws(()=>datosDeMovimiento(casa,cuotas,[],new Date(),'2026-12'),/no tiene un pago/);
+});
+
+test('la lista de meses omite períodos sin pago y no confunde años futuros',()=>{
+    const disponibles=periodosPagados([cuota(1,'OCTUBRE',300),cuota(2,'DICIEMBRE',300,{anio:2027}),
+        cuota(3,'NOVIEMBRE',0),cuota(4,'ENERO',100,{anio:2027,estatusPago:'PAGO_PARCIAL'})]);
+    assert.deepEqual(disponibles.map(p=>p.valor),['2027-12','2027-01','2026-10']);
 });
 
 test('incluye recargos del cobro manual sin sumar dos veces los importes de una importación', () => {
@@ -82,6 +94,8 @@ test('genera un PDF en memoria con el diseño original, sin crear un archivo ni 
     assert.ok(Buffer.isBuffer(resultado.buffer));
     assert.match(resultado.buffer.subarray(0, 8).toString(), /^%PDF-/);
     assert.ok(resultado.buffer.length > 2000);
+    assert.match(resultado.buffer.toString('latin1'),/\/Subtype\s*\/Image/,
+        'La versión desplegable debe incluir el logotipo real como imagen en el PDF');
     assert.match(resultado.nombreArchivo, /^Recibo_.*\.pdf$/);
 });
 

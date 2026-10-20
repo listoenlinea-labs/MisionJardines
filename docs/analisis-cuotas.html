@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261020-recibos-mantenimiento">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261020-excel-meses-movil">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -36,12 +36,14 @@
 <section id="houseReceiptModal" class="finance-pay-overlay" hidden aria-label="Recibo de mantenimiento">
   <div class="finance-pay-dialog finance-receipt-dialog" role="dialog" aria-modal="true" aria-labelledby="houseReceiptTitle" tabindex="-1">
     <div class="finance-pay-heading"><div><span class="eyebrow">COMPROBANTE DE MANTENIMIENTO</span><h2 id="houseReceiptTitle">Recibo de pago</h2><p id="houseReceiptAddress" class="hint"></p></div><button type="button" id="houseReceiptClose" class="soft">Cerrar</button></div>
+    <label id="houseReceiptPeriod" class="finance-receipt-period" for="houseReceiptMonth" hidden>Mes pagado del recibo<select id="houseReceiptMonth" aria-label="Elegir mes pagado para generar recibo"></select></label>
     <p id="houseReceiptStatus" class="finance-receipt-status" role="status" aria-live="polite">Preparando recibo…</p>
     <iframe id="houseReceiptPreview" class="finance-receipt-preview" title="Vista previa del recibo PDF" hidden></iframe>
     <div id="houseReceiptSendSection" class="finance-receipt-send" hidden>
-      <label for="houseReceiptPhone">Enviar a WhatsApp Web</label>
-      <select id="houseReceiptPhone" aria-label="Teléfono del destinatario"><option value="">Seleccionar teléfono registrado</option></select>
-      <small>Se descargará el PDF y abrirá el chat de WhatsApp Web. Por seguridad, adjunta el archivo descargado y confirma el envío en WhatsApp.</small>
+      <label id="houseReceiptPhoneLabel" for="houseReceiptPhone">Destinatario en WhatsApp</label>
+      <strong id="houseReceiptPrimaryPhone" class="finance-receipt-main-phone" hidden></strong>
+      <select id="houseReceiptPhone" aria-label="Teléfono del destinatario"></select>
+      <small id="houseReceiptHelp">Se descargará el PDF. Adjunta el archivo y confirma el envío en WhatsApp.</small>
     </div>
     <div class="finance-receipt-actions"><button type="button" id="houseReceiptDownload" class="soft" disabled>Guardar recibo PDF</button><button type="button" id="houseReceiptWhatsApp" class="primary" disabled>Enviar recibo por WhatsApp Web</button></div>
   </div>
@@ -104,4 +106,4 @@
     <div id="houseHistoryDebts" class="history-debts"></div>
   </div>
 </section>
-</main><script src="assets/js/analisis-cuotas.js?v=20261020-recibos-mantenimiento" defer></script><script src="assets/js/site-sidebar.js?v=20261015-comunidad-orden" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="assets/js/analisis-excel.js?v=20261020" defer></script><script src="assets/js/analisis-cuotas.js?v=20261020-excel-meses-movil" defer></script><script src="assets/js/site-sidebar.js?v=20261015-comunidad-orden" defer></script></body></html>

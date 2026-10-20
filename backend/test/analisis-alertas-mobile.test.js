@@ -41,7 +41,8 @@ test('Viviendas tienen nueve campos y una selección extra solo para mantenimien
  const ui=read('docs/assets/js/analisis-cuotas.js');
  const houses=part(ui,'function renderHouses(){','let activePaymentHouse=null;');
  assert.match(houses,/const houseCell=\(label,value\)=>/);
- assert.equal((houses.match(/houseCell\('/g)||[]).length,10);
+ assert.equal((houses.match(/houseCell\('/g)||[]).length,9);
+ assert.match(houses,/class="house-receipt-selection-cell"/);
  for(const name of ['Calle','Casa','Residente','Estado','Pagado','Último mes pagado','Saldo pendiente','TAGs','Pago']){
    assert.match(houses,new RegExp("houseCell\\('"+name+"'"));
  }
@@ -81,8 +82,8 @@ test('Caché actualizada y controles operativos intactos',()=>{
  const html=read('docs/analisis-cuotas.html');
  const sidebar=read('docs/assets/js/site-sidebar.js');
  const ui=read('docs/assets/js/analisis-cuotas.js');
- assert.match(html,/analisis-cuotas\.css\?v=20261020-recibos-mantenimiento/);
- assert.match(html,/analisis-cuotas\.js\?v=20261020-recibos-mantenimiento/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261020-excel-meses-movil/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261020-excel-meses-movil/);
  assert.match(sidebar,/mobile-operativo\.css\?v=20261015-safari-fechas-compactas/);
  for(const action of ['houseTagsEdit','houseTagsRefresh']){
    assert.match(html,new RegExp('id="'+action+'"'));

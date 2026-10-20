@@ -61,6 +61,7 @@
   return '<div class="bar-row"><strong>'+esc(name)+'</strong><div class="track"><div class="fill'+(cost?' cost':'')+'" style="width:'+pct.toFixed(2)+'%"></div></div><b>'+esc(suffix||pct.toFixed(0)+'%')+'</b></div>';
  }
  function financialCard(label,value){return '<div class="metric"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>';}
+ function downloadableFinancialCard(label,value,tipo){return '<button type="button" class="metric finance-export-card" data-finance-export="'+tipo+'" title="Descargar reporte completo en Excel" aria-label="Descargar Excel de '+esc(label)+'"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong><span>Descargar Excel ↓</span></button>';}
  function render(){
   if(!data)return;
   const houses=data.casas||0;
@@ -76,7 +77,7 @@
    ['Garantías recibidas',fmt(data.casaClub?.garantiasRecibidas)],
    ['Garantías devueltas',fmt(data.casaClub?.garantiasDevueltas)]
   ];
-  $('financialSummary').innerHTML=financialCards.slice(0,4).map(([n,v])=>financialCard(n,v)).join('');
+  $('financialSummary').innerHTML=financialCards.slice(0,4).map(([n,v],i)=>downloadableFinancialCard(n,v,['padron','pagadas','pendientes','historicas'][i])).join('');
   $('financialSecondary').innerHTML=financialCards.slice(4).map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent',data.porcentaje+'%');
   $('financeDonutText').innerHTML=esc(data.porcentaje)+'%<small>Casas pagadas</small>';
@@ -370,7 +371,7 @@ function renderHouses(){
     : 'Selecciona una sola vivienda para generar el recibo de su último pago registrado.';
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+(Number(h.casaId)===selectedReceiptHouseId?' class="house-receipt-selected"':'')+'>'+
-    (selectionAvailable?houseCell('Seleccionar','<input class="house-receipt-radio" type="radio" name="receiptHouseSelection" value="'+Number(h.casaId)+'" aria-label="Seleccionar '+esc(h.calle+' '+h.numero)+' para recibo"'+(Number(h.casaId)===selectedReceiptHouseId?' checked':'')+'>'):'')+
+    (selectionAvailable?'<td class="house-receipt-selection-cell" data-label="Seleccionar"><span class="house-field-value"><input class="house-receipt-radio" type="radio" name="receiptHouseSelection" value="'+Number(h.casaId)+'" aria-label="Seleccionar '+esc(h.calle+' '+h.numero)+' para recibo"'+(Number(h.casaId)===selectedReceiptHouseId?' checked':'')+'></span></td>':'')+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
     houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
@@ -448,6 +449,11 @@ function renderHouses(){
  let receiptDetails=null;
  let receiptSequence=0;
  let receiptReturnFocus=null;
+ const receiptIsMobile=()=>Boolean(navigator.userAgentData?.mobile)||/Android.+Mobile|iPhone|iPod/i.test(navigator.userAgent||'');
+ const receiptWhatsAppLabel=receiptIsMobile()?'Enviar recibo por WhatsApp':'Enviar recibo por WhatsApp Web';
+ $('houseReceiptWhatsApp').textContent=receiptWhatsAppLabel;
+ $('houseReceiptPhoneLabel').textContent=receiptIsMobile()?'Destinatario en WhatsApp':'Destinatario en WhatsApp Web';
+ $('houseReceiptHelp').textContent='El PDF se descargará para que lo adjuntes y confirmes el envío en '+(receiptIsMobile()?'la aplicación de WhatsApp.':'WhatsApp Web.');
  function receiptStatus(message,kind='info'){
   const el=$('houseReceiptStatus');el.textContent=message;el.dataset.kind=kind;
  }
@@ -467,28 +473,20 @@ function renderHouses(){
   link.download='Recibo_'+String(receiptDetails.folio||'Mantenimiento').replace(/[^a-zA-Z0-9._-]/g,'_')+'.pdf';
   document.body.appendChild(link);link.click();link.remove();
  }
- async function openHouseReceipt(){
-  if(activeConcept!=='MANTENIMIENTO'||!selectedReceiptHouseId)return;
-  const casaId=selectedReceiptHouseId;
+ async function cargarPdfDelPeriodo(casaId,periodo){
   const seq=++receiptSequence;
-  receiptReturnFocus=document.activeElement;
-  receiptModal.hidden=false;
   if(receiptObjectUrl)URL.revokeObjectURL(receiptObjectUrl);
   receiptObjectUrl=null;receiptBlob=null;receiptDetails=null;
   $('houseReceiptPreview').src='about:blank';
-  $('houseReceiptTitle').textContent='Generar recibo de mantenimiento';
-  $('houseReceiptAddress').textContent='Consultando vivienda…';
-  receiptStatus('Buscando el último pago registrado y preparando el PDF…');
   $('houseReceiptPreview').hidden=true;
   $('houseReceiptDownload').disabled=true;
   $('houseReceiptWhatsApp').disabled=true;
-  $('houseReceiptSendSection').hidden=true;
-  $('houseReceiptPhone').innerHTML='<option value="">Seleccionar teléfono registrado</option>';
-  $('houseReceiptClose').focus();
+  receiptStatus('Generando el recibo del mes seleccionado…');
+  const query=periodo?'?periodo='+encodeURIComponent(periodo):'';
   try{
-   const {data:detail}=await request('/pagos-vivienda/'+casaId+'/recibo/datos');
+   const {data:detail}=await request('/pagos-vivienda/'+casaId+'/recibo/datos'+query);
    if(seq!==receiptSequence||receiptModal.hidden)return;
-   const response=await fetch(API+'/finanzas/pagos-vivienda/'+casaId+'/recibo',{
+   const response=await fetch(API+'/finanzas/pagos-vivienda/'+casaId+'/recibo'+query,{
     headers:{Authorization:'Bearer '+token},cache:'no-store'
    });
    if(response.status===401){location.replace('login.html');throw Error('Sesión expirada');}
@@ -505,19 +503,57 @@ function renderHouses(){
    $('houseReceiptTitle').textContent='Recibo '+detail.folio;
    receiptStatus('Pago registrado: '+fmt(detail.monto)+' · '+(detail.periodo||'')+' · '+(detail.sello||'PAGADO'));
    $('houseReceiptDownload').disabled=false;
-   const phones=(detail.telefonos||[]).filter(p=>/^52\d{10}$/.test(String(p.numero)));
-   if(phones.length){
-    $('houseReceiptPhone').innerHTML='<option value="">Seleccionar teléfono registrado</option>'+phones.map(p=>
-      '<option value="'+esc(p.numero)+'">'+esc(p.nombre)+' · +'+esc(p.numero)+' ('+esc(p.origen)+')</option>').join('');
-    $('houseReceiptSendSection').hidden=false;
-   }else{
+   $('houseReceiptWhatsApp').disabled=!/^52\d{10}$/.test($('houseReceiptPhone').value);
+   if(!$('houseReceiptPhone').value){
     receiptStatus('Recibo listo para guardar. La vivienda no tiene un teléfono mexicano válido asociado en la base de datos.');
    }
   }catch(error){
    if(seq===receiptSequence)receiptStatus(error.message,'error');
   }
  }
+ async function openHouseReceipt(){
+  if(activeConcept!=='MANTENIMIENTO'||!selectedReceiptHouseId)return;
+  const casaId=selectedReceiptHouseId;
+  const seq=++receiptSequence;
+  receiptReturnFocus=document.activeElement;
+  receiptModal.hidden=false;
+  $('houseReceiptTitle').textContent='Generar recibo de mantenimiento';
+  $('houseReceiptAddress').textContent='Consultando vivienda…';
+  receiptStatus('Buscando los meses pagados y los teléfonos registrados…');
+  $('houseReceiptPeriod').hidden=true;
+  $('houseReceiptMonth').innerHTML='';
+  $('houseReceiptSendSection').hidden=true;
+  $('houseReceiptPhone').innerHTML='';
+  $('houseReceiptPrimaryPhone').hidden=true;
+  $('houseReceiptDownload').disabled=true;
+  $('houseReceiptWhatsApp').disabled=true;
+  $('houseReceiptPreview').hidden=true;
+  $('houseReceiptClose').focus();
+  try{
+   const {data:detail}=await request('/pagos-vivienda/'+casaId+'/recibo/datos');
+   if(seq!==receiptSequence||receiptModal.hidden)return;
+   const periodos=detail.periodosDisponibles||[];
+   if(periodos.length){
+    $('houseReceiptMonth').innerHTML=periodos.map(p=>'<option value="'+esc(p.valor)+'">'+esc(p.etiqueta)+'</option>').join('');
+    $('houseReceiptMonth').value=detail.periodoSeleccionado||periodos[0].valor;
+    $('houseReceiptPeriod').hidden=false;
+   }
+   const phones=(detail.telefonos||[]).filter(p=>/^52\d{10}$/.test(String(p.numero)));
+   if(phones.length){
+    $('houseReceiptPhone').innerHTML=phones.map(p=>'<option value="'+esc(p.numero)+'">'+esc(p.nombre)+' · +'+esc(p.numero)+' ('+esc(p.origen)+')</option>').join('');
+    $('houseReceiptSendSection').hidden=false;
+    $('houseReceiptPhone').hidden=phones.length===1;
+    $('houseReceiptPhoneLabel').hidden=phones.length===1;
+    $('houseReceiptPrimaryPhone').hidden=phones.length!==1;
+    $('houseReceiptPrimaryPhone').textContent='Teléfono principal: +'+phones[0].numero;
+   }
+   await cargarPdfDelPeriodo(casaId,$('houseReceiptMonth').value||null);
+  }catch(error){if(seq===receiptSequence)receiptStatus(error.message,'error');}
+ }
  $('financeGenerateReceipt').addEventListener('click',openHouseReceipt);
+ $('houseReceiptMonth').addEventListener('change',()=>{
+  if(!receiptModal.hidden&&selectedReceiptHouseId)void cargarPdfDelPeriodo(selectedReceiptHouseId,$('houseReceiptMonth').value);
+ });
  $('houseReceiptClose').addEventListener('click',closeHouseReceipt);
  receiptModal.addEventListener('click',e=>{if(e.target===receiptModal)closeHouseReceipt();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!receiptModal.hidden)closeHouseReceipt();});
@@ -529,11 +565,24 @@ function renderHouses(){
   const phone=$('houseReceiptPhone').value;
   if(!receiptBlob||!receiptDetails||!/^52\d{10}$/.test(phone))return;
   const message='Hola, te compartimos tu recibo de mantenimiento de Misión Jardines, folio '+receiptDetails.folio+'. Adjunto el documento PDF.';
-  const link='https://web.whatsapp.com/send?phone='+encodeURIComponent(phone)+'&text='+encodeURIComponent(message);
+  const link=receiptIsMobile()
+   ? 'https://wa.me/'+encodeURIComponent(phone)+'?text='+encodeURIComponent(message)
+   : 'https://web.whatsapp.com/send?phone='+encodeURIComponent(phone)+'&text='+encodeURIComponent(message);
   guardarRecibo();
   const chat=window.open(link,'_blank');
   if(chat)chat.opener=null;
-  receiptStatus(!chat?'El PDF se descargó. Autoriza las ventanas emergentes para abrir WhatsApp Web y adjuntar el recibo.':'PDF descargado y chat abierto. Adjunta el archivo en WhatsApp Web y confirma el envío.');
+  const destino=receiptIsMobile()?'WhatsApp':'WhatsApp Web';
+  receiptStatus(!chat?'El PDF se descargó. Permite abrir '+destino+' y adjuntar el recibo.':'PDF descargado y chat abierto en '+destino+'. Adjunta el archivo y confirma el envío.');
+ });
+ $('financialSummary').addEventListener('click',async event=>{
+  const card=event.target.closest('[data-finance-export]');
+  if(!card||!data)return;
+  card.disabled=true;
+  try{
+   await window.MJFinanceExport.descargarReporte(data,card.dataset.financeExport,window.ExcelJS);
+   notice('Excel completo generado para el período '+data.periodo+'.','success');
+  }catch(error){notice('No se pudo descargar el Excel: '+error.message);}
+  finally{card.disabled=false;}
  });
  function initializePaymentYears(){
   const now=mexicoYear(),yearSelect=$('housePaymentYear');

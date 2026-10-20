@@ -23,7 +23,8 @@ test('La tabla conserva sus nueve columnas y solo Mantenimiento ofrece selecció
   'Último mes pagado','Saldo pendiente','TAGs','Pago'
  ]);
  const render=between(js,'function renderHouses(){','let activePaymentHouse=null;');
- assert.equal((render.match(/houseCell\('/g)||[]).length,10);
+ assert.equal((render.match(/houseCell\('/g)||[]).length,9);
+ assert.match(render,/class="house-receipt-selection-cell"/);
  assert.match(render,/houseCell\('TAGs',renderHouseTagCell\(h\)\)\+\s*houseCell\('Pago',renderHousePayCell\(h\)\)/);
  assert.match(render,/selectionAvailable\?10:9/);
  assert.match(render,/name="receiptHouseSelection"/);
@@ -77,8 +78,8 @@ test('Botón compacto para escritorio/móvil y sin cambios a estilos del modal d
  assert.match(css,/@media\(max-width:700px\)\{\s*\.houses-scroll \.house-pay-button\{/);
  assert.match(mobile,/#financeHouseRows>tr>td\[data-label\]::before/);
  assert.match(mobile,/content:attr\(data-label\)!important/);
- assert.match(html,/analisis-cuotas\.css\?v=20261020-recibos-mantenimiento/);
- assert.match(html,/analisis-cuotas\.js\?v=20261020-recibos-mantenimiento/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261020-excel-meses-movil/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261020-excel-meses-movil/);
 });
 
 test('El importe Pagado mantiene el ajuste al contenido como estilo base para móvil',()=>{

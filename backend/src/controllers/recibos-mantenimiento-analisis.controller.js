@@ -10,6 +10,15 @@ function casaIdSolicitada(req) {
     return id;
 }
 
+function periodoSolicitado(req) {
+    const periodo = req.query?.periodo;
+    if (periodo == null || periodo === '') return null;
+    if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(String(periodo))) {
+        throw Object.assign(new Error('El período solicitado no es válido'), { status: 400 });
+    }
+    return String(periodo);
+}
+
 function responderError(res, error) {
     if (!error.status) console.error('[finanzas recibo mantenimiento]', error);
     return res.status(error.status || 503).json({
@@ -20,7 +29,7 @@ function responderError(res, error) {
 
 async function datosRecibo(req, res) {
     try {
-        const { casa, resumen } = await recibos.consultarPago(casaIdSolicitada(req));
+        const { casa, resumen } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req));
         const telefonos = await recibos.consultarTelefonos(casa);
         res.setHeader('Cache-Control', 'private, no-store');
         return res.json({ ok: true, data: { ...resumen, telefonos } });
@@ -31,7 +40,7 @@ async function datosRecibo(req, res) {
 
 async function pdfRecibo(req, res) {
     try {
-        const { recibo } = await recibos.consultarPago(casaIdSolicitada(req));
+        const { recibo } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req));
         const { buffer, nombreArchivo } = await recibos.generarPdf(recibo);
         const nombreSeguro = nombreArchivo.replace(/[^a-zA-Z0-9._-]/g, '_');
         res.setHeader('Cache-Control', 'private, no-store');
