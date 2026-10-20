@@ -21,7 +21,7 @@ async function makeShell(role) {
   };
   const frame = id => {
     const element = {
-      id, classList: makeClassList(), attributes:{}, contentDocument:{title:id},
+      id, classList: makeClassList(), attributes:{}, contentDocument:{title:id,body:{classList:new Set()}},
       addEventListener(event,callback) {if(event==='load')this.onLoad=callback;},
       setAttribute(name,value){this.attributes[name]=value;},removeAttribute(name){delete this.attributes[name];}
     };
@@ -78,6 +78,8 @@ test('persistent app shell retains the parent page and uses only internal frames
   assert.equal(app.location.replaced,undefined);
   assert.equal(app.location.reloaded,undefined);
   assert.equal(app.elements.mjAppLoading.hidden,true);
+  assert.ok(app.frames[0].contentDocument.body.classList.has('mj-shared-sidebar-collapsed'));
+  assert.ok(app.frames[1].contentDocument.body.classList.has('mj-shared-sidebar-collapsed'));
 });
 
 test('residents cannot navigate to finances but may return to Inicio',async()=>{
@@ -125,6 +127,7 @@ test('embedded Inicio loads the same compact design as standalone without duplic
   vm.runInNewContext(sidebarSource,{window,document,location,URL,URLSearchParams});
   assert.ok(classes.has('mj-embedded'));
   assert.ok(classes.has('mj-shared-sidebar-enabled'));
+  assert.ok(classes.has('mj-shared-sidebar-collapsed'),'El documento interior no tiene menú propio que bloquee el scroll móvil');
   for (const id of ['mjAppDesign','mjProductUI','mjUnifiedUI','mjKpiCompact','mjMobileOperativo']) {
     const stylesheet = nodes.find(node=>node.id===id);
     assert.equal(stylesheet?.rel,'stylesheet',`${id} debe estar dentro del iframe`);
@@ -150,5 +153,5 @@ test('Inicio preloads its compact styles before the dashboard can render in eith
     assert.match(head, new RegExp(`<link id="${id}" rel="stylesheet" href="assets/css/${path.replaceAll('.','\\.')}\\?v=`));
     assert.equal(head.split(`id="${id}"`).length-1,1,`${id} no debe duplicarse`);
   }
-  assert.match(homeHtml, /site-sidebar\.js\?v=20261020-estilos-inicio-iframe/);
+  assert.match(homeHtml, /site-sidebar\.js\?v=20261020-scroll-movil/);
 });

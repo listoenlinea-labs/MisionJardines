@@ -196,7 +196,7 @@
       const productUI = document.createElement('link');
       productUI.id = 'mjProductUI';
       productUI.rel = 'stylesheet';
-      productUI.href = 'assets/css/product-ui.css?v=20261011-product';
+      productUI.href = 'assets/css/product-ui.css?v=20261020-scroll-movil';
       document.head.appendChild(productUI);
     }
     // Hoja final de homologación: sobreescribe versiones demo sin afectar la lógica.
@@ -443,7 +443,8 @@
     document.head.appendChild(style);
     // Mantener las mismas reglas visuales de las páginas independientes.
     // El iframe no dibuja otra barra lateral; mj-embedded anula su espacio.
-    document.body.classList.add('mj-embedded', 'mj-shared-sidebar-enabled');
+    // El menú vive en el marco exterior: aquí nunca debe bloquear el scroll.
+    document.body.classList.add('mj-embedded', 'mj-shared-sidebar-enabled', 'mj-shared-sidebar-collapsed');
     loadProductStyles();
     loadHomeDashboard();
     // Solo documentos y enlaces internos aprobados por la misma política de
