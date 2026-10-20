@@ -37,12 +37,6 @@ const positive = value => {
     if (n < 1) throw Object.assign(new Error('Identificador no válido.'), { status: 400 });
     return n;
 };
-const phoneLimiter = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: true, legacyHeaders: false,
-    message: { ok: false, message: 'Demasiadas consultas. Espera 15 minutos.' } });
-const mailLimiter = rateLimit({ windowMs: 15 * 60000, limit: 6, standardHeaders: true, legacyHeaders: false,
-    message: { ok: false, message: 'Demasiados envíos. Revisa el correo o espera 15 minutos.' } });
-router.post('/acceso/telefono', phoneLimiter, handle(req => service.consultarTelefono(req.body.telefono)));
-router.post('/acceso/enviar', mailLimiter, handle(req => service.enviarPorTelefono(req.body.telefono)));
 router.post('/invitacion/consultar', publicLimiter, handle(async req => ({ registro: await service.consultar(req.body.token) })));
 router.post('/invitacion/validar', publicLimiter, handle(req => service.validar(req.body.token, req.body)));
 router.post('/invitacion/aceptar', publicLimiter, handle(req => service.aceptar(req.body.token, req.body)));

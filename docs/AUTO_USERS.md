@@ -1,4 +1,4 @@
-# Auto-users: prerregistro, invitación por correo y acceso por teléfono
+# Auto-users: prerregistro, invitación por correo e inicio de sesión
 
 ## Flujo vigente
 
@@ -20,24 +20,17 @@ El remitente utiliza el mismo servicio SMTP del proyecto:
 
 No se necesitan variables WHATSAPP_*. Validar remitente, límites de envío y recepción con el proveedor SMTP antes del envío completo. Esta implementación no certifica la configuración real del servidor.
 
-## Login por teléfono
+## Inicio de sesión con usuario o correo
 
-El primer campo es el teléfono; **Continuar** consulta su estado sin recibir nombres, correo, vivienda ni token:
+El login muestra **Usuario o correo electrónico** y **Contraseña** desde el inicio. Al enviar, consulta directamente `/api/auth/login`, sin descubrir cuentas por teléfono, ocultar la contraseña ni redirigir a otro formulario según un número. Conserva los nombres de usuario numéricos existentes como identificadores exactos; no busca en la columna de teléfono.
 
-1. **Cuenta ACTIVA y aceptada:** aparece la contraseña. El servidor exige que coincida y vuelve a comprobar el estado actual antes de crear la sesión.
-2. **Prerregistro PENDIENTE y no aceptado:** dirige a la misma página de aceptación. Allí se envía el enlace al correo ya registrado y se pide abrirlo para revisar datos y completar la cuenta. Conocer un teléfono no autoriza a ver/activar la vivienda de otra persona.
-3. **Teléfono sin cuenta:** dirige a `registro.html` y precarga el teléfono. El formulario solicita nombre/apellidos, contacto, vivienda y contraseña; guarda una cuenta sin acceso y una solicitud PENDIENTE para revisión administrativa. No vincula ni activa una vivienda automáticamente. Al aprobar con identidad verificada, Administración crea el acceso autorizado.
-4. **Teléfono compartido, cuenta bloqueada/baja/suspendida o solicitud ya pendiente:** indica revisión administrativa. No elige arbitrariamente una cuenta, no recupera contraseñas ni crea una solicitud repetida desde ese flujo.
-
-**Usar usuario o correo** conserva acceso a administradores y cuentas antiguas que no tengan teléfono o compartan número. La normalización admite formatos mexicanos de 10 dígitos, +52 y prefijo histórico +521, además de números internacionales con lada; rechaza listas/extensiones. Se comparan teléfonos con expresiones ORM, no SQL interpolado.
-
-La consulta pública tiene límite por IP de 20 peticiones cada 15 minutos y el envío desde login de 6. Un enlace enviado recientemente y válido se reutiliza: no se reenvía/rota por consulta pública durante cinco minutos. La página no devuelve el token por conocer el teléfono, ni permite indicar otro destinatario. Si falta correo, hay reporte abierto o el envío falla, debe intervenir Administración. Los envíos administrativos conservan reenvío explícito.
+Los prerregistros PENDIENTES/no aceptados no pueden autenticarse: deben abrir su enlace personal recibido por correo y completar la aceptación. Administración puede reenviar el correo desde Auto-users. Las rutas públicas `/acceso/telefono` y `/acceso/enviar` se retiraron. El registro manual y sus alertas administrativas permanecen disponibles mediante **Crear cuenta**.
 
 ## Solicitudes y alertas para Administración
 
 ### Compatibilidad con sesiones y avisos actuales
 
-El acceso por teléfono y el alternativo por usuario/correo conservan «Mantener sesión iniciada»: al marcarlo, el servidor emite la sesión de 90 días y el navegador usa localStorage; sin marcarlo usa sessionStorage y el vencimiento corto configurado (8 horas por defecto). Nunca se guarda la contraseña. Al volver al login se valida el token guardado con `/api/auth/perfil` y se usa el rol devuelto por el servidor antes de entrar. Un 401/403 elimina esa sesión; una falla de red la conserva. Una respuesta tardía de una sesión anterior no reemplaza ni elimina una cuenta que acaba de autenticarse.
+El acceso por usuario o correo conserva «Mantener sesión iniciada»: al marcarlo, el servidor emite la sesión de 90 días y el navegador usa localStorage; sin marcarlo usa sessionStorage y el vencimiento corto configurado (8 horas por defecto). Nunca se guarda la contraseña. Al volver al login se valida el token guardado con `/api/auth/perfil` y se usa el rol devuelto por el servidor antes de entrar. Un 401/403 elimina esa sesión; una falla de red la conserva. Una respuesta tardía de una sesión anterior no reemplaza ni elimina una cuenta que acaba de autenticarse.
 
 El menú conserva simultáneamente avisos de adeudos de Inicio/Pagos, solicitudes pendientes de Casa Club y solicitudes de cuentas. Los avisos administrativos mantienen sus permisos y los adeudos conservan el contexto de vivienda seleccionada.
 
@@ -57,7 +50,7 @@ Reportar error requiere comentario y revoca el enlace. Administración ve los re
 
 ## Prueba individual y comprobación SMTP
 
-La sección de pruebas crea un único condómino ficticio y una cuenta pendiente en una vivienda dedicada a pruebas (calle contiene Prueba o número empieza TEST-). No selecciona IDs constantes. Usa correo example.com y no inventa teléfono. Se marca internamente como AUTO_USERS_PRUEBA y queda excluida de los envíos masivos y del reenvío público por teléfono, incluso después de editarla o de un envío individual.
+La sección de pruebas crea un único condómino ficticio y una cuenta pendiente en una vivienda dedicada a pruebas (calle contiene Prueba o número empieza TEST-). No selecciona IDs constantes. Usa correo example.com y no inventa teléfono. Se marca internamente como AUTO_USERS_PRUEBA y queda excluida de los envíos masivos y de cualquier reenvío por teléfono, incluso después de editarla o de un envío individual.
 
 Para comprobar SMTP sin invitar a los residentes: editar la cuenta de prueba pendiente, registrar un correo propio accesible y usar **Enviar** en su fila de **Cuentas de condóminos**. Esa ruta administrativa selecciona una sola cuenta y autoriza explícitamente incluir la prueba; no basta agregar una opción al cuerpo de una petición masiva. Mantiene los controles de vivienda de prueba, correo válido, reporte abierto y aceptación. ENVIADO indica aceptación del proveedor; revisar entrada/spam y abrir en incógnito el enlace recibido para completar la prueba. El reenvío reemplaza el enlace anterior. No requiere cambios SQL ni borrar/recrear la cuenta pendiente.
 
@@ -71,8 +64,8 @@ No/escape cancela; errores y progreso permanecen visibles. El timeout no confirm
 
 ## API y despliegue
 
-- Públicas: POST `/api/auto-users/acceso/telefono`, `/acceso/enviar`, `/invitacion/consultar`, `/invitacion/validar`, `/invitacion/aceptar`, `/invitacion/reportar`.
+- Públicas: POST `/api/auto-users/invitacion/consultar`, `/invitacion/validar`, `/invitacion/aceptar`, `/invitacion/reportar`.
 - Administrativas: GET raíz/config/viviendas, POST crear/invitaciones/:id/invitacion, PATCH :id y las rutas prueba/usuarios, prueba/viviendas, prueba/crear, prueba/:id/enlace, PATCH/DELETE prueba/:id.
-- La API de login acepta `telefono` + `contrasena` o el identificador anterior + contraseña. El formulario de solicitud sigue usando `/api/auth/registro/solicitar` y la revisión `/api/auth/cuentas`.
+- La API de login acepta `nombreUsuario` o `correo` junto con `contrasena`; un teléfono por sí solo no es una credencial de acceso. El formulario de solicitud sigue usando `/api/auth/registro/solicitar` y la revisión `/api/auth/cuentas`.
 
 Actualizar frontend y backend juntos. Requiere la tabla `condominos_viviendas` ya creada y poblada antes del despliegue. Ver [relaciones del padrón](CONDOMINOS_VIVIENDAS.md). No afecta el servicio de correo de recibos, invitaciones de vivienda ni verificación de cambio de correo. Las pruebas usan SMTP/DB simulados; no prueban entrega real ni aprobación de producción.

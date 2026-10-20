@@ -155,9 +155,10 @@ Ejemplos que deben conservarse:
   CONDOMINO y todas sus viviendas activas confirmadas individualmente. Los enlaces son privados, reemplazables y de
   un solo uso; solo guardar hashes. No activar prerregistros cambiando estatus solo.
   Las invitaciones se envían por correo SMTP; no usar WhatsApp Business para este flujo.
-  El teléfono orienta el login, pero no concede un enlace de activación: se entrega al correo
-  registrado. Números compartidos requieren usuario/correo o revisión administrativa. Inicio queda
-  permitido para Condómino al completar el flujo; Seguridad conserva su restricción.
+  El login usa únicamente usuario o correo y contraseña, visibles desde el inicio; no consultar
+  cuentas ni reenviar invitaciones por teléfono desde el login. Los prerregistros se aceptan con
+  el enlace personal enviado al correo registrado. Inicio queda permitido para Condómino al
+  completar el flujo; Seguridad conserva su restricción.
 
 - Releer el estado actual de main y el esquema/modelos antes de editar. No afirmar
   estructura real de producción solo por modelos; cotejar SHOW CREATE TABLE cuando haga falta.

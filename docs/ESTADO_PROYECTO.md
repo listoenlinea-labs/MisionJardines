@@ -205,6 +205,10 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-20
 
+- Por solicitud del usuario, se retira el login progresivo por teléfono: usuario/correo y contraseña están visibles desde el inicio. La API de autenticación ya no busca teléfonos, y se retiran las rutas públicas de consulta/reenvío por número y la entrada de aceptación desde ese flujo. Se conservan las invitaciones SMTP, aceptación por enlace, solicitudes manuales, sesiones recordadas y permisos por rol. No requiere SQL; desplegar frontend y backend juntos.
+- Validación local del retiro de teléfono: 76 pruebas aprobadas de login UI/API, sesiones recordadas, permisos, solicitudes y aceptación Auto-users; sintaxis y diff sin errores. DB/SMTP simulados, sin cambios en producción. Los nombres de usuario numéricos existentes siguen funcionando como identificadores exactos.
+- El usuario confirmó que funcionó el correo individual de invitación de prueba después del cambio de envío. Es confirmación de esa prueba; no acredita entrega masiva ni aceptación completa de todas las cuentas.
+
 - Auto-users: el botón individual Enviar permite probar SMTP con una cuenta de prueba pendiente y correo propio. Los lotes masivos y el reenvío público por teléfono siguen omitiendo esas cuentas; se conserva su marca y los controles de correo, vivienda de pruebas, reportes y aceptación. Generar enlace sin enviar sigue disponible. Requiere desplegar backend; no requiere SQL ni modifica variables SMTP.
 - Validación local del envío individual: 35 pruebas aprobadas en auto-users, rutas, interfaz administrativa de pruebas y correo, con DB/SMTP simulados; comprobaciones de sintaxis y diff sin errores. No se enviaron correos reales ni se verificaron credenciales/entrega de producción.
 
