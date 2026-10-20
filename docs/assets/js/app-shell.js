@@ -69,6 +69,9 @@
       error('El servidor redirigió esta sección. Regresa al menú e intenta nuevamente.');
       return;
     }
+    // También cubrir secciones que aún tengan el script lateral en caché:
+    // su menú está en el documento principal, no dentro del iframe.
+    frame.contentDocument?.body?.classList.add('mj-shared-sidebar-collapsed');
     const old = activeIndex >= 0 ? frames[activeIndex] : null;
     frame.classList.add('is-active');
     frame.setAttribute('aria-hidden', 'false');

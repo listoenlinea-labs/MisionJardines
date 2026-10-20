@@ -205,6 +205,9 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-20
 
+- Scroll móvil: el bloqueo de fondo del menú lateral también alcanzaba a las páginas embebidas, que tenían la clase de diseño compartido sin estado de menú cerrado. Se excluye `mj-embedded` de esa regla y se marca su menú como cerrado al inicializar y al activar el iframe, incluso con scripts anteriores en caché. El menú exterior conserva el bloqueo de fondo cuando está abierto. Se renuevan versiones de assets en app/Inicio.
+- Validación local de scroll: 11 pruebas aprobadas de navegación persistente y login, sintaxis JS y diff sin errores. Se comprueba el estado de cada iframe sin duplicar menú. Sin despliegue ni comprobación física Safari/iPhone/Android; la simulación DOM no acredita por sí sola gestos reales de desplazamiento.
+
 - Por solicitud del usuario, se retira el login progresivo por teléfono: usuario/correo y contraseña están visibles desde el inicio. La API de autenticación ya no busca teléfonos, y se retiran las rutas públicas de consulta/reenvío por número y la entrada de aceptación desde ese flujo. Se conservan las invitaciones SMTP, aceptación por enlace, solicitudes manuales, sesiones recordadas y permisos por rol. No requiere SQL; desplegar frontend y backend juntos.
 - Validación local del retiro de teléfono: 76 pruebas aprobadas de login UI/API, sesiones recordadas, permisos, solicitudes y aceptación Auto-users; sintaxis y diff sin errores. DB/SMTP simulados, sin cambios en producción. Los nombres de usuario numéricos existentes siguen funcionando como identificadores exactos.
 - El usuario confirmó que funcionó el correo individual de invitación de prueba después del cambio de envío. Es confirmación de esa prueba; no acredita entrega masiva ni aceptación completa de todas las cuentas.
