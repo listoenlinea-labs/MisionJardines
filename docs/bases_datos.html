@@ -749,7 +749,7 @@
       <p class="resident-help">Actualiza el padrón y los contactos de una vivienda. Para iniciar sesión, el residente necesita su propia cuenta aprobada en Verificación de cuentas.</p>
       <div class="resident-form-grid">
         <label class="resident-full">Vivienda<select id="residentHouse" required></select></label>
-        <label class="resident-full"><span id="incomingNameLabel">Nombre completo</span><input id="residentName" maxlength="150" autocomplete="name" required></label>
+        <label class="resident-full" id="existingResidentLabel">Persona existente (opcional)<select id="existingResident"><option value="">Crear un nuevo condómino</option></select><small>Selecciona una persona existente para agregar otra vivienda sin duplicarla. Los accesos de su cuenta se gestionan en Mis viviendas.</small></label><p id="sharedResidentNotice" hidden>Los cambios de nombre, teléfono y correo se aplican a esta persona en todas sus viviendas.</p><label class="resident-full"><span id="incomingNameLabel">Nombre completo</span><input id="residentName" maxlength="150" autocomplete="name" required></label>
         <label>Teléfono<input id="residentPhone" type="tel" maxlength="25" autocomplete="tel"></label>
         <label>Correo<input id="residentEmail" type="email" maxlength="150" autocomplete="email"></label>
         <label class="resident-full">Observaciones de la vivienda<textarea id="residentNotes" maxlength="3000" rows="3"></textarea></label>
@@ -762,7 +762,7 @@
     </form>
   </dialog>
   <div id="toast" class="toast"></div>
-  <script src="assets/js/residentes.js?v=20261009-simple"></script>
+  <script src="assets/js/residentes.js?v=20261019-multivivienda"></script>
   <script src="assets/js/site-sidebar.js?v=20261015-comunidad-orden"></script>
 </body>
 

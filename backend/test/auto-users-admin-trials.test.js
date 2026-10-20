@@ -6,11 +6,11 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../docs/assets/js/auto-users.js'), 'utf8');
 test('administrador ve/edita pruebas aceptadas; confirma en panel propio, muestra errores/timeout, permite reintentar y actualiza tabla', async () => {
   const nodes = new Map(), requests = [], buttons = new Map(); let deleted = false, deleteMode = 'success', timeoutCallback;
-  const element = () => ({ value: '', textContent: '', hidden: false, innerHTML: '', listeners: {}, append() {}, setAttribute() {},
+  const element = () => ({ value: '', textContent: '', hidden: false, innerHTML: '', listeners: {}, querySelectorAll() { return [{ value: '10' }]; }, append() {}, setAttribute() {},
     addEventListener(type, fn) { this.listeners[type] = fn; }, showModal() { this.open = true; }, close() { this.open = false; } });
   const $ = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };
   const trial = { id: 8, condominoId: 9, casaId: 10, nombre: 'Prueba', nombreUsuario: 'trial', correo: 'trial@example.com',
-    cuentaAceptada: true, estatus: 'ACTIVO', creadoEn: '2026-10-13', actualizadoEn: '2026-10-13', casa: { calle: 'Prueba', numero: 'TEST-001' }, condomino: { nombreCompleto: 'Prueba' } };
+    cuentaAceptada: true, estatus: 'ACTIVO', creadoEn: '2026-10-13', actualizadoEn: '2026-10-13', casa: { id: 10, calle: 'Prueba', numero: 'TEST-001' }, condomino: { nombreCompleto: 'Prueba' } };
   const storage = { getItem: key => key === 'misionJardinesToken' ? 'synthetic-admin' : key === 'misionJardinesUsuario' ? JSON.stringify({ rol: 'ADMINISTRADOR' }) : null, setItem() {} };
   const context = { document: { getElementById: $, createElement: element, querySelectorAll(selector) {
     if (!['[data-trial-edit]', '[data-trial-delete]'].includes(selector) || deleted) return [];

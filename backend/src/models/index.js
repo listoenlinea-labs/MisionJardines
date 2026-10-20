@@ -5,6 +5,7 @@ const Cuota = require('./Cuota');
 const FolioConsecutivo = require('./FolioConsecutivo');
 const Evento = require('./Evento');
 const Condomino = require('./Condomino');
+const CondominoVivienda = require('./CondominoVivienda');
 const Acceso = require('./Acceso');
 const PermisoAcceso = require('./PermisoAcceso');
 const Visita = require('./Visita');
@@ -61,11 +62,13 @@ Cuota.belongsTo(Casa, {
 });
 
 /*
- * Casa 1 --- N Condóminos registrados en el padrón
+ * Casa N --- N Condóminos; casa/direccionId se conserva solo por compatibilidad
  */
-Casa.hasMany(Condomino, {
-    foreignKey: 'direccionId',
-    as: 'condominos'
+Casa.belongsToMany(Condomino, {
+    through: CondominoVivienda, onDelete: 'RESTRICT', onUpdate: 'CASCADE', foreignKey: 'viviendaId', otherKey: 'condominoId', as: 'condominos'
+});
+Condomino.belongsToMany(Casa, {
+    through: CondominoVivienda, onDelete: 'RESTRICT', onUpdate: 'CASCADE', foreignKey: 'condominoId', otherKey: 'viviendaId', as: 'viviendas'
 });
 
 Condomino.belongsTo(Casa, {
@@ -230,6 +233,7 @@ module.exports = {
     FolioConsecutivo,
     Evento,
     Condomino,
+    CondominoVivienda,
     Acceso,
     PermisoAcceso,
     Visita,

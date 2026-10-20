@@ -419,3 +419,21 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   el intercambio; se retiró una correspondencia de residente previamente afirmada.
 - No se consultó ni modificó producción, ni se ejecutaron pagos, escrituras de TAG o
   pruebas físicas. Se conserva el historial y una sola entrada para esta fecha.
+
+
+### 2026-10-19 — Relación de condóminos con varias viviendas
+
+- Usuario ejecutó la creación de `condominos_viviendas` y aportó CSV de verificación:
+  188 relaciones originales, 188 copiadas y cero faltantes. Comparación de pares y estados
+  coincidente entre exportaciones, 236 filas de viviendas distintas. No es una conexión en vivo.
+- Esta entrega cambia padrón, búsqueda, cuotas y tablero a relaciones activas de la tabla
+  intermedia. Mantiene `direccion_id` por compatibilidad y `usuarios_casas` como autorización.
+- Prerregistro prepara todas las viviendas activas, exige confirmar cada número antes de
+  aceptar y conserva una cuenta por condómino. Correcciones administran el conjunto completo;
+  pruebas crean/borran también sus vínculos. Padrón permite vincular una persona existente.
+- No fusiona posibles duplicados ni concede accesos nuevos a cuentas ya aceptadas al repetir
+  Crear usuarios. Para esas cuentas, los permisos se administran desde Mis viviendas.
+- Validación local: 84 pruebas aprobadas con DB/SMTP simulados, incluidas consultas SQL
+  generadas por Sequelize. Sin mensajes ni escrituras de MySQL/C3 de producción.
+- Pendiente: desplegar conjuntamente frontend/backend y validar una cuenta de prueba con
+  dos viviendas de pruebas; no retirar todavía direccion_id.

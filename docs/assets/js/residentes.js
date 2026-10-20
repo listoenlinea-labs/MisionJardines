@@ -10,7 +10,7 @@ function clearSession() { ['misionJardinesToken', 'misionJardinesUsuario'].forEa
 async function api(path, options = {}) { const r = await fetch(API_URL + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.body ? { "Content-Type": "application/json" } : {}) } }); let d = {}; try { d = await r.json() } catch (_) { } if (r.status === 401) { clearSession(); location.replace('login.html'); throw Error('Sesión expirada') } if (!r.ok || d.ok === false) throw Error(d.message || 'No fue posible consultar el padrón'); return d }
 function flatten(casas) { return (casas || []).flatMap(casa => (Array.isArray(casa.condominos) ? casa.condominos : []).map(c => ({ id: c.id, name: c.nombreCompleto || 'Sin nombre', phone: c.telefono || '', email: c.correo || '', date: c.fechaRegistro || '', active: c.activo !== false, houseId: casa.id, street: casa.calleCorrecta || casa.calle || '', number: casa.numero || '' }))) }
 function fillStreets() { const s = document.getElementById('filterStreet'), selected = s.value, streets = [...new Set(residents.map(x => x.street).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es-MX', {numeric:true,sensitivity:'base'})); s.innerHTML = '<option value="">Todas las calles</option>' + streets.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join(''); if (streets.includes(selected)) s.value = selected }
-function metrics() { metricResidents.textContent = residents.length; metricHomes.textContent = new Set(residents.map(x => x.houseId)).size; metricPhones.textContent = residents.filter(x => x.phone).length; metricEmails.textContent = residents.filter(x => x.email).length }
+function metrics() { metricResidents.textContent = new Set(residents.map(x => x.id)).size; metricHomes.textContent = new Set(residents.map(x => x.houseId)).size; metricPhones.textContent = new Set(residents.filter(x => x.phone).map(x => x.id)).size; metricEmails.textContent = new Set(residents.filter(x => x.email).map(x => x.id)).size }
 function initials(n) { return String(n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]?.toUpperCase()).join('') || 'R' }
 function formatDate(v) { return v ? window.MJDateDisplay.format(v) : '—' }
 function link(type, v) { if (!v) return '—'; const safe = esc(v); return type === 'phone' ? `<a class="contact" href="tel:${safe.replace(/\s+/g, '')}">${safe}</a>` : `<a class="contact" href="mailto:${safe}">${safe}</a>` }
@@ -32,14 +32,32 @@ function formError(message = '') {
 function configureMode() {
   const edit = residentMode === 'EDITAR';
   element('residentHouse').disabled = edit;
+  element('existingResidentLabel').hidden = edit;
+  element('sharedResidentNotice').hidden = !edit;
   element('residentDialogTitle').textContent = edit ? 'Editar inquilino' : 'Gestionar vivienda';
   const resident = edit ? houseDetail?.residentes.find(r => String(r.id) === String(editingResidentId)) : null;
   element('residentName').value = resident?.nombreCompleto || '';
   element('residentPhone').value = resident?.telefono || '';
   element('residentEmail').value = resident?.correo || '';
   element('residentContact').checked = edit ? !!resident && houseDetail.casa.nombre === resident.nombreCompleto : !houseDetail?.residentes?.length;
+  for (const id of ['residentName', 'residentPhone', 'residentEmail']) element(id).readOnly = false;
+  if (!edit) fillExistingResident();
   formError();
 }
+function fillExistingResident() {
+  const select = element('existingResident');
+  const attached = new Set((houseDetail?.residentes || []).map(r => String(r.id)));
+  const unique = [...new Map(residents.map(r => [String(r.id), r])).values()].filter(r => !attached.has(String(r.id)));
+  select.innerHTML = '<option value="">Crear un nuevo condómino</option>' + unique.map(r => `<option value="${esc(r.id)}">#${esc(r.id)} · ${esc(r.name)} · ${esc(r.email || r.phone || 'Sin contacto')}</option>`).join('');
+  select.value = '';
+}
+element('existingResident').addEventListener('change', () => {
+  const resident = residents.find(r => String(r.id) === element('existingResident').value);
+  element('residentName').value = resident?.name || '';
+  element('residentPhone').value = resident?.phone || '';
+  element('residentEmail').value = resident?.email || '';
+  for (const id of ['residentName', 'residentPhone', 'residentEmail']) element(id).readOnly = !!resident;
+});
 async function loadHouseDetail() {
   const requestId = ++detailRequest;
   houseDetail = null;
@@ -82,7 +100,8 @@ function closeResidentDialog() {
 element('residentForm').addEventListener('submit', async event => {
   event.preventDefault();
   if (savingResident || !houseDetail || element('saveResident').disabled) return;
-  const body = { modo: residentMode, residenteId: editingResidentId || undefined,
+  const existingId = residentMode === 'ALTA' ? element('existingResident').value : '';
+  const body = { modo: existingId ? 'VINCULAR' : residentMode, residenteId: existingId || editingResidentId || undefined,
     nombreCompleto: element('residentName').value, telefono: element('residentPhone').value,
     correo: element('residentEmail').value, enRenta: element('residentRental').checked,
     observaciones: element('residentNotes').value, actualizarContacto: element('residentContact').checked };

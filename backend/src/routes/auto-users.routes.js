@@ -5,8 +5,8 @@ const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
 const { crearServicio } = require('../services/auto-users.service');
 const db = require('../config/database');
-const { Usuario, Condomino, Casa, Rol, UsuarioCasa } = require('../models');
-const service = crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa,
+const { Usuario, Condomino, CondominoVivienda, Casa, Rol, UsuarioCasa } = require('../models');
+const service = crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, UsuarioCasa,
     Invitacion: require('../models/AutoUserInvitacion'), Reporte: require('../models/AutoUserReporte'),
     correoSender: require('../services/auto-users-email.service') });
 const router = express.Router();

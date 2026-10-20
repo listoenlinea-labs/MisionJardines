@@ -1,7 +1,7 @@
 const {esViviendaVisible}=require('./viviendas-visibles.service');
 const { Op } = require('sequelize');
 const db = require('../config/database');
-const { Casa, Condomino } = require('../models');
+const { Casa, Condomino, CondominoVivienda } = require('../models');
 const { admin, fallo } = require('./viviendas.service');
 
 function identificador(value) {
@@ -17,7 +17,7 @@ function texto(value, max, nombre, obligatorio = false) {
 }
 function validar(body) {
     const modo = body.modo;
-    if (!['ALTA', 'EDITAR'].includes(modo)) throw fallo(400, 'Operación inválida');
+    if (!['ALTA', 'EDITAR', 'VINCULAR'].includes(modo)) throw fallo(400, 'Operación inválida');
     const nombreCompleto = texto(body.nombreCompleto, 150, 'el nombre', true);
     const telefono = texto(body.telefono, 25, 'el teléfono');
     const correo = texto(body.correo, 150, 'el correo')?.toLowerCase() || null;
@@ -36,7 +36,7 @@ async function detalle(actor, casaId) {
     casaId = identificador(casaId);
     const casa = await Casa.findByPk(casaId, { attributes: ['id', 'calle', 'calleCorrecta', 'numero', 'nombre', 'telefono', 'correo', 'enRenta', 'observaciones'] });
     if (!casa || !esViviendaVisible(casa)) throw fallo(404, 'Vivienda no encontrada');
-    const residentes = await Condomino.findAll({ where: { direccionId: casaId, activo: true }, order: [['id', 'ASC']] });
+    const residentes = await Condomino.findAll({ where: { activo: true }, include: [{ model: Casa, as: 'viviendas', attributes: [], where: { id: casaId }, through: { attributes: [], where: { activo: true } }, required: true }], order: [['id', 'ASC']] });
     return { casa, residentes };
 }
 async function guardar(actor, casaId, body) {
@@ -49,22 +49,29 @@ async function guardar(actor, casaId, body) {
         if (!casa) throw fallo(404, 'Vivienda no encontrada');
         let anterior = null;
         if (data.residenteId) {
-            anterior = await Condomino.findOne({ where: { id: data.residenteId, direccionId: casaId, activo: true }, ...options });
-            if (!anterior) throw fallo(409, 'El residente ya no está activo en esta vivienda. Actualiza el padrón.');
+            anterior = await Condomino.findOne({ where: { id: data.residenteId, activo: true }, ...options });
+            const link = await CondominoVivienda.findOne({ where: { condominoId: data.residenteId, viviendaId: casaId, activo: true }, ...options });
+            if (!anterior || (data.modo === 'EDITAR' && !link)) throw fallo(409, 'El residente ya no está activo en esta vivienda. Actualiza el padrón.');
+            if (data.modo === 'VINCULAR' && link) throw fallo(409, 'El condómino ya está vinculado a esta vivienda.');
         }
-        const duplicate = await Condomino.findOne({ where: { direccionId: casaId, activo: true,
-            nombreCompleto: data.nombreCompleto, ...(data.residenteId ? { id: { [Op.ne]: data.residenteId } } : {}) }, ...options });
+        const duplicate = await Condomino.findOne({ where: { activo: true,
+            nombreCompleto: anterior && data.modo === 'VINCULAR' ? anterior.nombreCompleto : data.nombreCompleto, ...(data.residenteId ? { id: { [Op.ne]: data.residenteId } } : {}) },
+            include: [{ model: Casa, as: 'viviendas', attributes: [], where: { id: casaId }, through: { attributes: [], where: { activo: true } }, required: true }], ...options });
         if (duplicate) throw fallo(409, 'Ya existe un residente activo con ese nombre en la vivienda');
         const now = new Date();
         const values = { nombreCompleto: data.nombreCompleto, telefono: data.telefono, correo: data.correo, actualizadoEn: now };
         let residente;
-        if (data.modo === 'EDITAR') {
+        if (data.modo === 'VINCULAR') {
+            residente = anterior;
+        } else if (data.modo === 'EDITAR') {
             residente = await anterior.update(values, { transaction });
         } else {
             residente = await Condomino.create({ ...values, direccionId: casaId, activo: true, fechaRegistro: now, creadoEn: now }, { transaction });
         }
+        const [vinculo] = await CondominoVivienda.findOrCreate({ where: { condominoId: residente.id, viviendaId: casaId }, defaults: { activo: true }, transaction });
+        await vinculo.update({ activo: true, actualizadoEn: now }, { transaction });
         await casa.update({ enRenta: data.enRenta, observaciones: data.observaciones,
-            ...(data.actualizarContacto ? { nombre: data.nombreCompleto, telefono: data.telefono, correo: data.correo } : {}) }, { transaction });
+            ...(data.actualizarContacto ? { nombre: residente.nombreCompleto, telefono: residente.telefono, correo: residente.correo } : {}) }, { transaction });
         // La vivienda conserva su ID, cuotas, pagos, vigencia y TAGs.
         return { residente, casaId };
     });

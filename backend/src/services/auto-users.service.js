@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const { crearRelaciones, viviendaIds } = require('./condominos-viviendas.service');
 const { buscarUsuariosPorTelefono } = require('./telefono-cuenta.service');
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const normal = value => String(value || '').normalize('NFKC').trim().toLowerCase();
@@ -24,8 +25,9 @@ function credentials(body) {
 }
 const trialHouse = casa => casa && (/\bprueba\b/i.test((casa.calleCorrecta || '') + ' ' + (casa.calle || '')) || /^TEST(?:-|$)/i.test(String(casa.numero)));
 const trialUser = user => /^AUTO_USERS_PRUEBA:[a-f0-9]{32}$/.test(user?.observaciones || '');
-function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitacion, Reporte,
+function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, UsuarioCasa, Invitacion, Reporte,
     correoSender, buscarTelefono = buscarUsuariosPorTelefono, hashPassword = (value => bcrypt.hash(value, 12)) }) {
+    const relaciones = crearRelaciones({ CondominoVivienda, Casa });
     const lock = transaction => ({ transaction, lock: transaction.LOCK.UPDATE });
     const pending = user => user && user.condominoId && user.cuentaAceptada === false && user.estatus === 'PENDIENTE';
     async function conflicts(nombreUsuario, correo, id, transaction) {
@@ -58,12 +60,13 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             // invert the user -> condominium lock order used by acceptance/correction.
             const linked = await Usuario.findOne({ where: { condominoId: condo.id }, transaction });
             if (linked) return { condominoId: id, usuarioId: linked.id, resultado: 'EXISTENTE' };
-            const casa = await Casa.findByPk(condo.direccionId, { transaction });
+            const casas = await relaciones.viviendas(condo.id, transaction);
+            const casa = casas.find(c => String(c.id) === String(condo.direccionId)) || casas[0];
             if (!casa) throw fail(409, 'El condómino no tiene una vivienda válida.');
             const correo = normal(condo.correo) || null;
             let existing = correo ? await Usuario.findOne({ where: { correo }, ...lock(transaction) }) : null;
             if (!existing && !correo && condo.telefono) {
-                const candidates = await Usuario.findAll({ where: { casaId: casa.id }, ...lock(transaction) });
+                const candidates = await Usuario.findAll({ where: { casaId: { [Op.in]: casas.map(c => c.id) } }, ...lock(transaction) });
                 const matches = candidates.filter(u => String(u.telefono || '').replace(/\D/g, '') === String(condo.telefono).replace(/\D/g, '')
                     && compact([u.nombre, u.apellidoPaterno, u.apellidoMaterno].filter(Boolean).join(' ')) === compact(condo.nombreCompleto));
                 if (matches.length > 1) throw fail(409, 'Existen varias cuentas coincidentes; revisa el vínculo del condómino.');
@@ -73,7 +76,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
                 const role = await Rol.findByPk(existing.rolId, { transaction });
                 const actualName = [existing.nombre, existing.apellidoPaterno, existing.apellidoMaterno].filter(Boolean).join(' ');
                 if (!existing.condominoId && existing.estatus === 'ACTIVO' && role?.nombre === 'CONDOMINO'
-                    && String(existing.casaId) === String(casa.id) && compact(actualName) === compact(condo.nombreCompleto)) {
+                    && casas.some(c => String(c.id) === String(existing.casaId)) && compact(actualName) === compact(condo.nombreCompleto)) {
                     await existing.update({ condominoId: condo.id }, { transaction });
                     return { condominoId: id, usuarioId: existing.id, resultado: 'VINCULADO_EXISTENTE' };
                 }
@@ -88,7 +91,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
                 telefono: String(condo.telefono || '').length <= 25 ? (String(condo.telefono || '').trim() || null) : null,
                 contrasenaHash: randomPassword, cuentaAceptada: false, estatus: 'PENDIENTE',
                 creadoEn: new Date(), actualizadoEn: new Date() }, { transaction });
-            await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId: casa.id },
+            for (const vivienda of casas) await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId: vivienda.id },
                 defaults: { tipo: 'MIEMBRO', activo: false }, transaction });
             await Invitacion.create({ usuarioId: user.id, envioEstado: 'SIN_ENVIAR' }, { transaction });
             return { condominoId: id, usuarioId: user.id, resultado: 'CREADO' };
@@ -112,6 +115,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             const condo = await Condomino.create({ direccionId: casa.id, nombreCompleto: 'Prueba Registro ' + clave.slice(0, 6),
                 correo: 'preregistro.prueba.' + clave + '@example.com', telefono: null, activo: true,
                 creadoEn: new Date(), actualizadoEn: new Date() }, { transaction });
+            await relaciones.reemplazar(condo.id, [casa.id], transaction);
             const result = await createOne(condo.id, transaction);
             await Usuario.update({ observaciones }, { where: { id: result.usuarioId }, transaction });
             return { ...result, cuentaAceptada: false };
@@ -145,7 +149,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             const casa = await Casa.findByPk(user.casaId, { attributes: ['id', 'calle', 'calleCorrecta', 'numero'] });
             const condo = await Condomino.findByPk(user.condominoId, { attributes: ['id', 'nombreCompleto', 'correo', 'telefono', 'direccionId', 'activo'] });
             const invitacion = await Invitacion.findByPk(user.id, { attributes: ['envioEstado', 'expiraEn', 'enviadoEn', 'ultimoError'] });
-            registros.push({ ...user, casa, condomino: condo, invitacion: invitacion ? { envioEstado: invitacion.envioEstado, expiraEn: invitacion.expiraEn, enviadoEn: invitacion.enviadoEn, ultimoError: invitacion.ultimoError } : null });
+            registros.push({ ...user, casa, viviendas: await relaciones.viviendas(user.condominoId), condomino: condo, invitacion: invitacion ? { envioEstado: invitacion.envioEstado, expiraEn: invitacion.expiraEn, enviadoEn: invitacion.enviadoEn, ultimoError: invitacion.ultimoError } : null });
         }
         return { registros, total: count, pagina: page };
     }
@@ -160,7 +164,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             if (await Usuario.findOne({ where: { condominoId: condo.id, id: { [Op.ne]: id } }, transaction })) throw fail(409, 'El condómino tiene otra cuenta asociada.');
             // Check only real tables/columns; selecting a complete model can fail
             // on unrelated legacy fields before deletion is even attempted.
-            const models = Object.values(db.models || {}).filter(model => ![Usuario, Condomino, UsuarioCasa, Invitacion, Reporte].includes(model));
+            const models = Object.values(db.models || {}).filter(model => ![Usuario, Condomino, CondominoVivienda, UsuarioCasa, Invitacion, Reporte].includes(model));
             const candidates = models.map(model => {
                 const references = [];
                 for (const [attribute, definition] of Object.entries(model.rawAttributes || {})) {
@@ -199,6 +203,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             await Invitacion.destroy({ where: { usuarioId: id }, transaction });
             await UsuarioCasa.destroy({ where: { usuarioId: id }, transaction });
             await Usuario.destroy({ where: { id }, transaction });
+            await CondominoVivienda.destroy({ where: { condominoId: condo.id }, transaction });
             await Condomino.destroy({ where: { id: condo.id }, transaction });
             return { mensaje: 'Cuenta de prueba, condómino ficticio, invitación y reportes eliminados. La vivienda se conserva.' };
         });
@@ -224,11 +229,14 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
         if (open) throw fail(409, 'Administración está revisando la corrección de tu registro.');
         const casa = await Casa.findByPk(user.casaId, transaction ? lock(transaction) : {});
         const condo = await Condomino.findByPk(user.condominoId, transaction ? lock(transaction) : {});
-        if (!casa || !condo?.activo || String(condo.direccionId) !== String(casa.id)) throw fail(409, 'La vivienda requiere revisión de Administración.');
-        return { user, inv, casa, condo };
+        const casas = condo ? await relaciones.viviendas(condo.id, transaction) : [];
+        if (!casa || !condo?.activo || !casas.some(c => String(c.id) === String(casa.id))) throw fail(409, 'La vivienda requiere revisión de Administración.');
+        if (trialUser(user) && casas.some(c => !trialHouse(c))) throw fail(409, 'Las pruebas solo pueden vincular viviendas de pruebas.');
+        return { user, inv, casa, condo, casas };
     }
-    const publicData = ({ user, casa, condo }) => ({ nombre: condo.nombreCompleto, calle: casa.calleCorrecta || casa.calle,
-        numero: casa.numero, nombreUsuario: user.nombreUsuario, correo: user.correo || '' });
+    const publicData = ({ user, casa, condo, casas }) => ({ nombre: condo.nombreCompleto, calle: casa.calleCorrecta || casa.calle,
+        numero: casa.numero, casaId: casa.id, viviendas: casas.map(c => ({ id: c.id, calle: c.calleCorrecta || c.calle, numero: c.numero })),
+        nombreUsuario: user.nombreUsuario, correo: user.correo || '' });
     async function consultar(token) { return publicData(await context(token)); }
     async function aceptar(token, body) {
         const data = credentials(body), password = body.contrasena;
@@ -239,8 +247,13 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
         await context(token); // Refuse invalid links before expensive password hashing; recheck under lock below.
         const contrasenaHash = await hashPassword(password);
         return db.transaction(async transaction => {
-            const { user, inv, casa } = await context(token, transaction);
-            if (houseNumber(body.numeroConfirmado) !== houseNumber(casa.numero)) throw fail(400, 'El número que escribiste no coincide con tu vivienda. Revisa o reporta el error.');
+            const { user, inv, casa, casas } = await context(token, transaction);
+            const confirmed = body.viviendasConfirmadas;
+            const correct = Array.isArray(confirmed)
+                ? confirmed.length === casas.length && new Set(confirmed.map(c => String(c?.id))).size === casas.length
+                  && casas.every(c => confirmed.some(v => String(v?.id) === String(c.id) && houseNumber(v.numero) === houseNumber(c.numero)))
+                : casas.length === 1 && houseNumber(body.numeroConfirmado) === houseNumber(casa.numero);
+            if (!correct) throw fail(400, 'Confirma el número de cada vivienda asignada. Si alguna no te pertenece, reporta el error.');
             if (await conflicts(data.nombreUsuario, data.correo, user.id, transaction)) throw fail(409, 'El nombre de usuario o correo ya está registrado. Usa otro.');
             const role = await Rol.findByPk(user.rolId, { transaction });
             if (!role?.activo || role.nombre !== 'CONDOMINO') throw fail(409, 'El rol de esta cuenta requiere revisión.');
@@ -248,8 +261,10 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
                 ultimoAccesoEn: new Date(), actualizadoEn: new Date(), sesionVersion: Number(user.sesionVersion || 0) + 1 }, { transaction });
             await Condomino.update({ correo: data.correo, actualizadoEn: new Date() }, { where: { id: user.condominoId }, transaction });
             await UsuarioCasa.update({ activo: false }, { where: { usuarioId: user.id }, transaction });
-            const [link] = await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId: casa.id }, defaults: { tipo: 'MIEMBRO', activo: true }, transaction });
-            await link.update({ activo: true, desvinculadoEn: null }, { transaction });
+            for (const vivienda of casas) {
+                const [link] = await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId: vivienda.id }, defaults: { tipo: 'MIEMBRO', activo: true }, transaction });
+                await link.update({ activo: true, desvinculadoEn: null }, { transaction });
+            }
             await inv.update({ tokenHash: null, expiraEn: null }, { transaction });
             const tokenSesion = jwt.sign({ usuarioId: user.id, casaId: casa.id, rolId: user.rolId,
                 rol: role.nombre, sesionVersion: Number(user.sesionVersion) }, process.env.JWT_SECRET,
@@ -281,17 +296,28 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             if (onlyTrial && !trialUser(user)) throw fail(403, 'Solo puedes editar cuentas generadas como prueba.');
             if (!pending(user) && !(onlyTrial && user?.cuentaAceptada === true && user.estatus === 'ACTIVO')) throw fail(409, 'Solo se pueden corregir prerregistros pendientes o cuentas de prueba activas.');
             if (onlyTrial && (await Rol.findByPk(user.rolId, { transaction }))?.nombre !== 'CONDOMINO') throw fail(409, 'El rol de la cuenta requiere revisión.');
-            const casa = await Casa.findByPk(casaId, { transaction });
-            if (!casa) throw fail(400, 'La vivienda seleccionada no existe.');
-            if (trialUser(user) && !trialHouse(casa)) throw fail(400, 'Las cuentas de prueba solo pueden usar viviendas de pruebas.');
+            const condo = await Condomino.findByPk(user.condominoId, lock(transaction));
+            if (!condo) throw fail(409, 'El condómino requiere revisión.');
+            const anteriores = await relaciones.viviendas(condo.id, transaction);
+            if (body.viviendaIds === undefined && anteriores.length > 1) throw fail(409, 'Actualiza la página y selecciona todas las viviendas del condómino.');
+            const ids = viviendaIds(body.viviendaIds === undefined ? [casaId] : body.viviendaIds);
+            if (!ids.includes(casaId)) throw fail(400, 'La vivienda principal debe estar seleccionada.');
+            for (const id of ids) {
+                const casa = await Casa.findByPk(id, { transaction });
+                if (!casa) throw fail(400, 'Una vivienda seleccionada no existe.');
+                if (trialUser(user) && !trialHouse(casa)) throw fail(400, 'Las cuentas de prueba solo pueden usar viviendas de pruebas.');
+            }
+            await relaciones.reemplazar(condo.id, ids, transaction);
             if (await conflicts(data.nombreUsuario, data.correo, user.id, transaction)) throw fail(409, 'Usuario o correo ya registrado en otra cuenta.');
             await user.update({ ...data, ...names(nombreCompleto), casaId, telefono: telefono || null, actualizadoEn: new Date(),
                 ...(onlyTrial ? { sesionVersion: Number(user.sesionVersion || 0) + 1 } : {}) }, { transaction });
             await Condomino.update({ direccionId: casaId, nombreCompleto, telefono: telefono || null, correo: data.correo,
                 actualizadoEn: new Date() }, { where: { id: user.condominoId }, transaction });
             await UsuarioCasa.update({ activo: false }, { where: { usuarioId: user.id }, transaction });
-            const [membership] = await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId }, defaults: { tipo: 'MIEMBRO', activo: false }, transaction });
-            await membership.update({ activo: user.cuentaAceptada === true, desvinculadoEn: null }, { transaction });
+            for (const id of ids) {
+                const [membership] = await UsuarioCasa.findOrCreate({ where: { usuarioId: user.id, casaId: id }, defaults: { tipo: 'MIEMBRO', activo: false }, transaction });
+                await membership.update({ activo: user.cuentaAceptada === true, desvinculadoEn: null }, { transaction });
+            }
             await Invitacion.update({ tokenHash: null, expiraEn: null, envioEstado: 'SIN_ENVIAR' }, { where: { usuarioId: user.id }, transaction });
             await Reporte.update({ estatus: 'CORREGIDO', corregidoEn: new Date(), corregidoPor: actorId }, { where: { usuarioId: user.id, estatus: 'ABIERTO' }, transaction });
             return { mensaje: 'Prerregistro corregido. Envía una nueva invitación.' };
@@ -305,6 +331,9 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             if (!pending(user)) return null;
             if (await Reporte.findOne({ where: { usuarioId: id, estatus: 'ABIERTO' }, transaction })) throw fail(409, 'Primero corrige el reporte abierto.');
             const casa = await Casa.findByPk(user.casaId, { transaction });
+            const condo = await Condomino.findByPk(user.condominoId, lock(transaction));
+            const casas = condo?.activo ? await relaciones.viviendas(condo.id, transaction) : [];
+            if (!casas.some(c => String(c.id) === String(user.casaId))) throw fail(409, 'Revisa las viviendas del condómino antes de enviar.');
             if (!casa || !correoSender.correoValido(user.correo)) throw fail(400, 'Corrige la vivienda o el correo antes de enviar.');
             const [inv] = await Invitacion.findOrCreate({ where: { usuarioId: id }, defaults: { envioEstado: 'SIN_ENVIAR' }, transaction });
             if (publicRequest && inv.enviadoEn && inv.tokenHash && new Date(inv.expiraEn) > new Date() && new Date(inv.enviadoEn).getTime() > Date.now() - 5 * 60000) return { reciente: true };
@@ -314,7 +343,7 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
             await inv.update({ tokenHash: digest, expiraEn: new Date(Date.now() + 14 * 86400000),
                 envioEstado: 'ENVIANDO', ultimoError: null }, { transaction });
             return { digest, correo: user.correo, nombre: [user.nombre, user.apellidoPaterno, user.apellidoMaterno].filter(Boolean).join(' '),
-                domicilio: (casa.calleCorrecta || casa.calle) + ' ' + casa.numero,
+                domicilio: casas.map(c => (c.calleCorrecta || c.calle) + ' ' + c.numero).join('; '),
                 enlace: config.frontend + '/aceptar-cuenta.html#invitacion=' + token };
         });
         if (!data) return { usuarioId: id, resultado: 'ACEPTADA_O_NO_ELEGIBLE' };
@@ -369,7 +398,8 @@ function crearServicio({ db, Usuario, Condomino, Casa, Rol, UsuarioCasa, Invitac
         const reportes = reportsResult.rows;
         const reportUserIds = [...new Set(reportes.map(r => r.usuarioId))];
         const reportUsers = reportUserIds.length ? await Usuario.findAll({ where: { id: { [Op.in]: reportUserIds } },
-            attributes: ['id', 'casaId', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'nombreUsuario', 'correo', 'telefono', 'cuentaAceptada', 'estatus'], raw: true }) : [];
+            attributes: ['id', 'condominoId', 'casaId', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'nombreUsuario', 'correo', 'telefono', 'cuentaAceptada', 'estatus'], raw: true }) : [];
+        for (const user of [...rows, ...reportUsers]) user.viviendas = await relaciones.viviendas(user.condominoId);
         return { total: count, pagina: page, registros: rows.map(u => ({ ...u, casa: casas.find(c => String(c.id) === String(u.casaId)),
             invitacion: invitaciones.find(i => String(i.usuarioId) === String(u.id)) })),
             totalReportes: reportsResult.count, paginaReportes: reportPage,
