@@ -62,18 +62,13 @@ Cuota.belongsTo(Casa, {
 });
 
 /*
- * Casa N --- N Condóminos; casa/direccionId se conserva solo por compatibilidad
+ * Casa N --- N Condóminos mediante el padrón de viviendas
  */
 Casa.belongsToMany(Condomino, {
     through: CondominoVivienda, onDelete: 'RESTRICT', onUpdate: 'CASCADE', foreignKey: 'viviendaId', otherKey: 'condominoId', as: 'condominos'
 });
 Condomino.belongsToMany(Casa, {
     through: CondominoVivienda, onDelete: 'RESTRICT', onUpdate: 'CASCADE', foreignKey: 'condominoId', otherKey: 'viviendaId', as: 'viviendas'
-});
-
-Condomino.belongsTo(Casa, {
-    foreignKey: 'direccionId',
-    as: 'casa'
 });
 
 /*

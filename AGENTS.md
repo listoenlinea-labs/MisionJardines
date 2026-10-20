@@ -16,9 +16,11 @@ acuerdo difieren, señalar la discrepancia; no restaurar silenciosamente un fluj
 - `direcciones.id` es el ID de vivienda. Un número de casa o un número de TAG no
   sustituye ese ID. La unidad de cobro es la vivienda, no la cuenta de usuario.
 - El padrón usa `condominos_viviendas` (condomino_id, vivienda_id, activo), sin
-  fusionar personas por similitud. `condominos.direccion_id` es compatibilidad heredada;
-  nunca usarlo como alternativa para recuperar un vínculo inactivo. Las autorizaciones
-  de cuentas siguen en `usuarios_casas`. Ver docs/CONDOMINOS_VIVIENDAS.md.
+  fusionar personas por similitud. El modelo y los servicios ya no usan
+  `condominos.direccion_id`; altas, correcciones y pruebas escriben la tabla intermedia.
+  Las autorizaciones de cuentas siguen en `usuarios_casas`. Para retirar la columna
+  heredada: preparación SQL (NULL), desplegar todas las instancias y después SQL final.
+  Ver docs/CONDOMINOS_VIVIENDAS.md.
 - Una vivienda puede tener varias cuentas y TAGs; una cuenta puede tener varias
   viviendas. Validar siempre el vínculo activo y los permisos en el backend.
 - Referencia vigente para pagos/C3: `docs/PAGOS_ACCESO_C3.md` y servicios actuales.

@@ -17,12 +17,6 @@ const Condomino = sequelize.define(
             field: 'origen_importacion_id'
         },
 
-        direccionId: {
-            type: DataTypes.INTEGER.UNSIGNED,
-            allowNull: false,
-            field: 'direccion_id'
-        },
-
         fechaRegistro: {
             type: DataTypes.DATE,
             allowNull: true,

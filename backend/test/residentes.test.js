@@ -14,7 +14,7 @@ function setup(t) {
         assert.equal(options.transaction, tx); updates.push({ record: this, data }); Object.assign(this, data); return this;
     } });
     const casa = record({ id: 5, nombre: 'Anterior', calle: 'Gardenias', numero: '5', controles: '5112343', pago: 'MENSUAL' });
-    const anterior = record({ id: 7, direccionId: 5, activo: true, nombreCompleto: 'Anterior Persona', correo: 'old@example.com' });
+    const anterior = record({ id: 7, activo: true, nombreCompleto: 'Anterior Persona', correo: 'old@example.com' });
     const link = record({ usuarioId: 8, casaId: 5, activo: true, tipo: 'RESPONSABLE' });
     const user = record({ id: 8, casaId: 5, rol: { nombre: 'CONDOMINO' }, estatus: 'ACTIVO' });
     let created;
@@ -38,7 +38,7 @@ test('administrative registration creates a registry resident and updates house 
     const data = setup(t);
     t.mock.method(models.Usuario, 'create', async () => assert.fail('registry entry is not a login account'));
     const result = await service.guardar(actor, 5, input);
-    assert.equal(result.residente.direccionId, 5);
+    assert.equal(result.residente.direccionId, undefined);
     assert.equal(data.casa.nombre, input.nombreCompleto);
     assert.equal(data.casa.controles, '5112343');
     assert.equal(data.anterior.activo, true);
@@ -118,7 +118,7 @@ test('vincular persona existente agrega una vivienda sin duplicarla ni modificar
     assert.equal(data.casa.nombre, 'Anterior Persona');
     assert.equal(data.link.activo, true);
 });
-test('rechaza editar una persona sin vínculo activo aunque su direccionId heredado coincida', async t => {
+test('rechaza editar una persona sin vínculo activo en la vivienda', async t => {
     setup(t);
     t.mock.method(models.CondominoVivienda, 'findOne', async () => null);
     await assert.rejects(service.guardar(actor, 5, { ...input, modo: 'EDITAR', residenteId: 7 }), { status: 409 });
@@ -134,6 +134,6 @@ test('consulta ORM usa la tabla intermedia y filtra el vínculo activo', async t
         assert.match(statement, /vivienda_id/);
         assert.match(statement, /condomino_id/);
         assert.match(statement, /CondominoVivienda`\.`activo` = true/);
-        assert.doesNotMatch(statement, /ON[^\n]*direccion_id/);
+        assert.doesNotMatch(statement, /direccion_id/);
     }
 });

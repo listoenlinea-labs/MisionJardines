@@ -437,3 +437,18 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   generadas por Sequelize. Sin mensajes ni escrituras de MySQL/C3 de producción.
 - Pendiente: desplegar conjuntamente frontend/backend y validar una cuenta de prueba con
   dos viviendas de pruebas; no retirar todavía direccion_id.
+
+
+### 2026-10-19 — Retiro de la dependencia de direccion_id
+
+- Continuación del PR #215 ya fusionado en main `887ff2e`: el modelo Condomino y
+  las altas/correcciones/pruebas ya no seleccionan ni escriben direccion_id. Se retira
+  la asociación singular heredada; las viviendas se resuelven por la tabla intermedia.
+- Incluye SQL 01 para permitir NULL antes del despliegue y SQL 02 para retirar columna
+  y FK después de desplegar todas las instancias. El SQL final bloquea el retiro ante
+  asociaciones sin conservar o dependencias que requieren revisión.
+- No se ejecutó SQL ni se consultó producción. La preparación NULL es obligatoria
+  mientras la columna física siga siendo NOT NULL. No puede revertirse a código que
+  use direccion_id después de eliminarla.
+- Validación local: 85 pruebas aprobadas con DB/SMTP simulados; SQL generado por Sequelize
+  sin la columna retirada. Scripts de migración preparados, no ejecutados en MySQL real.

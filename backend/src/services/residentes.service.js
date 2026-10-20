@@ -66,7 +66,7 @@ async function guardar(actor, casaId, body) {
         } else if (data.modo === 'EDITAR') {
             residente = await anterior.update(values, { transaction });
         } else {
-            residente = await Condomino.create({ ...values, direccionId: casaId, activo: true, fechaRegistro: now, creadoEn: now }, { transaction });
+            residente = await Condomino.create({ ...values, activo: true, fechaRegistro: now, creadoEn: now }, { transaction });
         }
         const [vinculo] = await CondominoVivienda.findOrCreate({ where: { condominoId: residente.id, viviendaId: casaId }, defaults: { activo: true }, transaction });
         await vinculo.update({ activo: true, actualizadoEn: now }, { transaction });

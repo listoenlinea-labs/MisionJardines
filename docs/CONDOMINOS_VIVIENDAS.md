@@ -14,9 +14,11 @@ La copia fue ejecutada por el usuario y verificada mediante exportaciones del
 19/oct/2026: 188 pares coincidentes y cero faltantes, con 236 viviendas distintas.
 No se consultó MySQL en vivo ni se incluyeron datos personales en el repositorio.
 
-`condominos.direccion_id` sigue siendo NOT NULL. Se escribe para compatibilidad al
-crear personas y al corregir la vivienda principal de un preregistro. No se usa
-como alternativa para recuperar vínculos ausentes o inactivos. No retirarlo todavía.
+`condominos.direccion_id` ya no forma parte del modelo ni de los servicios. La
+vivienda inicial de una cuenta nueva es la primera asociación activa ordenada por ID;
+Administración puede cambiar la principal de la cuenta durante la corrección sin
+modificar a la persona. Ningún vínculo ausente o inactivo se recupera de la columna
+heredada. La columna física se retira mediante las dos etapas SQL indicadas abajo.
 `usuarios.casa_id` conserva el contexto principal; las autorizaciones de las cuentas
 se siguen verificando exclusivamente contra vínculos activos en `usuarios_casas`.
 No se alteran pagos, saldos, TAGs ni cuotas al cambiar asociaciones del padrón.
@@ -45,23 +47,36 @@ No se alteran pagos, saldos, TAGs ni cuotas al cambiar asociaciones del padrón.
 
 ## Despliegue
 
-1. Verificar que la tabla intermedia existe y que la copia está completa; ya fue
-   confirmada con los CSV aportados. No necesita repetir la migración en esa base.
-2. Publicar frontend y backend juntos. Incluye modelos, servicios, rutas, controladores,
-   las páginas Auto-users/Aceptar cuenta/Padrón y sus JS/CSS versionados.
+1. Guardar respaldo y verificar la tabla intermedia. Ejecutar
+   [01-preparar.sql](../backend/sql/2026-10-19-condominos-direccion-01-preparar.sql):
+   permite NULL en la columna heredada. No omitirlo: el código nuevo no envía ese campo
+   y fallaría al crear personas mientras la columna siga siendo obligatoria.
+2. Desplegar este frontend/backend y retirar todas las instancias/trabajos antiguos.
+   El código no hace ALTER TABLE automáticamente. Incluye el modelo Condomino sin el
+   campo heredado y sin asociación singular casa, además de servicios de padrón/pruebas.
 3. Probar con dos viviendas dedicadas a pruebas: crear una prueba, editarla marcando
    ambas y seleccionando una principal, generar enlace sin envío, abrirlo en incógnito,
    verificar todos los domicilios y confirmar ambos números. Comprobar acceso a ambas
    desde Mis viviendas y rechazo de otra vivienda no asignada.
 4. Probar Reportar error, corrección, enlace reemplazado y borrado. No enviar invitaciones
    masivas como parte de esa prueba.
-5. Revisar las personas posiblemente duplicadas por separado antes de fusionarlas.
+5. En ventana sin escrituras concurrentes, ejecutar
+   [02-finalizar.sql](../backend/sql/2026-10-19-condominos-direccion-02-finalizar.sql).
+   Comprueba que cada par heredado no nulo existe en la tabla intermedia (puede estar
+   inactivo), descubre las FK reales y elimina la columna con sus FK salientes.
+   Se detiene sin ALTER si faltan asociaciones o hay dependencias entrantes,
+   FK/índices compuestos, vistas o triggers a revisar. No copia datos ni reactiva vínculos.
+   ALTER TABLE confirma implícitamente; START TRANSACTION no permite deshacerlo.
+6. Verificar columna_restante=0 y relaciones_huerfanas=0, y repetir alta/corrección de
+   prueba. Si devuelve NO SE ELIMINO, revisar sus contadores antes de continuar.
+7. Revisar las personas posiblemente duplicadas por separado antes de fusionarlas.
 
 No hay sincronización automática que copie `direccion_id` a la tabla intermedia en
 cada reinicio: eso restauraría asociaciones retiradas. Un proceso de importación externo
 que escriba personas deberá escribir también sus vínculos. Revertir a código anterior
 ocultaría viviendas adicionales, por lo que debe hacerse antes de utilizarlas o mediante
-un plan de compatibilidad explícito. Eliminar `direccion_id` queda para otra migración.
+un plan de compatibilidad explícito. Después de retirar la columna no puede usarse
+el código anterior que la seleccionaba/escribía; restaurar solo una versión compatible.
 
 ## Validación local
 
