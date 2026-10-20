@@ -98,3 +98,40 @@ test('all navigation entry points use the same origin and embedded page isolatio
   assert.match(sidebarSource,/function initEmbedded\(/);
   assert.match(sidebarSource,/loadHomeDashboard\(\)/);
 });
+
+test('embedded Inicio loads the same compact design as standalone without duplicating the sidebar',()=>{
+  const nodes = [];
+  const classes = new Set(['mj-home']);
+  const listeners = {};
+  const document = {
+    readyState:'complete',
+    body:{
+      classList:{add:(...names)=>names.forEach(name=>classes.add(name))},
+      appendChild:element=>nodes.push(element)
+    },
+    head:{appendChild:element=>nodes.push(element)},
+    createElement:tag=>({tagName:tag.toUpperCase(),dataset:{}}),
+    getElementById:id=>nodes.find(node=>node.id===id),
+    querySelector:()=>null,
+    addEventListener:(event,callback)=>{listeners[event]=callback;}
+  };
+  const window = {parent:{postMessage(){}},MJPermissions:policy};
+  const location = {
+    pathname:'/MisionJardines/index.html',
+    search:'?_mjFrame=1',
+    href:'https://app.test/MisionJardines/index.html?_mjFrame=1',
+    origin:'https://app.test'
+  };
+  vm.runInNewContext(sidebarSource,{window,document,location,URL,URLSearchParams});
+  assert.ok(classes.has('mj-embedded'));
+  assert.ok(classes.has('mj-shared-sidebar-enabled'));
+  for (const id of ['mjAppDesign','mjProductUI','mjUnifiedUI','mjKpiCompact','mjMobileOperativo']) {
+    const stylesheet = nodes.find(node=>node.id===id);
+    assert.equal(stylesheet?.rel,'stylesheet',`${id} debe estar dentro del iframe`);
+  }
+  assert.equal(nodes.filter(node=>node.tagName==='SCRIPT' && node.dataset?.mjHomeDashboard).length,1);
+  assert.equal(nodes.filter(node=>node.id==='mjSharedSidebarStyles').length,0);
+  assert.equal(nodes.filter(node=>node.className==='mj-shared-sidebar').length,0);
+  assert.match(fs.readFileSync('docs/assets/css/kpi-compact.css','utf8'),
+    /body\.mj-home\.mj-shared-sidebar-enabled \.dashboard \.hl-report-kpi>\.hl-kpi-content/);
+});

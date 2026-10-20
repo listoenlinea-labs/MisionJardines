@@ -68,7 +68,8 @@ test('Todas las vistas operativas cargan el CSS compartido renovado', () => {
     'calendario','directorio','anuncios','cuenta','viviendas','verificacion-cuentas','reporte'
   ];
   for (const p of pages) {
-    assert.match(read('docs/'+p+'.html'), /site-sidebar\.js\?v=20261011-kpis-compact/,p);
+    // El cache-buster cambia con cada despliegue; se verifica el script real.
+    assert.match(read('docs/'+p+'.html'), /assets\/js\/site-sidebar\.js\?v=[^"']+/,p);
   }
   const sidebar = read('docs/assets/js/site-sidebar.js');
   assert.match(sidebar, /assets\/css\/kpi-compact\.css\?v=20261011-kpis/);
