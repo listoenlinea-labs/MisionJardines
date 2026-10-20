@@ -231,6 +231,45 @@ test('prueba rechaza viviendas reales, revoca enlaces, exige corregir reportes y
   assert.equal((await f.service.consultar(corrected)).numero, '5');
   await assert.rejects(f.service.enlacePrueba(trial.usuarioId, 'http://evil.example'), { status: 400 });
 });
+test('envío individual de prueba usa SMTP, conserva exclusión masiva/pública y permite aceptar su enlace', async () => {
+  const f = fixture(); const trial = await f.service.crearPrueba(10, '1'.repeat(32));
+  await f.service.editarPrueba(trial.usuarioId, { nombreCompleto: 'Prueba Correo', casaId: 10,
+    nombreUsuario: 'prueba-correo', correo: 'smtp-trial@example.com', telefono: '3312345678' }, 100);
+  const before = await f.service.enlacePrueba(trial.usuarioId, 'https://example.com');
+  const oldToken = new URLSearchParams(new URL(before.enlace).hash.slice(1)).get('invitacion');
+  const result = await f.service.enviarLote(0, trial.usuarioId);
+  assert.equal(result.resultados[0].resultado, 'ENVIADO'); assert.equal(result.siguiente, null);
+  assert.equal(f.sent.length, 1); assert.equal(f.sent[0].correo, 'smtp-trial@example.com');
+  assert.equal(f.tables.Invitacion[0].envioEstado, 'ENVIADO');
+  assert.match(f.tables.Usuario[0].observaciones, /^AUTO_USERS_PRUEBA:/);
+  assert.equal(f.tables.Usuario[0].cuentaAceptada, false);
+  const token = tokenFrom(f);
+  await assert.rejects(f.service.consultar(oldToken), { status: 410 });
+  assert.equal((await f.service.enviarLote()).resultados[0].resultado, 'PRUEBA_SIN_ENVIO');
+  assert.equal((await f.service.sendOne(trial.usuarioId, true, true)).resultado, 'PRUEBA_SIN_ENVIO');
+  await assert.rejects(f.service.enviarPorTelefono('3312345678'), { status: 409 });
+  assert.equal(f.sent.length, 1); assert.equal((await f.service.consultar(token)).numero, '5');
+  await f.service.aceptar(token, { ...acceptBody, nombreUsuario: 'prueba-correo', correo: 'smtp-trial@example.com' });
+  assert.equal((await f.service.enviarLote(0, trial.usuarioId)).resultados[0].resultado, 'ACEPTADA_O_NO_ELEGIBLE');
+  assert.equal(f.sent.length, 1);
+});
+test('envío individual de prueba conserva controles de correo, reportes, vivienda y fallos SMTP', async () => {
+  const f = fixture(); const trial = await f.service.crearPrueba(10, '2'.repeat(32));
+  f.tables.Usuario[0].correo = null;
+  assert.equal((await f.service.enviarLote(0, trial.usuarioId)).resultados[0].resultado, 'REVISAR');
+  assert.equal(f.sent.length, 0);
+  f.tables.Usuario[0].correo = 'smtp-trial@example.com';
+  f.tables.Reporte.push({ usuarioId: trial.usuarioId, estatus: 'ABIERTO' });
+  assert.equal((await f.service.enviarLote(0, trial.usuarioId)).resultados[0].resultado, 'REVISAR');
+  f.tables.Reporte.length = 0;
+  f.tables.Casa[0].calle = 'Calle Residencial';
+  assert.equal((await f.service.enviarLote(0, trial.usuarioId)).resultados[0].resultado, 'REVISAR');
+  assert.equal(f.sent.length, 0);
+  f.tables.Casa[0].calle = 'Calle Prueba'; f.failSend(true);
+  assert.equal((await f.service.enviarLote(0, trial.usuarioId)).resultados[0].resultado, 'ERROR');
+  assert.equal(f.tables.Invitacion[0].envioEstado, 'ERROR');
+  assert.equal(f.tables.Usuario[0].cuentaAceptada, false);
+});
 test('fallo creando prueba revierte también el condómino ficticio', async () => {
   const f = fixture(); f.tables.Rol[0].activo = false;
   await assert.rejects(f.service.crearPrueba(10, 'c'.repeat(32)), { status: 503 });

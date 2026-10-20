@@ -205,6 +205,9 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-20
 
+- Auto-users: el botón individual Enviar permite probar SMTP con una cuenta de prueba pendiente y correo propio. Los lotes masivos y el reenvío público por teléfono siguen omitiendo esas cuentas; se conserva su marca y los controles de correo, vivienda de pruebas, reportes y aceptación. Generar enlace sin enviar sigue disponible. Requiere desplegar backend; no requiere SQL ni modifica variables SMTP.
+- Validación local del envío individual: 35 pruebas aprobadas en auto-users, rutas, interfaz administrativa de pruebas y correo, con DB/SMTP simulados; comprobaciones de sintaxis y diff sin errores. No se enviaron correos reales ni se verificaron credenciales/entrega de producción.
+
 - Auto-users: Crear cuenta valida formato/disponibilidad de usuario y correo, contraseña y confirmación antes de abrir el segundo panel. Se incorpora POST público `/api/auto-users/invitacion/validar`, protegido por enlace vigente y límite de consultas; no activa cuentas, genera sesiones ni consume el enlace. La aceptación final mantiene las comprobaciones y la confirmación de todas las viviendas.
 - El segundo panel muestra «Introduce SOLO tu numero de casa». Se bloquean clics repetidos mientras se valida y se exige otra comprobación si cambian las credenciales. El frontend actualiza la versión del script para renovar caché.
 - Validación local: 41 pruebas aprobadas en auto-users, auto-users-ui y auto-users-routes; DB/SMTP simulados. Requiere desplegar frontend y backend juntos; no requiere SQL ni se consultó/modificó producción.

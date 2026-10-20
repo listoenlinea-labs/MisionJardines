@@ -337,17 +337,22 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
             return { mensaje: 'Prerregistro corregido. Envía una nueva invitación.' };
         });
     }
-    async function sendOne(id, publicRequest = false) {
-        if (trialUser(await Usuario.findByPk(id))) return { usuarioId: id, resultado: 'PRUEBA_SIN_ENVIO' };
+    async function sendOne(id, publicRequest = false, allowTrial = false) {
+        // Only an explicitly targeted administrative send may include a trial.
+        // Public phone access and batches must always skip trial accounts.
+        const maySendTrial = allowTrial && !publicRequest;
+        if (trialUser(await Usuario.findByPk(id)) && !maySendTrial) return { usuarioId: id, resultado: 'PRUEBA_SIN_ENVIO' };
         const config = correoSender.configuracion();
         const data = await db.transaction(async transaction => {
             const user = await Usuario.findByPk(id, lock(transaction));
             if (!pending(user)) return null;
+            if (trialUser(user) && !maySendTrial) return null;
             if (await Reporte.findOne({ where: { usuarioId: id, estatus: 'ABIERTO' }, transaction })) throw fail(409, 'Primero corrige el reporte abierto.');
             const casa = await Casa.findByPk(user.casaId, { transaction });
             const condo = await Condomino.findByPk(user.condominoId, lock(transaction));
             const casas = condo?.activo ? await relaciones.viviendas(condo.id, transaction) : [];
             if (!casas.some(c => String(c.id) === String(user.casaId))) throw fail(409, 'Revisa las viviendas del condómino antes de enviar.');
+            if (trialUser(user) && casas.some(c => !trialHouse(c))) throw fail(409, 'Las pruebas solo pueden vincular viviendas de pruebas.');
             if (!casa || !correoSender.correoValido(user.correo)) throw fail(400, 'Corrige la vivienda o el correo antes de enviar.');
             const [inv] = await Invitacion.findOrCreate({ where: { usuarioId: id }, defaults: { envioEstado: 'SIN_ENVIAR' }, transaction });
             if (publicRequest && inv.enviadoEn && inv.tokenHash && new Date(inv.expiraEn) > new Date() && new Date(inv.enviadoEn).getTime() > Date.now() - 5 * 60000) return { reciente: true };
@@ -377,7 +382,7 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
             estatus: 'PENDIENTE', id: { [Op.gt]: afterId } }, order: [['id', 'ASC']], limit: 1 });
         const results = [];
         for (const user of rows) {
-            try { results.push(await sendOne(user.id)); }
+            try { results.push(await sendOne(user.id, false, Boolean(id))); }
             catch (error) { results.push({ usuarioId: user.id, resultado: 'REVISAR', mensaje: error.status ? error.message : 'No fue posible preparar la invitación.' }); }
         }
         return { resultados: results, siguiente: !id && rows.length === 1 ? rows.at(-1).id : null };
