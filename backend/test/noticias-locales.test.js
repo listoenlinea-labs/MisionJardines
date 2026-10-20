@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { VENTANA_DIAS, fechaGdelt, calleCercana, prepararNoticiasLocales } = require('../src/services/noticias-locales.service');
+const { VENTANA_DIAS, fechaGdelt, calleCercana, imagenNoticia, prepararNoticiasLocales } = require('../src/services/noticias-locales.service');
 
 const now = new Date('2026-10-18T05:30:00.000Z');
 const article = (title, seendate, url) => ({ title, seendate, url, domain: 'medio.mx' });
@@ -117,4 +117,42 @@ test('favorece noticias viales de Tráfico ZMG en la selección pero las ordena 
   assert.ok(news.filter(n => n.isTraficoZmg).length >= 6);
   assert.equal(news[0].title, 'Evento cultural 0 en Guadalajara');
   assert.ok(news.every((item, i) => i === 0 || Date.parse(news[i - 1].seenDate) >= Date.parse(item.seenDate)));
+});
+
+test('utiliza únicamente la imagen destacada de cada noticia y no inventa fotografías', () => {
+  const items = prepararNoticiasLocales([
+    {
+      title: 'Choque en Zapopan con foto',
+      url: 'https://medio.mx/noticia-1',
+      image: 'https://img.medio.mx/foto-uno.jpg',
+      published_at: '2026-10-17T15:00:00Z'
+    },
+    {
+      title: 'Noticias de Guadalajara sin fotografía',
+      url: 'https://medio.mx/noticia-2',
+      published_at: '2026-10-17T14:00:00Z'
+    },
+    {
+      title: 'Accidente en Zapopan con imagen insegura',
+      url: 'https://medio.mx/noticia-3',
+      image: 'javascript:alert(1)',
+      published_at: '2026-10-17T13:00:00Z'
+    },
+    {
+      title: 'Marcha en Guadalajara con otra imagen',
+      url: 'https://medio.mx/noticia-4',
+      image: 'https://img.medio.mx/foto-cuatro.png',
+      published_at: '2026-10-17T12:00:00Z'
+    }
+  ], now);
+  assert.deepEqual(items.map(n => n.imageUrl), [
+    'https://img.medio.mx/foto-uno.jpg',
+    null,
+    null,
+    'https://img.medio.mx/foto-cuatro.png'
+  ]);
+  assert.equal(imagenNoticia('http://medio.mx/foto.jpg'), null, 'no mostrar contenido mixto HTTP');
+  assert.equal(imagenNoticia('https://localhost/imagen.png'), null);
+  assert.equal(imagenNoticia('data:image/png;base64,AAAA'), null);
+  assert.equal(imagenNoticia('https://medio.mx/foto.jpg'), 'https://medio.mx/foto.jpg');
 });

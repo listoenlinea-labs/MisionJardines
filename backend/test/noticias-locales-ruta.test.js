@@ -17,7 +17,8 @@ test('endpoint de noticias usa búsquedas locales y devuelve publicaciones recie
       ok: true,
       json: async () => ({ results: [{
         title: 'Choque en Zapopan', url: 'https://traficozmg.com/nota',
-        published_at: now, sitename: 'Tráfico ZMG', country: 'MX', lang: 'es'
+        published_at: now, sitename: 'Tráfico ZMG', country: 'MX', lang: 'es',
+        image: 'https://traficozmg.com/foto-choque.jpg'
       }] })
     };
   });
@@ -32,6 +33,7 @@ test('endpoint de noticias usa búsquedas locales y devuelve publicaciones recie
   assert.equal(res.payload.queryWindow, '7d');
   assert.equal(res.payload.data.length, 1); // Misma noticia de tres búsquedas: sin duplicados.
   assert.equal(res.payload.data[0].dateLabel, 'Publicada');
+  assert.equal(res.payload.data[0].imageUrl, 'https://traficozmg.com/foto-choque.jpg');
   assert.equal(requests.length, 12);
   assert.ok(requests.some(url => url.searchParams.get('q') === 'Atotonilco'));
   assert.ok(requests.some(url => url.searchParams.get('q') === 'Valle de México'));

@@ -49,3 +49,26 @@ test('Noticias móvil permite llegar a todas las filas sin recortar la última',
   assert.match(mobile, /\.hl-news-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\);[^}]*max-height:none;overflow:visible/);
   assert.match(js, /\.hl-traffic-face\{grid-template-columns:1fr;grid-template-rows:340px 260px\}/);
 });
+
+test('Noticias solo inserta la foto real asociada al artículo, sin rellenos y con degradación al fallar', () => {
+  const js = fs.readFileSync(path.resolve(__dirname, '../../docs/assets/js/home-dashboard.js'), 'utf8');
+  const start = js.indexOf('async function loadLocalNews(');
+  const view = js.slice(start, js.indexOf('async function initEnvironmentCard()', start));
+  assert.match(view, /safeNewsPhotoUrl\(item\.imageUrl\)/);
+  assert.match(view, /photo \? '[ ]has-image' : ''/);
+  assert.match(view, /photo \? `<img class="hl-news-photo"/);
+  assert.match(view, /loading="lazy" decoding="async"/);
+  assert.match(view, /image\.addEventListener\('error'/);
+  assert.match(view, /image\.remove\(\)/);
+  assert.doesNotMatch(view, /unsplash|placeholder|picsum|source\.unsplash/i);
+});
+
+test('Las fotos son compactas junto al título en escritorio y no agrandan tarjetas en móvil', () => {
+  const js = fs.readFileSync(path.resolve(__dirname, '../../docs/assets/js/home-dashboard.js'), 'utf8');
+  assert.match(js, /\.hl-news-item\.has-image \.hl-news-main\{display:grid;grid-template-columns:72px minmax\(0,1fr\)/);
+  assert.match(js, /\.hl-news-photo\{[^}]*object-fit:cover/);
+  const mobile = js.slice(js.indexOf('/* Tarjetas de noticias compactas en móvil'));
+  assert.match(mobile, /\.hl-news-item\{[^}]*height:158px;min-height:158px/);
+  assert.match(mobile, /\.hl-news-item\.has-image \.hl-news-photo\{[^}]*height:40px/);
+  assert.match(mobile, /\.hl-news-item\.has-image \.hl-news-title\{[^}]*-webkit-line-clamp:3/);
+});

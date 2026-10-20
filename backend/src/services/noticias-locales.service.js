@@ -40,6 +40,21 @@ function fechaGdelt(value) {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
+// FreeNewsApi proporciona la imagen destacada del artículo original en "image"
+// (extraída de og:image/JSON-LD). No buscar fotos por palabras clave.
+function imagenNoticia(value) {
+  if (typeof value !== 'string' || value.length > 2048) return null;
+  try {
+    const url = new URL(value.trim());
+    // La aplicación se sirve por HTTPS; evitar contenido mixto y URLs ejecutables.
+    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname) return null;
+    if (url.hostname === 'localhost' || url.hostname.endsWith('.localhost')) return null;
+    return url.href;
+  } catch (_) {
+    return null;
+  }
+}
+
 function prepararNoticiasLocales(articles, now = new Date()) {
   const fechaActual = now.getTime();
   const cutoff = fechaActual - VENTANA_MS;
@@ -82,6 +97,7 @@ function prepararNoticiasLocales(articles, now = new Date()) {
     noticias.push({
       title,
       url: url.href,
+      imageUrl: imagenNoticia(article.image),
       domain: article.sitename || article.domain || article.host || url.hostname,
       seenDate: fecha.toISOString(),
       dateLabel: article.published_at ? 'Publicada' : 'Detectada',
@@ -117,4 +133,4 @@ function prepararNoticiasLocales(articles, now = new Date()) {
     Date.parse(b.seenDate) - Date.parse(a.seenDate) || Number(b.isTraficoZmg) - Number(a.isTraficoZmg));
 }
 
-module.exports = { VENTANA_DIAS, fechaGdelt, calleCercana, prepararNoticiasLocales };
+module.exports = { VENTANA_DIAS, fechaGdelt, calleCercana, imagenNoticia, prepararNoticiasLocales };
