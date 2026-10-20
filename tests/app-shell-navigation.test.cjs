@@ -135,3 +135,20 @@ test('embedded Inicio loads the same compact design as standalone without duplic
   assert.match(fs.readFileSync('docs/assets/css/kpi-compact.css','utf8'),
     /body\.mj-home\.mj-shared-sidebar-enabled \.dashboard \.hl-report-kpi>\.hl-kpi-content/);
 });
+
+test('Inicio preloads its compact styles before the dashboard can render in either navigation mode',()=>{
+  const homeHtml = fs.readFileSync('docs/index.html','utf8');
+  assert.match(homeHtml, /<body class="mj-home mj-shared-sidebar-enabled">/);
+  const head = homeHtml.split('</head>')[0];
+  for (const [id, path] of [
+    ['mjAppDesign','app-design.css'],
+    ['mjProductUI','product-ui.css'],
+    ['mjUnifiedUI','ui-unificada.css'],
+    ['mjKpiCompact','kpi-compact.css'],
+    ['mjMobileOperativo','mobile-operativo.css']
+  ]) {
+    assert.match(head, new RegExp(`<link id="${id}" rel="stylesheet" href="assets/css/${path.replaceAll('.','\\.')}\\?v=`));
+    assert.equal(head.split(`id="${id}"`).length-1,1,`${id} no debe duplicarse`);
+  }
+  assert.match(homeHtml, /site-sidebar\.js\?v=20261020-estilos-inicio-iframe/);
+});
