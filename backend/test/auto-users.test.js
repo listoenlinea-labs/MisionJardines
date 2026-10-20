@@ -11,6 +11,7 @@ function matches(row, where = {}) {
     const value = where[key];
     if (value && typeof value === 'object') return Reflect.ownKeys(value).every(op => {
       if (op === Op.like) return String(row[key] || '').startsWith(value[op].replace(/%$/, ''));
+      if (op === Op.notIn) return !value[op].some(x => String(row[key]) === String(x));
       if (op === Op.in) return value[op].some(x => String(row[key]) === String(x));
       if (op === Op.ne) return value[op] === null ? row[key] != null : String(row[key]) !== String(value[op]);
       if (op === Op.gt) return Number(row[key]) > Number(value[op]);
@@ -21,7 +22,7 @@ function matches(row, where = {}) {
 }
 function fixture(condos = [{ id: 1, direccionId: 10, nombreCompleto: 'Persona Uno Prueba', correo: 'persona1@example.com', telefono: '3312345678', activo: true }]) {
   let tables = { Usuario: [], Condomino: condos, Casa: [{ id: 10, calle: 'Calle Prueba', numero: '5' }, { id: 11, calle: 'Otra Calle', numero: 'A-2' }],
-    Rol: [{ id: 3, nombre: 'CONDOMINO', activo: true }], UsuarioCasa: [], Invitacion: [], Reporte: [] };
+    Rol: [{ id: 3, nombre: 'CONDOMINO', activo: true }], UsuarioCasa: [], CondominoVivienda: condos.map(c => ({ condominoId: c.id, viviendaId: c.direccionId, activo: c.activo })), Invitacion: [], Reporte: [] };
   let chain = Promise.resolve(), failDeleteTable = null;
   const db = { getQueryInterface: () => ({
     async showAllTables() { return Object.values(db.models || {}).map(model => model.getTableName()); },
@@ -310,4 +311,65 @@ test('invitaciones SMTP no requieren teléfono y rechazan cuentas sin correo sin
   const retry = await f.service.enviarLote();
   assert.equal(retry.resultados[0].resultado, 'REVISAR'); assert.match(retry.resultados[0].mensaje, /correo/);
   assert.equal(f.tables.Invitacion[0].tokenHash, before); assert.equal(f.sent.length, 1);
+});
+
+test('varias viviendas requieren confirmar todas; no basta la principal ni IDs repetidos', async () => {
+  const f = fixture();
+  f.tables.CondominoVivienda.push({ condominoId: 1, viviendaId: 11, activo: true });
+  await f.service.createOne(1); await f.service.createOne(1);
+  assert.equal(f.tables.Usuario.length, 1);
+  assert.deepEqual(f.tables.UsuarioCasa.map(l => [l.casaId, l.activo]), [[10, false], [11, false]]);
+  await f.service.sendOne(1); const token = tokenFrom(f);
+  assert.equal((await f.service.consultar(token)).viviendas.length, 2);
+  for (const viviendasConfirmadas of [undefined, [{ id: 10, numero: '5' }], [{ id: 10, numero: '5' }, { id: 10, numero: '5' }], [{ id: 10, numero: '5' }, { id: 11, numero: 'incorrecto' }]]) {
+    await assert.rejects(f.service.aceptar(token, { ...acceptBody, viviendasConfirmadas }), { status: 400 });
+    assert.equal(f.tables.Usuario[0].cuentaAceptada, false);
+    assert.ok(f.tables.UsuarioCasa.every(l => !l.activo));
+  }
+  await f.service.aceptar(token, { ...acceptBody, viviendasConfirmadas: [{ id: 10, numero: '5' }, { id: 11, numero: 'a-2' }] });
+  assert.ok(f.tables.UsuarioCasa.every(l => l.activo));
+});
+test('vínculos inactivos no se recuperan desde direccion_id y no conceden acceso', async () => {
+  const f = fixture(); f.tables.CondominoVivienda[0].activo = false;
+  await assert.rejects(f.service.createOne(1), { status: 409 });
+  assert.equal(f.tables.Usuario.length, 0);
+  f.tables.CondominoVivienda.push({ condominoId: 1, viviendaId: 11, activo: true });
+  await f.service.createOne(1);
+  assert.equal(f.tables.Usuario[0].casaId, 11);
+  assert.deepEqual(f.tables.UsuarioCasa.map(l => l.casaId), [11]);
+});
+test('corregir un preregistro cambia el conjunto completo, invalida el enlace y conserva otras personas', async () => {
+  const f = fixture(); await f.service.createOne(1); await f.service.sendOne(1); const old = tokenFrom(f);
+  f.tables.CondominoVivienda.push({ condominoId: 2, viviendaId: 10, activo: true });
+  const body = { nombreCompleto: 'Persona Uno Prueba', casaId: 11, viviendaIds: [10, 11], nombreUsuario: 'persona1@example.com', correo: 'persona1@example.com' };
+  await f.service.editar(1, body, 99);
+  await assert.rejects(f.service.consultar(old), { status: 410 });
+  assert.equal(f.tables.CondominoVivienda.find(l => l.condominoId === 2).activo, true);
+  assert.ok(f.tables.UsuarioCasa.every(l => !l.activo));
+  await assert.rejects(f.service.editar(1, { ...body, viviendaIds: undefined }, 99), { status: 409 });
+  await assert.rejects(f.service.editar(1, { ...body, viviendaIds: [10, 999] }, 99), { status: 400 });
+  await f.service.editar(1, { ...body, viviendaIds: [11] }, 99);
+  assert.equal(f.tables.CondominoVivienda.find(l => l.condominoId === 1 && l.viviendaId === 10).activo, false);
+  assert.equal(f.tables.CondominoVivienda.find(l => l.condominoId === 1 && l.viviendaId === 11).activo, true);
+});
+test('las viviendas cambiadas después de consultar requieren una confirmación nueva', async () => {
+  const f = fixture(); await f.service.createOne(1); await f.service.sendOne(1); const token = tokenFrom(f);
+  await f.service.consultar(token);
+  f.tables.CondominoVivienda.push({ condominoId: 1, viviendaId: 11, activo: true });
+  await assert.rejects(f.service.aceptar(token, acceptBody), { status: 400 });
+  assert.equal(f.tables.Usuario[0].cuentaAceptada, false);
+});
+test('una cuenta aceptada conserva sus permisos al repetir crear; no recibe viviendas por coincidencia', async () => {
+  const f = fixture(); await f.service.createOne(1); await f.service.sendOne(1);
+  await f.service.aceptar(tokenFrom(f), acceptBody);
+  f.tables.CondominoVivienda.push({ condominoId: 1, viviendaId: 11, activo: true });
+  await f.service.createOne(1);
+  assert.deepEqual(f.tables.UsuarioCasa.filter(l => l.activo).map(l => l.casaId), [10]);
+});
+test('borrar prueba elimina también sus vínculos de padrón y conserva la vivienda', async () => {
+  const f = fixture(); const trial = await f.service.crearPrueba(10, 'f'.repeat(32));
+  await f.service.borrarPrueba(trial.usuarioId);
+  assert.ok(!f.tables.CondominoVivienda.some(l => l.condominoId === trial.condominoId));
+  assert.equal(f.tables.Casa.length, 2);
+  assert.ok(f.tables.CondominoVivienda.some(l => l.condominoId === 1));
 });

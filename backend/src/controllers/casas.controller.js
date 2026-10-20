@@ -15,7 +15,7 @@ const obtenerCasas = async (req, res) => {
             },
             {
                 model: Condomino,
-                as: 'condominos',
+                as: 'condominos', through: { attributes: [], where: { activo: true } },
                 required: false,
                 where: { activo: true },
                 attributes: [

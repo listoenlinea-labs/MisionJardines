@@ -180,7 +180,7 @@ async function obtenerDashboard(req, res) {
             'condominos',
             `SELECT
                 (SELECT COUNT(*) FROM condominos WHERE activo = 1) AS residentes_activos,
-                (SELECT COUNT(DISTINCT direccion_id) FROM condominos WHERE activo = 1) AS viviendas_ocupadas,
+                (SELECT COUNT(DISTINCT cv.vivienda_id) FROM condominos_viviendas cv INNER JOIN condominos c ON c.id = cv.condomino_id WHERE cv.activo = 1 AND c.activo = 1) AS viviendas_ocupadas,
                 (SELECT COUNT(*) FROM direcciones) AS viviendas_totales`,
             {},
             errores
@@ -246,7 +246,8 @@ async function obtenerDashboard(req, res) {
             'actividad_residentes',
             `SELECT c.creado_en AS fecha, d.calle_correcta AS calle, d.numero
              FROM condominos c
-             INNER JOIN direcciones d ON d.id = c.direccion_id
+             INNER JOIN condominos_viviendas cv ON cv.condomino_id = c.id AND cv.activo = 1
+             INNER JOIN direcciones d ON d.id = cv.vivienda_id
              WHERE c.activo = 1
              ORDER BY c.creado_en DESC
              LIMIT 4`,

@@ -15,6 +15,10 @@ acuerdo difieren, señalar la discrepancia; no restaurar silenciosamente un fluj
   `userauthorize`, consultados mediante su protocolo TCP.
 - `direcciones.id` es el ID de vivienda. Un número de casa o un número de TAG no
   sustituye ese ID. La unidad de cobro es la vivienda, no la cuenta de usuario.
+- El padrón usa `condominos_viviendas` (condomino_id, vivienda_id, activo), sin
+  fusionar personas por similitud. `condominos.direccion_id` es compatibilidad heredada;
+  nunca usarlo como alternativa para recuperar un vínculo inactivo. Las autorizaciones
+  de cuentas siguen en `usuarios_casas`. Ver docs/CONDOMINOS_VIVIENDAS.md.
 - Una vivienda puede tener varias cuentas y TAGs; una cuenta puede tener varias
   viviendas. Validar siempre el vínculo activo y los permisos en el backend.
 - Referencia vigente para pagos/C3: `docs/PAGOS_ACCESO_C3.md` y servicios actuales.
@@ -146,7 +150,7 @@ Ejemplos que deben conservarse:
 - Auto-users: `docs/AUTO_USERS.md` describe un flujo distinto del registro público
   manual. Una sola cuenta por condomino_id; prerregistros PENDIENTES y no aceptados
   no pueden autenticarse. Aceptación por enlace válido activa exclusivamente rol
-  CONDOMINO y su vivienda confirmada. Los enlaces son privados, reemplazables y de
+  CONDOMINO y todas sus viviendas activas confirmadas individualmente. Los enlaces son privados, reemplazables y de
   un solo uso; solo guardar hashes. No activar prerregistros cambiando estatus solo.
   Las invitaciones se envían por correo SMTP; no usar WhatsApp Business para este flujo.
   El teléfono orienta el login, pero no concede un enlace de activación: se entrega al correo

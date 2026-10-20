@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../../docs/assets/js/aceptar-cuenta.js'), 'utf8');
-async function page() {
+async function page(viviendas) {
   const fields = new Map(), requests = [], redirects = [], stored = new Map();
   const $ = id => {
     if (!fields.has(id)) fields.set(id, { value: '', hidden: true, textContent: '', listeners: {},
@@ -16,7 +16,7 @@ async function page() {
     history: { replaceState() {} }, URLSearchParams, localStorage: storage, sessionStorage: storage,
     fetch: async (url, options) => {
       const body = JSON.parse(options.body); requests.push({ url, body });
-      if (url.endsWith('/consultar')) return { ok: true, json: async () => ({ ok: true, registro: { nombre: 'Persona Prueba', calle: 'Calle Prueba', numero: '5', correo: 'prueba@example.com', nombreUsuario: 'prueba@example.com' } }) };
+      if (url.endsWith('/consultar')) return { ok: true, json: async () => ({ ok: true, registro: { ...(viviendas ? { viviendas, casaId: 10 } : {}), nombre: 'Persona Prueba', calle: 'Calle Prueba', numero: '5', correo: 'prueba@example.com', nombreUsuario: 'prueba@example.com' } }) };
       if (url.endsWith('/aceptar') && body.numeroConfirmado !== '5') return { ok: false, json: async () => ({ ok: false, message: 'Número incorrecto' }) };
       return { ok: true, json: async () => ({ ok: true, token: 'synthetic-session', usuario: { id: 1, rol: { nombre: 'CONDOMINO' } } }) };
     } };
@@ -69,4 +69,16 @@ test('entrada desde teléfono solo solicita enlace al correo y mantiene ocultos 
   assert.equal(requests.length, 1); assert.ok(requests[0].url.endsWith('/acceso/enviar'));
   assert.equal(requests[0].body.telefono, '3312345678'); assert.equal(requests[0].body.token, undefined);
   assert.match($('invitationState').textContent, /correo registrado/);
+});
+
+
+test('aceptación muestra todas las viviendas como texto y envía cada confirmación por ID', async () => {
+  const p = await page([{ id: 10, calle: 'Calle Prueba', numero: '5' }, { id: 11, calle: 'Otra <calle>', numero: 'A-2' }]);
+  assert.match(p.$('additionalHouses').innerHTML, /Otra &lt;calle&gt;/);
+  assert.match(p.$('additionalConfirmations').innerHTML, /confirmExtra0/);
+  p.$('acceptPassword').value = p.$('acceptPasswordConfirm').value = 'PruebaSegura123';
+  await p.fire('acceptAccountForm', 'submit');
+  p.$('confirmHouseNumber').value = '5'; p.$('confirmExtra0').value = 'A-2';
+  await p.fire('confirmAddressForm', 'submit');
+  assert.deepEqual(p.requests.at(-1).body.viviendasConfirmadas, [{ id: 10, numero: '5' }, { id: 11, numero: 'A-2' }]);
 });

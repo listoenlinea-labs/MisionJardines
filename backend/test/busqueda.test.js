@@ -28,7 +28,7 @@ test('el guardia busca domicilios y residentes sin consultar cuotas', async t =>
   t.after(() => searchModels.forEach((m, i) => { m.findAll = originals[i]; }));
   let financialQueries = 0;
   models.Casa.findAll = async () => [{ id: 9, calle: 'Jardines', numero: '12' }];
-  models.Condomino.findAll = async () => [{ id: 4, nombreCompleto: 'Ana Test', casa: { calle: 'Jardines', numero: '12' } }];
+  models.Condomino.findAll = async () => [{ id: 4, nombreCompleto: 'Ana Test', viviendas: [{ calle: 'Jardines', numero: '12' }, { calle: 'Rosas', numero: '9' }] }];
   models.Cuota.findAll = async () => { financialQueries++; return []; };
   models.Visita.findAll = async () => [];
   models.Acceso.findAll = async () => [{ id: 12, nombre: 'Visitante' }];
@@ -38,6 +38,8 @@ test('el guardia busca domicilios y residentes sin consultar cuotas', async t =>
   assert.equal(status, 200);
   assert.equal(body.casas[0].numero, '12');
   assert.equal(body.residentes[0].nombreCompleto, 'Ana Test');
+  assert.equal(body.residentes.length, 2);
+  assert.equal(body.residentes[1].casa.numero, '9');
   assert.equal(body.accesos[0].nombre, 'Visitante');
   assert.equal(financialQueries, 0);
 });
@@ -68,9 +70,10 @@ test('el conmutador rechaza accesos sin permiso y limita resultados', async t =>
   assert.equal((await request('/api/busqueda/conmutador?calle=Jardines', 'CONDOMINO', 17)).status, 403);
   const { status } = await request('/api/busqueda/conmutador?calle=Jardines&numero=12', 'SEGURIDAD');
   assert.equal(status, 200);
-  assert.equal(options.limit, 40);
+  assert.equal(options.limit, 1000);
+  assert.equal(options.include[0].through.where.activo, true);
   assert.equal(options.include[0].where.activo, true);
-  assert.ok(options.where.calle[Op.like].includes('Jardines'));
+  assert.ok(options.where.calleCorrecta[Op.like].includes('Jardines'));
   assert.ok(!options.attributes.includes('telefono'));
   assert.equal((await request('/api/busqueda/conmutador/opciones', 'CONDOMINO', 17)).status, 403);
   assert.equal((await request('/api/busqueda/conmutador/opciones', 'SEGURIDAD')).status, 200);

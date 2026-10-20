@@ -4,7 +4,7 @@
 
 Auto-users es exclusivo de SUPER_ADMIN y ADMINISTRADOR, tanto en menú como en API. No sustituye el registro público manual ni modifica pagos o TAGs. Cada condómino del padrón tiene como máximo una cuenta vinculada mediante `usuarios.condomino_id` único.
 
-**Crear usuarios** pide confirmación Sí/No y recorre condóminos por lotes de 20. Conserva cuentas vinculadas y crea únicamente faltantes: estado PENDIENTE, cuenta_aceptada=false, contraseña aleatoria desconocida guardada como hash y vínculo de vivienda inactivo. El usuario inicial usa el correo registrado; sin correo usa teléfono y, si coincide, concatena nombre sin espacios o ID para evitar colisión. Coincidencias ambiguas de identidad/correo no se vinculan automáticamente; se muestran para revisión. Un correo mal capturado se corrige antes de crear.
+**Crear usuarios** pide confirmación Sí/No y recorre condóminos por lotes de 20. Conserva cuentas vinculadas y crea únicamente faltantes: estado PENDIENTE, cuenta_aceptada=false, contraseña aleatoria desconocida guardada como hash y un vínculo inactivo por cada vivienda activa de `condominos_viviendas`. El usuario inicial usa el correo registrado; sin correo usa teléfono y, si coincide, concatena nombre sin espacios o ID para evitar colisión. Coincidencias ambiguas de identidad/correo no se vinculan automáticamente; se muestran para revisión. Un correo mal capturado se corrige antes de crear.
 
 **Mandar invitación** pide confirmación Sí/No y envía por **SMTP**, individualmente, a las cuentas de condóminos PENDIENTES y no aceptadas. El navegador recorre lotes de una cuenta; mantener la página abierta hasta terminar. Los envíos individuales usan el mismo remitente. No se utiliza WhatsApp Business, Meta, plantillas ni códigos QR. Las cuentas de prueba, las ya aceptadas, correos inválidos y reportes de corrección abiertos no reciben correo.
 
@@ -47,9 +47,9 @@ El menú lateral muestra el número de solicitudes pendientes solo a administrad
 
 ## Aceptación y reporte
 
-Con enlace válido se muestran calle y número como texto sombreado, sin inputs editables. El usuario puede editar correo y nombre de usuario, y definir/confirmar contraseña (8 caracteres, mayúscula, minúscula y número; máximo 72 bytes bcrypt).
+Con enlace válido se muestran las calles y números de todas las viviendas activas como texto sombreado, sin inputs editables. El usuario puede editar correo y nombre de usuario, y definir/confirmar contraseña (8 caracteres, mayúscula, minúscula y número; máximo 72 bytes bcrypt).
 
-Crear cuenta abre una segunda confirmación de domicilio. NO cierra el panel; Confirmar exige que el número escrito coincida con la vivienda del prerregistro. En transacción se establece cuenta_aceptada=true/ACTIVO, activa solo el vínculo confirmado, invalida el enlace y devuelve la sesión para entrar a Inicio. El enlace no puede aceptarse dos veces. Inicio está permitido para Condómino; Seguridad conserva sus restricciones.
+Crear cuenta abre una segunda confirmación de domicilio. NO cierra el panel; Confirmar exige escribir el número de cada vivienda del prerregistro; el servidor exige el conjunto completo, sin IDs extra ni repetidos. En transacción se establece cuenta_aceptada=true/ACTIVO, activa exclusivamente los vínculos confirmados, invalida el enlace y devuelve la sesión para entrar a Inicio. El enlace no puede aceptarse dos veces. Inicio está permitido para Condómino; Seguridad conserva sus restricciones.
 
 Reportar error requiere comentario y revoca el enlace. Administración ve los reportes paginados, corrige nombre/vivienda/contacto/usuario, y envía un nuevo correo. Con reporte abierto no se reenvía. Nunca cambiar solo estatus para saltarse la aceptación.
 
@@ -71,4 +71,4 @@ No/escape cancela; errores y progreso permanecen visibles. El timeout no confirm
 - Administrativas: GET raíz/config/viviendas, POST crear/invitaciones/:id/invitacion, PATCH :id y las rutas prueba/usuarios, prueba/viviendas, prueba/crear, prueba/:id/enlace, PATCH/DELETE prueba/:id.
 - La API de login acepta `telefono` + `contrasena` o el identificador anterior + contraseña. El formulario de solicitud sigue usando `/api/auth/registro/solicitar` y la revisión `/api/auth/cuentas`.
 
-Actualizar frontend y backend juntos. No requiere migraciones nuevas sobre el esquema de Auto-users existente. No afecta el servicio de correo de recibos, invitaciones de vivienda ni verificación de cambio de correo. Las pruebas usan SMTP/DB simulados; no prueban entrega real ni aprobación de producción.
+Actualizar frontend y backend juntos. Requiere la tabla `condominos_viviendas` ya creada y poblada antes del despliegue. Ver [relaciones del padrón](CONDOMINOS_VIVIENDAS.md). No afecta el servicio de correo de recibos, invitaciones de vivienda ni verificación de cambio de correo. Las pruebas usan SMTP/DB simulados; no prueban entrega real ni aprobación de producción.

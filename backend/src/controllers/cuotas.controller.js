@@ -91,7 +91,7 @@ function obtenerInclude() {
                 },
                 {
                     model: Condomino,
-                    as: 'condominos',
+                    as: 'condominos', through: { attributes: [], where: { activo: true } },
                     required: false,
                     where: {
                         activo: true
@@ -227,7 +227,7 @@ async function crearCuota(req, res) {
             include: [
                 {
                     model: Condomino,
-                    as: 'condominos',
+                    as: 'condominos', through: { attributes: [], where: { activo: true } },
                     required: false,
                     where: {
                         activo: true

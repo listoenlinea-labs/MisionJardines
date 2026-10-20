@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
     const queries = [];
     if (personnel.includes(role)) {
       queries.push(Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], where: fields(term, ['calleCorrecta', 'numero', 'nombre', 'telefono', 'correo']), limit: 1000, order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']] }).then(rows => { result.casas = ordenarDirecciones(filtrarViviendasVisibles(rows)).slice(0, 5); }));
-      queries.push(Condomino.findAll({ attributes: ['id', 'nombreCompleto'], where: { activo: true, ...fields(term, ['nombreCompleto', 'telefono', 'correo']) }, include: [house], limit: 5, order: [['nombreCompleto', 'ASC']] }).then(rows => { result.residentes = rows.filter(r=>!r.casa||esViviendaVisible(r.casa)); }));
+      queries.push(Condomino.findAll({ attributes: ['id', 'nombreCompleto'], where: { activo: true, ...fields(term, ['nombreCompleto', 'telefono', 'correo']) }, include: [{ ...house, as: 'viviendas', through: { attributes: [], where: { activo: true } } }], limit: 5, order: [['nombreCompleto', 'ASC']] }).then(rows => { result.residentes = rows.flatMap(r => { const row = r.toJSON ? r.toJSON() : r; return (row.viviendas || []).filter(esViviendaVisible).map(casa => ({ id: row.id, nombreCompleto: row.nombreCompleto, casa })); }).slice(0, 5); }));
       if (['SUPER_ADMIN', 'ADMINISTRADOR', 'SEGURIDAD'].includes(role)) queries.push(Acceso.findAll({ attributes: ['id', 'nombre', 'tipo', 'placas', 'fechaEntrada'], where: fields(term, ['nombre', 'placas', 'proveedor', 'motivo', 'telefono', 'tipo']), include: [house], limit: 5, order: [['fechaEntrada', 'DESC']] }).then(rows => { result.accesos = rows.filter(r=>!r.casa||esViviendaVisible(r.casa)); }));
     }
     if (finance.includes(role)) {
@@ -212,7 +212,7 @@ router.get('/conmutador', autorizarRoles(...personnel), async (req, res) => {
     const casas = await Casa.findAll({
       attributes: ['id', 'calle', 'calleCorrecta', 'numero'],
       where: { ...(calle && { calleCorrecta: { [Op.like]: like(calle) } }), ...(numero && { numero: { [Op.like]: like(numero) } }) },
-      include: [{ model: Condomino, as: 'condominos', where: { activo: true }, required: false, attributes: ['nombreCompleto', 'telefono'] }],
+      include: [{ model: Condomino, as: 'condominos', through: { attributes: [], where: { activo: true } }, where: { activo: true }, required: false, attributes: ['nombreCompleto', 'telefono'] }],
       limit: 1000,
       order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']]
     });

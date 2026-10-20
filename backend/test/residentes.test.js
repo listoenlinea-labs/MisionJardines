@@ -18,6 +18,8 @@ function setup(t) {
     const link = record({ usuarioId: 8, casaId: 5, activo: true, tipo: 'RESPONSABLE' });
     const user = record({ id: 8, casaId: 5, rol: { nombre: 'CONDOMINO' }, estatus: 'ACTIVO' });
     let created;
+    t.mock.method(models.CondominoVivienda, 'findOne', async () => ({ activo: true }));
+    t.mock.method(models.CondominoVivienda, 'findOrCreate', async () => [record({ activo: true })]);
     t.mock.method(db, 'transaction', async (options, callback) => callback(tx));
     t.mock.method(models.Casa, 'findByPk', async (id, options) => { assert.equal(options.transaction, tx); return Number(id) === 5 ? casa : null; });
     t.mock.method(models.Condomino, 'findOne', async options => options.where.id === 7 ? anterior : null);
@@ -99,4 +101,39 @@ test('routes require authenticated administration for both detail and save', asy
         assert.equal((await fetch(url, { method: 'POST', headers, body: JSON.stringify(input) })).status, 403);
     }
     assert.equal(mutations, 0);
+});
+
+test('vincular persona existente agrega una vivienda sin duplicarla ni modificar su identidad o accesos', async t => {
+    const data = setup(t);
+    t.mock.method(models.CondominoVivienda, 'findOne', async () => null);
+    let association;
+    t.mock.method(models.CondominoVivienda, 'findOrCreate', async options => {
+        association = options.where;
+        return [{ async update(values) { assert.equal(values.activo, true); } }];
+    });
+    await service.guardar(actor, 5, { ...input, modo: 'VINCULAR', residenteId: 7 });
+    assert.deepEqual(association, { condominoId: 7, viviendaId: 5 });
+    assert.equal(data.created, undefined);
+    assert.equal(data.anterior.nombreCompleto, 'Anterior Persona');
+    assert.equal(data.casa.nombre, 'Anterior Persona');
+    assert.equal(data.link.activo, true);
+});
+test('rechaza editar una persona sin vínculo activo aunque su direccionId heredado coincida', async t => {
+    setup(t);
+    t.mock.method(models.CondominoVivienda, 'findOne', async () => null);
+    await assert.rejects(service.guardar(actor, 5, { ...input, modo: 'EDITAR', residenteId: 7 }), { status: 409 });
+});
+test('consulta ORM usa la tabla intermedia y filtra el vínculo activo', async t => {
+    const sql = [];
+    t.mock.method(db, 'query', async statement => { sql.push(statement); return []; });
+    await models.Casa.findAll({ include: [{ model: models.Condomino, as: 'condominos', through: { attributes: [], where: { activo: true } }, where: { activo: true }, required: false }] });
+    await models.Condomino.findAll({ where: { activo: true }, include: [{ model: models.Casa, as: 'viviendas', through: { attributes: [], where: { activo: true } }, where: { id: 5 }, required: true }] });
+    assert.equal(sql.length, 2);
+    for (const statement of sql) {
+        assert.match(statement, /condominos_viviendas/);
+        assert.match(statement, /vivienda_id/);
+        assert.match(statement, /condomino_id/);
+        assert.match(statement, /CondominoVivienda`\.`activo` = true/);
+        assert.doesNotMatch(statement, /ON[^\n]*direccion_id/);
+    }
 });

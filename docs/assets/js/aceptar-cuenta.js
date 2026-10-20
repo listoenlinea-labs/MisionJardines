@@ -33,9 +33,13 @@
     $('resendAccessEmail').addEventListener('click', sendAccess);
     await sendAccess(); return;
   }
-  let registration;
+  let registration, extraHouses = [];
+  const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
   try {
     const result = await api('consultar'); registration = result.registro;
+    extraHouses = (registration.viviendas || []).filter(c => String(c.id) !== String(registration.casaId));
+    $('additionalHouses').innerHTML = extraHouses.map(c => '<p class="address-readout"><strong>' + esc(c.calle) + ' · Casa ' + esc(c.numero) + '</strong></p>').join('');
+    $('additionalConfirmations').innerHTML = extraHouses.map((c, i) => '<label>' + esc(c.calle) + ' · Introduce el número de casa<input id="confirmExtra' + i + '" required maxlength="20" autocomplete="off"></label>').join('');
     $('residentName').textContent = registration.nombre;
     $('invitationStreet').textContent = registration.calle; $('invitationHouse').textContent = registration.numero;
     $('acceptEmail').value = registration.correo; $('acceptUsername').value = registration.nombreUsuario;
@@ -46,6 +50,7 @@
     event.preventDefault(); $('acceptMessage').textContent = '';
     if ($('acceptPassword').value !== $('acceptPasswordConfirm').value) { $('acceptMessage').textContent = 'Las contraseñas no coinciden.'; return; }
     $('confirmAddressText').textContent = registration.calle + ' · Casa ' + registration.numero;
+    extraHouses.forEach((_, i) => { $('confirmExtra' + i).value = ''; });
     $('confirmHouseNumber').value = ''; $('confirmMessage').textContent = ''; $('confirmAddress').showModal(); $('confirmHouseNumber').focus();
   });
   $('addressNo').addEventListener('click', () => $('confirmAddress').close());
@@ -53,7 +58,8 @@
     event.preventDefault(); const button = $('confirmAccount'); button.disabled = true; $('confirmMessage').textContent = '';
     try {
       const result = await api('aceptar', { nombreUsuario: $('acceptUsername').value, correo: $('acceptEmail').value,
-        contrasena: $('acceptPassword').value, confirmarContrasena: $('acceptPasswordConfirm').value, numeroConfirmado: $('confirmHouseNumber').value });
+        contrasena: $('acceptPassword').value, confirmarContrasena: $('acceptPasswordConfirm').value, numeroConfirmado: $('confirmHouseNumber').value,
+        ...(registration.viviendas ? { viviendasConfirmadas: [{ id: registration.casaId, numero: $('confirmHouseNumber').value }, ...extraHouses.map((c, i) => ({ id: c.id, numero: $('confirmExtra' + i).value }))] } : {}) });
       for (const storage of [localStorage, sessionStorage]) { storage.removeItem('misionJardinesToken'); storage.removeItem('misionJardinesUsuario'); }
       sessionStorage.removeItem('mjCasaSeleccionada'); sessionStorage.removeItem('mjInvitacion');
       sessionStorage.setItem('misionJardinesToken', result.token); sessionStorage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));
