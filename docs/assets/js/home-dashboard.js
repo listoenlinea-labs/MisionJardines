@@ -391,6 +391,16 @@
     }
   }
 
+  function safeNewsPhotoUrl(value) {
+    if (typeof value !== 'string') return '';
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' && !url.username && !url.password ? url.href : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   async function environmentApi(path, options = {}) {
     const response = await fetch(API_URL + path, {
       headers: { Authorization: `Bearer ${token}` },
@@ -669,15 +679,31 @@
 
       const items = Array.isArray(result.data) ? result.data : [];
       grid.innerHTML = items.length
-        ? items.slice(0, 12).map(item => `
-            <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
+        ? items.slice(0, 12).map(item => {
+            const photo = safeNewsPhotoUrl(item.imageUrl);
+            return `
+            <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''}${photo ? ' has-image' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
               <small>${item.nearbyStreet ? '📍 ' + escapeHtml(item.nearbyStreet) + ' · ' : escapeHtml(item.category || 'Noticias') + ' · '}${escapeHtml(item.domain || 'Medio local')}</small>
-              <h3 class="hl-news-title">${escapeHtml(item.title || 'Noticia local')}</h3>
+              <div class="hl-news-main">
+                ${photo ? `<img class="hl-news-photo" src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async" width="96" height="72">` : ''}
+                <h3 class="hl-news-title">${escapeHtml(item.title || 'Noticia local')}</h3>
+              </div>
               <span class="hl-news-meta">${escapeHtml(item.dateLabel || 'Detectada')} ${escapeHtml(formatWhen(item.seenDate))} · Leer noticia ↗</span>
-            </a>`).join('')
+            </a>`;
+          }).join('')
         : '<div class="hl-live-empty">' + (term
           ? 'No se encontraron noticias relacionadas con “' + escapeHtml(term) + '” en los últimos 7 días.'
           : 'No se encontraron noticias recientes de la zona en los últimos 7 días.') + '</div>';
+      // Si el medio impide enlazar su foto, mantener la tarjeta y el enlace,
+      // sin imágenes de relleno, sin romper el alto fijo de las tarjetas.
+      grid.querySelectorAll('.hl-news-photo').forEach(image => {
+        const hideUnavailablePhoto = () => {
+          image.closest('.hl-news-item')?.classList.remove('has-image');
+          image.remove();
+        };
+        image.addEventListener('error', hideUnavailablePhoto, { once: true });
+        if (image.complete && image.naturalWidth === 0) hideUnavailablePhoto();
+      });
     } catch (error) {
       if (requestId !== homeNewsRequestId) return;
       homeNewsLoaded = false; // Permitir reintento al abrir de nuevo Noticias.
@@ -1177,6 +1203,11 @@
       .hl-news-item small{color:#69587b;font-size:10.5px;font-weight:650;line-height:1.4;letter-spacing:.01em;text-transform:none;overflow-wrap:anywhere}
       .hl-news-item .hl-news-title{display:-webkit-box;margin:8px 0 0;overflow:hidden;color:#364258;font-size:13.5px;font-weight:500;letter-spacing:-.008em;line-height:1.5;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow-wrap:anywhere}
       .hl-news-item .hl-news-meta{padding-top:12px;color:#617087;font-size:10.5px;font-weight:400;line-height:1.5}
+      .hl-news-main{min-width:0;margin-top:8px}
+      .hl-news-item.has-image .hl-news-main{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start}
+      .hl-news-photo{display:block;width:72px;height:67px;object-fit:cover;object-position:center;border:1px solid rgba(77,93,119,.12);border-radius:8px;background:#eaeff4}
+      .hl-news-item .hl-news-main .hl-news-title{margin:0;min-width:0}
+      .hl-news-item.has-image .hl-news-title{-webkit-line-clamp:4}
       .hl-traffic-status{bottom:12px;max-width:min(290px,calc(100% - 24px));padding:10px 12px}
       .hl-traffic-status b{font-size:11px;line-height:1.25}
       .hl-traffic-status span{margin-top:4px;font-size:9.5px;line-height:1.4}
@@ -1206,10 +1237,15 @@
         .hl-news-face{padding:12px}
         .hl-news-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:none;overflow:visible;padding:1px 2px 5px 1px;align-items:stretch}
         .hl-news-grid>.hl-live-empty{grid-column:1/-1;font-size:11px}
-        .hl-news-item{min-width:0;min-height:158px;padding:9px 8px;border-radius:10px;overflow-wrap:anywhere}
+        .hl-news-item{min-width:0;height:158px;min-height:158px;padding:9px 8px;border-radius:10px;overflow-wrap:anywhere;overflow:hidden}
         .hl-news-item small{display:-webkit-box;overflow:hidden;font-size:9.5px;font-weight:600;line-height:1.35;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-        .hl-news-item .hl-news-title{margin-top:7px;font-size:11.5px;font-weight:500;line-height:1.38;-webkit-line-clamp:5}
-        .hl-news-item .hl-news-meta{padding-top:7px;font-size:9.3px;line-height:1.4;overflow-wrap:anywhere}
+        .hl-news-item .hl-news-main{min-height:0;margin-top:6px}
+        .hl-news-item.has-image .hl-news-main{display:flex;flex-direction:column;gap:5px}
+        .hl-news-item.has-image .hl-news-photo{width:100%;height:40px;min-height:40px;flex:0 0 40px;border-radius:6px}
+        .hl-news-item .hl-news-title{margin-top:0;font-size:11.5px;font-weight:500;line-height:1.38;-webkit-line-clamp:5}
+        .hl-news-item.has-image small{-webkit-line-clamp:1}
+        .hl-news-item.has-image .hl-news-title{-webkit-line-clamp:3;line-height:1.3}
+        .hl-news-item .hl-news-meta{padding-top:6px;font-size:9.3px;line-height:1.3;overflow-wrap:anywhere}
         .hl-traffic-legend{top:8px;right:8px;padding:7px;gap:6px;font-size:9px}
         .hl-traffic-status{left:8px;bottom:8px;max-width:calc(100% - 16px)}
       }
@@ -1217,6 +1253,7 @@
       @media(max-width:360px){
         .hl-news-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
         .hl-news-item .hl-news-title{font-size:12px}
+        .hl-news-item.has-image .hl-news-photo{height:46px;min-height:46px;flex-basis:46px}
         .hl-news-item .hl-news-meta{font-size:9.8px}
       }
 

@@ -32,6 +32,20 @@ prioritarios antiguos sobre los más recientes. Las notas de calles cercanas
 se distinguen con una tarjeta verde pastel y los titulares usan un peso de
 letra moderado para facilitar la lectura.
 
+Cada artículo muestra su **fotografía destacada real** cuando FreeNewsApi la
+incluye en el campo `image` (extraído del sitio editorial mediante `og:image` o
+JSON-LD). El backend solo transmite URLs HTTPS válidas por artículo, sin hacer
+búsquedas de imágenes por titular ni copiar la fotografía de otra noticia. En
+escritorio se coloca una miniatura al lado del título. Si no hay imagen o su
+carga falla, la tarjeta sigue mostrando el titular, fecha y enlace completos,
+sin fotografía artificial ni recuadro vacío. Las imágenes se cargan de forma
+diferida para aligerar la vista y se actualizan con la búsqueda periódica/caché
+de noticias existente (15 minutos), sin nuevas variables de entorno.
+
+En celulares la imagen se integra en una franja compacta de la misma tarjeta:
+la tarjeta conserva **158 px** de alto y sus títulos mantienen un tamaño
+legible, con hasta tres líneas cuando hay foto y hasta cinco cuando no la hay.
+
 En celulares, Noticias muestra una cuadrícula compacta de **tres columnas**
 con tarjetas de igual ancho, títulos de hasta cinco líneas y metadatos
 reducidos sin perder contraste. En pantallas de **360 px o menos** utiliza
