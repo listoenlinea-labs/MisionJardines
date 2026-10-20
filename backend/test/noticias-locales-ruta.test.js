@@ -12,6 +12,12 @@ test('endpoint de noticias usa búsquedas locales y devuelve publicaciones recie
   t.mock.method(global, 'fetch', async input => {
     const url = new URL(input);
     requests.push(url);
+    if (url.hostname === 'traficozmg.com') {
+      return {ok:true,headers:{get:key=>key==='content-type'?'application/json':null},
+        json:async()=>[{slug:'nota',link:'https://traficozmg.com/nota',featured_media:5,
+          _embedded:{'wp:featuredmedia':[{id:5,media_details:{sizes:{medium:{source_url:
+            'https://traficozmg.com/wp-content/uploads/2026/10/choque-300x169.jpg'}}}}]}}]};
+    }
     if (url.searchParams.get('q') === 'choque Guadalajara') throw new Error('Proveedor temporalmente ocupado');
     return {
       ok: true,
@@ -33,15 +39,19 @@ test('endpoint de noticias usa búsquedas locales y devuelve publicaciones recie
   assert.equal(res.payload.queryWindow, '7d');
   assert.equal(res.payload.data.length, 1); // Misma noticia de tres búsquedas: sin duplicados.
   assert.equal(res.payload.data[0].dateLabel, 'Publicada');
-  assert.equal(res.payload.data[0].imageUrl, 'https://traficozmg.com/foto-choque.jpg');
-  assert.equal(requests.length, 12);
-  assert.ok(requests.some(url => url.searchParams.get('q') === 'Atotonilco'));
-  assert.ok(requests.some(url => url.searchParams.get('q') === 'Valle de México'));
-  assert.ok(requests.some(url => url.searchParams.get('q') === 'Base Aérea'));
-  assert.ok(requests.some(url => url.searchParams.get('q') === 'marcha Zapopan'));
-  assert.ok(requests.some(url => url.searchParams.get('q') === 'marcha Guadalajara'));
-  assert.ok(requests.every(url => url.searchParams.get('date') === '7d'));
-  assert.ok(requests.every(url => url.searchParams.get('country') === 'MX'));
+  assert.equal(res.payload.data[0].imageUrl,
+    'https://traficozmg.com/wp-content/uploads/2026/10/choque-300x169.jpg');
+  assert.match(res.payload.data[0].imageProxyToken,/^[0-9a-f-]{36}$/);
+  const providerRequests=requests.filter(url=>url.hostname==='freenewsapi.ai');
+  assert.equal(providerRequests.length, 12);
+  assert.equal(requests.filter(url=>url.hostname==='traficozmg.com').length,1);
+  assert.ok(providerRequests.some(url => url.searchParams.get('q') === 'Atotonilco'));
+  assert.ok(providerRequests.some(url => url.searchParams.get('q') === 'Valle de México'));
+  assert.ok(providerRequests.some(url => url.searchParams.get('q') === 'Base Aérea'));
+  assert.ok(providerRequests.some(url => url.searchParams.get('q') === 'marcha Zapopan'));
+  assert.ok(providerRequests.some(url => url.searchParams.get('q') === 'marcha Guadalajara'));
+  assert.ok(providerRequests.every(url => url.searchParams.get('date') === '7d'));
+  assert.ok(providerRequests.every(url => url.searchParams.get('country') === 'MX'));
 });
 
 test('permite buscar noticias por texto y evita consultas inválidas al proveedor', async t => {
