@@ -16,16 +16,18 @@ function between(full,a,b) {
  return full.slice(start,end);
 }
 
-test('La tabla conserva ocho columnas anteriores y agrega Pago en noveno lugar',()=>{
+test('La tabla conserva sus nueve columnas y solo Mantenimiento ofrece selección única',()=>{
  const headers=between(html,'<div class="table-scroll houses-scroll">','<tbody id="financeHouseRows">');
- assert.deepEqual([...headers.matchAll(/<th>([^<]+)<\/th>/g)].map(m=>m[1]),[
-  'Calle','Casa','Residente registrado','Estado','Pagado',
+ assert.deepEqual([...headers.matchAll(/<th[^>]*>([^<]+)<\/th>/g)].map(m=>m[1]),[
+  'Seleccionar','Calle','Casa','Residente registrado','Estado','Pagado',
   'Último mes pagado','Saldo pendiente','TAGs','Pago'
  ]);
  const render=between(js,'function renderHouses(){','let activePaymentHouse=null;');
- assert.equal((render.match(/houseCell\('/g)||[]).length,9);
+ assert.equal((render.match(/houseCell\('/g)||[]).length,10);
  assert.match(render,/houseCell\('TAGs',renderHouseTagCell\(h\)\)\+\s*houseCell\('Pago',renderHousePayCell\(h\)\)/);
- assert.match(render,/colspan="9"/);
+ assert.match(render,/selectionAvailable\?10:9/);
+ assert.match(render,/name="receiptHouseSelection"/);
+ assert.match(js,/if\(concepto!=='MANTENIMIENTO'\)selectedReceiptHouseId=null/);
 });
 
 test('Registrar pago enlaza el casaId exacto de la fila y conserva accesibilidad',()=>{
@@ -75,8 +77,8 @@ test('Botón compacto para escritorio/móvil y sin cambios a estilos del modal d
  assert.match(css,/@media\(max-width:700px\)\{\s*\.houses-scroll \.house-pay-button\{/);
  assert.match(mobile,/#financeHouseRows>tr>td\[data-label\]::before/);
  assert.match(mobile,/content:attr\(data-label\)!important/);
- assert.match(html,/analisis-cuotas\.css\?v=20261019-indicadores-desktop/);
- assert.match(html,/analisis-cuotas\.js\?v=20261019-pagado-segun-estado/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261020-recibos-mantenimiento/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261020-recibos-mantenimiento/);
 });
 
 test('El importe Pagado mantiene el ajuste al contenido como estilo base para móvil',()=>{
