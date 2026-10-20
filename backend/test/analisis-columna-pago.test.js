@@ -16,19 +16,20 @@ function between(full,a,b) {
  return full.slice(start,end);
 }
 
-test('La tabla conserva sus nueve columnas y solo Mantenimiento ofrece selección única',()=>{
+test('La tabla conserva nueve columnas sin radio y solo Mantenimiento selecciona por fila',()=>{
  const headers=between(html,'<div class="table-scroll houses-scroll">','<tbody id="financeHouseRows">');
  assert.deepEqual([...headers.matchAll(/<th[^>]*>([^<]+)<\/th>/g)].map(m=>m[1]),[
-  'Seleccionar','Calle','Casa','Residente registrado','Estado','Pagado',
+  'Calle','Casa','Residente registrado','Estado','Pagado',
   'Último mes pagado','Saldo pendiente','TAGs','Pago'
  ]);
  const render=between(js,'function renderHouses(){','let activePaymentHouse=null;');
  assert.equal((render.match(/houseCell\('/g)||[]).length,9);
- assert.match(render,/class="house-receipt-selection-cell"/);
+ assert.doesNotMatch(render,/house-receipt-selection-cell|receiptHouseSelection/);
+ assert.match(render,/tabindex="0" aria-selected=/);
  assert.match(render,/houseCell\('TAGs',renderHouseTagCell\(h\)\)\+\s*houseCell\('Pago',renderHousePayCell\(h\)\)/);
- assert.match(render,/selectionAvailable\?10:9/);
- assert.match(render,/name="receiptHouseSelection"/);
+ assert.match(render,/colspan="9"/);
  assert.match(js,/if\(concepto!=='MANTENIMIENTO'\)selectedReceiptHouseId=null/);
+ assert.doesNotMatch(html,/financeReceiptSelectHeader/);
 });
 
 test('Registrar pago enlaza el casaId exacto de la fila y conserva accesibilidad',()=>{
@@ -78,8 +79,8 @@ test('Botón compacto para escritorio/móvil y sin cambios a estilos del modal d
  assert.match(css,/@media\(max-width:700px\)\{\s*\.houses-scroll \.house-pay-button\{/);
  assert.match(mobile,/#financeHouseRows>tr>td\[data-label\]::before/);
  assert.match(mobile,/content:attr\(data-label\)!important/);
- assert.match(html,/analisis-cuotas\.css\?v=20261020-excel-meses-movil/);
- assert.match(html,/analisis-cuotas\.js\?v=20261020-excel-meses-movil/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261020-recibo-fila-telefono/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261020-recibo-fila-telefono/);
 });
 
 test('El importe Pagado mantiene el ajuste al contenido como estilo base para móvil',()=>{
