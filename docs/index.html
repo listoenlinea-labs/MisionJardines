@@ -767,9 +767,16 @@
       .important-card { align-items: flex-start; }
     }
   </style>
+  <!-- Los estilos de Inicio se precargan incluso al navegar dentro de app.html.
+       Los IDs impiden que site-sidebar.js duplique estas hojas. -->
+  <link id="mjAppDesign" rel="stylesheet" href="assets/css/app-design.css?v=20260926">
+  <link id="mjProductUI" rel="stylesheet" href="assets/css/product-ui.css?v=20261011-product">
+  <link id="mjUnifiedUI" rel="stylesheet" href="assets/css/ui-unificada.css?v=20261011-sin-iconos">
+  <link id="mjKpiCompact" rel="stylesheet" href="assets/css/kpi-compact.css?v=20261011-kpis">
+  <link id="mjMobileOperativo" rel="stylesheet" href="assets/css/mobile-operativo.css?v=20261015-safari-fechas-compactas">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
-<body class="mj-home">
+<body class="mj-home mj-shared-sidebar-enabled">
   <div class="mj-shell">
     <aside class="mj-sidebar" id="sidebar" aria-label="Navegación principal"></aside>
 
