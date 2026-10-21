@@ -506,20 +506,20 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
  .history-dialog-layout{gap:10px}
  .history-heading-actions{justify-content:flex-start}
 }
-/* Resumen y acción al mismo nivel: la acción permanece a la extrema
-   derecha, a la altura de "Saldo pendiente actual" sin tapar ninguna tarjeta.
-   El botón usa su listener existente y sigue exclusivo de mantenimiento. */
+/* El botón de tarifa va ENCIMA del resumen, alineado al extremo
+   derecho (sobre la tarjeta Saldo pendiente), nunca al costado de ella. */
 .history-overview{
-  display:grid;grid-template-columns:minmax(0,1fr) auto;
-  align-items:center;column-gap:14px;row-gap:10px;margin:17px 0 20px;
+  display:flex;flex-direction:column;align-items:stretch;
+  gap:12px;margin:17px 0 20px;min-width:0;
 }
-.history-overview #houseHistorySummary{min-width:0;margin:0}
 .history-overview #houseTariffOpen{
-  justify-self:end;align-self:center;flex:none;white-space:nowrap;
-  min-height:44px;padding:10px 14px;
+  align-self:flex-end;flex:none;max-width:100%;
+  white-space:nowrap;min-height:44px;padding:10px 14px;margin:0;
 }
 .history-overview #houseTariffOpen[hidden]{display:none!important}
+.history-overview #houseHistorySummary{
+  width:100%;min-width:0;margin:0;
+}
 @media(max-width:800px){
-  .history-overview{grid-template-columns:minmax(0,1fr)}
-  .history-overview #houseTariffOpen{grid-column:1;justify-self:end}
+  .history-overview{gap:10px}
 }

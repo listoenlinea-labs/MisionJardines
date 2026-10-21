@@ -196,7 +196,7 @@
       const productUI = document.createElement('link');
       productUI.id = 'mjProductUI';
       productUI.rel = 'stylesheet';
-      productUI.href = 'assets/css/product-ui.css?v=20261021-modal-laptop';
+      productUI.href = 'assets/css/product-ui.css?v=20261021-sidebar-tariff';
       document.head.appendChild(productUI);
     }
     // Hoja final de homologación: sobreescribe versiones demo sin afectar la lógica.
