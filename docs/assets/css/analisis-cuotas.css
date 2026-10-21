@@ -506,15 +506,20 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
  .history-dialog-layout{gap:10px}
  .history-heading-actions{justify-content:flex-start}
 }
-/* Cierre del historial: X en la esquina superior derecha; "Modificar cuotas"
-   ocupa el segundo renglón, donde antes estaba el botón Cerrar. */
-.history-heading-actions{
-  display:flex;flex-direction:column;align-items:flex-end;
-  justify-content:flex-start;gap:8px;padding-top:53px;
+/* Resumen y acción al mismo nivel: la acción permanece a la extrema
+   derecha, a la altura de "Saldo pendiente actual" sin tapar ninguna tarjeta.
+   El botón usa su listener existente y sigue exclusivo de mantenimiento. */
+.history-overview{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;column-gap:14px;row-gap:10px;margin:17px 0 20px;
 }
-.history-heading-actions #houseTariffOpen{
-  margin:0;flex:none;max-width:100%;white-space:nowrap;
+.history-overview #houseHistorySummary{min-width:0;margin:0}
+.history-overview #houseTariffOpen{
+  justify-self:end;align-self:center;flex:none;white-space:nowrap;
+  min-height:44px;padding:10px 14px;
 }
-@media(max-width:850px){
-  .history-heading-actions{padding-top:53px;align-items:flex-end}
+.history-overview #houseTariffOpen[hidden]{display:none!important}
+@media(max-width:800px){
+  .history-overview{grid-template-columns:minmax(0,1fr)}
+  .history-overview #houseTariffOpen{grid-column:1;justify-self:end}
 }
