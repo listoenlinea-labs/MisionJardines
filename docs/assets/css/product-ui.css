@@ -73,8 +73,8 @@ body.mj-shared-sidebar-enabled .mj-side-support>summary {
   cursor:pointer;font-size:11px;font-weight:800;color:#243248;
 }
 body.mj-shared-sidebar-enabled .mj-side-support>summary::-webkit-details-marker{display:none}
-body.mj-shared-sidebar-enabled .mj-side-support>summary::after {content:"⌄";color:#d76d0b;font-size:15px;transition:transform .2s}
-body.mj-shared-sidebar-enabled .mj-side-support[open]>summary::after{transform:rotate(180deg)}
+body.mj-shared-sidebar-enabled .mj-side-support>summary::after{content:none!important;display:none!important}
+body.mj-shared-sidebar-enabled .mj-side-support>summary::marker{content:""}
 body.mj-shared-sidebar-enabled .mj-side-support>p{margin:8px 0!important}
 body.mj-shared-sidebar-enabled .mj-side-support>a{display:flex!important;align-items:center!important;justify-content:center!important}
 body.mj-shared-sidebar-enabled .mj-side-account{min-height:48px!important}
@@ -307,7 +307,7 @@ body.mj-shared-sidebar-enabled .cuotas-metrics-grid{gap:9px!important}
   body.mj-shared-sidebar-enabled .hl-kpi :is(small,span){line-height:1.25}
 }
 @media(prefers-reduced-motion:reduce){
-  body.mj-shared-sidebar-enabled .mj-side-support>summary::after{transition:none}
+  body.mj-shared-sidebar-enabled .mj-side-support>summary::after{content:none!important;display:none!important}
 }
 
 /* Análisis: lecturas de viviendas y egresos como tarjetas de dos columnas en teléfonos.
