@@ -29,3 +29,13 @@ body.mj-app-shell{min-width:320px;background:#fff}
     pointer-events:none!important;
   }
 }
+
+/* La franja de 70px se pinta mediante body::before en product-ui.css.
+   Ocultar los botones globales no elimina este pseudo-elemento: dentro
+   de un modal movil debe desaparecer tambien la capa de fondo. */
+@media (max-width:820px) {
+  body.mj-app-shell.mj-shared-sidebar-enabled.mj-child-modal-open:not(.mj-home)::before {
+    content:none!important;
+    display:none!important;
+  }
+}
