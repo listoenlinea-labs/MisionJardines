@@ -685,11 +685,14 @@
             // El origen público suele entregar la miniatura sin pasar por Hostinger.
             // Si bloquea la carga directa, probar el proxy de ESA MISMA imagen.
             const direct = safeNewsPhotoUrl(item.imageUrl);
-            const photo = direct || proxy;
+            const illustration = 'assets/images/noticia-ilustrativa.svg';
+            const photo = direct || proxy || illustration;
             const fallback = direct && proxy && direct !== proxy ? proxy : '';
+            const illustrated = !direct && !proxy;
             return `
-            <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''}${photo ? ' has-image' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
-              ${photo ? `<img class="hl-news-photo" src="${escapeHtml(photo)}" data-news-fallback="${escapeHtml(fallback)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ''}
+            <a class="hl-news-item${item.nearbyStreet ? ' hl-news-nearby' : ''} has-image${illustrated ? ' is-illustration' : ''}" href="${escapeHtml(safeExternalUrl(item.url))}" target="_blank" rel="noopener noreferrer">
+              <img class="hl-news-photo" src="${escapeHtml(photo)}" data-news-fallback="${escapeHtml(fallback)}" data-news-illustration="${illustrated ? '1' : '0'}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+              <span class="hl-news-illustration-note" ${illustrated ? '' : 'hidden'}>Ilustración</span>
               <small>${item.nearbyStreet ? '📍 ' + escapeHtml(item.nearbyStreet) + ' · ' : escapeHtml(item.category || 'Noticias') + ' · '}${escapeHtml(item.domain || 'Medio local')}</small>
               <div class="hl-news-main">
                 <h3 class="hl-news-title">${escapeHtml(item.title || 'Noticia local')}</h3>
@@ -700,21 +703,33 @@
         : '<div class="hl-live-empty">' + (term
           ? 'No se encontraron noticias relacionadas con “' + escapeHtml(term) + '” en los últimos 7 días.'
           : 'No se encontraron noticias recientes de la zona en los últimos 7 días.') + '</div>';
-      // Si el medio impide enlazar su foto de fondo, mantener la tarjeta pastel
-      // y el enlace, sin imágenes de relleno ni fondos de otras noticias.
+      // Si el medio bloquea la foto, primero probar el proxy de esa MISMA foto.
+      // Al agotarse, usar una ilustración genérica identificada (nunca una
+      // fotografía de otra noticia). No dejar cuadros vacíos ni imágenes rotas.
       grid.querySelectorAll('.hl-news-photo').forEach(image => {
-        const hideUnavailablePhoto = () => {
+        const showFallback = () => {
           const fallback = image.dataset.newsFallback;
           if (fallback) {
             delete image.dataset.newsFallback;
             image.src = fallback;
             return;
           }
-          image.closest('.hl-news-item')?.classList.remove('has-image');
-          image.remove();
+          const card = image.closest('.hl-news-item');
+          if (image.dataset.newsIllustration === '1') {
+            // Incluso con los recursos locales deshabilitados, conservar
+            // el titular legible y su enlace.
+            card?.classList.remove('has-image', 'is-illustration');
+            image.remove();
+            card?.querySelector('.hl-news-illustration-note')?.remove();
+            return;
+          }
+          image.dataset.newsIllustration = '1';
+          card?.classList.add('is-illustration');
+          card?.querySelector('.hl-news-illustration-note')?.removeAttribute('hidden');
+          image.src = 'assets/images/noticia-ilustrativa.svg';
         };
-        image.addEventListener('error', hideUnavailablePhoto);
-        if (image.complete && image.naturalWidth === 0) hideUnavailablePhoto();
+        image.addEventListener('error', showFallback);
+        if (image.complete && image.naturalWidth === 0) showFallback();
       });
     } catch (error) {
       if (requestId !== homeNewsRequestId) return;
@@ -1229,6 +1244,11 @@
       .hl-news-item.has-image small{color:#f4f7ff;font-weight:750;text-shadow:0 1px 3px rgba(0,0,0,.7)}
       .hl-news-item.has-image .hl-news-title{color:#fff;font-weight:750;line-height:1.4;-webkit-line-clamp:4;text-shadow:0 1px 4px rgba(0,0,0,.74)}
       .hl-news-item.has-image .hl-news-meta{color:#f3f6fb;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+      .hl-news-item .hl-news-illustration-note{position:absolute;right:10px;bottom:26px;z-index:3;
+        padding:2px 5px;border:1px solid rgba(255,255,255,.28);border-radius:5px;
+        color:#f5f6fc;background:rgba(20,34,56,.40);font-size:8px;letter-spacing:.035em}
+      .hl-news-item .hl-news-illustration-note[hidden]{display:none!important}
+      .hl-news-item.is-illustration .hl-news-photo{object-position:center}
       @media(prefers-reduced-motion:reduce){.hl-news-photo{transition:none}}
       .hl-traffic-status{bottom:12px;max-width:min(290px,calc(100% - 24px));padding:10px 12px}
       .hl-traffic-status b{font-size:11px;line-height:1.25}
