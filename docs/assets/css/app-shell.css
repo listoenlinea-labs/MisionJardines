@@ -16,3 +16,16 @@ body.mj-app-shell{min-width:320px;background:#fff}
 .mj-app-error a{margin-top:14px;color:#965a20;font-size:12px;text-decoration:underline}
 @keyframes mj-loading{from{background-position:100% 0}to{background-position:-100% 0}}
 @media(prefers-reduced-motion:reduce){.mj-app-frame{transition:none}.mj-app-loading{animation:none}}
+
+/* En móvil, la barra pertenece al documento padre y se superpone al iframe.
+   Cuando el iframe tiene un modal abierto, despejamos toda la cabecera flotante.
+   Al cerrarlo o navegar, app-shell.js retira la clase y vuelve la navegación. */
+@media (max-width:820px) {
+  body.mj-app-shell.mj-child-modal-open :is(
+    .mj-top-tools, .mj-search-launch, .mj-account-top,
+    .mj-side-tab, .mj-shared-sidebar
+  ) {
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+}
