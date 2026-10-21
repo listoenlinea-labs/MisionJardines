@@ -1,13 +1,13 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 19/oct/2026, 23:27, America/Mexico_City.
-**SHA de main consultado:** `9e226f5124688aaeeebe57850723b10fb3e12e40`.
-**Fuentes de esta revisión:** comparación de main desde `3fcff016c3fbd000f9bb2c16da4ec86619cf9a12`,
-metadatos y descripciones de los PR #208–#219, commits y estados/checks en GitHub,
+**Última revisión:** 20/oct/2026, 23:26, America/Mexico_City.
+**SHA de main consultado:** `91a4bb3f40211096b09be55bea24003df5c39831`.
+**Fuentes de esta revisión:** comparación de main desde `9e226f5124688aaeeebe57850723b10fb3e12e40`,
+metadatos y descripciones de los PR #220–#231, commits y estados/checks en GitHub,
 AGENTS.md e índice vigentes, historial ya registrado y conversación recuperada. La evidencia
-de conversación se limita a confirmaciones y resultados accesibles; no se infieren operaciones
-desde archivos SQL propuestos. No se consultaron directamente MySQL, Hostinger, correo,
-Google Sheets ni el C3 de producción durante esta revisión.
+de conversación se limita a confirmaciones accesibles de correo y uso móvil; no se publican
+direcciones ni credenciales. No se consultaron directamente MySQL, el C3 ni datos privados
+de producción durante esta revisión.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
@@ -18,7 +18,7 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
-| Pagos de mantenimiento | Implementado en main | Mensualidad $300; recargos $50 por corte vencido no cubierto; meses desde fecha física C3; saldo remanente; corte inclusivo día 10. Ver AGENTS.md |
+| Pagos de mantenimiento | Regla vigente $300; código nuevo por vivienda pendiente de conciliación | AGENTS.md mantiene mensualidad $300. PR #222 fusionado añade `direcciones.cuota_por_cobrar`, default $300 y una excepción propuesta por SQL manual. No ejecutar la migración ni operar tarifas distintas hasta conciliar la discrepancia documental y validar Hostinger; recargos $50 y reglas C3 se conservan |
 | Confirmación de comprobantes | Revisión administrativa activa | `VALIDAR_PAGOS_SIN_ADMIN=false`; un recibo provisional no confirma depósito ni entrega de fecha al C3 |
 | OCR | Tesseract.js en servidor y navegador | Monto/cuenta separados; campos bancarios de condóminos son de solo lectura y el servidor exige folio, monto, fecha y hora. PR del 13/oct corrigió PSM del navegador; pruebas locales no acreditan el frontend desplegado ni recepción del dinero |
 | Escritura C3 por pago | DIRECT con diario e idempotencia | Sin bridge en ese flujo; no asigna puertas ni elimina bloqueos manuales. Estado financiero y entrega física son distintos |
@@ -29,10 +29,10 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Confirmación por correo bancario | Propuesta | Sin conexión de buzón ni conciliador implementado. Falta revisar una notificación real y datos de operación |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
-| Interfaz responsive y fechas | Implementada en main; validación visual pendiente | #200–#202 corrigen Noticias móvil. PR #208 unifica fechas visibles a DD-MON-YYYY sin alterar valores ISO; #211–#214 y #219 ajustan Estado/Pagado, selección de filas y detalle de TAGs. Faltan Safari/iPhone/Android, selectores nativos y producción |
+| Interfaz, navegación y fechas | Implementado en main; aceptación parcial | #208 conserva DD-MON-YYYY. #223 introduce portal persistente por secciones; #226–#227 corrigen estilos de Inicio al regresar; #230 corrige el bloqueo de scroll móvil y el usuario confirmó que ya funciona. PR #231, aún abierto, propone deslizar hacia abajo para refrescar; falta prueba física del gesto y validación integral de navegación |
 | Historial administrativo de pagos | Implementado en main; producción no verificada | PR #160–#162 conservan historial 11–10. PR #209 añade historial por vivienda/concepto, total del último movimiento y separación explícita entre vigencia C3 verificada y MySQL; #214 oculta solo el aviso naranja, no la diferencia. No corrige fechas automáticamente |
 | Pagos manuales desde Análisis | Implementado en main; migración/uso real pendientes | PR #171 y #173–#176 implementan pagos manuales de mantenimiento; #190 separa el botón por vivienda. PR #193 amplía el registro manual por concepto y mantiene extraordinarias/casa club separadas de la vigencia física de mantenimiento. No se ejecutó la migración ni se probó con MySQL/C3 reales |
-| Auto-users | SMTP y login por teléfono implementados en main; despliegue pendiente | PR #192 fusionado reemplaza WhatsApp en este flujo por SMTP, añade acceso progresivo por teléfono y alertas de solicitudes, integrado con sesiones opcionales de 90 días y avisos actuales. Reporta 112 pruebas locales con DB/SMTP simulados; faltan configuración, envío controlado y despliegue conjunto frontend/backend |
+| Auto-users | Invitaciones SMTP operativas en prueba individual; login por teléfono retirado | #221 valida credenciales antes de confirmar viviendas; #224 permite correo individual a cuentas de prueba. El usuario confirmó variables SMTP configuradas y recepción de una invitación individual. PR #229 deja login solo por usuario o correo y contraseña; conserva aceptación por enlace y sesiones recordadas. Dirección pública definitiva y flujo completo siguen pendientes |
 | Seguridad, pluma y cámaras | Parcialmente implementado; hardware no verificado | PR #159 reutiliza el endpoint de pluma y prepara proxy HLS; #163 añade diagnóstico; #164 retira el visor Dahua de Seguridad, conservando backend/documentación. PR #189 habilita Inicio operativo a Seguridad con visitas de hoy y accesos sin salida, sin finanzas. Falta gateway RTSP→HLS, despliegue y pruebas con cuentas/hardware reales |
 | Visibilidad del padrón | Filtro de lectura en main | PR #177–#178 muestran solo Guadalajara 707 y Valle de México 3614 en listados compartidos. No borran ni fusionan direcciones, pagos o TAGs; falta verificar consultas reales de producción |
 | Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#151 conectan cuotas, egresos, ingresos y saldo inicial; #180 acumula adeudo; #189 separa vistas por rol; #191 muestra anticipos sin proyectar deuda. PR #193 incorpora adeudos desglosados e indicadores por concepto. Requiere migración, padrón conciliado, cotejo MySQL y despliegue reales |
@@ -40,20 +40,20 @@ no redefine las reglas de negocio ni sustituye las fuentes originales.
 | Históricos Google Sheets | Backend/staging opcional conservado; controles retirados de Análisis | PR #140 añadió lectura OAuth y preparación idempotente, deshabilitadas por defecto. PR #187 retiró solo la tarjeta y el script de esa vista; no borró archivo, endpoint, tabla ni datos. Requiere decisión explícita, migración y validación antes de activar |
 | Análisis, historial y recibos | Implementado en main; MySQL/C3 no verificados | #203 conserva tres conceptos; #209 agrega historial y total del último movimiento. #217–#219 generan recibos PDF mensuales de mantenimiento, selección por fila, teléfono editable solo para ese envío y exportación `.xlsx` desde indicadores. WhatsApp descarga el PDF y abre el chat: el administrador debe adjuntarlo y confirmar; no registra envío ni modifica pagos |
 | Navegación de Administración/Comunidad | Implementada en main; validación visual pendiente | PR #187 oculta Cuotas del menú y retira la tarjeta de conciliación; #188 oculta las pestañas de Análisis, conserva sus elementos/rutas y ordena Comunidad con Pagos primero. Son cambios de interfaz, no borrado de datos ni cambio de permisos |
-| Inicio por rol | Implementado en main; producción no verificada | PR #189 conserva finanzas para administradores; Seguridad recibe alcance general y Condómino solo viviendas vinculadas. PR #193 añade avisos/indicadores de adeudo por concepto. Falta migración, suite completa, cuentas reales y MySQL de producción |
+| Inicio por rol | Implementado en main; producción no verificada | PR #223 restaura Inicio dentro del portal persistente: administración ve finanzas, Seguridad visitas/accesos sin cobros y Condómino solo viviendas autorizadas por `usuarios_casas`. Fallos parciales muestran «No disponible» sin inventar ceros. Faltan cuentas reales y revisión de logs/despliegue |
 | Cobranza extraordinaria y casa club | Implementada en main; bloqueada hasta preparar producción | #193 añade cargos/reservas. PR #210 fija que Casa club se bloquea por mantenimiento y/o extraordinarias exigibles, no por una deuda previa exclusiva de Casa club; devuelve desglose 409 y valida pertenencia. Requiere migración, padrón exacto de 231 y prueba real |
-| Noticias y tráfico | Implementado en main; proveedor/despliegue no verificados | PR #195–#202 dejan noticias locales de siete días, fuente FreeNewsApi con reintento, búsqueda vial, prioridad local y correcciones móviles; TomTom/Google son opciones para tráfico y la clave TomTom queda detrás de proxy autenticado. Las pruebas usan proveedores simulados; faltan conectividad desde Hostinger, credenciales reales y revisión visual física |
+| Noticias y tráfico | Implementado en main; despliegue/visual pendientes | #220 añade imagen propia por artículo sin sustituciones; #225 recupera miniaturas oficiales de Tráfico ZMG con fallback/proxy restringido; #228 usa la foto como fondo con degradado y conserva pastel si falla. La API pública de una nota real respondió correctamente en la prueba de #225; falta comprobar Hostinger, CSP/CDN y móvil/escritorio |
 | Monitor automático de adeudos C3 | Implementado en main; apagado por defecto | #204–#205 conservan piloto/dry-run y operaciones manuales. PR #210 limita el monitor exclusivamente a deuda de mantenimiento: extraordinarias y Casa club no bloquean TAGs ni cambian vigencias. No auto-reactiva al saldar. Sin prueba física ni escritura de producción |
 | Continuidad documental | Disponible en main | AGENTS.md e índice publicados; PR #193 añadió guía de tres conceptos y SQL diagnóstico. PR #204/#206 documentan mapa SQL y 18 casos ZKTeco; #207 publica en la raíz `PLAN_PRUEBAS_INTEGRAL_20261018.md` con 24 secciones y seis recorridos integrales. Es un guion de aceptación, no evidencia E2E |
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción.
-Desde el SHA consultado en la revisión anterior, main avanzó 32 commits. Se fusionaron los
-PR #208–#219 y no quedaron PR abiertos. El commit
-`402de9951fa8fdd4f35638c93843f41154840a3f`, dedicado a la bitácora del 18/oct,
-se excluye del trabajo de producto. Los merges acreditan presencia en main, no despliegue en
-Hostinger, ejecución de migraciones, datos de MySQL ni funcionamiento físico de C3/Dahua.
-El PR #132 continúa revertido y no se restauraron sus comandos/workflow.
+Desde el SHA consultado en la revisión anterior, main avanzó 23 commits. Se fusionaron los
+PR #220–#230 y el PR #231 permanece abierto. El commit
+`7f9a3e648fa48d00118870bf1a838a6f39d6b233`, dedicado al estado del 19/oct,
+se excluye del trabajo de producto. Los merges acreditan presencia en main, no despliegue,
+migraciones SQL, datos de MySQL ni funcionamiento físico de C3/Dahua. El PR #132 continúa
+revertido y no se restauraron sus comandos/workflow.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -72,6 +72,8 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | Tabla `condominos_viviendas` | El usuario aportó CSV de la migración: 188 relaciones originales, 188 copiadas y cero faltantes | Confirma esos archivos/resultados, no una conexión en vivo ni la eliminación de `condominos.direccion_id` |
 | Precuentas pendientes | El usuario confirmó el borrado de 159 precuentas PENDIENTES/no aceptadas | Confirmación de conversación; no se recuperó una exportación posterior ni COMMIT/lectura independiente |
 | Procedimiento de conciliación del padrón | El usuario mostró `CALL mj_conciliar_padron_20261019()` con error 1644: ya había respaldos o conciliación de esa ejecución | Confirma el intento bloqueado; no demuestra que la conciliación final, sus conteos o su COMMIT sean correctos |
+| Invitación SMTP individual | El usuario confirmó «listo funcionó» tras habilitar el envío individual y recibió el correo de invitación | Confirma una entrega controlada con la configuración actual; no acredita lotes masivos, dirección pública definitiva, aceptación completa ni todos los proveedores/buzones |
+| Scroll del portal en móvil | El usuario confirmó que el desplazamiento ya funciona después de #230 | Confirma ese dispositivo/prueba concreta. El gesto de deslizar para refrescar está solo en el PR #231 abierto y no se considera implementado |
 
 ## Pruebas automatizadas con resultado conocido
 
@@ -106,6 +108,17 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 19/oct/2026 | PR #217, siete suites relacionadas, generación PDF en memoria, comparación visual y `git diff --check` | **7 suites aprobadas**; PDF comparado con ejemplo | No modifica pagos/datos; envío por WhatsApp es manual |
 | 19/oct/2026 | PR #218, siete archivos dirigidos, `node --check`, diff, render PDF y Excel sintético | **7 archivos aprobados**; PDF con logo; Excel probado con 232 filas sintéticas | Suite estructural amplia aún falla por caché/markup antiguo; sin producción |
 | 19/oct/2026 | PR #219, seis suites dirigidas de Análisis/recibos, `node --check` y diff | **6 suites aprobadas** | `analisis-tags-compacto` conserva 2 expectativas obsoletas; falta visual real |
+| 20/oct/2026 | PR #220, pruebas añadidas para `cd backend && node --test test/noticias-locales.test.js test/noticias-locales-ruta.test.js test/noticias-ui.test.js`; análisis estático | **No se ejecutó Node ni prueba visual** en esa entrega; sintaxis/reglas revisadas | Presencia en main sin resultado automatizado ejecutado |
+| 20/oct/2026 | PR #221, desde backend `DB_PORT=3306 node --test test/auto-users.test.js test/auto-users-ui.test.js test/auto-users-routes.test.js`; sintaxis/diff | **41 aprobadas** | DB/SMTP simulados; sin producción |
+| 20/oct/2026 | PR #222, pruebas nuevas de cuota/editor/noticias y validaciones locales; comando/total exactos no publicados | Casos de tarifa y sintaxis reportados correctos | Migración no ejecutada; AGENTS.md aún fija $300 |
+| 20/oct/2026 | PR #223, `auth-permissions`, `dashboard-operativo-roles`, `security-navigation` y `app-shell-navigation`; sintaxis/diff | **7 + 9 + 3 + 3 = 22 aprobadas** | Sin MySQL real ni navegador físico |
+| 20/oct/2026 | PR #224, desde backend `DB_PORT=3306 node --test test/auto-users.test.js test/auto-users-routes.test.js test/auto-users-admin-trials.test.js test/auto-users-email.test.js`; sintaxis/diff | **35 aprobadas** | DB/SMTP simulados; la recepción real confirmada por el usuario es evidencia separada |
+| 20/oct/2026 | PR #225, `DB_PORT=3306 node --test backend/test/noticias-imagenes-zmg.test.js backend/test/noticias-locales-ruta.test.js backend/test/noticias-ui.test.js backend/test/noticias-locales.test.js`; `node --check` | **4 archivos aprobados**; nota real devolvió imagen 300×169, HTTP 200 | Proveedor público probado; Hostinger/CSP/CDN pendientes |
+| 20/oct/2026 | PR #226–#227, suites `app-shell-navigation`, `ui-kpi-compact`, `ui-inicio-kpis-reportes`; sintaxis/diff | #226: **4/4 + 4/4 + 3/3**; #227: **5/5 + 3/3 + 4/4** | #226 conserva un fallo heredado en `ui-responsive` por etiqueta antigua |
+| 20/oct/2026 | PR #228, `DB_PORT=3306 node --test backend/test/noticias-ui.test.js backend/test/noticias-locales.test.js backend/test/noticias-locales-ruta.test.js`; sintaxis/diff | **3/3 archivos correctos** | Falta visual/despliegue real |
+| 20/oct/2026 | PR #229, `DB_PORT=3306 node --test backend/test/login-telefono-ui.test.js backend/test/auto-users-login.test.js backend/test/recordar-sesion.test.js backend/test/auto-users-routes.test.js backend/test/auto-users-ui.test.js backend/test/auto-users.test.js backend/test/auth-permissions.test.js backend/test/cuentas-verificacion.test.js`; sintaxis/diff | **76 aprobadas** | DB/SMTP simulados; sin producción |
+| 20/oct/2026 | PR #230, `node --test tests/app-shell-navigation.test.cjs backend/test/login-telefono-ui.test.js`; sintaxis/diff | **11 aprobadas** | Simulación DOM; usuario confirmó scroll real por separado |
+| 20/oct/2026 | PR #231 abierto, `node --test tests/app-shell-navigation.test.cjs backend/test/login-telefono-ui.test.js`; sintaxis/diff | **15 aprobadas** en la rama | Aún no está en main; falta Safari/iPhone/Android físico |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -117,12 +130,12 @@ En ambos casos el C3 simulado conservó EndTime `20260910`, cuando se esperaba
 al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
-GitHub devolvió cero estados de commit y cero workflow runs para los 12 commits de merge
-de #208–#219. Por tanto, no hay CI acreditado para estos cambios. Los resultados son los
-declarados en cada PR y no se repitieron en esta revisión. Además de los dos fallos históricos
-de `zkteco-vigencias.test.js`, #219 documenta dos expectativas obsoletas en
-`analisis-tags-compacto`; #208/#218 advierten suites estructurales antiguas aún incompatibles.
-No se ejecutaron pruebas contra MySQL, Hostinger, correo SMTP real, NVR Dahua ni C3 reales.
+GitHub devolvió cero estados de commit y cero workflow runs para los 11 commits de merge
+de #220–#230 y para el head del PR #231. Por tanto, no hay CI acreditado para estos cambios.
+Los resultados son los declarados en cada PR y no se repitieron en esta revisión. Se conservan
+los dos fallos históricos de `zkteco-vigencias`, las expectativas obsoletas ya documentadas
+y el fallo heredado de `ui-responsive` citado por #226. No se ejecutaron pruebas contra
+MySQL, C3 o Dahua reales durante esta revisión.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -152,18 +165,18 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | --- | --- |
 | Dos pruebas históricas fallidas de edición de TAG | PR #205 restauró la conducta manual solicitada, pero `zkteco-vigencias.test.js` sigue 7/9 por expectativas antiguas de `editTag`. Diagnosticar, acordar el comportamiento esperado y repetir sin ocultar SQL/C3 divergentes |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
-| PR #208–#219 sin CI acreditado | Ejecutar una suite reproducible sobre main `9e226f5`; conservar los fallos/expectativas obsoletas visibles y comprobar despliegue por separado |
-| Auto-users por SMTP en producción | Desplegar frontend/backend juntos, configurar SMTP y URL pública sin publicar secretos, probar aceptación/recuperación y un envío controlado. `ENVIADO` solo acredita aceptación del servidor SMTP, no entrega al destinatario |
+| PR #220–#230 y #231 sin CI acreditado | Ejecutar una suite reproducible sobre main `91a4bb3`; validar aparte el head abierto de #231. Conservar fallos/omisiones visibles y comprobar despliegue por separado |
+| Auto-users por SMTP | La prueba individual ya recibió correo. Falta definir dirección pública, probar el enlace en incógnito hasta aceptación completa, lotes controlados, rebotes/spam y confirmar que frontend/backend desplegados usan login solo por usuario/correo y contraseña |
 | Migración de cobranza por concepto | Respaldar DB, revisar y ejecutar manualmente `backend/sql/2026-10-18-cuotas-extraordinarias-casa-club.sql` primero en prueba; después correr consultas diagnósticas. No desplegar backend/frontend nuevo antes del esquema |
 | Padrón y relaciones condómino-vivienda | El CSV reporta 188 pares copiados sin faltantes, pero el intento posterior de `mj_conciliar_padron_20261019()` devolvió error 1644 por ejecución/respaldo existente. Revisar respaldos/bitácora y conteos posteriores desde otra conexión; no afirmar todavía 231/232 ni COMMIT final |
 | Casa club y tres conceptos | Probar roles, autorización, adeudos, fechas límite, comprobantes y expiración. Confirmar la nueva política: solo mantenimiento afecta TAG/C3; mantenimiento y extraordinarias bloquean reserva; deuda exclusiva de Casa club no bloquea otra solicitud |
 | Inicio por rol | Validar con cuentas reales de administrador, Seguridad y Condómino (una y varias viviendas): alcance de listas, ausencia de finanzas en no administradores y ausencia de datos de casas ajenas |
 | Adeudo acumulado, anticipos y advertencias TAG | Cotejar contra MySQL una casa al corriente, parcial, morosa y con anticipo 2027; confirmar que Último mes pagado muestra el período real sin sumar deuda futura. Abrir modal en casas con 0/1/varios TAGs y confirmar C3 bajo demanda sin escrituras |
-| Safari/iPhone y navegación | Probar lo ya pendiente y además Noticias en 3/2 columnas, ausencia del reverso espejado de Tráfico y última fila completa. Comprobar Rosas 29 sin registrar un pago solo para la prueba |
+| Portal móvil y navegación | El scroll fue confirmado por el usuario. Falta validar roles, Atrás/Adelante, enlaces, buscador, modales, descargas, estilos tras caché y navegación Inicio→secciones. PR #231 de pull-to-refresh sigue abierto y requiere gesto físico en Safari/iPhone/Android |
 | Pagos manuales y sincronización C3 | Probar primero con una vivienda controlada; confirmar transacción, rechazo de duplicados, un solo evento durable y estado COMPLETADO con lectura física de todos los TAGs. No usar masivamente antes |
 | Monitor automático de adeudos | Mantener apagado hasta respaldo/cotejo, piloto autorizado, padrón exacto, dry-run y lectura física. Probar que solo mantenimiento bloquea TAGs, que extraordinarias/Casa club no escriben C3, reactivación manual y ausencia de desbloqueo automático al saldar |
 | Manual integral de aceptación | Ejecutar y registrar los 24 apartados A01–A24, seis FTI y casos Z01–Z18 del manual raíz; el merge documental no los da por superados |
-| Noticias y tráfico | Desplegar frontend/backend, comprobar FreeNewsApi desde Hostinger y configurar/validar TomTom o Google sin exponer claves. Revisar búsqueda local, orden por fecha y estados de error con fuente real |
+| Noticias y tráfico | Desplegar frontend/backend y comprobar fotos de fondo, fallback sin imagen, Tráfico ZMG, proxy/CSP/CDN, buscador, orden por fecha y estados de error con fuente real en móvil/escritorio |
 | Cámaras Dahua y pluma | Para video falta gateway RTSP→HLS privado y configuración Hostinger. Para pluma, coordinar prueba física; ORDEN ENVIADA no confirma posición |
 | Guadalajara 707 / Valle de México 3614 | Verificar en producción que filtros, paginación, ZKTeco y conmutador oculten solo los domicilios previstos; los registros siguen en MySQL y requieren conciliación separada si contienen relaciones |
 | Finanzas históricas y saldo inicial | Confirmar que producción usa el esquema esperado, que existen las tablas/asientos requeridos y cotejar API Inicio/Análisis con MySQL sin doble conteo; las cifras de los PR son valores esperados, no verificación de esta revisión |
@@ -178,6 +191,7 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | Recargos históricos | Identificar cortes ya cubiertos para no cobrarlos nuevamente |
 | Correo del banco para conciliación | Obtener muestra y proveedor de buzón; validar datos únicos y autenticidad antes de implementar |
 | Migración final de `direccion_id` | Respaldar; ejecutar SQL 01; desplegar todo el backend nuevo y retirar instancias/importadores antiguos; probar; después, sin escrituras, ejecutar SQL 02. DDL no revierte con ROLLBACK y código antiguo no puede volver tras retirar la columna |
+| Cuota configurable por vivienda | Resolver primero la discrepancia: AGENTS.md fija $300 y #222 introduce `cuota_por_cobrar`. No ejecutar `2026-10-20-direcciones-cuota-por-cobrar.sql` ni aplicar la excepción propuesta hasta aprobación de regla, respaldo y prueba; después validar deuda/recargo sin reescribir históricos o TAGs |
 | Recibos y exportación de Análisis | Desplegar frontend/backend juntos; validar PDF mensual, meses/folios, abono parcial, logo, teléfono temporal, adjunto manual en WhatsApp y Excel con datos reales. Confirmar iPhone/Android/escritorio sin registrar pagos |
 | Fechas DD-MON-YYYY | Revisar visualmente 24 páginas y selectores nativos en Safari iOS/Chrome Android; confirmar que valores ISO, zona México y folios permanecen intactos |
 | Prueba integral en producción | Con vivienda/TAG dedicados y referencia nueva: reportar, revisar, leer fecha real posterior, comprobar idempotencia y apertura cuando corresponda |
@@ -205,19 +219,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-20
 
-- Scroll móvil: el bloqueo de fondo del menú lateral también alcanzaba a las páginas embebidas, que tenían la clase de diseño compartido sin estado de menú cerrado. Se excluye `mj-embedded` de esa regla y se marca su menú como cerrado al inicializar y al activar el iframe, incluso con scripts anteriores en caché. El menú exterior conserva el bloqueo de fondo cuando está abierto. Se renuevan versiones de assets en app/Inicio.
-- Validación local de scroll: 11 pruebas aprobadas de navegación persistente y login, sintaxis JS y diff sin errores. Se comprueba el estado de cada iframe sin duplicar menú. Sin despliegue ni comprobación física Safari/iPhone/Android; la simulación DOM no acredita por sí sola gestos reales de desplazamiento.
-
-- Por solicitud del usuario, se retira el login progresivo por teléfono: usuario/correo y contraseña están visibles desde el inicio. La API de autenticación ya no busca teléfonos, y se retiran las rutas públicas de consulta/reenvío por número y la entrada de aceptación desde ese flujo. Se conservan las invitaciones SMTP, aceptación por enlace, solicitudes manuales, sesiones recordadas y permisos por rol. No requiere SQL; desplegar frontend y backend juntos.
-- Validación local del retiro de teléfono: 76 pruebas aprobadas de login UI/API, sesiones recordadas, permisos, solicitudes y aceptación Auto-users; sintaxis y diff sin errores. DB/SMTP simulados, sin cambios en producción. Los nombres de usuario numéricos existentes siguen funcionando como identificadores exactos.
-- El usuario confirmó que funcionó el correo individual de invitación de prueba después del cambio de envío. Es confirmación de esa prueba; no acredita entrega masiva ni aceptación completa de todas las cuentas.
-
-- Auto-users: el botón individual Enviar permite probar SMTP con una cuenta de prueba pendiente y correo propio. Los lotes masivos y el reenvío público por teléfono siguen omitiendo esas cuentas; se conserva su marca y los controles de correo, vivienda de pruebas, reportes y aceptación. Generar enlace sin enviar sigue disponible. Requiere desplegar backend; no requiere SQL ni modifica variables SMTP.
-- Validación local del envío individual: 35 pruebas aprobadas en auto-users, rutas, interfaz administrativa de pruebas y correo, con DB/SMTP simulados; comprobaciones de sintaxis y diff sin errores. No se enviaron correos reales ni se verificaron credenciales/entrega de producción.
-
-- Auto-users: Crear cuenta valida formato/disponibilidad de usuario y correo, contraseña y confirmación antes de abrir el segundo panel. Se incorpora POST público `/api/auto-users/invitacion/validar`, protegido por enlace vigente y límite de consultas; no activa cuentas, genera sesiones ni consume el enlace. La aceptación final mantiene las comprobaciones y la confirmación de todas las viviendas.
-- El segundo panel muestra «Introduce SOLO tu numero de casa». Se bloquean clics repetidos mientras se valida y se exige otra comprobación si cambian las credenciales. El frontend actualiza la versión del script para renovar caché.
-- Validación local: 41 pruebas aprobadas en auto-users, auto-users-ui y auto-users-routes; DB/SMTP simulados. Requiere desplegar frontend y backend juntos; no requiere SQL ni se consultó/modificó producción.
+- Revisión de las 23:26: main leído en `91a4bb3f40211096b09be55bea24003df5c39831`, 23 commits después de `9e226f5`. Se excluyó `7f9a3e648fa48d00118870bf1a838a6f39d6b233`, dedicado al estado del 19/oct.
+- Se fusionaron #220–#230. #231, que añade deslizar hacia abajo para refrescar una sección en móvil, sigue abierto y no forma parte de main. GitHub devolvió cero estados y cero workflow runs para los 11 merges y el head abierto.
+- Auto-users: #221 valida credenciales antes de confirmar vivienda, #224 habilita correo individual de prueba y #229 elimina el login por teléfono. El usuario confirmó la configuración SMTP y recepción de una invitación individual; no se publica el remitente. La dirección pública y la aceptación completa siguen pendientes.
+- #222 incorpora cuota configurable por vivienda y SQL manual, pero AGENTS.md todavía declara $300 como regla vigente. La discrepancia se conserva como bloqueo: no se considera autorizada la migración ni una tarifa distinta por el solo merge.
+- #223 crea navegación persistente y restaura Inicio por rol; #226–#227 corrigen estilos/caché; #230 corrige scroll móvil. El usuario confirmó que el scroll ya funciona. El pull-to-refresh de #231 aún requiere merge y prueba física.
+- #220/#225/#228 incorporan fotografías propias por noticia, recuperación de miniaturas de Tráfico ZMG y fondo con degradado. Las pruebas dirigidas de #225/#228 pasan; #220 añadió pruebas pero no ejecutó Node en esa entrega. Falta validación Hostinger/CSP/CDN y visual.
+- No se consultó MySQL/C3 ni se ejecutaron migraciones, pagos o pruebas físicas de hardware durante esta revisión. Se conservan los pendientes e historial anterior.
 
 ### 2026-10-19
 
