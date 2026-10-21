@@ -484,6 +484,13 @@
 
   function initStandalone() {
     init();
+    // Los enlaces guardados pueden abrir una sección sin pasar por app.html.
+    if (!window.MJ_SHELL_MODE && !document.getElementById('mjMobileRefreshScript')) {
+      const script = document.createElement('script');
+      script.id = 'mjMobileRefreshScript';
+      script.src = 'assets/js/mobile-refresh.js?v=20261021-refresco-scroll';
+      document.head.appendChild(script);
+    }
     // Compatibilidad con enlaces guardados a antiguas páginas HTML: el
     // primer clic entra al portal persistente; después el marco no se recarga.
     document.addEventListener('click', event => {

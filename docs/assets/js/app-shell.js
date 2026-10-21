@@ -26,54 +26,14 @@
     const doc = frame.contentDocument;
     if (!doc || refreshDocuments.has(doc)) return;
     refreshDocuments.add(doc);
-    let gesture = null;
-    const cancel = () => { gesture = null; hideRefreshHint(); };
-    const atTop = () => (doc.scrollingElement?.scrollTop || 0) <= 1 && (doc.defaultView?.scrollY || 0) <= 1;
-    function protectedTarget(target) {
-      if (!target || target.closest('input,textarea,select,button,a,[contenteditable]:not([contenteditable="false"]),dialog,[role="dialog"],canvas,video,iframe,.leaflet-container,.gm-style,[data-no-pull-refresh]')) return true;
-      if (hasVisibleChildModal(doc) || document.querySelector('.mj-mobile-scrim:not([hidden])')) return true;
-      // Las tablas/listas con scroll propio conservan su gesto, incluso en su borde.
-      for (let node = target; node && node !== doc.body && node !== doc.documentElement; node = node.parentElement) {
-        const vertical = node.scrollHeight > node.clientHeight + 1, horizontal = node.scrollWidth > node.clientWidth + 1;
-        if (!vertical && !horizontal) continue;
-        const style = doc.defaultView.getComputedStyle(node);
-        if (vertical && /auto|scroll|overlay/.test(style.overflowY) || horizontal && /auto|scroll|overlay/.test(style.overflowX)) return true;
-      }
-      return false;
-    }
-    doc.addEventListener('touchstart', event => {
-      cancel();
-      if (frames[activeIndex] !== frame || !loading.hidden || event.touches.length !== 1
-          || !window.matchMedia('(max-width: 820px)').matches || !atTop() || protectedTarget(event.target)) return;
-      const touch = event.touches[0];
-      gesture = { x: touch.clientX, y: touch.clientY, distance: 0, sequence };
-    }, { passive: true });
-    doc.addEventListener('touchmove', event => {
-      if (!gesture) return;
-      if (event.touches.length !== 1 || gesture.sequence !== sequence || !atTop() || event.defaultPrevented) { cancel(); return; }
-      const touch = event.touches[0], dy = touch.clientY - gesture.y, dx = Math.abs(touch.clientX - gesture.x);
-      if (dy < 0 || dx > Math.max(4, dy)) { cancel(); return; }
-      gesture.distance = dy;
-      if (dy === 0) return;
-      if (!event.cancelable) { cancel(); return; }
-      // Tomar el gesto desde su primer movimiento descendente evita que el
-      // navegador lo convierta en scroll no cancelable antes de llegar al umbral.
-      event.preventDefault();
-      if (dy < 12) { hideRefreshHint(); return; }
-      if (refreshHint) {
-        const text = dy >= 90 ? 'Suelta para actualizar' : 'Desliza hacia abajo para actualizar';
-        if (refreshHint.textContent !== text) refreshHint.textContent = text;
-        refreshHint.hidden = false;
-      }
-    }, { passive: false });
-    doc.addEventListener('touchend', () => {
-      const refresh = gesture && gesture.distance >= 90 && gesture.sequence === sequence
-        && frames[activeIndex] === frame && loading.hidden && atTop()
-        && !hasVisibleChildModal(doc) && !document.querySelector('.mj-mobile-scrim:not([hidden])');
-      cancel();
-      if (refresh) window.MJShell.reload();
-    }, { passive: true });
-    doc.addEventListener('touchcancel', cancel, { passive: true });
+    window.MJInstallPullRefresh({
+      doc,
+      hint: refreshHint,
+      enabled: () => frames[activeIndex] === frame && loading.hidden
+        && !hasVisibleChildModal(doc) && !document.querySelector('.mj-mobile-scrim:not([hidden])'),
+      revision: () => sequence,
+      reload: () => window.MJShell.reload()
+    });
   }
 
   // Los modales de cada sección viven dentro del iframe, pero los botones
@@ -242,6 +202,24 @@
     navigate,
     reload() { return navigate(requested, { fromHistory: true, reload: true }); }
   };
+
+  // El encabezado pertenece al documento exterior: sus eventos táctiles nunca
+  // llegan al iframe. Permitir el mismo gesto sin empezar sobre sus botones.
+  window.MJInstallPullRefresh({
+    doc: document,
+    hint: refreshHint,
+    enabled: () => activeIndex >= 0 && loading.hidden
+      && !hasVisibleChildModal(frames[activeIndex].contentDocument)
+      && !document.querySelector('.mj-mobile-scrim:not([hidden])'),
+    revision: () => sequence,
+    scrollRoots: () => {
+      const doc = frames[activeIndex].contentDocument;
+      return [doc.scrollingElement, ...doc.querySelectorAll('*')].filter(node => node
+        && node.scrollHeight > node.clientHeight + 1
+        && /auto|scroll|overlay/.test(doc.defaultView.getComputedStyle(node).overflowY));
+    },
+    reload: () => window.MJShell.reload()
+  });
 
   // Algunos formularios antiguos aún usan location.href internamente.
   // Si cambian el documento interior, sincronizar URL y menú sin recargar el

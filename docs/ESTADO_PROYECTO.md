@@ -476,3 +476,29 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   el intercambio; se retiró una correspondencia de residente previamente afirmada.
 - No se consultó ni modificó producción, ni se ejecutaron pagos, escrituras de TAG o
   pruebas físicas. Se conserva el historial y una sola entrada para esta fecha.
+
+
+## 21/oct/2026 — Corrección adicional del gesto móvil
+
+El usuario reportó que sigue sin poder refrescar deslizando después de fusionar
+el cambio anterior. Revisión sobre main `69c6f14f87da9242d5a5d9ee3296cbe16eaf93fe`.
+Se encontraron limitaciones del código: instalación exclusiva dentro de los
+iframes de app.html, rechazo de cualquier contenedor con scroll propio incluso
+en su borde superior y falta de eventos en la cabecera del documento exterior.
+Estas condiciones son comprobables en código; no identifican por sí solas cuál
+ocurrió en el teléfono del usuario.
+
+Se comparte el gesto mediante mobile-refresh.js entre el shell y las páginas
+HTML abiertas directamente. Se revisa la cadena de scroll vertical al empezar:
+solo se actualiza estando arriba; los movimientos horizontales conservan las
+tablas. La cabecera también admite el gesto si el contenido está arriba. Menús,
+modales, campos, botones, mapas y navegación en curso siguen protegidos. En el
+portal se recarga solo la sección activa; en páginas directas el documento.
+Se elevó el indicador sobre la cabecera y se renovaron versiones de assets,
+conservando los cambios de menú, noticias y modales actuales de main.
+
+Validación local: `node --test tests/app-shell-navigation.test.cjs`, 20/20 pruebas
+simuladas; `node --check` de mobile-refresh.js, app-shell.js y site-sidebar.js;
+`git diff --check` sin errores. No se hicieron pruebas táctiles en un teléfono
+real ni operaciones sobre MySQL, correo o C3. Pendiente desplegar y comprobar
+el gesto en Android/iOS, tanto desde el portal como desde un enlace directo.

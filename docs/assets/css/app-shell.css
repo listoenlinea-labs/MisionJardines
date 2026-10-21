@@ -7,7 +7,7 @@ body.mj-app-shell{min-width:320px;background:#fff}
 .mj-app-frame.is-active{z-index:2;opacity:1;visibility:visible;pointer-events:auto}
 .mj-app-frame.is-leaving{visibility:visible;opacity:1;pointer-events:none}
 .mj-app-frame[aria-hidden="true"]{pointer-events:none}
-.mj-app-refresh{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:4;max-width:calc(100% - 36px);padding:11px 17px;border:1px solid #f0d3b5;border-radius:24px;background:#fff8f0;color:#945013;box-shadow:0 4px 18px rgba(36,46,64,.12);font-size:12px;font-weight:700;text-align:center;pointer-events:none}
+.mj-app-refresh{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:1000;max-width:calc(100% - 36px);padding:11px 17px;border:1px solid #f0d3b5;border-radius:24px;background:#fff8f0;color:#945013;box-shadow:0 4px 18px rgba(36,46,64,.12);font-size:12px;font-weight:700;text-align:center;pointer-events:none}
 .mj-app-refresh[hidden]{display:none}
 .mj-app-loading{position:absolute;top:0;left:0;right:0;z-index:3;min-height:3px;padding:0;color:#6b7280;font-size:0;background:linear-gradient(90deg,transparent 0,#f3a65b 48%,transparent 100%);background-size:200% 100%;animation:mj-loading 1.35s ease-in-out infinite}
 .mj-app-loading[hidden]{display:none}
