@@ -217,6 +217,11 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ## Bitácora
 
+### 2026-10-21
+
+- PR #231 actualizado sobre main `76e6887e732b71e6da7de43b082834cbaef33f27`, conservando los cambios de modales, cabecera, menú de escritorio, cierre morado y ubicación de Modificar cuotas incorporados por #232–#237. El gesto para actualizar y la cabecera comparten detección de modales visibles, incluidos overlays heredados; abrir un modal durante el gesto impide la recarga.
+- Se resolvieron conflictos de app.html, app-shell.js y esta bitácora, conservando la revisión documental del 20/oct y renovando las versiones de assets del contenedor. Pruebas locales: 17 aprobadas de navegación, gesto, modales y login con DOM simulado; sin cambios de producción ni SQL. Falta comprobación física móvil tras desplegar.
+
 ### 2026-10-20
 
 - Revisión de las 23:26: main leído en `91a4bb3f40211096b09be55bea24003df5c39831`, 23 commits después de `9e226f5`. Se excluyó `7f9a3e648fa48d00118870bf1a838a6f39d6b233`, dedicado al estado del 19/oct.

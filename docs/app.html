@@ -7,7 +7,7 @@
   <link rel="icon" href="assets/images/favicon.ico?v=20261005">
   <title>Misión Jardines</title>
   <script src="assets/js/permissions.js?v=20261012-seguridad"></script>
-  <link rel="stylesheet" href="assets/css/app-shell.css?v=20261021-sidebar-tariff">
+  <link rel="stylesheet" href="assets/css/app-shell.css?v=20261021-deslizar-modales">
   <script>
     window.MJ_SHELL_MODE = true;
     window.MJ_API_URL = ['localhost', '127.0.0.1'].includes(location.hostname)
@@ -15,11 +15,12 @@
       : 'https://api-misionjardines.listoenlinea.host/api';
     window.MJ_TOKEN = localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
   </script>
-  <script src="assets/js/app-shell.js?v=20261021-modal-laptop" defer></script>
+  <script src="assets/js/app-shell.js?v=20261021-deslizar-modales" defer></script>
   <script src="assets/js/site-sidebar.js?v=20261021-modal-laptop" defer></script>
 </head>
 <body class="mj-app-shell">
   <main id="mjAppContent" class="mj-app-content" aria-label="Contenido de Misión Jardines">
+    <div id="mjAppRefresh" class="mj-app-refresh" role="status" aria-live="polite" hidden>Desliza hacia abajo para actualizar</div>
     <iframe id="mjPageA" class="mj-app-frame" title="Sección actual" aria-label="Sección actual" allow="clipboard-write; fullscreen"></iframe>
     <iframe id="mjPageB" class="mj-app-frame" title="Sección siguiente" aria-hidden="true" tabindex="-1" allow="clipboard-write; fullscreen"></iframe>
     <div id="mjAppLoading" class="mj-app-loading" role="status" aria-live="polite">Preparando tu portal…</div>
