@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const policy = require('../docs/assets/js/permissions');
 
+const refreshSource = fs.readFileSync('docs/assets/js/mobile-refresh.js', 'utf8');
 const shellSource = fs.readFileSync('docs/assets/js/app-shell.js', 'utf8');
 const shellHtml = fs.readFileSync('docs/app.html', 'utf8');
 const sidebarSource = fs.readFileSync('docs/assets/js/site-sidebar.js', 'utf8');
@@ -60,7 +61,7 @@ async function makeShell(role, mobile = true) {
     replaceState(_state,_title,url){location.href=String(url);}
   };
   const window = {
-    MJ_TOKEN:'token',MJ_API_URL:'https://api.test/api',MJPermissions:policy,
+    MJ_SHELL_MODE:true,MJ_TOKEN:'token',MJ_API_URL:'https://api.test/api',MJPermissions:policy,
     matchMedia:()=>({matches:mobile}),
     addEventListener:(name,fn)=>{listeners[name]=fn;}
   };
@@ -73,6 +74,7 @@ async function makeShell(role, mobile = true) {
     localStorage:storage,sessionStorage:storage,queueMicrotask,setTimeout,clearTimeout,
     AbortSignal:{timeout:()=>({})},
     fetch:async()=>({ok:true,status:200,json:async()=>({ok:true,usuario:{rol:{nombre:role}}})})};
+  vm.runInNewContext(refreshSource,context);
   vm.runInNewContext(shellSource,context);
   await window.MJAccessReady;
   await new Promise(resolve=>setTimeout(resolve,10));
@@ -143,12 +145,11 @@ test('el gesto descendente se toma desde el primer movimiento sin refrescar ante
   touch(doc,'touchend'); assert.equal(app.frames[1].loads,0);
 });
 
-test('menú, modales, controles y contenedores con scroll propio conservan sus gestos',async()=>{
+test('menú, modales, controles y paneles desplazados conservan sus gestos',async()=>{
   const app=await makeShell('CONDOMINO'),doc=app.frames[0].contentDocument;
   const pull=target=>{touch(doc,'touchstart',{target});const move=touch(doc,'touchmove',{y:120});touch(doc,'touchend');assert.equal(move.defaultPrevented,false);};
   pull({closest:()=>({}),scrollHeight:0,clientHeight:0});
-  pull({closest:()=>null,scrollHeight:500,clientHeight:100,style:{overflowY:'auto'},parentElement:doc.body});
-  pull({closest:()=>null,scrollWidth:500,clientWidth:100,style:{overflowX:'auto'},parentElement:doc.body});
+  pull({closest:()=>null,scrollHeight:500,clientHeight:100,scrollTop:50,style:{overflowY:'auto'},parentElement:doc.body});
   doc.querySelectorAll=()=>[{tagName:'DIALOG',open:true,closest:()=>null,getClientRects:()=>[{}]}]; pull();
   doc.querySelectorAll=()=>[]; app.document.menuOpen=true; pull();
   assert.equal(app.frames[1].loads,0);
@@ -256,5 +257,98 @@ test('Inicio preloads its compact styles before the dashboard can render in eith
     assert.match(head, new RegExp(`<link id="${id}" rel="stylesheet" href="assets/css/${path.replaceAll('.','\\.')}\\?v=`));
     assert.equal(head.split(`id="${id}"`).length-1,1,`${id} no debe duplicarse`);
   }
-  assert.match(homeHtml, /site-sidebar\.js\?v=20261021-purple-x/);
+  assert.match(homeHtml, /site-sidebar\.js\?v=20261021-refresco-scroll/);
+});
+
+test('panel vertical en su borde superior admite refrescar; desplazado conserva el scroll', async () => {
+  const app = await makeShell('CONDOMINO'), doc = app.frames[0].contentDocument;
+  const panel = {scrollHeight:900,clientHeight:500,scrollTop:0,style:{overflowY:'auto'},parentElement:doc.body};
+  const target = {closest:()=>null,parentElement:panel};
+  touch(doc,'touchstart',{target});
+  assert.equal(touch(doc,'touchmove',{y:110}).defaultPrevented,true);
+  touch(doc,'touchend');
+  assert.equal(app.frames[1].loads,1);
+});
+
+test('tabla horizontal permite arrastre vertical y conserva el horizontal', async () => {
+  const app = await makeShell('CONDOMINO'), doc = app.frames[0].contentDocument;
+  const target = {closest:()=>null,scrollWidth:900,clientWidth:300,style:{overflowX:'auto'},parentElement:doc.body};
+  touch(doc,'touchstart',{target});
+  assert.equal(touch(doc,'touchmove',{x:220,y:10}).defaultPrevented,false);
+  touch(doc,'touchend'); assert.equal(app.frames[1].loads,0);
+  touch(doc,'touchstart',{target});
+  assert.equal(touch(doc,'touchmove',{y:110}).defaultPrevented,true);
+  touch(doc,'touchend'); assert.equal(app.frames[1].loads,1);
+});
+
+test('desplazarse en cualquier ancestro o abrir el menú a mitad del gesto cancela', async () => {
+  const app = await makeShell('CONDOMINO'), doc = app.frames[0].contentDocument;
+  const panel = {scrollHeight:900,clientHeight:500,scrollTop:0,style:{overflowY:'auto'},parentElement:doc.body};
+  const target = {closest:()=>null,parentElement:panel};
+  touch(doc,'touchstart',{target}); panel.scrollTop=30;
+  assert.equal(touch(doc,'touchmove',{y:110}).defaultPrevented,false);
+  touch(doc,'touchend'); assert.equal(app.frames[1].loads,0);
+  panel.scrollTop=0;touch(doc,'touchstart',{target});touch(doc,'touchmove',{y:110});
+  app.document.menuOpen=true; touch(doc,'touchend');assert.equal(app.frames[1].loads,0);
+});
+
+test('el encabezado exterior admite el gesto sin recargar la sesión ni duplicar la navegación', async () => {
+  const app=await makeShell('CONDOMINO');
+  app.document.listeners=app.listeners;
+  touch(app.document,'touchstart');
+  assert.equal(touch(app.document,'touchmove',{y:120}).defaultPrevented,true);
+  touch(app.document,'touchend');assert.equal(app.frames[1].loads,1);
+  assert.equal(app.location.reloaded,undefined);
+});
+
+test('una página directa instala el gesto y refresca el documento sin requerir el shell', async () => {
+  const nodes=[],listeners={};let reloads=0;
+  const doc={readyState:'complete',scrollingElement:{scrollTop:0},
+    body:{appendChild:node=>nodes.push(node)},head:{appendChild:node=>nodes.push(node)},
+    createElement:()=>({setAttribute(){}}),querySelectorAll:()=>[],querySelector:()=>null,
+    defaultView:{getComputedStyle:node=>node.style||{}},addEventListener:(type,fn)=>{listeners[type]=fn;}};
+  doc.listeners=listeners;
+  const win={MJAccessReady:Promise.resolve(true),matchMedia:()=>({matches:true})};win.parent=win;
+  vm.runInNewContext(refreshSource,{window:win,document:doc,location:{reload(){reloads++;}}});
+  await win.MJAccessReady;await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(nodes[0].rel,'stylesheet');assert.equal(nodes[1].hidden,true);
+  touch(doc,'touchstart');touch(doc,'touchmove',{y:120});
+  assert.equal(nodes[1].textContent,'Suelta para actualizar');
+  touch(doc,'touchend');touch(doc,'touchend');assert.equal(reloads,1);
+});
+
+test('el encabezado no refresca si el contenido interior está desplazado', async () => {
+  const app=await makeShell('CONDOMINO');app.document.listeners=app.listeners;
+  Object.assign(app.frames[0].contentDocument.scrollingElement,
+    {scrollHeight:1500,clientHeight:700,scrollTop:250,style:{overflowY:'auto'}});
+  touch(app.document,'touchstart');
+  assert.equal(touch(app.document,'touchmove',{y:120}).defaultPrevented,false);
+  touch(app.document,'touchend');assert.equal(app.frames[1].loads,0);
+});
+
+test('navegar durante el gesto descarta el documento anterior sin volver a cargarlo', async () => {
+  const app=await makeShell('CONDOMINO'),doc=app.frames[0].contentDocument;
+  touch(doc,'touchstart');touch(doc,'touchmove',{y:120});
+  app.window.MJShell.navigate('pagos.html');
+  touch(doc,'touchend'); assert.equal(app.frames[1].loads,1);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  touch(doc,'touchstart');touch(doc,'touchmove',{y:120});touch(doc,'touchend');
+  assert.equal(app.frames[0].loads,1);
+});
+
+test('no se instala el refresco de una página directa si su sesión fue rechazada', async () => {
+  const nodes=[],win={MJAccessReady:Promise.resolve(false)};win.parent=win;
+  const doc={readyState:'complete',body:{appendChild:node=>nodes.push(node)},head:{appendChild:node=>nodes.push(node)},
+    addEventListener(){throw Error('No debe instalar eventos');}};
+  vm.runInNewContext(refreshSource,{window:win,document:doc});
+  await win.MJAccessReady;assert.equal(nodes.length,0);
+});
+
+test('ambas entradas cargan el mismo módulo y las páginas solicitan la barra actualizada', () => {
+  assert.match(shellHtml,/mobile-refresh\.js\?v=20261021-refresco-scroll/);
+  assert.match(sidebarSource,/mobile-refresh\.js\?v=20261021-refresco-scroll/);
+  for (const file of fs.readdirSync('docs').filter(name=>name.endsWith('.html'))) {
+    const html=fs.readFileSync('docs/'+file,'utf8');
+    if (html.includes('assets/js/site-sidebar.js')) assert.match(html,/site-sidebar\.js\?v=20261021-refresco-scroll/);
+  }
 });
