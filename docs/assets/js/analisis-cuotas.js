@@ -877,6 +877,7 @@ function renderHouses(){
    const year=Number($('financeYear').value),month=Number($('financeMonth').value);
    const response=await request('/analisis?anio='+year+'&mes='+month);
    data=response.data;
+   window.MJPaymentDates.setData(data.pagosHistorial);
    data.viviendasMantenimiento=data.viviendas;
    if(activeConcept!=='MANTENIMIENTO'&&!Array.isArray(data.viviendasConceptos?.[activeConcept]))activeConcept='MANTENIMIENTO';
    render();
