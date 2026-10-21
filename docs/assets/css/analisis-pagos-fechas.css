@@ -1,0 +1,16 @@
+#paymentDatesPanel .expense-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;gap:12px}
+#paymentDatesPanel label{min-width:0}
+#paymentDatesPanel :is(input,select){min-width:0;width:100%;box-sizing:border-box}
+#paymentDatesPanel .payment-dates-scroll table{width:100%;min-width:800px}
+#paymentDatesPanel [aria-invalid="true"]{border-color:#b91c1c}
+@media(max-width:700px){
+ #paymentDatesPanel .expense-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #paymentDatesPanel .payment-dates-scroll table{min-width:0}
+ #paymentDatesPanel .payment-dates-scroll thead{display:none}
+ #paymentDatesPanel .payment-dates-scroll :is(tbody,tr,td){display:block;width:100%;box-sizing:border-box}
+ #paymentDatesPanel .payment-dates-scroll tr{margin:12px 0;padding:10px;border:1px solid #e5e7eb;border-radius:12px}
+ #paymentDatesPanel .payment-dates-scroll td{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,1.2fr);gap:8px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+ #paymentDatesPanel .payment-dates-scroll td::before{content:attr(data-label);font-weight:700}
+ #paymentDatesPanel .payment-dates-scroll td[colspan]{display:block}
+ #paymentDatesPanel .payment-dates-scroll td[colspan]::before{content:none}
+}

@@ -502,3 +502,26 @@ simuladas; `node --check` de mobile-refresh.js, app-shell.js y site-sidebar.js;
 `git diff --check` sin errores. No se hicieron pruebas táctiles en un teléfono
 real ni operaciones sobre MySQL, correo o C3. Pendiente desplegar y comprobar
 el gesto en Android/iOS, tanto desde el portal como desde un enlace directo.
+
+
+## 21/oct/2026 — Consulta administrativa de pagos por fechas
+
+Sobre main `ec5af13de7132d69ff3985100d4fc3a1dae664aa`, Análisis de cuotas agrega
+una sección Pagos por fecha con rango inclusivo Desde/Hasta, concepto, búsqueda
+por residente/vivienda/referencia, orden reciente/antiguo y paginación de 20.
+El orden y el total se calculan sobre todos los resultados, antes de paginar.
+La consulta usa el historial completo del padrón, independiente del mes financiero,
+y conserva movimientos anteriores aunque exista otro pago posterior de la misma casa.
+
+El backend reutiliza las lecturas existentes y la conciliación del historial para
+no duplicar depósitos repartidos entre varias mensualidades. Fecha/hora bancaria
+prevalece sobre validación; movimientos sin fecha quedan al final y se excluyen
+cuando hay rango. El nombre es el residente registrado, no una identificación
+inferida del titular bancario. La ruta financiera conserva acceso administrativo.
+
+Validación local: 26 pruebas aprobadas en analisis-pagos-fechas,
+historial-pagos-vivienda y analisis-tres-conceptos, con DB simulada en el controlador;
+sintaxis JS y git diff --check sin errores. Se actualizó una expectativa antigua
+de versión del asset en el test de historial. No hubo consultas ni escrituras en
+MySQL, pagos o C3 reales. No se realizó prueba visual en un teléfono real.
+Requiere desplegar backend y frontend; no requiere migración SQL.
