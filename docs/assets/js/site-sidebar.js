@@ -222,6 +222,21 @@
       sheet.href='assets/css/mobile-operativo.css?v=20261015-safari-fechas-compactas';
       document.head.appendChild(sheet);
     }
+    // Cierre consistente en los modales de todas las secciones, incluso
+    // las que se cargan dentro del panel de navegación persistente.
+    if (!document.getElementById('mjModalCloseStyles')) {
+      const link = document.createElement('link');
+      link.id = 'mjModalCloseStyles';
+      link.rel = 'stylesheet';
+      link.href = 'assets/css/modal-close-ui.css?v=20261021-purple-x';
+      document.head.appendChild(link);
+    }
+    if (!document.getElementById('mjModalCloseScript')) {
+      const script = document.createElement('script');
+      script.id = 'mjModalCloseScript';
+      script.src = 'assets/js/modal-close-ui.js?v=20261021-purple-x';
+      document.body.appendChild(script);
+    }
   }
 
   function createSidebar() {
