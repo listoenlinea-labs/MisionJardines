@@ -16,6 +16,45 @@
   let currentPage = home;
   let sequence = 0;
 
+  // Los modales de cada sección viven dentro del iframe, pero los botones
+  // flotantes de búsqueda, cuenta y menú se dibujan en el documento padre.
+  // Un z-index del iframe no puede cubrir esos controles exteriores.
+  let childModalObserver = null;
+  const childModalSelector = '.finance-pay-overlay, .modal-overlay, .modal-backdrop, dialog, [role="dialog"][aria-modal="true"]';
+
+  function resetChildModalChrome() {
+    childModalObserver?.disconnect();
+    childModalObserver = null;
+    document.body.classList.remove('mj-child-modal-open');
+  }
+
+  function syncChildModalChrome(frame) {
+    if (activeIndex < 0 || frames[activeIndex] !== frame) return;
+    const doc = frame.contentDocument;
+    if (!doc?.body) return;
+    const hasOpenModal = [...doc.querySelectorAll(childModalSelector)].some(modal => {
+      // Hay diálogos renderizados permanentemente dentro de overlays ocultos:
+      // no cuentan hasta que todo su árbol esté visible.
+      if (modal.tagName === 'DIALOG' && !modal.open) return false;
+      if (modal.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+      const computed = doc.defaultView.getComputedStyle(modal);
+      return computed.display !== 'none' && computed.visibility !== 'hidden' && modal.getClientRects().length > 0;
+    });
+    document.body.classList.toggle('mj-child-modal-open', hasOpenModal);
+  }
+
+  function watchChildModals(frame) {
+    resetChildModalChrome();
+    const body = frame.contentDocument?.body;
+    if (!body) return;
+    childModalObserver = new MutationObserver(() => syncChildModalChrome(frame));
+    childModalObserver.observe(body, {
+      subtree: true, childList: true, attributes: true,
+      attributeFilter: ['hidden', 'open', 'class', 'style', 'aria-hidden', 'inert']
+    });
+    syncChildModalChrome(frame);
+  }
+
   function safeRoute(input) {
     if (typeof input !== 'string' || input.length > 512) return null;
     let url;
@@ -87,6 +126,7 @@
       }, 250);
     }
     activeIndex = next;
+    watchChildModals(frame);
     currentPage = route.page;
     requested = route.target;
     loading.hidden = true;
@@ -99,6 +139,7 @@
     const route = allowed(input);
     if (!route) return false;
     if (!reload && route.target === requested) return true;
+    resetChildModalChrome();
     const ordinal = ++sequence;
     const next = activeIndex < 0 ? 0 : 1 - activeIndex;
     const frame = frames[next];
@@ -146,6 +187,7 @@
     if (url.pathname.endsWith('/login.html')) { location.replace('login.html'); return; }
     const route = allowed(href);
     if (route && route.page !== currentPage) navigate(route.target, { replace: true });
+    else watchChildModals(frame); // iframe recargado sin cambiar de módulo
   }));
 
   window.MJAccessReady = (async () => {
