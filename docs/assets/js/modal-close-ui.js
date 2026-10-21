@@ -57,7 +57,8 @@
   }
 
   function enhancePanel(panel) {
-    if (panel.dataset.mjUnifiedModalPanel === '1') return;
+    // Si una sección vuelve a renderizar el contenido, decorar el nuevo botón.
+    if (panel.querySelector('[data-mj-unified-modal-close="1"]')) return;
     if (!panel.closest(modalSelector)) return;
     // No procesar una superficie exterior cuando ya existe un panel interior.
     if (panel.querySelector(panelSelector)) return;
