@@ -1,0 +1,40 @@
+/* Misión Jardines: una X circular violeta para cerrar los modales.
+   Los eventos originales de cada sección se preservan en el botón existente. */
+.mj-modal-close-panel{--mj-close-lilac:#f8f2ff;--mj-close-border:#e5d4f5;--mj-close-ink:#744a9c}
+.mj-modal-close-panel .mj-modal-close-control{
+  position:absolute!important;top:12px!important;right:12px!important;
+  left:auto!important;bottom:auto!important;transform:none!important;
+  z-index:20!important;box-sizing:border-box!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  flex:none!important;width:40px!important;min-width:40px!important;
+  max-width:40px!important;height:40px!important;min-height:40px!important;
+  max-height:40px!important;padding:0!important;margin:0!important;
+  border:1px solid var(--mj-close-border)!important;border-radius:50%!important;
+  background:var(--mj-close-lilac)!important;color:var(--mj-close-ink)!important;
+  font:500 25px/1 Inter,ui-sans-serif,system-ui,sans-serif!important;
+  text-decoration:none!important;text-align:center!important;cursor:pointer!important;
+  box-shadow:0 3px 10px rgba(112,70,153,.075)!important;
+  opacity:1!important;visibility:visible!important;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease!important;
+}
+.mj-modal-close-panel .mj-modal-close-control:hover{
+  background:#efe2fb!important;border-color:#cba8e8!important;
+  box-shadow:0 5px 14px rgba(112,70,153,.13)!important;
+}
+.mj-modal-close-panel .mj-modal-close-control:focus-visible{
+  outline:3px solid #ba96d8!important;outline-offset:3px!important;
+}
+.mj-modal-close-panel .mj-modal-close-heading{
+  padding-right:48px!important;min-height:42px!important;
+}
+@media(max-width:600px){
+  .mj-modal-close-panel .mj-modal-close-control{
+    width:38px!important;min-width:38px!important;max-width:38px!important;
+    height:38px!important;min-height:38px!important;max-height:38px!important;
+    top:11px!important;right:11px!important;
+  }
+  .mj-modal-close-panel .mj-modal-close-heading{padding-right:44px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .mj-modal-close-panel .mj-modal-close-control{transition:none!important}
+}
