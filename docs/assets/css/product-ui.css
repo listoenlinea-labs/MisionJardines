@@ -34,9 +34,8 @@ body.mj-embedded.mj-shared-sidebar-enabled:not(.mj-home)::before {
   content:none!important;
   display:none!important;
 }
-/* Acceso directo (sin app.html): quitar búsqueda, franja y barra lateral
-   detrás de cualquier diálogo visible, también en computadora. El shell
-   exterior aplica la misma regla cuando se navega dentro del portal. */
+/* En modo directo, despejar el encabezado delante de cualquier modal.
+   Mantener el menú lateral visible en computadora para no perder navegación. */
 body.mj-shared-sidebar-enabled:not(.mj-home):has(:is(
   .finance-pay-overlay:not([hidden]),
   .modal-shell:not([hidden]), .edit-modal:not([hidden]), dialog[open]
@@ -46,8 +45,16 @@ body.mj-shared-sidebar-enabled:not(.mj-home):has(:is(
 body.mj-shared-sidebar-enabled:not(.mj-home):has(:is(
   .finance-pay-overlay:not([hidden]),
   .modal-shell:not([hidden]), .edit-modal:not([hidden]), dialog[open]
-)) :is(.mj-top-tools,.mj-search-launch,.mj-account-top,.mj-side-tab,.mj-shared-sidebar){
+)) :is(.mj-top-tools,.mj-search-launch,.mj-account-top){
   visibility:hidden!important;pointer-events:none!important;
+}
+@media(max-width:820px){
+  body.mj-shared-sidebar-enabled:not(.mj-home):has(:is(
+    .finance-pay-overlay:not([hidden]),
+    .modal-shell:not([hidden]), .edit-modal:not([hidden]), dialog[open]
+  )) :is(.mj-side-tab,.mj-shared-sidebar){
+    visibility:hidden!important;pointer-events:none!important;
+  }
 }
 body.mj-shared-sidebar-enabled:not(.mj-home) .mj-top-tools{top:11px!important}
 body.mj-shared-sidebar-enabled:not(.mj-home) :is(
