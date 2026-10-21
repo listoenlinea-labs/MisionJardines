@@ -20,7 +20,7 @@
   // flotantes de búsqueda, cuenta y menú se dibujan en el documento padre.
   // Un z-index del iframe no puede cubrir esos controles exteriores.
   let childModalObserver = null;
-  const childModalSelector = '.finance-pay-overlay, .modal-overlay, .modal-backdrop, dialog, [role="dialog"][aria-modal="true"]';
+  const childModalSelector = '.finance-pay-overlay, .modal-overlay, .modal-backdrop, .modal-shell, .edit-modal, dialog, [role="dialog"][aria-modal="true"]';
 
   function resetChildModalChrome() {
     childModalObserver?.disconnect();
