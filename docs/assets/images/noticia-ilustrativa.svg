@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="520" viewBox="0 0 880 520" role="img" aria-labelledby="title desc">
+<title id="title">Fondo ilustrativo para noticia sin fotografía</title>
+<desc id="desc">Ilustración geométrica abstracta de una ciudad en azul petróleo, violeta y verde salvia; no representa una noticia real.</desc>
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#172945"/><stop offset=".55" stop-color="#354e65"/><stop offset="1" stop-color="#5d557a"/></linearGradient>
+  <linearGradient id="horizon" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#2b515e" stop-opacity=".85"/><stop offset="1" stop-color="#7fa499" stop-opacity=".42"/></linearGradient>
+  <pattern id="grid" width="54" height="54" patternUnits="userSpaceOnUse"><path d="M54 0H0V54" fill="none" stroke="#dce1f0" stroke-opacity=".07"/></pattern>
+</defs>
+<rect width="880" height="520" fill="url(#sky)"/><rect width="880" height="520" fill="url(#grid)"/>
+<circle cx="728" cy="125" r="132" fill="#d9c4fd" opacity=".14"/><circle cx="728" cy="125" r="92" fill="none" stroke="#e8d9fb" stroke-width="2" opacity=".21"/>
+<path d="M-12 358Q195 246 408 353T892 310V520H-12Z" fill="url(#horizon)" opacity=".85"/>
+<g fill="#1d3549" opacity=".86"><path d="M0 328h64v-80h43v35h37V165h58v110h32v-64h54v117h28v-87h57v26h36v-119h59v180h46V214h61v114h39V263h68v65h44v-121h65v121h50v192H0Z"/></g>
+<g stroke="#b6d8db" stroke-opacity=".26" stroke-width="4"><path d="M110 304v-17m75-35v-28m242 65v-50m264 47v-25"/><path d="M-10 392Q201 337 453 390T880 374" fill="none"/></g>
+<g fill="#dfe9ee" opacity=".17"><rect x="17" y="350" width="25" height="9" rx="2"/><rect x="176" y="312" width="18" height="9" rx="2"/><rect x="454" y="359" width="28" height="9" rx="2"/><rect x="739" y="339" width="20" height="9" rx="2"/></g>
+<rect x="0" y="0" width="880" height="520" fill="url(#sky)" opacity=".12"/>
+</svg>

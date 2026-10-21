@@ -4,6 +4,7 @@ const { autenticarToken } = require('../middlewares/auth.middleware');
 const { VENTANA_DIAS, prepararNoticiasLocales } = require('../services/noticias-locales.service');
 const {randomUUID}=require('node:crypto');
 const {esImagenZmg,descargarHtmlZmg,descargarImagenWordPressZmg}=require('../services/noticias-imagenes-zmg.service');
+const {fotoDelArticuloOriginal}=require('../services/noticias-imagenes-medios.service');
 
 const router = express.Router();
 
@@ -323,6 +324,18 @@ router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
         if(n.imageUrl)n.imageProxyToken=imageTokenFor(n.imageUrl);
       }catch(error){ /* La nota sigue visible sin fotografía. */ }
     }));
+
+    // Cuando FreeNewsApi omite la foto, consultar los metadatos de ESA
+    // noticia en dominios editoriales previamente permitidos. No se buscan
+    // imágenes por título ni se reutilizan fotos de otras publicaciones.
+    // Máximo 12 artículos, en tandas de seis y con timeout corto.
+    const sinFoto=data.filter(n=>!n.imageUrl && !n.isTraficoZmg).slice(0,12);
+    for(let i=0;i<sinFoto.length;i+=6){
+      await Promise.all(sinFoto.slice(i,i+6).map(async nota=>{
+        const imagen=await fotoDelArticuloOriginal(nota.url,{timeoutMs:2200});
+        if(imagen)nota.imageUrl=imagen;
+      }));
+    }
 
     const result = {
       ok: true,

@@ -196,7 +196,7 @@
       const productUI = document.createElement('link');
       productUI.id = 'mjProductUI';
       productUI.rel = 'stylesheet';
-      productUI.href = 'assets/css/product-ui.css?v=20261021-sidebar-tariff';
+      productUI.href = 'assets/css/product-ui.css?v=20261021-news-help';
       document.head.appendChild(productUI);
     }
     // Hoja final de homologación: sobreescribe versiones demo sin afectar la lógica.
@@ -345,7 +345,7 @@
   function loadHomeDashboard() {
     if (window.MJ_SHELL_MODE || page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
-    script.src = 'assets/js/home-dashboard.js?v=20261020-noticias-fondo';
+    script.src = 'assets/js/home-dashboard.js?v=20261021-news-images';
     script.defer = true;
     script.dataset.mjHomeDashboard = 'true';
     document.body.appendChild(script);
