@@ -506,3 +506,15 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
  .history-dialog-layout{gap:10px}
  .history-heading-actions{justify-content:flex-start}
 }
+/* Cierre del historial: X en la esquina superior derecha; "Modificar cuotas"
+   ocupa el segundo renglón, donde antes estaba el botón Cerrar. */
+.history-heading-actions{
+  display:flex;flex-direction:column;align-items:flex-end;
+  justify-content:flex-start;gap:8px;padding-top:53px;
+}
+.history-heading-actions #houseTariffOpen{
+  margin:0;flex:none;max-width:100%;white-space:nowrap;
+}
+@media(max-width:850px){
+  .history-heading-actions{padding-top:53px;align-items:flex-end}
+}
