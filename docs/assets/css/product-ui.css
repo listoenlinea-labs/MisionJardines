@@ -28,6 +28,34 @@ body.mj-shared-sidebar-enabled:not(.mj-home)::before {
   pointer-events:none;
 }
 body.mj-shared-sidebar-enabled.mj-shared-sidebar-collapsed:not(.mj-home)::before{left:0}
+/* app.html ya dibuja el encabezado en el documento exterior. No repetir el
+   pseudo-elemento dentro del iframe: es una capa fija por encima de diálogos. */
+body.mj-embedded.mj-shared-sidebar-enabled:not(.mj-home)::before {
+  content:none!important;
+  display:none!important;
+}
+/* En modo directo, despejar el encabezado delante de cualquier modal.
+   Mantener el menú lateral visible en computadora para no perder navegación. */
+body.mj-shared-sidebar-enabled:not(.mj-home):has(:is(
+  .finance-pay-overlay:not([hidden]),
+  .modal-shell:not([hidden]), .edit-modal:not([hidden]), dialog[open]
+))::before{
+  content:none!important;display:none!important;
+}
+body.mj-shared-sidebar-enabled:not(.mj-home):has(:is(
+  .finance-pay-overlay:not([hidden]),
+  .modal-shell:not([hidden]), .edit-modal:not([hidden]), dialog[open]
+)) :is(.mj-top-tools,.mj-search-launch,.mj-account-top){
+  visibility:hidden!important;pointer-events:none!important;
+}
+@media(max-width:820px){
+  body.mj-shared-sidebar-enabled:not(.mj-home):has(:is(
+    .finance-pay-overlay:not([hidden]),
+    .modal-shell:not([hidden]), .edit-modal:not([hidden]), dialog[open]
+  )) :is(.mj-side-tab,.mj-shared-sidebar){
+    visibility:hidden!important;pointer-events:none!important;
+  }
+}
 body.mj-shared-sidebar-enabled:not(.mj-home) .mj-top-tools{top:11px!important}
 body.mj-shared-sidebar-enabled:not(.mj-home) :is(
   .analysis-page,.club-wrap,.cuotas-shell,.visit-shell,.sec-shell,.res-shell,.rep-shell,

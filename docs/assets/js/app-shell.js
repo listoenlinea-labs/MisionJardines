@@ -31,11 +31,7 @@
     const atTop = () => (doc.scrollingElement?.scrollTop || 0) <= 1 && (doc.defaultView?.scrollY || 0) <= 1;
     function protectedTarget(target) {
       if (!target || target.closest('input,textarea,select,button,a,[contenteditable]:not([contenteditable="false"]),dialog,[role="dialog"],canvas,video,iframe,.leaflet-container,.gm-style,[data-no-pull-refresh]')) return true;
-      const modalOpen = [...doc.querySelectorAll('dialog[open],[aria-modal="true"]')].some(modal => {
-        const style = doc.defaultView.getComputedStyle(modal);
-        return !modal.hidden && style.display !== 'none' && style.visibility !== 'hidden' && modal.getClientRects().length;
-      });
-      if (modalOpen || document.querySelector('.mj-mobile-scrim:not([hidden])')) return true;
+      if (hasVisibleChildModal(doc) || document.querySelector('.mj-mobile-scrim:not([hidden])')) return true;
       // Las tablas/listas con scroll propio conservan su gesto, incluso en su borde.
       for (let node = target; node && node !== doc.body && node !== doc.documentElement; node = node.parentElement) {
         const vertical = node.scrollHeight > node.clientHeight + 1, horizontal = node.scrollWidth > node.clientWidth + 1;
@@ -72,11 +68,58 @@
     }, { passive: false });
     doc.addEventListener('touchend', () => {
       const refresh = gesture && gesture.distance >= 90 && gesture.sequence === sequence
-        && frames[activeIndex] === frame && loading.hidden && atTop();
+        && frames[activeIndex] === frame && loading.hidden && atTop()
+        && !hasVisibleChildModal(doc) && !document.querySelector('.mj-mobile-scrim:not([hidden])');
       cancel();
       if (refresh) window.MJShell.reload();
     }, { passive: true });
     doc.addEventListener('touchcancel', cancel, { passive: true });
+  }
+
+  // Los modales de cada sección viven dentro del iframe, pero los botones
+  // flotantes de búsqueda, cuenta y menú se dibujan en el documento padre.
+  // Un z-index del iframe no puede cubrir esos controles exteriores.
+  let childModalObserver = null;
+  const childModalSelector = '.finance-pay-overlay, .modal-overlay, .modal-backdrop, .modal-shell, .edit-modal, dialog, [role="dialog"][aria-modal="true"]';
+
+  function resetChildModalChrome() {
+    childModalObserver?.disconnect();
+    childModalObserver = null;
+    document.body.classList.remove('mj-child-modal-open');
+  }
+
+  function hasVisibleChildModal(doc) {
+    if (!doc?.body) return false;
+    return [...doc.querySelectorAll(childModalSelector)].some(modal => {
+      // Hay diálogos renderizados permanentemente dentro de overlays ocultos:
+      // no cuentan hasta que todo su árbol esté visible.
+      if (modal.tagName === 'DIALOG' && !modal.open) return false;
+      if (modal.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+      const computed = doc.defaultView.getComputedStyle(modal);
+      return computed.display !== 'none' && computed.visibility !== 'hidden' && modal.getClientRects().length > 0;
+    });
+  }
+
+  function syncChildModalChrome(frame) {
+    if (activeIndex < 0 || frames[activeIndex] !== frame) return;
+    const hasOpenModal = hasVisibleChildModal(frame.contentDocument);
+    document.body.classList.toggle('mj-child-modal-open', hasOpenModal);
+    if (hasOpenModal) hideRefreshHint();
+  }
+
+  function watchChildModals(frame) {
+    resetChildModalChrome();
+    const body = frame.contentDocument?.body;
+    if (!body) return;
+    // También reinstalar el gesto si la sección se recarga por su cuenta.
+    installPullToRefresh(frame);
+    hideRefreshHint();
+    childModalObserver = new MutationObserver(() => syncChildModalChrome(frame));
+    childModalObserver.observe(body, {
+      subtree: true, childList: true, attributes: true,
+      attributeFilter: ['hidden', 'open', 'class', 'style', 'aria-hidden', 'inert']
+    });
+    syncChildModalChrome(frame);
   }
 
   function safeRoute(input) {
@@ -135,8 +178,6 @@
     // También cubrir secciones que aún tengan el script lateral en caché:
     // su menú está en el documento principal, no dentro del iframe.
     frame.contentDocument?.body?.classList.add('mj-shared-sidebar-collapsed');
-    installPullToRefresh(frame);
-    hideRefreshHint();
     const old = activeIndex >= 0 ? frames[activeIndex] : null;
     frame.classList.add('is-active');
     frame.setAttribute('aria-hidden', 'false');
@@ -152,6 +193,7 @@
       }, 250);
     }
     activeIndex = next;
+    watchChildModals(frame);
     currentPage = route.page;
     requested = route.target;
     loading.hidden = true;
@@ -164,6 +206,7 @@
     const route = allowed(input);
     if (!route) return false;
     if (!reload && route.target === requested) return true;
+    resetChildModalChrome();
     const ordinal = ++sequence;
     const next = activeIndex < 0 ? 0 : 1 - activeIndex;
     const frame = frames[next];
@@ -211,6 +254,7 @@
     if (url.pathname.endsWith('/login.html')) { location.replace('login.html'); return; }
     const route = allowed(href);
     if (route && route.page !== currentPage) navigate(route.target, { replace: true });
+    else watchChildModals(frame); // iframe recargado sin cambiar de módulo
   }));
 
   window.MJAccessReady = (async () => {

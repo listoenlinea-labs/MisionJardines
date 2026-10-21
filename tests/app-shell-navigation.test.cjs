@@ -11,7 +11,7 @@ const sidebarSource = fs.readFileSync('docs/assets/js/site-sidebar.js', 'utf8');
 const makeClassList = () => ({add(){},remove(){},toggle(){}});
 
 async function makeShell(role, mobile = true) {
-  const listeners = {};
+  const listeners = {}, observers = [], bodyClasses = new Set();
   const location = {
     origin: 'https://app.test', pathname: '/app.html',
     href: 'https://app.test/app.html?page=index.html',
@@ -21,7 +21,7 @@ async function makeShell(role, mobile = true) {
   };
   const frame = id => {
     const doc = { title:id, body:{classList:new Set()}, documentElement:{}, scrollingElement:{scrollTop:0},
-      listeners:{}, querySelectorAll:()=>[],
+      listeners:{}, modals:[], querySelectorAll(){return this.modals;},
       defaultView:{scrollY:0,getComputedStyle:node=>({overflowY:'visible',display:'block',visibility:'visible',...node.style})},
       addEventListener(type,fn){this.listeners[type]=fn;}
     };
@@ -44,6 +44,8 @@ async function makeShell(role, mobile = true) {
     mjAppRetry:{addEventListener(){}}
   };
   const document = {
+    body:{classList:{remove:name=>bodyClasses.delete(name),contains:name=>bodyClasses.has(name),
+      toggle(name,on){if(on)bodyClasses.add(name);else bodyClasses.delete(name);}}},
     title:'Misión Jardines',getElementById:id=>elements[id],
     addEventListener:(event,fn)=>{listeners[event]=fn;},querySelectorAll:()=>[],querySelector:()=>document.menuOpen?{}:null
   };
@@ -63,13 +65,18 @@ async function makeShell(role, mobile = true) {
     addEventListener:(name,fn)=>{listeners[name]=fn;}
   };
   const context={window,document,location,history,URL,URLSearchParams,
+    MutationObserver:class {
+      constructor(callback){this.callback=callback;observers.push(this);}
+      observe(target,options){this.target=target;this.options=options;this.connected=true;}
+      disconnect(){this.connected=false;}
+    },
     localStorage:storage,sessionStorage:storage,queueMicrotask,setTimeout,clearTimeout,
     AbortSignal:{timeout:()=>({})},
     fetch:async()=>({ok:true,status:200,json:async()=>({ok:true,usuario:{rol:{nombre:role}}})})};
   vm.runInNewContext(shellSource,context);
   await window.MJAccessReady;
   await new Promise(resolve=>setTimeout(resolve,10));
-  return {window,document,frames,location,listeners,elements};
+  return {window,document,frames,location,listeners,elements,observers,bodyClasses};
 }
 
 test('persistent app shell retains the parent page and uses only internal frames',async()=>{
@@ -142,9 +149,40 @@ test('menú, modales, controles y contenedores con scroll propio conservan sus g
   pull({closest:()=>({}),scrollHeight:0,clientHeight:0});
   pull({closest:()=>null,scrollHeight:500,clientHeight:100,style:{overflowY:'auto'},parentElement:doc.body});
   pull({closest:()=>null,scrollWidth:500,clientWidth:100,style:{overflowX:'auto'},parentElement:doc.body});
-  doc.querySelectorAll=()=>[{getClientRects:()=>[{}]}]; pull();
+  doc.querySelectorAll=()=>[{tagName:'DIALOG',open:true,closest:()=>null,getClientRects:()=>[{}]}]; pull();
   doc.querySelectorAll=()=>[]; app.document.menuOpen=true; pull();
   assert.equal(app.frames[1].loads,0);
+});
+
+test('modales heredados y nativos ocultan la cabecera y bloquean el gesto solo mientras están visibles',async()=>{
+  const app=await makeShell('CONDOMINO'),doc=app.frames[0].contentDocument;
+  const modal={tagName:'DIV',hiddenTree:false,closest(){return this.hiddenTree?{}:null;},getClientRects:()=>[{}]};
+  doc.modals=[modal]; const observer=app.observers.at(-1);
+  observer.callback(); assert.equal(app.bodyClasses.has('mj-child-modal-open'),true);
+  touch(doc,'touchstart');assert.equal(touch(doc,'touchmove',{y:120}).defaultPrevented,false);touch(doc,'touchend');
+  assert.equal(app.frames[1].loads,0);
+  modal.hiddenTree=true;observer.callback();assert.equal(app.bodyClasses.has('mj-child-modal-open'),false);
+  modal.hiddenTree=false;modal.tagName='DIALOG';modal.open=false;
+  observer.callback();assert.equal(app.bodyClasses.has('mj-child-modal-open'),false);
+  modal.open=true;observer.callback();assert.equal(app.bodyClasses.has('mj-child-modal-open'),true);
+  modal.open=false;observer.callback();
+  touch(doc,'touchstart');touch(doc,'touchmove',{y:120});touch(doc,'touchend');
+  assert.equal(app.frames[1].loads,1);
+});
+
+test('abrir un modal durante el gesto cancela la actualización; navegar desconecta el observador anterior',async()=>{
+  const app=await makeShell('CONDOMINO'),doc=app.frames[0].contentDocument;
+  const observer=app.observers.at(-1);
+  touch(doc,'touchstart');touch(doc,'touchmove',{y:120});assert.equal(app.elements.mjAppRefresh.hidden,false);
+  doc.modals=[{tagName:'DIV',closest:()=>null,getClientRects:()=>[{}]}];
+  observer.callback();assert.equal(app.elements.mjAppRefresh.hidden,true);
+  touch(doc,'touchend');assert.equal(app.frames[1].loads,0);
+  assert.equal(app.window.MJShell.navigate('pagos.html'),true);
+  assert.equal(observer.connected,false);assert.equal(app.bodyClasses.has('mj-child-modal-open'),false);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  observer.callback();assert.equal(app.bodyClasses.has('mj-child-modal-open'),false);
+  assert.equal(app.observers.at(-1).target,app.frames[1].contentDocument.body);
+  assert.equal(app.observers.at(-1).connected,true);
 });
 
 test('residents cannot navigate to finances but may return to Inicio',async()=>{
@@ -218,5 +256,5 @@ test('Inicio preloads its compact styles before the dashboard can render in eith
     assert.match(head, new RegExp(`<link id="${id}" rel="stylesheet" href="assets/css/${path.replaceAll('.','\\.')}\\?v=`));
     assert.equal(head.split(`id="${id}"`).length-1,1,`${id} no debe duplicarse`);
   }
-  assert.match(homeHtml, /site-sidebar\.js\?v=20261020-scroll-movil/);
+  assert.match(homeHtml, /site-sidebar\.js\?v=20261021-purple-x/);
 });

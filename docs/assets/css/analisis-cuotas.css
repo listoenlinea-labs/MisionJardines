@@ -506,3 +506,20 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
  .history-dialog-layout{gap:10px}
  .history-heading-actions{justify-content:flex-start}
 }
+/* "Modificar cuotas" tiene su propia fila bajo el título y sobre
+   los tres saldos: jamás comparte columnas con las tarjetas. */
+.history-dialog > .history-tariff-toolbar{
+  display:flex;justify-content:flex-end;align-items:center;
+  width:100%;margin:14px 0 10px;
+}
+.history-dialog > .history-tariff-toolbar #houseTariffOpen{
+  flex:0 0 auto;max-width:100%;min-height:44px;
+  padding:10px 14px;margin:0;white-space:nowrap;
+}
+.history-dialog > .history-tariff-toolbar #houseTariffOpen[hidden]{display:none!important}
+.history-dialog > #houseHistorySummary{
+  width:100%;min-width:0;margin:0 0 20px;
+}
+@media(max-width:580px){
+  .history-dialog > .history-tariff-toolbar{margin-top:12px}
+}
