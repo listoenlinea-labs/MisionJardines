@@ -506,20 +506,20 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
  .history-dialog-layout{gap:10px}
  .history-heading-actions{justify-content:flex-start}
 }
-/* El botón de tarifa va ENCIMA del resumen, alineado al extremo
-   derecho (sobre la tarjeta Saldo pendiente), nunca al costado de ella. */
-.history-overview{
-  display:flex;flex-direction:column;align-items:stretch;
-  gap:12px;margin:17px 0 20px;min-width:0;
+/* "Modificar cuotas" tiene su propia fila bajo el título y sobre
+   los tres saldos: jamás comparte columnas con las tarjetas. */
+.history-dialog > .history-tariff-toolbar{
+  display:flex;justify-content:flex-end;align-items:center;
+  width:100%;margin:14px 0 10px;
 }
-.history-overview #houseTariffOpen{
-  align-self:flex-end;flex:none;max-width:100%;
-  white-space:nowrap;min-height:44px;padding:10px 14px;margin:0;
+.history-dialog > .history-tariff-toolbar #houseTariffOpen{
+  flex:0 0 auto;max-width:100%;min-height:44px;
+  padding:10px 14px;margin:0;white-space:nowrap;
 }
-.history-overview #houseTariffOpen[hidden]{display:none!important}
-.history-overview #houseHistorySummary{
-  width:100%;min-width:0;margin:0;
+.history-dialog > .history-tariff-toolbar #houseTariffOpen[hidden]{display:none!important}
+.history-dialog > #houseHistorySummary{
+  width:100%;min-width:0;margin:0 0 20px;
 }
-@media(max-width:800px){
-  .history-overview{gap:10px}
+@media(max-width:580px){
+  .history-dialog > .history-tariff-toolbar{margin-top:12px}
 }
