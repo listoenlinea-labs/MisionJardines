@@ -15,7 +15,7 @@ function fechaContable(value){
   if(!Number.isFinite(d.getTime()))return null;
   return fechaMexico(d);
 }
-function conciliacionesTarifa(cuotas,tarifa){
+function conciliacionesTarifa(cuotas,tarifa,{anioHasta=2099,mesHasta=12}={}){
   if(!Number.isInteger(tarifa)||tarifa<=0||tarifa>=TARIFA_GENERAL)return [];
   const elegibles=[];
   for(const row of cuotas||[]){
@@ -24,6 +24,7 @@ function conciliacionesTarifa(cuotas,tarifa){
     const anio=Number(c.anio);
     const fecha=fechaContable(c.fechaPago);
     if(!mes||!Number.isInteger(anio)||anio<2026||
+       anio*12+mes>Number(anioHasta)*12+Number(mesHasta)||
        (anio===2026&&mes<9)||!fecha||
        fecha>String(anio)+'-'+String(mes).padStart(2,'0')+'-10'||
        fecha.slice(0,7)!==String(anio)+'-'+String(mes).padStart(2,'0'))continue;
