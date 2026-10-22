@@ -12,7 +12,7 @@ const ReservaCasaClub=require('../models/ReservaCasaClub');
 const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
-const {pagosFechasAnalisis}=require('../services/pagos-fechas-analisis.service');
+const {ultimosRegistrosPago}=require('../services/ultimo-registro-pago.service');
 const mesNombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const categorias=['LUZ','AGUA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','OTROS'];
 const num=x=>Number(x||0);
@@ -27,7 +27,7 @@ function filters(req){
 async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
-  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento]=await Promise.all([
+  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento,foliosRegistrados]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion']}),
@@ -36,16 +36,18 @@ async function analizar(req,res){
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT}),
    // Historial íntegro para identificar pagos adelantados en 2027 y años posteriores.
    // El saldo sigue limitado al corte pedido por calcularAdeudoVivienda.
-   Cuota.findAll({attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion']}),
+   Cuota.findAll({attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','confirmadoPorUsuarioId']}),
    ZkTarjeta.findAll({attributes:['id','casaId','numeroTarjeta','nombreDispositivo','departamento','fechaInicio','fechaFin','bloqueado','enControlador','puertasAutorizadas','ultimaLectura']})
    ,PagoManualConcepto.findAll({where:{creadoEn:{[Op.between]:[start+' 00:00:00',end+' 23:59:59']}},attributes:['id','casaId','tipoPago','monto','formaPago','referencia','creadoEn']})
    ,CuotaExtraordinaria.findAll({attributes:['egresoId','id']}),
    CargoExtraordinario.findAll({attributes:['id','casaId','periodo','monto'],include:[{model:CuotaExtraordinaria,as:'cuota',attributes:[],required:true,where:{activo:true}}]}),
-   PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId','monto','recargo','folioReporte','folioOperacion','fechaOperacion','horaOperacion']}),
+   PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId','monto','recargo','folioReporte','folioOperacion','fechaOperacion']}),
    PagoManualConcepto.findAll({attributes:['id','casaId','tipoPago','cargoExtraordinarioId','reservaCasaClubId','monto','formaPago','referencia','creadoEn']}),
    ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado']}),
-   PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','horaOperacion']})
+   PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion']}),
+   PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion']})
   ]);
+  const registros=ultimosRegistrosPago({reportados:foliosRegistrados,cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const padron=seleccionarPadronAnalisis(casas,cuotas);
   const historiales=new Map();
@@ -76,7 +78,7 @@ async function analizar(req,res){
    st.total++;if(pagada)st.pagadas++;else st.pendientes++;
    st.abonos+=num(q?.montoPagado);
    const ultimoPago=historialMantenimiento(historiales.get(String(h.id))||[],bancosMantenimiento.get(String(h.id))||[])[0]||null;
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
     tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
@@ -85,6 +87,7 @@ async function analizar(req,res){
   for(const tipo of ['EXTRAORDINARIO','CASA_CLUB']){
    for(const row of viviendasConceptos[tipo]){
     const casaId=String(row.casaId);
+    row.ultimoRegistroPago=registros.get(casaId+':'+tipo)||null;
     row.ultimoPago=historialConcepto(tipo,bancosConceptos.get(casaId)||[],manualesConceptos.get(casaId)||[])[0]||null;
    }
   }
@@ -133,8 +136,6 @@ async function analizar(req,res){
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,
    cuotasPeriodoDetalle,pagosPeriodoDetalle,manualesConceptoPeriodoDetalle,
-   pagosHistorial:pagosFechasAnalisis({viviendas:residences,cuotas:historialCuotas,
-    comprobantes:[...comprobantesMantenimiento,...pagosConceptoHistoricos],manuales:manualesConceptoHistoricos}),
    padronExcluidos:padron.excluidas,padronDuplicados:padron.duplicadas,
    avisoPadron:padron.excluidas ? 'El porcentaje de cumplimiento excluye '+padron.excluidas+' registros auxiliares, fuera del padrón o de prueba. Los registros, cuotas y pagos originales permanecen en la base de datos.' : '',
    cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,

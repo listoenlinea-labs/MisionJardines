@@ -525,3 +525,30 @@ sintaxis JS y git diff --check sin errores. Se actualizó una expectativa antigu
 de versión del asset en el test de historial. No hubo consultas ni escrituras en
 MySQL, pagos o C3 reales. No se realizó prueba visual en un teléfono real.
 Requiere desplegar backend y frontend; no requiere migración SQL.
+
+
+## 21/oct/2026 — Corrección de alcance: último registro en la tabla de viviendas
+
+El usuario pidió retirar el cambio del PR #240 y usar la tabla existente de
+Quién pagó y quién está pendiente. Sobre main
+`13dd361d5116cd53a76de8137ecbea640a73d400`, se eliminan la sección separada,
+sus assets/servicio y `pagosHistorial`, y se añade Último registro de pago.
+
+La columna usa la subida del folio (`pagos_reportados.creado_en`, también
+pendiente/rechazado), la captura manual de mantenimiento (`fecha_confirmacion`
+de cobros positivos identificados como manuales) o el alta del pago manual de
+extraordinarias/casa club. Una cuota ligada a un folio conserva la fecha de subida,
+sin sustituirla por validación. No se usa fecha bancaria, último mes cubierto ni
+fecha de importación/edición. Los datos históricos sin registro fiable muestran
+Sin registro. La fecha describe el registro, no aprobación financiera.
+
+Se añade orden reversible a los encabezados y controles equivalentes en móvil.
+Primer clic en fecha: reciente a antiguo; segundo clic: antiguo a reciente.
+Nulos al final, orden global antes de paginar y regreso a página 1 al cambiar.
+Conserva filtros, recibos, conceptos, tarifas y flujo financiero/C3. El texto de
+acción Pago es igual en todas las filas: empata y conserva desempate por vivienda.
+
+Validación: 25 pruebas simuladas aprobadas en analisis-ultimo-registro-orden,
+analisis-tres-conceptos e historial-pagos-vivienda; sintaxis y git diff --check
+sin errores. No se consultaron ni modificaron MySQL/C3 de producción, ni se
+realizó prueba visual en teléfono. Desplegar backend y frontend; sin SQL.

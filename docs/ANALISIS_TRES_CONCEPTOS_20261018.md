@@ -78,27 +78,42 @@ con proyecto emitido, comprobante en revisión, pago validado, reserva aprobada,
 reserva cancelada y meses futuros contra MySQL antes de confiar en los reportes.
 
 
-## Pagos por fecha (21/oct/2026)
+## Último registro de pago y orden de viviendas (21/oct/2026)
 
-La sección administrativa **Pagos por fecha** consulta los movimientos de las
-viviendas del padrón, independientemente del año/mes seleccionado para el tablero.
-`GET /api/finanzas/analisis` agrega `data.pagosHistorial` reutilizando las consultas
-históricas existentes. Se mantienen los permisos SUPER_ADMIN/ADMINISTRADOR.
+La sección separada **Pagos por fecha** del PR #240 se retira a petición del
+usuario. La consulta se integra en la tabla **Quién pagó y quién está pendiente**.
 
-- Desde/Hasta incluyen ambos días; también admiten un solo extremo.
-- Concepto, vivienda/residente/referencia y fecha se combinan antes de paginar.
-- El orden inicial muestra lo más reciente; puede cambiarse a lo más antiguo.
-- La fecha/hora bancaria prevalece sobre la fecha de validación. Para registros
-  manuales/importados se usa la fecha de pago disponible o la fecha registrada.
-- Un depósito distribuido entre varios meses se concilia con su comprobante y
-  aparece una vez, usando la lógica existente del historial por vivienda.
-- El nombre mostrado es el residente registrado en la vivienda; no acredita que
-  esa persona haya sido el titular bancario ni el usuario que reportó el depósito.
-- Sin fecha no se incluye al filtrar un rango; sin hora no puede determinarse el
-  orden exacto de movimientos del mismo día. Los registros sin fecha quedan al final.
-- La tabla pagina 20 movimientos y muestra el total de todos los resultados filtrados.
+La nueva columna **Último registro de pago** muestra fecha y hora, en zona
+America/Mexico_City, del último registro por vivienda y concepto:
 
-Desplegar backend y frontend juntos; no requiere SQL. Si el backend todavía no
-incluye el historial, la interfaz muestra que no está disponible, sin inventar ceros.
-Pruebas: `DB_PORT=3306 node --test backend/test/analisis-pagos-fechas.test.js backend/test/historial-pagos-vivienda.test.js backend/test/analisis-tres-conceptos.test.js`.
-26 pruebas simuladas aprobadas; no se consultaron pagos reales ni MySQL/C3 de producción.
+- Folios: `pagos_reportados.creado_en`, independientemente de su estado. Incluye
+  pendientes y rechazados porque la fecha representa la subida, no aprobación.
+  El título de la fecha indica la fuente y el estado del reporte.
+- Captura manual de mantenimiento: `cuotas.fecha_confirmacion`, solo para un
+  cobro positivo pagado/parcial que proceda del flujo manual o tenga confirmador.
+  Si su referencia coincide con un folio reportado, prevalece la subida original;
+  una validación posterior no se presenta como otro registro de pago.
+- Captura manual extraordinaria/casa club: `pagos_manuales_concepto.creado_en`.
+- Se excluyen cuotas pendientes sin cobro. La importación/creación o edición de
+  una cuota no se presume pago; si no hay fecha de registro fiable, **Sin registro**.
+
+No se usa la fecha bancaria ni el último mes cubierto para esta columna. El mes
+financiero conserva sus cálculos y filtros; la fecha de registro considera todo
+el historial, separando los tres conceptos.
+
+Cada encabezado permite alternar ascendente/descendente. Para la fecha, el primer
+clic muestra lo más reciente y el segundo lo más antiguo. Importes y TAGs se
+comparan como números, los períodos por año/mes y casas con orden natural.
+El botón de acción Pago contiene el mismo texto en todas las viviendas, por lo
+que ese criterio empata y conserva el desempate por calle/casa. Los registros sin
+fecha permanecen al final en ambos sentidos. Se ordena antes de paginar y cada
+cambio vuelve a la primera página; los filtros existentes siguen aplicándose.
+En móvil hay selector de columna y botón para invertir el mismo orden.
+
+La API agrega `ultimoRegistroPago` a cada vivienda y concepto y retira
+`pagosHistorial`. Conserva autenticación y acceso administrativo. Requiere
+backend y frontend actualizados, sin migración SQL.
+
+Validación: `DB_PORT=3306 node --test backend/test/analisis-ultimo-registro-orden.test.js backend/test/analisis-tres-conceptos.test.js backend/test/historial-pagos-vivienda.test.js`,
+25 pruebas simuladas aprobadas, incluyendo controlador y render real de la tabla
+con DOM simulado. Sin consultas a MySQL/C3 reales ni validación visual en teléfono.
