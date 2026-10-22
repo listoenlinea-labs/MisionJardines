@@ -43,13 +43,27 @@
    '<a:t>'+xml(value)+'</a:t></a:r><a:endParaRPr lang="es-MX"/>'+
    '</a:p></c:rich></c:tx><c:overlay val="0"/></c:title>';
  }
- function axes(x,y,horizontal){
+ // Títulos concisos en los ejes; no añaden etiquetas encima de las barras.
+ function axisTitle(value){
+  if(!value)return '';
+  return '<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p>'+
+   '<a:pPr><a:defRPr lang="es-MX" sz="900"/></a:pPr>'+
+   '<a:r><a:rPr lang="es-MX" sz="900"/><a:t>'+xml(value)+'</a:t></a:r>'+
+   '<a:endParaRPr lang="es-MX"/></a:p></c:rich></c:tx>'+
+   '<c:overlay val="0"/></c:title>';
+ }
+ function axes(x,y,horizontal,xTitle='',yTitle=''){
   const catPos=horizontal?'l':'b',valPos=horizontal?'b':'l';
   return '<c:catAx><c:axId val="'+x+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'+
-   '<c:delete val="0"/><c:axPos val="'+catPos+'"/><c:tickLblPos val="nextTo"/>'+
+   '<c:delete val="0"/><c:axPos val="'+catPos+'"/>'+
+   axisTitle(horizontal?yTitle:xTitle)+
+   '<c:tickLblPos val="nextTo"/>'+
    '<c:crossAx val="'+y+'"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblOffset val="100"/></c:catAx>'+
    '<c:valAx><c:axId val="'+y+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'+
-   '<c:delete val="0"/><c:axPos val="'+valPos+'"/><c:majorGridlines/>'+
+   '<c:delete val="0"/><c:axPos val="'+valPos+'"/><c:majorGridlines>'+
+   '<c:spPr><a:ln w="6350"><a:solidFill><a:srgbClr val="E6EDF2"/></a:solidFill></a:ln></c:spPr>'+
+   '</c:majorGridlines>'+
+   axisTitle(horizontal?xTitle:yTitle)+
    '<c:numFmt formatCode="#,##0.##" sourceLinked="0"/>'+
    '<c:tickLblPos val="nextTo"/><c:crossAx val="'+x+'"/>'+
    '<c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>';
@@ -61,24 +75,27 @@
   const x=110000+id*11,y=110001+id*11;
   let plot;
   if(round){
+   // Excel debe mostrar únicamente la dona; las categorías de colores van en
+   // la leyenda inferior. Se omite c:dLbls para evitar texto sobre la figura.
    plot='<c:doughnutChart><c:varyColors val="1"/>'+
     serie(source,series[0],0,colors,true)+
-    '<c:dLbls><c:showLegendKey val="0"/><c:showVal val="0"/>'+
-    '<c:showPercent val="1"/><c:showCatName val="0"/></c:dLbls>'+
     '<c:firstSliceAng val="270"/><c:holeSize val="60"/></c:doughnutChart>';
   }else{
    const stacked=spec.kind==='stacked',horizontal=stacked||spec.kind==='bar';
+   // Las series monetarias usan un solo color consistente; las categorías
+   // solo aparecen en el eje vertical, sin repetir importes sobre las barras.
    plot='<c:barChart><c:barDir val="'+(horizontal?'bar':'col')+'"/>'+
     '<c:grouping val="'+(stacked?'stacked':'clustered')+'"/>'+
-    '<c:varyColors val="'+(series.length===1?'1':'0')+'"/>'+
-    series.map((s,i)=>serie(source,s,i,colors,series.length===1)).join('')+
-    '<c:dLbls><c:showLegendKey val="0"/><c:showVal val="1"/></c:dLbls>'+
+    '<c:varyColors val="0"/>'+
+    series.map((s,i)=>serie(source,s,i,colors,false)).join('')+
     '<c:gapWidth val="65"/>'+(stacked?'<c:overlap val="100"/>':'')+
     '<c:axId val="'+x+'"/><c:axId val="'+y+'"/></c:barChart>'+
-    axes(x,y,horizontal);
+    axes(x,y,horizontal,spec.xTitle||'',spec.yTitle||'');
   }
-  const legend=round||series.length>1?
-   '<c:legend><c:legendPos val="b"/><c:layout/><c:overlay val="0"/></c:legend>':'';
+  // Cada color se explica exclusivamente en el pie. Las barras de una
+  // serie también llevan leyenda ("Monto (MXN)") y un único color.
+  const legend='<c:legend><c:legendPos val="b"/><c:layout/>'+
+   '<c:overlay val="0"/></c:legend>';
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
    '<c:chartSpace xmlns:c="'+chartType+'" xmlns:a="'+drawType+'" xmlns:r="'+chartRel+'">'+
    '<c:lang val="es-MX"/><c:roundedCorners val="1"/>'+
