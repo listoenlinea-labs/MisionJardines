@@ -14,6 +14,7 @@ const {calcularAdeudoVivienda}=require('../services/adeudo-vivienda-analisis.ser
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
 const {fechaMexico}=require('../services/vigencia-calculo');
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
+const {conciliacionesTarifa,historialConTarifaConciliada}=require('../services/conciliacion-tarifa-individual.service');
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 
 function evaluarPeriodos(plan,cuotas){
@@ -55,7 +56,7 @@ async function comprobarReferenciasVinculadas(casaId,evaluadas,transaction){
   }
 }
 
-function resumirCotizacion(plan, evaluadas){
+function resumirCotizacion(plan, evaluadas, conciliaciones=[]){
   return {
     ultimoMesPagado:plan.ultimoMesPagado?
       {mes:plan.ultimoMesPagado.nombre,anio:plan.ultimoMesPagado.anio,fechaPago:plan.ultimoMesPagado.fechaPago}:null,
@@ -63,6 +64,8 @@ function resumirCotizacion(plan, evaluadas){
     montoSugerido:plan.montoSugerido,total:plan.total,recargo:plan.recargo,
     tarifaMensual:plan.tarifaMensual,montoMinimo:plan.montoMinimo,montoMaximo:plan.montoMaximo,
     fechaFinObjetivo:plan.fechaFinObjetivo,
+    conciliacionesTarifa:conciliaciones,
+    requiereConciliacionTarifa:conciliaciones.length>0,
     periodos:evaluadas.map(({periodo,revision})=>({
       anio:periodo.anio,mes:periodo.mes,
       registrable:revision.registrable,requiereRevision:Boolean(revision.requiereRevision),
@@ -80,12 +83,17 @@ async function cotizarPagoVivienda(req,res){
     const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','cuotaPorCobrar']});
     if(!casa)throw fail(404,'Vivienda no encontrada');
     const cuotas=await Cuota.findAll({where:{casaId}});
-    const plan=prepararDesdeHistorial({cuotas,anio:req.query.anio,mes:req.query.mes,tarifa:tarifaParaCasa(casa)});
+    const tarifa=tarifaParaCasa(casa);
+    const conciliaciones=conciliacionesTarifa(cuotas,tarifa,{anioHasta:req.query.anio,mesHasta:req.query.mes});
+    const plan=prepararDesdeHistorial({
+      cuotas:historialConTarifaConciliada(cuotas,conciliaciones),
+      anio:req.query.anio,mes:req.query.mes,tarifa
+    });
     const evaluadas=evaluarPeriodos(plan,cuotas);
     await comprobarReferenciasVinculadas(casaId,evaluadas);
     res.setHeader('Cache-Control','no-store');
     return res.json({ok:true,data:{casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,
-      ...resumirCotizacion(plan,evaluadas)}});
+      ...resumirCotizacion(plan,evaluadas,conciliaciones)}});
   }catch(error){
     if(!error.status)console.error('[finanzas cotizar]',error);
     return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible consultar el historial de esta vivienda'});
@@ -99,6 +107,7 @@ async function registrarPagoVivienda(req,res){
     if(!['EFECTIVO','TRANSFERENCIA','DEPOSITO','OTRO'].includes(formaPago))
       throw fail(400,'Selecciona una forma de pago válida');
     const confirmarHistorico=req.body?.confirmarHistorico===true;
+    const confirmarConciliacionTarifa=req.body?.confirmarConciliacionTarifa===true;
     const mesesEsperados=Number(req.body?.mesesEsperados);
     if(!Number.isInteger(mesesEsperados)||mesesEsperados<1)
       throw fail(400,'Vuelve a consultar los meses pendientes antes de confirmar');
@@ -108,8 +117,15 @@ async function registrarPagoVivienda(req,res){
       const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
       if(!casa)throw fail(404,'La vivienda no existe');
       const existentes=await Cuota.findAll({where:{casaId},transaction,lock:transaction.LOCK.UPDATE});
-      const plan=prepararDesdeHistorial({cuotas:existentes,anio:req.body?.anio,mes:req.body?.mes,
-        montoTotal:req.body?.montoTotal,tarifa:tarifaParaCasa(casa)});
+      const tarifa=tarifaParaCasa(casa);
+      const conciliaciones=conciliacionesTarifa(existentes,tarifa,{anioHasta:req.body?.anio,mesHasta:req.body?.mes});
+      const plan=prepararDesdeHistorial({
+        cuotas:historialConTarifaConciliada(existentes,conciliaciones),
+        anio:req.body?.anio,mes:req.body?.mes,
+        montoTotal:req.body?.montoTotal,tarifa
+      });
+      if(conciliaciones.length&&!confirmarConciliacionTarifa)
+        throw fail(409,'Confirma la conciliación de los abonos históricos que cubren íntegramente la tarifa especial. No se registrará otro cobro por esos meses.');
       if(mesesEsperados!==plan.meses)
         throw fail(409,'El historial de pagos cambió. Actualiza la cotización antes de confirmar.');
       const evaluadas=evaluarPeriodos(plan,existentes);
@@ -126,6 +142,21 @@ async function registrarPagoVivienda(req,res){
            String(t.fechaFin)>plan.fechaFinObjetivo))
         throw fail(409,'Un TAG ya tiene vigencia posterior al corte '+plan.fechaFinObjetivo+
           '. No se registró ningún cobro; revisa la selección.');
+      // Conciliación autorizada y atómica: sin nuevo pago para los períodos
+      // ya abonados. Preservar montos, fechas, folios y eventos C3 originales.
+      for(const ajuste of conciliaciones){
+        const original=existentes.find(c=>Number(c.id)===ajuste.id);
+        if(!original)throw fail(409,'El historial cambió. Actualiza la cotización.');
+        const audit='Conciliación explícita por usuario '+req.usuario.usuarioId+
+          ': abono de $'+ajuste.montoPagado+' del '+ajuste.fechaPago+
+          ' cubre '+ajuste.mes+' '+ajuste.anio+
+          ' con tarifa $'+tarifa+'. Conservados importe, referencia y fecha originales.';
+        await original.update({
+          estatusPago:'PAGADO',montoCuota:tarifa,saldoPendiente:0,
+          observaciones:[original.observaciones,audit].filter(Boolean).join('\n'),
+          actualizadoEn:new Date()
+        },{transaction});
+      }
       const referencia=generarReferencia(plan.fechaFinObjetivo);
       const guardadas=[];
       for(const {periodo,cuota,revision} of evaluadas){
@@ -156,7 +187,8 @@ async function registrarPagoVivienda(req,res){
       });
       return {casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,referencia,
         periodos:plan.periodos.map(p=>p.mes+' '+p.anio),fechaFinObjetivo:plan.fechaFinObjetivo,
-        meses:plan.meses,total:plan.total,recargo:plan.recargo,eventos:[evento],tags:tarjetas.length};
+        meses:plan.meses,total:plan.total,recargo:plan.recargo,
+        conciliacionesTarifa:conciliaciones.map(c=>c.mes+' '+c.anio),eventos:[evento],tags:tarjetas.length};
     });
     return res.status(201).json({ok:true,data:resultado,message:resultado.tags?
       'Pago registrado en MySQL. Sincronización del C3 solicitada; revisa las fechas de todos los TAGs.':

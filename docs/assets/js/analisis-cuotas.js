@@ -718,7 +718,11 @@ function renderHouses(){
      '. Fecha final solicitada para todos los TAGs: '+q.fechaFinObjetivo+'.'+
      (!valid?' El monto para '+q.meses+' meses debe estar entre '+fmt(q.montoMinimo)+' y '+fmt(q.montoMaximo)+'.':'')+
      (errors.length?' BLOQUEADO: '+errors.join(' | '):'');
-   submit.disabled=!valid||q.bloqueado||(q.requiereRevision&&!$('housePaymentReview').checked);
+   if(q.requiereConciliacionTarifa&&!$('housePaymentTariffReconcile').checked)
+     output.textContent+=' Antes de confirmar, autoriza expresamente la conciliación de los abonos anteriores mostrados abajo.';
+   submit.disabled=!valid||q.bloqueado||
+     (q.requiereRevision&&!$('housePaymentReview').checked)||
+     (q.requiereConciliacionTarifa&&!$('housePaymentTariffReconcile').checked);
  }
  async function quoteHousePayment({resetAmount=true}={}){
    if(!activePaymentHouse||isOther())return;
@@ -729,6 +733,8 @@ function renderHouses(){
    $('housePaymentStatus').textContent='';
    $('housePaymentReviewWrap').hidden=true;
    $('housePaymentReview').checked=false;
+   $('housePaymentTariffReconcileWrap').hidden=true;
+   $('housePaymentTariffReconcile').checked=false;
    paymentPreview();
    const year=Number($('housePaymentYear').value),month=Number($('housePaymentMonth').value);
    if(!Number.isInteger(year)||String(year).length!==4||year<mexicoYear()||year>2098||month<1||month>12){
@@ -749,7 +755,12 @@ function renderHouses(){
        '. Meses a cobrar: '+q.meses+' ('+q.desde.nombre+' '+q.desde.anio+' a '+
        q.hasta.nombre+' '+q.hasta.anio+').';
      $('housePaymentCount').value=String(q.meses);
-     if(resetAmount)$('housePaymentAmount').value=Number(q.montoSugerido).toFixed(2);
+     $('housePaymentTariffReconcileWrap').hidden=!q.requiereConciliacionTarifa;
+     $('housePaymentTariffReconcileHint').textContent=(q.conciliacionesTarifa||[]).map(
+       p=>p.mes+' '+p.anio+': abonados '+fmt(p.montoPagado)+' el '+displayDate(p.fechaPago)+
+       '; tarifa especial '+fmt(q.tarifaMensual)+' · se reconocerá como pagado sin cobrar de nuevo.'
+     ).join(' | ');
+     if(resetAmount)$('housePaymentAmount').value=String(Number(q.montoSugerido));
      $('housePaymentReviewWrap').hidden=!q.requiereRevision;
      $('housePaymentReviewHint').textContent=q.periodos.filter(p=>p.requiereRevision).map(
        p=>p.mes+' '+p.anio+': '+p.advertencia).join(' | ');
@@ -834,12 +845,14 @@ function renderHouses(){
    const payload={casaId:Number(activePaymentHouse.casaId),
      anio:Number($('housePaymentYear').value),mes:Number($('housePaymentMonth').value),
      mesesEsperados:currentPaymentQuote.meses,montoTotal:Number($('housePaymentAmount').value),
-     formaPago:$('housePaymentMethod').value,confirmarHistorico:$('housePaymentReview').checked};
+     formaPago:$('housePaymentMethod').value,confirmarHistorico:$('housePaymentReview').checked,
+     confirmarConciliacionTarifa:$('housePaymentTariffReconcile').checked};
    if(!confirm('¿Confirmas que recibiste '+fmt(payload.montoTotal)+' de '+
      activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+
      currentPaymentQuote.periodos.map(p=>p.mes+' '+p.anio).join(', ')+
      '?\nSe guardarán '+currentPaymentQuote.meses+' cuotas y se solicitará fecha final '+
-     currentPaymentQuote.fechaFinObjetivo+' en todos sus TAGs.'))return;
+     currentPaymentQuote.fechaFinObjetivo+' en todos sus TAGs.'+
+     (payload.confirmarConciliacionTarifa?' Se conciliará además el historial abonado anteriormente, sin duplicar ingresos.':'')))return;
    const btn=$('housePaymentSubmit');btn.disabled=true;
    $('housePaymentStatus').textContent='Registrando el movimiento en MySQL…';
    try{
@@ -897,6 +910,7 @@ function renderHouses(){
  $('housePaymentType').addEventListener('change',switchPaymentType);
  $('houseConceptSelect').addEventListener('change',previewOtherConcept);
  $('housePaymentReview').addEventListener('change',paymentPreview);
+ $('housePaymentTariffReconcile').addEventListener('change',paymentPreview);
  async function load(){
   $('updateFinance').disabled=true;$('financeNotice').hidden=true;
   try{

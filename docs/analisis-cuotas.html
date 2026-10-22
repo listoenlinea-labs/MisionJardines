@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261021-orden-registro">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261021-flechas-sutiles">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -89,6 +89,10 @@
       <label>Monto total recibido (MXN)<input type="number" id="housePaymentAmount" required min="0" step="0.01" inputmode="decimal" placeholder="Ej. 600.00"></label>
       <label>Forma de pago<select id="housePaymentMethod"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="DEPOSITO">Depósito</option><option value="OTRO">Otro</option></select></label>
       <div id="housePaymentPreview" class="house-payment-preview" role="status" aria-live="polite">Calculando mensualidades pendientes…</div>
+      <div id="housePaymentTariffReconcileWrap" class="house-payment-review tariff-reconciliation" data-maintenance-only hidden>
+        <label><input type="checkbox" id="housePaymentTariffReconcile"> Confirmo que los abonos anteriores descritos abajo cubrieron íntegramente la tarifa mensual especial. Autorizo actualizar su estatus a PAGADO sin registrar otro ingreso, conservando el importe, la fecha y las referencias originales.</label>
+        <p id="housePaymentTariffReconcileHint" role="status"></p>
+      </div>
       <div id="housePaymentReviewWrap" class="house-payment-review" data-maintenance-only hidden>
         <label><input type="checkbox" id="housePaymentReview"> He revisado las referencias y fechas anteriores de los meses PENDIENTES con $0. Confirmo que no representan un pago real previamente registrado, que recibimos ahora el importe indicado y autorizo conservar esos datos en auditoría al actualizar septiembre y octubre (o los meses seleccionados).</label>
         <p id="housePaymentReviewHint"></p>
@@ -121,4 +125,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="assets/js/analisis-excel.js?v=20261020" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261021-orden-registro" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="assets/js/analisis-excel.js?v=20261020" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261021-conciliacion-tarifa" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
