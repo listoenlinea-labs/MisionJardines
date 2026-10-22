@@ -66,5 +66,5 @@ test('UI permite editar un celular numérico, seleccionar filas sin radios y exp
  assert.match(css, /background:#f5d0a7!important/);
  assert.doesNotMatch(css, /house-receipt-radio|house-receipt-selection-cell/);
  assert.doesNotMatch(css, /inset 3px 0 #4c9a70/);
- assert.match(html, /analisis-excel\.js\?v=20261022-dashboard/);
+ assert.match(html, /analisis-excel\.js\?v=20261022-clean-layout/);
 });
