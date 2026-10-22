@@ -82,7 +82,16 @@
    const dashboard=prepararDashboard(data,todas);
    const finanzas=[
     ...dashboard.ingresos.map(([n,v])=>['Ingreso',texto(n),v,dashboard.origenIngresos]),
-    ...dashboard.egresos.map(([n,v])=>['Egreso',texto(n),v,'Egresos del mes seleccionado'])
+    ...dashboard.egresos.map(([n,v])=>['Egreso',texto(n),v,'Egresos del mes seleccionado']),
+    ['Total','Ingresos reconocidos en el balance',dashboard.indicadores.totalIngresos,'No duplicar bancos con cuotas históricas'],
+    ['Total','Egresos registrados',dashboard.indicadores.totalEgresos,'Suma del período seleccionado'],
+    ['Saldo','Saldo inicial',dashboard.indicadores.saldoInicial,'Saldo anterior, NO es ingreso recaudado en el período'],
+    ['Saldo','Saldo disponible',dashboard.indicadores.saldoDisponible,'Indicador financiero reportado por el servidor'],
+    ...(data.esCargaHistorica?[
+     ['Informativo','Mantenimiento · banco validado',dinero(data.ingresosReportados?.mantenimiento),'No sumar automáticamente; puede estar incluido en cuotas históricas'],
+     ['Informativo','Extraordinarias · banco validado',dinero(data.ingresosReportados?.extraordinarios),'No sumar automáticamente; consultar conciliación'],
+     ['Informativo','Casa club · banco validado',dinero(data.ingresosReportados?.casaClub),'No sumar automáticamente; consultar conciliación']
+    ]:[])
    ];
    return {nombre:'Casas_en_padron',titulo:'Padrón y dashboard financiero',
     hojas:[hojaViviendas('Todas las viviendas',todas),
