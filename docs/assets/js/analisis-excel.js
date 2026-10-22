@@ -203,9 +203,10 @@
    };
    const estado=table(15,1,'ESTADO DEL PADRÓN',['Estado','Viviendas'],info.status);
    const anual=table(15,4,'ANUALIDADES CONFIRMADAS',['Modalidad','Viviendas'],info.anual);
-   const ingresos=table(22,1,'INGRESOS PARA EL BALANCE',['Origen / concepto','MXN'],info.ingresos);
+   const ingresos=table(22,1,'INGRESOS PARA EL BALANCE',['Origen / concepto','Monto (MXN)'],info.ingresos);
    const calles=table(22,4,'CUMPLIMIENTO POR CALLE',['Calle','Pagadas','Pendientes'],info.calles);
-   const egresos=table(37,1,'EGRESOS POR CATEGORÍA',['Categoría','MXN'],info.egresos);
+   const egresosOrdenados=[...info.egresos].sort((a,b)=>b[1]-a[1]);
+   const egresos=table(37,1,'EGRESOS POR CATEGORÍA',['Categoría','Monto (MXN)'],egresosOrdenados);
    resumenWs.getColumn(1).width=38;resumenWs.getColumn(2).width=25;
    resumenWs.getColumn(4).width=34;resumenWs.getColumn(5).width=17;
    resumenWs.getColumn(6).width=17;
@@ -219,12 +220,23 @@
    resumenWs.getCell('A50').value='Saldo reportado';
    resumenWs.getCell('B50').value=info.indicadores.saldoDisponible;
    for(let n=47;n<=50;n++)resumenWs.getCell('B'+n).numFmt='"$"#,##0.00';
+   // Gráficas nativas editables con espacio para título, ejes y leyenda
+   // inferior. Datos sin etiquetas sobre las series para evitar solapamiento.
+   // Coordenadas 0-based de la zona de dibujo, separadas sin superponerse.
    chartSpecs=[
-    {title:'Cumplimiento de mantenimiento',kind:'doughnut',source:estado,from:[7,2],to:[15,17],colors:['76B79B','E9B38D']},
-    {title:'Anualidades entre las viviendas pagadas',kind:'doughnut',source:anual,from:[16,2],to:[24,17],colors:['8CA9D7','76B79B']},
-    {title:'Ingresos por concepto (sin duplicar)',kind:'column',source:ingresos,from:[7,19],to:[15,35]},
-    {title:'Cumplimiento por calle',kind:'stacked',source:calles,from:[16,19],to:[24,35]},
-    {title:'Egresos por categoría',kind:'bar',source:egresos,from:[7,37],to:[18,54]}
+    {title:'Cumplimiento de mantenimiento',kind:'doughnut',
+     source:estado,from:[7,2],to:[18,21],colors:['76B79B','E9B38D']},
+    {title:'Anualidades entre las viviendas pagadas',kind:'doughnut',
+     source:anual,from:[19,2],to:[30,21],colors:['8CA9D7','76B79B']},
+    {title:'Ingresos por concepto (sin duplicar)',kind:'bar',
+     source:ingresos,from:[7,24],to:[18,50],xTitle:'Monto (MXN)',yTitle:'Concepto',
+     colors:['76B79B']},
+    {title:'Cumplimiento por calle',kind:'stacked',
+     source:calles,from:[19,24],to:[30,50],xTitle:'Viviendas',yTitle:'Calle',
+     colors:['76B79B','E9B38D']},
+    {title:'Egresos por categoría',kind:'bar',
+     source:egresos,from:[7,53],to:[20,81],xTitle:'Monto (MXN)',yTitle:'Categoría',
+     colors:['AE9AC9']}
    ];
   }
   let buffer=await workbook.xlsx.writeBuffer();
