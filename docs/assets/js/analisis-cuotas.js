@@ -749,7 +749,7 @@ function renderHouses(){
      if(seq!==quoteSequence||!activePaymentHouse)return;
      const q=response.data;
      currentPaymentQuote=q;
-     $('housePaymentNotice').textContent='Se calcula desde el último mes completamente pagado hasta el mes seleccionado. Tarifa de esta vivienda: '+fmt(q.tarifaMensual)+' por mes. Se puede agregar hasta '+fmt(50)+' de recargo por mes. Los pagos parciales, comprobantes y cobros previos requieren conciliación; los TAGs se verifican por separado.';
+     $('housePaymentNotice').textContent='Se calcula desde el último mes completamente pagado hasta el mes seleccionado. Tarifa de esta vivienda: '+fmt(q.tarifaMensual)+' por mes. Se puede agregar hasta '+fmt(50)+' de recargo por mes. Los pagos parciales, comprobantes y cobros previos requieren conciliación; los TAGs se verifican por separado y su fecha se ajustará al corte confirmado, incluso si la vigencia actual es posterior.';
      $('houseLastPayment').textContent='Último mes completamente pagado: '+
        (q.ultimoMesPagado?q.ultimoMesPagado.mes+' '+q.ultimoMesPagado.anio:
          'sin pago anterior confirmado en el historial')+
