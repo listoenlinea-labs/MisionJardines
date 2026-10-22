@@ -580,3 +580,26 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
 .houses-scroll th[aria-sort="descending"] .house-column-sort [data-sort-indicator]{
   background:#dfc9f4;color:#60378a;
 }
+
+/* Indicadores de orden elegantes, equivalentes al desplegable de selección.
+   Sin fondo, sin chip y sin flechas dobles; las etiquetas se mantienen legibles. */
+.houses-scroll th .house-column-sort{gap:6px}
+.houses-scroll th .house-column-sort [data-sort-indicator]{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 14px;width:14px;height:17px;min-width:14px;
+  padding:0;border:0;border-radius:0;box-shadow:none;
+  background:transparent!important;color:transparent!important;
+  font-size:0!important;line-height:0;
+}
+.houses-scroll th .house-column-sort [data-sort-indicator]::after{
+  content:'';display:block;width:6px;height:6px;
+  border-right:1.5px solid #8992a4;border-bottom:1.5px solid #8992a4;
+  transform:translateY(-2px) rotate(45deg);
+  transition:transform .15s ease,border-color .15s ease;
+}
+.houses-scroll th[aria-sort="ascending"] .house-column-sort [data-sort-indicator]::after{
+  transform:translateY(2px) rotate(225deg);border-color:#74628a;
+}
+.houses-scroll th[aria-sort="descending"] .house-column-sort [data-sort-indicator]::after{border-color:#74628a}
+.houses-scroll th[aria-sort="ascending"],
+.houses-scroll th[aria-sort="descending"]{background:#f7f0fc;color:#6d5986}
