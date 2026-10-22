@@ -109,62 +109,45 @@ test('selector anual solo funciona para Mantenimiento y no toca datos de otras p
  assert.match(html,/jszip@3\.10\.1/);
 });
 
-test('Etiquetas del Excel: porcentajes limpios en dona, importes positivos externos en barras',()=>{
- const source={categories:"'Resumen'!$A$17:$A$19",
-  categoryValues:['Mantenimiento · cuotas','Casa club','Sin ingresos'],
-  values:[{name:'Monto (MXN)',ref:"'Resumen'!$B$17:$B$19",points:[59650,400,0]}]};
- const donut=graficar({kind:'doughnut',title:'Cumplimiento',source},1);
- assert.match(donut,/<c:dLbls><c:numFmt formatCode="0%"/);
- assert.match(donut,/<c:dLblPos val="bestFit"\/>/);
- assert.match(donut,/<c:showPercent val="1"\/>/);
- assert.match(donut,/<c:showVal val="0"\/>/);
- assert.match(donut,/<c:showCatName val="0"\/>/);
- assert.match(donut,/<c:showLeaderLines val="1"\/>/);
- assert.match(donut,/<c:legendPos val="b"\/>/);
- const income=graficar({kind:'bar',title:'Ingresos',source,
-   xTitle:'Monto (MXN)',yTitle:'Concepto'},2);
- assert.match(income,/<c:dLblPos val="outEnd"\/>/);
- assert.match(income,/numFmt formatCode="&quot;\$&quot;#,##0\.00"/);
- assert.equal((income.match(/<c:dLbl><c:idx/g)||[]).length,2,
-  'Los montos $0 no crean etiquetas amontonadas en el origen');
- assert.match(income,/<c:max val="80000"\/>/,
-  'El eje deja espacio para mostrar completo el importe máximo');
- assert.match(income,/<c:showCatName val="0"\/>/);
- assert.match(income,/<c:legendPos val="b"\/>/);
- assert.match(income,/<a:t>Monto \(MXN\)<\/a:t>/);
- assert.doesNotMatch(income,/<c:dPt>/,'Un color uniforme para una misma serie');
- assert.match(income,/<c:f>\&apos;Resumen\&apos;!/,'Los gráficos siguen vinculados a Excel');
- const outflow=graficar({kind:'bar',title:'Egresos',source,
-   xTitle:'Monto (MXN)',yTitle:'Categoría'},3);
- assert.match(outflow,/<c:dLblPos val="outEnd"\/>/);
- assert.match(outflow,/<c:legendPos val="b"\/>/);
+test('Excel estable: ChartML no inserta etiquetas individuales incompatibles',()=>{
+ const base={categories:"'Resumen'!$AF$17:$AF$18",
+  categoryValues:['Pagadas · 85.7%','Pendientes · 14.3%'],
+  values:[{name:'Viviendas',ref:"'Resumen'!$B$17:$B$18",points:[198,33]}]};
+ const charts=[
+  {kind:'doughnut',title:'Cumplimiento',source:base},
+  {kind:'bar',title:'Ingresos',source:base,xTitle:'Monto (MXN)',yTitle:'Concepto'},
+  {kind:'stacked',title:'Calles',source:{...base,values:[
+   base.values[0],{name:'Pendientes',ref:"'Resumen'!$F$17:$F$18",points:[18,4]}
+  ]},xTitle:'Viviendas',yTitle:'Calle'}
+ ];
+ charts.forEach((config,i)=>{
+  const xml=graficar(config,i+1);
+  assert.doesNotMatch(xml,/<c:dLbls>|<c:dLbl>/,
+   'ChartML no usa etiquetas de punto que provocaron el aviso de reparación');
+  assert.match(xml,/<c:legendPos val="b"\/>/);
+  assert.match(xml,/<c:strRef><c:f>\&apos;Resumen\&apos;!/);
+  assert.match(xml,/<c:numRef><c:f>\&apos;Resumen\&apos;!/);
+  assert.doesNotMatch(xml,/<a:blip|<xdr:pic/);
+ });
 });
 
-test('Cumplimiento por calle rotula únicamente los segmentos que tienen espacio',()=>{
- const source={categories:"'Resumen'!$D$24:$D$27",
-  categoryValues:['Jardines','Gardenias','Guadalajara','Atotonilco'],
-  values:[
-   {name:'Pagadas',ref:"'Resumen'!$E$24:$E$27",points:[65,28,1,1]},
-   {name:'Pendientes',ref:"'Resumen'!$F$24:$F$27",points:[18,4,0,0]}
-  ]};
- const xml=graficar({kind:'stacked',title:'Cumplimiento por calle',
-  source,xTitle:'Viviendas',yTitle:'Calle'},4);
- assert.match(xml,/<c:barDir val="bar"\/>/);
- assert.match(xml,/<c:grouping val="stacked"\/>/);
- assert.match(xml,/<c:dLblPos val="ctr"\/>/);
- assert.match(xml,/formatCode="#,##0"/);
- assert.match(xml,/<c:legendPos val="b"\/>/);
- const labels=[...xml.matchAll(/<c:dLbl><c:idx val="(\d+)"/g)].map(m=>Number(m[1]));
- assert.deepEqual(labels,[0,1,0,1],
-  'Solo Jardines y Gardenias tienen segmentos suficientemente grandes para un número');
- assert.doesNotMatch(xml,/<c:dLblPos val="outEnd"\/>/,
-  'Las etiquetas de los segmentos apilados quedan centradas y no invaden al vecino');
- assert.doesNotMatch(xml,/<c:showPercent val="1"\/>/);
+test('Porcentajes, montos y cantidades se presentan en fuentes de categorías calculadas',()=>{
+ const js=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel.js'),'utf8');
+ const html=fs.readFileSync(path.resolve(__dirname,'../../docs/analisis-cuotas.html'),'utf8');
+ for(const token of ['estadoEtiquetas','anualEtiquetas','ingresoEtiquetas',
+  'callesEtiquetas','egresosEtiquetas'])assert.ok(js.includes('source:'+token));
+ assert.match(js,/formula:formulas\[i\],result:label/);
+ assert.match(js,/SUM\(\$B\$17:\$B\$18\)/);
+ assert.match(js,/SUM\(\$E\$17:\$E\$18\)/);
+ assert.match(js,/TEXT\(B/);
+ assert.match(js,/formatMoney/);
+ assert.match(js,/streetLabels/);
+ assert.match(html,/analisis-excel-charts\.js\?v=20261022-repair-chartml/);
+ assert.match(html,/analisis-excel\.js\?v=20261022-repair-chartml/);
 });
-
 test('Las zonas de gráficos en Resumen se amplían sin superponerse',()=>{
  const js=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel.js'),'utf8');
- assert.match(js,/kind:'bar',[\s\S]*?source:ingresos/);
+ assert.match(js,/kind:'bar',[\s\S]*?source:ingresoEtiquetas/);
  assert.match(js,/xTitle:'Monto \(MXN\)',yTitle:'Concepto'/);
  assert.match(js,/colors:\['76B79B','E9B38D'\]/);
  assert.match(js,/\.sort\(\(a,b\)=>b\[1\]-a\[1\]\)/);
