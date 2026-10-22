@@ -123,3 +123,12 @@ test('El cierre anual se persiste en cuotas existentes sin SQL y preserva el flu
  assert.match(html,/id="housePaymentAnnual"/);
  assert.match(html,/Pago anual/);
 });
+
+test('Sólo la opción de pago anual permite reducir una vigencia previa en el registro',()=>{
+ const ctl=fs.readFileSync(path.resolve(__dirname,'../src/controllers/pagos-manuales-analisis.controller.js'),'utf8');
+ const worker=fs.readFileSync(path.resolve(__dirname,'../src/services/zkteco-vigencias.service.js'),'utf8');
+ assert.match(ctl,/if\(!pagoAnual && tarjetas\.some/);
+ assert.match(worker,/esCierreAnualConfirmado\(event,fechaObjetivo,transaction\)/);
+ assert.match(worker,/fechaObjetivo<fechaAntes && !cierreAnual/);
+ assert.match(worker,/origenImportacion:'MANUAL_ANALISIS_ANUAL'/);
+});
