@@ -57,7 +57,7 @@ test('Interfaz conecta las cifras clicables con historial y fechas guardada / f√
  assert.match(ui,/MySQL:/);
  assert.doesNotMatch(ui,/Fechas distintas\. Verifica la sincronizaci√≥n en ZKTeco/);
  assert.doesNotMatch(ui,/tags-date-mismatch/);
- assert.match(html,/analisis-cuotas\.js\?v=20261021-pago-anual/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261021-vigencia-anual/);
  assert.match(ui,/submit\.disabled=!valid\|\|q\.bloqueado/);
  assert.match(html,/<select id="housePaymentYear" required/);
  assert.match(html,/id="houseHistoryModal"/);
