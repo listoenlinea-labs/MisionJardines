@@ -603,3 +603,13 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
 .houses-scroll th[aria-sort="descending"] .house-column-sort [data-sort-indicator]::after{border-color:#74628a}
 .houses-scroll th[aria-sort="ascending"],
 .houses-scroll th[aria-sort="descending"]{background:#f7f0fc;color:#6d5986}
+
+/* Cierre anual: opción visible solo para mantenimiento y etiqueta compacta en tabla. */
+.house-annual-option{grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #e6d7ee;border-radius:12px;background:#faf7fc}
+.house-annual-option[hidden]{display:none!important}
+.house-annual-button{flex:0 0 auto;min-height:40px;padding:9px 17px;border:1px solid #d9c2eb;background:#fff;color:#76518e;font-size:12px;font-weight:850}
+.house-annual-button.active,.house-annual-button[aria-pressed="true"]{background:#e9f6ef;border-color:#b1ddc2;color:#256a4a}
+.house-annual-button:focus-visible{outline:2px solid #9962b5;outline-offset:2px}
+.house-annual-option p{flex:1 1 230px;margin:0;color:#687891;font-size:11px;line-height:1.55}
+.house-annual-label{display:inline-flex;align-items:center;padding:6px 10px;border:1px solid #cce8d5;border-radius:9px;background:#eef9f1;color:#2f744e;font-weight:850;white-space:nowrap}
+@media(max-width:640px){.house-annual-option{align-items:stretch;flex-direction:column;gap:7px}.house-annual-button{width:100%}}
