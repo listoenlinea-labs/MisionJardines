@@ -240,7 +240,7 @@ test('anual 2026: dos TAGs con fechas anteriores y posteriores quedan en 2027-01
     await worker.sincronizarCasa(7,{now,dryRun:false});
     assert.equal(c.writes.length,2,'no se aplica una segunda vez');
 });
-test('fuera de cierre anual, un TAG posterior conserva su vigencia y bloquea la reducción',async t=>{
+test('pago manual ordinario también puede ajustar una vigencia física posterior',async t=>{
     const c=setup(t);c.addTag('123','2028-07-10');
     const referencia='MJMAN:2027-01-10:84b8ed5c-317c-44ba-90da-b1f889045f12';
     c.cuotas.push({id:21,casaId:7,anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',
@@ -249,9 +249,9 @@ test('fuera de cierre anual, un TAG posterior conserva su vigencia y bloquea la 
         montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS'});
     await service.registrarLoteManual(7,2,c.tx,{referencia,origenId:21,total:600,recargo:0,meses:2});
     await worker.sincronizarCasa(7,{now,dryRun:false});
-    assert.equal(c.events[0].estado,'CONFLICTO');
-    assert.equal(c.physical.get('123').fechaFinal,'2028-07-10');
-    assert.deepEqual(c.writes,[]);
+    assert.equal(c.events[0].estado,'COMPLETADO');
+    assert.equal(c.physical.get('123').fechaFinal,'2027-01-10');
+    assert.deepEqual(c.writes,[{card:'123',end:'2027-01-10'}]);
 });
 test('etiquetar noviembre como anual sin cuota diciembre confirmada NO permite recortar el C3',async t=>{
     const c=setup(t);c.addTag('123','2028-07-10');
