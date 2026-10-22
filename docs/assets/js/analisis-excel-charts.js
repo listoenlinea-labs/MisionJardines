@@ -49,8 +49,9 @@
    '<c:delete val="0"/><c:axPos val="'+catPos+'"/><c:tickLblPos val="nextTo"/>'+
    '<c:crossAx val="'+y+'"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblOffset val="100"/></c:catAx>'+
    '<c:valAx><c:axId val="'+y+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'+
-   '<c:delete val="0"/><c:axPos val="'+valPos+'"/><c:numFmt formatCode="#,##0.##" sourceLinked="0"/>'+
-   '<c:majorGridlines/><c:tickLblPos val="nextTo"/><c:crossAx val="'+x+'"/>'+
+   '<c:delete val="0"/><c:axPos val="'+valPos+'"/><c:majorGridlines/>'+
+   '<c:numFmt formatCode="#,##0.##" sourceLinked="0"/>'+
+   '<c:tickLblPos val="nextTo"/><c:crossAx val="'+x+'"/>'+
    '<c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>';
  }
  function graficar(spec,id){
@@ -62,14 +63,17 @@
   if(round){
    plot='<c:doughnutChart><c:varyColors val="1"/>'+
     serie(source,series[0],0,colors,true)+
-    '<c:holeSize val="60"/><c:firstSliceAng val="270"/></c:doughnutChart>';
+    '<c:dLbls><c:showLegendKey val="0"/><c:showVal val="0"/>'+
+    '<c:showPercent val="1"/><c:showCatName val="0"/></c:dLbls>'+
+    '<c:firstSliceAng val="270"/><c:holeSize val="60"/></c:doughnutChart>';
   }else{
    const stacked=spec.kind==='stacked',horizontal=stacked||spec.kind==='bar';
    plot='<c:barChart><c:barDir val="'+(horizontal?'bar':'col')+'"/>'+
     '<c:grouping val="'+(stacked?'stacked':'clustered')+'"/>'+
     '<c:varyColors val="'+(series.length===1?'1':'0')+'"/>'+
     series.map((s,i)=>serie(source,s,i,colors,series.length===1)).join('')+
-    (stacked?'<c:overlap val="100"/>':'')+'<c:gapWidth val="65"/>'+
+    '<c:dLbls><c:showLegendKey val="0"/><c:showVal val="1"/></c:dLbls>'+
+    '<c:gapWidth val="65"/>'+(stacked?'<c:overlap val="100"/>':'')+
     '<c:axId val="'+x+'"/><c:axId val="'+y+'"/></c:barChart>'+
     axes(x,y,horizontal);
   }
