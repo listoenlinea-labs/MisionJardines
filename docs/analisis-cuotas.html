@@ -101,7 +101,7 @@
         <label><input type="checkbox" id="housePaymentReview"> He revisado las referencias y fechas anteriores de los meses PENDIENTES con $0. Confirmo que no representan un pago real previamente registrado, que recibimos ahora el importe indicado y autorizo conservar esos datos en auditoría al actualizar septiembre y octubre (o los meses seleccionados).</label>
         <p id="housePaymentReviewHint"></p>
       </div>
-      <p class="hint house-payment-notice" id="housePaymentNotice" data-maintenance-only>Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido depende de la cuota de esta vivienda y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado.</p>
+      <p class="hint house-payment-notice" id="housePaymentNotice" data-maintenance-only>Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido depende de la cuota de esta vivienda y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado. La fecha de los TAGs se ajustará al corte seleccionado aunque actualmente sea posterior.</p>
       <div class="house-payment-actions"><button type="button" class="soft" id="housePaymentRefreshC3" data-maintenance-only>Verificar vigencias de TAGs</button><button type="submit" class="primary" id="housePaymentSubmit" disabled>Confirmar pago</button></div>
     </form>
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
