@@ -523,3 +523,17 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
 @media(max-width:580px){
   .history-dialog > .history-tariff-toolbar{margin-top:12px}
 }
+
+/* Orden de la consulta de viviendas: botones nativos y alternativa móvil. */
+.houses-scroll th .house-column-sort{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:3px 0;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-align:left;cursor:pointer}
+.houses-scroll th .house-column-sort:hover{color:#7c3eab}
+.houses-scroll th .house-column-sort:focus-visible{outline:2px solid #7c3eab;outline-offset:3px;border-radius:3px}
+.houses-scroll th[aria-sort="ascending"],.houses-scroll th[aria-sort="descending"]{background:#efe2fa;color:#66398a}
+.houses-scroll th [data-sort-indicator]{font-size:14px}
+.house-sort-mobile{display:none}
+@media(max-width:700px){
+ .house-sort-mobile{display:flex;align-items:flex-end;gap:10px;margin:12px 0;flex-wrap:wrap}
+ .house-sort-mobile label{display:grid;gap:5px;flex:1;min-width:160px;font-size:12px}
+ .house-sort-mobile select{width:100%;min-height:42px;padding:8px;border:1px solid #e2d8ea;border-radius:9px;background:#fff;font:inherit}
+ .house-sort-mobile button{min-height:42px}
+}
