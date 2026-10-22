@@ -760,7 +760,7 @@ function renderHouses(){
        p=>p.mes+' '+p.anio+': abonados '+fmt(p.montoPagado)+' el '+displayDate(p.fechaPago)+
        '; tarifa especial '+fmt(q.tarifaMensual)+' · se reconocerá como pagado sin cobrar de nuevo.'
      ).join(' | ');
-     if(resetAmount)$('housePaymentAmount').value=Number(q.montoSugerido).toFixed(2);
+     if(resetAmount)$('housePaymentAmount').value=String(Number(q.montoSugerido));
      $('housePaymentReviewWrap').hidden=!q.requiereRevision;
      $('housePaymentReviewHint').textContent=q.periodos.filter(p=>p.requiereRevision).map(
        p=>p.mes+' '+p.anio+': '+p.advertencia).join(' | ');
