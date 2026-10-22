@@ -359,9 +359,10 @@ function syncHouseSort(){
   document.querySelectorAll('[data-house-sort]').forEach(button=>{
    const active=button.dataset.houseSort===houseSort.key;
    button.closest('th').setAttribute('aria-sort',active?(houseSort.direction==='desc'?'descending':'ascending'):'none');
-   button.querySelector('[data-sort-indicator]').textContent=active?(houseSort.direction==='desc'?'↓':'↑'):'↕';
+   button.querySelector('[data-sort-indicator]').textContent=active?(houseSort.direction==='desc'?'↓':'↑'):'↓';
   });
   $('financeColumnSort').value=houseSort.key;
+  $('financeRegistrationOrder').value=houseSort.key==='registro'?'registro_'+houseSort.direction:'';
   $('financeColumnDirection').textContent=houseSort.direction==='desc'?'Descendente ↓':'Ascendente ↑';
   $('financeSortStatus').textContent='Orden: '+labels[houseSort.key]+', '+(houseSort.direction==='desc'?'descendente':'ascendente')+'. '+(houseSort.key==='registro'?'Los registros sin fecha aparecen al final.':'Presiona de nuevo para invertir.');
 }
@@ -954,6 +955,12 @@ function renderHouses(){
  document.querySelectorAll('[data-house-sort]').forEach(button=>button.addEventListener('click',()=>orderHouses(button.dataset.houseSort)));
  $('financeColumnSort').addEventListener('change',()=>orderHouses($('financeColumnSort').value));
  $('financeColumnDirection').addEventListener('click',()=>orderHouses(houseSort.key));
+ $('financeRegistrationOrder').addEventListener('change',event=>{
+  const choice=event.target.value;
+  if(choice==='registro_asc'||choice==='registro_desc')houseSort={key:'registro',direction:choice.slice(9)};
+  else houseSort={key:'calle',direction:'asc'};
+  housePage=1;renderHouses();
+ });
  for(const id of ['financeSearch','financeStreet','financeStatus','financeLastPaidMonth','financeLastPaidYear'])
   $(id).addEventListener(id==='financeSearch'?'input':'change',()=>{housePage=1;renderHouses();});
  $('financePrev').addEventListener('click',()=>{housePage=Math.max(1,housePage-1);renderHouses();});
@@ -962,6 +969,7 @@ function renderHouses(){
   ['financeSearch','financeStreet','financeStatus','financeLastPaidMonth'].forEach(id=>$(id).value='');
   $('financeLastPaidYear').value=String(moment.getFullYear());
   houseSort={key:'calle',direction:'asc'};
+  $('financeRegistrationOrder').value='';
   housePage=1;renderHouses();
  });
  $('newExpense').addEventListener('submit',async e=>{
