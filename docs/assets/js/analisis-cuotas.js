@@ -347,15 +347,8 @@ function elegirConcepto(concepto){
   actualizarAniosUltimoPago();
   renderHouses();
 }
-function renderLastRegistration(registro){
-  if(!registro?.fecha||Number.isNaN(Date.parse(registro.fecha)))return 'Sin registro';
-  const time=new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(registro.fecha));
-  const statuses={PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado',REGISTRADO:'Registrado'};
-  const detail=(registro.fuente==='FOLIO_REPORTADO'?'Folio subido':'Pago manual registrado')+' · '+(statuses[registro.estatus]||registro.estatus||'');
-  return '<time datetime="'+esc(registro.fecha)+'" title="'+esc(detail)+'">'+esc(displayDate(registro.fecha)+' '+time)+'</time>';
-}
 function syncHouseSort(){
-  const labels={calle:'Calle',numero:'Casa',nombre:'Residente registrado',estatus:'Estado',pagado:'Pagado',registro:'Último registro de pago',mes:'Último mes pagado',saldo:'Saldo pendiente',tags:'TAGs',pago:'Pago'};
+  const labels={calle:'Calle',numero:'Casa',nombre:'Residente registrado',estatus:'Estado',pagado:'Pagado',registro:'Fecha de registro',mes:'Último mes pagado',saldo:'Saldo pendiente',tags:'TAGs',pago:'Pago'};
   document.querySelectorAll('[data-house-sort]').forEach(button=>{
    const active=button.dataset.houseSort===houseSort.key;
    button.closest('th').setAttribute('aria-sort',active?(houseSort.direction==='desc'?'descending':'ascending'):'none');
@@ -382,7 +375,6 @@ function renderHouses(){
      houseMatchesStatus(h,status)&&cumpleUltimoPago(h,ultimoMes,ultimoAnio);
   }).sort((a,b)=>window.MJHouseSort.compareHouses(a,b,houseSort));
   syncHouseSort();
-  $('financeHouseCount').textContent=filtered.length+' de '+data.viviendas.length+' casas';
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
   housePage=Math.min(Math.max(housePage,1),totalPages);
   const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
@@ -399,11 +391,10 @@ function renderHouses(){
     houseCell('Residente',esc(h.nombre))+
     houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
     houseCell('Pagado','<button type="button" class="house-paid-history'+(h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(fmt(h.ultimoPago?.monto||0))+'</strong></button>')+
-    houseCell('Último registro de pago',renderLastRegistration(h.ultimoRegistroPago))+
     houseCell('Último mes pagado',esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount">'+esc(fmt(h.saldoPendiente))+'</span>')+
     houseCell('TAGs',renderHouseTagCell(h))+
-    houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="10">No hay viviendas que coincidan con estos filtros.</td></tr>';
+    houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;

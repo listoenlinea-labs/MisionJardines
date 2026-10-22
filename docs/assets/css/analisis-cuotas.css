@@ -311,7 +311,7 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
 }
 
 /* Consulta de viviendas: cobro directo, sin abrir primero los TAGs. */
-.houses-scroll table{min-width:1240px}
+.houses-scroll table{min-width:1120px}
 .house-pay-button{
   display:inline-flex;
   align-items:center;
@@ -454,7 +454,7 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
 .finance-receipt-toolbar span{color:#56657a;font-size:12px;line-height:1.5}
 .finance-receipt-toolbar button{min-height:37px;padding:9px 18px;border-radius:11px;white-space:nowrap}
 .finance-receipt-toolbar button:disabled{opacity:.48;cursor:not-allowed}
-.maintenance-receipt-active .houses-scroll table{min-width:1240px}
+.maintenance-receipt-active .houses-scroll table{min-width:1120px}
 .maintenance-receipt-active .houses-scroll #financeHouseRows>tr[data-receipt-row]{cursor:pointer}
 .maintenance-receipt-active .houses-scroll #financeHouseRows>tr[data-receipt-row]:focus-visible{outline:3px solid #b4753b;outline-offset:-3px}
 .maintenance-receipt-active .houses-scroll #financeHouseRows>tr.house-receipt-selected{background:#f5d0a7}
