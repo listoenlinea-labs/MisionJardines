@@ -124,37 +124,7 @@ test('Etiquetas del Excel: porcentajes limpios en dona, importes positivos exter
  const income=graficar({kind:'bar',title:'Ingresos',source,
    xTitle:'Monto (MXN)',yTitle:'Concepto'},2);
  assert.match(income,/<c:dLblPos val="outEnd"\/>/);
- assert.match(income,/numFmt formatCode="&quot;\test('Cinco gráficos de Excel no dibujan etiquetas superpuestas y conservan ejes y leyendas',()=>{
- const src={categories:"'Resumen'!$A$17:$A$18",
-  categoryValues:['Mantenimiento · cuotas','Extraordinarias · banco'],
-  values:[{name:'Monto (MXN)',ref:"'Resumen'!$B$17:$B$18",points:[59650,0]}]};
- const configs=[
-  {kind:'doughnut',title:'Cumplimiento',source:src},
-  {kind:'bar',title:'Ingresos',source:src,xTitle:'Monto (MXN)',yTitle:'Concepto'},
-  {kind:'bar',title:'Egresos',source:src,xTitle:'Monto (MXN)',yTitle:'Categoría'},
-  {kind:'stacked',title:'Calles',source:{...src,values:[
-   {name:'Pagadas',ref:src.values[0].ref,points:[10,8]},
-   {name:'Pendientes',ref:"'Resumen'!$C$17:$C$18",points:[2,5]}
-  ]},xTitle:'Viviendas',yTitle:'Calle'}
- ];
- for(let i=0;i<configs.length;i++){
-  const xml=graficar(configs[i],i+1);
-  assert.doesNotMatch(xml,/<c:dLbls>/,'Ningún dato ni nombre debe tapar el trazado');
-  assert.match(xml,/<c:legendPos val="b"\/>/,'Leyenda al pie del gráfico');
-  assert.match(xml,/<c:overlay val="0"\/>/);
-  assert.match(xml,/<c:f>\&apos;Resumen\&apos;!/,'Referencias editables');
-  if(configs[i].kind!=='doughnut'){
-   assert.match(xml,/<c:barDir val="bar"\/>/,'Monto y calles se grafican horizontalmente');
-   assert.match(xml,/<c:varyColors val="0"\/>/,'Un color por serie, no por categoría');
-   assert.match(xml,/<c:title>[\s\S]*?Monto \(MXN\)|<c:title>[\s\S]*?Viviendas/);
-  }
- }
- const bar=graficar(configs[1],7);
- assert.match(bar,/<c:legendPos val="b"\/>/);
- assert.match(bar,/<a:t>Concepto<\/a:t>/);
- assert.match(bar,/<a:t>Monto \(MXN\)<\/a:t>/);
- assert.doesNotMatch(bar,/<c:dPt>/,'La misma serie no debe tener colores distintos');
-});quot;#,##0\.00"/);
+ assert.match(income,/numFmt formatCode="&quot;\$&quot;#,##0\.00"/);
  assert.equal((income.match(/<c:dLbl><c:idx/g)||[]).length,2,
   'Los montos $0 no crean etiquetas amontonadas en el origen');
  assert.match(income,/<c:max val="80000"\/>/,
