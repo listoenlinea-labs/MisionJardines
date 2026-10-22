@@ -857,6 +857,7 @@ function renderHouses(){
      '?\n'+(payload.pagoAnual?'Se registrará el cierre anual '+payload.anio+'. ':'')+
      'Se guardarán '+currentPaymentQuote.meses+' cuotas y se solicitará fecha final '+
      currentPaymentQuote.fechaFinObjetivo+' en todos sus TAGs.'+
+     (payload.pagoAnual?' Si algún TAG tiene vigencia posterior, esta se reemplazará por '+currentPaymentQuote.fechaFinObjetivo+'.':'')+
      (payload.confirmarConciliacionTarifa?' Se conciliará además el historial abonado anteriormente, sin duplicar ingresos.':'')))return;
    const btn=$('housePaymentSubmit');btn.disabled=true;
    $('housePaymentStatus').textContent='Registrando el movimiento en MySQL…';
