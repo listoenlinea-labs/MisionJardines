@@ -106,6 +106,11 @@ async function registrarPagoVivienda(req,res){
     const formaPago=String(req.body?.formaPago||'EFECTIVO').toUpperCase();
     if(!['EFECTIVO','TRANSFERENCIA','DEPOSITO','OTRO'].includes(formaPago))
       throw fail(400,'Selecciona una forma de pago válida');
+    const pagoAnual=req.body?.pagoAnual===true;
+    if(req.body?.pagoAnual!==undefined&&typeof req.body.pagoAnual!=='boolean')
+      throw fail(400,'Indicador de pago anual inválido');
+    if(pagoAnual&&(Number(req.body?.anio)!==Number(fechaMexico().slice(0,4))||Number(req.body?.mes)!==12))
+      throw fail(400,'Pago anual solo puede liquidar hasta diciembre del año actual');
     const confirmarHistorico=req.body?.confirmarHistorico===true;
     const confirmarConciliacionTarifa=req.body?.confirmarConciliacionTarifa===true;
     const mesesEsperados=Number(req.body?.mesesEsperados);
@@ -163,6 +168,7 @@ async function registrarPagoVivienda(req,res){
         const observacionesAnteriores=String(cuota?.observaciones||'').trim();
         const auditoria='Confirmado manualmente por usuario '+req.usuario.usuarioId+
           '; pago de '+plan.meses+' mensualidad(es); '+
+          (pagoAnual?'cierre anual '+req.body.anio+' (solo periodos todavía pendientes); ':'')+
           (revision.referenciaAnterior?'referencia histórica previa: '+revision.referenciaAnterior+'; ':'')+
           (revision.folioAnterior?'folio histórico previo: '+revision.folioAnterior+'; ':'')+
           (revision.requiereRevision?'conciliación administrativa de datos anteriores autorizada; fechaPago anterior: '+
@@ -174,7 +180,7 @@ async function registrarPagoVivienda(req,res){
           recargo:periodo.recargo,saldoPendiente:0,estatusPago:'PAGADO',
           tipoPago:'MANTENIMIENTO',formaPago,referencia,folio:null,
           confirmadoPorUsuarioId:req.usuario.usuarioId,fechaConfirmacion:new Date(),
-          origenImportacion:'MANUAL_ANALISIS',
+          origenImportacion:pagoAnual?'MANUAL_ANALISIS_ANUAL':'MANUAL_ANALISIS',
           observaciones:(observacionesAnteriores?observacionesAnteriores+'\n':'')+auditoria,
           nombrePagador:casa.nombre||null,numeroCasaSnapshot:casa.numero,calleSnapshot:casa.calle
         };
@@ -187,7 +193,7 @@ async function registrarPagoVivienda(req,res){
       });
       return {casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,referencia,
         periodos:plan.periodos.map(p=>p.mes+' '+p.anio),fechaFinObjetivo:plan.fechaFinObjetivo,
-        meses:plan.meses,total:plan.total,recargo:plan.recargo,
+        meses:plan.meses,total:plan.total,recargo:plan.recargo,pagoAnual,
         conciliacionesTarifa:conciliaciones.map(c=>c.mes+' '+c.anio),eventos:[evento],tags:tarjetas.length};
     });
     return res.status(201).json({ok:true,data:resultado,message:resultado.tags?
