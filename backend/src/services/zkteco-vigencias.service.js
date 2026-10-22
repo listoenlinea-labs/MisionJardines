@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const Casa = require('../models/Casa');
 const Tags = require('../models/ZkTarjeta');
+const Cuota = require('../models/Cuota');
 const Eventos = require('../models/PagoAccesoC3');
 const Aplicaciones = require('../models/PagoAccesoTagC3');
 const direct = require('./zkteco-direct.service');
@@ -37,6 +38,19 @@ async function comprobarVinculo(tag, evento, transaction) {
         throw Object.assign(new Error('El TAG fue eliminado, reemplazado o cambió de vivienda; revisa la aplicación del pago'), { status: 409 });
     return local;
 }
+// Solo un lote manual YA CONFIRMADO y etiquetado como anual puede acortar
+// la fecha física. Validar origen, casa, referencia y diciembre del mismo año
+// usando cuotas persistidas, no indicadores recibidos del navegador.
+async function esCierreAnualConfirmado(event,fechaObjetivo,transaction){
+    if(event.origen!=='CUOTA'||!/^\d{4}-01-10$/.test(String(fechaObjetivo||'')))return false;
+    const anio=Number(fechaObjetivo.slice(0,4))-1;
+    const where={casaId:event.casaId,referencia:event.referencia,
+        origenImportacion:'MANUAL_ANALISIS_ANUAL',estatusPago:'PAGADO'};
+    const origen=await Cuota.findOne({where:{...where,id:event.origenId},transaction});
+    if(!origen||Number(origen.anio)!==anio)return false;
+    const diciembre=await Cuota.findOne({where:{...where,anio,mes:'DICIEMBRE'},transaction});
+    return Boolean(diciembre&&Number(diciembre.montoPagado)>0);
+}
 async function preparar(casaId, now, dryRun) {
     // Read only C3 here. Commit the whole intent before any physical write.
     return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
@@ -54,14 +68,17 @@ async function preparar(casaId, now, dryRun) {
         // ABSOLUTA de corte. El resto de los pagos sigue sumando meses al C3.
         // La fecha objetivo es la misma para cada TAG de la vivienda.
         const fechaObjetivo=fechaFinDeReferencia(event.referencia);
+        const cierreAnual=fechaObjetivo&&await esCierreAnualConfirmado(event,fechaObjetivo,transaction);
         try {
         for (const tag of tags) {
             if (tag.fechaAntes) continue;
             await comprobarVinculo(tag, event, transaction);
             const actual = await direct.readUserValidity(tag.numeroTarjeta);
             const fechaAntes=fechaReal(actual.fechaFinal);
-            if(fechaObjetivo && fechaObjetivo<fechaAntes)
+            if(fechaObjetivo && fechaObjetivo<fechaAntes && !cierreAnual)
                 throw Object.assign(new Error('La vigencia física ya termina después del mes confirmado; no se acortaron los TAGs. Revisar meses seleccionados.'),{status:409});
+            // Incluso cuando se acorta EndTime por un cierre anual, se conservan
+            // controles de vínculo, PIN, puertas, escritura y verificación física.
             snapshots.push({ tag, pin: actual.pin, autorizaciones: actual.autorizaciones, fechaAntes,
                 fechaDespues: fechaObjetivo||incrementar(fechaAntes, Number(event.meses)) });
         }
