@@ -175,6 +175,8 @@
  function houseMatchesStatus(h,status){
    if(!status)return true;
    if(status==='ADVERTENCIAS')return Boolean(tagMismatch(h,tagsView(h)));
+   if(status==='PAGO_ANUAL')return Boolean(h.ultimoMesPagado?.pagoAnual)&&
+     String(h.estatus||'').toUpperCase()==='PAGADO';
    const pagadoCompleto=String(h.estatus||'').toUpperCase()==='PAGADO';
    if(status==='PAGADO')return pagadoCompleto;
    if(status==='PENDIENTE')return ['PENDIENTE','PAGO_PARCIAL'].includes(String(h.estatus||'').toUpperCase());
@@ -335,9 +337,12 @@ function elegirConcepto(concepto){
     tab.tabIndex=selected?0:-1;
     if(selected)$('financeHousePanel').setAttribute('aria-labelledby',tab.id);
   });
-  const warning=$('financeStatus').querySelector('option[value="ADVERTENCIAS"]');
-  if(warning)warning.disabled=concepto!=='MANTENIMIENTO';
-  if(concepto!=='MANTENIMIENTO'&&$('financeStatus').value==='ADVERTENCIAS')$('financeStatus').value='';
+  for(const choice of ['ADVERTENCIAS','PAGO_ANUAL']){
+   const option=$('financeStatus').querySelector('option[value="'+choice+'"]');
+   if(option)option.disabled=concepto!=='MANTENIMIENTO';
+  }
+  if(concepto!=='MANTENIMIENTO'&&['ADVERTENCIAS','PAGO_ANUAL'].includes($('financeStatus').value))
+   $('financeStatus').value='';
   $('financeConceptHint').textContent={
     MANTENIMIENTO:'Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.',
     EXTRAORDINARIO:'Cuotas extraordinarias: solo proyectos con mensualidades configuradas. Los egresos sin repartir todavía no generan deuda.',
