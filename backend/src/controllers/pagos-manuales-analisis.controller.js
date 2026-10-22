@@ -84,7 +84,7 @@ async function cotizarPagoVivienda(req,res){
     if(!casa)throw fail(404,'Vivienda no encontrada');
     const cuotas=await Cuota.findAll({where:{casaId}});
     const tarifa=tarifaParaCasa(casa);
-    const conciliaciones=conciliacionesTarifa(cuotas,tarifa);
+    const conciliaciones=conciliacionesTarifa(cuotas,tarifa,{anioHasta:req.query.anio,mesHasta:req.query.mes});
     const plan=prepararDesdeHistorial({
       cuotas:historialConTarifaConciliada(cuotas,conciliaciones),
       anio:req.query.anio,mes:req.query.mes,tarifa
@@ -118,7 +118,7 @@ async function registrarPagoVivienda(req,res){
       if(!casa)throw fail(404,'La vivienda no existe');
       const existentes=await Cuota.findAll({where:{casaId},transaction,lock:transaction.LOCK.UPDATE});
       const tarifa=tarifaParaCasa(casa);
-      const conciliaciones=conciliacionesTarifa(existentes,tarifa);
+      const conciliaciones=conciliacionesTarifa(existentes,tarifa,{anioHasta:req.body?.anio,mesHasta:req.body?.mes});
       const plan=prepararDesdeHistorial({
         cuotas:historialConTarifaConciliada(existentes,conciliaciones),
         anio:req.body?.anio,mes:req.body?.mes,
