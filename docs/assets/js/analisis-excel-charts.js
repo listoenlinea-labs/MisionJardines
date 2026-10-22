@@ -30,15 +30,54 @@
    '<c:spPr><a:solidFill><a:srgbClr val="'+color(selectedPalette[i%selectedPalette.length])+
    '"/></a:solidFill></c:spPr></c:dPt>').join('');
  }
- // El XML de gráficos se mantiene en el formato conservador que Excel
- // abrió correctamente antes de añadir etiquetas de punto individuales.
- // Los porcentajes, importes y cantidades se muestran en nombres de
- // categorías que apuntan a fórmulas de la hoja Resumen.
- function serie(source,series,index,colors,vary=false){
+ // c:dLbls vive dentro de c:ser, entre los puntos/estilo y los datos
+ // c:cat/c:val, conforme a OOXML. Solo se habilitan puntos cuya sección
+ // pintada sea lo bastante grande. No se añaden cuadros de texto externos.
+ function estiloTextoEtiqueta(){
+  return '<c:txPr><a:bodyPr/><a:lstStyle/><a:p>'+
+   '<a:pPr><a:defRPr lang="es-MX" sz="800" b="1">'+
+   '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>'+
+   '</a:defRPr></a:pPr><a:endParaRPr lang="es-MX" sz="800" b="1">'+
+   '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>'+
+   '</a:endParaRPr></a:p></c:txPr>';
+ }
+ function etiquetasPorSerie(serieActual,modo,todas=[]){
+  if(!['percentage','money','count'].includes(modo))return '';
+  const values=serieActual.points||[];
+  const positivos=todas.flatMap(s=>s.points||[]).map(Number).filter(v=>Number.isFinite(v)&&v>0);
+  const maxValor=Math.max(0,...positivos);
+  const totalDona=values.reduce((sum,val)=>sum+Math.max(0,Number(val)||0),0);
+  const formato=modo==='percentage'?'0.0%':modo==='money'?'"$"#,##0.00':'#,##0';
+  const posicion=modo==='percentage'?'ctr':modo==='money'?'inEnd':'ctr';
+  const elegidos=values.map((dato,i)=>{
+   const n=Number(dato),totalFila=todas.reduce((sum,serie)=>sum+Math.max(0,Number(serie.points?.[i])||0),0);
+   // Etiquetas internas de 8 pt: evitar números sobre zonas menores al
+   // 8 % de la dona, 12 % del ancho del mayor importe o segmentos cortos.
+   const visible=Number.isFinite(n)&&n>0&&(
+    modo==='percentage'?totalDona>0&&n/totalDona>=0.08:
+    modo==='money'?maxValor>0&&n/maxValor>=0.16:
+    n>=4&&totalFila>0&&n/totalFila>=0.10);
+   if(!visible)return '';
+   return '<c:dLbl><c:idx val="'+i+'"/>'+
+    '<c:showVal val="'+(modo==='percentage'?0:1)+'"/>'+
+    '<c:showPercent val="'+(modo==='percentage'?1:0)+'"/></c:dLbl>';
+  }).join('');
+  if(!elegidos)return '';
+  // Orden OOXML CT_DLbls: dLbl* > numFmt > txPr > dLblPos > show*.
+  return '<c:dLbls>'+elegidos+
+   '<c:numFmt formatCode="'+xml(formato)+'" sourceLinked="0"/>'+
+   estiloTextoEtiqueta()+'<c:dLblPos val="'+posicion+'"/>'+
+   '<c:showLegendKey val="0"/><c:showVal val="0"/>'+
+   '<c:showCatName val="0"/><c:showSerName val="0"/>'+
+   '<c:showPercent val="0"/><c:showBubbleSize val="0"/>'+
+   '</c:dLbls>';
+ }
+ function serie(source,series,index,colors,vary=false,labelMode=null,allSeries=[]){
   return '<c:ser><c:idx val="'+index+'"/><c:order val="'+index+'"/>'+
    '<c:tx><c:v>'+xml(series.name)+'</c:v></c:tx>'+
    (vary?points(series,colors):'<c:spPr><a:solidFill><a:srgbClr val="'+color(colors[index%colors.length])+
     '"/></a:solidFill></c:spPr>')+
+   etiquetasPorSerie(series,labelMode,allSeries)+
    cats(source)+vals(series)+'</c:ser>';
  }
  function title(value){
@@ -80,16 +119,17 @@
   const x=110000+id*11,y=110001+id*11;
   let plot;
   if(round){
-   // No generar c:dLbls: los porcentajes aparecen en la leyenda inferior.
+   // Las proporciones reales se respetan; ninguna sección se separa.
    plot='<c:doughnutChart><c:varyColors val="1"/>'+
-    serie(source,series[0],0,colors,true)+
+    serie(source,series[0],0,colors,true,'percentage',series)+
     '<c:firstSliceAng val="270"/><c:holeSize val="60"/></c:doughnutChart>';
   }else{
    const stacked=spec.kind==='stacked',horizontal=stacked||spec.kind==='bar';
+   const tipo=stacked?'count':'money';
    plot='<c:barChart><c:barDir val="'+(horizontal?'bar':'col')+'"/>'+
     '<c:grouping val="'+(stacked?'stacked':'clustered')+'"/>'+
     '<c:varyColors val="0"/>'+
-    series.map((item,i)=>serie(source,item,i,colors,false)).join('')+
+    series.map((item,i)=>serie(source,item,i,colors,false,tipo,series)).join('')+
     '<c:gapWidth val="65"/>'+(stacked?'<c:overlap val="100"/>':'')+
     '<c:axId val="'+x+'"/><c:axId val="'+y+'"/></c:barChart>'+
     axes(x,y,horizontal,spec.xTitle||'',spec.yTitle||'');
