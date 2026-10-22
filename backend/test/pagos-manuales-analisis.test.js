@@ -82,12 +82,11 @@ test('El modal se cierra solo si el POST confirma el pago; error de refresco no 
  const flow=ui.slice(start,end);
  const request=flow.indexOf("await request('/pagos-vivienda',payload)");
  const close=flow.indexOf('closeHousePayment();',request);
- const refresh=flow.indexOf('await load();',close);
+ const refresh=flow.indexOf('const refreshed=await load();',close);
  assert.ok(request>=0&&request<close&&close<refresh,
    'Cerrar modal después de POST exitoso y antes de recargar');
- assert.match(flow,/notice\(message,'success'\)/);
- assert.match(flow,/catch\(refreshError\)/);
- assert.match(flow,/El pago sí quedó registrado/);
+ assert.match(flow,/notice\(message\+\(historialConfirmado/);
+ assert.match(flow,/El pago fue confirmado, pero no se pudo refrescar/);
  assert.match(flow,/catch\(error\)\{[\s\S]*?housePaymentStatus/);
  assert.equal((flow.match(/request\('\/pagos-vivienda',payload\)/g)||[]).length,1);
 });
@@ -122,4 +121,13 @@ test('El cierre anual se persiste en cuotas existentes sin SQL y preserva el flu
  assert.match(ui,/historialConfirmado/);
  assert.match(html,/id="housePaymentAnnual"/);
  assert.match(html,/Pago anual/);
+});
+
+test('Los pagos manuales pueden aplicar el corte exacto sin importar una vigencia posterior',()=>{
+ const ctl=fs.readFileSync(path.resolve(__dirname,'../src/controllers/pagos-manuales-analisis.controller.js'),'utf8');
+ const worker=fs.readFileSync(path.resolve(__dirname,'../src/services/zkteco-vigencias.service.js'),'utf8');
+ assert.doesNotMatch(ctl,/if\(!pagoAnual && tarjetas\.some/);
+ assert.match(worker,/esLoteManualConfirmado\(event,fechaObjetivo,transaction\)/);
+ assert.match(worker,/fechaObjetivo<fechaAntes && !loteManual/);
+ assert.match(worker,/MANUAL_ANALISIS_ANUAL/);
 });

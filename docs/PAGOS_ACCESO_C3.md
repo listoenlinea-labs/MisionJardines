@@ -18,6 +18,14 @@ Al arrancar se agrega `pagos_reportados.cortes_recargo` (JSON nullable) y se cre
 
 Los comprobantes antiguos sin `cortes_recargo` y los recargos capturados manualmente en Cuotas no se reinterpretan ni asignan automáticamente a meses. Si una vivienda sigue vencida y esos pagos históricos ya cubrieron recargos, Administración debe conciliar los cortes correspondientes antes de utilizar la cotización automática; no se puede inferir el periodo a partir del importe solo.
 
+## Pagos manuales desde Análisis de cuotas
+
+A diferencia de los depósitos reportados mediante comprobante, el registro **manual confirmado por Administración** desde «Quién pagó y quién está pendiente» toma el período seleccionado como fecha objetivo absoluta del C3. El backend calcula el corte del día 10 del **mes siguiente** al último mes liquidado (por ejemplo, anual 2026 / diciembre → **10-ENE-2027**); genera cuotas pagadas con una única referencia y un evento durable por vivienda. Solo registra los meses contablemente pendientes; no se vuelven a cobrar cuotas ya liquidadas.
+
+La fecha física anterior del TAG **no bloquea** este registro, aunque sea posterior a la fecha objetivo: el intento explícito puede aumentar o **acortar** la vigencia física para alinearla con el período liquidado. El worker solo permite esa reducción cuando encuentra el mismo movimiento manual confirmado y el último período pagado en `cuotas` con la referencia original. Mantiene controles de asociación de vivienda, PIN, autorizaciones físicas, fecha observada inmediatamente antes de escribir e idempotencia. Ningún evento bancario ajeno o mera fecha en el espejo SQL puede autorizar una reducción. El diario conserva por TAG `fecha_antes`, `fecha_despues` y estado; el C3 se actualiza después del commit y puede quedar pendiente por conectividad o conflicto.
+
+El botón **Pago anual** es una variante del registro manual que elige diciembre del año actual y etiqueta el cierre con `origen_importacion = MANUAL_ANALISIS_ANUAL`. Usa un campo de `cuotas` ya existente, por lo que no necesita cambios de esquema. El cierre anual no acredita enero–agosto de 2026 de forma retroactiva: aplica las mensualidades pendientes del calendario que el sistema administra desde septiembre de 2026.
+
 ## Diario de aplicación
 
 El arranque del backend crea, mediante `sync()` sin `alter` ni borrado, estas tablas:

@@ -139,10 +139,10 @@ async function registrarPagoVivienda(req,res){
             ': existen referencias o datos históricos por conciliar. Confirma la revisión en el formulario antes de registrar.');
       }
       const tarjetas=await ZkTarjeta.findAll({where:{casaId},transaction});
-      if(tarjetas.some(t=>t.fechaFin && /^\d{4}-\d{2}-\d{2}$/.test(String(t.fechaFin)) &&
-           String(t.fechaFin)>plan.fechaFinObjetivo))
-        throw fail(409,'Un TAG ya tiene vigencia posterior al corte '+plan.fechaFinObjetivo+
-          '. No se registró ningún cobro; revisa la selección.');
+      // El registro manual explícito define el corte de TODOS los TAGs,
+      // aun si el espejo SQL contiene una fecha física posterior.
+      // El worker valida el movimiento confirmado y la fecha real del C3,
+      // sin relajar la validación de pertenencia, PIN ni autorizaciones.
       // Conciliación autorizada y atómica: sin nuevo pago para los períodos
       // ya abonados. Preservar montos, fechas, folios y eventos C3 originales.
       for(const ajuste of conciliaciones){

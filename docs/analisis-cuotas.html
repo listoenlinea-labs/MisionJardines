@@ -87,7 +87,7 @@
       <label data-maintenance-only>Año del último mes que paga<select id="housePaymentYear" required aria-label="Seleccionar año igual o mayor al actual"></select></label>
       <div class="house-annual-option" data-maintenance-only>
         <button type="button" id="housePaymentAnnual" class="soft house-annual-button" aria-pressed="false">Pago anual</button>
-        <p id="houseAnnualHint">Selecciona diciembre del año actual. Se cobrarán únicamente las mensualidades pendientes, sin duplicar meses ya pagados.</p>
+        <p id="houseAnnualHint">Selecciona diciembre del año actual. Se cobrarán únicamente las mensualidades pendientes, sin duplicar meses ya pagados. Al confirmar, todos los TAGs recibirán la vigencia del 10 de enero siguiente, incluso si actualmente tienen una fecha posterior.</p>
       </div>
       <label data-maintenance-only>Meses pendientes calculados<input type="number" id="housePaymentCount" readonly aria-readonly="true" value="0"></label>
       <label>Monto total recibido (MXN)<input type="number" id="housePaymentAmount" required min="0" step="0.01" inputmode="decimal" placeholder="Ej. 600.00"></label>
@@ -101,7 +101,7 @@
         <label><input type="checkbox" id="housePaymentReview"> He revisado las referencias y fechas anteriores de los meses PENDIENTES con $0. Confirmo que no representan un pago real previamente registrado, que recibimos ahora el importe indicado y autorizo conservar esos datos en auditoría al actualizar septiembre y octubre (o los meses seleccionados).</label>
         <p id="housePaymentReviewHint"></p>
       </div>
-      <p class="hint house-payment-notice" id="housePaymentNotice" data-maintenance-only>Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido depende de la cuota de esta vivienda y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado.</p>
+      <p class="hint house-payment-notice" id="housePaymentNotice" data-maintenance-only>Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido depende de la cuota de esta vivienda y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado. La fecha de los TAGs se ajustará al corte seleccionado aunque actualmente sea posterior.</p>
       <div class="house-payment-actions"><button type="button" class="soft" id="housePaymentRefreshC3" data-maintenance-only>Verificar vigencias de TAGs</button><button type="submit" class="primary" id="housePaymentSubmit" disabled>Confirmar pago</button></div>
     </form>
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
@@ -129,4 +129,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="assets/js/analisis-excel.js?v=20261020" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261021-pago-anual" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="assets/js/analisis-excel.js?v=20261020" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261021-vigencia-corte" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

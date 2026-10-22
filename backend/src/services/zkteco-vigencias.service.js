@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const Casa = require('../models/Casa');
 const Tags = require('../models/ZkTarjeta');
+const Cuota = require('../models/Cuota');
 const Eventos = require('../models/PagoAccesoC3');
 const Aplicaciones = require('../models/PagoAccesoTagC3');
 const direct = require('./zkteco-direct.service');
@@ -37,6 +38,28 @@ async function comprobarVinculo(tag, evento, transaction) {
         throw Object.assign(new Error('El TAG fue eliminado, reemplazado o cambió de vivienda; revisa la aplicación del pago'), { status: 409 });
     return local;
 }
+// Un movimiento manual confirmado define una fecha ABSOLUTA, no un
+// incremento respecto de la fecha física. Validar con el lote persistido:
+// vivienda, origen, referencia y mes final realmente acreditado.
+async function esLoteManualConfirmado(event,fechaObjetivo,transaction){
+    if(event.origen!=='CUOTA'||!/^\d{4}-(0[1-9]|1[0-2])-10$/.test(String(fechaObjetivo||'')))return false;
+    const origen=await Cuota.findOne({where:{
+        id:event.origenId,casaId:event.casaId,referencia:event.referencia,
+        estatusPago:'PAGADO'
+    },transaction});
+    const tipo=String(origen?.origenImportacion||'');
+    if(!['MANUAL_ANALISIS','MANUAL_ANALISIS_ANUAL'].includes(tipo))return false;
+    const mesFinal=new Date(fechaObjetivo+'T12:00:00Z');
+    mesFinal.setUTCMonth(mesFinal.getUTCMonth()-1);
+    const meses=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+        'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    const cierre=await Cuota.findOne({where:{
+        casaId:event.casaId,referencia:event.referencia,
+        anio:mesFinal.getUTCFullYear(),mes:meses[mesFinal.getUTCMonth()],
+        estatusPago:'PAGADO',origenImportacion:tipo
+    },transaction});
+    return Boolean(cierre&&Number(cierre.montoPagado)>0);
+}
 async function preparar(casaId, now, dryRun) {
     // Read only C3 here. Commit the whole intent before any physical write.
     return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
@@ -55,13 +78,16 @@ async function preparar(casaId, now, dryRun) {
         // La fecha objetivo es la misma para cada TAG de la vivienda.
         const fechaObjetivo=fechaFinDeReferencia(event.referencia);
         try {
+        const loteManual=fechaObjetivo&&await esLoteManualConfirmado(event,fechaObjetivo,transaction);
         for (const tag of tags) {
             if (tag.fechaAntes) continue;
             await comprobarVinculo(tag, event, transaction);
             const actual = await direct.readUserValidity(tag.numeroTarjeta);
             const fechaAntes=fechaReal(actual.fechaFinal);
-            if(fechaObjetivo && fechaObjetivo<fechaAntes)
+            if(fechaObjetivo && fechaObjetivo<fechaAntes && !loteManual)
                 throw Object.assign(new Error('La vigencia física ya termina después del mes confirmado; no se acortaron los TAGs. Revisar meses seleccionados.'),{status:409});
+            // Incluso cuando se acorta EndTime por un pago manual, se conservan
+            // controles de vínculo, PIN, puertas, escritura y verificación física.
             snapshots.push({ tag, pin: actual.pin, autorizaciones: actual.autorizaciones, fechaAntes,
                 fechaDespues: fechaObjetivo||incrementar(fechaAntes, Number(event.meses)) });
         }
