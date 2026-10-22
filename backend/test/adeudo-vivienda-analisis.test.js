@@ -73,3 +73,16 @@ test('Vista y endpoint exhiben último pago y saldo acumulado sin editar cobros'
  assert.match(ui,/h.ultimoMesPagado/);
  assert.match(ui,/colspan="9"/);
 });
+
+test('Diciembre confirmado como anual se etiqueta sin inventar otros meses ni alterar deuda',()=>{
+ const antes=[{anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',montoPagado:300}];
+ const despues=[...antes,
+  {anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',montoPagado:300,origenImportacion:'MANUAL_ANALISIS_ANUAL'},
+  {anio:2026,mes:'DICIEMBRE',estatusPago:'PAGADO',montoPagado:300,origenImportacion:'MANUAL_ANALISIS_ANUAL'}];
+ const a=calcular(antes), b=calcular(despues);
+ assert.equal(a.ultimoMesPagado.mes,'OCTUBRE');
+ assert.deepEqual(b.ultimoMesPagado,{mes:'DICIEMBRE',anio:2026,pagoAnual:true});
+ assert.equal(b.saldoPendiente,a.saldoPendiente,'No modifica el saldo del período consultado octubre');
+ const mensual=calcular([...antes,{...despues[2],origenImportacion:'MANUAL_ANALISIS'}]);
+ assert.equal(mensual.ultimoMesPagado.pagoAnual,undefined,'Diciembre ordinario no se llama anual');
+});

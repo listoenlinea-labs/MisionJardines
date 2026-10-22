@@ -85,6 +85,16 @@ function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE}){
     hasta:{anio,mes,nombre:MESES[mes-1]},montoSugerido:tarifa*meses};
 }
 
+// El servidor decide qué es un cierre anual; un cliente no puede etiquetar
+// un pago ordinario de noviembre o un año distinto como anual.
+function validarPagoAnual(datos,{anioActual=Number(new Intl.DateTimeFormat('en-US',
+    {timeZone:'America/Mexico_City',year:'numeric'}).format(new Date()))}={}){
+  if(datos?.pagoAnual===undefined)return false;
+  if(typeof datos.pagoAnual!=='boolean')throw fail('Indicador de pago anual inválido');
+  if(datos.pagoAnual&&(Number(datos.anio)!==anioActual||Number(datos.mes)!==12))
+    throw fail('Pago anual solo puede liquidar hasta diciembre del año actual');
+  return datos.pagoAnual;
+}
 function generarReferencia(fechaFinObjetivo){
   return PREFIX+fechaFinObjetivo+':'+randomUUID();
 }
@@ -95,4 +105,4 @@ function fechaFinDeReferencia(ref){
   if(Number.isNaN(d.getTime())||d.toISOString().slice(0,10)!==match[1])return null;
   return match[1];
 }
-module.exports={prepararPlan,prepararDesdeHistorial,siguienteDelUltimo,generarReferencia,fechaFinDeReferencia};
+module.exports={prepararPlan,prepararDesdeHistorial,siguienteDelUltimo,validarPagoAnual,generarReferencia,fechaFinDeReferencia};

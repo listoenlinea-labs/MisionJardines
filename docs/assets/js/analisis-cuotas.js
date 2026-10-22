@@ -391,7 +391,9 @@ function renderHouses(){
     houseCell('Residente',esc(h.nombre))+
     houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
     houseCell('Pagado','<button type="button" class="house-paid-history'+(h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(fmt(h.ultimoPago?.monto||0))+'</strong></button>')+
-    houseCell('Último mes pagado',esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
+    houseCell('Último mes pagado',h.ultimoMesPagado?.pagoAnual?
+      '<span class="house-annual-label" title="Hasta diciembre de '+esc(h.ultimoMesPagado.anio)+'">Pago anual</span>':
+      esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount">'+esc(fmt(h.saldoPendiente))+'</span>')+
     houseCell('TAGs',renderHouseTagCell(h))+
     houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
@@ -401,6 +403,12 @@ function renderHouses(){
  }
  let activePaymentHouse=null;
  let currentPaymentQuote=null;
+ let annualPaymentSelected=false;
+ function selectAnnualPayment(selected){
+   annualPaymentSelected=Boolean(selected);
+   $('housePaymentAnnual').setAttribute('aria-pressed',String(annualPaymentSelected));
+   $('housePaymentAnnual').classList.toggle('active',annualPaymentSelected);
+ }
  let confirmedPaymentTarget=null;
  let quoteSequence=0;
  const paymentModal=$('housePaymentModal');
@@ -450,7 +458,7 @@ function renderHouses(){
     const months=(p.periodos||[]).map(x=>x.mes+' '+x.anio);
     return '<article class="history-event"><div class="history-dot" aria-hidden="true"></div><div class="history-event-card">'+
       '<div class="history-event-top"><strong>'+esc(fmt(p.monto))+'</strong><time>'+esc(displayDate(p.fecha))+'</time></div>'+
-      '<p class="history-concept">'+esc(conceptTitle(activeConcept))+(p.meses?' · '+p.meses+' '+(p.meses===1?'mes cubierto':'meses cubiertos'):'')+'</p>'+
+      '<p class="history-concept">'+esc(conceptTitle(activeConcept))+(p.pagoAnual?' · Pago anual '+(p.periodos?.at(-1)?.anio||''):'')+(p.meses?' · '+p.meses+' '+(p.meses===1?'mes cubierto':'meses cubiertos'):'')+'</p>'+
       (months.length?'<div class="history-months">'+months.map(name=>'<span>'+esc(name)+'</span>').join('')+'</div>':'')+
       (Number(p.recargo)>0?'<p class="history-penalty">Incluye '+esc(fmt(p.recargo))+' de recargo por pago tardío.</p>':'')+
       '<small>'+esc(p.formaPago||'Pago registrado')+(p.referencia?' · Ref. '+esc(p.referencia):'')+'</small></div></article>';
@@ -682,6 +690,7 @@ function renderHouses(){
  }
  async function switchPaymentType(){
   const other=isOther();
+  if(other)selectAnnualPayment(false);
   document.querySelectorAll('[data-maintenance-only]').forEach(el=>el.hidden=other);
   $('houseConceptWrap').hidden=!other;
   $('housePaymentTitle').textContent=other?'Registrar '+( $('housePaymentType').value==='CASA_CLUB'?'Casa club':'cuota extraordinaria'):'Registrar mensualidades pagadas';
@@ -704,7 +713,8 @@ function renderHouses(){
      Math.round(total*100)<=Math.round(q.montoMaximo*100);
    const names=q.periodos.map(p=>p.mes+' '+p.anio);
    const errors=q.periodos.filter(p=>!p.registrable).map(p=>p.mes+' '+p.anio+': '+p.motivo);
-   output.textContent='Mensualidades: '+names.join(', ')+'. Total sugerido: '+fmt(q.montoSugerido)+
+   output.textContent=(annualPaymentSelected?'Pago anual '+$('housePaymentYear').value+'. Se registrarán solo los meses pendientes. ':'')+
+     'Mensualidades: '+names.join(', ')+'. Total sugerido: '+fmt(q.montoSugerido)+
      '. Importe recibido: '+(Number.isFinite(total)?fmt(total):'inválido')+
      '. Fecha final solicitada para todos los TAGs: '+q.fechaFinObjetivo+'.'+
      (!valid?' El monto para '+q.meses+' meses debe estar entre '+fmt(q.montoMinimo)+' y '+fmt(q.montoMaximo)+'.':'')+
@@ -784,6 +794,7 @@ function renderHouses(){
    $('housePaymentAmount').value='';
    $('housePaymentMethod').value='EFECTIVO';
    $('housePaymentType').value=activeConcept;
+   selectAnnualPayment(false);
    $('housePaymentStatus').textContent='';
    paymentModal.hidden=false;
    switchPaymentType();
@@ -796,6 +807,7 @@ function renderHouses(){
    paymentModal.hidden=true;
    activePaymentHouse=null;
    currentPaymentQuote=null;
+   selectAnnualPayment(false);
  }
  async function refreshHousePaymentC3(){
    if(!activePaymentHouse)return;
@@ -828,7 +840,7 @@ function renderHouses(){
     $('housePaymentSubmit').disabled=true;
     try{
      const result=await request('/pagos-concepto',{casaId:Number(activePaymentHouse.casaId),tipoPago:type,conceptoId:Number(item.id),monto:Number(item.monto),formaPago:$('housePaymentMethod').value});
-     closeHousePayment();notice(result.message+' Referencia: '+result.data.referencia,'success');await load();
+     closeHousePayment();await load();notice(result.message+' Referencia: '+result.data.referencia,'success');
     }catch(e){$('housePaymentStatus').textContent=e.message;await switchPaymentType();}
     return;
    }
@@ -836,12 +848,14 @@ function renderHouses(){
    const payload={casaId:Number(activePaymentHouse.casaId),
      anio:Number($('housePaymentYear').value),mes:Number($('housePaymentMonth').value),
      mesesEsperados:currentPaymentQuote.meses,montoTotal:Number($('housePaymentAmount').value),
-     formaPago:$('housePaymentMethod').value,confirmarHistorico:$('housePaymentReview').checked,
+     formaPago:$('housePaymentMethod').value,pagoAnual:annualPaymentSelected,
+     confirmarHistorico:$('housePaymentReview').checked,
      confirmarConciliacionTarifa:$('housePaymentTariffReconcile').checked};
    if(!confirm('¿Confirmas que recibiste '+fmt(payload.montoTotal)+' de '+
      activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+
      currentPaymentQuote.periodos.map(p=>p.mes+' '+p.anio).join(', ')+
-     '?\nSe guardarán '+currentPaymentQuote.meses+' cuotas y se solicitará fecha final '+
+     '?\n'+(payload.pagoAnual?'Se registrará el cierre anual '+payload.anio+'. ':'')+
+     'Se guardarán '+currentPaymentQuote.meses+' cuotas y se solicitará fecha final '+
      currentPaymentQuote.fechaFinObjetivo+' en todos sus TAGs.'+
      (payload.confirmarConciliacionTarifa?' Se conciliará además el historial abonado anteriormente, sin duplicar ingresos.':'')))return;
    const btn=$('housePaymentSubmit');btn.disabled=true;
@@ -854,13 +868,25 @@ function renderHouses(){
      const message=result.message+' Referencia: '+result.data.referencia+
        '. Verifica por separado las vigencias físicas en ZKTeco.';
      closeHousePayment();
-     notice(message,'success');
-     try{
-       await load();
-     }catch(refreshError){
-       notice(message+' El pago sí quedó registrado, pero no fue posible actualizar la tabla: '+
-         refreshError.message+'. Actualiza la página para consultar los datos nuevos.','success');
+     const refreshed=await load();
+     if(!refreshed){
+       notice(message+' El pago fue confirmado, pero no se pudo refrescar la tabla. Consulta nuevamente el historial.','success');
+       return;
      }
+     const updated=data?.viviendasMantenimiento?.find(h=>Number(h.casaId)===payload.casaId);
+     const ultimo=indiceUltimoMesPagado(updated?.ultimoMesPagado);
+     const esperado=payload.anio*12+payload.mes-1;
+     if(ultimo===null||ultimo<esperado){
+       notice(message+' Atención: la nueva consulta aún no refleja los meses pagados. Revisa el historial y la respuesta del servidor antes de intentar otro cobro.','success');
+       return;
+     }
+     let historialConfirmado=false;
+     try{
+       const historial=(await request('/pagos-vivienda/'+payload.casaId+'/historial?concepto=MANTENIMIENTO')).data;
+       historialConfirmado=(historial.movimientos||[]).some(m=>m.referencia===result.data.referencia);
+     }catch(_error){/* No revertir ni repetir un pago ya confirmado. */}
+     notice(message+(historialConfirmado?' El movimiento también aparece en el historial.':
+       ' No se pudo verificar todavía el movimiento en el historial; no repitas el cobro sin comprobarlo.'),'success');
    }catch(error){
      $('housePaymentStatus').textContent=error.message;
      await quoteHousePayment({resetAmount:false});
@@ -895,8 +921,15 @@ function renderHouses(){
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!paymentModal.hidden)closeHousePayment();});
  $('housePaymentForm').addEventListener('submit',submitHousePayment);
  $('housePaymentRefreshC3').addEventListener('click',refreshHousePaymentC3);
+ $('housePaymentAnnual').addEventListener('click',()=>{
+  if(!activePaymentHouse||isOther())return;
+  $('housePaymentYear').value=String(mexicoYear());
+  $('housePaymentMonth').value='12';
+  selectAnnualPayment(true);
+  void quoteHousePayment();
+ });
  for(const id of ['housePaymentMonth','housePaymentYear'])
-  $(id).addEventListener('change',()=>quoteHousePayment());
+  $(id).addEventListener('change',()=>{selectAnnualPayment(false);void quoteHousePayment();});
  $('housePaymentAmount').addEventListener('input',paymentPreview);
  $('housePaymentType').addEventListener('change',switchPaymentType);
  $('houseConceptSelect').addEventListener('change',previewOtherConcept);
@@ -912,7 +945,8 @@ function renderHouses(){
    if(activeConcept!=='MANTENIMIENTO'&&!Array.isArray(data.viviendasConceptos?.[activeConcept]))activeConcept='MANTENIMIENTO';
    render();
    elegirConcepto(activeConcept);
-  }catch(e){notice(e.message);}
+   return true;
+  }catch(e){notice(e.message);return false;}
   finally{$('updateFinance').disabled=false;}
  }
  $('updateFinance').addEventListener('click',load);

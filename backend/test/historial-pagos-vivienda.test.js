@@ -57,9 +57,24 @@ test('Interfaz conecta las cifras clicables con historial y fechas guardada / f√
  assert.match(ui,/MySQL:/);
  assert.doesNotMatch(ui,/Fechas distintas\. Verifica la sincronizaci√≥n en ZKTeco/);
  assert.doesNotMatch(ui,/tags-date-mismatch/);
- assert.match(html,/analisis-cuotas\.js\?v=20261021-registro-pago/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261021-pago-anual/);
  assert.match(ui,/submit\.disabled=!valid\|\|q\.bloqueado/);
  assert.match(html,/<select id="housePaymentYear" required/);
  assert.match(html,/id="houseHistoryModal"/);
  assert.match(routes,/\/pagos-vivienda\/:casaId\/historial/);
+});
+
+test('Cierre anual queda como movimiento independiente de $600 y se distingue en historial',()=>{
+ const lista=[
+  {...cuota(3,'NOVIEMBRE',300),referencia:'ANUAL-2026',origenImportacion:'MANUAL_ANALISIS_ANUAL'},
+  {...cuota(4,'DICIEMBRE',300),referencia:'ANUAL-2026',origenImportacion:'MANUAL_ANALISIS_ANUAL'}
+ ];
+ const movimientos=historialMantenimiento(lista);
+ assert.equal(movimientos.length,1);
+ assert.equal(movimientos[0].monto,600);
+ assert.equal(movimientos[0].pagoAnual,true);
+ assert.equal(movimientos[0].fuente,'REGISTRO_MANUAL');
+ assert.deepEqual(movimientos[0].periodos.map(p=>p.mes),['NOVIEMBRE','DICIEMBRE']);
+ const ordinario=historialMantenimiento([cuota(3,'DICIEMBRE',300)]);
+ assert.equal(ordinario[0].pagoAnual,false);
 });

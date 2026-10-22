@@ -72,8 +72,18 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
       monto:faltante/100,recargo:(multa ? Math.min(multa,Math.max(0,faltante-sinMulta)) : 0)/100,
       concepto:'Mantenimiento'});
   }
+  // Etiqueta administrativa anual en el último diciembre confirmado.
+  // Se deriva del origen de las cuotas: no se agrega ninguna columna SQL y
+  // una cuota de diciembre ordinaria nunca aparece como pago anual.
+  const ultimoMesPagado = ultimo ? { mes: ultimo.nombre, anio: ultimo.anio } : null;
+  if (ultimoMesPagado && ultimo.mes === 12 && (cuotas || []).some(c =>
+    Number(c.anio) === ultimo.anio && String(c.mes || '').toUpperCase() === 'DICIEMBRE' &&
+    String(c.estatusPago || '').toUpperCase() === 'PAGADO' && Number(c.montoPagado) > 0 &&
+    c.origenImportacion === 'MANUAL_ANALISIS_ANUAL')) {
+    ultimoMesPagado.pagoAnual = true;
+  }
   return {
-    ultimoMesPagado: ultimo ? { mes: ultimo.nombre, anio: ultimo.anio } : null,
+    ultimoMesPagado,
     mesesPendientes,
     recargosPendientes: recargos / 100,
     saldoPendiente: pendiente / 100

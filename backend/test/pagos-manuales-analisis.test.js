@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {prepararPlan,prepararDesdeHistorial,generarReferencia,fechaFinDeReferencia}=require('../src/services/pago-manual-analisis.service');
+const {prepararPlan,prepararDesdeHistorial,validarPagoAnual,generarReferencia,fechaFinDeReferencia}=require('../src/services/pago-manual-analisis.service');
 const ultimoAgosto=[{anio:2026,mes:'AGOSTO',estatusPago:'PAGADO',montoPagado:300}];
 
 test('Agosto pagado, octubre elegido: septiembre y octubre por $600; C3 al 10 noviembre',()=>{
@@ -90,4 +90,36 @@ test('El modal se cierra solo si el POST confirma el pago; error de refresco no 
  assert.match(flow,/El pago sí quedó registrado/);
  assert.match(flow,/catch\(error\)\{[\s\S]*?housePaymentStatus/);
  assert.equal((flow.match(/request\('\/pagos-vivienda',payload\)/g)||[]).length,1);
+});
+
+test('Pago anual 2026 de vivienda al corriente hasta octubre solo cobra noviembre y diciembre',()=>{
+ const cuotas=[{anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',montoPagado:300}];
+ const plan=prepararDesdeHistorial({cuotas,anio:2026,mes:12,tarifa:300});
+ assert.deepEqual(plan.periodos.map(p=>p.mes),['NOVIEMBRE','DICIEMBRE']);
+ assert.equal(plan.meses,2);
+ assert.equal(plan.montoSugerido,600);
+ assert.equal(plan.fechaFinObjetivo,'2027-01-10');
+ assert.equal(validarPagoAnual({pagoAnual:true,anio:2026,mes:12},{anioActual:2026}),true);
+ assert.throws(()=>prepararDesdeHistorial({cuotas:[...cuotas,...plan.periodos.map(p=>({...p,estatusPago:'PAGADO',montoPagado:300}))],anio:2026,mes:12}),
+  /ya está cubierto/);
+});
+test('Solo diciembre del año actual acepta el distintivo pago anual',()=>{
+ assert.equal(validarPagoAnual({anio:2026,mes:12},{anioActual:2026}),false);
+ assert.equal(validarPagoAnual({pagoAnual:false,anio:2026,mes:11},{anioActual:2026}),false);
+ assert.throws(()=>validarPagoAnual({pagoAnual:true,anio:2026,mes:11},{anioActual:2026}),/diciembre/);
+ assert.throws(()=>validarPagoAnual({pagoAnual:true,anio:2027,mes:12},{anioActual:2026}),/año actual/);
+ assert.throws(()=>validarPagoAnual({pagoAnual:'true',anio:2026,mes:12},{anioActual:2026}),/inválido/);
+});
+test('El cierre anual se persiste en cuotas existentes sin SQL y preserva el flujo de éxito',()=>{
+ const ctl=fs.readFileSync(path.resolve(__dirname,'../src/controllers/pagos-manuales-analisis.controller.js'),'utf8');
+ const ui=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-cuotas.js'),'utf8');
+ const html=fs.readFileSync(path.resolve(__dirname,'../../docs/analisis-cuotas.html'),'utf8');
+ assert.match(ctl,/origenImportacion:pagoAnual\?'MANUAL_ANALISIS_ANUAL'/);
+ assert.match(ctl,/const pagoAnual=validarPagoAnual/);
+ assert.match(ctl,/mesesEsperados!==plan.meses/);
+ assert.match(ui,/pagoAnual:annualPaymentSelected/);
+ assert.match(ui,/const refreshed=await load\(\)/);
+ assert.match(ui,/historialConfirmado/);
+ assert.match(html,/id="housePaymentAnnual"/);
+ assert.match(html,/Pago anual/);
 });

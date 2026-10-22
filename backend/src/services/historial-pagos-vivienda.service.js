@@ -17,14 +17,15 @@ function historialMantenimiento(cuotas=[],comprobantes=[]){
     const ref=String(c.referencia||c.folio||'').trim();
     const key=ref?'ref:'+ref.toLowerCase():'cuota:'+c.id;
     if(!groups.has(key))groups.set(key,{referencia:ref||null,fecha:null,montoCentavos:0,
-      recargoCentavos:0,periodos:[],formaPago:c.formaPago||null,fuente:'CUOTA'});
+      recargoCentavos:0,periodos:[],formaPago:c.formaPago||null,fuente:'CUOTA',pagoAnual:false});
     const item=groups.get(key);
     item.montoCentavos+=paid;
     item.recargoCentavos+=Math.max(0,cents(c.recargo));
     item.fecha=latest(item.fecha,isoDate(c.fechaConfirmacion||c.fechaPago));
     const mm=MONTHS.indexOf(String(c.mes||'').toUpperCase());
     if(mm>=0)item.periodos.push({mes:MONTHS[mm],anio:Number(c.anio),monto:paid/100});
-    if(c.origenImportacion==='MANUAL_ANALISIS')item.fuente='REGISTRO_MANUAL';
+    if(String(c.origenImportacion||'').startsWith('MANUAL_ANALISIS'))item.fuente='REGISTRO_MANUAL';
+    if(c.origenImportacion==='MANUAL_ANALISIS_ANUAL')item.pagoAnual=true;
   }
   for(const p of comprobantes){
     if(p.tipoPago!=='MANTENIMIENTO'||p.estatus!=='VALIDADO')continue;
@@ -33,7 +34,7 @@ function historialMantenimiento(cuotas=[],comprobantes=[]){
     let key=keys.find(x=>groups.has(x));
     if(!key)key=ref?'ref:'+ref.toLowerCase():'banco:'+p.id;
     if(!groups.has(key))groups.set(key,{referencia:ref||null,fecha:null,montoCentavos:0,
-      recargoCentavos:0,periodos:[],formaPago:'TRANSFERENCIA',fuente:'COMPROBANTE_VALIDADO'});
+      recargoCentavos:0,periodos:[],formaPago:'TRANSFERENCIA',fuente:'COMPROBANTE_VALIDADO',pagoAnual:false});
     const item=groups.get(key);
     // Si las cuotas ya reflejan el depósito, NO sumar el comprobante dos veces.
     item.montoCentavos=Math.max(item.montoCentavos,cents(p.monto));
@@ -44,7 +45,7 @@ function historialMantenimiento(cuotas=[],comprobantes=[]){
     referencia:item.referencia,fecha:item.fecha,monto:item.montoCentavos/100,
     recargo:item.recargoCentavos/100,meses:item.periodos.length,
     periodos:item.periodos.sort((a,b)=>a.anio-b.anio||MONTHS.indexOf(a.mes)-MONTHS.indexOf(b.mes)),
-    formaPago:item.formaPago,fuente:item.fuente
+    formaPago:item.formaPago,fuente:item.fuente,pagoAnual:item.pagoAnual
   })).sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))||
     String(b.referencia||'').localeCompare(String(a.referencia||'')));
 }
