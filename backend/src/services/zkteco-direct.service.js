@@ -1232,7 +1232,8 @@ async function operateGate(action){
   });
 }
 
-async function dashboard({calle,numero,tag,pagina,limite,casaId}={}){
+async function dashboard({calle,numero,tag,pagina,limite,casaId,orden}={}){
+  const {ordenarViviendasPorTags,modoSeguro}=require('./zkteco-orden-consulta.service');
   // Enlaces desde Análisis seleccionan el ID real para evitar coincidencias
   // por direcciones duplicadas o variantes de nombre de calle.
   const linkedId=Number(casaId);
@@ -1382,7 +1383,10 @@ async function dashboard({calle,numero,tag,pagina,limite,casaId}={}){
       };
     })
     .filter(row=>(!exactHouseId||Number(row.id)===exactHouseId)&&(!tagQuery||row.tarjetas.length||row.controlesNoEnlazados.length))
-    .sort(compararDirecciones);
+    ;
+  // Orden de SÓLO lectura aplicado antes de paginar todas las viviendas.
+  // No modifica fechas, credenciales, permisos ni sincronización física.
+  ordenarViviendasPorTags(rows,orden,compararDirecciones);
 
   const total=rows.length;
   const totalPages=Math.max(1,Math.ceil(total/pageSize));
@@ -1403,7 +1407,8 @@ async function dashboard({calle,numero,tag,pagina,limite,casaId}={}){
     filters:{
       calle:String(calle||'').trim()||null,
       numero:String(numero||'').trim()||null,
-      tag:tagQuery||null
+      tag:tagQuery||null,
+      orden:modoSeguro(orden)
     }
   };
 }
