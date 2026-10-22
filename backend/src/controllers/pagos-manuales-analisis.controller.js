@@ -139,7 +139,10 @@ async function registrarPagoVivienda(req,res){
             ': existen referencias o datos históricos por conciliar. Confirma la revisión en el formulario antes de registrar.');
       }
       const tarjetas=await ZkTarjeta.findAll({where:{casaId},transaction});
-      if(tarjetas.some(t=>t.fechaFin && /^\d{4}-\d{2}-\d{2}$/.test(String(t.fechaFin)) &&
+      // Un pago anual confirmado puede reemplazar una vigencia física posterior:
+      // la fecha objetivo es el 10 de enero del año siguiente.
+      // No se retira esta salvaguarda para cobros manuales ordinarios.
+      if(!pagoAnual && tarjetas.some(t=>t.fechaFin && /^\d{4}-\d{2}-\d{2}$/.test(String(t.fechaFin)) &&
            String(t.fechaFin)>plan.fechaFinObjetivo))
         throw fail(409,'Un TAG ya tiene vigencia posterior al corte '+plan.fechaFinObjetivo+
           '. No se registró ningún cobro; revisa la selección.');
