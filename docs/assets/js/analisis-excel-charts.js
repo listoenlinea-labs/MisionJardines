@@ -122,9 +122,12 @@
   const drawingPath='xl/drawings/'+drawingName;
   if(zip.file(drawingPath))throw Error('Ya existe un dibujo en el libro.');
   const relId=uniqueRel(rels);
-  rels=rels.replace('</Relationships>',
-   '<Relationship Id="'+relId+'" Type="'+chartRel+'/drawing" Target="../drawings/'+
-   drawingName+'"/></Relationships>');
+  const link='<Relationship Id="'+relId+'" Type="'+chartRel+
+   '/drawing" Target="../drawings/'+drawingName+'"/>';
+  if(rels.includes('</Relationships>'))rels=rels.replace('</Relationships>',link+'</Relationships>');
+  else if(/<Relationships\\b[^>]*\\/>/.test(rels))
+   rels=rels.replace(/<Relationships(\\b[^>]*)\\/>/,'<Relationships$1>'+link+'</Relationships>');
+  else throw Error('Relaciones del libro con formato inesperado');
   sheetXml=sheetXml.replace('</worksheet>',
    '<drawing xmlns:r="'+chartRel+'" r:id="'+relId+'"/></worksheet>');
   zip.file(sheet,sheetXml);zip.file(sheetRelsPath,rels);
