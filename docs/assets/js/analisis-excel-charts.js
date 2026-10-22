@@ -30,12 +30,48 @@
    '<c:spPr><a:solidFill><a:srgbClr val="'+color(selectedPalette[i%selectedPalette.length])+
    '"/></a:solidFill></c:spPr></c:dPt>').join('');
  }
- function serie(source,series,index,colors,vary=false){
+ // Las etiquetas se generan SOLO para puntos con valor representativo.
+ // Las cantidades monetarias se ubican al extremo exterior de cada barra;
+ // los segmentos pequeños del apilado se consultan en los datos origen.
+ function labelsPorSerie(series,options={},todos=[]){
+  if(!options?.kind)return '';
+  const monetary=options.kind==='money',stacked=options.kind==='counts';
+  if(!monetary&&!stacked)return '';
+  const fmt=monetary?'"$"#,##0.00':'#,##0';
+  const items=series.points.map((value,index)=>{
+   const amount=Number(value);
+   const total=todos.reduce((sum,s)=>sum+Math.max(0,Number(s.points[index]||0)),0);
+   const visible=Number.isFinite(amount)&&amount>0&&
+    (monetary||(amount>=4&&total>0&&amount/total>=0.08));
+   if(!visible)return '';
+   return '<c:dLbl><c:idx val="'+index+'"/>'+
+    '<c:numFmt formatCode="'+xml(fmt)+'" sourceLinked="0"/>'+
+    '<c:dLblPos val="'+(monetary?'outEnd':'ctr')+'"/>'+
+    '<c:showLegendKey val="0"/><c:showVal val="1"/>'+
+    '<c:showCatName val="0"/><c:showSerName val="0"/>'+
+    '<c:showPercent val="0"/></c:dLbl>';
+  }).join('');
+  // Un c:dLbl con índice y formato conserva el vínculo con su punto.
+  // Desactivar el valor por defecto evita rótulos de $0 en el eje.
+  return '<c:dLbls>'+items+'<c:showLegendKey val="0"/>'+
+   '<c:showVal val="0"/><c:showCatName val="0"/>'+
+   '<c:showSerName val="0"/><c:showPercent val="0"/></c:dLbls>';
+ }
+ function serie(source,series,index,colors,vary=false,labels=null,todos=[]){
   return '<c:ser><c:idx val="'+index+'"/><c:order val="'+index+'"/>'+
    '<c:tx><c:v>'+xml(series.name)+'</c:v></c:tx>'+
    (vary?points(series,colors):'<c:spPr><a:solidFill><a:srgbClr val="'+color(colors[index%colors.length])+
     '"/></a:solidFill></c:spPr>')+
+   labelsPorSerie(series,labels,todos)+
    cats(source)+vals(series)+'</c:ser>';
+ }
+ // Porcentajes exclusivamente en la dona, sin repetir los nombres de la leyenda.
+ function labelsPorcentaje(){
+  return '<c:dLbls><c:numFmt formatCode="0%" sourceLinked="0"/>'+
+   '<c:dLblPos val="bestFit"/>'+
+   '<c:showLegendKey val="0"/><c:showVal val="0"/>'+
+   '<c:showCatName val="0"/><c:showSerName val="0"/>'+
+   '<c:showPercent val="1"/><c:showLeaderLines val="1"/></c:dLbls>';
  }
  function title(value){
   return '<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p>'+
@@ -52,14 +88,15 @@
    '<a:endParaRPr lang="es-MX"/></a:p></c:rich></c:tx>'+
    '<c:overlay val="0"/></c:title>';
  }
- function axes(x,y,horizontal,xTitle='',yTitle=''){
+ function axes(x,y,horizontal,xTitle='',yTitle='',maxValue=null){
   const catPos=horizontal?'l':'b',valPos=horizontal?'b':'l';
   return '<c:catAx><c:axId val="'+x+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'+
    '<c:delete val="0"/><c:axPos val="'+catPos+'"/>'+
    axisTitle(horizontal?yTitle:xTitle)+
    '<c:tickLblPos val="nextTo"/>'+
    '<c:crossAx val="'+y+'"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblOffset val="100"/></c:catAx>'+
-   '<c:valAx><c:axId val="'+y+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'+
+   '<c:valAx><c:axId val="'+y+'"/><c:scaling><c:orientation val="minMax"/>'+
+   (maxValue>0?'<c:max val="'+maxValue+'"/>':'')+'</c:scaling>'+
    '<c:delete val="0"/><c:axPos val="'+valPos+'"/><c:majorGridlines>'+
    '<c:spPr><a:ln w="6350"><a:solidFill><a:srgbClr val="E6EDF2"/></a:solidFill></a:ln></c:spPr>'+
    '</c:majorGridlines>'+
@@ -75,22 +112,26 @@
   const x=110000+id*11,y=110001+id*11;
   let plot;
   if(round){
-   // Excel debe mostrar únicamente la dona; las categorías de colores van en
-   // la leyenda inferior. Se omite c:dLbls para evitar texto sobre la figura.
+   // Donas: solo porcentajes compactos, sin etiquetas de nombre/serie.
+   // bestFit y líneas guía permiten mostrar incluso la anualidad pequeña.
    plot='<c:doughnutChart><c:varyColors val="1"/>'+
-    serie(source,series[0],0,colors,true)+
+    serie(source,series[0],0,colors,true)+labelsPorcentaje()+
     '<c:firstSliceAng val="270"/><c:holeSize val="60"/></c:doughnutChart>';
   }else{
    const stacked=spec.kind==='stacked',horizontal=stacked||spec.kind==='bar';
-   // Las series monetarias usan un solo color consistente; las categorías
-   // solo aparecen en el eje vertical, sin repetir importes sobre las barras.
+   const positive=series.flatMap(s=>s.points).map(Number).filter(n=>Number.isFinite(n)&&n>0);
+   const maxBar=Math.max(0,...positive);
+   // Reservamos aproximadamente un 25 % a la derecha para el monto exacto.
+   const unit=maxBar>0?10**Math.floor(Math.log10(maxBar)):1;
+   const axisMax=!stacked&&maxBar>0?Math.ceil(maxBar*1.3/unit)*unit:null;
+   const labelMode=stacked?'counts':'money';
    plot='<c:barChart><c:barDir val="'+(horizontal?'bar':'col')+'"/>'+
     '<c:grouping val="'+(stacked?'stacked':'clustered')+'"/>'+
     '<c:varyColors val="0"/>'+
-    series.map((s,i)=>serie(source,s,i,colors,false)).join('')+
+    series.map((item,i)=>serie(source,item,i,colors,false,{kind:labelMode},series)).join('')+
     '<c:gapWidth val="65"/>'+(stacked?'<c:overlap val="100"/>':'')+
     '<c:axId val="'+x+'"/><c:axId val="'+y+'"/></c:barChart>'+
-    axes(x,y,horizontal,spec.xTitle||'',spec.yTitle||'');
+    axes(x,y,horizontal,spec.xTitle||'',spec.yTitle||'',axisMax);
   }
   // Cada color se explica exclusivamente en el pie. Las barras de una
   // serie también llevan leyenda ("Monto (MXN)") y un único color.
