@@ -109,85 +109,80 @@ test('selector anual solo funciona para Mantenimiento y no toca datos de otras p
  assert.match(html,/jszip@3\.10\.1/);
 });
 
-test('Las etiquetas de valores son blancas, pequeñas y solo interiores',()=>{
- const base={categories:"'Resumen'!$A$17:$A$18",
-  categoryValues:['Pagadas','Sin pago completo'],
+test('Excel estable: ChartML no inserta etiquetas individuales incompatibles',()=>{
+ const base={categories:"'Resumen'!$AF$17:$AF$18",
+  categoryValues:['Pagadas · 85.7%','Pendientes · 14.3%'],
   values:[{name:'Viviendas',ref:"'Resumen'!$B$17:$B$18",points:[198,33]}]};
- const donut=graficar({title:'Cumplimiento',kind:'doughnut',source:base},1);
- assert.match(donut,/<c:dLbls>/);
- assert.match(donut,/<c:dLblPos val="ctr"\/>/);
- assert.match(donut,/<c:showPercent val="1"\/>/);
- assert.match(donut,/sz="800" b="1"/);
- assert.match(donut,/srgbClr val="FFFFFF"/);
- assert.match(donut,/<c:legendPos val="b"\/>/);
- assert.doesNotMatch(donut,/<c:explosion/);
- assert.equal((donut.match(/<c:dLbl><c:idx/g)||[]).length,2);
- const annual=graficar({title:'Anual',kind:'doughnut',source:{...base,
-  values:[{...base.values[0],points:[1,197]}]}},2);
- assert.equal((annual.match(/<c:dLbl><c:idx/g)||[]).length,1,
-  'El 0.5% no cabe en el arco y no debe desbordarse');
- assert.match(annual,/<c:legendPos val="b"\/>/);
-});
-
-test('Barras muestran importes o cantidades dentro solo cuando caben',()=>{
- const source={categories:"'Resumen'!$A$24:$A$27",
-  categoryValues:['Mantenimiento','Casa club','Otros','Sin ingreso'],
-  values:[{name:'Monto (MXN)',ref:"'Resumen'!$B$24:$B$27",points:[59650,4000,0,50]}]};
- const ingreso=graficar({kind:'bar',title:'Ingresos',source,xTitle:'Monto (MXN)',yTitle:'Concepto'},3);
- assert.match(ingreso,/<c:dLblPos val="inEnd"\/>/);
- assert.match(ingreso,/numFmt formatCode="&quot;\$&quot;#,##0\.00"/);
- assert.match(ingreso,/<c:showVal val="1"\/>/);
- assert.match(ingreso,/srgbClr val="FFFFFF"/);
- assert.equal((ingreso.match(/<c:dLbl><c:idx/g)||[]).length,1,
-  'No mostrar $50, $4,000 o $0 dentro de barras demasiado pequeñas para el máximo');
- assert.match(ingreso,/<c:legendPos val="b"\/>/);
- const calle={...source,values:[
-  {name:'Pagadas',ref:source.values[0].ref,points:[65,28,1,1]},
-  {name:'Pendientes',ref:"'Resumen'!$C$24:$C$27",points:[18,4,0,0]}
- ]};
- const apilada=graficar({kind:'stacked',title:'Por calle',source:calle,xTitle:'Viviendas',yTitle:'Calle'},4);
- assert.match(apilada,/<c:dLblPos val="ctr"\/>/);
- assert.equal((apilada.match(/<c:dLbl><c:idx/g)||[]).length,4,
-  'Solo segmentos suficientemente grandes admiten cantidades internas');
- assert.doesNotMatch(apilada,/<c:dLblPos val="outEnd"\/>/);
- assert.match(apilada,/<c:legendPos val="b"\/>/);
-});
-
-test('Las series de Excel conservan el orden OOXML y referencias a la hoja Resumen',()=>{
- const src={categories:"'Resumen'!$A$17:$A$18",
-  categoryValues:['Pagado','Sin pagar'],values:[{name:'Viviendas',
-  ref:"'Resumen'!$B$17:$B$18",points:[20,5]}]};
- for(const kind of ['doughnut','bar','stacked']){
-  const source=kind==='stacked'?{...src,values:[src.values[0],
-    {name:'Pendientes',ref:"'Resumen'!$C$17:$C$18",points:[5,1]}]}:src;
-  const xml=graficar({kind,title:kind,source},7);
-  for(const match of xml.matchAll(/<c:ser>([\s\S]*?)<\/c:ser>/g)){
-   const series=match[1];
-   assert.ok(series.indexOf('<c:dLbls>')>series.indexOf('<c:spPr>'));
-   assert.ok(series.indexOf('</c:dLbls>')<series.indexOf('<c:cat>'));
-   assert.ok(series.indexOf('<c:cat>')<series.indexOf('<c:val>'));
-  }
+ const charts=[
+  {kind:'doughnut',title:'Cumplimiento',source:base},
+  {kind:'bar',title:'Ingresos',source:base,xTitle:'Monto (MXN)',yTitle:'Concepto'},
+  {kind:'stacked',title:'Calles',source:{...base,values:[
+   base.values[0],{name:'Pendientes',ref:"'Resumen'!$F$17:$F$18",points:[18,4]}
+  ]},xTitle:'Viviendas',yTitle:'Calle'}
+ ];
+ charts.forEach((config,i)=>{
+  const xml=graficar(config,i+1);
+  assert.doesNotMatch(xml,/<c:dLbls>|<c:dLbl>/,
+   'ChartML no usa etiquetas de punto que provocaron el aviso de reparación');
+  assert.match(xml,/<c:legendPos val="b"\/>/);
   assert.match(xml,/<c:strRef><c:f>\&apos;Resumen\&apos;!/);
   assert.match(xml,/<c:numRef><c:f>\&apos;Resumen\&apos;!/);
   assert.doesNotMatch(xml,/<a:blip|<xdr:pic/);
- }
+ });
 });
-test('No se crean las celdas auxiliares visibles a la derecha del dashboard',()=>{
+
+test('Porcentajes, montos y cantidades se presentan en fuentes de categorías calculadas',()=>{
  const js=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel.js'),'utf8');
  const html=fs.readFileSync(path.resolve(__dirname,'../../docs/analisis-cuotas.html'),'utf8');
- assert.doesNotMatch(js,/prepararEtiquetas|estadoEtiquetas|anualEtiquetas|ingresoEtiquetas|callesEtiquetas|egresosEtiquetas/);
- for(const name of ['estado','anual','ingresos','calles','egresos'])
-  assert.match(js,new RegExp('source:'+name+',from:'));
- assert.match(html,/analisis-excel-charts\.js\?v=20261022-internal-values/);
- assert.match(html,/analisis-excel\.js\?v=20261022-internal-values/);
+ for(const token of ['estadoEtiquetas','anualEtiquetas','ingresoEtiquetas',
+  'callesEtiquetas','egresosEtiquetas'])assert.ok(js.includes('source:'+token));
+ assert.match(js,/formula:formulas\[i\],result:label/);
+ assert.match(js,/SUM\(\$B\$17:\$B\$18\)/);
+ assert.match(js,/SUM\(\$E\$17:\$E\$18\)/);
+ assert.match(js,/TEXT\(B/);
+ assert.match(js,/formatMoney/);
+ assert.match(js,/streetLabels/);
+ assert.match(html,/analisis-excel-charts\.js\?v=20261022-recuperar-graficas/);
+ assert.match(html,/analisis-excel\.js\?v=20261022-recuperar-graficas/);
 });
 test('Las zonas de gráficos en Resumen se amplían sin superponerse',()=>{
  const js=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel.js'),'utf8');
- assert.match(js,/kind:'bar',[\s\S]*?source:ingresos/);
+ assert.match(js,/kind:'bar',[\s\S]*?source:ingresoEtiquetas/);
  assert.match(js,/xTitle:'Monto \(MXN\)',yTitle:'Concepto'/);
  assert.match(js,/colors:\['76B79B','E9B38D'\]/);
  assert.match(js,/\.sort\(\(a,b\)=>b\[1\]-a\[1\]\)/);
  assert.match(js,/from:\[7,24\],to:\[18,50\]/);
  assert.match(js,/from:\[19,24\],to:\[30,50\]/);
  assert.match(js,/from:\[7,53\],to:\[20,81\]/);
+});
+
+test('Regresion: restaurar las cinco graficas y ocultar AF:AJ sin perder etiquetas',()=>{
+ const excel=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel.js'),'utf8');
+ const chart=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel-charts.js'),'utf8');
+ const html=fs.readFileSync(path.resolve(__dirname,'../../docs/analisis-cuotas.html'),'utf8');
+ assert.match(excel,/getColumn\(column\)\.hidden=true/);
+ assert.match(excel,/formula:formulas\[i\],result:label/);
+ for(const name of ['estadoEtiquetas','anualEtiquetas','ingresoEtiquetas','callesEtiquetas','egresosEtiquetas'])
+  assert.ok(excel.includes('source:'+name),'Chart must reference its calculated categories: '+name);
+ assert.match(chart,/plotVisOnly val="0"/);
+ assert.doesNotMatch(chart,/<c:dLbls>|<c:dLbl>/);
+ assert.match(html,/20261022-recuperar-graficas/);
+});
+test('Regresion ChartML: porcentajes y montos sin etiquetas incompatibles',()=>{
+ const sources=[
+  {kind:'doughnut',title:'Cumplimiento',source:{categories:"'Resumen'!$AF$17:$AF$18",
+    categoryValues:['Pagado completo · 85.7%','Sin pago completo · 14.3%'],
+    values:[{name:'Viviendas',ref:"'Resumen'!$B$17:$B$18",points:[198,33]}]}},
+  {kind:'bar',title:'Ingresos',source:{categories:"'Resumen'!$AH$24:$AH$25",
+    categoryValues:['Mantenimiento · cuotas · $59,650.00','Otros · $400.00'],
+    values:[{name:'Monto (MXN)',ref:"'Resumen'!$B$24:$B$25",points:[59650,400]}]}}
+ ];
+ sources.forEach((spec,i)=>{
+  const xml=graficar(spec,i+1);
+  assert.match(xml,/<c:legendPos val="b"\/>/);
+  assert.match(xml,/<c:plotVisOnly val="0"\/>/);
+  assert.match(xml,/<c:strRef><c:f>\&apos;Resumen\&apos;!/);
+  assert.match(xml,/<c:numRef><c:f>\&apos;Resumen\&apos;!/);
+  assert.doesNotMatch(xml,/<c:dLbl|<a:blip|<xdr:pic/);
+ });
 });
