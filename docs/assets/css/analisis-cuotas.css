@@ -480,6 +480,25 @@ button.finance-export-card{display:block;width:100%;font:inherit;text-align:left
 button.finance-export-card:hover{transform:translateY(-2px);border-color:#d7b89f;box-shadow:0 5px 17px #6e66561a}
 button.finance-export-card:focus-visible{outline:3px solid #efa96e;outline-offset:3px}
 button.finance-export-card:disabled{opacity:.65;cursor:wait}
+/* Señal de descarga ligera, junto a la etiqueta y sin competir con la cifra. */
+button.finance-export-card small .finance-export-icon{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:20px;height:20px;margin-inline-start:6px;vertical-align:-5px;
+ border:1px solid rgba(105,125,145,.18);border-radius:6px;
+ background:rgba(112,132,151,.08);color:#8193a5;
+ transition:color .15s,background-color .15s,border-color .15s;
+}
+button.finance-export-card .finance-export-icon svg{display:block;width:14px;height:14px}
+button.finance-export-card:is(:hover,:focus-visible) .finance-export-icon{
+ color:#aa6b37;background:#fff3e9;border-color:rgba(198,126,70,.29);
+}
+@media(max-width:700px){
+ button.finance-export-card small .finance-export-icon{width:18px;height:18px;margin-inline-start:4px;vertical-align:-4px}
+ button.finance-export-card .finance-export-icon svg{width:13px;height:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ button.finance-export-card .finance-export-icon{transition:none}
+}
 .finance-receipt-period{display:grid;gap:7px;color:#55476b;font-size:12px;font-weight:800}
 .finance-receipt-period[hidden]{display:none!important}
 .finance-receipt-period select{width:100%;padding:10px 12px;border:1px solid #decfbd;border-radius:10px;background:#fffaf6;color:#314258;font-size:13px}
