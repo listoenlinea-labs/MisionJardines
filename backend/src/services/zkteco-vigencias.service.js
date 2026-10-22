@@ -68,8 +68,8 @@ async function preparar(casaId, now, dryRun) {
         // ABSOLUTA de corte. El resto de los pagos sigue sumando meses al C3.
         // La fecha objetivo es la misma para cada TAG de la vivienda.
         const fechaObjetivo=fechaFinDeReferencia(event.referencia);
-        const cierreAnual=fechaObjetivo&&await esCierreAnualConfirmado(event,fechaObjetivo,transaction);
         try {
+        const cierreAnual=fechaObjetivo&&await esCierreAnualConfirmado(event,fechaObjetivo,transaction);
         for (const tag of tags) {
             if (tag.fechaAntes) continue;
             await comprobarVinculo(tag, event, transaction);
