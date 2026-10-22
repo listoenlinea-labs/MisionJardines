@@ -109,36 +109,57 @@ test('selector anual solo funciona para Mantenimiento y no toca datos de otras p
  assert.match(html,/jszip@3\.10\.1/);
 });
 
-test('Cinco gráficos de Excel no dibujan etiquetas superpuestas y conservan ejes y leyendas',()=>{
- const src={categories:"'Resumen'!$A$17:$A$18",
-  categoryValues:['Mantenimiento · cuotas','Extraordinarias · banco'],
-  values:[{name:'Monto (MXN)',ref:"'Resumen'!$B$17:$B$18",points:[59650,0]}]};
- const configs=[
-  {kind:'doughnut',title:'Cumplimiento',source:src},
-  {kind:'bar',title:'Ingresos',source:src,xTitle:'Monto (MXN)',yTitle:'Concepto'},
-  {kind:'bar',title:'Egresos',source:src,xTitle:'Monto (MXN)',yTitle:'Categoría'},
-  {kind:'stacked',title:'Calles',source:{...src,values:[
-   {name:'Pagadas',ref:src.values[0].ref,points:[10,8]},
-   {name:'Pendientes',ref:"'Resumen'!$C$17:$C$18",points:[2,5]}
-  ]},xTitle:'Viviendas',yTitle:'Calle'}
- ];
- for(let i=0;i<configs.length;i++){
-  const xml=graficar(configs[i],i+1);
-  assert.doesNotMatch(xml,/<c:dLbls>/,'Ningún dato ni nombre debe tapar el trazado');
-  assert.match(xml,/<c:legendPos val="b"\/>/,'Leyenda al pie del gráfico');
-  assert.match(xml,/<c:overlay val="0"\/>/);
-  assert.match(xml,/<c:f>\&apos;Resumen\&apos;!/,'Referencias editables');
-  if(configs[i].kind!=='doughnut'){
-   assert.match(xml,/<c:barDir val="bar"\/>/,'Monto y calles se grafican horizontalmente');
-   assert.match(xml,/<c:varyColors val="0"\/>/,'Un color por serie, no por categoría');
-   assert.match(xml,/<c:title>[\s\S]*?Monto \(MXN\)|<c:title>[\s\S]*?Viviendas/);
-  }
- }
- const bar=graficar(configs[1],7);
- assert.match(bar,/<c:legendPos val="b"\/>/);
- assert.match(bar,/<a:t>Concepto<\/a:t>/);
- assert.match(bar,/<a:t>Monto \(MXN\)<\/a:t>/);
- assert.doesNotMatch(bar,/<c:dPt>/,'La misma serie no debe tener colores distintos');
+test('Etiquetas del Excel: porcentajes limpios en dona, importes positivos externos en barras',()=>{
+ const source={categories:"'Resumen'!$A$17:$A$19",
+  categoryValues:['Mantenimiento · cuotas','Casa club','Sin ingresos'],
+  values:[{name:'Monto (MXN)',ref:"'Resumen'!$B$17:$B$19",points:[59650,400,0]}]};
+ const donut=graficar({kind:'doughnut',title:'Cumplimiento',source},1);
+ assert.match(donut,/<c:dLbls><c:numFmt formatCode="0%"/);
+ assert.match(donut,/<c:dLblPos val="bestFit"\/>/);
+ assert.match(donut,/<c:showPercent val="1"\/>/);
+ assert.match(donut,/<c:showVal val="0"\/>/);
+ assert.match(donut,/<c:showCatName val="0"\/>/);
+ assert.match(donut,/<c:showLeaderLines val="1"\/>/);
+ assert.match(donut,/<c:legendPos val="b"\/>/);
+ const income=graficar({kind:'bar',title:'Ingresos',source,
+   xTitle:'Monto (MXN)',yTitle:'Concepto'},2);
+ assert.match(income,/<c:dLblPos val="outEnd"\/>/);
+ assert.match(income,/numFmt formatCode="&quot;\$&quot;#,##0\.00"/);
+ assert.equal((income.match(/<c:dLbl><c:idx/g)||[]).length,2,
+  'Los montos $0 no crean etiquetas amontonadas en el origen');
+ assert.match(income,/<c:max val="80000"\/>/,
+  'El eje deja espacio para mostrar completo el importe máximo');
+ assert.match(income,/<c:showCatName val="0"\/>/);
+ assert.match(income,/<c:legendPos val="b"\/>/);
+ assert.match(income,/<a:t>Monto \(MXN\)<\/a:t>/);
+ assert.doesNotMatch(income,/<c:dPt>/,'Un color uniforme para una misma serie');
+ assert.match(income,/<c:f>\&apos;Resumen\&apos;!/,'Los gráficos siguen vinculados a Excel');
+ const outflow=graficar({kind:'bar',title:'Egresos',source,
+   xTitle:'Monto (MXN)',yTitle:'Categoría'},3);
+ assert.match(outflow,/<c:dLblPos val="outEnd"\/>/);
+ assert.match(outflow,/<c:legendPos val="b"\/>/);
+});
+
+test('Cumplimiento por calle rotula únicamente los segmentos que tienen espacio',()=>{
+ const source={categories:"'Resumen'!$D$24:$D$27",
+  categoryValues:['Jardines','Gardenias','Guadalajara','Atotonilco'],
+  values:[
+   {name:'Pagadas',ref:"'Resumen'!$E$24:$E$27",points:[65,28,1,1]},
+   {name:'Pendientes',ref:"'Resumen'!$F$24:$F$27",points:[18,4,0,0]}
+  ]};
+ const xml=graficar({kind:'stacked',title:'Cumplimiento por calle',
+  source,xTitle:'Viviendas',yTitle:'Calle'},4);
+ assert.match(xml,/<c:barDir val="bar"\/>/);
+ assert.match(xml,/<c:grouping val="stacked"\/>/);
+ assert.match(xml,/<c:dLblPos val="ctr"\/>/);
+ assert.match(xml,/formatCode="#,##0"/);
+ assert.match(xml,/<c:legendPos val="b"\/>/);
+ const labels=[...xml.matchAll(/<c:dLbl><c:idx val="(\d+)"/g)].map(m=>Number(m[1]));
+ assert.deepEqual(labels,[0,1,0,1],
+  'Solo Jardines y Gardenias tienen segmentos suficientemente grandes para un número');
+ assert.doesNotMatch(xml,/<c:dLblPos val="outEnd"\/>/,
+  'Las etiquetas de los segmentos apilados quedan centradas y no invaden al vecino');
+ assert.doesNotMatch(xml,/<c:showPercent val="1"\/>/);
 });
 
 test('Las zonas de gráficos en Resumen se amplían sin superponerse',()=>{
