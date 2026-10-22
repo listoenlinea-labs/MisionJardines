@@ -220,22 +220,65 @@
    resumenWs.getCell('A50').value='Saldo reportado';
    resumenWs.getCell('B50').value=info.indicadores.saldoDisponible;
    for(let n=47;n<=50;n++)resumenWs.getCell('B'+n).numFmt='"$"#,##0.00';
+   // Los valores visibles se mantienen fuera del XML de etiquetas ChartML:
+   // la leyenda (donas) y el eje de categorías (barras) leen fórmulas de
+   // Excel, de modo que editar importes/contadores refresca el texto.
+   const formatMoney=n=>new Intl.NumberFormat('es-MX',
+    {style:'currency',currency:'MXN',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0);
+   const letter=n=>{let value=n,result='';while(value>0){
+    value--;result=String.fromCharCode(65+value%26)+result;
+    value=Math.floor(value/26);
+   }return result;};
+   const prepararEtiquetas=(source,column,firstRow,labels,formulas)=>{
+    const excelColumn=letter(column);
+    labels.forEach((label,i)=>{
+     // ExcelJS persiste el resultado cacheado y conserva la fórmula
+     // para que el texto cambie cuando se edite el origen del gráfico.
+     resumenWs.getCell(firstRow+i,column).value={
+      formula:formulas[i],result:label
+     };
+    });
+    resumenWs.getColumn(column).width=24;
+    return {...source,
+     categories:"'Resumen'!$"+excelColumn+"$"+firstRow+":$"+excelColumn+"$"+(firstRow+labels.length-1),
+     categoryValues:labels};
+   };
+   const porcentaje=(value,total)=>total>0?(100*value/total).toFixed(1):'0.0';
+   const fullStatus=info.status.reduce((sum,row)=>sum+row[1],0);
+   const statusLabels=info.status.map(row=>row[0]+' · '+porcentaje(row[1],fullStatus)+'%');
+   const estadoEtiquetas=prepararEtiquetas(estado,32,17,statusLabels,
+    info.status.map((_,i)=>'A'+(17+i)+'&" · "&TEXT(IFERROR(B'+(17+i)+
+     '/SUM($B$17:$B$18),0),"0.0%")'));
+   const fullAnnual=info.anual.reduce((sum,row)=>sum+row[1],0);
+   const annualLabels=info.anual.map(row=>row[0]+' · '+porcentaje(row[1],fullAnnual)+'%');
+   const anualEtiquetas=prepararEtiquetas(anual,33,17,annualLabels,
+    info.anual.map((_,i)=>'D'+(17+i)+'&" · "&TEXT(IFERROR(E'+(17+i)+
+     '/SUM($E$17:$E$18),0),"0.0%")'));
+   const incomeLabels=info.ingresos.map(row=>row[0]+' · '+formatMoney(row[1]));
+   const ingresoEtiquetas=prepararEtiquetas(ingresos,34,24,incomeLabels,
+    info.ingresos.map((_,i)=>'A'+(24+i)+'&" · "&TEXT(B'+(24+i)+',"$#,##0.00")'));
+   const streetLabels=info.calles.map(row=>row[0]+' ('+row[1]+'/'+row[2]+')');
+   const callesEtiquetas=prepararEtiquetas(calles,35,24,streetLabels,
+    info.calles.map((_,i)=>'D'+(24+i)+'&" ("&E'+(24+i)+'&"/"&F'+(24+i)+'&")"'));
+   const expenseLabels=egresosOrdenados.map(row=>row[0]+' · '+formatMoney(row[1]));
+   const egresosEtiquetas=prepararEtiquetas(egresos,36,39,expenseLabels,
+    egresosOrdenados.map((_,i)=>'A'+(39+i)+'&" · "&TEXT(B'+(39+i)+',"$#,##0.00")'));
    // Gráficas nativas editables con espacio para título, ejes y leyenda
    // inferior. Datos sin etiquetas sobre las series para evitar solapamiento.
    // Coordenadas 0-based de la zona de dibujo, separadas sin superponerse.
    chartSpecs=[
     {title:'Cumplimiento de mantenimiento',kind:'doughnut',
-     source:estado,from:[7,2],to:[18,21],colors:['76B79B','E9B38D']},
+     source:estadoEtiquetas,from:[7,2],to:[18,21],colors:['76B79B','E9B38D']},
     {title:'Anualidades entre las viviendas pagadas',kind:'doughnut',
-     source:anual,from:[19,2],to:[30,21],colors:['8CA9D7','76B79B']},
+     source:anualEtiquetas,from:[19,2],to:[30,21],colors:['8CA9D7','76B79B']},
     {title:'Ingresos por concepto (sin duplicar)',kind:'bar',
-     source:ingresos,from:[7,24],to:[18,50],xTitle:'Monto (MXN)',yTitle:'Concepto',
+     source:ingresoEtiquetas,from:[7,24],to:[18,50],xTitle:'Monto (MXN)',yTitle:'Concepto',
      colors:['76B79B']},
     {title:'Cumplimiento por calle',kind:'stacked',
-     source:calles,from:[19,24],to:[30,50],xTitle:'Viviendas',yTitle:'Calle',
+     source:callesEtiquetas,from:[19,24],to:[30,50],xTitle:'Viviendas',yTitle:'Calle',
      colors:['76B79B','E9B38D']},
     {title:'Egresos por categoría',kind:'bar',
-     source:egresos,from:[7,53],to:[20,81],xTitle:'Monto (MXN)',yTitle:'Categoría',
+     source:egresosEtiquetas,from:[7,53],to:[20,81],xTitle:'Monto (MXN)',yTitle:'Categoría',
      colors:['AE9AC9']}
    ];
   }
