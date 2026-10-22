@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {prepararReporte}=require('../../docs/assets/js/analisis-excel.js');
+const {prepararReporte,etiquetaCumplimientoCalle}=require('../../docs/assets/js/analisis-excel.js');
 const {graficar,insertarGraficas}=require('../../docs/assets/js/analisis-excel-charts.js');
 
 const casa=(id,estado,ultimo=null,extra={})=>({
@@ -143,7 +143,7 @@ test('Porcentajes, montos y cantidades se presentan en fuentes de categorías ca
  assert.match(js,/formatMoney/);
  assert.match(js,/streetLabels/);
  assert.match(html,/analisis-excel-charts\.js\?v=20261022-recuperar-graficas/);
- assert.match(html,/analisis-excel\.js\?v=20261022-recuperar-graficas/);
+ assert.match(html,/analisis-excel\.js\?v=20261022-calle-pagadas-total/);
 });
 test('Las zonas de gráficos en Resumen se amplían sin superponerse',()=>{
  const js=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel.js'),'utf8');
@@ -185,4 +185,20 @@ test('Regresion ChartML: porcentajes y montos sin etiquetas incompatibles',()=>{
   assert.match(xml,/<c:numRef><c:f>\&apos;Resumen\&apos;!/);
   assert.doesNotMatch(xml,/<c:dLbl|<a:blip|<xdr:pic/);
  });
+});
+
+
+test('Cumplimiento por calle muestra pagadas/total y no pagadas/pendientes',()=>{
+ assert.equal(etiquetaCumplimientoCalle(['Rosas',37,5]),'Rosas (37/42)');
+ assert.equal(etiquetaCumplimientoCalle(['Jardines',65,18]),'Jardines (65/83)');
+ assert.equal(etiquetaCumplimientoCalle(['Magnolias',29,3]),'Magnolias (29/32)');
+ assert.equal(etiquetaCumplimientoCalle(['Valle de México',0,1]),'Valle de México (0/1)');
+ assert.equal(etiquetaCumplimientoCalle(['Atotonilco',1,0]),'Atotonilco (1/1)');
+});
+test('Etiquetas de calles de Excel se recalculan usando pagadas + pendientes',()=>{
+ const js=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-excel.js'),'utf8');
+ assert.match(js,/const streetLabels=info\.calles\.map\(etiquetaCumplimientoCalle\)/);
+ assert.match(js,/SUM\(E/);
+ assert.match(js,/:F/);
+ assert.doesNotMatch(js,/streetLabels=info\.calles\.map\(row=>row\[0\]\+' \('\+row\[1\]\+'\/'\+row\[2\]/);
 });
