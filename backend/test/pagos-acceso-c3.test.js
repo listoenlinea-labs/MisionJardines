@@ -37,6 +37,7 @@ function setup(t) {
     }
     t.mock.method(models.Casa, 'findByPk', async () => ({ id: 7 }));
     t.mock.method(models.Cuota, 'findAll', async options => select(cuotas,options));
+    t.mock.method(models.Cuota, 'findOne', async options => select(cuotas,options)[0] || null);
     t.mock.method(models.PagoReportado, 'findAll', async options => select(pagos,options));
     // Legacy bases must never influence payment calculation or delivery.
     t.mock.method(service.Vigencia,'findByPk',async()=>assert.fail('do not read legacy cutoff'));
@@ -214,4 +215,67 @@ test('two competing workers apply two queued payments once and in order', async 
     ]);
     assert.deepEqual(c.writes, [{ card: '123', end: '2026-10-10' }, { card: '123', end: '2026-12-10' }]);
     assert.ok(c.events.every(e => e.estado === 'COMPLETADO'));
+});
+
+test('anual 2026: dos TAGs con fechas anteriores y posteriores quedan en 2027-01-10 sin cambiar permisos',async t=>{
+    const c=setup(t);
+    c.addTag('123','2028-07-10');
+    c.addTag('456','2026-10-10');
+    const referencia='MJMAN:2027-01-10:84b8ed5c-317c-44ba-90da-b1f889045f11';
+    c.cuotas.push({id:11,casaId:7,anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',
+        montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS_ANUAL'});
+    c.cuotas.push({id:12,casaId:7,anio:2026,mes:'DICIEMBRE',estatusPago:'PAGADO',
+        montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS_ANUAL'});
+    const result=await service.registrarLoteManual(7,2,c.tx,{
+        referencia,origenId:11,total:600,recargo:0,meses:2
+    });
+    assert.equal(result.meses,2);
+    await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.deepEqual(c.writes,[{card:'123',end:'2027-01-10'},{card:'456',end:'2027-01-10'}]);
+    assert.equal(c.events[0].estado,'COMPLETADO');
+    assert.deepEqual(c.intents.map(i=>i.fechaAntes),['2028-07-10','2026-10-10']);
+    assert.ok(c.intents.every(i=>i.fechaDespues==='2027-01-10'&&i.estado==='COMPLETADO'));
+    assert.ok(c.tags.every(i=>i.fechaFin==='2027-01-10'&&i.bloqueado===true));
+    assert.ok([...c.physical.values()].every(i=>i.autorizaciones==='[]'));
+    await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.equal(c.writes.length,2,'no se aplica una segunda vez');
+});
+test('fuera de cierre anual, un TAG posterior conserva su vigencia y bloquea la reducción',async t=>{
+    const c=setup(t);c.addTag('123','2028-07-10');
+    const referencia='MJMAN:2027-01-10:84b8ed5c-317c-44ba-90da-b1f889045f12';
+    c.cuotas.push({id:21,casaId:7,anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',
+        montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS'});
+    c.cuotas.push({id:22,casaId:7,anio:2026,mes:'DICIEMBRE',estatusPago:'PAGADO',
+        montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS'});
+    await service.registrarLoteManual(7,2,c.tx,{referencia,origenId:21,total:600,recargo:0,meses:2});
+    await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.equal(c.events[0].estado,'CONFLICTO');
+    assert.equal(c.physical.get('123').fechaFinal,'2028-07-10');
+    assert.deepEqual(c.writes,[]);
+});
+test('etiquetar noviembre como anual sin cuota diciembre confirmada NO permite recortar el C3',async t=>{
+    const c=setup(t);c.addTag('123','2028-07-10');
+    const referencia='MJMAN:2027-01-10:84b8ed5c-317c-44ba-90da-b1f889045f13';
+    c.cuotas.push({id:31,casaId:7,anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',
+        montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS_ANUAL'});
+    await service.registrarLoteManual(7,2,c.tx,{referencia,origenId:31,total:300,recargo:0,meses:1});
+    await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.equal(c.events[0].estado,'CONFLICTO');
+    assert.deepEqual(c.writes,[]);
+});
+test('si cambia físicamente un TAG durante reintento anual, conserva CONFLICTO en vez de sobrescribirlo',async t=>{
+    const c=setup(t);c.addTag('123','2028-07-10');
+    const referencia='MJMAN:2027-01-10:84b8ed5c-317c-44ba-90da-b1f889045f14';
+    c.cuotas.push({id:41,casaId:7,anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',
+        montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS_ANUAL'});
+    c.cuotas.push({id:42,casaId:7,anio:2026,mes:'DICIEMBRE',estatusPago:'PAGADO',
+        montoPagado:300,referencia,origenImportacion:'MANUAL_ANALISIS_ANUAL'});
+    await service.registrarLoteManual(7,2,c.tx,{referencia,origenId:41,total:600,recargo:0,meses:2});
+    c.failTCP('123');await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.equal(c.events[0].estado,'ERROR');
+    c.physical.get('123').fechaFinal='2028-09-10';
+    c.failTCP(null);c.events[0].proximoIntento=null;
+    await worker.sincronizarCasa(7,{now,dryRun:false});
+    assert.equal(c.events[0].estado,'CONFLICTO');
+    assert.deepEqual(c.writes,[]);
 });
