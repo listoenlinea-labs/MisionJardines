@@ -42,8 +42,18 @@
    ['Ingresos adicionales',monto(data.ingresosAdicionales)]
   ];
   const egresos=Object.entries(data.egresosCategorias||{}).map(([nombre,valor])=>[nombre,monto(valor)]);
-  const calles=(data.calles||[]).map(s=>[String(s.calle||'Sin calle'),
-   Number(s.pagadas||0),Number(s.pendientes||0)]);
+  if(!egresos.length)egresos.push(['Sin egresos',0]);
+  // Los grupos se derivan del padrón si el endpoint no incluye un desglose.
+  // Así las gráficas siempre tienen un origen completo y no exportan vacío.
+  const agrupadas=new Map();
+  for(const h of viviendas){
+   const calle=String(h.calle||'Sin calle');
+   if(!agrupadas.has(calle))agrupadas.set(calle,{pagadas:0,pendientes:0});
+   agrupadas.get(calle)[pagoCompleto(h)?'pagadas':'pendientes']++;
+  }
+  const calles=[...agrupadas].sort(([a],[b])=>a.localeCompare(b,'es-MX',{numeric:true}))
+   .map(([calle,conteo])=>[calle,conteo.pagadas,conteo.pendientes]);
+  if(!calles.length)calles.push(['Sin viviendas',0,0]);
   return {
    status:[['Pagado completo',completas.length],['Sin pago completo',pendientes.length]],
    anual:[['Pago anual',anuales.length],['Pago mensual',completas.length-anuales.length]],
