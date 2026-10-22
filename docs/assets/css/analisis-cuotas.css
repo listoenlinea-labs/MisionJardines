@@ -537,3 +537,46 @@ button.finance-export-card:disabled{opacity:.65;cursor:wait}
  .house-sort-mobile select{width:100%;min-height:42px;padding:8px;border:1px solid #e2d8ea;border-radius:9px;background:#fff;font:inherit}
  .house-sort-mobile button{min-height:42px}
 }
+
+/* Orden por registro de pago: misma fila que los filtros existentes en escritorio.
+   En pantallas estrechas el grupo se reorganiza sin desbordar el viewport. */
+@media(min-width:701px){
+  body.page-analisis .filters.residences-filter,
+  body.page-analisis.mj-shared-sidebar-enabled .filters.residences-filter{
+    display:grid!important;
+    grid-template-columns:minmax(125px,1.45fr) minmax(105px,.95fr)
+      minmax(100px,.95fr) minmax(200px,1.55fr) minmax(160px,1.25fr) minmax(80px,auto)!important;
+    gap:8px!important;align-items:end;
+    min-width:0;max-width:100%;overflow-x:auto;
+  }
+  body.page-analisis .residences-filter>label:first-child{
+    grid-column:auto!important;
+  }
+}
+.residences-filter .finance-register-order{min-width:0!important;display:block}
+.residences-filter .finance-register-order select{width:100%;min-width:0;font-size:12px}
+@media(max-width:700px){
+  body.page-analisis .filters.residences-filter,
+  body.page-analisis.mj-shared-sidebar-enabled .filters.residences-filter{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;
+  }
+  body.page-analisis .residences-filter>*,
+  body.page-analisis.mj-shared-sidebar-enabled .residences-filter>*{grid-column:auto!important;min-width:0!important}
+  body.page-analisis .residences-filter>label:first-child,
+  body.page-analisis .residences-filter .paid-through-filter{grid-column:1/-1!important}
+  body.page-analisis .residences-filter .finance-register-order{grid-column:1!important}
+  body.page-analisis .residences-filter #financeClear{grid-column:2!important;width:100%;min-height:43px}
+}
+@media(max-width:390px){
+  body.page-analisis .residences-filter .finance-register-order{grid-column:1/-1!important}
+  body.page-analisis .residences-filter #financeClear{grid-column:1/-1!important}
+}
+.houses-scroll th .house-column-sort [data-sort-indicator]{
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;
+  height:22px;border-radius:7px;background:rgba(128,88,166,.10);
+  color:#754995;font-size:15px;line-height:1;transition:background .15s ease,color .15s ease;
+}
+.houses-scroll th[aria-sort="ascending"] .house-column-sort [data-sort-indicator],
+.houses-scroll th[aria-sort="descending"] .house-column-sort [data-sort-indicator]{
+  background:#dfc9f4;color:#60378a;
+}
