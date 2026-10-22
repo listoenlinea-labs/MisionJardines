@@ -8,7 +8,7 @@ const {estadoCargos}=require('../services/cargos-extraordinarios.service');
 const {randomUUID}=require('crypto');
 const PagoAcceso=require('../models/PagoAccesoC3');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
-const {prepararDesdeHistorial,generarReferencia}=require('../services/pago-manual-analisis.service');
+const {prepararDesdeHistorial,generarReferencia,validarPagoAnual}=require('../services/pago-manual-analisis.service');
 const {clasificarCuotaParaPago}=require('../services/cuota-pendiente-historica.service');
 const {calcularAdeudoVivienda}=require('../services/adeudo-vivienda-analisis.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
@@ -106,11 +106,7 @@ async function registrarPagoVivienda(req,res){
     const formaPago=String(req.body?.formaPago||'EFECTIVO').toUpperCase();
     if(!['EFECTIVO','TRANSFERENCIA','DEPOSITO','OTRO'].includes(formaPago))
       throw fail(400,'Selecciona una forma de pago válida');
-    const pagoAnual=req.body?.pagoAnual===true;
-    if(req.body?.pagoAnual!==undefined&&typeof req.body.pagoAnual!=='boolean')
-      throw fail(400,'Indicador de pago anual inválido');
-    if(pagoAnual&&(Number(req.body?.anio)!==Number(fechaMexico().slice(0,4))||Number(req.body?.mes)!==12))
-      throw fail(400,'Pago anual solo puede liquidar hasta diciembre del año actual');
+    const pagoAnual=validarPagoAnual(req.body,{anioActual:Number(fechaMexico().slice(0,4))});
     const confirmarHistorico=req.body?.confirmarHistorico===true;
     const confirmarConciliacionTarifa=req.body?.confirmarConciliacionTarifa===true;
     const mesesEsperados=Number(req.body?.mesesEsperados);
