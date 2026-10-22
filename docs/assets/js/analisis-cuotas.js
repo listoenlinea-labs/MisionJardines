@@ -65,7 +65,7 @@
  // El icono es decorativo: toda la tarjeta sigue siendo el mismo botón de Excel.
  const financeDownloadIcon='<span class="finance-export-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg></span>';
  function downloadableFinancialCard(label,value,tipo){
-  return '<button type="button" class="metric finance-export-card" data-finance-export="'+tipo+'" title="Descargar reporte completo en Excel" aria-label="Descargar Excel de '+esc(label)+'"><small>'+esc(label)+financeDownloadIcon+'</small><strong>'+esc(value)+'</strong></button>';
+  return '<button type="button" class="metric finance-export-card" data-finance-export="'+tipo+'" title="Descargar reporte completo en Excel" aria-label="Descargar Excel de '+esc(label)+'"><small>'+financeDownloadIcon+esc(label)+'</small><strong>'+esc(value)+'</strong></button>';
  }
  function render(){
   if(!data)return;
