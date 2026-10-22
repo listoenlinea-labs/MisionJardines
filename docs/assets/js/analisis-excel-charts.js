@@ -125,9 +125,11 @@
   const link='<Relationship Id="'+relId+'" Type="'+chartRel+
    '/drawing" Target="../drawings/'+drawingName+'"/>';
   if(rels.includes('</Relationships>'))rels=rels.replace('</Relationships>',link+'</Relationships>');
-  else if(/<Relationships\\b[^>]*\\/>/.test(rels))
-   rels=rels.replace(/<Relationships(\\b[^>]*)\\/>/,'<Relationships$1>'+link+'</Relationships>');
-  else throw Error('Relaciones del libro con formato inesperado');
+  else {
+   const open=rels.indexOf('<Relationships '),end=rels.indexOf('/>',open);
+   if(open<0||end<0)throw Error('Relaciones del libro con formato inesperado');
+   rels=rels.slice(0,end)+'>'+link+'</Relationships>'+rels.slice(end+2);
+  }
   sheetXml=sheetXml.replace('</worksheet>',
    '<drawing xmlns:r="'+chartRel+'" r:id="'+relId+'"/></worksheet>');
   zip.file(sheet,sheetXml);zip.file(sheetRelsPath,rels);
