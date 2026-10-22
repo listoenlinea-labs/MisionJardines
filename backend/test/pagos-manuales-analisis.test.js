@@ -82,12 +82,11 @@ test('El modal se cierra solo si el POST confirma el pago; error de refresco no 
  const flow=ui.slice(start,end);
  const request=flow.indexOf("await request('/pagos-vivienda',payload)");
  const close=flow.indexOf('closeHousePayment();',request);
- const refresh=flow.indexOf('await load();',close);
+ const refresh=flow.indexOf('const refreshed=await load();',close);
  assert.ok(request>=0&&request<close&&close<refresh,
    'Cerrar modal después de POST exitoso y antes de recargar');
- assert.match(flow,/notice\(message,'success'\)/);
- assert.match(flow,/catch\(refreshError\)/);
- assert.match(flow,/El pago sí quedó registrado/);
+ assert.match(flow,/notice\(message\+\(historialConfirmado/);
+ assert.match(flow,/El pago fue confirmado, pero no se pudo refrescar/);
  assert.match(flow,/catch\(error\)\{[\s\S]*?housePaymentStatus/);
  assert.equal((flow.match(/request\('\/pagos-vivienda',payload\)/g)||[]).length,1);
 });
