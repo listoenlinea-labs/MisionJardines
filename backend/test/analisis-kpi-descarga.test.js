@@ -15,7 +15,7 @@ test('cada una de las cuatro tarjetas muestra un icono de descarga decorativo si
   const html=renderCard('Prueba',231,tipo);
   assert.match(html,new RegExp('data-finance-export="'+tipo+'"'));
   assert.match(html,/<button type="button"[^>]*class="metric finance-export-card"/);
-  assert.match(html,/<small>Prueba<span class="finance-export-icon" aria-hidden="true"><svg/);
+  assert.match(html,/<small><span class="finance-export-icon" aria-hidden="true"><svg[\s\S]*?<\/svg><\/span>Prueba<\/small>/);
   assert.match(html,/<strong>231<\/strong><\/button>/);
   assert.match(html,/aria-label="Descargar Excel de Prueba"/);
  }
@@ -27,8 +27,10 @@ test('el indicador usa estilo discreto y versiones nuevas para evitar caché',()
  const css=read('docs/assets/css/analisis-cuotas.css');
  const html=read('docs/analisis-cuotas.html');
  assert.match(css,/\.finance-export-icon\{/);
+ assert.match(css,/button\.finance-export-card small\{display:flex;align-items:center;gap:6px/);
+ assert.match(css,/flex:0 0 auto/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(css,/button\.finance-export-card:focus-visible/);
- assert.match(html,/analisis-cuotas\.css\?v=20261022-kpi-descarga-suave/);
- assert.match(html,/analisis-cuotas\.js\?v=20261022-kpi-descarga-suave/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261022-kpi-icono-izquierda/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261022-kpi-icono-izquierda/);
 });
