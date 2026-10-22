@@ -154,7 +154,7 @@
     const longest=Math.max(String(cabeceras[index]||'').length,
      ...filas.map(row=>String(row[index]??'').length));
     column.width=Math.min(43,Math.max(14,longest+2));
-    if(/\\(MXN\\)|^Monto/.test(cabeceras[index]))column.numFmt='"$"#,##0.00;[Red]("$"#,##0.00)';
+    if(/\(MXN\)|^Monto/.test(cabeceras[index]))column.numFmt='"$"#,##0.00;[Red]("$"#,##0.00)';
    });
    ws.pageSetup={fitToPage:true,fitToWidth:1,fitToHeight:0,orientation:'landscape'};
    ws.getColumn(4).width=Math.max(ws.getColumn(4).width||14,Math.min(36,ws.getColumn(4).width||14));
