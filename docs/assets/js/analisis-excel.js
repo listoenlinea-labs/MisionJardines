@@ -25,6 +25,9 @@
  const pagoCompleto=h=>String(h.estatus||'').toUpperCase()==='PAGADO';
  const anualConfirmado=h=>pagoCompleto(h)&&Boolean(h.ultimoMesPagado?.pagoAnual);
  const monto=n=>dinero(n);
+ // Etiqueta pagadas / total del padrón de cada calle, no pagadas / pendientes.
+ const etiquetaCumplimientoCalle=([calle,pagadas,pendientes])=>
+  String(calle)+' ('+pagadas+'/'+(pagadas+pendientes)+')';
  function prepararDashboard(data,viviendas){
   const completas=viviendas.filter(pagoCompleto);
   const pendientes=viviendas.filter(h=>!pagoCompleto(h));
@@ -260,9 +263,9 @@
    const incomeLabels=info.ingresos.map(row=>row[0]+' · '+formatMoney(row[1]));
    const ingresoEtiquetas=prepararEtiquetas(ingresos,34,24,incomeLabels,
     info.ingresos.map((_,i)=>'A'+(24+i)+'&" · "&TEXT(B'+(24+i)+',"$#,##0.00")'));
-   const streetLabels=info.calles.map(row=>row[0]+' ('+row[1]+'/'+row[2]+')');
+   const streetLabels=info.calles.map(etiquetaCumplimientoCalle);
    const callesEtiquetas=prepararEtiquetas(calles,35,24,streetLabels,
-    info.calles.map((_,i)=>'D'+(24+i)+'&" ("&E'+(24+i)+'&"/"&F'+(24+i)+'&")"'));
+    info.calles.map((_,i)=>'D'+(24+i)+'&" ("&E'+(24+i)+'&"/"&SUM(E'+(24+i)+':F'+(24+i)+')&")"'));
    const expenseLabels=egresosOrdenados.map(row=>row[0]+' · '+formatMoney(row[1]));
    const egresosEtiquetas=prepararEtiquetas(egresos,36,39,expenseLabels,
     egresosOrdenados.map((_,i)=>'A'+(39+i)+'&" · "&TEXT(B'+(39+i)+',"$#,##0.00")'));
@@ -299,7 +302,7 @@
   setTimeout(()=>URL.revokeObjectURL(url),20000);
   return reporte;
  }
- const api={prepararReporte,descargarReporte};
+ const api={prepararReporte,descargarReporte,etiquetaCumplimientoCalle};
  if(typeof module==='object'&&module.exports)module.exports=api;
  else root.MJFinanceExport=api;
 })(typeof window==='undefined'?globalThis:window);
