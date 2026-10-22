@@ -62,7 +62,11 @@
   return '<div class="bar-row"><strong>'+esc(name)+'</strong><div class="track"><div class="fill'+(cost?' cost':'')+'" style="width:'+pct.toFixed(2)+'%"></div></div><b>'+esc(suffix||pct.toFixed(0)+'%')+'</b></div>';
  }
  function financialCard(label,value){return '<div class="metric"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>';}
- function downloadableFinancialCard(label,value,tipo){return '<button type="button" class="metric finance-export-card" data-finance-export="'+tipo+'" title="Descargar reporte completo en Excel" aria-label="Descargar Excel de '+esc(label)+'"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></button>';}
+ // El icono es decorativo: toda la tarjeta sigue siendo el mismo botón de Excel.
+ const financeDownloadIcon='<span class="finance-export-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg></span>';
+ function downloadableFinancialCard(label,value,tipo){
+  return '<button type="button" class="metric finance-export-card" data-finance-export="'+tipo+'" title="Descargar reporte completo en Excel" aria-label="Descargar Excel de '+esc(label)+'"><small>'+esc(label)+financeDownloadIcon+'</small><strong>'+esc(value)+'</strong></button>';
+ }
  function render(){
   if(!data)return;
   const houses=data.casas||0;
