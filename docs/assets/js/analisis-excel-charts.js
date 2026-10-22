@@ -96,7 +96,7 @@
    '</xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>';
  }
  function uniqueRel(existing){
-  const ids=[...existing.matchAll(/\\bId="rId(\\d+)"/g)].map(x=>Number(x[1]));
+  const ids=[...existing.matchAll(/\bId="rId(\d+)"/g)].map(x=>Number(x[1]));
   return 'rId'+(Math.max(0,...ids)+1);
  }
  async function insertarGraficas(buffer,specs,JSZip){
@@ -108,7 +108,7 @@
   };
   const sheet='xl/worksheets/sheet1.xml';
   let sheetXml=await get(sheet);
-  if(/<drawing(?:\\s|>)/.test(sheetXml))throw Error('Esta hoja ya tiene dibujos; no se pueden sustituir.');
+  if(/<drawing(?:\s|>)/.test(sheetXml))throw Error('Esta hoja ya tiene dibujos; no se pueden sustituir.');
   const sheetRelsPath='xl/worksheets/_rels/sheet1.xml.rels';
   let rels=zip.file(sheetRelsPath)?await get(sheetRelsPath):
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
