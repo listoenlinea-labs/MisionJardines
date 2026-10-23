@@ -121,6 +121,12 @@ async function asegurarEsquemaPagos() {
         allowNull: true
     });
 
+    await ensureColumn(queryInterface, table, current, 'correo_bancario_hash', {
+        type: DataTypes.STRING(64), allowNull: true
+    });
+    await ensureIndex(queryInterface, table, 'uq_pago_correo_bancario_hash',
+        ['correo_bancario_hash'], true);
+
     await ensureIndex(
         queryInterface,
         table,

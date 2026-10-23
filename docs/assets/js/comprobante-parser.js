@@ -90,13 +90,39 @@
     }
     return type === 'date' ? { date: '', time: '' } : '';
   }
+  // Un identificador de rastreo NO es un folio ni una referencia de concepto.
+  // Sólo se lee cuando la etiqueta bancaria aparece en cualquier región del OCR.
+  function claveRastreo(text) {
+    const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(x=>normal(x).trim()).filter(Boolean);
+    const results = new Set();
+    for (let i=0;i<lines.length;i++) {
+      const label=lines[i].match(/\bCLAVE\s*(?:DE\s*)?RASTRE[O0]\b/);
+      if (!label) continue;
+      const parts=[lines[i].slice(label.index+label[0].length).replace(/^\s*[:#=.-]\s*/, '').trim()];
+      for (let j=i+1;j<Math.min(lines.length,i+4);j++) {
+        const line=lines[j];
+        if (/\b(?:CONCEPTO|REFERENCIA|FOLIO|TIPO\s+DE|COMISION|FECHA|MONTO|CUENTA|OPERACION|VERIFICA|CONSULTA|BENEFICIARIO|ORIGEN|DESTINO)\b/.test(line)) break;
+        if (!/^[A-Z0-9-]{2,90}$/.test(line)) break;
+        parts.push(line);
+      }
+      const tokens=parts.filter(Boolean);
+      // La etiqueta suele estar en una línea y el valor en la siguiente.
+      // Evitar mezclar textos ajenos u otros conceptos a la clave.
+      const first=tokens[0]?.replace(/[^A-Z0-9]/g,'')||'';
+      if (!/^[A-Z0-9]{12,90}$/.test(first)||!/[A-Z]/.test(first)||!/[0-9]/.test(first)) continue;
+      const extra=tokens.slice(1).filter(x=>/^[A-Z0-9-]{2,12}$/.test(x)).map(x=>x.replace(/-/g,'')).join('');
+      const candidate=(first+extra).slice(0,100);
+      if (candidate.length<=90) results.add(candidate);
+    }
+    return results.size===1 ? [...results][0] : '';
+  }
   function extract(text) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(s => s.trim()).filter(Boolean);
     // Do not use "Referencia", "Concepto" or "Clave de rastreo" if a folio exists.
     const folio = valueNear(lines, [/\bFOLIO\s+(?:DE\s+)?(?:OPERACION|TRANSACCION|TRANSFERENCIA)\b/, /\bNUMERO\s+DE\s+OPERACION\b/, /\bFOLIO\b/], 'folio');
     const amount = montoCerca(lines, [/\bMONTO\s+(?:TRANSFERIDO|PAGADO|ENVIADO)\b/, /\bIMPORTE\s+(?:TRANSFERIDO|PAGADO)\b/, /\b(?:MONTO|IMPORTE|TOTAL)\b/]);
     const when = valueNear(lines, [/\bFECHA\s+(?:DE\s+)?(?:OPERACION|TRANSFERENCIA|PAGO)\b/, /\bFECHA\b/], 'date');
-    return { folio, amount, date: when.date, time: when.time };
+    return { folio, claveRastreo: claveRastreo(text), amount, date: when.date, time: when.time };
   }
   function verifyDestination(text, owner, suffix) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(x => x.trim()).filter(Boolean);
@@ -128,5 +154,5 @@
         : 'No se encontró la terminación de cuenta ' + last4 + ' junto al beneficiario.'
     };
   }
-  return { extract, verifyDestination, fecha, hora, monto };
+  return { extract, claveRastreo, verifyDestination, fecha, hora, monto };
 });

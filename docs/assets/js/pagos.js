@@ -102,7 +102,7 @@
       return {month:'',year:'',label:'Período no especificado'};
     }
     function receiptHtml(p){
-      const period=receiptPeriod(p),status=({PENDIENTE_VALIDACION:'Pendiente de validación',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus||'';
+      const period=receiptPeriod(p),status=({PENDIENTE_VALIDACION:'En revisión',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus||'';
       return '<article class="receipt-item"><div class="receipt-main"><strong>'+esc(p.reciboFolio||p.folioReporte||'Recibo')+
         '</strong><p><b class="receipt-period-label">'+esc(period.label)+'</b><br>'+esc(p.concepto||'Pago registrado')+'<br>'+
         esc((p.casa?.calleCorrecta || p.calleSnapshot))+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
@@ -321,11 +321,11 @@
         }
         const extracted = MJComprobante.extract(ocrText);
         // Never fill another payment's data; do not invent a date/hour if OCR misses it.
-        $('operationFolio').value = extracted.folio || '';
+        $('operationFolio').value = extracted.claveRastreo || extracted.folio || '';
         $('amount').value = extracted.amount || '';
         $('operationDate').value = extracted.date || '';
         $('operationTime').value = extracted.time || '';
-        const missing = !extracted.folio || !extracted.date || !extracted.time || !extracted.amount;
+        const missing = !(extracted.claveRastreo || extracted.folio) || !extracted.date || !extracted.time || !extracted.amount;
         if (missing && !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role())) {
           $('ocrState').textContent = 'Lectura incompleta. Vuelve a leer o adjunta un comprobante más claro.';
           setDestinationStatus('No se pudieron leer todos los datos bancarios. Vuelve a leer el comprobante o solicita ayuda a Administración.', 'invalid');
@@ -399,7 +399,7 @@
       if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a leer el comprobante.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
-    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras()]); if (d.data?.id && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
+    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras()]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
     document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
       const value = $(btn.dataset.copy).textContent.trim();
@@ -443,6 +443,19 @@
 
       // Estas consultas no deben impedir que la vivienda y la cuenta se pinten.
       await Promise.allSettled([loadExtras(), loadReceipts(), loadValidity(), loadAdministration(),loadDebts()]);
+      // El recibo reportado ya está en "En revisión". Refrescar silenciosamente
+      // mientras haya pendientes, para reflejar el resultado del verificador.
+      setInterval(async()=>{
+        if(document.hidden || !receiptItems.some(p=>p.estatus==='PENDIENTE_VALIDACION'))return;
+        try{
+          const anteriores=new Map(receiptItems.map(p=>[Number(p.id),p.estatus]));
+          await loadReceipts();
+          if(receiptItems.some(p=>anteriores.get(Number(p.id))==='PENDIENTE_VALIDACION'&&p.estatus==='VALIDADO')){
+            toast('Se confirmó un depósito. Tu recibo ya aparece como Validado.');
+            void loadValidity();void loadDebts();
+          }
+        }catch(error){console.warn('No se pudo actualizar el estado de recibos:',error.message)}
+      },15000);
       const requested=new URLSearchParams(location.search).get('tab');
       setTab(['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(requested)?requested:'MANTENIMIENTO');
     }

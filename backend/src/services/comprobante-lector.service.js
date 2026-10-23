@@ -57,12 +57,13 @@ async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacio
 }
 
 function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos = false) {
-  if (exigirCampos && ['folio', 'date', 'time', 'amount'].some(field => !extraido[field])) {
+  if (exigirCampos && (!(extraido.claveRastreo || extraido.folio) || ['date', 'time', 'amount'].some(field => !extraido[field]))) {
     throw Object.assign(new Error('No se pudieron leer todos los datos bancarios del comprobante. Adjunta una imagen más clara o solicita ayuda a Administración. No se registró el pago.'), { status: 422 });
   }
   // Check bank-labelled data when detected, not untrusted OCR text supplied by the browser.
   const same = (provided, detected) => !detected || String(provided).trim().toUpperCase() === String(detected).trim().toUpperCase();
-  if (!same(folioOperacion, extraido.folio)) throw Object.assign(new Error('El folio no coincide con Folio de operación del comprobante.'), { status: 422 });
+  if (extraido.claveRastreo && !same(folioOperacion, extraido.claveRastreo)) throw Object.assign(new Error('La clave de rastreo no coincide con la leída en el comprobante.'), { status: 422 });
+  if (!extraido.claveRastreo && !same(folioOperacion, extraido.folio)) throw Object.assign(new Error('El folio no coincide con Folio de operación del comprobante.'), { status: 422 });
   if (!same(fechaOperacion, extraido.date)) throw Object.assign(new Error('La fecha no coincide con Fecha de operación del comprobante.'), { status: 422 });
   if (extraido.time && String(horaOperacion).slice(0, 5) !== extraido.time.slice(0, 5)) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
   if (exigirCampos && (String(horaOperacion).length === 5 ? horaOperacion + ':00' : String(horaOperacion)) !== extraido.time) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
