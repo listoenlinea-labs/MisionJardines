@@ -64,7 +64,7 @@ test('lector del buzón de correo: mensaje plano y mensaje codificado en base64 
   'Subject: Notificación Banco Azteca',
   'Date: Thu, 22 Oct 2026 12:49:00 -0600',
   'Message-ID: <bank-abc@example>',
-  'Authentication-Results: mx.google.com; dkim=pass header.i=@azteca.example; dmarc=pass header.from=azteca.example'
+  'Authentication-Results: mx.hostinger.com; dkim=pass header.i=@azteca.example; dmarc=pass header.from=azteca.example'
  ].join('\r\n');
  const text='Recibiste de otro banco $300 22/Oct/2026 A tu cuenta ****4409\nConcepto: Gardenias 5\nClave de rastreo: MBAN01002610080082507654';
  const plain=parseMessage({uid:51,source:Buffer.from(headers+'\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n'+text)});
@@ -75,7 +75,7 @@ test('lector del buzón de correo: mensaje plano y mensaje codificado en base64 
   '\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+
   Buffer.from(text).toString('base64'))});
  assert.equal(banco.corresponde(pago,banco.datosAviso(encoded,config),config),true);
- const forged=parseMessage({uid:53,source:Buffer.from(headers.replace('mx.google.com; dkim=pass header.i=@azteca.example; dmarc=pass','mx.google.com; dkim=fail header.i=@azteca.example; dmarc=fail')+'\r\n\r\n'+text)});
+ const forged=parseMessage({uid:53,source:Buffer.from(headers.replace('mx.hostinger.com; dkim=pass header.i=@azteca.example; dmarc=pass','mx.hostinger.com; dkim=fail header.i=@azteca.example; dmarc=fail')+'\r\n\r\n'+text)});
  assert.equal(banco.corresponde(pago,banco.datosAviso(forged,config),config),false);
 });
 
