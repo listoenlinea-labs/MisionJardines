@@ -106,7 +106,8 @@
         parts.push(line);
       }
       const tokens=parts.filter(Boolean);
-      // La clave es alfanumérica larga, nunca una fecha o número de cuenta de 4 cifras.
+      // La etiqueta suele estar en una línea y el valor en la siguiente.
+      // Evitar mezclar textos ajenos u otros conceptos a la clave.
       const first=tokens[0]?.replace(/[^A-Z0-9]/g,'')||'';
       if (!/^[A-Z0-9]{12,90}$/.test(first)||!/[A-Z]/.test(first)||!/[0-9]/.test(first)) continue;
       const extra=tokens.slice(1).filter(x=>/^[A-Z0-9-]{2,12}$/.test(x)).map(x=>x.replace(/-/g,'')).join('');
