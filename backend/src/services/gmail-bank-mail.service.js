@@ -43,6 +43,15 @@ function mimeText(message,depth=0){
  if(!/^text\/(plain|html)\b/i.test(type))return '';
  return decode(message.body,message.headers['content-transfer-encoding']||'').slice(0,50000);
 }
+function decodeHeader(value){
+ return String(value||'').replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi,(_,charset,mode,content)=>{
+  try{
+   if(mode.toLowerCase()==='b')return Buffer.from(content,'base64').toString(/8859-1|LATIN1/i.test(charset)?'latin1':'utf8');
+   const encoded=content.replace(/_/g,' ').replace(/=([0-9a-f]{2})/gi,(_,hex)=>String.fromCharCode(parseInt(hex,16)));
+   return Buffer.from(encoded,'latin1').toString(/8859-1|LATIN1/i.test(charset)?'latin1':'utf8');
+  }catch(_){return ''}
+ });
+}
 function parseMessage({uid,source}){
  const parsed=splitMime(source.toString('utf8'));if(!parsed)return null;
  const h=parsed.headers,from=String(h.from||'');
@@ -51,7 +60,7 @@ function parseMessage({uid,source}){
  const time=new Date(h.date||'');
  const auth=(h['authentication-results']||'').split('\n').filter(x=>/^mx\.google\.com\s*;/i.test(x.trim())).slice(0,1);
  return {id:'gmail-uid:'+uid+':'+String(h['message-id']||'').slice(0,180),
-  from:{emailAddress:{address}},subject:h.subject||'',
+  from:{emailAddress:{address}},subject:decodeHeader(h.subject),
   receivedDateTime:Number.isFinite(time.valueOf())?time.toISOString():'',
   body:{content:mimeText(parsed)},
   internetMessageHeaders:auth.map(value=>({name:'Authentication-Results',value}))};
@@ -86,4 +95,4 @@ async function leerGmail({mailbox,password,dias=7}){
   return results;
  }finally{client.close()}
 }
-module.exports={parseMessage,unfold,mimeText,leerGmail};
+module.exports={parseMessage,unfold,mimeText,leerGmail,decodeHeader};
