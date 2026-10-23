@@ -205,8 +205,12 @@ router.get('/incidencias', autenticarToken, async (req, res) => {
     const incidentsUrl = new URL('https://api.tomtom.com/traffic/services/5/incidentDetails');
     incidentsUrl.searchParams.set('key', key);
     incidentsUrl.searchParams.set('bbox', bbox);
-    // Incident Details acepta el código ISO 639-1 "es", no la variante "es-MX".
-    incidentsUrl.searchParams.set('language', 'es');
+    // TomTom Incident Details v5 acepta variantes locales (es-ES), no el código "es".
+    // Usar el idioma soportado evita INVALID_REQUEST / Unsupported language parameter.
+    incidentsUrl.searchParams.set('language', 'es-ES');
+    // El valor predeterminado solo incluye iconCategory: solicitar también los
+    // detalles que consume la interfaz (descripción, calles, retrasos y fechas).
+    incidentsUrl.searchParams.set('fields', '{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description},startTime,endTime,from,to,length,delay}}}');
     incidentsUrl.searchParams.set('timeValidityFilter', 'present');
 
     const payload = await fetchJson(incidentsUrl);
