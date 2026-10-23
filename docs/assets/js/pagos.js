@@ -443,6 +443,19 @@
 
       // Estas consultas no deben impedir que la vivienda y la cuenta se pinten.
       await Promise.allSettled([loadExtras(), loadReceipts(), loadValidity(), loadAdministration(),loadDebts()]);
+      // El recibo reportado ya está en "En revisión". Refrescar silenciosamente
+      // mientras haya pendientes, para reflejar el resultado del verificador.
+      setInterval(async()=>{
+        if(document.hidden || !receiptItems.some(p=>p.estatus==='PENDIENTE_VALIDACION'))return;
+        try{
+          const anteriores=new Map(receiptItems.map(p=>[Number(p.id),p.estatus]));
+          await loadReceipts();
+          if(receiptItems.some(p=>anteriores.get(Number(p.id))==='PENDIENTE_VALIDACION'&&p.estatus==='VALIDADO')){
+            toast('Se confirmó un depósito. Tu recibo ya aparece como Validado.');
+            void loadValidity();void loadDebts();
+          }
+        }catch(error){console.warn('No se pudo actualizar el estado de recibos:',error.message)}
+      },15000);
       const requested=new URLSearchParams(location.search).get('tab');
       setTab(['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(requested)?requested:'MANTENIMIENTO');
     }
