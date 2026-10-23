@@ -19,6 +19,18 @@ function periodoSolicitado(req) {
     return String(periodo);
 }
 
+function referenciaSolicitada(req) {
+    const referencia = req.query?.referencia;
+    if (referencia == null) return null;
+    if (typeof referencia !== 'string' || !referencia.trim() || referencia.length > 255) {
+        throw Object.assign(new Error('La referencia del movimiento no es válida'), { status: 400 });
+    }
+    if (req.query?.periodo != null && req.query.periodo !== '') {
+        throw Object.assign(new Error('Selecciona un período o una referencia, no ambos'), { status: 400 });
+    }
+    return referencia.trim();
+}
+
 function responderError(res, error) {
     if (!error.status) console.error('[finanzas recibo mantenimiento]', error);
     return res.status(error.status || 503).json({
@@ -29,7 +41,7 @@ function responderError(res, error) {
 
 async function datosRecibo(req, res) {
     try {
-        const { casa, resumen } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req));
+        const { casa, resumen } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req), referenciaSolicitada(req));
         const telefonos = await recibos.consultarTelefonos(casa);
         res.setHeader('Cache-Control', 'private, no-store');
         return res.json({ ok: true, data: { ...resumen, telefonos } });
@@ -40,7 +52,7 @@ async function datosRecibo(req, res) {
 
 async function pdfRecibo(req, res) {
     try {
-        const { recibo } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req));
+        const { recibo } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req), referenciaSolicitada(req));
         const { buffer, nombreArchivo } = await recibos.generarPdf(recibo);
         const nombreSeguro = nombreArchivo.replace(/[^a-zA-Z0-9._-]/g, '_');
         res.setHeader('Cache-Control', 'private, no-store');

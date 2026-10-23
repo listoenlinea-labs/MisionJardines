@@ -168,6 +168,16 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .history-event-card>small{display:block;margin-top:9px;font-size:10px;color:#8791a1;overflow-wrap:anywhere}
 .history-months{display:flex;flex-wrap:wrap;gap:5px}.history-months span{padding:5px 9px;border-radius:999px;background:#e8f5f0;color:#366d55;font-size:10px;font-weight:750}
 .history-event-card .history-penalty{margin:9px 0 0;color:#a26230;font-size:11px}
+/* Recibo por movimiento: boton discreto, adaptable y sin interferir con la linea de tiempo. */
+.history-event-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:9px}
+.history-event-footer>small{flex:1 1 190px;min-width:0;overflow-wrap:anywhere;font-size:10px;color:#8791a1}
+.history-receipt-button{flex:0 0 auto;min-height:34px;padding:7px 12px;border:1px solid #e7d8f1;border-radius:10px;background:#fbf7ff;color:#70578a;font-size:11px;font-weight:800;line-height:1.25;cursor:pointer;transition:background .15s,border-color .15s}
+.history-receipt-button:hover{background:#f5edfd;border-color:#cbb2e6}
+.history-receipt-button:focus-visible{outline:3px solid #b9a4d1;outline-offset:2px}
+.history-receipt-button:disabled{opacity:.52;cursor:not-allowed}
+#houseReceiptModal{z-index:10110}
+@media(max-width:580px){.history-event-footer{align-items:stretch}.history-receipt-button{width:100%}}
+@media(prefers-reduced-motion:reduce){.history-receipt-button{transition:none}}
 .history-debts{margin-top:20px}.history-debts h3{font-size:14px;color:#43576d}
 .history-debt-list{display:grid;gap:8px}.history-debt{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff6ee;border:1px solid #f1ddca;border-radius:12px;padding:11px 13px}
 .history-debt>div{display:flex;flex-direction:column;gap:4px}.history-debt strong{font-size:12px;color:#72523f}.history-debt small{font-size:11px;color:#977a69}.history-debt b{font-size:14px;color:#9b5835;text-align:right}

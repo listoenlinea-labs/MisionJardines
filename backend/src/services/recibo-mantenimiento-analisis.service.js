@@ -41,9 +41,16 @@ function agregarTelefonos(destinatarios, vistos, telefono, nombre, origen) {
     }
 }
 
-function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), periodoSolicitado = null) {
+function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), periodoSolicitado = null, referenciaSolicitada = null) {
+    const referenciaBuscada = refNormalizada(referenciaSolicitada);
+    if (referenciaSolicitada != null && !referenciaBuscada) {
+        throw errorDeRecibo(400, 'La referencia del movimiento no es válida.');
+    }
+    if (referenciaBuscada && periodoSolicitado) {
+        throw errorDeRecibo(400, 'Selecciona un período o una referencia, no ambos.');
+    }
     const disponibles = periodosPagados(cuotas);
-    const periodo = periodoSolicitado || disponibles[0]?.valor || null;
+    const periodo = referenciaBuscada ? null : (periodoSolicitado || disponibles[0]?.valor || null);
     if (periodoSolicitado && !disponibles.some(item => item.valor === periodoSolicitado)) {
         throw errorDeRecibo(409, 'El mes seleccionado no tiene un pago registrado para esta vivienda.');
     }
@@ -56,12 +63,16 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
         throw errorDeRecibo(409, 'El mes seleccionado no tiene referencia verificable. Concilia el pago antes de emitir el recibo.');
     }
     const movimientos = historialMantenimiento(cuotas, comprobantes);
-    const movimiento = cuotaSeleccionada
-        ? movimientos.find(item => [cuotaSeleccionada.referencia, cuotaSeleccionada.folio]
-            .some(ref => ref && refNormalizada(ref) === refNormalizada(item.referencia)))
-        : movimientos.find(item => Number(item.monto) > 0);
+    const movimiento = referenciaBuscada
+        ? movimientos.find(item => refNormalizada(item.referencia) === referenciaBuscada && Number(item.monto) > 0)
+        : cuotaSeleccionada
+            ? movimientos.find(item => [cuotaSeleccionada.referencia, cuotaSeleccionada.folio]
+                .some(ref => ref && refNormalizada(ref) === refNormalizada(item.referencia)))
+            : movimientos.find(item => Number(item.monto) > 0);
     if (!movimiento) {
-        throw errorDeRecibo(409, 'Esta vivienda no tiene pagos de mantenimiento conciliados para generar un recibo.');
+        throw errorDeRecibo(409, referenciaBuscada
+            ? 'El movimiento seleccionado no tiene un pago de mantenimiento confirmado o ya no existe.'
+            : 'Esta vivienda no tiene pagos de mantenimiento conciliados para generar un recibo.');
     }
     const referencia = refNormalizada(movimiento.referencia);
     if (!referencia) {
@@ -141,7 +152,7 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
     };
 }
 
-async function consultarPago(casaId, periodo = null) {
+async function consultarPago(casaId, periodo = null, referencia = null) {
     const casa = await Casa.findByPk(casaId, {
         attributes: ['id', 'calle', 'calleCorrecta', 'numero', 'nombre', 'telefono']
     });
@@ -158,7 +169,7 @@ async function consultarPago(casaId, periodo = null) {
                 'monto', 'recargo', 'folioReporte', 'folioOperacion', 'fechaOperacion']
         })
     ]);
-    return { casa, ...datosDeMovimiento(casa, cuotas, comprobantes, new Date(), periodo) };
+    return { casa, ...datosDeMovimiento(casa, cuotas, comprobantes, new Date(), periodo, referencia) };
 }
 
 async function consultarTelefonos(casa) {

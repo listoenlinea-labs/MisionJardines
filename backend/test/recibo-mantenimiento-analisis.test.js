@@ -81,6 +81,36 @@ test('sin depósito o sin referencia no se emite un comprobante', () => {
     })], []), /referencia verificable/);
 });
 
+test('genera recibo desde referencia exacta del historial incluso con varios meses', () => {
+    const cuotas = [
+        cuota(70, 'OCTUBRE', 150, { referencia: 'MOV-OCT', fechaConfirmacion: '2026-10-21' }),
+        cuota(71, 'NOVIEMBRE', 300, { referencia: 'MOV-NOV-DIC', fechaConfirmacion: '2026-10-22' }),
+        cuota(72, 'DICIEMBRE', 300, { referencia: 'MOV-NOV-DIC', fechaConfirmacion: '2026-10-22' })
+    ];
+    const octubre = datosDeMovimiento(casa, cuotas, [], new Date('2026-10-22T12:00:00Z'), null, 'mov-oct');
+    assert.equal(octubre.resumen.monto, 150);
+    assert.equal(octubre.resumen.periodo, 'OCTUBRE 2026');
+    assert.equal(octubre.resumen.referencia, 'MOV-OCT');
+    const conjunto = datosDeMovimiento(casa, cuotas, [], new Date('2026-10-22T12:00:00Z'), null, 'MOV-NOV-DIC');
+    assert.equal(conjunto.resumen.monto, 600);
+    assert.equal(conjunto.resumen.periodo, 'NOVIEMBRE 2026 A DICIEMBRE 2026');
+    assert.equal(conjunto.recibo.periodosVarios, true);
+    assert.notEqual(conjunto.resumen.folio, octubre.resumen.folio);
+    assert.throws(() => datosDeMovimiento(casa, cuotas, [], new Date(), null, 'NO-EXISTE'), /no tiene un pago/);
+    assert.throws(() => datosDeMovimiento(casa, cuotas, [], new Date(), '2026-10', 'MOV-OCT'), /no ambos/);
+});
+
+test('no permite emitir recibo de otro concepto y respeta los abonos parciales', () => {
+    const cuotas = [cuota(80, 'OCTUBRE', 150, {referencia: 'MANT-80'})];
+    const otros = [{id: 88, tipoPago: 'CASA_CLUB', estatus: 'VALIDADO', monto: 900, folioOperacion: 'CLUB-88'}];
+    assert.throws(() => datosDeMovimiento(casa, cuotas, otros, new Date(), null, 'CLUB-88'), /no tiene un pago/);
+    const parcial = datosDeMovimiento(casa, [cuota(81, 'OCTUBRE', 75, {
+        referencia: 'PARCIAL-81', estatusPago: 'PAGO_PARCIAL'
+    })], [], new Date(), null, 'PARCIAL-81');
+    assert.equal(parcial.resumen.monto, 75);
+    assert.equal(parcial.resumen.sello, 'ABONO RECIBIDO');
+});
+
 test('solo acepta teléfonos mexicanos completos para WhatsApp', () => {
     assert.equal(normalizarTelefonoMX('33 1234 5678'), '523312345678');
     assert.equal(normalizarTelefonoMX('+52 (33) 1234-5678'), '523312345678');
