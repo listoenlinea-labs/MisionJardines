@@ -15,7 +15,6 @@ const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.s
 
 const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
-const pagosPruebas = require('../config/pagos-pruebas');
 const recargosService = require('../services/recargos-mantenimiento.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
 const BASE_MANTENIMIENTO = 300;
@@ -413,19 +412,11 @@ async function reportarPago(req, res) {
             comprobanteNombre: comprobanteNombre || null,
             comprobanteMime: comprobanteMime || 'image/jpeg',
             textoOcr: textoOcr || null,
-            estatus: pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? 'VALIDADO' : 'PENDIENTE_VALIDACION',
-            ...(pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? {
-                fechaValidacion: now,
-                validadoPorUsuarioId: null,
-                observacionesRevision: 'Validación automática temporal para pruebas; sin revisión administrativa ni bancaria.'
-            } : {}),
+            estatus: 'PENDIENTE_VALIDACION',
             reciboFolio: folio,
             fechaEmisionRecibo: now
         }, { transaction });
 
-        if (pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN && tipoPago === 'MANTENIMIENTO') await recargosService.confirmar(pago, transaction);
-        const vigenciaAcceso = pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN && tipoPago === 'MANTENIMIENTO'
-            ? await vigenciaService.actualizar(casaId, usuarioId, transaction, { origen: 'PAGO', registro: pago }) : null;
 
         await transaction.commit();
         transaction = null;
@@ -462,9 +453,9 @@ async function reportarPago(req, res) {
 
         return res.status(201).json({
             ok: true,
-            message: pagosPruebas.VALIDAR_PAGOS_SIN_ADMIN ? 'Pago validado automáticamente para pruebas' : 'Pago reportado y recibo generado',
+            message: 'Pago reportado y en revisión bancaria automática',
             data: pagoSeguro(req, pagoCompleto),
-            vigencia: vigenciaAcceso
+            vigencia: null
         });
     } catch (error) {
         if (transaction && !transaction.finished) {
@@ -562,7 +553,7 @@ module.exports = { confirmarPagoDesdeBanco,
     obtenerAdeudos,
     desactivarCuotaExtraordinaria,
     reportarPago,
-    descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
+    descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, obtenerComprobante
 };
 
 async function obtenerVigencia(req, res) {
@@ -586,29 +577,26 @@ async function listarPendientes(req, res) {
         return res.json({ ok: true, data: rows.map(row => pagoSeguro(req, row)) });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar los comprobantes pendientes' }); }
 }
-async function resolverRevisionPago(pagoId, estatus, recargoSolicitado, usuarioId, observaciones, correoHash = null) {
-    if (!['VALIDADO', 'RECHAZADO'].includes(estatus)) throw Object.assign(new Error('Estado de revisión inválido'), { status: 400 });
-    if (correoHash && (estatus !== 'VALIDADO' || !/^[a-f0-9]{64}$/.test(correoHash)))
+// Única vía para validar un comprobante reportado: conciliación contra el buzón.
+async function confirmarPagoDesdeBanco(pagoId, correoHash) {
+    if (!Number.isSafeInteger(Number(pagoId)) || Number(pagoId) <= 0
+        || typeof correoHash !== 'string' || !/^[a-f0-9]{64}$/.test(correoHash))
         throw Object.assign(new Error('Confirmación bancaria inválida'), { status: 400 });
     return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
             const pago = await PagoReportado.findByPk(pagoId, { transaction, lock: transaction.LOCK.UPDATE });
             if (!pago) throw Object.assign(new Error('Pago no encontrado'), { status: 404 });
-            if (pago.estatus !== 'PENDIENTE_VALIDACION') {
-                if (pago.estatus !== estatus) throw Object.assign(new Error('El pago ya tiene otra resolución'), { status: 409 });
-                return { pago, vigencia: await vigenciaService.estadoCasa(pago.casaId, transaction) };
-            }
-            // Los cortes vencidos cotizados se conservan con el comprobante.
-            // No permitir que el modal reescriba el recargo y extienda accesos.
+            if (pago.estatus !== 'PENDIENTE_VALIDACION')
+                throw Object.assign(new Error('El pago ya no está pendiente de validación bancaria'), { status: 409 });
+            // El recargo calculado al reportar el pago queda protegido.
             const recargo = pago.recargo;
-            if (recargoSolicitado !== undefined && centavos(recargoSolicitado) !== centavos(recargo))
-                throw Object.assign(new Error('El recargo del comprobante no se puede modificar al aprobar. Corrige o rechaza el reporte.'), { status: 409 });
             if (centavos(recargo) > centavos(pago.monto)) throw Object.assign(new Error('El recargo no puede superar el pago'), { status: 400 });
             if (pago.tipoPago !== 'MANTENIMIENTO' && centavos(recargo) !== 0) throw Object.assign(new Error('Este concepto no lleva recargo de mantenimiento'), { status: 400 });
-            await pago.update({ estatus: estatus, recargo, correoBancarioHash: correoHash || pago.correoBancarioHash, validadoPorUsuarioId: usuarioId,
-                fechaValidacion: new Date(), actualizadoEn: new Date(), observacionesRevision: limpiarTexto(observaciones, 600) }, { transaction });
+            await pago.update({ estatus: 'VALIDADO', recargo, correoBancarioHash: correoHash, validadoPorUsuarioId: null,
+                fechaValidacion: new Date(), actualizadoEn: new Date(),
+                observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria autenticada.' }, { transaction });
             if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') await recargosService.confirmar(pago, transaction);
             const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
-                ? await vigenciaService.actualizar(pago.casaId, usuarioId, transaction, { origen: 'PAGO', registro: pago }) : null;
+                ? await vigenciaService.actualizar(pago.casaId, null, transaction, { origen: 'PAGO', registro: pago }) : null;
             if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
                 const reserva=await ReservaCasaClub.findByPk(pago.reservaCasaClubId,{transaction,lock:transaction.LOCK.UPDATE});
                 if(!reserva||reserva.estatus!=='APROBADA'||reserva.pagado)throw Object.assign(new Error('La reserva ya cambió de estado. Requiere conciliación.'),{status:409});
@@ -616,22 +604,6 @@ async function resolverRevisionPago(pagoId, estatus, recargoSolicitado, usuarioI
             }
             return { pago: pago, vigencia };
         });
-}
-async function confirmarPagoDesdeBanco(pagoId, correoHash) {
-    // Reutiliza literalmente el mismo proceso de confirmación, conciliación
-    // de recargos y actualización de vigencia del botón de Administración.
-    return resolverRevisionPago(pagoId, 'VALIDADO', undefined, null,
-        'Validado por coincidencia estricta con aviso bancario del buzón autorizado. Código '+correoHash.slice(0,12), correoHash);
-}
-async function revisarPago(req, res) {
-    try {
-        const result=await resolverRevisionPago(req.params.id, req.body.estatus, req.body.recargo,
-            req.usuario.usuarioId, req.body.observaciones);
-        return res.json({ok:true,data:{pago:pagoSeguro(req,result.pago),vigencia:result.vigencia}});
-    } catch (error) {
-        return res.status(error.status || 503).json({ok:false,
-            message:error.status?error.message:'No fue posible revisar el pago'});
-    }
 }
 
 async function obtenerComprobante(req, res) {

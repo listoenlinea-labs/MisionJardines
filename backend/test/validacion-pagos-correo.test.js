@@ -119,12 +119,41 @@ test('lógica de recargos/TAGs queda en aprobación transaccional; no se procesa
  const ctl=read('backend/src/controllers/pagos.controller.js');
  const worker=read('backend/src/services/banco-correo-worker.service.js');
  const schema=read('backend/src/services/pagos-schema.service.js');
- assert.match(ctl,/async function resolverRevisionPago/);
+ assert.doesNotMatch(ctl,/async function resolverRevisionPago/);
+ assert.doesNotMatch(ctl,/async function revisarPago/);
  assert.match(ctl,/async function confirmarPagoDesdeBanco/);
- assert.match(ctl,/vigenciaService\.actualizar\(pago\.casaId, usuarioId, transaction/);
+ assert.match(ctl,/vigenciaService\.actualizar\(pago\.casaId, null, transaction/);
  assert.match(ctl,/recargosService\.confirmar\(pago, transaction\)/);
  assert.match(ctl,/correoBancarioHash: correoHash/);
  assert.match(worker,/compatibles\.length!==1/);
  assert.match(worker,/PENDIENTE_VALIDACION/);
  assert.match(schema,/uq_pago_correo_bancario_hash/);
+});
+
+
+test('no quedan aprobaciones, rechazos ni atajos de prueba desde el navegador',()=>{
+ const controller=read('backend/src/controllers/pagos.controller.js');
+ const routes=read('backend/src/routes/pagos.routes.js');
+ const js=read('docs/assets/js/pagos.js');
+ const html=read('docs/pagos.html');
+ assert.doesNotMatch(routes,/router\.patch\('\/:id\/revision'/);
+ assert.doesNotMatch(routes,/revisarPago/);
+ assert.doesNotMatch(controller,/VALIDAR_PAGOS_SIN_ADMIN|revisarPago|resolverRevisionPago/);
+ assert.match(controller,/estatus: 'PENDIENTE_VALIDACION'/);
+ assert.doesNotMatch(js,/data-detail-review|Validar depósito|\/revision/);
+ assert.doesNotMatch(html,/Revisa el recargo capturado|Confirma el depósito bancario antes de validarlo/);
+ assert.match(html,/Comprobantes en revisión automática/);
+ assert.match(js,/pending-auto-status/);
+});
+
+test('aprobación bancaria mantiene transacción y hash obligatorio sin modificación de recargos',()=>{
+ const controller=read('backend/src/controllers/pagos.controller.js');
+ const worker=read('backend/src/services/banco-correo-worker.service.js');
+ assert.match(controller,/!\/\^\[a-f0-9\]\{64\}\$\/\.test\(correoHash\)/);
+ assert.match(controller,/if \(pago\.estatus !== 'PENDIENTE_VALIDACION'\)/);
+ assert.match(controller,/correoBancarioHash: correoHash/);
+ assert.match(controller,/recargosService\.confirmar\(pago, transaction\)/);
+ assert.match(controller,/vigenciaService\.actualizar\(pago\.casaId, null, transaction/);
+ assert.match(worker,/compatibles\.length!==1/);
+ assert.match(worker,/banco\.corresponde\(pago,n\)/);
 });

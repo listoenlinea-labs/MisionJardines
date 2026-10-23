@@ -554,7 +554,7 @@
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'pending-mini-card';
-        card.setAttribute('aria-label', 'Revisar comprobante de ' + (p.casa?.calleCorrecta || p.calleSnapshot) + ', casa ' + p.numeroCasaSnapshot);
+        card.setAttribute('aria-label', 'Consultar comprobante pendiente de ' + (p.casa?.calleCorrecta || p.calleSnapshot) + ', casa ' + p.numeroCasaSnapshot);
         card.innerHTML = '<span class="pending-mini-details"><strong>' + esc((p.casa?.calleCorrecta || p.calleSnapshot)) + ' · Casa ' + esc(p.numeroCasaSnapshot) +
           '</strong><span class="pending-mini-month">Mes del depósito: <b>' + esc(paymentMonthLabel(p.fechaOperacion)) + '</b></span><small>' + esc(p.fechaOperacion || 'Sin fecha') + ' · ' + esc(p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : p.tipoPago==='CASA_CLUB'?'Casa club':'Mantenimiento') +
           '</small><small>Folio ' + esc(p.folioOperacion || '—') + '</small></span><span class="pending-mini-right"><b>' + money(p.monto) +
@@ -573,30 +573,9 @@
         '<div><small>Fecha</small><strong>' + esc(p.fechaOperacion || '—') + '</strong></div>' +
         '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
         '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario, seleccionar para ampliar" role="button" tabindex="0" hidden><button type="button" class="pending-proof-zoom-button" id="pendingZoomButton" hidden>Ampliar fotografía ↗</button></div>' +
-        '<div class="pending-fields"><div><label for="pendingFee">Recargo incluido</label><input id="pendingFee" type="number" min="0" step="0.01"></div>' +
-        '<div><label for="pendingNotes">Observaciones de revisión</label><textarea id="pendingNotes" maxlength="600" rows="3" placeholder="Agrega una nota si es necesario"></textarea></div></div>' +
-        '<div class="pending-detail-actions"><button type="button" class="btn btn-primary" data-detail-review="VALIDADO">Validar depósito</button>' +
-        '<button type="button" class="btn btn-danger" data-detail-review="RECHAZADO">Rechazar</button></div>';
-      const fee = $('pendingFee');
-      fee.value = p.recargo || 0;
-      fee.disabled = p.tipoPago !== 'MANTENIMIENTO';
+        '<div class="pending-auto-status" role="status">En revisión automática: el sistema confirmará el depósito únicamente cuando el comprobante coincida con una notificación bancaria autenticada del buzón configurado. No es necesaria una decisión de Administración.</div>';
       dialog.showModal();
       dialog.scrollTop = 0;
-      body.querySelectorAll('[data-detail-review]').forEach(button => button.addEventListener('click', async () => {
-        if (!confirm(button.dataset.detailReview === 'VALIDADO' ? '¿Confirmas que verificaste este depósito en la cuenta bancaria?' : '¿Rechazar este comprobante?')) return;
-        const buttons = body.querySelectorAll('[data-detail-review]');
-        buttons.forEach(b => b.disabled = true);
-        try {
-          const result = await api('/pagos/' + Number(p.id) + '/revision', {
-            method: 'PATCH', headers: headers(true),
-            body: JSON.stringify({ estatus: button.dataset.detailReview, recargo: fee.value, observaciones: $('pendingNotes').value })
-          });
-          toast(result.data?.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : 'Revisión guardada.');
-          dialog.close();
-          await Promise.all([loadPending(), loadReceipts(), loadValidity()]);
-          document.dispatchEvent(new Event('pagos:actualizados'));
-        } catch (e) { toast(e.message); buttons.forEach(b => b.disabled = false); }
-      }));
       try {
         const proof = await api('/pagos/' + Number(p.id) + '/comprobante', { headers: headers() });
         if (!dialog.open || !body.isConnected || $('pendingProofStatus')?.textContent !== 'Cargando imagen…') return;
