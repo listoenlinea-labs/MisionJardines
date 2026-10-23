@@ -7,7 +7,7 @@ const {
     desactivarCuotaExtraordinaria,
     obtenerAdeudos,
     reportarPago,
-    descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, revisarPago, obtenerComprobante
+    descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, obtenerComprobante
 } = require('../controllers/pagos.controller');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
@@ -34,7 +34,6 @@ router.get('/vigencia', lecturaPagos, obtenerVigencia);
 router.put('/vigencia/:casaId', soloAdministracion, inicializarVigencia);
 router.get('/pendientes', soloAdministracion, listarPendientes);
 router.get('/:id/comprobante', soloAdministracion, obtenerComprobante);
-router.patch('/:id/revision', soloAdministracion, revisarPago);
 router.get('/config', lecturaPagos, obtenerConfiguracion);
 router.get('/mios', lecturaPagos, listarMisPagos);
 router.get('/adeudos', lecturaPagos, obtenerAdeudos);
