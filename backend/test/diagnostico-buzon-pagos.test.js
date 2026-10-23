@@ -22,13 +22,14 @@ test('diagnóstico carga el mismo archivo de entorno backend que server.js',asyn
 });
 test('informa autenticación y extracción por separado sin imprimir datos privados',async()=>{
  const {lines}=await run([
-  {autorizado:true,tracking:'CLAVE-PRIVADA',monto:300,fecha:'2026-10-22',cuenta:'1234',concepto:'CASA PRIVADA'},
+  {autorizado:true,origenVerificado:'ADMINISTRADOR',tracking:'CLAVE-PRIVADA',monto:300,fecha:'2026-10-22',cuenta:'1234',concepto:'CASA PRIVADA'},
   {autorizado:false,tracking:'CLAVE-PRIVADA',monto:300,fecha:'2026-10-22',cuenta:'1234',concepto:'CASA PRIVADA'},
   {autorizado:true,tracking:'CLAVE-PRIVADA',monto:300,fecha:'2026-10-22',cuenta:'',concepto:'CASA PRIVADA'}]);
  const output=lines.join('\n');
  assert.match(output,/autenticación válidos: 2/);
+ assert.match(output,/Reenvíos autenticados del administrador autorizado: 1/);
  assert.match(output,/datos completos, sin considerar autenticación: 2/);
- assert.match(output,/sin cuatro dígitos de cuenta reconocibles: 1/);
+ assert.match(output,/sin terminación de cuenta reconocible \(3 o 4 dígitos\): 1/);
  assert.doesNotMatch(output,/CLAVE-PRIVADA|CASA PRIVADA|SECRET-ONLY-IN-TEST|buzon@example\.test/);
  assert.match(output,/No se actualizó ningún pago, TAG o mensaje/);
 });

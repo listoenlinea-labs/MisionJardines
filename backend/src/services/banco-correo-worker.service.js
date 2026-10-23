@@ -48,8 +48,9 @@ function iniciar(){
   }else{
    // Reportar únicamente NOMBRES de variables: nunca valores, usuarios, tokens ni contraseñas.
    const requeridas=['PAGOS_IMAP_HOST','PAGOS_IMAP_MAILBOX','PAGOS_IMAP_PASSWORD',
-    'PAGOS_IMAP_AUTH_SERVER','PAGOS_BANK_FROM_ADDRESS','PAGOS_DESTINO_ULTIMOS4'];
+    'PAGOS_IMAP_AUTH_SERVER','PAGOS_DESTINO_ULTIMOS4'];
    const faltantes=requeridas.filter(nombre=>!String(process.env[nombre]||'').trim());
+   if(!String(process.env.PAGOS_BANK_FROM_ADDRESS||'').trim()&&!String(process.env.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim())faltantes.push('PAGOS_BANK_FROM_ADDRESS o PAGOS_BANK_FORWARD_FROM_ADDRESS');
    console.warn('[Bancos] Autovalidación IMAP no iniciada: faltan variables: '+faltantes.join(', ')+'. Pagos en revisión.');
   }
   return;
