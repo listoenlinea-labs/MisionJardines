@@ -82,7 +82,7 @@ test('lector del buzón de correo: mensaje plano y mensaje codificado en base64 
 test('conexión IMAP genérica requiere variables de Hostinger y autorización explícita',()=>{
  const desactivada={
   PAGOS_IMAP_HOST:'imap.hostinger.com',PAGOS_IMAP_PORT:'993',
-  PAGOS_IMAP_MAILBOX:'soluciones@listoenlinea.com',PAGOS_IMAP_PASSWORD:'EJEMPLO-NO-REAL',
+  PAGOS_IMAP_MAILBOX:'soluciones@listoenlinea.com',PAGOS_IMAP_PASSWORD:'EJEMPLO-NO-REAL',PAGOS_IMAP_AUTH_SERVER:'mx.hostinger.com',
   PAGOS_BANK_FROM_ADDRESS:'avisos@azteca.example',PAGOS_DESTINO_ULTIMOS4:'4409',
   PAGOS_BANK_AUTO_VALIDATE:'false'
  };
