@@ -68,6 +68,7 @@ function pagoSeguro(req, pago) {
     delete data.comprobanteData;
     delete data.textoOcr;
     delete data.reciboPdfData;
+    delete data.correoBancarioHash;
     data.tieneComprobante = true;
     data.tieneReciboPdf = Boolean(pago.reciboPdfData || data.reciboPdfNombre);
     data.reciboPdfUrl = data.id ? construirUrlRecibo(req, data.id) : null;
