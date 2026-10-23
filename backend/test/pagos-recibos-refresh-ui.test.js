@@ -13,7 +13,7 @@ test('Historial de pagos presenta un botón de refrescar visible junto al títul
  assert.match(section,/aria-label="Actualizar historial de pagos"/);
  assert.match(section,/<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">/);
  assert.equal((html.match(/id="refreshReceipts"/g)||[]).length,1);
- assert.match(html,/assets\/js\/pagos\.js\?v=20261022-refrescar-recibos/);
+ assert.match(html,/assets\/js\/pagos\.js\?v=20261022-autovalidacion-exclusiva/);
 });
 
 test('refrescar reconsulta los recibos existentes, actualiza el contador y conserva los datos si hay error',()=>{
@@ -42,4 +42,26 @@ test('indicador de espera, foco accesible y animación reducida',()=>{
  assert.match(js,/button\.setAttribute\('aria-busy', 'true'\)/);
  assert.match(js,/finally \{[\s\S]*?button\.disabled = false;/);
  assert.match(js,/button\.removeAttribute\('aria-busy'\)/);
+});
+
+
+test('título, Ver todos y refrescar permanecen en una sola fila sin subtítulo',()=>{
+ const html=read('docs/pagos.html');
+ const start=html.indexOf('<span class="eyebrow">MIS RECIBOS</span>');
+ const end=html.indexOf('id="receiptList"',start);
+ const section=html.slice(start,end);
+ assert.ok(start>=0&&end>start);
+ assert.doesNotMatch(section,/Consulta y descarga tus recibos desde cualquier dispositivo\./);
+ assert.doesNotMatch(section,/receipt-card-toolbar|receipt-heading-copy/);
+ assert.match(section,/<div class="receipt-heading-row">\s*<h2>Historial de pagos<\/h2>\s*<div class="receipt-heading-actions">/);
+ const verTodos=section.indexOf('id="showAllReceipts"');
+ const refrescar=section.indexOf('id="refreshReceipts"');
+ assert.ok(verTodos>section.indexOf('<h2>Historial de pagos</h2>'));
+ assert.ok(refrescar>verTodos);
+ assert.equal((html.match(/id="showAllReceipts"/g)||[]).length,1);
+ assert.match(html,/\.receipt-heading-row\{display:flex;align-items:center/);
+ assert.match(html,/\.receipt-heading-actions\{display:flex;align-items:center/);
+ assert.match(html,/@media\(max-width:520px\)\{\.receipt-heading-row/);
+ assert.match(html,/@media\(max-width:390px\)\{\.receipt-heading-row/);
+ assert.match(html,/\.receipt-heading-row h2\{[^}]*white-space:nowrap/);
 });
