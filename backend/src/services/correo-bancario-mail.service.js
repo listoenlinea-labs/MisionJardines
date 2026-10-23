@@ -58,7 +58,7 @@ function parseMessage({uid,source}){
  const address=(from.match(/<([^<>\s]+@[^<>\s]+)>/)||[])[1]||
    (from.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]+/i)||[])[0]||'';
  const time=new Date(h.date||'');
- const receptor=String(process.env.PAGOS_IMAP_AUTH_SERVER||'mx.hostinger.com').trim().toLowerCase();
+ const receptor=String(process.env.PAGOS_IMAP_AUTH_SERVER||'').trim().toLowerCase();
  const auth=(h['authentication-results']||'').split('\n').filter(x=>{
   const nombre=String(x).split(';')[0].trim().toLowerCase();
   return receptor&&nombre===receptor;
