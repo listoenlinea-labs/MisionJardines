@@ -1,88 +1,111 @@
-# Verificación bancaria desde soluciones@listoenlinea.com
+# Verificación de pagos por correo bancario o reenvío del administrador
 
-## Objetivo
+## Origen autorizado
 
-Misión Jardines consulta directamente el buzón **`soluciones@listoenlinea.com`** mediante IMAP cifrado (TLS), en **solo lectura**. La propietaria de `rocio_bahena65@hotmail.com` configura el envío o redirección únicamente de notificaciones de Banco Azteca a la dirección de Listo en Línea. No se utiliza Google, OAuth, Azure, Gmail ni Microsoft Graph.
+El backend consulta el buzón dedicado de Listo en Línea por IMAP cifrado, en solo
+lectura. La conexión SMTP de invitaciones es independiente. El correo puede ser:
 
-**Proveedor:** el ejemplo usa Hostinger Email, cuya configuración oficial es IMAP `imap.hostinger.com`, puerto `993`, SSL/TLS. Si el dominio usa otro proveedor, sustituye el hostname por el servidor IMAP real del buzón. Los servidores de alojamiento web y de **correo electrónico** pueden ser distintos.
+1. Un aviso directo del banco configurado en `PAGOS_BANK_FROM_ADDRESS`.
+2. Un aviso reenviado por el correo exacto del administrador configurado en
+   `PAGOS_BANK_FORWARD_FROM_ADDRESS`, según la petición del usuario del 22/oct.
 
-## Variables privadas en Hostinger, en el BACKEND
+Para el segundo caso el encabezado exterior se autentica como del administrador:
+no se exige que `From` ni la firma exterior pertenezcan al banco original. La fuente
+confiada es el administrador que reenvía el contenido; no se afirma que la firma
+bancaria original haya sobrevivido. Se exige coincidencia exacta de su dirección,
+DKIM y DMARC aprobados para su dominio en el resultado del receptor configurado.
+Otro correo del mismo dominio no está autorizado. Un texto «De: …» dentro del
+cuerpo o la mera apariencia del remitente no autoriza el mensaje.
+
+Sin configurar el nuevo remitente, se conserva exclusivamente el banco directo.
+Ambos modos exigen el asunto bancario configurado (acepta prefijos RV:/Fwd:),
+clave de rastreo, importe en centavos, fecha bancaria y concepto con calle/número
+coincidentes. El aviso debe ser reciente y la coincidencia única. El hash del
+correo se sigue consumiendo una vez en la transacción de confirmación existente.
+
+## Cuenta receptora en el aviso
+
+`PAGOS_DESTINO_ULTIMOS4` conserva cuatro dígitos. El lector admite el formato de
+aviso «A tu cuenta ***234» o «A tu cuenta ****1234», usando 1234 como ejemplo:
+
+- Si se muestran 3, deben ser los últimos tres de los cuatro configurados.
+- Si se muestran 4, se comparan los cuatro: 9234 no coincide con 1234.
+- Sin terminación, con menos de tres dígitos o con destinos ambiguos, no coincide.
+
+No se completan dígitos ausentes. Esta compatibilidad solo afecta al aviso de
+correo; el OCR del comprobante del residente conserva la validación de destino,
+folio/rastreo, fecha, hora y monto del servidor.
+
+## Variables privadas del backend
 
 ```dotenv
-PAGOS_IMAP_HOST=imap.hostinger.com
+PAGOS_IMAP_HOST=servidor-imap-del-proveedor
 PAGOS_IMAP_PORT=993
-PAGOS_IMAP_MAILBOX=soluciones@listoenlinea.com
+PAGOS_IMAP_MAILBOX=buzon-dedicado@ejemplo.test
 PAGOS_IMAP_PASSWORD=CONTRASENA_PRIVADA_DEL_BUZON
-PAGOS_IMAP_AUTH_SERVER=mx.hostinger.com
+PAGOS_IMAP_AUTH_SERVER=
 
-PAGOS_BANK_FROM_ADDRESS=notificaciones@bazdigital.com
+PAGOS_BANK_FROM_ADDRESS=
+PAGOS_BANK_FORWARD_FROM_ADDRESS=
 PAGOS_BANK_MAIL_SUBJECT=Notificación Banco Azteca
-PAGOS_DESTINO_ULTIMOS4=4409
+PAGOS_DESTINO_ULTIMOS4=1234
 PAGOS_BANK_MAIL_MAX_DIAS=7
 PAGOS_BANK_POLL_MS=45000
 PAGOS_BANK_AUTO_VALIDATE=false
 ```
 
-`PAGOS_IMAP_PASSWORD` es la contraseña propia del **buzón** y no la de la cuenta Hostinger del propietario. Si la cuenta ya utiliza SMTP en otra parte del negocio no es necesario cambiar SMTP, pero sí almacenar aquí la credencial IMAP de forma privada. Nunca mostrarla en capturas, commits o mensajes.
+Los valores son ejemplos. Mantener la configuración real de IMAP, datos bancarios
+y remitente directo ya existentes. Agregar `PAGOS_BANK_FORWARD_FROM_ADDRESS` con el
+correo real desde el que el administrador reenvía las notificaciones. No configurar
+un dominio completo ni un nombre visible; la dirección tiene que coincidir con
+el `From` exterior del mensaje recibido en el buzón dedicado.
 
-`PAGOS_IMAP_AUTH_SERVER` indica el servidor que **agrega** las cabeceras de autenticación del destinatario; `mx.hostinger.com` es un valor de ejemplo que **debe confirmarse examinando las cabeceras reales** del proveedor. No inventar este dato ni quitar la validación si no coincide; de lo contrario, el pago queda en revisión. El valor de `PAGOS_BANK_FROM_ADDRESS` también debe verificarse con los correos genuinos; no basta el nombre visible de Banco Azteca.
+`PAGOS_IMAP_AUTH_SERVER` es el nombre que agrega el resultado Authentication-Results
+del receptor; no equivale necesariamente al host IMAP. Confirmarlo con el mensaje
+recibido. Las credenciales del buzón son privadas y no se incluyen en el código.
+Basta uno de los dos remitentes autorizados para configurar el worker, además de
+IMAP, receptor de autenticación, cuenta destino y flag de autovalidación.
 
-Eliminar o no crear estas variables obsoletas: `PAGOS_GMAIL_MAILBOX`, `PAGOS_GMAIL_APP_PASSWORD`, `PAGOS_GMAIL_CLIENT_ID`, `PAGOS_GMAIL_CLIENT_SECRET`, `PAGOS_GMAIL_REFRESH_TOKEN`, `PAGOS_OUTLOOK_MAILBOX`, `PAGOS_MS_CLIENT_ID`, `PAGOS_MS_REFRESH_TOKEN`.
+Configurar las variables en el alojamiento del backend y volver a desplegar o
+reiniciar. Un `export` en una sesión SSH solo modifica esa sesión; no actualiza
+las variables de la aplicación que Hostinger ya ejecuta.
 
-## Configurar recepción de notificaciones
+## Diagnóstico y pruebas
 
-En Outlook de la titular conservar la regla **De: notificaciones@bazdigital.com**, acción «Redirigir a»: `soluciones@listoenlinea.com`. Probar manualmente con un mensaje real. Alternativamente, si el banco admite varios correos de notificación, añadir `soluciones@listoenlinea.com` como destinatario directo del banco. No reenviar toda la bandeja privada.
+El log «Revisión de notificaciones buzón IMAP iniciada» confirma programación,
+no conexión ni coincidencia. El worker solo consulta el buzón si hay pagos pendientes.
+El mensaje «Estimating resolution as …» pertenece al OCR, no a IMAP.
 
-La **redirección** a veces altera los resultados de autenticación SPF/DKIM/DMARC: si los mensajes redirigidos no conservan suficientes pruebas de origen, la autoaprobación los dejará **En revisión** hasta que un administrador confirme contra el movimiento en el banco.
-
-## Flujo de aplicación
-
-- La persona sube su comprobante: OCR lee el campo etiquetado «Clave de rastreo», folio, monto, fecha, hora y destino. Se guarda como `PENDIENTE_VALIDACION` y aparece inmediatamente como **En revisión** en Mis recibos. El PDF provisional es un acuse, **no** un recibo de pago confirmado.
-- Worker lee solo los mensajes recientes del buzón configurado en IMAP. Para aprobar, un solo mensaje verificable debe coincidir con **clave de rastreo, fecha, importe exacto, terminación receptora 4409 y concepto que identifique calle y número**. El remitente y asunto deben coincidir con los valores configurados; las cabeceras DMARC y DKIM deben pasar y corresponder al dominio esperado.
-- Si falta algún dato o los mensajes son ambiguos, el pago **sigue En revisión**. Ningún error IMAP, credencial o autenticación puede confirmar un pago.
-- Al validar se reutiliza la transacción de confirmación que ya existe en el backend, incluidos recargos y vigencias. **No se cambió el algoritmo de TAGs.** Se guarda una huella única del mensaje para impedir reutilizar el mismo correo con otros pagos.
-- El frontend consulta periódicamente el estado de los pagos y muestra «Validado» cuando el backend confirma.
-- La notificación bancaria por correo no es equivalente a una conciliación bancaria certificada ni garantiza irreversibilidad del depósito. Para acceso físico, se recomienda confrontar también el estado de cuenta o una integración oficial del banco.
-
-## Pruebas antes de habilitar la autoaprobación
-
-1. Fusionar y desplegar este PR **con `PAGOS_BANK_AUTO_VALIDATE=false`**. Confirmar que `soluciones@listoenlinea.com` se puede consultar en webmail y que recibió un aviso real destinado a `4409`.
-2. Guardar las variables privadas del backend en Hostinger. Si es Hostinger Email, validar el nombre del servidor en **Emails → Administrar → Conectar aplicaciones y dispositivos**. El servidor necesita conexión saliente a `imap.hostinger.com:993`.
-3. Desde el backend, ejecutar `node backend/scripts/probar-buzon-pagos.js`. Este diagnóstico se conecta a IMAP, cuenta avisos con autenticación verificable y **no genera recibos, no aprueba pagos ni cambia TAGs**. Nunca imprime el contenido de los correos ni credenciales.
-4. Ejecutar `node --test backend/test/validacion-pagos-correo.test.js` desde la raíz del repositorio.
-5. Verificar en la fuente original de una notificación `Authentication-Results`, el servidor receptor, la cuenta y el dominio. Si un mensaje proveniente de Banco Azteca termina en `8844`, no puede acreditar un depósito a `4409`.
-6. Registrar un pago de prueba y verificar **En revisión** antes de la confirmación. Probar claves, importes, fechas, números de casa y terminaciones falsos. Todos esos casos deben permanecer en revisión.
-7. Solo después de pruebas con depósito real, origen autenticado y aprobación administrativa, cambiar a `PAGOS_BANK_AUTO_VALIDATE=true` y reiniciar el backend. Si alguna validación no pasa, mantenerla desactivada.
-
-No usar la contraseña personal de un correo no dedicado para este proceso si existe una alternativa: el lector puede acceder a la bandeja completa. Limita el acceso a los responsables del proyecto, conserva secretos únicamente en el entorno del backend y no registra cuerpos de mensajes.
-
-
-## Diagnóstico cuando un pago permanece en revisión
-
-El aviso de arranque «Revisión de notificaciones buzón IMAP iniciada» solo
-confirma programación del worker. Sin reportes pendientes no consulta el buzón,
-y una notificación que no coincide puede descartarse sin imprimir otro mensaje.
-«Estimating resolution as …» pertenece al OCR; no es por sí solo un error IMAP.
-
-Desde la raíz del proyecto, con el entorno correcto del backend:
+Con Node y dependencias disponibles, desde la raíz del repositorio:
 
 ```sh
 NODE_ENV=production node backend/scripts/probar-buzon-pagos.js
 ```
 
-Para desarrollo sustituir production por development. El script carga
-`backend/.env.<NODE_ENV>` igual que el servidor, conservando las variables ya
-inyectadas por el alojamiento. La corrección del 22/oct retira la búsqueda
-incorrecta de `.env` en la raíz.
+Si el despliegue tiene `scripts/` y `src/` directamente en su raíz:
 
-Los contadores separan autenticación de datos legibles: mensajes completos sin
-autenticación bancaria no autorizan pagos. Un aviso con solo tres dígitos de
-cuenta no proporciona la terminación exacta de cuatro exigida; no se completa
-por suposición. Un reenvío autenticado como mensaje de otra cuenta no demuestra
-el origen bancario de su contenido. Revisar recepción directa del aviso original
-si la redirección no conserva evidencia suficiente.
+```sh
+NODE_ENV=production node scripts/probar-buzon-pagos.js
+```
 
-Si ni siquiera aparece el reporte en Mis recibos, revisar la respuesta HTTP de
-Reportar pago y su mensaje en pantalla: el OCR precede al guardado, mientras la
-conciliación IMAP ocurre después. El diagnóstico de correo no demuestra que la
-imagen haya superado las validaciones de extracción/destino.
+El script carga el entorno en la misma ubicación relativa que el servidor, sin
+sobrescribir variables ya inyectadas. Si el alojamiento separa SSH y la aplicación,
+proporcionar las mismas variables al proceso de diagnóstico sin publicar secretos.
+Usar el ejecutable Node de la versión del servidor cuando no esté en PATH.
+
+El diagnóstico es de solo lectura. Informa reenvíos autenticados del administrador,
+datos completos y campos faltantes por separado, sin imprimir contenidos ni
+credenciales. El flag no necesita activarse para ejecutar el diagnóstico manual.
+La configuración del receptor y el remitente sí debe estar disponible para clasificar
+la autenticación. No aprueba pagos ni modifica TAGs o mensajes.
+
+Pruebas simuladas desde la raíz:
+
+```sh
+PAGOS_IMAP_AUTH_SERVER=mx.hostinger.com node --test backend/test/validacion-pagos-reenvio-admin.test.js backend/test/diagnostico-buzon-pagos.test.js backend/test/validacion-pagos-correo.test.js
+```
+
+El servidor de autenticación de ese comando es solo el fixture de las pruebas;
+no reemplaza el valor real del proveedor. Después de desplegar y configurar el
+remitente, comprobar el diagnóstico y un depósito real contra su aviso reenviado.
+La presencia del código o una prueba simulada no acredita esa conciliación real.

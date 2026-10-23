@@ -1,6 +1,6 @@
 'use strict';
 // Sólo lectura. El correo bancario es evidencia secundaria: la aprobación exige
-// IMAP TLS del buzón autorizado, remitente autenticado, clave, monto, fecha y cuenta exactos.
+// IMAP TLS, remitente autorizado autenticado, clave, monto, fecha y terminación receptora.
 const {createHash}=require('node:crypto');
 const {leerBuzon}=require('./correo-bancario-mail.service');
 const normal=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
@@ -33,14 +33,17 @@ function fechaDeAviso(text){
 function datosAviso(mensaje,config=process.env){
  const remitente=String(mensaje?.from?.emailAddress?.address||'').trim().toLowerCase();
  const emisor=String(config.PAGOS_BANK_FROM_ADDRESS||'').trim().toLowerCase();
+ const administrador=String(config.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim().toLowerCase();
  const asunto=normal(mensaje?.subject);
  const asuntoExigido=normal(config.PAGOS_BANK_MAIL_SUBJECT||'Notificación Banco Azteca');
  const headers=mensaje?.internetMessageHeaders||[];
  const autenticacion=headers.filter(h=>String(h.name).toLowerCase()==='authentication-results').map(h=>String(h.value||'')).join(' ');
- // DMARC debe pasar para el dominio del remitente; que aparezca un remitente
- // en el encabezado visible nunca es, por sí solo, una validación bancaria.
- const dominio=emisor.split('@')[1]||'';
- const autorizado=Boolean(emisor&&remitente===emisor&&asunto.includes(asuntoExigido)&&dominio
+ // En un reenvío se autentica al administrador expresamente autorizado,
+ // sin exigir que el encabezado exterior siga perteneciendo al banco.
+ // El texto «De: Banco…» del cuerpo no puede autorizar a otro remitente.
+ const origen=emisor&&remitente===emisor?'BANCO':administrador&&remitente===administrador?'ADMINISTRADOR':'';
+ const dominio=origen?remitente.split('@')[1]||'':'';
+ const autorizado=Boolean(origen&&asunto.includes(asuntoExigido)&&dominio
   &&/\bdmarc=pass\b/i.test(autenticacion)
   &&/\bdkim=pass\b/i.test(autenticacion)
   &&new RegExp('header\\.from='+dominio.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:\\s|;|$)','i').test(autenticacion));
@@ -50,8 +53,8 @@ function datosAviso(mensaje,config=process.env){
  const tracking=claveMatch?clave(claveMatch[1].split(/\b(?:CONSULTA|VERIFICA|REFERENCIA|CONCEPTO|TIPO|FECHA|HORA)\b/)[0].split('\n')[0]):'';
  const montoMatch=upper.match(/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)[^$\n]{0,65}\$\s*([\d,]+(?:\.\d{2})?)/);
  const monto=montoMatch?Number(montoMatch[1].replace(/,/g,'')):null;
- const cuentaMatch=upper.match(/\bA\s+TU\s+CUENTA\s*\*{2,}\s*(\d{4})(?!\d)/);
- const cuenta=cuentaMatch?cuentaMatch[1]:'';
+ const cuentas=[...new Set([...upper.matchAll(/\bA\s+TU\s+CUENTA\s*\*{2,}\s*(\d{3,4})(?!\d)/g)].map(m=>m[1]))];
+ const cuenta=cuentas.length===1?cuentas[0]:'';
  const fecha=fechaDeAviso(upper);
  const conceptoMatch=upper.match(/\bCONCEPTO\s*[:\-]?\s*([^\n]{2,150})/);
  const concepto=conceptoMatch?conceptoMatch[1].trim():'';
@@ -60,7 +63,7 @@ function datosAviso(mensaje,config=process.env){
  const received=Date.parse(mensaje?.receivedDateTime||'');
  const reciente=Number.isFinite(received)&&Date.now()-received<=Math.min(14,Math.max(1,limite))*86400000
   &&received<=Date.now()+300000;
- return {autorizado,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',monto,cuenta,fecha,concepto,id,reciente};
+ return {autorizado,origenVerificado:autorizado?origen:null,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',monto,cuenta,fecha,concepto,id,reciente};
 }
 function perteneceAVivienda(pago,noticia){
  const casa=pago?.casa;
@@ -71,10 +74,15 @@ function perteneceAVivienda(pago,noticia){
  return concepto.includes(' '+calle+' '+numero+' ')
   || concepto.includes(' '+calle+' CASA '+numero+' ');
 }
+function coincideCuenta(detectada,esperada){
+ // Cuatro dígitos visibles deben coincidir completos; nunca reducir una
+ // terminación distinta a tres. Solo se admite la máscara de 3/4 del aviso.
+ return /^\d{4}$/.test(esperada)&&/^\d{3,4}$/.test(String(detectada||''))&&esperada.endsWith(detectada);
+}
 function corresponde(pago,noticia,config=process.env){
  const cuenta=suffix(config.PAGOS_DESTINO_ULTIMOS4||'4409');
  return Boolean(noticia.autorizado&&noticia.reciente&&noticia.id&&noticia.tracking
-  &&clave(pago?.folioOperacion)===noticia.tracking&&noticia.cuenta===cuenta
+  &&clave(pago?.folioOperacion)===noticia.tracking&&coincideCuenta(noticia.cuenta,cuenta)
   &&cuenta.length===4&&noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
   &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
   &&perteneceAVivienda(pago,noticia));
@@ -82,7 +90,7 @@ function corresponde(pago,noticia,config=process.env){
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
   &&Boolean(env.PAGOS_IMAP_HOST&&env.PAGOS_IMAP_MAILBOX&&env.PAGOS_IMAP_PASSWORD&&env.PAGOS_IMAP_AUTH_SERVER
-    &&env.PAGOS_BANK_FROM_ADDRESS&&env.PAGOS_DESTINO_ULTIMOS4);
+    &&(String(env.PAGOS_BANK_FROM_ADDRESS||'').trim()||String(env.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim())&&env.PAGOS_DESTINO_ULTIMOS4);
 }
 async function obtenerAvisos(){
  if(!configurado())return [];

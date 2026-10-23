@@ -90,11 +90,16 @@ Ejemplos que deben conservarse:
 - La conciliación bancaria por correo ya tiene lector IMAP y worker en main;
   consultar `docs/VALIDACION_BANCARIA_CORREO.md` y los servicios actuales. Su presencia
   no acredita conexión al buzón ni aprobación de un depósito real. Antes de activarla,
-  comprobar origen autenticado, cuenta receptora completa, clave de rastreo, monto,
-  fecha, coincidencia única, vínculo a vivienda y protección contra reutilización.
-  Un reenvío firmado por otro dominio o solo tres dígitos de cuenta no bastan.
-  No retirar estas comprobaciones para forzar la aprobación. Monto y fecha por sí
-  solos no identifican una vivienda.
+  comprobar origen autenticado, clave de rastreo, monto, fecha, coincidencia única,
+  vínculo a vivienda y protección contra reutilización. Por petición del usuario,
+  se aceptan reenvíos del administrador cuyo correo exacto esté configurado en
+  PAGOS_BANK_FORWARD_FROM_ADDRESS y autenticado por el receptor como propio de ese
+  dominio. En ese modo se confía en el administrador como fuente del aviso, sin
+  exigir firma bancaria en el encabezado exterior. El texto del cuerpo no autoriza
+  remitentes. La terminación de cuenta del correo admite 3 dígitos enmascarados o 4
+  exactos; si hay 4 no se reducen a 3 para ocultar una discrepancia. La validación OCR
+  del comprobante del usuario conserva sus reglas. Monto y fecha por sí solos no
+  identifican una vivienda.
 - Registrar cortes pagados, aprobación y diario de acceso en la misma transacción.
   La aprobación financiera puede persistir aunque falle la entrega posterior al C3.
 
