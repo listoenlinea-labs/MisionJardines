@@ -1,16 +1,18 @@
-# Conciliación de depósitos con Gmail (sin Microsoft Azure)
+# Verificación de pagos con Gmail API y OAuth 2.0
 
-## Arquitectura
+## Qué hace (sin Azure y sin contraseñas de aplicación)
 
-Los avisos de Banco Azteca recibidos por la propietaria del buzón de Outlook deben **redirigirse de manera selectiva** a `misionjardines.gdl@gmail.com`, conservando el remitente original cuando Outlook lo permita. Gmail se consulta mediante IMAP sobre TLS 993 y contraseña de aplicación, en modo de **solo lectura** (EXAMINE, UID SEARCH, BODY.PEEK). No usa Microsoft Entra, Graph, Azure, ni guarda contraseñas en el repositorio.
+El buzón personal `rocio_bahena65@hotmail.com` continúa recibiendo los avisos de Banco Azteca. Una **regla de redirección selectiva** envía esos mensajes a `misionjardines.gdl@gmail.com`. El backend consulta ese Gmail por la **API oficial con OAuth 2.0**, permiso de solo lectura `gmail.readonly`. No utiliza IMAP, contraseña normal, contraseña de aplicación, ni Microsoft Graph.
 
-El OCR bancario extrae la **clave de rastreo** del comprobante, pero la foto no acredita un depósito. Los pagos ingresan siempre en **En revisión**. El conciliador lee mensajes, valida remitente, encabezados de autenticación aportados por Gmail (DMARC+DKIM), concepto con calle y vivienda, importe exacto, fecha de operación, rastreo y cuenta destino **4409**. No basta el asunto genérico. Si hay ambigüedad, campos faltantes o fallo IMAP, el pago sigue en revisión; los TAGs no cambian.
+Todos los comprobantes entran como `PENDIENTE_VALIDACION` («En revisión»). Para confirmar se requiere un aviso con remitente auténtico y autenticación verificable en Gmail (DKIM + DMARC alineados), coincidencia **exacta** de clave de rastreo, importe, fecha, terminación **4409** y vivienda indicada por calle/número en el concepto. Si falta algún dato o hay más de una coincidencia, se conserva **En revisión**; no se tocan cuotas ni TAGs. No confiar solo en el texto «Banco Azteca» o un correo redirigido.
 
-## Configuración Hostinger (variables privadas del backend)
+## Variables privadas del backend en Hostinger
 
 ```dotenv
 PAGOS_GMAIL_MAILBOX=misionjardines.gdl@gmail.com
-PAGOS_GMAIL_APP_PASSWORD=TU_CONTRASENA_DE_APLICACION_DE_GMAIL
+PAGOS_GMAIL_CLIENT_ID=CLIENT_ID_OAUTH_GOOGLE
+PAGOS_GMAIL_CLIENT_SECRET=CLIENT_SECRET_OAUTH_GOOGLE
+PAGOS_GMAIL_REFRESH_TOKEN=REFRESH_TOKEN_OAUTH_GOOGLE
 PAGOS_BANK_FROM_ADDRESS=notificaciones@bazdigital.com
 PAGOS_BANK_MAIL_SUBJECT=Notificación Banco Azteca
 PAGOS_DESTINO_ULTIMOS4=4409
@@ -19,35 +21,43 @@ PAGOS_BANK_POLL_MS=45000
 PAGOS_BANK_AUTO_VALIDATE=false
 ```
 
-`PAGOS_BANK_FROM_ADDRESS` debe contrastarse con **Mostrar original** en un mensaje real. La dirección anterior es una candidata derivada de los ejemplos; nunca confiar únicamente en el nombre visible del remitente. `PAGOS_GMAIL_APP_PASSWORD` es la contraseña específica de aplicación generada por Google y **no** la contraseña habitual de Gmail. En caso de que Google no permita contraseñas de aplicación, no se debe intentar iniciar sesión con la contraseña real: el acceso deberá cambiar a OAuth de Google.
+No configures `PAGOS_GMAIL_APP_PASSWORD`, `PAGOS_OUTLOOK_MAILBOX`, `PAGOS_MS_CLIENT_ID` ni `PAGOS_MS_REFRESH_TOKEN`. Nunca copies tokens o secrets a GitHub, el navegador del frontend, capturas o chats. La dirección `notificaciones@bazdigital.com` debe verificarse en «Mostrar original» de una notificación legítima.
 
-No agregar variables `PAGOS_OUTLOOK_MAILBOX`, `PAGOS_MS_CLIENT_ID` ni `PAGOS_MS_REFRESH_TOKEN`. El PR anterior #257 se fusionó y sus módulos exclusivos se retiran con #258; **no se reescribe el historial de Git**.
+## Crear credenciales Google OAuth
 
-## Preparar Gmail
+1. Con `misionjardines.gdl@gmail.com`, abre https://console.cloud.google.com/ y crea o selecciona un proyecto, por ejemplo **Misión Jardines Banco**. Este paso **no necesita Azure**. La API Gmail tiene una cuota estándar; revisa el estado de facturación y límites aplicables al proyecto.
+2. En **APIs y servicios → Biblioteca**, busca **Gmail API** y pulsa **Habilitar**.
+3. En **Google Auth Platform / Pantalla de consentimiento OAuth** configura la aplicación **Misión Jardines – Verificación bancaria**, tipo **Externo** si es una cuenta personal, correo de asistencia y contacto del desarrollador.
+4. Agrega el permiso **`https://www.googleapis.com/auth/gmail.readonly`**. Es un permiso de lectura **restringido**, no permite enviar ni eliminar mensajes. Acepta solo las políticas aplicables y consulta los requisitos de verificación de Google.
+5. En **Clientes / Credenciales → Crear cliente OAuth**, selecciona **Aplicación de escritorio**. Copia el Client ID y Client Secret. **No elijas aplicación web**: el asistente local usa una redirección `127.0.0.1` segura para aplicaciones de escritorio.
+6. Si la aplicación permanece en estado **Pruebas**, añade `misionjardines.gdl@gmail.com` como usuario de prueba. Google puede requerir confirmar el acceso a una aplicación no verificada durante la prueba. **Los refresh tokens de apps externas en modo Pruebas caducan aproximadamente a los 7 días**, por lo que así no es apropiado para producción estable.
+7. Para usarla regularmente, revisa **Publicación → En producción** y los requisitos de verificación/seguridad de los permisos restringidos, según tu caso de uso. Google puede requerir revisión e incluso evaluación de seguridad si se manejan datos restringidos en servidor. No presentes este permiso como «sin requisitos» ni habilites la automatización si aún no se cumplen.
 
-1. Entrar a [Seguridad de la cuenta Google](https://myaccount.google.com/security) con la cuenta de Misión Jardines.
-2. Activar **Verificación en dos pasos**.
-3. Abrir [Contraseñas de aplicación](https://myaccount.google.com/apppasswords) y generar una para el backend (si esta función está disponible).
-4. Guardar el valor de 16 caracteres **directamente** en la variable privada `PAGOS_GMAIL_APP_PASSWORD` en Hostinger. No usarlo en el frontend, capturas, correos ni GitHub.
-5. Probar conexión saliente del servidor Hostinger a `imap.gmail.com:993`. Si Hostinger bloquea el puerto, el worker permanece sin servicio hasta resolver esa conectividad.
+Documentación de Google:
+- https://developers.google.com/workspace/gmail/api/auth/scopes
+- https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification
+- https://developers.google.com/identity/protocols/oauth2/
+- https://developers.google.com/workspace/gmail/api/reference/quota
 
-## Redirigir exclusivamente las notificaciones bancarias en Outlook
+## Autorizar Gmail desde tu PC Windows (no desde Hostinger)
 
-Con autorización de la titular de Hotmail: abrir Outlook web → Configuración → Correo → Reglas. Crear una regla desde el **remitente bancario auténtico** con acción **Redirigir a** `misionjardines.gdl@gmail.com`; si la redirección no está disponible, probar reenvío y revisar sus efectos en autenticación. No enviar la totalidad del correo personal. Evitar bucles, conservar el correo original y probar manualmente que llega a Gmail.
+Con Node.js 18+ y el código de este PR abierto en tu carpeta `MisionJardines`, inicia PowerShell desde esa carpeta:
 
-En Gmail abrir una notificación reenviada → menú → **Mostrar original**. Deben verse cabeceras de autenticación firmadas por Gmail y un remitente original verificable. Una redirección a veces hace fallar SPF o DKIM. **Si DMARC/DKIM no pasan o el remitente cambia a la cuenta personal**, este diseño falla cerrado y exige conciliación manual con información del banco; no eliminar estas verificaciones para forzar aprobación.
+```powershell
+$env:PAGOS_GMAIL_CLIENT_ID="TU_CLIENT_ID"
+$env:PAGOS_GMAIL_CLIENT_SECRET="TU_CLIENT_SECRET"
+$env:PAGOS_GMAIL_MAILBOX="misionjardines.gdl@gmail.com"
+node backend/scripts/autorizar-gmail-oauth.js
+```
 
-## Pruebas antes de encender aprobación automática
+El script mostrará una URL oficial de Google que debes abrir localmente. Inicia sesión **solo** con `misionjardines.gdl@gmail.com` y acepta el permiso de leer Gmail. Google redirigirá a `127.0.0.1` y el script mostrará **`PAGOS_GMAIL_REFRESH_TOKEN`**. Pega el token directamente en la variable privada de Hostinger, sin espacios adicionales. El script verifica que el token pertenece al Gmail indicado y **no guarda credenciales en archivos**. Si no llega un refresh token, vuelve a autorizar con `prompt=consent` (el script ya lo solicita).
 
-1. Fusionar y desplegar backend/frontend del PR #258 con `PAGOS_BANK_AUTO_VALIDATE=false`.
-2. Conectarse a Gmail y asegurarse de que recibe un aviso real de depósito a `****4409`, no a `****8844`.
-3. Crear un reporte de pago de prueba con su propia clave de rastreo y validar que aparezca de inmediato **En revisión** en Mis recibos y que el PDF inicial se marque como acuse no confirmado.
-4. Verificar los encabezados del correo, el concepto con calle y número, la clave, la fecha y el monto. Probar explícitamente fechas erróneas, avisos de otra vivienda, claves inexistentes y cuentas ajenas; ninguno debe aprobarse.
-5. Solo cuando pase la prueba con datos reales y permiso de los administradores, cambiar `PAGOS_BANK_AUTO_VALIDATE=true` y **reiniciar backend**. El worker revisa cada 45 segundos (o el intervalo configurado), y también se agenda después de recibir un nuevo reporte. Los residentes verán el cambio en Mis recibos tras su actualización periódica.
-6. Revisar que las vigencias se actualicen por el mismo mecanismo de confirmación preexistente y que no se activen TAGs por notificaciones de cuentas distintas.
+## Activación segura
 
-## Limitaciones
+1. Fusiona el PR de OAuth y despliega con `PAGOS_BANK_AUTO_VALIDATE=false`.
+2. Confirma que la regla de Outlook **solo redirige Banco Azteca** y que una notificación auténtica llega a Gmail. En Gmail pulsa «Mostrar original» y verifica `From`, `Authentication-Results`, DKIM y DMARC. Si redireccionar rompe estas verificaciones, los depósitos deberán permanecer en revisión manual.
+3. Ejecuta `node --test backend/test/validacion-pagos-gmail.test.js backend/test/gmail-api-oauth.test.js` en un checkout.
+4. Comprueba un pago real de prueba: debe permanecer **En revisión** si el correo no existe, si la clave no corresponde, si la cuenta no termina en `4409`, o si el concepto no identifica la vivienda. Antes de activar autoaprobación contrasta también el depósito con el estado de cuenta.
+5. **Solo después** de comprobar autorización, correos, reglas y seguridad, cambia `PAGOS_BANK_AUTO_VALIDATE=true` y reinicia el backend. El worker consulta únicamente si hay pagos pendientes y reutiliza exactamente la aprobación transaccional existente de cuotas y TAGs.
 
-Una notificación de correo **no es confirmación irrevocable del banco**. Recomendamos confrontar con el estado de cuenta o una integración bancaria certificada antes de automatizar accesos físicos a gran escala. Los mensajes ambiguos siempre quedan en revisión manual. El lector IMAP limita cantidad y tamaño de mensajes, y no procesa archivos adjuntos. Su autenticación es por credencial de aplicación, sin privilegios específicos por remitente, así que el buzón Gmail dedicado debe usarse **solo para depósitos** y acceso administrado. Nunca se exponen credenciales por endpoints.
-
-Ejecución de pruebas del proyecto: `node --test backend/test/validacion-pagos-gmail.test.js` desde la raíz.
+Una notificación recibida por correo **no demuestra liquidación bancaria irrevocable**. La validación de fondos definitiva requiere consultar el banco o un proveedor de conciliación oficial, especialmente antes de habilitar accesos físicos. El OAuth permite lectura de los mensajes del buzón autorizado, no exclusivamente de Banco Azteca: por eso debe ser una cuenta dedicada.
