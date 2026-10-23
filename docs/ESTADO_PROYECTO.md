@@ -314,3 +314,28 @@ pero cero avisos autenticados y cero cuentas con cuatro dígitos reconocibles.
 No se ejecutó el lector contra el buzón ni se modificaron pagos/TAGs reales durante
 este cambio. Falta desplegar backend, configurar el correo autorizado en el panel
 y repetir diagnóstico/pago real. No requiere SQL.
+
+
+## 22/oct/2026 — Monto del aviso bancario en filas separadas
+
+El usuario aportó diagnóstico real posterior: conexión y lectura OK de 41 mensajes,
+un reenvío autenticado del administrador y todos sus campos reconocidos salvo
+monto. Después compartió el texto del aviso con encabezado e importe en filas
+separadas y otra cantidad correspondiente a comisión. No se publican aquí ni en
+las pruebas los datos de la operación o los enlaces privados del correo.
+
+Sobre main `3a8b539f1e3c922e7d570899d5a947437b4f67ef`, se reprodujo la ausencia del
+monto: el patrón excluía saltos de línea entre encabezado y signo monetario. La
+conversión de filas HTML introduce precisamente esos saltos. Se admiten espacios
+y saltos entre encabezado e importe, sin atravesar otros campos como Comisión o
+Saldo. Importes inválidos no se truncan y montos recibidos contradictorios dejan
+el mensaje sin importe conciliable. Se conserva reconocimiento del reenvío,
+rastreo, fecha, cuenta, vivienda, unicidad y aprobación transaccional existente.
+
+Validación: cuatro casos de regresión fallaron en el código anterior. Tras el
+cambio, 28 pruebas simuladas aprobadas en banco-correo-monto-tablas,
+validacion-pagos-reenvio-admin, diagnostico-buzon-pagos y validacion-pagos-correo;
+sintaxis y git diff --check sin errores. No se accedió al buzón ni a MySQL/C3
+reales, no se aprobaron pagos ni se descargaron enlaces privados del aviso.
+Requiere desplegar backend y repetir diagnóstico/conciliación real. Sin SQL,
+sin variables nuevas y sin cambios de frontend.

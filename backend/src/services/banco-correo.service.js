@@ -51,8 +51,11 @@ function datosAviso(mensaje,config=process.env){
  const upper=normal(body);
  const claveMatch=upper.match(/\bCLAVE\s+DE\s+RASTREO\s*[:#=\-]?\s*([A-Z0-9][A-Z0-9\s-]{10,100})/);
  const tracking=claveMatch?clave(claveMatch[1].split(/\b(?:CONSULTA|VERIFICA|REFERENCIA|CONCEPTO|TIPO|FECHA|HORA)\b/)[0].split('\n')[0]):'';
- const montoMatch=upper.match(/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)[^$\n]{0,65}\$\s*([\d,]+(?:\.\d{2})?)/);
- const monto=montoMatch?Number(montoMatch[1].replace(/,/g,'')):null;
+ // El encabezado y el importe viven en filas HTML distintas. Admitir
+ // espacios/saltos entre ellos sin saltar a Comisión, Saldo u otro campo.
+ const montos=[...new Set([...upper.matchAll(/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)\s*\$\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})?)(?![\d.,])/g)]
+  .map(match=>Number(match[1].replace(/,/g,''))))];
+ const monto=montos.length===1&&Number.isFinite(montos[0])?montos[0]:null;
  const cuentas=[...new Set([...upper.matchAll(/\bA\s+TU\s+CUENTA\s*\*{2,}\s*(\d{3,4})(?!\d)/g)].map(m=>m[1]))];
  const cuenta=cuentas.length===1?cuentas[0]:'';
  const fecha=fechaDeAviso(upper);
