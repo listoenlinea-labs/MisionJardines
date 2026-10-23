@@ -49,7 +49,7 @@ function parseMessage({uid,source}){
  const address=(from.match(/<([^<>\s]+@[^<>\s]+)>/)||[])[1]||
    (from.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]+/i)||[])[0]||'';
  const time=new Date(h.date||'');
- const auth=(h['authentication-results']||'').split('\n').filter(x=>/^mx\.google\.com\s*;/i.test(x.trim()));
+ const auth=(h['authentication-results']||'').split('\n').filter(x=>/^mx\.google\.com\s*;/i.test(x.trim())).slice(0,1);
  return {id:'gmail-uid:'+uid+':'+String(h['message-id']||'').slice(0,180),
   from:{emailAddress:{address}},subject:h.subject||'',
   receivedDateTime:Number.isFinite(time.valueOf())?time.toISOString():'',
