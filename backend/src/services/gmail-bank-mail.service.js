@@ -1,3 +1,59 @@
 'use strict';
-// Gmail bank notification parser; intentionally requires authenticated headers.
-module.exports = {};
+const {Imap}=require('./gmail-imap.transport');
+function unfold(raw){
+ const headers={};let key='';
+ for(const line of raw.replace(/\r\n/g,'\n').split('\n')){
+  if(/^\s/.test(line)&&key){headers[key]+=' '+line.trim();continue}
+  const match=line.match(/^([A-Za-z0-9-]+):\s*(.*)$/);
+  if(match){key=match[1].toLowerCase();headers[key]=(headers[key]?headers[key]+'\n':'')+match[2]}
+ }
+ return headers;
+}
+function splitMime(raw){
+ const pos=raw.search(/\r?\n\r?\n/);
+ if(pos<0)return null;
+ const match=raw.slice(pos).match(/^\r?\n\r?\n/);
+ return {headers:unfold(raw.slice(0,pos)),body:raw.slice(pos+match[0].length)};
+}
+function decode(raw,encoding){
+ if(/base64/i.test(encoding))return Buffer.from(raw.replace(/[^A-Za-z0-9+/=]/g,''),'base64').toString('utf8');
+ if(/quoted-printable/i.test(encoding)){
+  const expanded=raw.replace(/=\r?\n/g,'').replace(/=([0-9a-f]{2})/gi,(_,h)=>String.fromCharCode(parseInt(h,16)));
+  return Buffer.from(expanded,'latin1').toString('utf8');
+ }
+ return raw;
+}
+function mimeText(message,depth=0){
+ if(!message||depth>4)return '';
+ const type=message.headers['content-type']||'text/plain';
+ if(/multipart\//i.test(type)){
+  const boundary=type.match(/boundary\s*=\s*(?:"([^"]+)"|([^;\s]+))/i);
+  if(!boundary)return '';
+  const value=boundary[1]||boundary[2];
+  if(value.length>120)return '';
+  const text=[];
+  for(const item of message.body.split('--'+value).slice(1)){
+   if(item.startsWith('--'))break;
+   const parsed=splitMime(item.replace(/^\r?\n/,''));
+   if(!parsed||/attachment/i.test(parsed.headers['content-disposition']||''))continue;
+   const child=mimeText(parsed,depth+1);if(child)text.push(child);
+  }
+  return text.join('\n').slice(0,50000);
+ }
+ if(!/^text\/(plain|html)\b/i.test(type))return '';
+ return decode(message.body,message.headers['content-transfer-encoding']||'').slice(0,50000);
+}
+function parseMessage({uid,source}){
+ const parsed=splitMime(source.toString('utf8'));if(!parsed)return null;
+ const h=parsed.headers,from=String(h.from||'');
+ const address=(from.match(/<([^<>\s]+@[^<>\s]+)>/)||[])[1]||
+   (from.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]+/i)||[])[0]||'';
+ const time=new Date(h.date||'');
+ const auth=(h['authentication-results']||'').split('\n').filter(x=>/^mx\.google\.com\s*;/i.test(x.trim()));
+ return {id:'gmail-uid:'+uid+':'+String(h['message-id']||'').slice(0,180),
+  from:{emailAddress:{address}},subject:h.subject||'',
+  receivedDateTime:Number.isFinite(time.valueOf())?time.toISOString():'',
+  body:{content:mimeText(parsed)},
+  internetMessageHeaders:auth.map(value=>({name:'Authentication-Results',value}))};
+}
+module.exports={parseMessage,unfold,mimeText};
