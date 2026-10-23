@@ -1,8 +1,8 @@
 'use strict';
 // Sólo lectura. El correo bancario es evidencia secundaria: la aprobación exige
-// Gmail IMAP TLS, remitente autenticado, clave, monto, fecha y cuenta exactos.
+// Gmail API OAuth 2.0, remitente autenticado, clave, monto, fecha y cuenta exactos.
 const {createHash}=require('node:crypto');
-const {leerGmail}=require('./gmail-bank-mail.service');
+const {leerGmail}=require('./gmail-oauth-api.service');
 const normal=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
 const clave=value=>normal(value).replace(/[^A-Z0-9]/g,'');
 const centavos=value=>Math.round(Number(value||0)*100);
@@ -81,14 +81,13 @@ function corresponde(pago,noticia,config=process.env){
 }
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
-  &&Boolean(env.PAGOS_GMAIL_MAILBOX&&env.PAGOS_GMAIL_APP_PASSWORD
+  &&Boolean(env.PAGOS_GMAIL_MAILBOX&&env.PAGOS_GMAIL_CLIENT_ID&&env.PAGOS_GMAIL_CLIENT_SECRET&&env.PAGOS_GMAIL_REFRESH_TOKEN
     &&env.PAGOS_BANK_FROM_ADDRESS&&env.PAGOS_DESTINO_ULTIMOS4);
 }
 async function obtenerAvisos(){
  if(!configurado())return [];
  const messages=await leerGmail({
   mailbox:String(process.env.PAGOS_GMAIL_MAILBOX||'').trim(),
-  password:String(process.env.PAGOS_GMAIL_APP_PASSWORD||'').replace(/\s/g,''),
   dias:Number(process.env.PAGOS_BANK_MAIL_MAX_DIAS)||7
  });
  return messages.map(msg=>datosAviso(msg));
