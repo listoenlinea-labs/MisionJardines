@@ -14,7 +14,7 @@ class Imap {
   if(this.buffer.length>64000)throw Error('Línea IMAP extensa');await this.wait()}}
  async connect(){const host='imap.gmail.com';this.socket=tls.connect({host,port:993,servername:host,rejectUnauthorized:true,timeout:20000});
   this.socket.on('data',c=>{this.buffer=Buffer.concat([this.buffer,c]);if(this.buffer.length>9000000)this.socket.destroy(Error('Respuesta extensa'));this.signal()});
-  this.socket.on('error',e=>this.signal(e));this.socket.on('close',()=>this.signal(Error('IMAP desconectado')));
+  this.socket.on('error',e=>this.signal(e));this.socket.on('close',()=>this.signal(Error('IMAP desconectado')));this.socket.on('timeout',()=>this.socket.destroy(Error('Gmail IMAP excedió el tiempo de conexión')));
   await new Promise((resolve,reject)=>{this.socket.once('secureConnect',()=>this.socket.authorized?resolve():reject(Error('TLS inválido')));
     this.socket.once('error',reject)});
   if(!/^\* OK/.test(await this.line()))throw Error('Gmail rechazó la conexión');
