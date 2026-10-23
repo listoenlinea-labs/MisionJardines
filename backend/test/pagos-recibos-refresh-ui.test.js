@@ -36,7 +36,7 @@ test('indicador de espera, foco accesible y animación reducida',()=>{
  assert.match(html,/\.receipt-refresh-btn:focus-visible/);
  assert.match(html,/\.receipt-refresh-btn\.is-loading svg\{animation:receipt-refresh-spin/);
  assert.match(html,/prefers-reduced-motion:reduce/);
- assert.match(html,/@media\(max-width:520px\)\{\.receipt-refresh-btn/);
+ assert.match(html,/@media\(max-width:520px\)\{\.receipt-heading-row/);
  assert.match(js,/button\.disabled = true;/);
  assert.match(js,/button\.classList\.add\('is-loading'\)/);
  assert.match(js,/button\.setAttribute\('aria-busy', 'true'\)/);
