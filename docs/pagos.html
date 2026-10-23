@@ -997,20 +997,24 @@
     @media(max-width:520px){.receipt-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-filterbar label:first-child{grid-column:1/-1}}
     .receipt-period-label{display:inline-block;margin-bottom:4px;color:#65508e;font-size:9px;font-weight:900}
 
-.receipt-card-toolbar{display:flex;justify-content:flex-end;margin:9px 0 13px}
 .receipt-more{display:inline-flex;align-items:center;gap:9px;padding:10px 14px;border:1px solid #e8d8f1;border-radius:12px;background:#fcf8ff;color:#795694;font-size:11px;font-weight:850;cursor:pointer}
-/* Refrescar Mis recibos: botón secundario visible junto al título. */
-.receipt-heading-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.receipt-heading-copy{min-width:0;flex:1}
-.receipt-refresh-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:38px;height:38px;border:1px solid #e8d8f1;border-radius:12px;background:#fcf8ff;color:#80669c;box-shadow:0 4px 13px #503d7110;cursor:pointer;transition:border-color .18s ease,background-color .18s ease,color .18s ease}
-.receipt-refresh-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* Historial: título y ambas acciones comparten un único renglón. */
+.receipt-heading-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;margin:7px 0 15px}
+.receipt-heading-row h2{margin:0;min-width:0;font-size:20px;line-height:1.2;letter-spacing:-.025em;white-space:nowrap}
+.receipt-heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex:0 0 auto;white-space:nowrap}
+.receipt-heading-actions .receipt-more{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding:0 11px;border-radius:11px;line-height:1.1;white-space:nowrap;transition:border-color .18s ease,background-color .18s ease}
+.receipt-heading-actions .receipt-more:hover{background:#f5edfd;border-color:#cfb8e5;color:#674b87}
+.receipt-heading-actions .receipt-more:focus-visible{outline:3px solid #cfb8e5;outline-offset:2px}
+.receipt-refresh-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:36px;height:36px;padding:0;border:1px solid #e8d8f1;border-radius:11px;background:#fcf8ff;color:#80669c;box-shadow:0 4px 13px #503d7110;cursor:pointer;transition:border-color .18s ease,background-color .18s ease,color .18s ease}
+.receipt-refresh-btn svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .receipt-refresh-btn:hover:not(:disabled){background:#f5edfd;border-color:#cfb8e5;color:#674b87}
 .receipt-refresh-btn:focus-visible{outline:3px solid #cfb8e5;outline-offset:2px}
 .receipt-refresh-btn:disabled{opacity:.58;cursor:wait}
 .receipt-refresh-btn.is-loading svg{animation:receipt-refresh-spin .9s linear infinite}
 @keyframes receipt-refresh-spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.receipt-refresh-btn{transition:none}.receipt-refresh-btn.is-loading svg{animation:none}}
-@media(max-width:520px){.receipt-refresh-btn{width:34px;height:34px;border-radius:10px}.receipt-refresh-btn svg{width:16px;height:16px}}
+@media(prefers-reduced-motion:reduce){.receipt-refresh-btn,.receipt-heading-actions .receipt-more{transition:none}.receipt-refresh-btn.is-loading svg{animation:none}}
+@media(max-width:520px){.receipt-heading-row{gap:7px}.receipt-heading-row h2{font-size:17px}.receipt-heading-actions{gap:6px}.receipt-heading-actions .receipt-more{min-height:34px;padding:0 8px;font-size:10px}.receipt-refresh-btn{width:34px;height:34px;border-radius:10px}.receipt-refresh-btn svg{width:16px;height:16px}}
+@media(max-width:390px){.receipt-heading-row{gap:6px}.receipt-heading-row h2{font-size:15px}.receipt-heading-actions{gap:5px}.receipt-heading-actions .receipt-more{min-height:32px;padding:0 7px;font-size:9px}.receipt-refresh-btn{width:32px;height:32px}}
 
 #receiptList.receipt-list{overflow:visible;max-height:none;padding:0;display:grid;grid-template-columns:1fr;gap:8px}
 #receiptList .receipt-item:nth-child(n+3){display:none}
@@ -1191,21 +1195,20 @@
         </article>
 
         <article class="card pad">
+          <span class="eyebrow">MIS RECIBOS</span>
           <div class="receipt-heading-row">
-            <div class="receipt-heading-copy">
-              <span class="eyebrow">MIS RECIBOS</span>
-              <h2>Historial de pagos</h2>
-              <p>Consulta y descarga tus recibos desde cualquier dispositivo.</p>
+            <h2>Historial de pagos</h2>
+            <div class="receipt-heading-actions">
+              <button id="showAllReceipts" class="receipt-more" type="button">Ver todos (0) ↗</button>
+              <button id="refreshReceipts" class="receipt-refresh-btn" type="button"
+                title="Actualizar historial de pagos" aria-label="Actualizar historial de pagos">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M20 11a8 8 0 1 0-2.4 5.7"></path>
+                  <path d="M20 4v7h-7"></path>
+                </svg>
+              </button>
             </div>
-            <button id="refreshReceipts" class="receipt-refresh-btn" type="button"
-              title="Actualizar historial de pagos" aria-label="Actualizar historial de pagos">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M20 11a8 8 0 1 0-2.4 5.7"></path>
-                <path d="M20 4v7h-7"></path>
-              </svg>
-            </button>
           </div>
-          <div class="receipt-card-toolbar"><button id="showAllReceipts" class="receipt-more" type="button">Ver todos los pagos <span aria-hidden="true">↗</span></button></div>
           <div id="receiptList" class="receipt-list" tabindex="0" aria-label="Historial de pagos con desplazamiento">
             <div class="empty">Cargando recibos…</div>
           </div>
