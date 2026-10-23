@@ -52,19 +52,31 @@ function datosAviso(mensaje,config=process.env){
  const cuentaMatch=upper.match(/\bA\s+TU\s+CUENTA\s*\*{2,}\s*(\d{4})(?!\d)/);
  const cuenta=cuentaMatch?cuentaMatch[1]:'';
  const fecha=fechaDeAviso(upper);
+ const conceptoMatch=upper.match(/\bCONCEPTO\s*[:\-]?\s*([^\n]{2,150})/);
+ const concepto=conceptoMatch?conceptoMatch[1].trim():'';
  const id=String(mensaje?.id||'');
  const limite=Number(config.PAGOS_BANK_MAIL_MAX_DIAS||7);
  const received=Date.parse(mensaje?.receivedDateTime||'');
  const reciente=Number.isFinite(received)&&Date.now()-received<=Math.min(14,Math.max(1,limite))*86400000
   &&received<=Date.now()+300000;
- return {autorizado,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',monto,cuenta,fecha,id,reciente};
+ return {autorizado,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',monto,cuenta,fecha,concepto,id,reciente};
+}
+function perteneceAVivienda(pago,noticia){
+ const casa=pago?.casa;
+ const concepto=' '+normal(noticia?.concepto).replace(/[^A-Z0-9]+/g,' ')+' ';
+ const calle=normal(casa?.calleCorrecta||casa?.calle).replace(/[^A-Z0-9]+/g,' ').trim();
+ const numero=String(casa?.numero||'').trim();
+ if(!calle||!numero||!concepto.trim())return false;
+ return concepto.includes(' '+calle+' '+numero+' ')
+  || concepto.includes(' '+calle+' CASA '+numero+' ');
 }
 function corresponde(pago,noticia,config=process.env){
  const cuenta=suffix(config.PAGOS_DESTINO_ULTIMOS4||'4409');
  return Boolean(noticia.autorizado&&noticia.reciente&&noticia.id&&noticia.tracking
   &&clave(pago?.folioOperacion)===noticia.tracking&&noticia.cuenta===cuenta
   &&cuenta.length===4&&noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
-  &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto));
+  &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
+  &&perteneceAVivienda(pago,noticia));
 }
 let tokenCache={token:'',expires:0,refresh:''};
 let pendingAuth=null;
@@ -113,4 +125,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_OUTLOOK_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,corresponde,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
+module.exports={datosAviso,corresponde,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
