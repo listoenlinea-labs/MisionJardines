@@ -512,7 +512,7 @@ async function descargarRecibo(req, res) {
 
         // Compatibilidad con recibos creados antes de guardar PDFs en MySQL:
         // se regeneran una sola vez y quedan persistidos en la base de datos.
-        if (!pago.reciboPdfData) {
+        if (!pago.reciboPdfData || (pago.estatus === 'VALIDADO' && String(pago.reciboPdfNombre||'').startsWith('Acuse_Revision_'))) {
             const pdf = await generarReciboPagoReportado(pago);
             await pago.update({
                 reciboPdfData: pdf.buffer,
