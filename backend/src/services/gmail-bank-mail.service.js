@@ -56,4 +56,34 @@ function parseMessage({uid,source}){
   body:{content:mimeText(parsed)},
   internetMessageHeaders:auth.map(value=>({name:'Authentication-Results',value}))};
 }
-module.exports={parseMessage,unfold,mimeText};
+
+async function leerGmail({mailbox,password,dias=7}){
+ const client=new Imap();
+ const quote=value=>{
+  const v=String(value||'');
+  if(!v||v.includes('\r')||v.includes('\n')||v.includes('\0'))throw Error('Credenciales Gmail inválidas');
+  return '"'+v.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
+ };
+ try{
+  await client.connect();
+  await client.cmd('LOGIN '+quote(mailbox)+' '+quote(password));
+  await client.cmd('EXAMINE "INBOX"');
+  const back=new Date(Date.now()-Math.max(1,Math.min(14,Number(dias)||7))*86400000);
+  const since=String(back.getUTCDate()).padStart(2,'0')+'-'+
+   ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][back.getUTCMonth()]+'-'+back.getUTCFullYear();
+  let ids=[];
+  await client.cmd('UID SEARCH SINCE '+since,line=>{
+   const found=line.match(/^\*\s+SEARCH(?:\s+(.*))?$/);
+   if(found)ids=(found[1]||'').trim().split(/\s+/).map(Number).filter(n=>Number.isSafeInteger(n)&&n>0);
+  });
+  const results=[];
+  for(const uid of ids.slice(-80).reverse()){
+   const bodies=await client.cmd('UID FETCH '+uid+' (BODY.PEEK[])');
+   if(bodies.length!==1)continue;
+   const parsed=parseMessage({uid,source:bodies[0]});
+   if(parsed)results.push(parsed);
+  }
+  return results;
+ }finally{client.close()}
+}
+module.exports={parseMessage,unfold,mimeText,leerGmail};
