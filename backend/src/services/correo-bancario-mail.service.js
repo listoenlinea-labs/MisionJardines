@@ -74,7 +74,7 @@ async function leerBuzon({mailbox,password,dias=7}){
  const client=new Imap();
  const quote=value=>{
   const v=String(value||'');
-  if(!v||v.includes('\r')||v.includes('\n')||v.includes('\0'))throw Error('Credenciales Gmail inválidas');
+  if(!v||v.includes('\r')||v.includes('\n')||v.includes('\0'))throw Error('Credenciales del buzón IMAP inválidas');
   return '"'+v.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
  };
  try{
