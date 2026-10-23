@@ -1,8 +1,8 @@
 'use strict';
 // Sólo lectura. El correo bancario es evidencia secundaria: la aprobación exige
-// OAuth, remitente y autenticación alineados, clave, monto, fecha y cuenta exactos.
+// Gmail IMAP TLS, remitente autenticado, clave, monto, fecha y cuenta exactos.
 const {createHash}=require('node:crypto');
-const {setTimeout:delay}=require('node:timers/promises');
+const {leerGmail}=require('./gmail-bank-mail.service');
 const normal=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
 const clave=value=>normal(value).replace(/[^A-Z0-9]/g,'');
 const centavos=value=>Math.round(Number(value||0)*100);
@@ -42,6 +42,7 @@ function datosAviso(mensaje,config=process.env){
  const dominio=emisor.split('@')[1]||'';
  const autorizado=Boolean(emisor&&remitente===emisor&&asunto.includes(asuntoExigido)&&dominio
   &&/\bdmarc=pass\b/i.test(autenticacion)
+  &&/\bdkim=pass\b/i.test(autenticacion)
   &&new RegExp('header\\.from='+dominio.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:\\s|;|$)','i').test(autenticacion));
  const body=convertirTexto(mensaje?.body?.content||'');
  const upper=normal(body);
@@ -78,51 +79,21 @@ function corresponde(pago,noticia,config=process.env){
   &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
   &&perteneceAVivienda(pago,noticia));
 }
-let tokenCache={token:'',expires:0,refresh:''};
-let pendingAuth=null;
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
-  &&Boolean(env.PAGOS_OUTLOOK_MAILBOX&&env.PAGOS_MS_CLIENT_ID&&env.PAGOS_MS_REFRESH_TOKEN
+  &&Boolean(env.PAGOS_GMAIL_MAILBOX&&env.PAGOS_GMAIL_APP_PASSWORD
     &&env.PAGOS_BANK_FROM_ADDRESS&&env.PAGOS_DESTINO_ULTIMOS4);
-}
-async function refreshToken(){
- if(tokenCache.token&&Date.now()<tokenCache.expires-90000)return tokenCache.token;
- if(pendingAuth)return pendingAuth;
- pendingAuth=(async()=>{
-  const form=new URLSearchParams({client_id:process.env.PAGOS_MS_CLIENT_ID,
-   grant_type:'refresh_token',refresh_token:tokenCache.refresh||process.env.PAGOS_MS_REFRESH_TOKEN,
-   scope:'offline_access Mail.Read User.Read'});
-  const response=await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token',{
-   method:'POST',body:form,signal:AbortSignal.timeout(12000)});
-  if(!response.ok)throw Error('Microsoft OAuth no pudo renovar autorización ('+response.status+')');
-  const data=await response.json();
-  if(!data.access_token)throw Error('Microsoft OAuth no devolvió access_token');
-  tokenCache={token:data.access_token,expires:Date.now()+Math.min(Number(data.expires_in||3600),3600)*1000,
-    refresh:data.refresh_token||tokenCache.refresh||process.env.PAGOS_MS_REFRESH_TOKEN};
-  return tokenCache.token;
- })();
- try{return await pendingAuth}finally{pendingAuth=null}
-}
-async function graphGet(path){
- const response=await fetch('https://graph.microsoft.com/v1.0'+path,{headers:{
-  Authorization:'Bearer '+await refreshToken(),Accept:'application/json',
-  Prefer:'outlook.body-content-type="text"'
- },signal:AbortSignal.timeout(15000)});
- if(!response.ok)throw Error('Microsoft Graph devolvió estado '+response.status);
- return response.json();
 }
 async function obtenerAvisos(){
  if(!configurado())return [];
- const me=await graphGet('/me?$select=mail,userPrincipalName');
- const permitida=String(process.env.PAGOS_OUTLOOK_MAILBOX||'').toLowerCase();
- if(![me.mail,me.userPrincipalName].map(x=>String(x||'').toLowerCase()).includes(permitida))
-  throw Error('La cuenta Outlook autorizada no coincide con PAGOS_OUTLOOK_MAILBOX');
- const qs=new URLSearchParams({'$top':'100','$select':'id,receivedDateTime,from,subject,body,internetMessageHeaders',
-  '$orderby':'receivedDateTime desc'});
- const inbox=await graphGet('/me/mailFolders/inbox/messages?'+qs);
- return (inbox.value||[]).map(m=>datosAviso(m));
+ const messages=await leerGmail({
+  mailbox:String(process.env.PAGOS_GMAIL_MAILBOX||'').trim(),
+  password:String(process.env.PAGOS_GMAIL_APP_PASSWORD||'').replace(/\s/g,''),
+  dias:Number(process.env.PAGOS_BANK_MAIL_MAX_DIAS)||7
+ });
+ return messages.map(msg=>datosAviso(msg));
 }
-function huellaMensaje(messageId,mailbox=process.env.PAGOS_OUTLOOK_MAILBOX){
+function huellaMensaje(messageId,mailbox=process.env.PAGOS_GMAIL_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
 module.exports={datosAviso,corresponde,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};

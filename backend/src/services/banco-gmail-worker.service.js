@@ -1,6 +1,6 @@
 'use strict';
 const {PagoReportado,Casa}=require('../models');
-const banco=require('./banco-outlook-grafo.service');
+const banco=require('./banco-gmail.service');
 let ocupado=false,programado=false,timer=null;
 async function ejecutarRevision(){
  if(ocupado||!banco.configurado())return;
@@ -31,8 +31,8 @@ async function ejecutarRevision(){
    }
   }
  }catch(error){
-  // Nunca aprobar por indisponibilidad, problemas OAuth o correos inconclusos.
-  console.error('[Bancos] Verificación Outlook no disponible:',error.message);
+  // Nunca aprobar por indisponibilidad, problemas IMAP o correos inconclusos.
+  console.error('[Bancos] Verificación Gmail no disponible:',error.message);
  }finally{ocupado=false}
 }
 function programarRevision(){
@@ -42,7 +42,7 @@ function programarRevision(){
 }
 function iniciar(){
  if(!banco.configurado()){
-  console.info('[Bancos] Autovalidación Outlook desactivada; los pagos permanecen en revisión.');
+  console.info('[Bancos] Autovalidación Gmail desactivada; los pagos permanecen en revisión.');
   return;
  }
  if(timer)return;
@@ -50,6 +50,6 @@ function iniciar(){
  const ms=Math.max(30000,Number(process.env.PAGOS_BANK_POLL_MS)||45000);
  timer=setInterval(()=>void ejecutarRevision(),ms);
  timer.unref?.();
- console.info('[Bancos] Revisión de notificaciones Outlook iniciada.');
+ console.info('[Bancos] Revisión de notificaciones Gmail iniciada.');
 }
 module.exports={iniciar,ejecutarRevision,programarRevision};
