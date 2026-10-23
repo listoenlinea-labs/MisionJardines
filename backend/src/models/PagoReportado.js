@@ -115,6 +115,12 @@ const PagoReportado = sequelize.define(
             allowNull: false,
             defaultValue: 'PENDIENTE_VALIDACION'
         },
+        correoBancarioHash: {
+            type: DataTypes.STRING(64),
+            allowNull: true,
+            unique: true,
+            field: 'correo_bancario_hash'
+        },
         reciboFolio: {
             type: DataTypes.STRING(50),
             allowNull: true,
