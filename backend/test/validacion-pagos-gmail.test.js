@@ -57,7 +57,8 @@ test('no basta un remitente visible ni asunto cuando falla DMARC o falta clave',
  assert.equal(ajeno.autorizado,false);
 });
 test('lector Gmail: mensaje plano y mensaje codificado en base64 sin adjuntos',()=>{
- const {parseMessage}=require('../src/services/gmail-bank-mail.service');
+ const {parseMessage,decodeHeader}=require('../src/services/gmail-bank-mail.service');
+ assert.equal(decodeHeader('=?UTF-8?Q?Notificaci=C3=B3n_Banco_Azteca?='),'Notificación Banco Azteca');
  const headers=[
   'From: Banco Azteca <avisos@azteca.example>',
   'Subject: Notificación Banco Azteca',
