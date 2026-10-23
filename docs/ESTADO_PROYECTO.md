@@ -489,3 +489,37 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 - No se consultó ni modificó producción, ni se ejecutaron pagos, escrituras de TAG o
   pruebas físicas. Se conserva el historial y una sola entrada para esta fecha.
 
+
+
+## 22/oct/2026 — Revisión del conciliador bancario e IMAP
+
+Revisión sobre main `0afcb5817945940fae06c45170e6d2979196aef2`, tras el resumen
+compartido por el usuario y un log de arranque terminado en un mensaje de
+estimación de resolución del OCR. Ese fragmento no acredita error ni éxito de
+reporte/lectura IMAP. El log de arranque del conciliador solo confirma que el
+flag y las variables requeridas permiten programar la tarea; no certifica login
+IMAP ni coincidencia bancaria. Sin pendientes, el worker no consulta el buzón.
+
+El código ya implementa IMAP y aprobación bancaria. La referencia anterior en
+AGENTS.md que lo llamaba propuesta quedó desactualizada y se corrige. La
+aceptación del depósito real y la actualización física siguen sin verificarse.
+
+Se reprodujo con mensajes sintéticos: un aviso bancario autenticado/completo
+coincide; un reenvío firmado por otro dominio o una cuenta con solo tres dígitos
+visibles se descartan. No se reducen comprobaciones de cuenta, DKIM/DMARC,
+referencia, monto, fecha, vivienda ni unicidad para forzar aprobaciones. El worker
+omite sin diagnóstico detallado las coincidencias nulas/ambiguas; el resumen del
+usuario no aporta el error HTTP ni el resultado del diagnóstico real.
+
+Corrección concreta: probar-buzon-pagos.js buscaba .env en la raíz, mientras
+server.js lo carga desde backend. Se alinea la ruta y se añaden solo contadores
+para diferenciar extracción incompleta de autenticación fallida, sin imprimir
+mensajes, datos bancarios ni credenciales. El script es de solo lectura; no se
+modificó la lógica de aprobación ni se accedió a producción.
+
+Validación: 11 pruebas simuladas aprobadas con
+`PAGOS_IMAP_AUTH_SERVER=mx.hostinger.com node --test backend/test/diagnostico-buzon-pagos.test.js backend/test/validacion-pagos-correo.test.js`.
+Ese auth-server es exclusivamente el fixture de las pruebas, no una configuración
+recomendada para el proveedor real. Sintaxis y git diff --check sin errores.
+Pendiente ejecutar el diagnóstico en el backend desplegado y revisar la respuesta
+HTTP/mensaje visible de la prueba; sin acceso a correo, MySQL o C3 reales.

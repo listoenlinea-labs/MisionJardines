@@ -55,3 +55,34 @@ La **redirección** a veces altera los resultados de autenticación SPF/DKIM/DMA
 7. Solo después de pruebas con depósito real, origen autenticado y aprobación administrativa, cambiar a `PAGOS_BANK_AUTO_VALIDATE=true` y reiniciar el backend. Si alguna validación no pasa, mantenerla desactivada.
 
 No usar la contraseña personal de un correo no dedicado para este proceso si existe una alternativa: el lector puede acceder a la bandeja completa. Limita el acceso a los responsables del proyecto, conserva secretos únicamente en el entorno del backend y no registra cuerpos de mensajes.
+
+
+## Diagnóstico cuando un pago permanece en revisión
+
+El aviso de arranque «Revisión de notificaciones buzón IMAP iniciada» solo
+confirma programación del worker. Sin reportes pendientes no consulta el buzón,
+y una notificación que no coincide puede descartarse sin imprimir otro mensaje.
+«Estimating resolution as …» pertenece al OCR; no es por sí solo un error IMAP.
+
+Desde la raíz del proyecto, con el entorno correcto del backend:
+
+```sh
+NODE_ENV=production node backend/scripts/probar-buzon-pagos.js
+```
+
+Para desarrollo sustituir production por development. El script carga
+`backend/.env.<NODE_ENV>` igual que el servidor, conservando las variables ya
+inyectadas por el alojamiento. La corrección del 22/oct retira la búsqueda
+incorrecta de `.env` en la raíz.
+
+Los contadores separan autenticación de datos legibles: mensajes completos sin
+autenticación bancaria no autorizan pagos. Un aviso con solo tres dígitos de
+cuenta no proporciona la terminación exacta de cuatro exigida; no se completa
+por suposición. Un reenvío autenticado como mensaje de otra cuenta no demuestra
+el origen bancario de su contenido. Revisar recepción directa del aviso original
+si la redirección no conserva evidencia suficiente.
+
+Si ni siquiera aparece el reporte en Mis recibos, revisar la respuesta HTTP de
+Reportar pago y su mensaje en pantalla: el OCR precede al guardado, mientras la
+conciliación IMAP ocurre después. El diagnóstico de correo no demuestra que la
+imagen haya superado las validaciones de extracción/destino.
