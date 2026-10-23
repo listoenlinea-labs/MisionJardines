@@ -59,7 +59,16 @@
     }
     async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; const base=Number(config.mantenimiento?.montoBase||300); $('maintenanceRateText').textContent=money(base)+' por mensualidad · '+money(config.mantenimiento?.recargoTardio||50)+' por corte vencido pendiente'; $('maintenancePaymentHint').textContent='Se aceptan abonos y mensualidades adelantadas. Si depositaste '+money(base)+' y correspondían '+money(base+50)+', reporta el importe depositado; una vez validado, podrás cubrir el complemento con otro comprobante. La vigencia avanza al completar la mensualidad y cubrir los recargos pendientes.'; $('bankName').textContent = configText(config.banco, 'BANCO AZTECA'); $('bankHolder').textContent = configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'); $('bankAccount').textContent = configText(config.cuenta, '00002128412440'); $('bankClabe').textContent = configText(config.clabe, '127320021284124409'); $('bankCard').textContent = configText(config.tarjeta, '4027666123124884'); $('bankReference').textContent = 'Consultando vivienda…'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = 'El artículo 1028 del Código Civil del Estado de Jalisco dispone el pago anticipado de cuotas y prevé intereses moratorios conforme al reglamento del condominio y los límites legales. Este aviso no establece por sí mismo un recargo fijo de $50.'; syncBankReference(); updatePaymentSummary() }
     async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
-    async function loadReceipts() { try { const d = await api('/pagos/mios', { headers: headers() }); renderReceipts(d.data || []) } catch (e) { $('receiptList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
+    async function loadReceipts({ preserveOnError = false } = {}) {
+      try {
+        const d = await api('/pagos/mios', { headers: headers() });
+        renderReceipts(d.data || []);
+        return true;
+      } catch (e) {
+        if (!preserveOnError) $('receiptList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
+        return false;
+      }
+    }
     async function loadDebts(){
       const d=await api('/pagos/adeudos',{headers:headers()});debts=d.data;
       document.querySelectorAll('.tab').forEach(button=>{
@@ -132,6 +141,28 @@
     $('clearReceiptFilters').addEventListener('click',()=>{
       receiptFilter.month='';receiptFilter.year='';
       $('receiptMonth').value='';$('receiptYear').value='';renderReceipts();
+    });
+    // Refresca solo Mis recibos mediante el mismo endpoint usado por la carga inicial.
+    // Se preservan las tarjetas visibles si la red falla temporalmente.
+    let receiptRefreshBusy = false;
+    $('refreshReceipts').addEventListener('click', async () => {
+      if (receiptRefreshBusy) return;
+      const button = $('refreshReceipts');
+      receiptRefreshBusy = true;
+      button.disabled = true;
+      button.classList.add('is-loading');
+      button.setAttribute('aria-busy', 'true');
+      button.title = 'Actualizando historial de pagos…';
+      try {
+        const updated = await loadReceipts({ preserveOnError: true });
+        toast(updated ? 'Historial de pagos actualizado.' : 'No fue posible actualizar el historial. Intenta de nuevo.');
+      } finally {
+        receiptRefreshBusy = false;
+        button.disabled = false;
+        button.classList.remove('is-loading');
+        button.removeAttribute('aria-busy');
+        button.title = 'Actualizar historial de pagos';
+      }
     });
     $('showAllReceipts').addEventListener('click',()=>{$('receiptAllModal').showModal();renderReceipts();});
     $('closeReceiptAll').addEventListener('click',()=>$('receiptAllModal').close());
