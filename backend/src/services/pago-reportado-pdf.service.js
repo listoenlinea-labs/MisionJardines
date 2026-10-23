@@ -108,6 +108,7 @@ function drawLogoFallback(doc) {
 function drawReceipt(doc, pago, logo) {
     const folio = pago.reciboFolio || pago.folioReporte;
     const isExtra = pago.tipoPago === 'EXTRAORDINARIO';
+    const pendiente = pago.estatus !== 'VALIDADO';
 
     // Marco exterior y cuerpo como el template de referencia.
     doc.rect(14, 18, 584, 756)
@@ -147,8 +148,8 @@ function drawReceipt(doc, pago, logo) {
     doc.font('Helvetica-Bold')
         .fontSize(11)
         .text(
-            isExtra
-                ? 'Recibo de pago extraordinario'
+            pendiente ? 'Acuse de reporte - EN REVISIÓN'
+                : isExtra ? 'Recibo de pago extraordinario'
                 : 'Recibo de pago de mantenimiento',
             54,
             142,
@@ -168,6 +169,8 @@ function drawReceipt(doc, pago, logo) {
         46,
         205
     );
+
+    if (pendiente) field(doc, 'Estado', 'SIN CONFIRMACION BANCARIA', 46, 219);
 
     line(doc, 231);
 
@@ -259,7 +262,7 @@ async function generarReciboPagoReportado(pago) {
 
     return new Promise((resolve, reject) => {
         const folio = pago.reciboFolio || pago.folioReporte;
-        const fileName = 'Recibo_' + folio + '.pdf';
+        const fileName = (pago.estatus === 'VALIDADO' ? 'Recibo_' : 'Acuse_Revision_') + folio + '.pdf';
         const chunks = [];
 
         const doc = new PDFDocument({
