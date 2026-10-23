@@ -2,7 +2,7 @@
 // Diagnóstico sin modificar pagos, etiquetas ni mensajes del buzón.
 // No imprime contraseñas, identificadores bancarios ni contenidos de correo.
 const path=require('node:path');
-require('dotenv').config({path:path.resolve(__dirname,'../../.env.'+(process.env.NODE_ENV||'development'))});
+require('dotenv').config({path:path.resolve(__dirname,'../.env.'+(process.env.NODE_ENV||'development'))});
 const {leerBuzon}=require('../src/services/correo-bancario-mail.service');
 const banco=require('../src/services/banco-correo.service');
 async function main(){
@@ -16,6 +16,12 @@ async function main(){
  console.log('[Diagnóstico] Correos recientes encontrados:',messages.length);
  console.log('[Diagnóstico] Avisos con remitente/asunto y autenticación válidos:',parsed.filter(m=>m.autorizado).length);
  console.log('[Diagnóstico] Avisos con clave, monto, fecha y cuenta:',parsed.filter(m=>m.autorizado&&m.tracking&&Number.isFinite(m.monto)&&m.fecha&&m.cuenta).length);
+ // Separar extracción de autenticación: un reenvío puede contener datos
+ // legibles pero carecer de autenticación bancaria. Mostrar solo cantidades.
+ console.log('[Diagnóstico] Mensajes con datos completos, sin considerar autenticación:',parsed.filter(m=>m.tracking&&Number.isFinite(m.monto)&&m.fecha&&m.cuenta&&m.concepto).length);
+ console.log('[Diagnóstico] Mensajes sin clave de rastreo reconocible:',parsed.filter(m=>!m.tracking).length);
+ console.log('[Diagnóstico] Mensajes sin cuatro dígitos de cuenta reconocibles:',parsed.filter(m=>!m.cuenta).length);
+ console.log('[Diagnóstico] Mensajes sin concepto de vivienda reconocible:',parsed.filter(m=>!m.concepto).length);
  console.log('[Diagnóstico] No se actualizó ningún pago, TAG o mensaje.');
  if(!parsed.some(m=>m.autorizado))
   console.warn('[Diagnóstico] Sin avisos autenticados; revisar en el correo original PAGOS_IMAP_AUTH_SERVER y la redirección bancaria.');

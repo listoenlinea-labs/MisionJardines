@@ -87,10 +87,14 @@ Ejemplos que deben conservarse:
   manual cuando falta algún dato; nunca pueden contradecir datos detectados.
 - Un destino correcto en una imagen no demuestra recepción del dinero. El comprobante
   permanece `PENDIENTE_VALIDACION` hasta la confirmación administrativa actual.
-- Leer correos bancarios para conciliar pagos es una propuesta, **no una integración
-  implementada**. Antes de activarla, comprobar origen del mensaje, cuenta receptora,
-  datos de operación, coincidencia única, vínculo a vivienda y protección contra
-  reutilización. Monto y fecha por sí solos no identifican una vivienda.
+- La conciliación bancaria por correo ya tiene lector IMAP y worker en main;
+  consultar `docs/VALIDACION_BANCARIA_CORREO.md` y los servicios actuales. Su presencia
+  no acredita conexión al buzón ni aprobación de un depósito real. Antes de activarla,
+  comprobar origen autenticado, cuenta receptora completa, clave de rastreo, monto,
+  fecha, coincidencia única, vínculo a vivienda y protección contra reutilización.
+  Un reenvío firmado por otro dominio o solo tres dígitos de cuenta no bastan.
+  No retirar estas comprobaciones para forzar la aprobación. Monto y fecha por sí
+  solos no identifican una vivienda.
 - Registrar cortes pagados, aprobación y diario de acceso en la misma transacción.
   La aprobación financiera puede persistir aunque falle la entrega posterior al C3.
 
