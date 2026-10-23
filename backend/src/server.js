@@ -47,6 +47,7 @@ async function iniciarServidor() {
             require('./services/zkteco-vigencias.service').start();
             require('./services/zkteco-autosync.service').startZktecoAutoSync();
             require('./services/zkteco-adeudos.service').start();
+            require('./services/banco-outlook-worker.service').iniciar();
         });
     } catch (error) {
         console.error(
