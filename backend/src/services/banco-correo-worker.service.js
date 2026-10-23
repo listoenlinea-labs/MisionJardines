@@ -42,7 +42,16 @@ function programarRevision(){
 }
 function iniciar(){
  if(!banco.configurado()){
-  console.info('[Bancos] Autovalidación buzón IMAP desactivada; los pagos permanecen en revisión.');
+  if(process.env.PAGOS_BANK_AUTO_VALIDATE!=='true'){
+   // El modo seguro permanece desactivado hasta terminar las pruebas con un depósito real.
+   console.info('[Bancos] Autovalidación IMAP desactivada: PAGOS_BANK_AUTO_VALIDATE debe ser true. Pagos en revisión.');
+  }else{
+   // Reportar únicamente NOMBRES de variables: nunca valores, usuarios, tokens ni contraseñas.
+   const requeridas=['PAGOS_IMAP_HOST','PAGOS_IMAP_MAILBOX','PAGOS_IMAP_PASSWORD',
+    'PAGOS_IMAP_AUTH_SERVER','PAGOS_BANK_FROM_ADDRESS','PAGOS_DESTINO_ULTIMOS4'];
+   const faltantes=requeridas.filter(nombre=>!String(process.env[nombre]||'').trim());
+   console.warn('[Bancos] Autovalidación IMAP no iniciada: faltan variables: '+faltantes.join(', ')+'. Pagos en revisión.');
+  }
   return;
  }
  if(timer)return;
