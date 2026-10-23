@@ -1066,6 +1066,7 @@
       .history-table td[colspan]::before{display:none}
       .history-months{min-width:0}
     }
+  .pending-auto-status{margin:16px 0;padding:13px 15px;border:1px solid #d8e8e5;border-radius:12px;background:#f3faf8;color:#36685b;font-size:12px;line-height:1.6}
 </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -1103,17 +1104,17 @@
           <div class="admin-panel-head admin-panel-head-actions">
             <div class="admin-panel-title">
               <span class="admin-step mint">02</span>
-              <div><strong>Revisar comprobantes</strong><small>Confirma el depósito bancario antes de validarlo.</small></div>
+              <div><strong>Comprobantes en revisión automática</strong><small>Consulta pagos pendientes de coincidencia con el correo bancario.</small></div>
             </div>
             <button class="btn admin-refresh" id="refreshPending" type="button">Actualizar</button>
           </div>
-          <div class="admin-review-note">Revisa el recargo capturado; el resto del depósito se destina a mantenimiento.</div>
+          <div class="admin-review-note">Solo seguimiento: el sistema valida automáticamente los depósitos cuando coinciden con una notificación bancaria verificable. No hay aprobación ni rechazo manual.</div>
           <div class="pending-filter-bar"><label>Calle<input id="pendingStreet" type="search" placeholder="Buscar calle"></label><label>Casa<input id="pendingHouse" type="search" placeholder="Número"></label><label>Mes<select id="pendingMonth"><option value="">Todos</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label><label>Año<select id="pendingYear"><option value="">Todos</option></select></label><button id="clearPendingFilters" class="btn admin-refresh" type="button">Limpiar</button></div><p id="pendingCount" class="pending-result-count" aria-live="polite"></p><div id="pendingPayments" class="pending-payments" aria-live="polite"></div>
         </section>
       </div>
     </article>
 
-    <dialog id="pendingDetail" class="pending-detail-dialog" aria-label="Detalle del comprobante"><div class="pending-detail-top"><h2>Revisión de comprobante</h2><button id="closePendingDetail" type="button" aria-label="Cerrar detalle">×</button></div><div id="pendingDetailBody"></div></dialog><dialog id="pendingPhotoZoom" class="pending-photo-zoom" aria-label="Comprobante ampliado"><div class="pending-zoom-head"><strong>Comprobante bancario ampliado</strong><button id="closePendingPhotoZoom" type="button" aria-label="Cerrar imagen ampliada">×</button></div><div class="pending-zoom-image"><img id="pendingZoomImage" alt="Comprobante bancario ampliado"></div><p>Presiona Esc o selecciona × para regresar a la revisión.</p></dialog>
+    <dialog id="pendingDetail" class="pending-detail-dialog" aria-label="Detalle del comprobante"><div class="pending-detail-top"><h2>Comprobante en revisión automática</h2><button id="closePendingDetail" type="button" aria-label="Cerrar detalle">×</button></div><div id="pendingDetailBody"></div></dialog><dialog id="pendingPhotoZoom" class="pending-photo-zoom" aria-label="Comprobante ampliado"><div class="pending-zoom-head"><strong>Comprobante bancario ampliado</strong><button id="closePendingPhotoZoom" type="button" aria-label="Cerrar imagen ampliada">×</button></div><div class="pending-zoom-image"><img id="pendingZoomImage" alt="Comprobante bancario ampliado"></div><p>Presiona Esc o selecciona × para regresar a la revisión.</p></dialog>
     <article id="adminPaymentHistory" class="card pad payment-history" hidden>
       <div class="admin-payments-head"><div><span class="eyebrow">ADMINISTRACIÓN</span><h2>Historial de pagos por periodo</h2><p>Consulta todos los comprobantes por fecha de depósito, incluidos abonos y pagos con recargos. El estado distingue los depósitos validados de los pendientes o rechazados.</p></div><span class="admin-security-badge">Solo administración</span></div>
       <div class="history-controls"><label for="historyPeriod">Mes de inicio del periodo<input id="historyPeriod" type="month" min="2000-01" max="2099-12"></label><button id="historyRefresh" class="btn admin-refresh" type="button">Actualizar historial</button></div>
@@ -1316,7 +1317,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261022-clave-rastreo"></script>
-  <script src="assets/js/pagos.js?v=20261022-refrescar-recibos"></script>
+  <script src="assets/js/pagos.js?v=20261022-autovalidacion-exclusiva"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261021-purple-x"></script>
 </body>
