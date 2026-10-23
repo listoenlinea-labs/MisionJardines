@@ -23,6 +23,18 @@ clave de rastreo, importe en centavos, fecha bancaria y concepto con calle/núme
 coincidentes. El aviso debe ser reciente y la coincidencia única. El hash del
 correo se sigue consumiendo una vez en la transacción de confirmación existente.
 
+## Monto en las tablas del aviso
+
+El encabezado «Recibiste de otro banco» puede estar en una fila y el importe en
+la siguiente. El lector admite los espacios y saltos producidos por esas filas,
+tanto en texto como en HTML. El importe tiene que seguir directamente al
+encabezado, antes de cualquier otro campo: no se usa una cantidad encontrada en
+Comisión, Saldo o Concepto cuando falta el monto recibido.
+
+Se admiten importes enteros o con dos decimales y separadores de miles válidos.
+Si aparecen varios importes recibidos distintos en el mensaje, no se elige uno
+arbitrariamente. Las copias HTML/texto del mismo importe no se suman.
+
 ## Cuenta receptora en el aviso
 
 `PAGOS_DESTINO_ULTIMOS4` conserva cuatro dígitos. El lector admite el formato de
@@ -102,7 +114,7 @@ la autenticación. No aprueba pagos ni modifica TAGs o mensajes.
 Pruebas simuladas desde la raíz:
 
 ```sh
-PAGOS_IMAP_AUTH_SERVER=mx.hostinger.com node --test backend/test/validacion-pagos-reenvio-admin.test.js backend/test/diagnostico-buzon-pagos.test.js backend/test/validacion-pagos-correo.test.js
+PAGOS_IMAP_AUTH_SERVER=mx.hostinger.com node --test backend/test/banco-correo-monto-tablas.test.js backend/test/validacion-pagos-reenvio-admin.test.js backend/test/diagnostico-buzon-pagos.test.js backend/test/validacion-pagos-correo.test.js
 ```
 
 El servidor de autenticación de ese comando es solo el fixture de las pruebas;
