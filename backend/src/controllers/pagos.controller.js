@@ -432,7 +432,7 @@ async function reportarPago(req, res) {
         // No bloquear la respuesta: primero aparece en MIS RECIBOS como EN REVISIÓN.
         // La conciliación procesa únicamente depósitos cuya evidencia sea inequívoca.
         if (process.env.PAGOS_BANK_AUTO_VALIDATE==='true') {
-            try { require('../services/banco-gmail-worker.service').programarRevision(); }
+            try { require('../services/banco-correo-worker.service').programarRevision(); }
             catch (error) { console.error('[Bancos] No fue posible programar revisión:',error.message); }
         }
 
@@ -621,7 +621,7 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
     // Reutiliza literalmente el mismo proceso de confirmación, conciliación
     // de recargos y actualización de vigencia del botón de Administración.
     return resolverRevisionPago(pagoId, 'VALIDADO', undefined, null,
-        'Validado por coincidencia estricta con aviso recibido desde Gmail con autenticación verificada. Código '+correoHash.slice(0,12), correoHash);
+        'Validado por coincidencia estricta con aviso bancario del buzón autorizado. Código '+correoHash.slice(0,12), correoHash);
 }
 async function revisarPago(req, res) {
     try {

@@ -1,5 +1,5 @@
 'use strict';
-const {Imap}=require('./gmail-imap.transport');
+const {Imap}=require('./correo-imap.transport');
 function unfold(raw){
  const headers={};let key='';
  for(const line of raw.replace(/\r\n/g,'\n').split('\n')){
@@ -58,19 +58,23 @@ function parseMessage({uid,source}){
  const address=(from.match(/<([^<>\s]+@[^<>\s]+)>/)||[])[1]||
    (from.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]+/i)||[])[0]||'';
  const time=new Date(h.date||'');
- const auth=(h['authentication-results']||'').split('\n').filter(x=>/^mx\.google\.com\s*;/i.test(x.trim())).slice(0,1);
- return {id:'gmail-uid:'+uid+':'+String(h['message-id']||'').slice(0,180),
+ const receptor=String(process.env.PAGOS_IMAP_AUTH_SERVER||'').trim().toLowerCase();
+ const auth=(h['authentication-results']||'').split('\n').filter(x=>{
+  const nombre=String(x).split(';')[0].trim().toLowerCase();
+  return receptor&&nombre===receptor;
+ }).slice(0,1);
+ return {id:'imap-uid:'+uid+':'+String(h['message-id']||'').slice(0,180),
   from:{emailAddress:{address}},subject:decodeHeader(h.subject),
   receivedDateTime:Number.isFinite(time.valueOf())?time.toISOString():'',
   body:{content:mimeText(parsed)},
   internetMessageHeaders:auth.map(value=>({name:'Authentication-Results',value}))};
 }
 
-async function leerGmail({mailbox,password,dias=7}){
+async function leerBuzon({mailbox,password,dias=7}){
  const client=new Imap();
  const quote=value=>{
   const v=String(value||'');
-  if(!v||v.includes('\r')||v.includes('\n')||v.includes('\0'))throw Error('Credenciales Gmail inválidas');
+  if(!v||v.includes('\r')||v.includes('\n')||v.includes('\0'))throw Error('Credenciales del buzón IMAP inválidas');
   return '"'+v.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
  };
  try{
@@ -95,4 +99,4 @@ async function leerGmail({mailbox,password,dias=7}){
   return results;
  }finally{client.close()}
 }
-module.exports={parseMessage,unfold,mimeText,leerGmail,decodeHeader};
+module.exports={parseMessage,unfold,mimeText,leerBuzon,decodeHeader};
