@@ -81,7 +81,7 @@ function corresponde(pago,noticia,config=process.env){
 }
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
-  &&Boolean(env.PAGOS_IMAP_HOST&&env.PAGOS_IMAP_MAILBOX&&env.PAGOS_IMAP_PASSWORD
+  &&Boolean(env.PAGOS_IMAP_HOST&&env.PAGOS_IMAP_MAILBOX&&env.PAGOS_IMAP_PASSWORD&&env.PAGOS_IMAP_AUTH_SERVER
     &&env.PAGOS_BANK_FROM_ADDRESS&&env.PAGOS_DESTINO_ULTIMOS4);
 }
 async function obtenerAvisos(){
