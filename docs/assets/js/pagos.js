@@ -194,6 +194,11 @@
         :'Aún no se ha ejecutado';
       const titulo=validado?'Pago confirmado':fallido?'Validación fallida':buzonError?'Verificación interrumpida':'Comprobación bancaria en curso';
       const mensaje=String(v.detalle||p.observacionesRevision||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
+      const refInfo=v.diagnosticoReferencia;
+      const detallesReferencia=refInfo&&etapa==='SIN_COINCIDENCIA'
+        ? ' Referencia guardada y OCR: '+(refInfo.coincideFormularioOcr?'coinciden':'no coincide o no se pudo leer')
+          +'. Referencia guardada y aviso Titan: '+(refInfo.coincideFormularioAviso?'coinciden':'no coinciden')+'.'
+        : '';
       const formatPaso=(n,nombre,detalle,estado)=>{
         const sym=estado==='done'?'✓':estado==='failed'?'!':estado==='current'?'•':String(n);
         return '<li class="'+esc(estado)+'"><span class="receipt-step-circle">'+esc(sym)+'</span><div class="receipt-step-content"><strong>'+
@@ -204,7 +209,7 @@
         formatPaso(2,'Datos OCR extraídos','Se leyeron los datos bancarios y el destinatario del comprobante.','done'),
         formatPaso(3,'Consulta de buzón Titan',buzonError?'La conexión o la aplicación de la consulta tuvo un problema; se reintentará.':revisado?'Última revisión: '+fechaTexto:'Se programó la búsqueda de avisos bancarios.',buzonError?'current':revisado?'done':'current'),
         formatPaso(4,'Autenticación del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) superaron la autenticación.':revisado?'No hay avisos autenticados utilizables todavía.':'Esperando una notificación bancaria auténtica.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
-        formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se ha encontrado al menos un identificador relacionado.'):etapa==='SIN_COINCIDENCIA'?'Ninguna clave, referencia o folio encontró una correspondencia verificable.':'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
+        formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se ha encontrado al menos un identificador relacionado.'):etapa==='SIN_COINCIDENCIA'?mensaje+detallesReferencia:'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
         formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'Todavía no existe evidencia suficiente para confirmar o rechazar el depósito.',fallido?'failed':validado?'done':'waiting')
       ];
       el.innerHTML='<section class="receipt-check-header" aria-live="polite"><div class="receipt-check-top"><div><small class="eyebrow">SEGUIMIENTO BANCARIO</small><h3>'+
