@@ -18,14 +18,16 @@ function setup(t){
  const row=values=>({...values,async update(v){if(failSQLAfterTCP&&tags.includes(this)){failSQLAfterTCP=false;throw Error('Fallo SQL después de TCP');}Object.assign(this,v);return this;}});
  const match=(r,w={})=>Reflect.ownKeys(w).every(k=>{
   const v=w[k];
-  if(v&&typeof v==='object')return Reflect.ownKeys(v).every(op=>op===Op.notIn?!v[op].includes(r[k]):op===Op.in?v[op].includes(r[k]):true);
+  if(k===Op.or)return v.some(part=>match(r,part));
+  if(v&&typeof v==='object')return Reflect.ownKeys(v).every(op=>op===Op.notIn?!v[op].includes(r[k]):op===Op.in?v[op].includes(r[k]):op===Op.gt?Number(r[k])>Number(v[op]):op===Op.ne?String(r[k])!==String(v[op]):true);
   return String(v)===String(r[k]);
  });
  const casa={id:7,calle:'Calle sintética',numero:'1',cuotaPorCobrar:300};
+ const select=(rows,o)=>rows.filter(r=>match(r,o?.where)).sort((a,b)=>{for(const [key,dir] of o?.order||[]){const val=v=>key==='mes'?require('../src/services/cuotas-mantenimiento-calculo').MESES.indexOf(v):Number(v);const delta=val(a[key])-val(b[key]);if(delta)return dir==='DESC'?-delta:delta;}return 0;});
  t.mock.method(models.Casa,'findByPk',async(id,o)=>{assert.ok(o.transaction);assert.equal(o.lock,'UPDATE');return casa;});
  for(const [model,rows] of [[models.Cuota,cuotas],[models.PagoReportado,pagos],[Eventos,eventos],[Aplicaciones,intentos],[models.ZkTarjeta,tags]]){
-  t.mock.method(model,'findAll',async o=>rows.filter(r=>match(r,o?.where)));
-  t.mock.method(model,'findOne',async o=>rows.find(r=>match(r,o?.where))||null);
+  t.mock.method(model,'findAll',async o=>select(rows,o));
+  t.mock.method(model,'findOne',async o=>select(rows,o)[0]||null);
   t.mock.method(model,'findByPk',async id=>rows.find(r=>String(r.id)===String(id))||null);
   t.mock.method(model,'create',async(v,o)=>{assert.ok(o.transaction);if(failCreate&&model===Eventos)throw Error('Fallo diario');const r=row({id:rows.length+1,...v});rows.push(r);return r;});
  }
@@ -128,4 +130,35 @@ test('La cotización HTTP devuelve el reparto del importe y la vigencia SQL, sin
  await controller.cotizacionMantenimiento({usuario:{casaId:7},query:{fechaOperacion:'2026-10-15',horaOperacion:'12:00:00',monto:'350'}},res);
  assert.equal(code,200);assert.equal(body.data.fuente,'CUOTAS');assert.equal(body.data.meses,1);
  assert.equal(body.data.fechaFinalObjetivo,'2026-11-10');assert.equal(c.writes.length,0);
+});
+test('Pagos carga el último corte y posteriores; no trae cuotas históricas anteriores para calcular',async t=>{
+ const c=setup(t);
+ c.cuotas.push({id:2,casaId:7,anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',montoPagado:300});
+ const data=await service.cargar(7,c.tx);
+ assert.deepEqual(data.rows.map(c=>c.id),[2]);
+ const quote=await service.cotizar(7,'2026-10-15',300,c.tx);
+ assert.equal(quote.aplicaciones[0].periodo,'2026-12');
+ assert.equal(quote.fechaFinalObjetivo,'2027-01-10');
+});
+test('Acreditar un mes atrasado conserva fecha de depósito actual y solo avanza un corte',async t=>{
+ const c=setup(t);Object.assign(c.cuotas[0],{anio:2025,mes:'OCTUBRE'});
+ const p=await c.report(900);assert.equal(p.aplicacionCuotas.mesesPendientes,12);
+ await confirmar(p);
+ const nueva=c.cuotas.find(c=>c.anio===2025&&c.mes==='NOVIEMBRE');
+ assert.equal(nueva.estatusPago,'PAGADO');assert.equal(nueva.fechaPago,'2026-10-15');
+ assert.equal(p.aplicacionCuotas.fechaFinalObjetivo,'2025-12-10');
+ const ctx=await service.cotizar(7,'2026-10-15',null,c.tx);
+ assert.equal(ctx.mesesPendientes,11);assert.equal(ctx.recargo,0);assert.equal(ctx.adeudoTotal,3300);
+});
+test('La captura administrativa tampoco permite marcar pagado un mes saltándose el siguiente',async t=>{
+ const c=setup(t),cuota={id:2,casaId:7,anio:2026,mes:'DICIEMBRE',estatusPago:'PAGADO',montoPagado:300};
+ c.cuotas.push(cuota);
+ await assert.rejects(service.registrarCambioCuota(7,2,c.tx,{registro:cuota,anterior:{...cuota,estatusPago:'PENDIENTE',montoPagado:0}}),/siguiente mensualidad.*2026-10/);
+ assert.equal(c.eventos.length,0);assert.equal(c.writes.length,0);
+});
+test('La captura no permite declarar completo un mes con principal insuficiente',async t=>{
+ const c=setup(t),cuota={id:2,casaId:7,anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',montoPagado:300,recargo:50};
+ c.cuotas.push(cuota);
+ await assert.rejects(service.registrarCambioCuota(7,2,c.tx,{registro:cuota,anterior:{...cuota,estatusPago:'PENDIENTE',montoPagado:0}}),/tarifa más recargo/);
+ assert.equal(c.eventos.length,0);
 });

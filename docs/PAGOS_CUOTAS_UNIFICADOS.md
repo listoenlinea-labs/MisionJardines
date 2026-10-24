@@ -1,109 +1,108 @@
-# Pagos, cuotas y ZKTeco: fuente común por vivienda
+# Pagos, cuotas y ZKTeco: último corte cubierto
 
-Cambio solicitado el 23/oct/2026; reemplaza la regla anterior que cotizaba desde el C3.
-El código se preparó sobre main `c5e044e1e0008ea21d7f99a51a6dd8e391c3d4f9`.
-No acredita despliegue ni pruebas en MySQL, buzón o C3 reales.
+**Regla vigente del 24/oct/2026.** Sustituye la reconstrucción de huecos mensuales
+introducida en #288. El código se preparó sobre main `88cde5f`.
+No acredita despliegue ni pruebas sobre MySQL, buzón o C3 reales.
 
-## Fuente y cálculo
+## Fórmula del adeudo
 
-La deuda se obtiene de `cuotas`, vinculada por `casa_id` a `direcciones`.
-La tarifa es `direcciones.cuota_por_cobrar` (predeterminada $300).
-`cuotas-mantenimiento-calculo.js` comparte el cálculo por periodo con
-`adeudo-vivienda-analisis.service.js`. Se respeta el inicio de septiembre de 2026
-que usa Análisis: un mes sin fila también se considera pendiente.
+La vivienda es la unidad de cobro. `cuotas` conserva el último periodo completo,
+los abonos y el historial. La tarifa viene de `direcciones.cuota_por_cobrar`.
 
-La cotización usa la fecha bancaria comprobada (o hoy si la fecha operativa SPEI
-es posterior), cobra $50 por mes pendiente después del día 10 y considera abonos,
-condonaciones, cancelaciones y mensualidades pagadas. Análisis puede consultar otro
-mes; ambos coinciden cuando usan el mismo corte. Se conserva la excepción existente
-de la cuota de laboratorio de $10 identificada por `PRUEBA_10_PESOS` en octubre.
-No hay una autorización financiera especial por correo o por tener TAG.
+**Principal pendiente = máximo(0, meses entre corte actual y último corte cubierto
+× tarifa − principal ya abonado).** A ese importe se agregan recargos pendientes,
+descontando los que ya se cubrieron. Se trabaja en centavos y meses calendario,
+nunca días divididos entre 30.
 
-El depósito cubre primero los recargos pendientes y después los meses más antiguos,
-con anticipos de hasta 36 mensualidades completas. Un abono insuficiente para un
-mes queda en ese renglón de cuotas; no se cobra de nuevo el recargo ya cubierto.
-`recargo_pagado` nullable distingue el reparto nuevo de los registros históricos,
-cuyo cálculo anterior se conserva. Los centavos se asignan sin redondear meses.
+No se calcula la deuda revisando la presencia/ausencia de cada mes desde septiembre
+ni desde el último pago. El último mes completo fija la cobertura; cualquier hueco
+anterior del histórico se considera anterior a ese corte y no se cobra nuevamente.
+La base es septiembre de 2026 SOLO cuando no existe cobertura registrada.
+Las condonaciones/cancelaciones administrativas explícitas se descuentan del importe,
+sin inventar depósitos ni redefinir el último mes pagado.
 
-## Reporte y validación
+Pagos consulta primero el último corte y los abonos posteriores. La revisión de
+referencias históricas para impedir reutilizar un depósito es independiente del
+cálculo financiero. Análisis conserva su consulta histórica para tablas/recibos,
+pero el importe usa la misma fórmula. Su resumen no genera el desglose mensual;
+solo se enumera cuando se solicita el detalle de adeudos o se acredita el historial.
 
-1. El OCR y las comprobaciones bancarias existentes siguen siendo obligatorios.
-2. Reportar guarda `PENDIENTE_VALIDACION` y un reparto propuesto en
-   `pagos_reportados.aplicacion_cuotas`; todavía no acredita cuotas ni acceso.
-3. Una confirmación bancaria toma el lock de la vivienda y verifica que tarifa y
-   cuotas no cambiaron respecto del reporte. Si cambiaron, exige conciliación y
-   revierte toda la confirmación; no decide silenciosamente otro reparto.
-4. La misma transacción marca el pago validado, crea/actualiza los meses de cuotas,
-   conserva el desglose por depósito y registra el diario `PAGO_CUOTAS`.
-5. Análisis, adeudos y el historial consultan esas cuotas. Los complementos conservan
-   su propio folio y no duplican el total acumulado de una cuota en el historial.
+Se conserva la regla de recargo de $50 por corte pendiente después del día 10,
+la tarifa por vivienda, los recargos ya cubiertos y la excepción existente de
+laboratorio `PRUEBA_10_PESOS` en octubre de 2026. Un anticipo lleva el corte al futuro;
+la diferencia negativa se limita a cero. `monto_cuota` o `saldo_pendiente` antiguos
+no se suman de nuevo para reconstruir deuda anterior al último corte.
 
-Solo se permite un comprobante pendiente de mantenimiento por vivienda. Dos cuentas
-de la misma vivienda comparten deuda. El folio de operación no se reutiliza y una
-referencia ya acreditada en cuotas exige conciliación antes de aplicarse otra vez.
-La captura administrativa de cuotas también entrega fechas absolutas (`CUOTA_SQL`);
-los pagos manuales de Análisis conservan su confirmación explícita existente.
+## Mes cubierto y fecha del depósito
 
-## C3 como destinatario
+Cada mensualidad completa acredita el mes siguiente al último cubierto. No se puede
+omitir uno para marcar otro posterior pagado. Por ejemplo, con octubre de 2026 como
+último mes cubierto, un depósito de octubre de 2027 que alcanza para recargos y una
+mensualidad acredita NOVIEMBRE DE 2026, conserva la fecha bancaria de OCTUBRE DE 2027
+y deja once mensualidades pendientes. No compra octubre de 2027 por ser el mes del depósito.
 
-Pagar no necesita TAG, fecha física ni conexión TCP. La cobertura se obtiene de los
-meses consecutivos cubiertos desde septiembre de 2026: octubre cubierto, sin huecos,
-produce el 10 de noviembre. Un anticipo posterior a un hueco no concede cobertura
-sobre el mes impago. Un abono parcial no extiende fechas.
+Los campos `anio`/`mes` identifican el periodo cubierto. `fecha_pago` conserva la
+fecha bancaria de su abono/terminación y `fecha_confirmacion` la de acreditación.
+`pagos_reportados` conserva cada depósito y su reparto individual, incluidos los
+complementos; una cuota acumula esos abonos sin duplicar ingresos en el historial.
 
-Después del commit, los TAGs asociados reciben ese objetivo absoluto guardado en
-`pagos_acceso_c3.fecha_objetivo`, respaldado por el pago validado y las cuotas.
-El worker no suma meses a la fecha física para los eventos nuevos. Guarda la fecha
-anterior por TAG antes de escribir, preserva PIN, StartTime y autorizaciones y
-verifica la escritura. Reintentar no vuelve a ampliar la fecha.
+El corte final se conserva el día 10 del siguiente mes: octubre cubierto produce
+el 10 de noviembre. La resta de esos cortes equivale a la diferencia entre periodos
+cubiertos y periodo consultado. La fecha del depósito nunca sustituye el mes cubierto.
+Un abono parcial no avanza el corte; el complemento termina ese mes antes de avanzar.
 
-Sin TAGs queda `SIN_TAGS`, con el pago acreditado en cuotas. No reproduce pagos
-históricos cuando se agrega un TAG más tarde: ese alta requiere fecha explícita.
-Fallo TCP deja el acceso pendiente de reintento sin deshacer el abono. Si la fecha
-física ya es posterior al objetivo, o cambia la vivienda, el PIN o los permisos,
-queda `CONFLICTO` para revisión; no se acorta automáticamente el acceso ni se deja
-que el C3 cambie la deuda. La corrección manual explícita conserva su flujo anterior.
+La API de captura administrativa rechaza un periodo que salte el siguiente y no
+permite mover el periodo de una cuota ya pagada. Los lotes se procesan cronológicamente.
+Los registros históricos permanecen intactos: su último corte implica cobertura
+anterior sin insertar pagos ni cambiar fechas de depósitos antiguos.
 
-## Despliegue y datos anteriores
+## Confirmación y acceso
 
-Respaldar y usar `backend/sql/2026-10-24-pagos-cuotas-unificados.sql`, o verificar
-que el arranque del backend pudo agregar sus tres columnas. Desplegar backend y
-frontend juntos. La migración es aditiva: no elimina tablas, pagos, TAGs ni columnas.
+El OCR y los cotejos bancarios existentes siguen siendo obligatorios. Reportar solo
+guarda `PENDIENTE_VALIDACION` y el reparto propuesto, ahora versión 2. Al confirmar,
+el backend bloquea la vivienda y verifica el corte, tarifa y reparto. La misma
+transacción valida el depósito, acredita las mensualidades y registra el diario.
 
-Los pagos ya validados no se vuelven a acreditar ni se reproducen contra el C3.
-Antes de operar, conciliar los que anteriormente solo se reflejaron en acceso y
-no en cuotas: ahora cuotas es la fuente, por petición del administrador. El SQL
-incluye consultas de comprobantes pendientes sin reparto y entregas de acceso
-anteriores aún abiertas. No borrar esos registros para forzar la validación.
+Si un reporte previo de versión 1 coincide exactamente en datos y reparto, se puede
+validar; si ya no coincide por la nueva regla o cambió su historial, requiere
+conciliación y la confirmación se revierte. No atribuir meses antiguos por el importe,
+no borrar evidencia para forzar la validación y no acreditar automáticamente pagos
+ya validados. Referencias repetidas y comprobantes simultáneos pendientes se bloquean.
 
-Un comprobante pendiente anterior al cambio no tiene un reparto financiero fiable
-con la fuente nueva: la confirmación responde 409 y pide conciliación administrativa.
-Tampoco se reconstruye un reparto histórico a partir del importe o del C3.
-Los eventos antiguos de acceso conservan su intención y auditoría; revisarlos antes
-del despliegue. Borrar pagos no deshace los abonos en cuotas ni revoca TAGs.
+Sin TAG se puede pagar y el diario queda `SIN_TAGS`. C3 recibe después del commit el
+objetivo absoluto respaldado por cuotas. Una falla TCP no elimina el abono; los
+reintentos conservan el mismo objetivo, PIN, StartTime y autorizaciones. Si la fecha
+física es posterior o cambia el vínculo/seguridad, se requiere revisar el conflicto.
+No se reproducen pagos históricos cuando se agrega un TAG posteriormente.
+
+## Esquema y despliegue
+
+Este ajuste NO añade columnas ni borra registros. Si aún no se aplicó #288, sigue
+siendo necesaria su migración aditiva `backend/sql/2026-10-24-pagos-cuotas-unificados.sql`
+(o el aseguramiento de esas columnas al arrancar). Desplegar backend/frontend juntos.
+
+El estado financiero no es de una cuenta: dos usuarios de la misma vivienda ven el
+mismo corte. Para una prueba sin historial, limpiar exclusivamente los datos
+sintéticos de esa vivienda, incluidos cuotas, reportes y sus diarios; conservar
+cuenta y relaciones. Sin cuotas comenzará en septiembre de 2026. No borrar cuotas
+reales: eliminarlas cambia la base del cálculo y no revoca fechas físicas del C3.
 
 ## Validación local
 
-Desde `backend/`, con dependencias instaladas:
+Desde la raíz del repositorio:
 
 ```sh
-DB_PORT=3306 node --test test/cuotas-mantenimiento-calculo.test.js test/cuotas-mantenimiento-integracion.test.js test/pagos-cuotas-reporte.test.js
+DB_PORT=3306 node --test backend/test/cuotas-mantenimiento-calculo.test.js backend/test/cuotas-mantenimiento-integracion.test.js backend/test/pagos-cuotas-reporte.test.js backend/test/pagos-manuales-analisis.test.js
 ```
 
-Son pruebas de cálculo y persistencia/TCP simulados: sin TAG, pendiente sin crédito,
-confirmación atómica, rollback, complementos, recargos, cambio de tarifa, duplicados,
-respaldo del objetivo, fecha absoluta, reintento tras fallo SQL y conflicto C3.
-También se ejecutan los checks de pagos/C3 de AGENTS y los de historial, tarifa,
-registro manual y permisos; comparar sus fallos heredados con el mismo SHA de main.
-La prueba real pendiente debe confirmar una casa con TAG y otra sin TAG, comparar
-cuotas/Análisis antes y después de validar y verificar el registro físico del TAG.
+45/45 casos dirigidos aprobados. Incluyen pago un año tarde, separación depósito/mes,
+conservación exacta de importes, anticipos, cambio de año, abonos, recargos ya pagados,
+base sin historial, carga del último corte, captura sin saltos y resumen sin desglose.
+Persistencia y TCP simulados; sin operaciones externas ni dinero real.
 
-Resultado local de la selección de 15 archivos de pruebas: **119 casos, 112 aprobados,
-7 fallos heredados**. Las **20 pruebas nuevas** pasan. La misma selección sin archivos
-nuevos sobre la base da 99 casos, 92 aprobados y los mismos siete fallos: dos referencias
-al endpoint retirado `revisarPago`, dos expectativas de edición física de TAGs, dos
-expectativas estáticas de UI y un mock de frontend sin `window`. No se cambiaron esas
-reglas para ocultar fallos. Sintaxis de todos los JS cambiados y `git diff --check`
-correctos. La suite histórica `pagos-pruebas.test.js` también conserva siete rechazos
-422 por fixtures sin identificadores bancarios tanto en main como aquí; los nuevos
-reportes se prueban con referencia sintética verificable. No es una suite global verde.
+La selección ampliada de 15 archivos da **130 casos, 123 aprobados y siete fallos**.
+La misma selección sobre main da **119 casos, 112 aprobados y los mismos siete fallos**
+(expectativas estáticas de UI, mock sin window, endpoint retirado revisarPago y
+edición física de TAGs). Se actualizan las expectativas que exigían buscar
+huecos o imponer septiembre aun con historial porque el usuario sustituyó esa regla.
+No se afirma una suite global verde ni validación de producción.

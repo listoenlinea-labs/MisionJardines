@@ -715,7 +715,7 @@
           '. Recargos pendientes: ' + money(quote.recargo) + '. Para completar la siguiente mensualidad: ' + money(quote.minimo) + '.';
         return;
       }
-      const cobertura=quote.fechaFinalObjetivo || 'sin mensualidades completas desde septiembre de 2026';
+      const cobertura=quote.fechaFinalObjetivo || 'sin mensualidades completas registradas';
       $('paymentPreview').textContent = 'Al validar este depósito se abonarán ' + quote.aplicaciones.length +
         ' periodo(s) de cuotas y se completarán ' + quote.meses + ' mensualidad(es). Recargos: ' + money(quote.recargo) +
         '. Cobertura resultante: ' + cobertura + '. ' +

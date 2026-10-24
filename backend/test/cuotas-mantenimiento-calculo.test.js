@@ -49,12 +49,12 @@ test('Recargos solos pueden completar un renglón heredado con el principal ya c
  const plan=calc.planificar(rows,'2026-10-20',50,300);
  assert.equal(plan.meses,1);assert.equal(plan.fechaFinalObjetivo,'2026-11-10');
 });
-test('Anticipos saltan meses cubiertos pero no conceden cobertura mientras exista un hueco',()=>{
+test('El último mes pagado fija cobertura y los pagos nuevos continúan desde él, sin buscar huecos',()=>{
  const futuro={id:2,anio:2026,mes:'NOVIEMBRE',estatusPago:'PAGADO',montoPagado:300};
- assert.equal(calc.fechaDesdeCuotas([septiembre,futuro]),'2026-10-10');
+ assert.equal(calc.fechaDesdeCuotas([septiembre,futuro]),'2026-12-10');
  const p=calc.planificar([septiembre,futuro],'2026-10-08',725,300);
- assert.equal(p.meses,2);assert.equal(p.fechaFinalObjetivo,'2027-01-10');
- assert.deepEqual(p.aplicaciones.map(a=>a.mes),['OCTUBRE','DICIEMBRE','ENERO']);
+ assert.equal(p.meses,2);assert.equal(p.fechaFinalObjetivo,'2027-02-10');
+ assert.deepEqual(p.aplicaciones.map(a=>a.mes),['DICIEMBRE','ENERO','FEBRERO']);
  assert.equal(p.saldoDespues,125);
 });
 test('El límite de 36 meses y los centavos se aplican antes de acreditar',()=>{
@@ -77,4 +77,64 @@ test('La cuota reducida de laboratorio conserva la misma excepción visible en A
  const rows=[septiembre,{id:2,anio:2026,mes:'OCTUBRE',estatusPago:'PENDIENTE',montoCuota:10,montoPagado:0,recargo:0,origenImportacion:'PRUEBA_10_PESOS'}];
  const plan=calc.planificar(rows,'2026-10-20',10,10);
  assert.equal(plan.recargo,0);assert.equal(plan.meses,1);assert.equal(plan.fechaFinalObjetivo,'2026-11-10');
+});
+
+test('Un depósito un año después paga el mes siguiente al último cubierto, no el mes del depósito',()=>{
+ const ultimo={id:1,anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',montoPagado:300,fechaPago:'2026-10-08'};
+ const ctx=calc.contextoCuotas([ultimo],'2027-10-24',300);
+ assert.equal(ctx.mesesPendientes,12);assert.equal(ctx.recargo,600);assert.equal(ctx.adeudoTotal,4200);
+ assert.equal(ctx.fechaUltimoCortePagado,'2026-11-10');assert.equal(ctx.fechaCorteActual,'2027-11-10');
+ const plan=calc.planificar([ultimo],'2027-10-24',900,300);
+ assert.equal(plan.meses,1);assert.equal(plan.fechaFinalObjetivo,'2026-12-10');
+ assert.deepEqual(plan.aplicaciones.filter(p=>p.antesPagado+p.abono===p.total).map(p=>p.periodo),['2026-11']);
+ const next=calc.contextoCuotas(aplicar([ultimo],plan),'2027-10-24',300);
+ assert.equal(next.mesesPendientes,11);assert.equal(next.recargo,0);assert.equal(next.adeudoTotal,3300);
+});
+test('Septiembre de 2026 solo es base si no hay cobertura; con historial anterior se usa su corte',()=>{
+ assert.equal(calc.contextoCuotas([],'2026-10-08',300).primerPeriodoPendiente,'2026-09');
+ const julio={id:1,anio:2026,mes:'JULIO',estatusPago:'PAGADO',montoPagado:300};
+ const ctx=calc.contextoCuotas([julio],'2026-10-08',300);
+ assert.equal(ctx.primerPeriodoPendiente,'2026-08');assert.equal(ctx.mesesPendientes,3);
+ assert.equal(ctx.recargo,100);assert.equal(ctx.adeudoTotal,1000);
+});
+test('La fecha del depósito y saldos viejos anteriores no sustituyen el último mes cubierto',()=>{
+ const rows=[{id:1,anio:2026,mes:'SEPTIEMBRE',estatusPago:'PENDIENTE',saldoPendiente:99999},
+  {id:2,anio:2027,mes:'ENERO',estatusPago:'PAGADO',montoPagado:300,fechaPago:'2026-10-15'}];
+ assert.equal(calc.contextoCuotas(rows,'2027-02-10',300).adeudoTotal,300);
+ assert.equal(calc.contextoCuotas(rows,'2027-02-11',300).adeudoTotal,350);
+ assert.equal(calc.fechaDesdeCuotas(rows),'2027-02-10');
+});
+test('Cada mensualidad completa avanza exactamente un mes, incluidos cruces de año',()=>{
+ let cuotas=[{id:1,anio:2026,mes:'DICIEMBRE',estatusPago:'PAGADO',montoPagado:300}];
+ for(const [periodo,corte] of [['2027-01','2027-02-10'],['2027-02','2027-03-10'],['2027-03','2027-04-10']]){
+  const plan=calc.planificar(cuotas,'2026-10-08',300,300);
+  assert.equal(plan.aplicaciones[0].periodo,periodo);assert.equal(plan.meses,1);
+  assert.equal(plan.fechaFinalObjetivo,corte);cuotas=aplicar(cuotas,plan);
+ }
+});
+test('No salta una mensualidad con datos incoherentes de saldo cubierto y estatus parcial',()=>{
+ const rows=[septiembre,{id:2,anio:2026,mes:'OCTUBRE',estatusPago:'PAGO_PARCIAL',montoPagado:300,recargoPagado:0}];
+ assert.throws(()=>calc.planificar(rows,'2026-10-08',300,300),/requiere conciliación antes de avanzar/);
+});
+test('El cálculo resumido no necesita generar el desglose mensual para obtener el importe',()=>{
+ const rows=[{anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',montoPagado:300}];
+ const opciones={anio:2027,mes:10,hoy:'2027-10-24'};
+ const resumen=calcularAdeudoVivienda(rows,opciones);
+ const detallado=calcularAdeudoVivienda(rows,{...opciones,incluirDetalles:true});
+ assert.deepEqual(resumen.detalles,[]);assert.equal(resumen.saldoPendiente,4200);
+ assert.equal(detallado.detalles.length,12);
+ assert.equal(detallado.detalles.reduce((sum,p)=>sum+p.monto,0),resumen.saldoPendiente);
+});
+test('Cada peso acreditado reduce exactamente el adeudo, también con complementos y distintos cortes',()=>{
+ for(const tarifa of [10,150,300])for(const mes of ['ENERO','SEPTIEMBRE','OCTUBRE'])for(const fecha of ['2026-10-08','2026-10-24']){
+  let rows=[{id:1,anio:2026,mes,estatusPago:'PAGADO',montoPagado:tarifa}];
+  for(let paso=0;paso<4;paso++){
+   const antes=calc.contextoCuotas(rows,fecha,tarifa);
+   if(!antes.adeudoTotal)break;
+   const monto=Math.min(antes.adeudoTotal,Math.round((antes.recargo+(paso+1)*tarifa/3)*100)/100);
+   const plan=calc.planificar(rows,fecha,monto,tarifa);rows=aplicar(rows,plan);
+   const despues=calc.contextoCuotas(rows,fecha,tarifa);
+   assert.equal(Math.round((antes.adeudoTotal-despues.adeudoTotal)*100),Math.round(monto*100));
+  }
+ }
 });

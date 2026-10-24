@@ -1,4 +1,5 @@
 'use strict';
+const {Op}=require('sequelize');
 const {createHash}=require('node:crypto');
 const Casa=require('../models/Casa');
 const Cuota=require('../models/Cuota');
@@ -14,7 +15,18 @@ const fail=m=>Object.assign(new Error(m),{status:409});
 async function cargar(casaId,transaction){
  const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
  if(!casa)throw fail('Vivienda inexistente');
- const rows=await Cuota.findAll({where:{casaId},transaction,lock:transaction.LOCK.UPDATE,order:[['anio','ASC'],['id','ASC']]});
+ // ENUM mes está definido ENERO..DICIEMBRE: MySQL lo ordena por ese índice.
+ const ultimo=await Cuota.findOne({where:{casaId,estatusPago:'PAGADO',montoPagado:{[Op.gt]:0}},
+  transaction,lock:transaction.LOCK.UPDATE,order:[['anio','DESC'],['mes','DESC']]});
+ const where={casaId};
+ if(ultimo){
+  const mes=calc.MESES.indexOf(String(ultimo.mes).toUpperCase());
+  where[Op.or]=[{anio:{[Op.gt]:Number(ultimo.anio)}},
+   {anio:Number(ultimo.anio),mes:{[Op.in]:calc.MESES.slice(mes+1)}}];
+ }
+ const posteriores=await Cuota.findAll({where,transaction,lock:transaction.LOCK.UPDATE,
+  order:[['anio','ASC'],['mes','ASC']]});
+ const rows=ultimo?[ultimo,...posteriores]:posteriores;
  return {casa,rows,cuotas:rows.map(r=>r.toJSON?r.toJSON():{...r}),tarifa:tarifaParaCasa(casa)};
 }
 async function cotizar(casaId,fecha,monto,transaction){
@@ -30,13 +42,16 @@ async function confirmar(pago,transaction){
  const referenciaBanco=value=>pago.identificadoresVerificados?.tipo==='referencia'
   ? idsBanco.referencia(value) : String(value||'').trim().toUpperCase();
  const referencia=referenciaBanco(pago.folioOperacion);
- if(referencia&&data.cuotas.some(c=>Number(c.montoPagado)>0&&referenciaBanco(c.referencia)===referencia))
+ // El historial de referencias se consulta para impedir reutilización; no calcula deuda.
+ const referencias=referencia?await Cuota.findAll({where:{casaId:pago.casaId,montoPagado:{[Op.gt]:0}},attributes:['referencia'],transaction}):[];
+ if(referencia&&referencias.some(c=>referenciaBanco(c.referencia)===referencia))
   throw fail('La referencia bancaria ya está acreditada en cuotas; requiere conciliación para evitar duplicarla');
  const guardado=pago.aplicacionCuotas;
- if(!guardado||guardado.version!==1)throw fail('Comprobante anterior a la unificación: requiere conciliación de sus mensualidades; no se acreditó ni se envió al C3');
+ if(!guardado||![1,2].includes(guardado.version))throw fail('Comprobante anterior a la unificación: requiere conciliación de sus mensualidades; no se acreditó ni se envió al C3');
  if(guardado.aplicado)throw fail('Este comprobante ya tiene sus cuotas acreditadas');
  const plan=calc.planificar(data.cuotas,guardado.fechaCalculo,pago.monto,data.tarifa);
- if(plan.huella!==guardado.huella||plan.recargo!==guardado.recargo||plan.fechaFinalObjetivo!==guardado.fechaFinalObjetivo)
+ if(plan.huella!==guardado.huella||plan.recargo!==guardado.recargo||plan.fechaFinalObjetivo!==guardado.fechaFinalObjetivo||
+  JSON.stringify(plan.aplicaciones)!==JSON.stringify(guardado.aplicaciones))
   throw fail('Las cuotas o tarifa cambiaron desde el reporte. Requiere conciliar el comprobante antes de acreditarlo');
  const now=new Date();
  for(const p of plan.aplicaciones){
@@ -71,9 +86,20 @@ async function confirmar(pago,transaction){
 // deriva meses de dinero acumulado ni de la fecha física de un TAG.
 async function registrarCambioCuota(casaId,usuarioId,transaction,{registro,anterior}){
  const data=await cargar(casaId,transaction);
+ if(calc.pagada(anterior)&&calc.indice(registro)!==calc.indice(anterior))
+  throw fail('No puedes mover el periodo de una cuota ya pagada; requiere conciliación');
  if(String(registro.tipoPago||'MANTENIMIENTO').toUpperCase()!=='MANTENIMIENTO')return {fuente:'CUOTAS',sincronizacion:'SIN_AVANCE',meses:0};
- const antes=data.cuotas.filter(c=>String(c.id)!==String(registro.id));
- if(anterior)antes.push(anterior);
+ const previo=await Cuota.findOne({where:{casaId,id:{[Op.ne]:registro.id},estatusPago:'PAGADO',montoPagado:{[Op.gt]:0}},
+  transaction,lock:transaction.LOCK.UPDATE,order:[['anio','DESC'],['mes','DESC']]});
+ if(calc.pagada(registro)&&!calc.pagada(anterior)){
+  if(Math.round((Number(registro.montoPagado)-Number(registro.recargo||0))*100)!==data.tarifa*100)
+   throw fail('Una mensualidad completa debe cubrir su tarifa más recargo; registra abonos o varios meses en el flujo de pagos');
+  const exenciones=await Cuota.findAll({where:{casaId,estatusPago:{[Op.in]:['CONDONADO','CANCELADO']}},transaction});
+  const siguiente=calc.primerPendiente([previo,...exenciones].filter(Boolean));
+  if(calc.indice(registro)!==siguiente)
+   throw fail('Solo puedes acreditar la siguiente mensualidad después del último corte: '+calc.periodo(siguiente));
+ }
+ const antes=[previo,anterior].filter(Boolean);
  const fechaAnterior=calc.fechaDesdeCuotas(antes),fechaObjetivo=calc.fechaDesdeCuotas(data.cuotas);
  if(!fechaObjetivo||fechaObjetivo<=String(fechaAnterior||''))return {fuente:'CUOTAS',sincronizacion:'SIN_AVANCE',meses:0};
  const claveMovimiento=casaId+':'+createHash('sha256').update('CUOTA_SQL:'+registro.id+':'+fechaObjetivo).digest('hex');

@@ -36,10 +36,13 @@ test('Tres meses cruzan el año y obtienen fecha común para todos los TAGs',()=
  assert.deepEqual(plan.periodos.map(p=>p.mes),['DICIEMBRE','ENERO','FEBRERO']);
  assert.equal(plan.total,1050);assert.equal(plan.fechaFinObjetivo,'2027-03-10');
 });
-test('El registro manual acepta septiembre de 2026, sin retroceder a agosto',()=>{
+test('El registro manual usa septiembre solo como base sin historial',()=>{
  const plan=prepararPlan({anio:2026,mes:9,meses:2,montoTotal:600});
  assert.equal(plan.fechaFinObjetivo,'2026-11-10');
- assert.throws(()=>prepararPlan({anio:2026,mes:8,meses:1,montoTotal:300}));
+ const sinHistorial=require('../src/services/pago-manual-analisis.service').prepararDesdeHistorial({cuotas:[],anio:2026,mes:10});
+ assert.equal(sinHistorial.desde.mes,9);
+ const conHistorial=require('../src/services/pago-manual-analisis.service').prepararDesdeHistorial({cuotas:[{anio:2026,mes:'JULIO',estatusPago:'PAGADO',montoPagado:300}],anio:2026,mes:10});
+ assert.equal(conHistorial.desde.mes,8);
  assert.throws(()=>prepararPlan({anio:2026,mes:9,meses:0,montoTotal:300}));
 });
 test('Referencia MJMAN tiene fecha final y UUID de evento único',()=>{

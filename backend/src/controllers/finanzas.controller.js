@@ -69,7 +69,8 @@ async function analizar(req,res){
   const residences=padron.casas.map(h=>{
    const q=byHouse.get(String(h.id));
    const adeudo=calcularAdeudoVivienda(historiales.get(String(h.id))||[],{anio,mes,tarifa:tarifaParaCasa(h)});
-   const status=q?.estatusPago||'PENDIENTE';
+   const cubiertoPorCorte=adeudo.fechaUltimoCortePagado&&adeudo.fechaUltimoCortePagado>=new Date(Date.UTC(anio,mes,10)).toISOString().slice(0,10);
+   const status=cubiertoPorCorte?'PAGADO':q?.estatusPago||'PENDIENTE';
    const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0);
    // Pago parcial cuenta como vivienda con algún pago, pero se conserva su estatus.
    const calle=String(h.calleCorrecta||h.calle||'Sin calle');

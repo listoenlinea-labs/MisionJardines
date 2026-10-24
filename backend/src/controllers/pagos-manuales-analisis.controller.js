@@ -233,7 +233,7 @@ async function historialPagoVivienda(req,res){
    ]);
    movimientos=historialMantenimiento(cuotas,comprobantes);
    const hoy=fechaMexico();
-   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa)}).detalles;
+   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),incluirDetalles:true}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
     PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
