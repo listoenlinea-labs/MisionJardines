@@ -54,6 +54,7 @@ async function asegurarEsquemaPagos() {
     const table = 'pagos_reportados';
     const current = await queryInterface.describeTable(table);
     await ensureColumn(queryInterface, table, current, 'cortes_recargo', { type: DataTypes.JSON, allowNull: true });
+    await ensureColumn(queryInterface, table, current, 'verificacion_bancaria', { type: DataTypes.JSON, allowNull: true });
     await require('../models/RecargoMantenimiento').sync();
 
     await ensureColumn(queryInterface, table, current, 'tipo_pago', {
