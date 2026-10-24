@@ -19,6 +19,7 @@ const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
 const recargosService = require('../services/recargos-mantenimiento.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
+const { verificarPosibilidad } = require('../services/verificar-comprobante-identificadores.service');
 const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const RECARGO_TARDIO = 50;
@@ -338,6 +339,11 @@ async function reportarPago(req, res) {
             });
         }
 
+        // Antes de crear otro acuse pendiente, exigir evidencia que el correo
+        // bancario pueda contrastar: clave o referencia; el folio solo si el
+        // aviso autenticado realmente publica ESE mismo folio.
+        await verificarPosibilidad({textoOcr,casa,fechaOperacion,horaOperacion,monto});
+
         const pruebaDiez = tipoPago === 'MANTENIMIENTO' && await esPruebaDiez(req);
         let cuotaExtraordinaria = null;
         let cargoExtraordinario = null;
@@ -512,6 +518,9 @@ async function reportarPago(req, res) {
         return res.status(error.status || 500).json({
             ok: false,
             message: error.status ? error.message : 'No fue posible registrar el comprobante de pago',
+            code: error.status ? error.code : undefined,
+            camposFaltantes: error.status ? error.camposFaltantes : undefined,
+            camposCorreo: error.status ? error.camposCorreo : undefined,
             error: process.env.NODE_ENV === 'development'
                 ? error.message
                 : undefined
