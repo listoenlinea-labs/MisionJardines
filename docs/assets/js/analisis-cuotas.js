@@ -556,7 +556,10 @@ function renderHouses(){
    const confirmado=Boolean(casaActual)&&Number(casaActual.tarifaMensual)===cuota&&houseHasNoFee(casaActual)===sinRecargo;
    if(casaActual)showSavedTariff(casaActual);
    if(confirmado){
-    $('houseTariffStatus').textContent='Cambios guardados y verificados.';
+    const mensajeRecargo=sinRecargo
+     ? 'Se exentó el recargo de $50 por mora.'
+     : 'Se habilitó el recargo de $50 por mora.';
+    $('houseTariffStatus').textContent='Tarifa de '+fmt(cuota)+' guardada. '+mensajeRecargo+' Se actualizó el adeudo sin borrar pagos.';
    }else{
     paintTariffSavedIndicator('unknown');
     $('houseTariffStatus').textContent='No se pudo confirmar la configuración guardada. Vuelve a consultar esta vivienda.';
