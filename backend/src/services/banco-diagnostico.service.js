@@ -108,12 +108,12 @@ function evaluar(pago,avisos,autenticados){
    ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
  }
  if(vinculados.length!==1)return resultado('COINCIDENCIA_AMBIGUA',
-  'Más de una notificación autenticada comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...base,coincidencias:vinculados.length});
+  'Más de una notificación autenticada comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...auditoria,coincidencias:vinculados.length});
  const aviso=vinculados[0];
  const checks=evidencia(pago,aviso);
  const completos=Object.values(checks).every(Boolean);
  if(completos)return resultado('COINCIDENCIA_VERIFICADA',
-  'Se encontró una notificación bancaria autenticada con identificador, monto, fecha, cuenta destino y vivienda coincidentes. Se está aplicando la confirmación.',{...base,coincidencias:1,verificaciones:checks});
+  'Se encontró una notificación bancaria autenticada con identificador, monto, fecha, cuenta destino y vivienda coincidentes. Se está aplicando la confirmación.',{...auditoria,coincidencias:1,verificaciones:checks});
  const causas=[];
  if(!checks.importe)causas.push('El importe del aviso bancario es diferente al importe reportado.');
  if(!checks.destino)causas.push('La cuenta destinataria del aviso bancario no corresponde a la cuenta oficial.');
@@ -124,6 +124,6 @@ function evaluar(pago,avisos,autenticados){
    ||(checks.vivienda===false && Boolean(String(aviso?.concepto||'').trim()));
  return resultado(seguroParaRechazar?'FALLIDO':'DATOS_INCOMPLETOS',causas.join(' ') ||
   'La notificación no contiene todos los datos necesarios para confirmar el pago.',
-  {...base,coincidencias:1,verificaciones:checks});
+  {...auditoria,coincidencias:1,verificaciones:checks});
 }
 module.exports={evaluar,evidencia,resultado};
