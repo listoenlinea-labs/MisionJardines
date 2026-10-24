@@ -15,7 +15,7 @@ function correoHTML({estilos=80000,referencia='910260'}={}){
  return [
   'From: Banco Azteca <avisos@banco.example>',
   'Subject: Notificación Banco Azteca',
-  'Date: Fri, 23 Oct 2026 18:42:09 -0600',
+  'Date: '+new Date().toUTCString(),
   'Message-ID: <test-unique-002@banco.example>',
   'Authentication-Results: titan-auth.example; dkim=pass header.d=banco.example; dmarc=pass header.from=banco.example;',
   'Content-Type: text/html; charset=UTF-8', '', html
