@@ -335,7 +335,7 @@
     };
     try{
       const response=await fetch(api+'/pagos/adeudos',{headers,cache:'no-store'});
-      if(response.ok){const result=await response.json();if(result.ok){window.MJAdeudos=result.data;decorate('pagos.html',result.data.cantidad||0);decorate('index.html',result.data.cantidad||0);document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:result.data}));}}
+      if(response.ok){const result=await response.json();if(result.ok){window.MJAdeudos=result.data;decorate('pagos.html',result.data.cantidad||0);decorate('index.html',0);document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:result.data}));}}
     }catch(_){/* No presentar cero cuando la API no está disponible. */}
     if(['ADMINISTRADOR','SUPER_ADMIN'].includes(role())){
       try{const r=await fetch(api+'/casa-club/solicitudes-pendientes',{headers,cache:'no-store'});if(r.ok){const d=await r.json();if(d.ok)decorate('casa-club.html',d.cantidad||0);}}catch(_){}
