@@ -150,10 +150,10 @@ async function listarMisPagos(req, res) {
                 }
             ],
             attributes: {
-                exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData']
+                exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData', 'identificadoresVerificados']
             },
             order: [['creadoEn', 'DESC']],
-            limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] }
+            limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData', 'identificadoresVerificados'] }
         });
 
         return res.json({
@@ -630,7 +630,7 @@ async function inicializarVigencia(req, res) {
 }
 async function listarPendientes(req, res) {
     try {
-        const rows = await PagoReportado.findAll({ where: { estatus: 'PENDIENTE_VALIDACION' }, include: [{ model: Casa, as: 'casa', required: false, attributes: ['id', 'calle', 'calleCorrecta', 'numero'] }], order: [['creadoEn', 'ASC']], limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] } });
+        const rows = await PagoReportado.findAll({ where: { estatus: 'PENDIENTE_VALIDACION' }, include: [{ model: Casa, as: 'casa', required: false, attributes: ['id', 'calle', 'calleCorrecta', 'numero'] }], order: [['creadoEn', 'ASC']], limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData', 'identificadoresVerificados'] } });
         return res.json({ ok: true, data: rows.map(row => pagoSeguro(req, row)) });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar los comprobantes pendientes' }); }
 }
