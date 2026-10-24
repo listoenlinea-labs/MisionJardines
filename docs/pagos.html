@@ -1233,7 +1233,7 @@
       <article class="card pad">
         <span class="eyebrow">COMPROBANTE BANCARIO</span>
         <h2 id="paymentTitle">Reportar mantenimiento</h2>
-        <p>Sube una captura, fotografía o PDF. El sistema leerá folio, fecha, hora y monto, y solo permitirá enviar
+        <p>Sube una captura, fotografía o PDF. El sistema leerá clave de rastreo, referencia o folio, fecha, hora y monto, y solo permitirá enviar
           comprobantes cuyo <strong>Destino</strong> muestre a <strong>MARIA DEL ROCIO BAHENA JUAREZ</strong> y la terminación <strong>4409</strong>.</p>
 
         <label class="upload" for="proofInput">
@@ -1317,7 +1317,7 @@
   <strong>Información que necesitamos:</strong>
   <ul id="missingProofFields"></ul>
   <p id="missingProofMail" class="mj-missing-bank-hint"></p>
-  <button type="button" class="mj-missing-action" onclick="document.getElementById('missingProofModal').close()">Entendido, elegir otra captura</button>
+  <button type="button" id="confirmMissingProof" class="mj-missing-action">Entendido, elegir otra captura</button>
 </dialog>
 <dialog id="debtModal" class="mj-debt-modal" aria-labelledby="debtTitle">
  <div class="mj-debt-heading"><div><span class="eyebrow">ESTADO DE TU VIVIENDA</span><h2 id="debtTitle">Pagos pendientes</h2><p>Consulta cada concepto y regulariza los importes pendientes.</p></div><button type="button" id="closeDebtModal" aria-label="Cerrar aviso" title="Cerrar aviso"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"></path></svg></button></div>
