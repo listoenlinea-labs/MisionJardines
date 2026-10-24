@@ -17,8 +17,7 @@ const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.s
 
 const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
-const recargosService = require('../services/recargos-mantenimiento.service');
-const pagoPruebaService = require('../services/pago-prueba-test001.service');
+const cuotasMantenimiento = require('../services/cuotas-mantenimiento.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
 const idsBanco = require('../services/identificadores-bancarios.service');
 const { verificarPosibilidad } = require('../services/verificar-comprobante-identificadores.service');
@@ -26,24 +25,6 @@ const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
-const CORREO_PRUEBA_DIEZ = 'condomino.prueba@example.invalid';
-async function esPruebaDiez(req) {
-    // Siempre consultar el usuario autenticado en MySQL; nunca confiar en un email enviado por el cliente.
-    const usuarioId = Number(req.usuario?.usuarioId);
-    const casaId = Number(req.usuario?.casaId);
-    if (!usuarioId || !casaId) return false;
-    const [usuario, casa] = await Promise.all([
-        Usuario.findByPk(usuarioId, { attributes: ['id', 'correo'] }),
-        Casa.findByPk(casaId, { attributes: ['id', 'calle', 'numero'] })
-    ]);
-    return String(usuario?.correo || '').trim().toLowerCase() === CORREO_PRUEBA_DIEZ
-        && String(casa?.calle || '').trim().toLowerCase() === 'prueba'
-        && String(casa?.numero || '').trim().toUpperCase() === 'TEST-001';
-}
-
-
-
-
 function nombreCompleto(usuario) {
     return [usuario?.nombre, usuario?.apellidoPaterno, usuario?.apellidoMaterno]
         .filter(Boolean)
@@ -352,11 +333,11 @@ async function reportarPago(req, res) {
         // aviso autenticado realmente publica ESE mismo folio.
         await verificarPosibilidad({textoOcr,casa,fechaOperacion,horaOperacion,monto});
 
-        const pruebaDiez = tipoPago === 'MANTENIMIENTO' && await esPruebaDiez(req);
         let cuotaExtraordinaria = null;
         let cargoExtraordinario = null;
         let reservaCasaClub = null;
         let cortesRecargo = null;
+        let aplicacionCuotas = null;
         let requerido;
         let recargo = 0;
         let concepto;
@@ -395,24 +376,15 @@ async function reportarPago(req, res) {
             // Validar en el backend, no confiar en importes del navegador ni OCR.
             // El recibo solo registra una solicitud: hasta validar contra el banco
             // no se activan TAGs físicos.
-            if (pruebaDiez) {
-                if (centavos(monto) !== 1000) return res.status(400).json({ok:false,message:'Prueba: solo se acepta un comprobante de $10.00.'});
-                const previo = await PagoReportado.findOne({where:{casaId,tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION'}});
-                if (previo) return res.status(409).json({ok:false,message:'La vivienda ya tiene un comprobante en revisión.'});
-                requerido = 10;
-                recargo = 0;
-                cortesRecargo = [];
-                concepto = 'PRUEBA CONTROLADA: Abono de mantenimiento de $10.00, octubre 2026. Requiere validación bancaria.';
-            } else {
-                transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
-                const rule = await recargosService.cotizar(casaId, fechaCalculoMantenimiento, req.body.monto, transaction);
-                cortesRecargo = rule.cortesRecargo;
-                requerido = rule.total;
-                recargo = rule.recargo;
-                concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
-                    '(desde octubre de 2026, pendientes primero). ' +
-                    (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
-            }
+            transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
+            const rule = await cuotasMantenimiento.cotizar(casaId, fechaCalculoMantenimiento, req.body.monto, transaction);
+            aplicacionCuotas = rule;
+            cortesRecargo = rule.cortesRecargo;
+            requerido = rule.total;
+            recargo = rule.recargo;
+            concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
+                '(cuotas desde septiembre de 2026, pendientes primero). ' +
+                (rule.recargo > 0 ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
         }
 
         if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
@@ -458,6 +430,7 @@ async function reportarPago(req, res) {
             montoRequerido: requerido,
             recargo: Math.min(recargo, monto),
             cortesRecargo,
+            aplicacionCuotas,
             calleSnapshot: casa.calle,
             numeroCasaSnapshot: casa.numero,
             nombreReportante: nombreCompleto(usuario) || 'Residente',
@@ -617,7 +590,10 @@ module.exports = { confirmarPagoDesdeBanco,
 async function obtenerVigencia(req, res) {
     try {
         if (!req.usuario.casaId) return res.status(400).json({ ok: false, message: 'Selecciona una vivienda' });
-        return res.json({ ok: true, data: await vigenciaService.estadoCasa(req.usuario.casaId) });
+        return res.json({ ok: true, data: await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            const {cuotas,tarifa}=await cuotasMantenimiento.cargar(req.usuario.casaId,transaction);
+            return require('../services/cuotas-mantenimiento-calculo').contextoCuotas(cuotas,fechaMexico(),tarifa);
+        }) });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar la vigencia' }); }
 }
 async function inicializarVigencia(req, res) {
@@ -655,16 +631,8 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
                   fechaRevision:new Date().toISOString(),
                   detalle:'Pago confirmado: coincidieron los identificadores, el importe, la fecha bancaria, la cuenta y la vivienda en una notificación bancaria autenticada.'},
                 observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria autenticada.' }, { transaction });
-            if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') {
-                await recargosService.confirmar(pago, transaction);
-                // SOLO Prueba TEST-001: completar la cuota SQL de OCTUBRE con
-                // el depósito real de $10 cuando quedan exactamente $10.
-                // Misma transacción: ante cualquier inconsistencia no se valida
-                // el reporte ni se modifica la cuota.
-                await pagoPruebaService.aplicarSiCorresponde(pago, transaction);
-            }
-            const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
-                ? await vigenciaService.actualizar(pago.casaId, null, transaction, { origen: 'PAGO', registro: pago }) : null;
+            const vigencia = pago.tipoPago === 'MANTENIMIENTO'
+                ? await cuotasMantenimiento.confirmar(pago, transaction) : null;
             if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
                 const reserva=await ReservaCasaClub.findByPk(pago.reservaCasaClubId,{transaction,lock:transaction.LOCK.UPDATE});
                 if(!reserva||reserva.estatus!=='APROBADA'||reserva.pagado)throw Object.assign(new Error('La reserva ya cambió de estado. Requiere conciliación.'),{status:409});
@@ -692,11 +660,8 @@ async function cotizacionMantenimiento(req,res) {
         const fechaReportada = resuelta.fechaOperacion;
         // Cobrar solo cortes efectivamente vencidos a la fecha de hoy.
         const fechaCalculo = validarOperacion(fechaReportada > hoy ? hoy : fechaReportada, hoy);
-        const pruebaDiez = await esPruebaDiez(req);
-        const data = pruebaDiez
-          ? {base:350,recargo:0,minimo:10,minimoReporte:10,saldoParcial:0,fechaFinalC3:'—',modoPrueba:true}
-          : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
-              recargosService.contexto(req.usuario.casaId, fechaCalculo, transaction));
+        const data = await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
+            cuotasMantenimiento.cotizar(req.usuario.casaId, fechaCalculo, req.query.monto || null, transaction));
         data.fechaHoy = hoy;
         data.fechaOperacionReal = fechaReportada;
         data.fechaComprobante = resuelta.fechaComprobante;
@@ -705,5 +670,5 @@ async function cotizacionMantenimiento(req,res) {
         data.ajusteSpei = resuelta.ajusteSpei;
         res.setHeader('Cache-Control','private, no-store');
         return res.json({ ok:true, data });
-    } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible leer el C3 para calcular recargos. Intenta nuevamente.' }); }
+    } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible consultar las cuotas de la vivienda. Intenta nuevamente.' }); }
 }

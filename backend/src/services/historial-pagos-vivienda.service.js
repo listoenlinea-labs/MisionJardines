@@ -11,8 +11,18 @@ const latest=(a,b)=>!a?b:!b?a:String(a)>=String(b)?a:b;
 
 function historialMantenimiento(cuotas=[],comprobantes=[]){
   const groups=new Map();
+  // Las cuotas acumulan abonos de varios depósitos. Descontar primero los
+  // repartos nuevos y mostrar cada depósito con su propio folio e importe.
+  const aplicados=new Map();
+  const nuevos=comprobantes.filter(p=>p.tipoPago==='MANTENIMIENTO'&&p.estatus==='VALIDADO'&&p.aplicacionCuotas?.aplicado);
+  for(const pago of nuevos)for(const a of pago.aplicacionCuotas.aplicaciones||[]){
+    const key=Number(a.anio)+':'+a.mes;
+    const item=aplicados.get(key)||{abono:0,recargo:0};
+    item.abono+=Number(a.abono);item.recargo+=Number(a.abonoRecargo);aplicados.set(key,item);
+  }
   for(const c of cuotas){
-    const paid=cents(c.montoPagado);
+    const descontar=aplicados.get(Number(c.anio)+':'+c.mes)||{abono:0,recargo:0};
+    const paid=Math.max(0,cents(c.montoPagado)-descontar.abono);
     if(paid<=0||!['PAGADO','PAGO_PARCIAL'].includes(String(c.estatusPago||'').toUpperCase()))continue;
     const ref=String(c.referencia||c.folio||'').trim();
     const key=ref?'ref:'+ref.toLowerCase():'cuota:'+c.id;
@@ -20,7 +30,7 @@ function historialMantenimiento(cuotas=[],comprobantes=[]){
       recargoCentavos:0,periodos:[],formaPago:c.formaPago||null,fuente:'CUOTA',pagoAnual:false});
     const item=groups.get(key);
     item.montoCentavos+=paid;
-    item.recargoCentavos+=Math.max(0,cents(c.recargo));
+    item.recargoCentavos+=Math.max(0,cents(c.recargo)-descontar.recargo);
     item.fecha=latest(item.fecha,isoDate(c.fechaConfirmacion||c.fechaPago));
     const mm=MONTHS.indexOf(String(c.mes||'').toUpperCase());
     if(mm>=0)item.periodos.push({mes:MONTHS[mm],anio:Number(c.anio),monto:paid/100});
@@ -28,6 +38,7 @@ function historialMantenimiento(cuotas=[],comprobantes=[]){
     if(c.origenImportacion==='MANUAL_ANALISIS_ANUAL')item.pagoAnual=true;
   }
   for(const p of comprobantes){
+    if(p.aplicacionCuotas?.aplicado)continue;
     if(p.tipoPago!=='MANTENIMIENTO'||p.estatus!=='VALIDADO')continue;
     const ref=String(p.folioOperacion||p.folioReporte||'').trim();
     const keys=[p.folioOperacion,p.folioReporte].filter(Boolean).map(x=>'ref:'+String(x).trim().toLowerCase());
@@ -41,9 +52,15 @@ function historialMantenimiento(cuotas=[],comprobantes=[]){
     item.recargoCentavos=Math.max(item.recargoCentavos,cents(p.recargo));
     item.fecha=latest(item.fecha,isoDate(p.fechaOperacion));
   }
+  for(const p of nuevos)groups.set('banco:'+p.id,{
+    referencia:p.folioOperacion||p.folioReporte,fecha:isoDate(p.fechaOperacion),
+    montoCentavos:cents(p.monto),recargoCentavos:cents(p.recargo),
+    periodos:(p.aplicacionCuotas.aplicaciones||[]).map(a=>({mes:a.mes,anio:a.anio,monto:a.abono/100})),
+    mesesCompletos:p.aplicacionCuotas.meses,formaPago:'TRANSFERENCIA',fuente:'COMPROBANTE_VALIDADO',pagoAnual:false
+  });
   return [...groups.values()].map(item=>({
     referencia:item.referencia,fecha:item.fecha,monto:item.montoCentavos/100,
-    recargo:item.recargoCentavos/100,meses:item.periodos.length,
+    recargo:item.recargoCentavos/100,meses:item.mesesCompletos??item.periodos.length,
     periodos:item.periodos.sort((a,b)=>a.anio-b.anio||MONTHS.indexOf(a.mes)-MONTHS.indexOf(b.mes)),
     formaPago:item.formaPago,fuente:item.fuente,pagoAnual:item.pagoAnual
   })).sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))||

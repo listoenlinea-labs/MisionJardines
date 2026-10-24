@@ -166,7 +166,7 @@ async function consultarPago(casaId, periodo = null, referencia = null) {
         PagoReportado.findAll({
             where: { casaId, tipoPago: 'MANTENIMIENTO', estatus: 'VALIDADO' },
             attributes: ['id', 'tipoPago', 'estatus', 'reciboFolio', 'nombreReportante',
-                'monto', 'recargo', 'folioReporte', 'folioOperacion', 'fechaOperacion']
+                'monto', 'recargo', 'folioReporte', 'folioOperacion', 'fechaOperacion', 'aplicacionCuotas']
         })
     ]);
     return { casa, ...datosDeMovimiento(casa, cuotas, comprobantes, new Date(), periodo, referencia) };

@@ -1,3 +1,4 @@
+const cuotasMantenimiento = require('../services/cuotas-mantenimiento.service');
 const { esViviendaVisible } = require('../services/viviendas-visibles.service');
 const { Op } = require('sequelize');
 
@@ -543,7 +544,7 @@ async function actualizarCuota(req, res) {
             const anterior = vigenciaService.capturarCuota(cuota);
             await cuota.update(cambios, { transaction });
             if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
-                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
+                await cuotasMantenimiento.registrarCambioCuota(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         });
 
         return res.json({
@@ -716,7 +717,7 @@ async function actualizarCuotasLote(req, res) {
             const anterior = vigenciaService.capturarCuota(cuota);
             await cuota.update(cambios, { transaction });
             if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
-                await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
+                await cuotasMantenimiento.registrarCambioCuota(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         }
 
         await transaction.commit();
@@ -886,7 +887,7 @@ async function confirmarPago(req, res) {
             }
         );
 
-        const vigenciaAcceso = await vigenciaService.actualizar(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
+        const vigenciaAcceso = await cuotasMantenimiento.registrarCambioCuota(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         await transaction.commit();
 
         const cuotaConfirmada =

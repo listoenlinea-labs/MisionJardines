@@ -43,7 +43,7 @@ test('filtra por depósito, pagina, conserva abonos y estatus y consulta TAGs en
       assert.ok(!options.attributes.includes('comprobanteData')); assert.ok(!options.attributes.includes('textoOcr'));
       return { count: 53, rows };
     } },
-    PagoAccesoC3: { findAll: async options => { calls++; assert.equal(options.where.origen, 'PAGO'); return [{ id: 9, origenId: 1, meses: 0, estado: 'COMPLETADO' }]; } },
+    PagoAccesoC3: { findAll: async options => { calls++; assert.deepEqual(options.where.origen[Op.in], ['PAGO','PAGO_CUOTAS']); return [{ id: 9, origenId: 1, meses: 0, estado: 'COMPLETADO' }]; } },
     PagoAccesoTagC3: { findAll: async () => { calls++; return []; } },
     ZkTarjeta: { findAll: async options => { calls++; assert.deepEqual(options.where.casaId[Op.in], [10, 11]); return [
       { casaId: 10, numeroTarjeta: 'TEST-1', fechaFin: '2026-10-11', ultimaLectura: '2026-10-13T12:00:00Z' },

@@ -2,18 +2,16 @@
 
 // Cálculo de SOLO LECTURA para Consulta de viviendas. La contabilidad de
 // ingresos, los abonos guardados y los estados del C3 no se modifican.
-const { BASE, RECARGO } = require('./mensualidades-mantenimiento');
+const { BASE } = require('./mensualidades-mantenimiento');
 const { siguienteDelUltimo } = require('./pago-manual-analisis.service');
 const { fechaMexico } = require('./vigencia-calculo');
+const {estadoPeriodo}=require('./cuotas-mantenimiento-calculo');
 
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
   'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const INICIO = 2026 * 12 + 8; // Septiembre 2026; agosto puede ser el último mes pagado.
 const indice = (anio, mes) => Number(anio) * 12 + Number(mes) - 1;
-const centavos = valor => {
-  const n = Number(valor);
-  return Number.isFinite(n) ? Math.max(0, Math.round(n * 100)) : 0;
-};
+
 
 /**
  * Saldo acumulado del padrón hasta el período consultado, nunca más allá de hoy
@@ -27,8 +25,6 @@ const centavos = valor => {
  */
 function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa = BASE }) {
   if (!Number.isInteger(tarifa) || tarifa < 1 || tarifa > 10000) throw new Error('Tarifa mensual inválida');
-  const tarifaCentavos = tarifa * 100;
-  const tarifaPersonalizada = tarifa !== BASE;
   const fin = indice(anio, mes);
   const finCalendario = new Date(Date.UTC(Number(anio), Number(mes), 0))
     .toISOString().slice(0, 10);
@@ -49,35 +45,13 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
   for (let n = INICIO; n <= limite; n++) {
     const yy = Math.floor(n / 12), mm = n % 12 + 1;
     const cuota = porPeriodo.get(n);
-    const estado = String(cuota?.estatusPago || '').toUpperCase();
-    const pagado = centavos(cuota?.montoPagado);
-    if ((estado === 'PAGADO' && pagado > 0) ||
-        estado === 'CONDONADO' || estado === 'CANCELADO') continue;
-    const vencimiento = String(yy) + '-' + String(mm).padStart(2, '0') + '-10';
-    // Única excepción del laboratorio Prueba TEST-001. El marcador de esta
-    // cuota sintética solo existe en el escenario controlado: octubre/2026,
-    // tarifa exacta $10 y recargo explícitamente $0. En ningún otro periodo
-    // o vivienda se elimina el recargo ordinario de $50.
-    const esOctubreDiezPrueba = tarifa === 10 && yy === 2026 && mm === 10
-      && String(cuota?.origenImportacion||'') === 'PRUEBA_10_PESOS'
-      && centavos(cuota?.montoCuota) === 1000
-      && centavos(cuota?.recargo) === 0;
-    const multa = !esOctubreDiezPrueba && corte > vencimiento ? RECARGO * 100 : 0;
-    // Una tarifa personalizada no debe quedar anulada por importes históricos
-    // generados con la tarifa general. Los pagos acreditados se respetan.
-    const total = tarifaPersonalizada
-      ? tarifaCentavos + Math.max(multa, centavos(cuota?.recargo))
-      : Math.max(tarifaCentavos, centavos(cuota?.montoCuota),
-        tarifaCentavos + centavos(cuota?.recargo), tarifaCentavos + multa);
-    const faltante = tarifaPersonalizada ? Math.max(0,total-pagado)
-      : Math.max(0,total-pagado,centavos(cuota?.saldoPendiente));
+    const {faltante,recargoPendiente}=estadoPeriodo(cuota,n,corte,tarifa);
     if (!faltante) continue;
     pendiente += faltante;
     mesesPendientes++;
-    const sinMulta = Math.max(0, tarifaCentavos - pagado);
-    recargos += multa ? Math.min(multa, Math.max(0, faltante - sinMulta)) : 0;
+    recargos += recargoPendiente;
     detalles.push({categoria:'MANTENIMIENTO',periodo:`${yy}-${String(mm).padStart(2,'0')}`,
-      monto:faltante/100,recargo:(multa ? Math.min(multa,Math.max(0,faltante-sinMulta)) : 0)/100,
+      monto:faltante/100,recargo:recargoPendiente/100,
       concepto:'Mantenimiento'});
   }
   // Etiqueta administrativa anual en el último diciembre confirmado.

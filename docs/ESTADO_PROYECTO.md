@@ -14,6 +14,18 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Cambio preparado: cuotas como fuente de Pagos (23/oct/2026)
+
+Petición del usuario: permitir pagos sin TAG y reflejarlos en Análisis. La implementación
+usa cuotas por vivienda y comparte el cálculo de deuda, registra el reparto mensual y
+acredita en una transacción al validar contra el banco. C3 recibe un objetivo absoluto
+posterior al commit; errores de acceso no deshacen el pago. Requiere tres columnas
+aditivas y conciliar comprobantes/entregas anteriores pendientes; no se reproducen
+pagos históricos. Ver [reglas y despliegue](PAGOS_CUOTAS_UNIFICADOS.md).
+Este cambio está preparado en código sobre main `c5e044e`; no certifica despliegue ni
+consulta de MySQL, correo o C3 reales. Las secciones anteriores que exijan fecha física
+para calcular pagos quedan sustituidas por esta petición.
+
 ## Resumen operativo
 
 | Área | Estado | Evidencia y límites |

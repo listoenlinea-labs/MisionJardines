@@ -1,3 +1,7 @@
+> **Regla sustituida el 23/oct/2026:** para pagos nuevos la fuente es cuotas,
+> no la fecha física. Consultar [Pagos/cuotas unificados](PAGOS_CUOTAS_UNIFICADOS.md).
+> Este documento conserva el detalle histórico del diario y sus salvaguardas TCP.
+
 # Pagos e incrementos de acceso en el C3-200
 
 El C3 es la fuente de la fecha final. Cada nuevo importe confirmado de mantenimiento, después de descontar el recargo registrado, compra meses completos de $300. El remanente inferior a $300 queda registrado para el siguiente pago. No se suman los ingresos de toda la vida de la vivienda ni se calcula desde `fecha_base`.

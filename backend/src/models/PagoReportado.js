@@ -68,6 +68,7 @@ const PagoReportado = sequelize.define(
             defaultValue: 300,
             field: 'monto_requerido'
         },
+        aplicacionCuotas: {type:DataTypes.JSON,allowNull:true,field:'aplicacion_cuotas'},
         cortesRecargo: { type: DataTypes.JSON, allowNull: true, field: 'cortes_recargo' },
         recargo: {
             type: DataTypes.DECIMAL(12, 2),

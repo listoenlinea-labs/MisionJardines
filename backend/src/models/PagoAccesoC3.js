@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const db = require('../config/database');
 
-// Durable payment outbox. Dates in this table are never a source for C3 writes.
+// Diario durable: PAGO_CUOTAS conserva el objetivo absoluto respaldado por cuotas.
 module.exports = db.define('PagoAccesoC3', {
     id: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, autoIncrement: true },
     casaId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, field: 'casa_id' },
@@ -10,6 +10,7 @@ module.exports = db.define('PagoAccesoC3', {
     origenId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, field: 'origen_id' },
     montoOrigen: { type: DataTypes.DECIMAL(14, 2), allowNull: false, field: 'monto_origen' },
     recargoOrigen: { type: DataTypes.DECIMAL(14, 2), allowNull: false, field: 'recargo_origen' },
+    fechaObjetivo: {type:DataTypes.DATEONLY,allowNull:true,field:'fecha_objetivo'},
     referencia: { type: DataTypes.STRING(150), allowNull: true },
     principalMovimiento: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, field: 'principal_movimiento_centavos' },
     principalAplicado: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, field: 'principal_aplicado_centavos' },

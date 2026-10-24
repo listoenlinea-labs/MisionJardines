@@ -53,6 +53,7 @@ async function asegurarEsquemaPagos() {
 
     const table = 'pagos_reportados';
     const current = await queryInterface.describeTable(table);
+    await ensureColumn(queryInterface, table, current, 'aplicacion_cuotas', {type:DataTypes.JSON,allowNull:true});
     await ensureColumn(queryInterface, table, current, 'cortes_recargo', { type: DataTypes.JSON, allowNull: true });
     await ensureColumn(queryInterface, table, current, 'verificacion_bancaria', { type: DataTypes.JSON, allowNull: true });
     await ensureColumn(queryInterface, table, current, 'identificadores_verificados', { type: DataTypes.JSON, allowNull: true });
@@ -164,7 +165,10 @@ async function asegurarEsquemaPagos() {
         error_sincronizacion: { type: DataTypes.STRING(1000), allowNull: true }
     })) await ensureColumn(queryInterface, 'vigencias_mantenimiento', vigenciaColumns, name, definition);
     await Cuota.sync();
-    const cuotaColumns = await queryInterface.describeTable('cuotas');
+    const cuotaColumns=await queryInterface.describeTable('cuotas');
+    await ensureColumn(queryInterface,'cuotas',cuotaColumns,'recargo_pagado',{type:DataTypes.DECIMAL(12,2),allowNull:true});
+    const accesoColumns=await queryInterface.describeTable('pagos_acceso_c3');
+    await ensureColumn(queryInterface,'pagos_acceso_c3',accesoColumns,'fecha_objetivo',{type:DataTypes.DATEONLY,allowNull:true});
     await ensureColumn(queryInterface, 'cuotas', cuotaColumns, 'recargo', { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 });
     console.log('[Pagos] Esquema de pagos verificado');
 }
