@@ -296,7 +296,7 @@
       return m[1].padStart(2, '0') + ':' + m[2] + ':' + (m[3] || '00');
     }
     const isPhotoDevice = window.matchMedia('(max-width: 900px) and (pointer: coarse)').matches;
-    // On phones/tablets request image files only; never request camera capture.
+    // En móvil se aceptan fotos o imágenes; el botón Cámara usa su propia entrada con capture.
     if (isPhotoDevice) {
       $('proofInput').accept = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
       $('proofInput').removeAttribute('capture');
