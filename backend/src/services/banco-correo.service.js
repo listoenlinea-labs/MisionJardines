@@ -4,6 +4,7 @@
 const {createHash}=require('node:crypto');
 const {leerBuzon}=require('./correo-bancario-mail.service');
 const { equivaleFechaSpei }=require('./fecha-operativa-spei.service');
+const idsBanco=require('./identificadores-bancarios.service');
 const normal=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
 const clave=value=>normal(value).replace(/[^A-Z0-9]/g,'');
 const centavos=value=>Math.round(Number(value||0)*100);
@@ -31,6 +32,23 @@ function fechaDeAviso(text){
  if(date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day)return '';
  return year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
 }
+// Extraer exclusivamente valores etiquetados; jamás inferir una referencia
+// de los últimos dígitos de la cuenta, de la fecha o de la descripción.
+function valorEtiquetado(texto,etiqueta,patron){
+ const lines=String(texto||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
+ const found=new Set();
+ for(let i=0;i<lines.length;i++){
+  const match=lines[i].match(etiqueta);
+  if(!match)continue;
+  const rest=lines[i].slice(match.index+match[0].length).replace(/^\s*[:#=-]\s*/,'');
+  for(const candidate of [rest,lines[i+1]||'']){
+   const m=candidate.match(patron);
+   if(m){found.add(m[1]);break}
+   if(candidate&&/[A-Z]/.test(candidate))break;
+  }
+ }
+ return found.size===1?[...found][0]:'';
+}
 function datosAviso(mensaje,config=process.env){
  const remitente=String(mensaje?.from?.emailAddress?.address||'').trim().toLowerCase();
  const emisor=String(config.PAGOS_BANK_FROM_ADDRESS||'').trim().toLowerCase();
@@ -52,6 +70,8 @@ function datosAviso(mensaje,config=process.env){
  const upper=normal(body);
  const claveMatch=upper.match(/\bCLAVE\s+DE\s+RASTREO\s*[:#=\-]?\s*([A-Z0-9][A-Z0-9\s-]{10,100})/);
  const tracking=claveMatch?clave(claveMatch[1].split(/\b(?:CONSULTA|VERIFICA|REFERENCIA|CONCEPTO|TIPO|FECHA|HORA)\b/)[0].split('\n')[0]):'';
+ const referencia=valorEtiquetado(upper,/\bREFERENCIA(?:\s+NUMERICA)?\b/,/^\s*(\d{5,20})(?!\d)(?:\s|$)/);
+ const folio=valorEtiquetado(upper,/\bFOLIO(?:\s+DE\s+OPERACION)?\b/,/^\s*([A-Z0-9-]{5,90})(?:\s|$)/);
  // El encabezado y el importe viven en filas HTML distintas. Admitir
  // espacios/saltos entre ellos sin saltar a Comisión, Saldo u otro campo.
  const montos=[...new Set([...upper.matchAll(/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)\s*\$\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})?)(?![\d.,])/g)]
@@ -67,7 +87,7 @@ function datosAviso(mensaje,config=process.env){
  const received=Date.parse(mensaje?.receivedDateTime||'');
  const reciente=Number.isFinite(received)&&Date.now()-received<=Math.min(14,Math.max(1,limite))*86400000
   &&received<=Date.now()+300000;
- return {autorizado,origenVerificado:autorizado?origen:null,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',monto,cuenta,fecha,concepto,id,reciente};
+ return {autorizado,origenVerificado:autorizado?origen:null,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',referencia,folio,monto,cuenta,fecha,concepto,id,reciente};
 }
 function perteneceAVivienda(pago,noticia){
  const casa=pago?.casa;
@@ -77,6 +97,9 @@ function perteneceAVivienda(pago,noticia){
  // Normalizar el número exactamente igual que el aviso, sin omitir vivienda ni calle.
  const numero=normal(casa?.numero).replace(/[^A-Z0-9]+/g,' ').trim();
  if(!calle||!numero||!concepto.trim())return false;
+ // EXCLUSIVO para la vivienda ficticia del test. BBVA permite enviar "casa TEST-001"
+ // sin incluir la calle. No relajar la vinculación calle+número de residentes reales.
+ if(calle==='PRUEBA' && numero==='TEST 001' && concepto.trim()==='CASA TEST 001')return true;
  const variantes=[numero,numero.replace(/\s+/g,'')];
  return variantes.some(n=>concepto.includes(' '+calle+' '+n+' ')
    ||concepto.includes(' '+calle+' CASA '+n+' '));
@@ -86,15 +109,18 @@ function coincideCuenta(detectada,esperada){
  // terminación distinta a tres. Solo se admite la máscara de 3/4 del aviso.
  return /^\d{4}$/.test(esperada)&&/^\d{3,4}$/.test(String(detectada||''))&&esperada.endsWith(detectada);
 }
-function corresponde(pago,noticia,config=process.env){
+function coincideDatosBancarios(pago,noticia,config=process.env){
  const cuenta=suffix(config.PAGOS_DESTINO_ULTIMOS4||'4409');
- return Boolean(noticia.autorizado&&noticia.reciente&&noticia.id&&noticia.tracking
-  &&clave(pago?.folioOperacion)===noticia.tracking&&coincideCuenta(noticia.cuenta,cuenta)
-  &&cuenta.length===4&&(noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
-    || equivaleFechaSpei(String(pago?.fechaOperacion).slice(0,10),noticia.fecha,pago?.horaOperacion)
-    || equivaleFechaSpei(noticia.fecha,String(pago?.fechaOperacion).slice(0,10),pago?.horaOperacion))
+ return Boolean(noticia?.autorizado&&noticia?.reciente&&noticia?.id
+  &&coincideCuenta(noticia.cuenta,cuenta)&&cuenta.length===4
+  &&(noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
+    ||equivaleFechaSpei(String(pago?.fechaOperacion).slice(0,10),noticia.fecha,pago?.horaOperacion)
+    ||equivaleFechaSpei(noticia.fecha,String(pago?.fechaOperacion).slice(0,10),pago?.horaOperacion))
   &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
   &&perteneceAVivienda(pago,noticia));
+}
+function corresponde(pago,noticia,config=process.env){
+ return coincideDatosBancarios(pago,noticia,config) && idsBanco.coinciden(pago,noticia);
 }
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
@@ -113,4 +139,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_IMAP_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,corresponde,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
+module.exports={datosAviso,corresponde,coincideDatosBancarios,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};

@@ -1233,7 +1233,7 @@
       <article class="card pad">
         <span class="eyebrow">COMPROBANTE BANCARIO</span>
         <h2 id="paymentTitle">Reportar mantenimiento</h2>
-        <p>Sube una captura, fotografía o PDF. El sistema leerá folio, fecha, hora y monto, y solo permitirá enviar
+        <p>Sube una captura, fotografía o PDF. El sistema leerá clave de rastreo, referencia o folio, fecha, hora y monto, y solo permitirá enviar
           comprobantes cuyo <strong>Destino</strong> muestre a <strong>MARIA DEL ROCIO BAHENA JUAREZ</strong> y la terminación <strong>4409</strong>.</p>
 
         <label class="upload" for="proofInput">
@@ -1267,8 +1267,8 @@
           <p id="proofFieldHelp">Los datos bancarios se llenan desde el comprobante y son de solo lectura. Si falta un dato, vuelve a leerlo o adjunta una imagen más clara.</p>
           <div class="form-grid">
             <div class="form-row">
-              <div><label>Folio / clave de rastreo *</label><input id="operationFolio" maxlength="180" required readonly
-                  placeholder="Ej. clave de rastreo o folio"></div>
+              <div><label>Clave de rastreo / referencia / folio *</label><input id="operationFolio" maxlength="180" required readonly
+                  placeholder="Dato bancario leído del comprobante"></div>
               <div><label>Monto depositado *</label><input id="amount" type="number" min="0.01" step="0.01" required readonly
                   placeholder="300.00"></div>
             </div>
@@ -1304,12 +1304,41 @@
     </section>
   </main>
 
+
   <div id="toast" class="toast"></div>
+<dialog id="missingProofModal" class="mj-missing-proof" aria-labelledby="missingProofTitle" aria-describedby="missingProofExplanation">
+  <div class="mj-missing-head">
+    <div><span class="eyebrow">COMPROBANTE BANCARIO</span><h2 id="missingProofTitle">No podemos verificar esta captura</h2></div>
+    <button type="button" id="closeMissingProof" class="mj-missing-close" aria-label="Cerrar aviso">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"/></svg>
+    </button>
+  </div>
+  <p id="missingProofExplanation"></p>
+  <strong>Información que necesitamos:</strong>
+  <ul id="missingProofFields"></ul>
+  <p id="missingProofMail" class="mj-missing-bank-hint"></p>
+  <button type="button" id="confirmMissingProof" class="mj-missing-action">Entendido, elegir otra captura</button>
+</dialog>
 <dialog id="debtModal" class="mj-debt-modal" aria-labelledby="debtTitle">
  <div class="mj-debt-heading"><div><span class="eyebrow">ESTADO DE TU VIVIENDA</span><h2 id="debtTitle">Pagos pendientes</h2><p>Consulta cada concepto y regulariza los importes pendientes.</p></div><button type="button" id="closeDebtModal" aria-label="Cerrar aviso" title="Cerrar aviso"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"></path></svg></button></div>
  <div id="debtDetails" class="mj-debt-details"></div><div class="mj-debt-total"><span>Total pendiente</span><strong id="debtTotal">$0.00</strong></div>
 </dialog>
 <style>
+/* Modal accesible y centrado para comprobantes que no se pueden cotejar. */
+.mj-missing-proof{box-sizing:border-box;border:1px solid #e6d9f4;border-radius:19px;padding:23px;width:min(470px,calc(100vw - 26px));max-height:calc(100dvh - 32px);overflow-y:auto;color:#26334c;background:#fff;box-shadow:0 22px 70px #1b224553}
+.mj-missing-proof[open]{position:fixed!important;inset:0!important;margin:auto!important}
+.mj-missing-proof::backdrop{background:#20263a99;backdrop-filter:blur(4px)}
+.mj-missing-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:13px}
+.mj-missing-head h2{font-size:21px;line-height:1.24;margin:7px 0 0}
+.mj-missing-proof p{font-size:13px;line-height:1.65;color:#65738b}
+.mj-missing-proof>strong{display:block;margin:15px 0 8px;font-size:13px}
+.mj-missing-proof ul{margin:0;padding-left:22px;font-size:13px;line-height:1.9;color:#35425c}
+.mj-missing-bank-hint{padding:12px 13px;background:#f8f4ff;border:1px solid #ede0f7;border-radius:12px}
+.mj-missing-close{flex:0 0 36px;display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid #eadcf5;border-radius:50%;background:#faf6ff;color:#79549c;cursor:pointer}
+.mj-missing-close svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.mj-missing-close:focus-visible,.mj-missing-action:focus-visible{outline:3px solid #d9bdf3;outline-offset:2px}
+.mj-missing-action{width:100%;margin-top:12px;border:1px solid #edbc91;border-radius:12px;padding:13px 15px;color:#fff;background:#ce761c;font:inherit;font-size:13px;font-weight:750;cursor:pointer}
+@media(max-width:540px){.mj-missing-proof{padding:18px}.mj-missing-head h2{font-size:19px}}
 .card[hidden],.tabs [hidden]{display:none!important}
 .tabs .tab .mj-tab-count{display:inline-grid;place-items:center;margin-left:7px;padding:2px 7px;border-radius:99px;background:#d5f5df;color:#146c44;font-size:11px;font-weight:800}
 .mj-debt-modal{box-sizing:border-box;border:1px solid #eaded6;border-radius:18px;padding:24px;max-width:calc(100vw - 32px);width:min(760px,calc(100vw - 32px));max-height:min(85dvh,850px);overflow-y:auto;box-shadow:0 24px 90px #1b254d55;color:#283449;background:#fff}
@@ -1343,8 +1372,8 @@
 </dialog>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-  <script src="assets/js/comprobante-parser.js?v=20261022-clave-rastreo"></script>
-  <script src="assets/js/pagos.js?v=20261023-selector-nativo-1"></script>
+  <script src="assets/js/comprobante-parser.js?v=20261023-referencia-bancaria-1"></script>
+  <script src="assets/js/pagos.js?v=20261023-identificadores-1"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
