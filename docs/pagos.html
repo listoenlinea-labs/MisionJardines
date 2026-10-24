@@ -1005,16 +1005,18 @@
 .receipt-heading-actions .receipt-more{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding:0 11px;border-radius:11px;line-height:1.1;white-space:nowrap;transition:border-color .18s ease,background-color .18s ease}
 .receipt-heading-actions .receipt-more:hover{background:#f5edfd;border-color:#cfb8e5;color:#674b87}
 .receipt-heading-actions .receipt-more:focus-visible{outline:3px solid #cfb8e5;outline-offset:2px}
-.receipt-refresh-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:36px;height:36px;padding:0;border:1px solid #e8d8f1;border-radius:11px;background:#fcf8ff;color:#80669c;box-shadow:0 4px 13px #503d7110;cursor:pointer;transition:border-color .18s ease,background-color .18s ease,color .18s ease}
-.receipt-refresh-btn svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.receipt-refresh-btn:hover:not(:disabled){background:#f5edfd;border-color:#cfb8e5;color:#674b87}
-.receipt-refresh-btn:focus-visible{outline:3px solid #cfb8e5;outline-offset:2px}
-.receipt-refresh-btn:disabled{opacity:.58;cursor:wait}
+/* Acción de refrescar: icono amplio y contrastado, sin alterar la lógica existente. */
+.receipt-refresh-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:42px;height:42px;padding:0;border:1px solid #d9c4e9;border-radius:13px;background:#f7efff;color:#69448f;box-shadow:0 5px 15px #593a7f17;cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background-color .18s ease,color .18s ease}
+.receipt-refresh-btn svg{display:block;width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}
+.receipt-refresh-btn:hover:not(:disabled){background:#eee1fa;border-color:#bea0db;color:#573579;box-shadow:0 8px 19px #593a7f24;transform:translateY(-1px)}
+.receipt-refresh-btn:active:not(:disabled){transform:translateY(0)}
+.receipt-refresh-btn:focus-visible{outline:3px solid #c9a7e8;outline-offset:2px}
+.receipt-refresh-btn:disabled{opacity:.7;cursor:wait}
 .receipt-refresh-btn.is-loading svg{animation:receipt-refresh-spin .9s linear infinite}
 @keyframes receipt-refresh-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.receipt-refresh-btn,.receipt-heading-actions .receipt-more{transition:none}.receipt-refresh-btn.is-loading svg{animation:none}}
-@media(max-width:520px){.receipt-heading-row{gap:7px}.receipt-heading-row h2{font-size:17px}.receipt-heading-actions{gap:6px}.receipt-heading-actions .receipt-more{min-height:34px;padding:0 8px;font-size:10px}.receipt-refresh-btn{width:34px;height:34px;border-radius:10px}.receipt-refresh-btn svg{width:16px;height:16px}}
-@media(max-width:390px){.receipt-heading-row{gap:6px}.receipt-heading-row h2{font-size:15px}.receipt-heading-actions{gap:5px}.receipt-heading-actions .receipt-more{min-height:32px;padding:0 7px;font-size:9px}.receipt-refresh-btn{width:32px;height:32px}}
+@media(max-width:520px){.receipt-heading-row{gap:7px}.receipt-heading-row h2{font-size:17px}.receipt-heading-actions{gap:6px}.receipt-heading-actions .receipt-more{min-height:34px;padding:0 8px;font-size:10px}.receipt-refresh-btn{width:40px;height:40px;border-radius:12px}.receipt-refresh-btn svg{width:24px;height:24px}}
+@media(max-width:390px){.receipt-heading-row{gap:6px}.receipt-heading-row h2{font-size:15px}.receipt-heading-actions{gap:5px}.receipt-heading-actions .receipt-more{min-height:32px;padding:0 7px;font-size:9px}.receipt-refresh-btn{width:36px;height:36px;border-radius:11px}.receipt-refresh-btn svg{width:22px;height:22px}}
 
 #receiptList.receipt-list{overflow:visible;max-height:none;padding:0;display:grid;grid-template-columns:1fr;gap:8px}
 #receiptList .receipt-item:nth-child(n+3){display:none}
@@ -1203,8 +1205,10 @@
               <button id="refreshReceipts" class="receipt-refresh-btn" type="button"
                 title="Actualizar historial de pagos" aria-label="Actualizar historial de pagos">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M20 11a8 8 0 1 0-2.4 5.7"></path>
-                  <path d="M20 4v7h-7"></path>
+                  <path d="M3 12a9 9 0 0 1 15.36-6.36L21 8"></path>
+                  <path d="M21 3v5h-5"></path>
+                  <path d="M21 12a9 9 0 0 1-15.36 6.36L3 16"></path>
+                  <path d="M3 21v-5h5"></path>
                 </svg>
               </button>
             </div>
