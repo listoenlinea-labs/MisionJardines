@@ -9,14 +9,14 @@ async function ejecutarRevision(){
   const pendientes=await PagoReportado.findAll({
    where:{estatus:'PENDIENTE_VALIDACION'},
    include:[{model:Casa,as:'casa',required:true,attributes:['calle','calleCorrecta','numero']}],
-   attributes:['id','casaId','estatus','folioOperacion','fechaOperacion','horaOperacion','monto'],
+   attributes:['id','casaId','estatus','folioOperacion','textoOcr','fechaOperacion','horaOperacion','monto'],
    order:[['creadoEn','DESC']],limit:100
   });
   if(!pendientes.length)return;
   const avisos=(await banco.obtenerAvisos()).filter(n=>n.autorizado&&n.reciente);
   for(const pago of pendientes){
    const compatibles=avisos.filter(n=>banco.corresponde(pago,n));
-   // Dos mensajes con mismo rastreo o distinta evidencia implican revisión humana.
+   // Dos correos compatibles, incluso si coinciden por referencia, implican revisión humana.
    if(compatibles.length!==1)continue;
    const hash=banco.huellaMensaje(compatibles[0].id);
    const usado=await PagoReportado.findOne({where:{correoBancarioHash:hash},attributes:['id']});
