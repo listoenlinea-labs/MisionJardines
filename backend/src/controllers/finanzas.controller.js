@@ -193,7 +193,8 @@ async function modificarCuotaPorCobrar(req,res){
    const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
    if(!casa)throw fail(404,'Vivienda inexistente');
    const anterior=tarifaParaCasa(casa);
-   if(anterior!==cuota)await casa.update({cuotaPorCobrar:cuota},{transaction});
+   const exenciones=sinRecargo===undefined?casa.exencionesRecargo:require('../services/recargos-exenciones.service').establecer(casa.exencionesRecargo,sinRecargo);
+   await casa.update({cuotaPorCobrar:cuota,...(sinRecargo===undefined?{}:{exencionesRecargo:exenciones})},{transaction});
    return {casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,
     cuotaPorCobrar:cuota,anterior,sinRecargo:require('../services/recargos-exenciones.service').activo(exenciones)};
   });
