@@ -9,7 +9,11 @@
     let profile = null, config = null, proofData = '', ocrText = '', proofConfirmed = false, scanRevision = 0, proofMeta = { name: '', mime: '' }, paymentType = 'MANTENIMIENTO', extras = [], selectedExtra = null, selectedClub = null, debts = null;
 
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
-    async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) throw Error(d.message || 'No fue posible completar la solicitud'); return d }
+    async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) {
+      const error = Error(d.message || 'No fue posible completar la solicitud');
+      error.code = d.code; error.camposFaltantes = d.camposFaltantes; error.camposCorreo = d.camposCorreo;
+      throw error;
+    } return d }
     const money = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
     const configText = (value, fallback) => {
       const text = String(value ?? '').trim();
@@ -345,6 +349,24 @@
     }
     $('removeProof').addEventListener('click', resetProof);
 
+
+    function mostrarCamposFaltantes({message,camposFaltantes=[],camposCorreo=[]}) {
+      $('missingProofExplanation').textContent = message || 'La imagen no contiene información suficiente para verificar el pago.';
+      const campos = Array.isArray(camposFaltantes) && camposFaltantes.length ? camposFaltantes : ['Clave de rastreo o referencia bancaria'];
+      $('missingProofFields').replaceChildren(...campos.map(field => {
+        const li = document.createElement('li'); li.textContent = field; return li;
+      }));
+      $('missingProofMail').textContent = Array.isArray(camposCorreo) && camposCorreo.length
+        ? 'En la notificación bancaria se identificaron: ' + camposCorreo.join(', ') + '.'
+        : 'Si el correo bancario no incluye el folio, necesitas la referencia o clave de rastreo del movimiento.';
+      const dialog = $('missingProofModal');
+      if (!dialog.open) dialog.showModal();
+    }
+    $('closeMissingProof').addEventListener('click', () => $('missingProofModal').close());
+    $('missingProofModal').addEventListener('click', event => {
+      if (event.target === $('missingProofModal')) $('missingProofModal').close();
+    });
+
     async function runOcr() {
       if (!proofData) return toast('Primero adjunta un comprobante.');
       const revision = ++scanRevision;
@@ -385,20 +407,31 @@
           $('ocrState').textContent = 'Comprobante no aceptado: destinatario no verificado.';
           setDestinationStatus(destination.message + ' Adjunta una captura más clara donde se vea Destino.', 'invalid');
           $('ocrBar').style.width = '0%';
-          toast(destination.message);
+          mostrarCamposFaltantes({message:destination.message,
+            camposFaltantes: [
+              ...(!destination.owner ? ['Nombre del beneficiario'] : []),
+              ...(!destination.suffix ? ['Cuenta destino terminación ' + suffix] : [])
+            ]});
           return;
         }
         const extracted = MJComprobante.extract(ocrText);
         // Never fill another payment's data; do not invent a date/hour if OCR misses it.
-        $('operationFolio').value = extracted.claveRastreo || extracted.folio || '';
+        $('operationFolio').value = extracted.claveRastreo || extracted.referencia || extracted.folio || '';
         $('amount').value = extracted.amount || '';
         $('operationDate').value = extracted.date || '';
         $('operationTime').value = extracted.time || '';
-        const missing = !(extracted.claveRastreo || extracted.folio) || !extracted.date || !extracted.time || !extracted.amount;
+        const missing = !(extracted.claveRastreo || extracted.referencia || extracted.folio) || !extracted.date || !extracted.time || !extracted.amount;
+        const camposFaltantes = [
+          ...(!(extracted.claveRastreo || extracted.referencia || extracted.folio) ? ['Clave de rastreo, referencia bancaria o folio de operación'] : []),
+          ...(!extracted.date ? ['Fecha de operación'] : []),
+          ...(!extracted.time ? ['Hora de operación'] : []),
+          ...(!extracted.amount ? ['Monto depositado'] : [])
+        ];
         if (missing && !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role())) {
           $('ocrState').textContent = 'Lectura incompleta. Vuelve a leer o adjunta un comprobante más claro.';
           setDestinationStatus('No se pudieron leer todos los datos bancarios. Vuelve a leer el comprobante o solicita ayuda a Administración.', 'invalid');
-          toast('Los datos se obtienen del comprobante y no pueden editarse. Adjunta una imagen más clara o solicita ayuda a Administración.');
+          mostrarCamposFaltantes({message:'No se pudieron leer todos los datos necesarios. Adjunta el detalle del movimiento donde aparezcan los campos indicados.',
+            camposFaltantes});
           return;
         }
         proofConfirmed = true;
@@ -473,7 +506,13 @@
         return toast('Para esta cuenta de prueba el comprobante debe ser de $10.00 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
-    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras()]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
+    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras()]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) {
+      if (err.code === 'COMPROBANTE_INCOMPLETO' || err.code === 'COMPROBANTE_NO_CONCILIABLE'
+        || err.code === 'FOLIO_NO_PRESENTE_EN_CORREO' || err.code === 'BUZON_NO_VERIFICABLE'
+        || err.code === 'FOLIO_SIN_RESPALDO_BANCARIO') {
+        mostrarCamposFaltantes(err);
+      } else toast(err.message);
+    } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
     // Fallback para iOS Safari cuando la Clipboard API no está habilitada.
     function fallbackCopy(value) {
