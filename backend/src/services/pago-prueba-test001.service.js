@@ -35,7 +35,7 @@ function validarCuotaPrueba(row,tarifa=300){
    centavos(row?.montoPagado)===0;
  if(!complementoAnterior&&!mensualidadDiez)
    throw Object.assign(new Error(
-     'Prueba TEST-001: la cuota de OCTUBRE no coincide con un saldo de $10 preparado para la tarifa de la vivienda. No se acreditó el depósito.'
+     'Prueba TEST-001: la cuota de OCTUBRE no está preparada o no coincide con un saldo de $10 para la tarifa de la vivienda. No se acreditó el depósito.'
    ),{status:409});
  return {montoPagado:complementoAnterior?'350.00':'10.00',
    tipo:complementoAnterior?'COMPLEMENTO_350':'MENSUALIDAD_10'};
