@@ -16,7 +16,25 @@ const extraer=text=>{
   folio:normal(data.folio)
  };
 };
+function almacenarVerificados(extraido, folioOperacion) {
+ const parsed = {
+  claveRastreo: normal(extraido?.claveRastreo),
+  referencia: referencia(extraido?.referencia),
+  folio: normal(extraido?.folio)
+ };
+ const tipo = parsed.claveRastreo ? 'claveRastreo' : parsed.referencia ? 'referencia' : parsed.folio ? 'folio' : '';
+ const valor = tipo === 'referencia' ? referencia(folioOperacion) : normal(folioOperacion);
+ if (!tipo || parsed[tipo] !== valor)
+  throw Object.assign(new Error('Los identificadores del comprobante no coinciden con el OCR del servidor.'), {status:422});
+ return { version:1, origen:'OCR_SERVIDOR', tipo, ...parsed };
+}
 function identificadoresPago(pago){
+ const meta=pago?.identificadoresVerificados;
+ if(meta&&typeof meta==='object'&&meta.version===1&&meta.origen==='OCR_SERVIDOR'
+   &&['claveRastreo','referencia','folio'].includes(meta.tipo)){
+  const typed={claveRastreo:normal(meta.claveRastreo),referencia:referencia(meta.referencia),folio:normal(meta.folio)};
+  if(typed[meta.tipo])return typed;
+ }
  const extraidos=extraer(pago?.textoOcr);
  // Compatibilidad estricta con reportes históricos: el identificador legado
  // solo puede compararse a la CLAVE, nunca asumir que era referencia o folio.
@@ -35,4 +53,4 @@ function coinciden(pago,aviso){
 function disponibles(v){
  return ['claveRastreo','referencia','folio'].filter(k=>v[k]);
 }
-module.exports={normal,referencia,extraer,identificadoresPago,identificadoresAviso,coinciden,disponibles};
+module.exports={normal,referencia,extraer,almacenarVerificados,identificadoresPago,identificadoresAviso,coinciden,disponibles};
