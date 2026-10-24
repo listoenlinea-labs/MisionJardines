@@ -50,7 +50,7 @@
   }
   function montoCerca(lines, labels) {
     const otherField = /\b(?:ORIGEN|DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA|CLABE|TARJETA|COMISION|SALDO|CONCEPTO|REFERENCIA|FOLIO|CLAVE|FECHA|HORA)\b/;
-    const amountOnly = /^(?:(?:MXN|M\.N\.|PESOS)\s*)?\$?\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\s*(?:MXN|M\.N\.|PESOS)?[.;]?$/;
+    const amountOnly = /^(?:(?:MXN|M\.N\.|PESOS)\s*)?[-−]?\s*\$?\s*[-−]?\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\s*(?:MXN|M\.N\.|PESOS)?[.;]?$/;
     for (const label of labels) for (let i = 0; i < lines.length; i++) {
       const line = normal(lines[i]);
       const found = line.match(label);
@@ -116,13 +116,44 @@
     }
     return results.size===1 ? [...results][0] : '';
   }
+
+  function referenciaBancaria(text) {
+    const lines=String(text||'').replace(/\r/g,'').split(/\n/).map(line=>normal(line).trim()).filter(Boolean);
+    const values=new Set();
+    for(let i=0;i<lines.length;i++) {
+      const label=lines[i].match(/\bREFERENCIA(?:\s+NUMERICA)?\b/);
+      if(!label)continue;
+      const rest=lines[i].slice(label.index+label[0].length).replace(/^\s*[:#=.-]\s*/,'').trim();
+      for(const sample of [rest,lines[i+1]||'']) {
+        const m=sample.match(/^\s*(\d{5,20})(?!\d)(?:\s|$)/);
+        if(m){values.add(m[1]);break}
+        if(sample&&/[A-Z]/.test(sample))break;
+      }
+    }
+    return values.size===1?[...values][0]:'';
+  }
+  function horaOperacion(text) {
+    const lines=String(text||'').replace(/\r/g,'').split(/\n/).map(x=>normal(x).trim()).filter(Boolean);
+    for(let i=0;i<lines.length;i++) {
+      const m=lines[i].match(/\bHORA\s+(?:DE\s+)?OPERACION\b/);
+      if(!m)continue;
+      const rest=lines[i].slice(m.index+m[0].length).replace(/^\s*[:#=.-]\s*/,'').trim();
+      for(const sample of [rest,lines[i+1]||'']) {
+        if(!sample)continue;
+        if(/^[A-Z]/.test(sample))break;
+        const time=hora(sample);if(time)return time;
+      }
+    }
+    return '';
+  }
   function extract(text) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(s => s.trim()).filter(Boolean);
     // Do not use "Referencia", "Concepto" or "Clave de rastreo" if a folio exists.
     const folio = valueNear(lines, [/\bFOLIO\s+(?:DE\s+)?(?:OPERACION|TRANSACCION|TRANSFERENCIA)\b/, /\bNUMERO\s+DE\s+OPERACION\b/, /\bFOLIO\b/], 'folio');
     const amount = montoCerca(lines, [/\bMONTO\s+(?:TRANSFERIDO|PAGADO|ENVIADO)\b/, /\bIMPORTE\s+(?:TRANSFERIDO|PAGADO)\b/, /\b(?:MONTO|IMPORTE|TOTAL)\b/]);
     const when = valueNear(lines, [/\bFECHA\s+(?:DE\s+)?(?:OPERACION|TRANSFERENCIA|PAGO)\b/, /\bFECHA\b/], 'date');
-    return { folio, claveRastreo: claveRastreo(text), amount, date: when.date, time: when.time };
+    return { folio, claveRastreo: claveRastreo(text), referencia: referenciaBancaria(text), amount,
+      date: when.date, time: when.time || horaOperacion(text) };
   }
   function verifyDestination(text, owner, suffix) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(x => x.trim()).filter(Boolean);
@@ -147,6 +178,23 @@
       if (seen.owner && seen.suffix) return { ok: true, owner: true, suffix: true, message: '' };
       if (Number(seen.owner) + Number(seen.suffix) > Number(best.owner) + Number(best.suffix)) best = seen;
     }
+    // BBVA Detalle de movimiento presenta beneficiario y CLABE receptora en
+    // renglones separados; nunca confundir con "Cuenta de retiro" del emisor.
+    let nombreDetallado=false,clabeDestino=false;
+    for(let i=0;i<lines.length;i++){
+      const l=normal(lines[i]);
+      if(/\bNOMBRE\s+DEL\s+BENEFICIARIO\b/.test(l)){
+        const bloque=[l,...lines.slice(i+1,i+5).map(normal)].join(' ');
+        if(clean(bloque).includes(desiredName)) nombreDetallado=true;
+      }
+      if(/\b(?:CUENTA\s*\(\s*CLABE|CUENTA\s+DESTINO|CLABE\s+DESTINO|CUENTA\s+RECEPTORA)\b/.test(l)){
+        const bloque=[l,...lines.slice(i+1,i+3).map(normal)].join(' ');
+        const cuentas=bloque.match(/\b\d{10,22}\b/g)||[];
+        if(cuentas.some(c=>c.endsWith(last4)))clabeDestino=true;
+      }
+    }
+    if(nombreDetallado&&clabeDestino)return {ok:true,owner:true,suffix:true,message:''};
+    best={owner:best.owner||nombreDetallado,suffix:best.suffix||clabeDestino};
     return {
       ok: false, ...best,
       message: !best.owner && !best.suffix ? 'No se encontró el beneficiario ni la terminación de cuenta en la sección Destino.'
@@ -154,5 +202,5 @@
         : 'No se encontró la terminación de cuenta ' + last4 + ' junto al beneficiario.'
     };
   }
-  return { extract, claveRastreo, verifyDestination, fecha, hora, monto };
+  return { extract, claveRastreo, referenciaBancaria, verifyDestination, fecha, hora, monto };
 });
