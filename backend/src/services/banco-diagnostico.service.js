@@ -39,9 +39,21 @@ function evaluar(pago,avisos,autenticados){
  const tiposAviso=Array.from(new Set(autenticados.flatMap(a=>ids.disponibles(ids.identificadoresAviso(a)))));
  const nombres={claveRastreo:'clave de rastreo',referencia:'referencia',folio:'folio de operación'};
  const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
+ const referenciaFormulario=ids.referencia(pago?.folioOperacion);
+ const referenciaOcr=comprobante.referencia||'';
+ const avisoConReferencia=autenticados.filter(a=>ids.identificadoresAviso(a).referencia);
+ // Comparaciones booleanas únicamente: no copiar números de referencia ni
+ // claves de rastreo del buzón a las respuestas visibles del residente.
  const auditoria={...base,
    tiposComprobante:tiposComprobante.map(t=>nombres[t]),
-   tiposAviso:tiposAviso.map(t=>nombres[t])
+   tiposAviso:tiposAviso.map(t=>nombres[t]),
+   diagnosticoReferencia:{
+     capturadaComoReferencia:!!referenciaFormulario,
+     reconocidaEnOcr:!!referenciaOcr,
+     coincideFormularioOcr:!!(referenciaFormulario&&referenciaOcr&&referenciaFormulario===referenciaOcr),
+     coincideOcrAviso:!!(referenciaOcr&&avisoConReferencia.some(a=>ids.identificadoresAviso(a).referencia===referenciaOcr)),
+     coincideFormularioAviso:!!(referenciaFormulario&&avisoConReferencia.some(a=>ids.identificadoresAviso(a).referencia===referenciaFormulario))
+   }
  };
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
