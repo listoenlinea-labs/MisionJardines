@@ -263,9 +263,12 @@
         quote = { ...result.data, minimoReporte: result.data.minimoReporte ?? result.data.minimo, fechaOperacion: fechaReal };
         const fechaLegible = fecha => window.MJDateDisplay?.format?.(fecha) || fecha;
         const avisoSpei = ajusteSpei
-          ? 'BBVA muestra ' + fechaLegible(date) + ' como día operativo SPEI. La transferencia ocurrió el '
-            + fechaLegible(fechaReal) + ' después de las 18:00. Esta fecha será la usada para reportar; el depósito aún requiere verificación bancaria.'
-          : '';
+          ? 'El comprobante muestra ' + fechaLegible(date) + ' como día operativo SPEI. Se reportará con fecha '
+            + fechaLegible(fechaReal) + '. El depósito aún requiere confirmación bancaria.'
+          : quote.fechaPosterior
+            ? 'El comprobante muestra ' + fechaLegible(date) + ', una fecha bancaria posterior a hoy. Puedes reportarlo; '
+              + 'los recargos se calculan solo hasta la fecha actual y el pago continuará En revisión hasta confirmar el depósito con el banco.'
+            : '';
         if (quote.modoPrueba) {
           $('summaryBase').textContent = money(quote.minimo);
           $('summaryLate').textContent = money(0);
@@ -481,9 +484,7 @@
         return toast('El comprobante debe contener una fecha válida desde octubre de 2026.');
       // El servidor es la fuente de verdad para la fecha actual en México.
       if (!quote || quote.fechaOperacion !== date)
-        return toast('No se pudo verificar la fecha del depósito. Confirma que no sea futura y vuelve a leer el comprobante.');
-      if (quote.fechaHoy && date > quote.fechaHoy)
-        return toast('La fecha del depósito es posterior a hoy en México. Revisa la fecha de la transferencia.');
+        return toast('Espera la cotización del comprobante o vuelve a leer la fecha bancaria.');
       if (quote.modoPrueba && Math.round(amount * 100) !== 1000)
         return toast('Para esta cuenta de prueba el comprobante debe ser de $10.00 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
