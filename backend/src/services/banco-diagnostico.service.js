@@ -43,6 +43,14 @@ function evaluar(pago,avisos,autenticados){
  // vivienda: solo comparar contra avisos que ya cumplen importe, casa, cuenta
  // receptora y fecha del comprobante (sin exigir aún el identificador).
  const avisosConCuenta=autenticados.filter(a=>banco.chequeosAviso(pago,a).cuenta);
+ // Diagnóstico secundario, independiente del filtro por importe: se verifica
+ // si el correo auténtico de esta CUENTA contiene el MISMO identificador y la
+ // MISMA vivienda/fecha antes de mostrar la causa del bloqueo. Estos indicios
+ // NUNCA saltan o relajan la validación del importe.
+ const avisosPorReferencia=avisosConCuenta.filter(a=>ids.coinciden(pago,a));
+ const avisosPorVivienda=avisosPorReferencia.filter(a=>banco.chequeosAviso(pago,a).vivienda);
+ const avisosPorFecha=avisosPorVivienda.filter(a=>banco.chequeosAviso(pago,a).fecha);
+ const importesLeidosRelacionados=avisosPorFecha.filter(a=>Number.isFinite(a.monto));
  const avisosImporteLegible=avisosConCuenta.filter(a=>Number.isFinite(a.monto));
  const avisosConMonto=avisosConCuenta.filter(a=>banco.chequeosAviso(pago,a).importe);
  const avisosConFecha=avisosConMonto.filter(a=>banco.chequeosAviso(pago,a).fecha);
@@ -54,7 +62,15 @@ function evaluar(pago,avisos,autenticados){
  // Comparaciones booleanas únicamente: no copiar números de referencia ni
  // claves de rastreo del buzón a las respuestas visibles del residente.
  const auditoria={...base,
-   cotejoAvisos:{cuenta:avisosConCuenta.length,importeLegible:avisosImporteLegible.length,importe:avisosConMonto.length,fecha:avisosConFecha.length,vivienda:avisosRelacionados.length,filtroBloqueante},
+   cotejoAvisos:{
+     cuenta:avisosConCuenta.length,importeLegible:avisosImporteLegible.length,
+     importe:avisosConMonto.length,fecha:avisosConFecha.length,
+     vivienda:avisosRelacionados.length,filtroBloqueante,
+     referenciaMismaCuenta:avisosPorReferencia.length,
+     referenciaMismaVivienda:avisosPorVivienda.length,
+     referenciaFechaCompatible:avisosPorFecha.length,
+     importeLegibleReferencia:importesLeidosRelacionados.length
+   },
    tiposComprobante:tiposComprobante.map(t=>nombres[t]),
    tiposAviso:tiposAviso.map(t=>nombres[t]),
    diagnosticoReferencia:{
@@ -68,7 +84,15 @@ function evaluar(pago,avisos,autenticados){
  };
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
-  const problemas={DESTINO:'Ningún aviso autenticado pasó la comprobación de cuenta destino.',IMPORTE:!avisosImporteLegible.length?'No se pudo extraer un importe recibido verificable del correo bancario con cuenta destino correcta. Revisa el formato del aviso de Titan.':'El importe leído del aviso bancario con cuenta destino correcta no coincide con el monto de este comprobante.',FECHA:'No hay fecha bancaria compatible en los avisos con importe y cuenta coincidentes.',VIVIENDA:'Ningún aviso con importe, cuenta y fecha compatibles identifica esta vivienda.'};
+  const problemas={DESTINO:'Ningún aviso autenticado pasó la comprobación de cuenta destino.',IMPORTE:!avisosImporteLegible.length
+   ? 'No se pudo extraer un importe recibido verificable del correo bancario con cuenta destino correcta. Revisa el formato del aviso de Titan.'
+   : avisosPorFecha.length===1 && importesLeidosRelacionados.length===1
+     ? 'Se localizó un aviso autenticado con referencia, cuenta, vivienda y fecha compatibles, pero el importe INTERPRETADO del correo es distinto al de este comprobante. La lectura del monto requiere una revisión; no se ha acreditado ni rechazado el pago.'
+     : avisosPorReferencia.length===0
+       ? 'El aviso autenticado con cuenta destino correcta contiene un importe, pero no tiene un identificador que coincida con este comprobante. Podría tratarse de otro movimiento.'
+       : avisosPorVivienda.length===0
+         ? 'Existe una referencia coincidente para esa cuenta, pero el concepto del aviso no identifica esta vivienda; no se puede atribuir el correo a este pago.'
+         : 'El importe leído en el correo no coincide con el comprobante o no hay evidencia suficiente para vincular el aviso con la misma fecha.',FECHA:'No hay fecha bancaria compatible en los avisos con importe y cuenta coincidentes.',VIVIENDA:'Ningún aviso con importe, cuenta y fecha compatibles identifica esta vivienda.'};
   const diagnostico=filtroBloqueante!=='IDENTIFICADOR'
    ? problemas[filtroBloqueante]+' Todavía no se ha comparado la referencia con un aviso de este pago.'
    : tiposEnAmbas.length
@@ -84,14 +108,16 @@ function evaluar(pago,avisos,autenticados){
    ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
  }
  if(vinculados.length!==1)return resultado('COINCIDENCIA_AMBIGUA',
-  'Más de una notificación autenticada comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...base,coincidencias:vinculados.length});
+  'Más de una notificación autenticada comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...auditoria,coincidencias:vinculados.length});
  const aviso=vinculados[0];
  const checks=evidencia(pago,aviso);
  const completos=Object.values(checks).every(Boolean);
  if(completos)return resultado('COINCIDENCIA_VERIFICADA',
-  'Se encontró una notificación bancaria autenticada con identificador, monto, fecha, cuenta destino y vivienda coincidentes. Se está aplicando la confirmación.',{...base,coincidencias:1,verificaciones:checks});
+  'Se encontró una notificación bancaria autenticada con identificador, monto, fecha, cuenta destino y vivienda coincidentes. Se está aplicando la confirmación.',{...auditoria,coincidencias:1,verificaciones:checks});
  const causas=[];
- if(!checks.importe)causas.push('El importe del aviso bancario es diferente al importe reportado.');
+ if(!checks.importe)causas.push(Number.isFinite(aviso?.monto)
+  ? 'El importe interpretado del aviso bancario no coincide con el importe reportado.'
+  : 'No se pudo extraer del aviso bancario un importe recibido verificable.');
  if(!checks.destino)causas.push('La cuenta destinataria del aviso bancario no corresponde a la cuenta oficial.');
  if(!checks.vivienda)causas.push('El concepto del aviso no identifica la vivienda reportada.');
  if(!checks.fecha)causas.push('La fecha del aviso no coincide con la fecha reportada ni con una equivalencia SPEI verificable.');
@@ -100,6 +126,6 @@ function evaluar(pago,avisos,autenticados){
    ||(checks.vivienda===false && Boolean(String(aviso?.concepto||'').trim()));
  return resultado(seguroParaRechazar?'FALLIDO':'DATOS_INCOMPLETOS',causas.join(' ') ||
   'La notificación no contiene todos los datos necesarios para confirmar el pago.',
-  {...base,coincidencias:1,verificaciones:checks});
+  {...auditoria,coincidencias:1,verificaciones:checks});
 }
 module.exports={evaluar,evidencia,resultado};

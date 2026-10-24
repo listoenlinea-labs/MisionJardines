@@ -2,6 +2,36 @@
 const {PagoReportado,Casa}=require('../models');
 const banco=require('./banco-correo.service');
 const diagnostico=require('./banco-diagnostico.service');
+const identificadores=require('./identificadores-bancarios.service');
+// Un único log por pago y valores detectados: no inundar los logs de Hostinger.
+const importesYaDiagnosticados=new Map();
+function registrarImporteRelacionado(pago,autenticados){
+ const relacionados=autenticados.filter(aviso=>{
+  const comprobacion=banco.chequeosAviso(pago,aviso);
+  return comprobacion.cuenta&&comprobacion.fecha&&comprobacion.vivienda;
+ });
+ if(relacionados.length!==1)return;
+ const aviso=relacionados[0];
+ const montoCorreo=aviso.monto;
+ const identificadorCoincide=identificadores.coinciden(pago,aviso);
+ const parsedIds=identificadores.identificadoresAviso(aviso);
+ const montoReportado=Number(pago.monto);
+ if(!Number.isFinite(montoReportado))return;
+ // Diagnóstico administrativo SIN correo, cuenta, concepto, referencia o clave.
+ // Solo se imprimen importes de un único aviso autenticado asociado por
+ // vivienda, fecha y cuenta; la referencia es un booleano (puede NO coincidir).
+ // No incluye mensaje, cuenta, referencia ni correo. Este log NO aprueba pagos.
+ const resumen=String(montoReportado)+'|'+String(montoCorreo)+'|'+String(identificadorCoincide)+'|'+String(Boolean(parsedIds.referencia));
+ if(importesYaDiagnosticados.get(pago.id)===resumen)return;
+ if(importesYaDiagnosticados.size>500)importesYaDiagnosticados.clear();
+ importesYaDiagnosticados.set(pago.id,resumen);
+ console.warn('[Bancos][Diagnostico importe] Pago ID='+pago.id+
+  ' monto reportado='+montoReportado.toFixed(2)+
+  ' monto leido en Titan='+(Number.isFinite(montoCorreo)?montoCorreo.toFixed(2):'NO_LEGIBLE')+
+  ' referenciaTitánPresente='+Boolean(parsedIds.referencia)+
+  ' identificadorCoincide='+identificadorCoincide+
+  ' (solo diagnostico: NO confirma deposito)');
+}
 let ocupado=false,programado=false,timer=null;
 async function persistir(pago,revision,fallido=false){
  const cambios={verificacionBancaria:revision,actualizadoEn:new Date()};
@@ -31,6 +61,8 @@ async function ejecutarRevision(){
   for(const pago of pendientes){
    try{
     const revision=diagnostico.evaluar(pago,avisos,autenticados);
+    if(revision.cotejoAvisos?.filtroBloqueante==='IMPORTE')
+      registrarImporteRelacionado(pago,autenticados);
     if(revision.etapa==='FALLIDO'){
      await persistir(pago,revision,true);
      console.warn('[Bancos] Conciliación fallida con evidencia bancaria incompatible; pago ID='+pago.id);
