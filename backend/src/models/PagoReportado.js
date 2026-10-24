@@ -105,6 +105,7 @@ const PagoReportado = sequelize.define(
             allowNull: true,
             field: 'comprobante_mime'
         },
+        identificadoresVerificados: { type: DataTypes.JSON, allowNull: true, field: 'identificadores_verificados' },
         textoOcr: {
             type: DataTypes.TEXT,
             allowNull: true,
