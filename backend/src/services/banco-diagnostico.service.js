@@ -66,7 +66,10 @@ function evaluar(pago,avisos,autenticados){
  };
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
-  const diagnostico=tiposEnAmbas.length
+  const problemas={DESTINO:'Ningún aviso autenticado pasó la comprobación de cuenta destino.',IMPORTE:'No se encontró importe compatible en los avisos con cuenta destino correcta.',FECHA:'No hay fecha bancaria compatible en los avisos con importe y cuenta coincidentes.',VIVIENDA:'Ningún aviso con importe, cuenta y fecha compatibles identifica esta vivienda.'};
+  const diagnostico=filtroBloqueante!=='IDENTIFICADOR'
+   ? problemas[filtroBloqueante]+' Todavía no se ha comparado la referencia con un aviso de este pago.'
+   : tiposEnAmbas.length
    ? 'Ambas fuentes contienen '+tiposEnAmbas.map(t=>nombres[t]).join(' y ')+
      ', pero el OCR y el aviso autenticado no aportaron exactamente el mismo valor normalizado. Revisa la lectura, sin cambiar la referencia del depósito.'
    : tiposComprobante.length&&!tiposAviso.length
