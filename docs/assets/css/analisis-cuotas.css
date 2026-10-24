@@ -558,54 +558,32 @@ button.finance-export-card:is(:hover,:focus-visible) .finance-export-icon{
 .history-tariff-save-indicator[data-state="pending"] .history-tariff-status-dot{background:#df9f4c}
 .history-tariff-save-indicator[data-state="unknown"] .history-tariff-status-dot{background:#9ba9b9}
 
-/* Sustituye la casilla nativa por un interruptor accesible y discreto. */
-.history-tariff-toggle-row{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  min-width:0;padding:12px 13px;
-  border:1px solid #e6dcea;border-radius:14px;
-  background:#fbf9fd;cursor:pointer;transition:border-color .18s,background .18s;
+/* Casilla alineada en la misma fila que la leyenda de exención.
+   Selectores específicos para evitar estilos globales de inputs de cuotas. */
+#houseTariffPanel .history-tariff-checkline{
+ display:flex;flex-direction:row;align-items:center;justify-content:flex-start;
+ gap:10px;min-width:0;margin:0;padding:12px 13px;
+ border:1px solid #e6dcea;border-radius:13px;background:#fbf9fd;
+ color:#3e516e;font-size:12px;font-weight:750;line-height:1.45;
+ cursor:pointer;
 }
-.history-tariff-toggle-row:has(input:checked){
-  border-color:#c9e6d7;background:#f5fbf7;
+#houseTariffPanel .history-tariff-checkline:has(>input:checked){
+ border-color:#c9e6d7;background:#f5fbf7;
 }
-.history-tariff-toggle-copy{display:grid;gap:3px;min-width:0;flex:1}
-.history-tariff-toggle-copy strong{
-  color:#33455e;font-size:12px;font-weight:750;line-height:1.35;
+#houseTariffPanel .history-tariff-checkline > input[type="checkbox"]{
+ display:block;flex:0 0 18px;width:18px;height:18px;min-width:18px;
+ margin:0;padding:0;appearance:auto;accent-color:#4285ed;
+ border:0;box-shadow:none;transform:none;vertical-align:middle;
+ cursor:pointer;
 }
-.history-tariff-toggle-copy small{
-  color:#7e8ba0;font-size:10px;line-height:1.4;
+#houseTariffPanel .history-tariff-checkline > input:focus-visible{
+ outline:2px solid #754bb4;outline-offset:3px;
 }
-.history-tariff-toggle-control{
-  position:relative;display:block;flex:0 0 44px;width:44px;height:26px;
+#houseTariffPanel .history-tariff-checkline > span{
+ display:block;flex:1 1 auto;min-width:0;text-align:left;
 }
-.history-tariff-toggle-control input{
-  position:absolute;inset:0;width:100%;height:100%;margin:0;
-  opacity:0;cursor:pointer;z-index:1;
-}
-.history-tariff-toggle-track{
-  display:block;width:44px;height:26px;border-radius:20px;
-  background:#d6dce5;border:1px solid #c9d1dc;
-  transition:background .2s,border-color .2s;
-}
-.history-tariff-toggle-track::after{
-  content:'';position:absolute;top:4px;left:4px;width:18px;height:18px;
-  border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(30,50,75,.2);
-  transition:transform .2s;
-}
-.history-tariff-toggle-control input:checked+.history-tariff-toggle-track{
-  background:#56b78d;border-color:#4aac82;
-}
-.history-tariff-toggle-control input:checked+.history-tariff-toggle-track::after{
-  transform:translateX(18px);
-}
-.history-tariff-toggle-control input:focus-visible+.history-tariff-toggle-track{
-  outline:3px solid #ad87cf;outline-offset:3px;
-}
-@media(max-width:390px){
-  .history-tariff-toggle-row{gap:9px;padding:11px}
-  .history-tariff-toggle-control{flex-basis:40px;width:40px}
-  .history-tariff-toggle-track{width:40px}
-  .history-tariff-toggle-control input:checked+.history-tariff-toggle-track::after{transform:translateX(14px)}
+@media(max-width:400px){
+ #houseTariffPanel .history-tariff-checkline{gap:9px;padding:11px;font-size:11px}
 }
 @media(max-width:850px){
  .history-dialog-layout,.history-dialog-layout:has(.history-tariff-panel:not([hidden])){grid-template-columns:1fr;max-height:calc(100dvh - 20px);overflow-y:auto}
