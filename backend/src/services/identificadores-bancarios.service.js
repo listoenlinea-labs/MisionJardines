@@ -45,7 +45,7 @@ function identificadoresPago(pago){
   const lines=String(pago?.textoOcr||'').split(/\r?\n/).map(line=>String(line).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim()).filter(Boolean);
   const candidatos=[];
   for(let i=0;i<lines.length;i++){
-   const matched=lines[i].match(/(?:^|\b)REFERENCIA(?:\s+NUMERICA)?\s*[:#=.-]?\s*(.*)$/);
+   const matched=lines[i].match(/^REFERENCIA(?:\s+NUMERICA)?\s*[:#=.-]?\s*(.*)$/);
    if(!matched)continue;
    const combined=[matched[1],lines[i+1]||''].join(' ').trim();
    const first=combined.match(/^(?:\s*)(\d[\d\s-]{4,20})(?:\s|$)/);
