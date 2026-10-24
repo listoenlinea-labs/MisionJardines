@@ -8,24 +8,29 @@ const importesYaDiagnosticados=new Map();
 function registrarImporteRelacionado(pago,autenticados){
  const relacionados=autenticados.filter(aviso=>{
   const comprobacion=banco.chequeosAviso(pago,aviso);
-  return comprobacion.cuenta&&comprobacion.fecha&&comprobacion.vivienda
-   &&identificadores.coinciden(pago,aviso);
+  return comprobacion.cuenta&&comprobacion.fecha&&comprobacion.vivienda;
  });
  if(relacionados.length!==1)return;
- const montoCorreo=relacionados[0].monto;
+ const aviso=relacionados[0];
+ const montoCorreo=aviso.monto;
+ const identificadorCoincide=identificadores.coinciden(pago,aviso);
+ const parsedIds=identificadores.identificadoresAviso(aviso);
  const montoReportado=Number(pago.monto);
  if(!Number.isFinite(montoReportado))return;
  // Diagnóstico administrativo SIN correo, cuenta, concepto, referencia o clave.
- // Solo se imprimen importes de un único aviso autenticado asociado a este pago
- // por referencia, casa, fecha y cuenta. Este log NO aprueba pagos.
- const resumen=String(montoReportado)+'|'+String(montoCorreo);
+ // Solo se imprimen importes de un único aviso autenticado asociado por
+ // vivienda, fecha y cuenta; la referencia es un booleano (puede NO coincidir).
+ // No incluye mensaje, cuenta, referencia ni correo. Este log NO aprueba pagos.
+ const resumen=String(montoReportado)+'|'+String(montoCorreo)+'|'+String(identificadorCoincide)+'|'+String(Boolean(parsedIds.referencia));
  if(importesYaDiagnosticados.get(pago.id)===resumen)return;
  if(importesYaDiagnosticados.size>500)importesYaDiagnosticados.clear();
  importesYaDiagnosticados.set(pago.id,resumen);
  console.warn('[Bancos][Diagnostico importe] Pago ID='+pago.id+
   ' monto reportado='+montoReportado.toFixed(2)+
   ' monto leido en Titan='+(Number.isFinite(montoCorreo)?montoCorreo.toFixed(2):'NO_LEGIBLE')+
-  ' (sin validacion automatica por este dato)');
+  ' referenciaTitánPresente='+Boolean(parsedIds.referencia)+
+  ' identificadorCoincide='+identificadorCoincide+
+  ' (solo diagnostico: NO confirma deposito)');
 }
 let ocupado=false,programado=false,timer=null;
 async function persistir(pago,revision,fallido=false){
