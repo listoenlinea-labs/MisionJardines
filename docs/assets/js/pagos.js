@@ -180,7 +180,7 @@
       const fields=[
         ['Vivienda',String((p.casa?.calleCorrecta || p.calleSnapshot)||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
         ['Folio del reporte',p.folioReporte],['Folio del recibo',p.reciboFolio||'Pendiente'],
-        ['Folio bancario',p.folioOperacion],['Fecha de operación',p.fechaOperacion],
+        ['Identificador bancario',p.folioOperacion],['Fecha de operación',p.fechaOperacion],
         ['Hora',p.horaOperacion],['Monto depositado',money(p.monto)],
         ['Recargo incluido',money(p.recargo)],['Tipo',p.tipoPago],['Concepto',p.concepto],
         ['Estatus',p.estatus],['Observaciones',p.observacionesRevision||'Sin observaciones']
@@ -363,6 +363,7 @@
       if (!dialog.open) dialog.showModal();
     }
     $('closeMissingProof').addEventListener('click', () => $('missingProofModal').close());
+    $('confirmMissingProof').addEventListener('click', () => $('missingProofModal').close());
     $('missingProofModal').addEventListener('click', event => {
       if (event.target === $('missingProofModal')) $('missingProofModal').close();
     });
@@ -674,7 +675,7 @@
       const type = p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : p.tipoPago==='CASA_CLUB'?'Casa club':'Mantenimiento';
       body.innerHTML =
         '<div class="pending-detail-heading"><strong>' + esc((p.casa?.calleCorrecta || p.calleSnapshot)) + ' · Casa ' + esc(p.numeroCasaSnapshot) + '</strong><b>' + money(p.monto) + '</b></div>' +
-        '<div class="pending-detail-meta"><div><small>Folio / operación</small><strong>' + esc(p.folioOperacion || '—') + '</strong></div>' +
+        '<div class="pending-detail-meta"><div><small>Identificador bancario</small><strong>' + esc(p.folioOperacion || '—') + '</strong></div>' +
         '<div><small>Fecha</small><strong>' + esc(p.fechaOperacion || '—') + '</strong></div>' +
         '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
         '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario, seleccionar para ampliar" role="button" tabindex="0" hidden><button type="button" class="pending-proof-zoom-button" id="pendingZoomButton" hidden>Ampliar fotografía ↗</button></div>' +
