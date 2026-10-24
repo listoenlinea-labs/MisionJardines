@@ -30,5 +30,8 @@ jobs:
           node --check backend/src/services/cuotas-mantenimiento-calculo.js
           node --check backend/src/services/pago-manual-analisis.service.js
           node --check backend/src/services/recargos-exenciones.service.js
-      - name: Pruebas unitarias financieras
-        run: node --test backend/tests/adeudos-enero-saldo-favor-exencion.test.js
+      - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
+        working-directory: backend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Pruebas financieras y de regresión bancaria
+        run: node --test backend/tests/*.test.js
