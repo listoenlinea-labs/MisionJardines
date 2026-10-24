@@ -53,6 +53,7 @@ function evaluar(pago,avisos,autenticados){
  // Comparaciones booleanas únicamente: no copiar números de referencia ni
  // claves de rastreo del buzón a las respuestas visibles del residente.
  const auditoria={...base,
+   cotejoAvisos:{cuenta:avisosConCuenta.length,importe:avisosConMonto.length,fecha:avisosConFecha.length,vivienda:avisosRelacionados.length,filtroBloqueante},
    tiposComprobante:tiposComprobante.map(t=>nombres[t]),
    tiposAviso:tiposAviso.map(t=>nombres[t]),
    diagnosticoReferencia:{
