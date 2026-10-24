@@ -19,6 +19,7 @@ const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
 const recargosService = require('../services/recargos-mantenimiento.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
+const idsBanco = require('../services/identificadores-bancarios.service');
 const { verificarPosibilidad } = require('../services/verificar-comprobante-identificadores.service');
 const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
@@ -311,6 +312,12 @@ async function reportarPago(req, res) {
             exigirCampos: !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario.rol)
         });
         textoOcr = comprobado.texto;
+        // Conservar lo que leyó y validó el OCR DEL SERVIDOR en el momento
+        // del reporte. No depender de volver a interpretar el texto meses
+        // después, cuando las expresiones regulares puedan haber cambiado.
+        const identificadoresVerificados = idsBanco.almacenarVerificados(
+            comprobado.extraido, folioOperacion
+        );
 
         const existente = await PagoReportado.findOne({
             where: { folioOperacion }
@@ -457,6 +464,7 @@ async function reportarPago(req, res) {
             comprobanteNombre: comprobanteNombre || null,
             comprobanteMime: comprobanteMime || 'image/jpeg',
             textoOcr: textoOcr || null,
+            identificadoresVerificados,
             estatus: 'PENDIENTE_VALIDACION',
             verificacionBancaria: {version:1,etapa:'RECIBIDO',detalle:'Comprobante recibido. Se extrajeron los datos bancarios y se programó su conciliación con Titan.',fechaRevision:null,avisosConsultados:0,avisosAutenticados:0,coincidencias:0},
             reciboFolio: folio,
