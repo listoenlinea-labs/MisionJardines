@@ -43,7 +43,10 @@
       const house = profile?.casa || profile?.vivienda || storedUser()?.casa || storedUser()?.vivienda;
       const street = (house?.calleCorrecta || house?.calle || $('residentStreet')?.value || '').trim();
       const number = String(house?.numero || $('residentNumber')?.value || '').trim();
-      $('bankReference').textContent = street && number ? street + ' · Casa ' + number : 'Selecciona una vivienda';
+      // Referencia apta para apps bancarias: solo ASCII, letras, números y espacios.
+      const plain = (street + ' ' + number).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+      $('bankReference').textContent = street && number ? plain : 'Selecciona una vivienda';
     }
     async function loadProfile() {
       // Pintar de inmediato con la información guardada al iniciar sesión,
@@ -271,7 +274,8 @@
       } catch (e) {
         if (revision !== quoteRevision) return;
         $('summaryLate').textContent = 'No disponible';
-        $('paymentPreview').textContent = 'No se pudo cotizar: ' + e.message + '. Revisa la conexión al controlador y vuelve a leer el comprobante.';
+        $('paymentPreview').textContent = 'No se pudo validar la fecha o cotizar el pago: ' + e.message;
+        if (/fecha|futura|depósito|operación/i.test(e.message)) toast(e.message);
       }
     }
 
@@ -309,7 +313,7 @@
       ocrText = '';
       proofConfirmed = false;
       proofMeta = { name: '', mime: '' };
-      $('proofInput').value = '';
+      for (const id of ['proofInput', 'proofLibraryInput', 'proofCameraInput', 'proofFilesInput']) $(id).value = '';
       $('proofPreview').removeAttribute('src');
       $('previewBox').classList.remove('show');
       $('ocrBar').style.width = '0%';
@@ -396,7 +400,7 @@
       }
     }
 
-    $('proofInput').addEventListener('change', async e => {
+    async function onProofSelected(e) {
       const file = e.target.files?.[0];
       if (!file) return;
       resetProof();
@@ -417,7 +421,24 @@
         resetProof();
         toast(error.message);
       }
+    }
+    // Menú propio: tres elecciones visibles sin depender del orden del selector de Safari.
+    const proofSources = $('proofSourceDialog');
+    $('chooseProof').addEventListener('click', () => {
+      if (isPhotoDevice) proofSources.showModal();
+      else $('proofInput').click();
     });
+    $('closeProofSource').addEventListener('click', () => proofSources.close());
+    proofSources.addEventListener('click', e => { if (e.target === proofSources) proofSources.close(); });
+    proofSources.querySelectorAll('[data-proof-source]').forEach(button => {
+      button.addEventListener('click', () => {
+        const input = $(button.dataset.proofSource);
+        proofSources.close();
+        input.click(); // invocado desde un gesto directo para permitir el diálogo del sistema
+      });
+    });
+    ['proofInput', 'proofLibraryInput', 'proofCameraInput', 'proofFilesInput']
+      .forEach(id => $(id).addEventListener('change', onProofSelected));
 
     for(const container of ['receiptList','receiptAllList','receiptDetailsBody']){
       $(container).addEventListener('click',event=>{
@@ -439,21 +460,47 @@
     $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='EN_REVISION')) return toast('Selecciona un cargo extraordinario sin comprobante pendiente.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reservación aprobada sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType !== 'MANTENIMIENTO' && Math.abs(amount - required) > .009)) return toast(paymentType === 'MANTENIMIENTO' ? 'Ingresa un monto mayor que cero.' : 'El comprobante debe corresponder exactamente a ' + money(required) + '.');
     if(paymentType==='MANTENIMIENTO'){
       const date=$('operationDate').value;
-      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-      if(!date || date<'2026-10-01' || date>today)return toast('Selecciona una fecha real desde octubre 2026, no futura.');
-      if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a leer el comprobante.');
+      if(!/^20\d{2}-\d{2}-\d{2}$/.test(date) || date<'2026-10-01')
+        return toast('El comprobante debe contener una fecha válida desde octubre de 2026.');
+      // El servidor es la fuente de verdad para la fecha actual en México.
+      if (!quote || quote.fechaOperacion !== date)
+        return toast('No se pudo verificar la fecha del depósito. Confirma que no sea futura y vuelve a leer el comprobante.');
+      if (quote.fechaHoy && date > quote.fechaHoy)
+        return toast('La fecha del depósito es posterior a hoy en México. Revisa la fecha de la transferencia.');
       if (quote.modoPrueba && Math.round(amount * 100) !== 1000)
         return toast('Para esta cuenta de prueba el comprobante debe ser de $10.00 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
     } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras()]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
 
+    // Fallback para iOS Safari cuando la Clipboard API no está habilitada.
+    function fallbackCopy(value) {
+      const input = document.createElement('textarea');
+      input.value = value;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.left = '-9999px';
+      document.body.appendChild(input);
+      input.focus();
+      input.select();
+      let copied = false;
+      try { copied = document.execCommand('copy'); }
+      finally { input.remove(); }
+      return copied;
+    }
     document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
       const value = $(btn.dataset.copy).textContent.trim();
       if (!value || value === '—') return;
 
       try {
-        await navigator.clipboard.writeText(value);
+        if (navigator.clipboard?.writeText) {
+          try { await navigator.clipboard.writeText(value); }
+          catch (error) {
+            if (!fallbackCopy(value)) throw error;
+          }
+        } else if (!fallbackCopy(value)) {
+          throw Error('El navegador no permitió copiar al portapapeles');
+        }
         clearTimeout(btn._copyResetTimer);
         btn.textContent = 'Copiado';
         btn.classList.add('copied');
