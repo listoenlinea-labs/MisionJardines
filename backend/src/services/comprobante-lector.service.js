@@ -1,6 +1,7 @@
 const { Worker } = require('node:worker_threads');
 const path = require('node:path');
 const parser = require('./comprobante-parser');
+const { equivaleFechaSpei } = require('./fecha-operativa-spei.service');
 
 let running = 0;
 const MAX_CONCURRENT = 2;
@@ -64,7 +65,11 @@ function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion,
   const same = (provided, detected) => !detected || String(provided).trim().toUpperCase() === String(detected).trim().toUpperCase();
   if (extraido.claveRastreo && !same(folioOperacion, extraido.claveRastreo)) throw Object.assign(new Error('La clave de rastreo no coincide con la leída en el comprobante.'), { status: 422 });
   if (!extraido.claveRastreo && !same(folioOperacion, extraido.folio)) throw Object.assign(new Error('El folio no coincide con Folio de operación del comprobante.'), { status: 422 });
-  if (!same(fechaOperacion, extraido.date)) throw Object.assign(new Error('La fecha no coincide con Fecha de operación del comprobante.'), { status: 422 });
+  // BBVA puede mostrar el día operativo SPEI (lunes) en vez del viernes real
+  // en una transferencia de las 18:00 en adelante. Se exige equivalencia exacta,
+  // nunca se acepta una fecha futura arbitraria ni se ignora el OCR.
+  if (!same(fechaOperacion, extraido.date) && !equivaleFechaSpei(fechaOperacion, extraido.date, horaOperacion))
+    throw Object.assign(new Error('La fecha no coincide con la fecha real ni con el día operativo SPEI mostrado en el comprobante.'), { status: 422 });
   if (extraido.time && String(horaOperacion).slice(0, 5) !== extraido.time.slice(0, 5)) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
   if (exigirCampos && (String(horaOperacion).length === 5 ? horaOperacion + ':00' : String(horaOperacion)) !== extraido.time) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
   if (extraido.amount && Number(monto).toFixed(2) !== extraido.amount) throw Object.assign(new Error('El monto no coincide con el monto transferido que aparece en el comprobante.'), { status: 422 });

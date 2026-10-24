@@ -3,6 +3,7 @@
 // IMAP TLS, remitente autorizado autenticado, clave, monto, fecha y terminación receptora.
 const {createHash}=require('node:crypto');
 const {leerBuzon}=require('./correo-bancario-mail.service');
+const { equivaleFechaSpei }=require('./fecha-operativa-spei.service');
 const normal=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
 const clave=value=>normal(value).replace(/[^A-Z0-9]/g,'');
 const centavos=value=>Math.round(Number(value||0)*100);
@@ -89,7 +90,8 @@ function corresponde(pago,noticia,config=process.env){
  const cuenta=suffix(config.PAGOS_DESTINO_ULTIMOS4||'4409');
  return Boolean(noticia.autorizado&&noticia.reciente&&noticia.id&&noticia.tracking
   &&clave(pago?.folioOperacion)===noticia.tracking&&coincideCuenta(noticia.cuenta,cuenta)
-  &&cuenta.length===4&&noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
+  &&cuenta.length===4&&(noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
+    || equivaleFechaSpei(String(pago?.fechaOperacion).slice(0,10),noticia.fecha,pago?.horaOperacion))
   &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
   &&perteneceAVivienda(pago,noticia));
 }
