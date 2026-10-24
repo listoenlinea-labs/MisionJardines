@@ -1297,7 +1297,10 @@
 <style>
 .card[hidden],.tabs [hidden]{display:none!important}
 .tabs .tab .mj-tab-count{display:inline-grid;place-items:center;margin-left:7px;padding:2px 7px;border-radius:99px;background:#d5f5df;color:#146c44;font-size:11px;font-weight:800}
-.mj-debt-modal{border:1px solid #eaded6;border-radius:18px;padding:24px;max-width:min(760px,94vw);width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 90px #1b254d55;color:#283449;background:#fff}
+.mj-debt-modal{box-sizing:border-box;border:1px solid #eaded6;border-radius:18px;padding:24px;max-width:calc(100vw - 32px);width:min(760px,calc(100vw - 32px));max-height:min(85dvh,850px);overflow-y:auto;box-shadow:0 24px 90px #1b254d55;color:#283449;background:#fff}
+/* Dialog en capa superior: centrar en la pantalla, sin desplazarse por la barra lateral. */
+.mj-debt-modal[open]{position:fixed!important;inset:0!important;margin:auto!important;transform:none!important}
+@media(max-width:560px){.mj-debt-modal{width:calc(100vw - 24px);max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:16px;border-radius:16px}.mj-debt-heading{gap:10px}.mj-debt-heading h2{font-size:21px;line-height:1.2}.mj-debt-heading button{flex:0 0 36px}.mj-debt-total{gap:10px;flex-wrap:wrap}}
 .mj-debt-modal::backdrop{background:#2026399e;backdrop-filter:blur(4px)}
 .mj-debt-heading{display:flex;justify-content:space-between;gap:12px;margin-bottom:18px}.mj-debt-heading h2{margin:6px 0}.mj-debt-heading p{margin:0;color:#788398;font-size:13px}
 .mj-debt-heading button{width:36px;height:36px;border:1px solid #efdaea;border-radius:11px;background:#fff8fc;color:#754c69;font-size:23px;cursor:pointer}
@@ -1320,9 +1323,9 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261022-clave-rastreo"></script>
-  <script src="assets/js/pagos.js?v=20261022-autovalidacion-exclusiva"></script>
+  <script src="assets/js/pagos.js?v=20261023-test-10"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
-  <script src="assets/js/site-sidebar.js?v=20261021-purple-x"></script>
+  <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
 
 </html>
