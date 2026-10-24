@@ -17,7 +17,7 @@ async function consultarSoloMantenimiento(casaId) {
   const cuotas = await Cuota.findAll({where:{casaId},attributes:['anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','origenImportacion']});
   const mantenimiento = calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),incluirDetalles:true});
   return {casaId,fechaConsulta:hoy,tipos:{MANTENIMIENTO:mantenimiento.detalles},
-    totales:{MANTENIMIENTO:mantenimiento.saldoPendiente},total:mantenimiento.saldoPendiente};
+    totales:{MANTENIMIENTO:mantenimiento.saldoPendiente},total:mantenimiento.saldoPendiente,resumen:{MANTENIMIENTO:{ultimoMesPagado:mantenimiento.ultimoMesPagado,saldoPendiente:mantenimiento.saldoPendiente,saldoFavor:mantenimiento.saldoFavor||0}}};
 }
 
 async function consultarAdeudos(casaId) {
@@ -40,7 +40,8 @@ async function consultarAdeudos(casaId) {
     CASA_CLUB:club
   };
   const totales = Object.fromEntries(Object.entries(tipos).map(([k,v])=>[k,Math.round(v.reduce((s,x)=>s+Math.round(x.monto*100),0))/100]));
-  return {casaId,fechaConsulta:hoy,tipos,totales,total:Math.round(Object.values(totales).reduce((a,b)=>a+b,0)*100)/100,
+  const resumen={...soloMantenimiento.resumen,EXTRAORDINARIO:{ultimoMesPagado:null,saldoPendiente:totales.EXTRAORDINARIO,saldoFavor:0},CASA_CLUB:{ultimoMesPagado:null,saldoPendiente:totales.CASA_CLUB,saldoFavor:0}};
+  return {casaId,fechaConsulta:hoy,tipos,totales,resumen,total:Math.round(Object.values(totales).reduce((a,b)=>a+b,0)*100)/100,
     cantidad:Object.values(tipos).reduce((a,b)=>a+b.length,0)};
 }
 module.exports={consultarAdeudos,consultarSoloMantenimiento};
