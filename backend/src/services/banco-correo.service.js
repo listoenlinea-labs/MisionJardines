@@ -114,15 +114,26 @@ function coincideCuenta(detectada,esperada){
  // terminación distinta a tres. Solo se admite la máscara de 3/4 del aviso.
  return /^\d{4}$/.test(esperada)&&/^\d{3,4}$/.test(String(detectada||''))&&esperada.endsWith(detectada);
 }
-function coincideDatosBancarios(pago,noticia,config=process.env){
+// Las comprobaciones de negocio son separadas para que el diagnóstico
+// distinga un identificador ausente de una fecha/cuenta/concepto no coincidente.
+// Solo devuelven booleanos: nunca valores bancarios ni datos personales.
+function chequeosAviso(pago,noticia,config=process.env){
  const cuenta=suffix(config.PAGOS_DESTINO_ULTIMOS4||'4409');
- return Boolean(noticia?.autorizado&&noticia?.reciente&&noticia?.id
-  &&coincideCuenta(noticia.cuenta,cuenta)&&cuenta.length===4
-  &&(noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
-    ||equivaleFechaSpei(String(pago?.fechaOperacion).slice(0,10),noticia.fecha,pago?.horaOperacion)
-    ||equivaleFechaSpei(noticia.fecha,String(pago?.fechaOperacion).slice(0,10),pago?.horaOperacion))
-  &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
-  &&perteneceAVivienda(pago,noticia));
+ const fechaOperacion=String(pago?.fechaOperacion||'').slice(0,10);
+ return {
+  autenticado:Boolean(noticia?.autorizado),
+  reciente:Boolean(noticia?.reciente),
+  mensaje:Boolean(noticia?.id),
+  cuenta:cuenta.length===4&&coincideCuenta(noticia?.cuenta,cuenta),
+  fecha:Boolean(noticia?.fecha&&(noticia.fecha===fechaOperacion
+   ||equivaleFechaSpei(fechaOperacion,noticia.fecha,pago?.horaOperacion)
+   ||equivaleFechaSpei(noticia.fecha,fechaOperacion,pago?.horaOperacion))),
+  importe:Number.isFinite(noticia?.monto)&&centavos(noticia.monto)===centavos(pago?.monto),
+  vivienda:perteneceAVivienda(pago,noticia)
+ };
+}
+function coincideDatosBancarios(pago,noticia,config=process.env){
+ return Object.values(chequeosAviso(pago,noticia,config)).every(Boolean);
 }
 function corresponde(pago,noticia,config=process.env){
  return coincideDatosBancarios(pago,noticia,config) && idsBanco.coinciden(pago,noticia);
@@ -144,4 +155,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_IMAP_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,corresponde,coincideDatosBancarios,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
+module.exports={datosAviso,corresponde,coincideDatosBancarios,chequeosAviso,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
