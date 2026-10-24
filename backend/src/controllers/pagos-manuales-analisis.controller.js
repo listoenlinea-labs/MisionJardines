@@ -223,7 +223,7 @@ async function historialPagoVivienda(req,res){
   const tipo=String(req.query.concepto||'MANTENIMIENTO').toUpperCase();
   if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
   if(!['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(tipo))throw fail(400,'Concepto inválido');
-  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','nombre','cuotaPorCobrar']});
+  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','nombre','cuotaPorCobrar','exencionesRecargo']});
   if(!casa)throw fail(404,'Vivienda no encontrada');
   let movimientos=[],deudas=[];
   if(tipo==='MANTENIMIENTO'){
@@ -233,7 +233,7 @@ async function historialPagoVivienda(req,res){
    ]);
    movimientos=historialMantenimiento(cuotas,comprobantes);
    const hoy=fechaMexico();
-   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),incluirDetalles:true}).detalles;
+   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[],incluirDetalles:true}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
     PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
@@ -250,7 +250,7 @@ async function historialPagoVivienda(req,res){
   }
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,data:{casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,nombre:casa.nombre,tipoPago:tipo,
-   movimientos,deudas,saldoPendiente:Math.round(deudas.reduce((sum,d)=>sum+Number(d.monto||0),0)*100)/100}});
+   movimientos,deudas,saldoFavor:tipo==='MANTENIMIENTO'?calcularAdeudoVivienda(await Cuota.findAll({where:{casaId}}),{anio:Number(fechaMexico().slice(0,4)),mes:Number(fechaMexico().slice(5,7)),tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[]}).saldoFavor:0,saldoPendiente:Math.round(deudas.reduce((sum,d)=>sum+Number(d.monto||0),0)*100)/100}});
  }catch(error){
   if(!error.status)console.error('[finanzas historial vivienda]',error);
   return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible obtener el historial de pagos'});
