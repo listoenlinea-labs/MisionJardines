@@ -25,7 +25,7 @@ test('Octubre sintético reconoce $10 pendientes y después $0 pagado',()=>{
  const despues=calcularAdeudoVivienda([sep,row({montoPagado:350,saldoPendiente:0,estatusPago:'PAGADO'})],
    {anio:2026,mes:10,hoy:'2026-10-23',tarifa:300});
  assert.equal(despues.saldoPendiente,0);
- assert.equal(despues.ultimoMesPagado?.nombre,'OCTUBRE');
+ assert.equal(despues.ultimoMesPagado?.mes,'OCTUBRE');
 });
 test('Solo Prueba TEST-001 puede completar el abono extraordinario sintético',()=>{
  assert.equal(modulo.esViviendaSintetica({calle:'Prueba',numero:'TEST-001'}),true);
