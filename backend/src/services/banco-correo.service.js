@@ -91,7 +91,8 @@ function corresponde(pago,noticia,config=process.env){
  return Boolean(noticia.autorizado&&noticia.reciente&&noticia.id&&noticia.tracking
   &&clave(pago?.folioOperacion)===noticia.tracking&&coincideCuenta(noticia.cuenta,cuenta)
   &&cuenta.length===4&&(noticia.fecha===String(pago?.fechaOperacion).slice(0,10)
-    || equivaleFechaSpei(String(pago?.fechaOperacion).slice(0,10),noticia.fecha,pago?.horaOperacion))
+    || equivaleFechaSpei(String(pago?.fechaOperacion).slice(0,10),noticia.fecha,pago?.horaOperacion)
+    || equivaleFechaSpei(noticia.fecha,String(pago?.fechaOperacion).slice(0,10),pago?.horaOperacion))
   &&Number.isFinite(noticia.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
   &&perteneceAVivienda(pago,noticia));
 }
