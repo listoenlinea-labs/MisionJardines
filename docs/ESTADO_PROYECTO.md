@@ -484,29 +484,42 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 ### 2026-10-10
 
 - OCR: se conservaron las reglas de revisión independiente y confirmación administrativa.
-  La lectura de notificaciones bancarias se discutió como propuesta, sin implementación.
-- PR #132 de pruebas automatizadas: creado, fusionado y luego **revertido a solicitud
-  del usuario**. Reversión confirmada en main (`5828fca`).
-- Cotejo de CSV y padrón oficial: 27 viviendas del padrón sin TAG; 8 registros fuera
-  del padrón y Jardines 142 marcada inexistente. Se generaron dos informes PDF;
-  el cotejo actualizado sustituye el conteo bruto para clasificar viviendas reales.
-- Se registraron las confirmaciones del usuario sobre Lirios/Jardines y la discrepancia
-  de los nueve TAGs. No se hicieron correcciones de DB durante el cotejo.
-- Se publicaron AGENTS.md e índice en main (`6995b84`), señalando documentación histórica
-  incompatible para evitar reinstalar cálculos desde fecha_base o autoaprobar comprobantes.
-- Validación local: 35 pruebas aprobadas, 2 fallidas de edición manual; pendientes de diagnóstico.
-- Se creó este archivo y se programó su revisión/publicación a las 23:30.
-  La creación de la tarea no prueba que su primera ejecución haya ocurrido.
-- Revisión de las 23:27, America/Mexico_City: main leído `8ec5019f24aea496ca8d829f96678d64e4021b7a`.
-  Desde `6995b84`, solo hay el commit documental de creación del estado; sin cambios
-  nuevos verificables de producto. Cero PR abiertos; historial de #132 revertido conservado.
-- Checks: main sin estados ni runs PR devueltos. Se recuperaron logs históricos de Actions
-  del PR #132: `DB_PORT=3306 npm run test:flujos`, 80 aprobadas y cero fallidas;
-  `cuentas-servidor` omitido. No sustituyen los 35 éxitos y dos fallos conocidos de main.
-- Evidencia de conversación: el usuario reportó completada una fusión de tres pares.
-  Se mantiene pendiente el COMMIT explícito y la verificación de persistencia; las imágenes
-  no fueron inspeccionadas en esta revisión. Cinco registros externos aún pendientes según
-  el intercambio; se retiró una correspondencia de residente previamente afirmada.
-- No se consultó ni modificó producción, ni se ejecutaron pagos, escrituras de TAG o
-  pruebas físicas. Se conserva el historial y una sola entrada para esta fecha.
+  La lectura de notificaciones bancarias se discutió como propuesta, sin implemen
 
+## 23/oct/2026 — Corrección de body-parser y cuerpos HTTP comprimidos
+
+El usuario compartió la alerta GHSA-27r3-jxmh-p828 / CVE-2026-111181. La fuente
+oficial de expressjs/body-parser identifica DoS por bytes finales después de un
+cuerpo comprimido y publica parches 2.4.0 / 1.20.9:
+https://github.com/expressjs/body-parser/security/advisories/GHSA-27r3-jxmh-p828
+
+Sobre main `a376fc58fd6899f5f2c7af411a37fbb05ba67b9f`, backend/package-lock.json
+resolvía body-parser 2.3.0 mediante Express 5.2.1. app.js usaba json/urlencoded
+con descompresión habilitada por defecto antes de autenticar y enrutar.
+Se actualiza la resolución efectiva a body-parser 2.4.0 y se agrega override
+^2.4.0 para mantener el mínimo corregido. npm actualiza también las dependencias
+compatibles requeridas content-type y qs; Express sigue en 5.2.1.
+
+Se establece inflate:false en ambos parsers. El frontend usa JSON/formularios
+sin Content-Encoding; los comprobantes base64 dentro del JSON conservan el
+límite existente de 2 MB. Rechazar compresión del cuerpo HTTP no desactiva los
+formatos de imagen ni negocia la compresión de respuestas con Accept-Encoding.
+
+Validación local: npm ci --ignore-scripts --no-audit --no-fund completó una
+instalación limpia del lock; npm ls confirma body-parser 2.4.0. Desde backend,
+node --test test/http-body-parser.test.js: 7/7 pruebas HTTP reales aprobadas,
+con rutas de negocio y DB sustituidas para evitar operaciones externas. Incluyen
+JSON, formulario extendido, comprobante base64, límite 2 MB, JSON inválido,
+rechazo 415 de gzip/deflate/Brotli con bytes finales y salud 200 después de cada
+rechazo. Sintaxis y git diff --check sin errores. No se ejecutó postinstall/OCR
+ni se probó login/pago completo o producción; no se hicieron consultas a DB/C3.
+
+npm audit --omit=dev ya no lista body-parser. Conserva otros cinco paquetes
+reportados (uno de severidad alta y cuatro moderados), distintos de este aviso:
+nodemailer, ip-address, moment, sequelize y uuid. No se aplicó audit fix --force
+ni cambios mayores de ORM/SMTP ajenos al alcance. Esta corrección no equivale a
+una auditoría completa de seguridad.
+
+Requiere fusionar y desplegar backend con instalación nueva desde el lock para
+que el escáner de Hostinger evalúe el artefacto corregido. Sin SQL, variables
+nuevas ni cambios de frontend.

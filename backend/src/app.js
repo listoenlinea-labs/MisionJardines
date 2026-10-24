@@ -39,12 +39,16 @@ app.use(express.static(publicDir, {
 
 app.use(helmet());
 
+// El frontend envía JSON/formularios sin Content-Encoding. Rechazar cuerpos
+// HTTP comprimidos antes de abrir un descompresor (GHSA-27r3-jxmh-p828).
 app.use(express.json({
-    limit: '2mb'
+    limit: '2mb',
+    inflate: false
 }));
 
 app.use(express.urlencoded({
-    extended: true
+    extended: true,
+    inflate: false
 }));
 
 app.use(
