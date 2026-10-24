@@ -16,15 +16,25 @@ test('SPEI cambia de dia operativo viernes a las 18:00 y muestra lunes',()=>{
  assert.equal(fechaOperativaSpei('2026-10-24','12:41:55'),'2026-10-26');
 });
 
-test('normaliza solo una fecha operativa posterior y una hora ya transcurrida',()=>{
+test('normaliza día SPEI cuando es verificable, y permite reportar otras fechas posteriores',()=>{
  assert.deepEqual(resolverFechaCapturada('2026-10-26','18:41:00',viernesDespuesCorte),{
   ok:true,fechaOperacion:'2026-10-23',fechaComprobante:'2026-10-26',ajusteSpei:true
  });
- assert.equal(resolverFechaCapturada('2026-10-26','18:41:00',viernesAntesCorte).ok,false);
- assert.equal(resolverFechaCapturada('2026-10-26','19:54:00',viernesDespuesCorte).ok,false);
- assert.equal(resolverFechaCapturada('2026-10-27','18:41:00',viernesDespuesCorte).ok,false);
+ for(const [fecha,hora,now] of [
+  ['2026-10-26','18:41:00',viernesAntesCorte],
+  ['2026-10-26','19:54:00',viernesDespuesCorte],
+  ['2026-10-27','18:41:00',viernesDespuesCorte],
+  ['2026-10-26','18:41:00',new Date('2026-10-24T13:00:00Z')],
+  ['2026-11-03','12:00:00',viernesDespuesCorte],
+ ]) {
+  const data=resolverFechaCapturada(fecha,hora,now);
+  assert.equal(data.ok,true);
+  assert.equal(data.fechaOperacion,fecha);
+  assert.equal(data.fechaPosterior,true);
+  assert.equal(data.ajusteSpei,false);
+ }
  assert.equal(resolverFechaCapturada('2026-10-23','18:41:00',viernesDespuesCorte).ajusteSpei,false);
- assert.equal(resolverFechaCapturada('2026-10-26','18:41:00',new Date('2026-10-24T13:00:00Z')).ok,false);
+ assert.equal(resolverFechaCapturada('2026-02-30','18:41:00',viernesDespuesCorte).ok,false);
 });
 
 test('OCR comprueba la fecha SPEI sin dejar pasar otras fechas',()=>{
@@ -43,6 +53,9 @@ test('buzón admite fecha 23 o 26 SOLO si clave, monto, vivienda y autenticació
  assert.equal(banco.corresponde(pago,aviso,{PAGOS_DESTINO_ULTIMOS4:'4409'}),true);
  assert.equal(banco.corresponde(pago,{...aviso,fecha:'2026-10-23'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),true);
  assert.equal(banco.corresponde(pago,{...aviso,fecha:'2026-10-27'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
+ const pagoConFechaBancariaPosterior={...pago,fechaOperacion:'2026-10-26'};
+ assert.equal(banco.corresponde(pagoConFechaBancariaPosterior,{...aviso,fecha:'2026-10-23'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),true);
+ assert.equal(banco.corresponde(pagoConFechaBancariaPosterior,{...aviso,fecha:'2026-10-22'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
  assert.equal(banco.corresponde(pago,{...aviso,tracking:'1769715857'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
  assert.equal(banco.corresponde(pago,{...aviso,monto:100},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
  assert.equal(banco.corresponde(pago,{...aviso,autorizado:false},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
