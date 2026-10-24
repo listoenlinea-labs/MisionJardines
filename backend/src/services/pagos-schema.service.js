@@ -39,6 +39,8 @@ async function asegurarEsquemaPagos() {
     // sync() sin alter NO borra datos ni modifica tablas existentes; solamente crea
     // las que falten. El orden importa porque pagos_reportados puede referenciar
     // cuotas_extraordinarias.
+    const casasCols=await queryInterface.describeTable('direcciones');
+    await ensureColumn(queryInterface,'direcciones',casasCols,'exenciones_recargo',{type:DataTypes.JSON,allowNull:true});
     await FolioConsecutivo.sync();
     await CuotaExtraordinaria.sync();
     await PagoReportado.sync();
