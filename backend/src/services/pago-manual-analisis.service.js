@@ -11,7 +11,7 @@ const fail=message=>Object.assign(new Error(message),{status:400});
 
 // La mensualidad de octubre vence el 10 de noviembre; todas las tarjetas
 // de la vivienda tendrán la misma fecha final (si el C3 confirma la escritura).
-function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE,exencionesRecargo=[]}){
+function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE,exencionesRecargo=[],hoy=fechaMexico()}){
   if(!Number.isInteger(tarifa)||tarifa<1||tarifa>10000)throw fail('Tarifa mensual inválida');
   anio=Number(anio);mes=Number(mes);meses=Number(meses);
   if(!Number.isInteger(anio)||anio<2026||anio>2098||
@@ -26,7 +26,6 @@ function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE,exencion
     periodos.push({anio:yy,mes:MESES[mm-1],numeroMes:mm});
   }
   const centavos=x=>Math.round(Number(x)*100);
-  const hoy=fechaMexico();
   const desglose=periodos.map(p=>{
     const clave=`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`;
     const recargo=!exentoEn(exencionesRecargo,clave)&&hoy>clave+'-10'?RECARGO:0;
@@ -67,9 +66,9 @@ function siguienteDelUltimo(cuotas, anio, mes) {
   }
   return ultimo;
 }
-function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE,exencionesRecargo=[]}){
+function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE,exencionesRecargo=[],hoy=fechaMexico()}){
   anio=Number(anio);mes=Number(mes);
-  const actual=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Mexico_City',year:'numeric'}).format(new Date()));
+  const actual=Number(hoy.slice(0,4));
   if(!Number.isInteger(anio)||anio<actual||anio>2098||!Number.isInteger(mes)||mes<1||mes>12)
     throw fail('El año del último mes que paga debe tener cuatro dígitos y ser igual o mayor al año actual');
   const ultimo=siguienteDelUltimo(cuotas,anio,mes);
@@ -79,7 +78,7 @@ function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE,exenc
   if(meses<1)throw fail('Este mes ya está cubierto por el último pago confirmado; selecciona uno posterior');
   if(meses>MAX_MESES)throw fail('Existen más de 36 meses por cubrir. Registra los períodos en varios movimientos.');
   const anioInicio=Math.floor(inicio/12),mesInicio=inicio%12+1;
-  const plan=prepararPlan({anio:anioInicio,mes:mesInicio,meses,montoTotal,tarifa,exencionesRecargo});
+  const plan=prepararPlan({anio:anioInicio,mes:mesInicio,meses,montoTotal,tarifa,exencionesRecargo,hoy});
   return {...plan,ultimoMesPagado:ultimo,desde:{anio:anioInicio,mes:mesInicio,nombre:MESES[mesInicio-1]},
     hasta:{anio,mes,nombre:MESES[mes-1]},montoSugerido:plan.total};
 }
