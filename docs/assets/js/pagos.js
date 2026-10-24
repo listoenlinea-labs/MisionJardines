@@ -308,7 +308,7 @@
       $('summaryBase').textContent = money(config?.mantenimiento?.montoBase || 300);
       $('summaryLate').textContent = 'Consultando…';
       $('summaryTotal').textContent = '—';
-      $('ruleAmount').textContent = 'Consultando recargos';
+      $('ruleAmount').textContent = '—';
       $('amount').min = '0.01';
       $('officialConcept').value = 'Mantenimiento: recargos por cortes vencidos y mensualidades';
       updatePreview();
