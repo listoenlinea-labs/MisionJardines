@@ -80,14 +80,14 @@ async function cotizarPagoVivienda(req,res){
   try{
     const casaId=Number(req.params.casaId);
     if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
-    const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','cuotaPorCobrar']});
+    const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','cuotaPorCobrar','exencionesRecargo']});
     if(!casa)throw fail(404,'Vivienda no encontrada');
     const cuotas=await Cuota.findAll({where:{casaId}});
     const tarifa=tarifaParaCasa(casa);
     const conciliaciones=conciliacionesTarifa(cuotas,tarifa,{anioHasta:req.query.anio,mesHasta:req.query.mes});
     const plan=prepararDesdeHistorial({
       cuotas:historialConTarifaConciliada(cuotas,conciliaciones),
-      anio:req.query.anio,mes:req.query.mes,tarifa
+      anio:req.query.anio,mes:req.query.mes,tarifa,exencionesRecargo:casa.exencionesRecargo||[]
     });
     const evaluadas=evaluarPeriodos(plan,cuotas);
     await comprobarReferenciasVinculadas(casaId,evaluadas);
@@ -123,7 +123,7 @@ async function registrarPagoVivienda(req,res){
       const plan=prepararDesdeHistorial({
         cuotas:historialConTarifaConciliada(existentes,conciliaciones),
         anio:req.body?.anio,mes:req.body?.mes,
-        montoTotal:req.body?.montoTotal,tarifa
+        montoTotal:req.body?.montoTotal,tarifa,exencionesRecargo:casa.exencionesRecargo||[]
       });
       if(conciliaciones.length&&!confirmarConciliacionTarifa)
         throw fail(409,'Confirma la conciliación de los abonos históricos que cubren íntegramente la tarifa especial. No se registrará otro cobro por esos meses.');
@@ -223,7 +223,7 @@ async function historialPagoVivienda(req,res){
   const tipo=String(req.query.concepto||'MANTENIMIENTO').toUpperCase();
   if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
   if(!['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(tipo))throw fail(400,'Concepto inválido');
-  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','nombre','cuotaPorCobrar']});
+  const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','nombre','cuotaPorCobrar','exencionesRecargo']});
   if(!casa)throw fail(404,'Vivienda no encontrada');
   let movimientos=[],deudas=[];
   if(tipo==='MANTENIMIENTO'){
@@ -233,7 +233,7 @@ async function historialPagoVivienda(req,res){
    ]);
    movimientos=historialMantenimiento(cuotas,comprobantes);
    const hoy=fechaMexico();
-   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),incluirDetalles:true}).detalles;
+   deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[],incluirDetalles:true}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
     PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
@@ -250,7 +250,7 @@ async function historialPagoVivienda(req,res){
   }
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,data:{casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,nombre:casa.nombre,tipoPago:tipo,
-   movimientos,deudas,saldoPendiente:Math.round(deudas.reduce((sum,d)=>sum+Number(d.monto||0),0)*100)/100}});
+   movimientos,deudas,saldoFavor:tipo==='MANTENIMIENTO'?calcularAdeudoVivienda(await Cuota.findAll({where:{casaId}}),{anio:Number(fechaMexico().slice(0,4)),mes:Number(fechaMexico().slice(5,7)),tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[]}).saldoFavor:0,saldoPendiente:Math.round(deudas.reduce((sum,d)=>sum+Number(d.monto||0),0)*100)/100}});
  }catch(error){
   if(!error.status)console.error('[finanzas historial vivienda]',error);
   return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible obtener el historial de pagos'});

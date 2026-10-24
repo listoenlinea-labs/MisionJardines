@@ -1,0 +1,71 @@
+name: Verificar finanzas
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "docs/analisis-cuotas.html"
+      - "docs/assets/js/analisis-cuotas.js"
+      - "docs/assets/css/analisis-cuotas.css"
+      - "docs/pagos.html"
+      - "docs/assets/js/pagos.js"
+      - ".github/workflows/verificar-finanzas.yml"
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis JS frontend y backend
+        run: |
+          node --check docs/assets/js/pagos.js
+          node --check docs/assets/js/analisis-cuotas.js
+          node --check backend/src/controllers/finanzas.controller.js
+          node --check backend/src/controllers/pagos.controller.js
+          node --check backend/src/controllers/pagos-manuales-analisis.controller.js
+          node --check backend/src/services/adeudo-vivienda-analisis.service.js
+          node --check backend/src/services/cuotas-mantenimiento-calculo.js
+          node --check backend/src/services/pago-manual-analisis.service.js
+          node --check backend/src/services/recargos-exenciones.service.js
+      - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
+        working-directory: backend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Pruebas financieras y de integración sintética TEST-001
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: mision_test_ci
+          DB_USER: ci_test
+          DB_PASSWORD: ci_only_no_connection
+        run: |
+          node --test backend/tests/adeudos-enero-saldo-favor-exencion.test.js backend/tests/pagos-test001-octubre-saldo.test.js backend/tests/test001-cuota-diez-vigencia.test.js backend/tests/pagos-cuenta-oficial-render.test.js backend/tests/padron-test001-visible-temporal.test.js
+      - name: Suite bancaria heredada, diagnóstico no bloqueante
+        continue-on-error: true
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: mision_test_ci
+          DB_USER: ci_test
+          DB_PASSWORD: ci_only_no_connection
+        run: node --test backend/tests/*.test.js
+      - name: Comparar la suite heredada contra main (solo diagnóstico)
+        continue-on-error: true
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: mision_test_ci
+          DB_USER: ci_test
+          DB_PASSWORD: ci_only_no_connection
+        run: |
+          git fetch --depth=1 origin main
+          git worktree add /tmp/mj-main FETCH_HEAD
+          cd /tmp/mj-main
+          set +e
+          NODE_PATH="$GITHUB_WORKSPACE/backend/node_modules" node --test backend/tests/*.test.js > /tmp/mj-baseline.log 2>&1
+          resultado=$?
+          grep -E '^(not ok|# tests|# pass|# fail)' /tmp/mj-baseline.log || true
+          echo "Resultado de la suite en main (0 si todas pasan): $resultado"
+          exit 0

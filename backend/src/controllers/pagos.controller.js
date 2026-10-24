@@ -93,7 +93,7 @@ async function obtenerConfiguracion(req, res) {
             mantenimiento: {
                 montoBase: casa?tarifaParaCasa(casa):BASE_MANTENIMIENTO,
                 diaLimite: DIA_LIMITE,
-                recargoTardio: RECARGO_TARDIO
+                recargoTardio: casa&&require('../services/recargos-exenciones.service').activo(casa.exencionesRecargo)?0:RECARGO_TARDIO
             },
             moneda: 'MXN',
             legal: {
@@ -591,8 +591,8 @@ async function obtenerVigencia(req, res) {
     try {
         if (!req.usuario.casaId) return res.status(400).json({ ok: false, message: 'Selecciona una vivienda' });
         return res.json({ ok: true, data: await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
-            const {cuotas,tarifa}=await cuotasMantenimiento.cargar(req.usuario.casaId,transaction);
-            return require('../services/cuotas-mantenimiento-calculo').contextoCuotas(cuotas,fechaMexico(),tarifa);
+            const {cuotas,tarifa,exencionesRecargo}=await cuotasMantenimiento.cargar(req.usuario.casaId,transaction);
+            return require('../services/cuotas-mantenimiento-calculo').contextoCuotas(cuotas,fechaMexico(),tarifa,exencionesRecargo);
         }) });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar la vigencia' }); }
 }

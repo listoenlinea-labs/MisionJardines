@@ -465,7 +465,7 @@ function renderHouses(){
    const total=movements.reduce((n,p)=>n+Number(p.monto||0),0);
    $('houseHistorySummary').innerHTML='<div class="history-stat"><small>Último pago registrado</small><strong>'+esc(fmt(movements[0]?.monto||0))+'</strong></div>'+
     '<div class="history-stat"><small>Total en movimientos</small><strong>'+esc(fmt(total))+'</strong></div>'+
-    '<div class="history-stat debt"><small>Saldo pendiente actual</small><strong>'+esc(fmt(detail.saldoPendiente))+'</strong></div>';
+    '<div class="history-stat debt"><small>Saldo pendiente actual</small><strong>'+esc(fmt(detail.saldoPendiente))+'</strong></div>'+ '<div class="history-stat credit"><small>Saldo a favor</small><strong>'+esc(fmt(detail.saldoFavor||0))+'</strong></div>';
    $('houseHistoryTimeline').innerHTML=movements.length?movements.map((p,index)=>{
     const months=(p.periodos||[]).map(x=>x.mes+' '+x.anio);
     return '<article class="history-event"><div class="history-dot" aria-hidden="true"></div><div class="history-event-card">'+
@@ -491,6 +491,7 @@ function renderHouses(){
   if(!h)return;
   $('houseTariffAddress').textContent=h.calle+' '+h.numero;
   $('houseTariffInput').value=String(h.tarifaMensual||300);
+  $('houseTariffNoFee').checked=(h.exencionesRecargo||[]).some(r=>r.desde<=todayC3().slice(0,7)&&(!r.hasta||r.hasta>=todayC3().slice(0,7)));
   $('houseTariffStatus').textContent='';
   tariffPanel.hidden=false;
   $('houseTariffInput').focus();
@@ -511,7 +512,7 @@ function renderHouses(){
   boton.disabled=true;
   $('houseTariffStatus').textContent='Guardando cuota de la vivienda…';
   try{
-   await request('/viviendas/'+casaId+'/cuota-por-cobrar',{cuotaPorCobrar:cuota},'PATCH');
+   await request('/viviendas/'+casaId+'/cuota-por-cobrar',{cuotaPorCobrar:cuota,sinRecargo:$('houseTariffNoFee').checked},'PATCH');
    await load();
    if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
    const foco=historyReturnFocus;

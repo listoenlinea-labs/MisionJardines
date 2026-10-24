@@ -27,13 +27,13 @@ async function cargar(casaId,transaction){
  const posteriores=await Cuota.findAll({where,transaction,lock:transaction.LOCK.UPDATE,
   order:[['anio','ASC'],['mes','ASC']]});
  const rows=ultimo?[ultimo,...posteriores]:posteriores;
- return {casa,rows,cuotas:rows.map(r=>r.toJSON?r.toJSON():{...r}),tarifa:tarifaParaCasa(casa)};
+ return {casa,rows,cuotas:rows.map(r=>r.toJSON?r.toJSON():{...r}),tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[]};
 }
 async function cotizar(casaId,fecha,monto,transaction){
  validarOperacion(fecha);
  const data=await cargar(casaId,transaction);
  if(await Pago.findOne({where:{casaId,tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION'},transaction}))throw fail('Hay un comprobante de mantenimiento pendiente; espera su revisión');
- const ctx=monto==null?calc.contextoCuotas(data.cuotas,fecha,data.tarifa):calc.planificar(data.cuotas,fecha,monto,data.tarifa);
+ const ctx=monto==null?calc.contextoCuotas(data.cuotas,fecha,data.tarifa,data.exencionesRecargo):calc.planificar(data.cuotas,fecha,monto,data.tarifa,data.exencionesRecargo);
  return ctx;
 }
 async function confirmar(pago,transaction){
@@ -49,7 +49,7 @@ async function confirmar(pago,transaction){
  const guardado=pago.aplicacionCuotas;
  if(!guardado||![1,2].includes(guardado.version))throw fail('Comprobante anterior a la unificación: requiere conciliación de sus mensualidades; no se acreditó ni se envió al C3');
  if(guardado.aplicado)throw fail('Este comprobante ya tiene sus cuotas acreditadas');
- const plan=calc.planificar(data.cuotas,guardado.fechaCalculo,pago.monto,data.tarifa);
+ const plan=calc.planificar(data.cuotas,guardado.fechaCalculo,pago.monto,data.tarifa,data.exencionesRecargo);
  if(plan.huella!==guardado.huella||plan.recargo!==guardado.recargo||plan.fechaFinalObjetivo!==guardado.fechaFinalObjetivo||
   JSON.stringify(plan.aplicaciones)!==JSON.stringify(guardado.aplicaciones))
   throw fail('Las cuotas o tarifa cambiaron desde el reporte. Requiere conciliar el comprobante antes de acreditarlo');
