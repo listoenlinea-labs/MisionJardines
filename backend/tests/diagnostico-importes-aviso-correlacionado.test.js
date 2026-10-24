@@ -55,3 +55,40 @@ test('Sin importe leído se mantiene revisión aunque identificador coincida',()
  assert.equal(r.cotejoAvisos.importeLegibleReferencia,0);
  assert.match(r.detalle,/extraer.*importe/i);
 });
+
+test('El importe separado en párrafos HTML de Banco Azteca debe ser exactamente $10',()=>{
+ const cfg={
+  PAGOS_BANK_FROM_ADDRESS:'notificaciones@bazdigital.com',
+  PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',
+  PAGOS_DESTINO_ULTIMOS4:'4409',
+  PAGOS_BANK_MAIL_MAX_DIAS:'7'
+ };
+ const html=[
+  '<section><p>Recibiste de otro banco</p><p>$10</p>',
+  '<p>26/Oct/2026, 18:42:09</p>',
+  '<p>A tu cuenta</p><p>***409</p>',
+  '<p>Beneficiario</p><p>MARIA DEL ROCIO BAHENA JUAREZ</p>',
+  '<p>Concepto</p><p>casa TEST-001</p>',
+  '<p>Referencia</p><p>910260</p>',
+  '<p>Clave de rastreo</p><p>MBAN01002610260078204229</p></section>'
+ ].join('');
+ const mensaje={
+  id:'simulacion-titan-no-real',
+  from:{emailAddress:{address:'notificaciones@bazdigital.com'}},
+  subject:'Notificación Banco Azteca',
+  receivedDateTime:new Date().toISOString(),
+  internetMessageHeaders:[{name:'Authentication-Results',value:
+   'servidor-titan-pruebas; dkim=pass header.d=bazdigital.com; dmarc=pass header.from=bazdigital.com;'}],
+  body:{content:html}
+ };
+ const avisoExtraido=banco.datosAviso(mensaje,cfg);
+ assert.equal(avisoExtraido.monto,10);
+ assert.equal(avisoExtraido.referencia,'910260');
+ assert.equal(avisoExtraido.cuenta,'409');
+ assert.equal(avisoExtraido.concepto,'CASA TEST-001');
+ assert.equal(avisoExtraido.autorizado,true);
+ assert.equal(banco.chequeosAviso(pago(),avisoExtraido,cfg).importe,true);
+ assert.equal(banco.corresponde(pago(),avisoExtraido,cfg),true);
+ assert.equal(banco.corresponde(pago(),{...avisoExtraido,monto:11},cfg),false);
+ assert.equal(banco.corresponde(pago(),{...avisoExtraido,monto:null},cfg),false);
+});
