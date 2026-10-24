@@ -48,7 +48,10 @@ function resolverFechaCapturada(fechaVisible,hora,now=new Date()) {
       &&equivaleFechaSpei(ahora.fecha,fechaVisible,hora)) {
     return {ok:true,fechaOperacion:ahora.fecha,fechaComprobante:fechaVisible,ajusteSpei:true};
   }
-  return {ok:false,mensaje:'El comprobante muestra '+fechaVisible+' y hoy es '+ahora.fecha+
-    ' en México. Si tu banco muestra el día operativo SPEI, adjunta el detalle del movimiento o CEP donde aparezca la fecha real.'};
+  // Fechas impresas por el banco posteriores a hoy (feriados, puentes o
+  // cambios de día operativo) no impiden REPORTAR. No se infiere que el pago
+  // ya ocurrió: la aprobación sigue condicionada a la evidencia bancaria.
+  return {ok:true,fechaOperacion:fechaVisible,fechaComprobante:fechaVisible,
+    ajusteSpei:false,fechaPosterior:true};
 }
 module.exports={mexico,validarDia,fechaOperativaSpei,equivaleFechaSpei,resolverFechaCapturada};
