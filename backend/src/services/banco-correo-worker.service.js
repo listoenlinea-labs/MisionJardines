@@ -19,7 +19,7 @@ async function ejecutarRevision(){
   pendientes=await PagoReportado.findAll({
    where:{estatus:'PENDIENTE_VALIDACION'},
    include:[{model:Casa,as:'casa',required:true,attributes:['calle','calleCorrecta','numero']}],
-   attributes:['id','casaId','estatus','folioOperacion','textoOcr','fechaOperacion','horaOperacion','monto'],
+   attributes:['id','casaId','estatus','folioOperacion','identificadoresVerificados','textoOcr','fechaOperacion','horaOperacion','monto'],
    order:[['creadoEn','DESC']],limit:100
   });
   if(!pendientes.length)return;
