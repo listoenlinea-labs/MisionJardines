@@ -533,6 +533,80 @@ button.finance-export-card:is(:hover,:focus-visible) .finance-export-icon{
 .history-tariff-label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#52647e}
 .history-tariff-label input{width:100%;border:1px solid #dce3ee;border-radius:12px;padding:11px 12px;font-size:18px;font-weight:700}
 .history-tariff-panel form>.primary{width:100%}
+
+/* Estado compacto: refleja únicamente la configuración confirmada por API. */
+.history-tariff-save-indicator{
+  display:inline-flex;align-items:center;gap:7px;width:max-content;max-width:100%;
+  margin-top:5px;padding:5px 9px;border:1px solid #e1e7ee;
+  border-radius:999px;background:#f7f9fc;color:#66758b;
+  font-size:11px;font-weight:750;line-height:1.25;
+}
+.history-tariff-status-dot{
+  flex:0 0 7px;width:7px;height:7px;border-radius:50%;
+  background:#9ba9b9;
+}
+.history-tariff-save-indicator[data-state="exempt"]{
+  background:#eef9f3;border-color:#d2eadd;color:#267653;
+}
+.history-tariff-save-indicator[data-state="exempt"] .history-tariff-status-dot{background:#3bba7c}
+.history-tariff-save-indicator[data-state="active"]{
+  background:#f6f7fa;border-color:#e2e6ed;color:#64718a;
+}
+.history-tariff-save-indicator[data-state="pending"]{
+  background:#fff8ee;border-color:#f2dec1;color:#a36a30;
+}
+.history-tariff-save-indicator[data-state="pending"] .history-tariff-status-dot{background:#df9f4c}
+.history-tariff-save-indicator[data-state="unknown"] .history-tariff-status-dot{background:#9ba9b9}
+
+/* Sustituye la casilla nativa por un interruptor accesible y discreto. */
+.history-tariff-toggle-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  min-width:0;padding:12px 13px;
+  border:1px solid #e6dcea;border-radius:14px;
+  background:#fbf9fd;cursor:pointer;transition:border-color .18s,background .18s;
+}
+.history-tariff-toggle-row:has(input:checked){
+  border-color:#c9e6d7;background:#f5fbf7;
+}
+.history-tariff-toggle-copy{display:grid;gap:3px;min-width:0;flex:1}
+.history-tariff-toggle-copy strong{
+  color:#33455e;font-size:12px;font-weight:750;line-height:1.35;
+}
+.history-tariff-toggle-copy small{
+  color:#7e8ba0;font-size:10px;line-height:1.4;
+}
+.history-tariff-toggle-control{
+  position:relative;display:block;flex:0 0 44px;width:44px;height:26px;
+}
+.history-tariff-toggle-control input{
+  position:absolute;inset:0;width:100%;height:100%;margin:0;
+  opacity:0;cursor:pointer;z-index:1;
+}
+.history-tariff-toggle-track{
+  display:block;width:44px;height:26px;border-radius:20px;
+  background:#d6dce5;border:1px solid #c9d1dc;
+  transition:background .2s,border-color .2s;
+}
+.history-tariff-toggle-track::after{
+  content:'';position:absolute;top:4px;left:4px;width:18px;height:18px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(30,50,75,.2);
+  transition:transform .2s;
+}
+.history-tariff-toggle-control input:checked+.history-tariff-toggle-track{
+  background:#56b78d;border-color:#4aac82;
+}
+.history-tariff-toggle-control input:checked+.history-tariff-toggle-track::after{
+  transform:translateX(18px);
+}
+.history-tariff-toggle-control input:focus-visible+.history-tariff-toggle-track{
+  outline:3px solid #ad87cf;outline-offset:3px;
+}
+@media(max-width:390px){
+  .history-tariff-toggle-row{gap:9px;padding:11px}
+  .history-tariff-toggle-control{flex-basis:40px;width:40px}
+  .history-tariff-toggle-track{width:40px}
+  .history-tariff-toggle-control input:checked+.history-tariff-toggle-track::after{transform:translateX(14px)}
+}
 @media(max-width:850px){
  .history-dialog-layout,.history-dialog-layout:has(.history-tariff-panel:not([hidden])){grid-template-columns:1fr;max-height:calc(100dvh - 20px);overflow-y:auto}
  .history-dialog-layout>.finance-pay-dialog{max-height:none;overflow:visible}
