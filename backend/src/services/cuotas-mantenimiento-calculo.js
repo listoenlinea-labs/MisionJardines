@@ -5,7 +5,7 @@ const {createHash}=require('node:crypto');
 const {BASE,RECARGO,MAX_MESES}=require('./mensualidades-mantenimiento');
 const {centavos}=require('./vigencia-calculo');
 const MESES=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-const INICIO=2026*12+8; // Solo para una vivienda SIN ningún periodo pagado.
+const INICIO=2026*12; // Solo para una vivienda SIN ningún periodo pagado.
 const cents=v=>Math.max(0,Math.round(Number(v||0)*100));
 const indice=c=>Number(c.anio)*12+MESES.indexOf(String(c.mes).toUpperCase());
 const periodo=n=>`${Math.floor(n/12)}-${String(n%12+1).padStart(2,'0')}`;
@@ -35,10 +35,10 @@ function recargoAbonado(c,tarifa){
  const paid=cents(c?.montoPagado);
  return Math.min(RECARGO*100,paid,c?.recargoPagado!=null?cents(c.recargoPagado):Math.max(0,paid-tarifa*100));
 }
-function estadoPeriodo(c,n,fecha,tarifa=BASE){
+function estadoPeriodo(c,n,fecha,tarifa=BASE,exento=false){
  const pagado=cents(c?.montoPagado),abonadoRecargo=recargoAbonado(c,tarifa);
  const prueba=tarifa===10&&n===2026*12+9&&c?.origenImportacion==='PRUEBA_10_PESOS'&&cents(c.montoCuota)===1000&&cents(c.recargo)===0;
- const multa=!prueba&&fecha>periodo(n)+'-10'?RECARGO*100:0;
+ const multa=!prueba&&!exento&&fecha>periodo(n)+'-10'?RECARGO*100:0;
  const recargoTotal=Math.max(multa,abonadoRecargo),total=tarifa*100+recargoTotal;
  const faltante=cubierta(c)?0:Math.max(0,total-pagado);
  return {total,pagado,faltante,recargoTotal,recargoPendiente:cubierta(c)?0:Math.max(0,multa-abonadoRecargo)};
@@ -82,10 +82,10 @@ function contextoCuotas(cuotas,fecha,tarifa=BASE){
   saldoParcial:saldoParcial/100,fechaFinalCuotas:fechaDesdeCuotas(cuotas),
   primerPeriodoPendiente:periodo(primero),huella:huella(cuotas,tarifa)};
 }
-function planificar(cuotas,fecha,monto,tarifa){
+function planificar(cuotas,fecha,monto,tarifa,exencionesRecargo=[]){
  const amount=centavos(monto);
  if(!amount)throw fail('El importe debe ser mayor que cero');
- const ctx=contextoCuotas(cuotas,fecha,tarifa),fee=cents(ctx.recargo);
+ const ctx=contextoCuotas(cuotas,fecha,tarifa,exencionesRecargo),fee=cents(ctx.recargo);
  if(amount<fee)throw fail('El depósito debe cubrir los recargos pendientes de $'+ctx.recargo.toFixed(2));
  const inicio=inicioDesdeUltimo(cuotas);
  const map=new Map(cuotas.map(c=>[indice(c),c]));
@@ -102,7 +102,7 @@ function planificar(cuotas,fecha,monto,tarifa){
  const limite=Number(fecha.slice(0,4))*12+Number(fecha.slice(5,7))-1;
  // Solo los periodos pendientes DESPUÉS del último pagado requieren reparto.
  for(let n=inicio;n<=limite;n++){
-  const s=estadoPeriodo(map.get(n),n,fecha,tarifa);
+  const s=estadoPeriodo(map.get(n),n,fecha,tarifa,require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)));
   if(s.recargoPendiente){
    const p=get(n);p.abono=s.recargoPendiente;p.abonoRecargo=s.recargoPendiente;
    p.recargoPagado+=s.recargoPendiente;
