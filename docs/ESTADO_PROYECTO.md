@@ -523,3 +523,29 @@ una auditoría completa de seguridad.
 Requiere fusionar y desplegar backend con instalación nueva desde el lock para
 que el escáner de Hostinger evalúe el artefacto corregido. Sin SQL, variables
 nuevas ni cambios de frontend.
+
+
+## 23/oct/2026 — Origen por remitente exacto, sin autenticación
+
+Por instrucción explícita del usuario se cancela la verificación DKIM directa
+y se retiran DKIM, DMARC y authserv-id de la autorización. Solo se acepta From
+exacto del administrador en PAGOS_BANK_FORWARD_FROM_ADDRESS y asunto bancario.
+El banco directo deja de autorizar. Esta confianza permite falsificar remitente
+y podría provocar acreditaciones indebidas; el usuario aceptó ese riesgo.
+No se incorpora dependencia DKIM ni se guardan direcciones personales en código.
+
+Worker/diagnóstico no requieren PAGOS_IMAP_AUTH_SERVER ni PAGOS_BANK_FROM_ADDRESS.
+IMAP TLS, cotejo del depósito, unicidad y hash consumido no cambian. API conserva
+nombres legados avisosAutenticados/SIN_AUTENTICACION por compatibilidad; interfaz
+y textos ahora describen remitente autorizado, no autenticación. Se conserva
+la corrección de fecha bancaria del PR #283 pendiente, sin su lista de servidores.
+Este PR sustituye funcionalmente #283; no requiere fusionarlo antes.
+
+Validación: node --test backend/test/correo-solo-remitente.test.js: 8/8 aprobadas.
+Incluye From exacto sin firmas o con fallos, otro usuario/banco directo rechazados,
+configuración sin auth server, fechas del reenvío frente a bancarias, cotejo de
+monto/identificador/cuenta/vivienda y bloqueo de múltiples avisos. Sintaxis de
+los servicios y frontend, y git diff --check correctos. No se ejecutó suite
+completa: pruebas históricas que exigen autenticación/banco directo ya no
+representan la política solicitada. Sin pruebas de MySQL/C3 ni consultas al buzón
+real. Requiere desplegar backend/frontend; sin SQL ni nuevo comprobante.

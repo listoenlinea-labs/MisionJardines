@@ -57,7 +57,7 @@ async function ejecutarRevision(){
   // cuentan para explicar por qué el pago sigue pendiente.
   const avisos=await banco.obtenerAvisos();
   const autenticados=avisos.filter(n=>n.autorizado&&n.reciente);
-  console.info('[Bancos] Revisión: pagos pendientes='+pendientes.length+', avisos consultados='+avisos.length+', autenticados recientes='+autenticados.length);
+  console.info('[Bancos] Revisión: pagos pendientes='+pendientes.length+', avisos consultados='+avisos.length+', remitente autorizado recientes='+autenticados.length);
   for(const pago of pendientes){
    try{
     const revision=diagnostico.evaluar(pago,avisos,autenticados);
@@ -91,7 +91,7 @@ async function ejecutarRevision(){
     await persistir(pago,revision);
     const {confirmarPagoDesdeBanco}=require('../controllers/pagos.controller');
     await confirmarPagoDesdeBanco(pago.id,hash);
-    console.info('[Bancos] Pago conciliado por notificación verificada, id:',pago.id);
+    console.info('[Bancos] Pago conciliado por aviso de remitente autorizado, id:',pago.id);
    }catch(error){
     // Los fallos del proceso NO significan que la transferencia haya fallado.
     console.error('[Bancos] Error procesando pago ID='+pago.id+': '+(error?.message||'desconocido'));
@@ -121,9 +121,8 @@ function iniciar(){
    console.info('[Bancos] Autovalidación IMAP desactivada: PAGOS_BANK_AUTO_VALIDATE debe ser true. Pagos en revisión.');
   }else{
    const requeridas=['PAGOS_IMAP_HOST','PAGOS_IMAP_MAILBOX','PAGOS_IMAP_PASSWORD',
-    'PAGOS_IMAP_AUTH_SERVER','PAGOS_DESTINO_ULTIMOS4'];
+    'PAGOS_BANK_FORWARD_FROM_ADDRESS','PAGOS_DESTINO_ULTIMOS4'];
    const faltantes=requeridas.filter(nombre=>!String(process.env[nombre]||'').trim());
-   if(!String(process.env.PAGOS_BANK_FROM_ADDRESS||'').trim()&&!String(process.env.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim())faltantes.push('PAGOS_BANK_FROM_ADDRESS o PAGOS_BANK_FORWARD_FROM_ADDRESS');
    console.warn('[Bancos] Autovalidación IMAP no iniciada: faltan variables: '+faltantes.join(', ')+'. Pagos en revisión.');
   }
   return;

@@ -93,8 +93,9 @@ Ejemplos que deben conservarse:
   comprobar origen autenticado, clave de rastreo, monto, fecha, coincidencia única,
   vínculo a vivienda y protección contra reutilización. Por petición del usuario,
   se aceptan reenvíos del administrador cuyo correo exacto esté configurado en
-  PAGOS_BANK_FORWARD_FROM_ADDRESS y autenticado por el receptor como propio de ese
-  dominio. En ese modo se confía en el administrador como fuente del aviso, sin
+  PAGOS_BANK_FORWARD_FROM_ADDRESS. Por petición explícita del usuario del 23/oct,
+  solo se coteja From exacto y asunto, SIN DKIM, DMARC ni authserv-id; el origen
+  puede falsificarse. El banco directo ya no autoriza avisos. En ese modo se confía en el administrador como fuente del aviso, sin
   exigir firma bancaria en el encabezado exterior. El texto del cuerpo no autoriza
   remitentes. La terminación de cuenta del correo admite 3 dígitos enmascarados o 4
   exactos; si hay 4 no se reducen a 3 para ocultar una discrepancia. La validación OCR
