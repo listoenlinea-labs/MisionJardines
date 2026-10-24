@@ -169,6 +169,7 @@
       box-shadow: inset 0 0 0 1px #f0ca9e, 0 4px 12px rgba(223, 132, 43, .05)
     }
 
+    .payment-status-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 12px}.payment-status-cards .ps-card{min-width:0;border:1px solid #e2e8f0;border-radius:14px;padding:12px 16px;background:#fff}.ps-card:nth-child(1){background:#f0f8f4}.ps-card:nth-child(2){background:#f5f8fe}.ps-card:nth-child(3){background:#fff7ed}.ps-card:nth-child(4){background:#faf5ff}.ps-card small{display:block;color:#6f7c91;font-size:11px}.ps-card strong{display:block;color:#23344b;margin-top:5px;font-size:20px;overflow-wrap:anywhere}@media(max-width:700px){.payment-status-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.ps-card strong{font-size:16px}}
     .layout {
       display: grid;
       grid-template-columns: minmax(390px, 440px) minmax(0, 1fr);
@@ -1184,6 +1185,7 @@
       <button class="tab" type="button" data-tab="CASA_CLUB">Casa club</button>
     </div>
 
+    <section id="paymentStatusCards" class="payment-status-cards" aria-label="Resumen de cuotas" aria-live="polite"></section>
     <section class="layout">
       <div class="stack">
         <article class="card pad">
