@@ -87,7 +87,7 @@ async function cotizarPagoVivienda(req,res){
     const conciliaciones=conciliacionesTarifa(cuotas,tarifa,{anioHasta:req.query.anio,mesHasta:req.query.mes});
     const plan=prepararDesdeHistorial({
       cuotas:historialConTarifaConciliada(cuotas,conciliaciones),
-      anio:req.query.anio,mes:req.query.mes,tarifa
+      anio:req.query.anio,mes:req.query.mes,tarifa,exencionesRecargo:casa.exencionesRecargo||[]
     });
     const evaluadas=evaluarPeriodos(plan,cuotas);
     await comprobarReferenciasVinculadas(casaId,evaluadas);
@@ -123,7 +123,7 @@ async function registrarPagoVivienda(req,res){
       const plan=prepararDesdeHistorial({
         cuotas:historialConTarifaConciliada(existentes,conciliaciones),
         anio:req.body?.anio,mes:req.body?.mes,
-        montoTotal:req.body?.montoTotal,tarifa
+        montoTotal:req.body?.montoTotal,tarifa,exencionesRecargo:casa.exencionesRecargo||[]
       });
       if(conciliaciones.length&&!confirmarConciliacionTarifa)
         throw fail(409,'Confirma la conciliación de los abonos históricos que cubren íntegramente la tarifa especial. No se registrará otro cobro por esos meses.');
