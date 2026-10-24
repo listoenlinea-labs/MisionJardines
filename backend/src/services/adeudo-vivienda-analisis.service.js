@@ -5,25 +5,16 @@
 const { BASE } = require('./mensualidades-mantenimiento');
 const { siguienteDelUltimo } = require('./pago-manual-analisis.service');
 const { fechaMexico } = require('./vigencia-calculo');
-const {estadoPeriodo}=require('./cuotas-mantenimiento-calculo');
+const {estadoPeriodo,contextoCuotas,inicioDesdeUltimo}=require('./cuotas-mantenimiento-calculo');
 
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
   'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-const INICIO = 2026 * 12 + 8; // Septiembre 2026; agosto puede ser el último mes pagado.
 const indice = (anio, mes) => Number(anio) * 12 + Number(mes) - 1;
 
 
-/**
- * Saldo acumulado del padrón hasta el período consultado, nunca más allá de hoy
- * (hora de México). Sin cuotas guardadas para un mes, éste también se debe.
- * El corte de cada MES es el día 10 de ese mismo mes: desde el día 11 aplica
- * una sola penalización de $50 si sigue pendiente.
- *
- * Los importes persistidos pueden ya incorporar un recargo; MAX evita
- * sumarlo de nuevo. Los abonos se descuentan del total de cada período.
- * 'PAGADO' con importe confirmado, 'CONDONADO' y 'CANCELADO' no se cobran.
- */
-function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa = BASE }) {
+// El importe se calcula por diferencia de cortes desde el último periodo pagado.
+// Solo el desglose visible enumera los periodos pendientes posteriores a ese corte.
+function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa = BASE, incluirDetalles = false }) {
   if (!Number.isInteger(tarifa) || tarifa < 1 || tarifa > 10000) throw new Error('Tarifa mensual inválida');
   const fin = indice(anio, mes);
   const finCalendario = new Date(Date.UTC(Number(anio), Number(mes), 0))
@@ -33,26 +24,20 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
   // El último mes pagado refleja TODO el historial confirmado, incluidos
   // anticipos de años posteriores; no representa el corte del saldo.
   const ultimo = siguienteDelUltimo(cuotas, 2100, 12);
-  const porPeriodo = new Map();
-  for (const cuota of cuotas || []) {
-    const mm = MESES.indexOf(String(cuota.mes || '').toUpperCase()) + 1;
-    const yy = Number(cuota.anio);
-    if (mm && Number.isInteger(yy) && indice(yy, mm) <= limite)
-      porPeriodo.set(indice(yy, mm), cuota);
-  }
-  let pendiente = 0, recargos = 0, mesesPendientes = 0;
+  const resumen=contextoCuotas(cuotas,corte,tarifa);
   const detalles = [];
-  for (let n = INICIO; n <= limite; n++) {
-    const yy = Math.floor(n / 12), mm = n % 12 + 1;
-    const cuota = porPeriodo.get(n);
-    const {faltante,recargoPendiente}=estadoPeriodo(cuota,n,corte,tarifa);
-    if (!faltante) continue;
-    pendiente += faltante;
-    mesesPendientes++;
-    recargos += recargoPendiente;
-    detalles.push({categoria:'MANTENIMIENTO',periodo:`${yy}-${String(mm).padStart(2,'0')}`,
-      monto:faltante/100,recargo:recargoPendiente/100,
-      concepto:'Mantenimiento'});
+  if(incluirDetalles){
+    const porPeriodo=new Map((cuotas||[]).map(c=>[
+      Number(c.anio)*12+MESES.indexOf(String(c.mes||'').toUpperCase()),c
+    ]));
+    // Desglose a petición: el importe total ya se obtuvo por diferencia de cortes.
+    for(let n=inicioDesdeUltimo(cuotas);n<=limite;n++){
+      const yy=Math.floor(n/12),mm=n%12+1;
+      const {faltante,recargoPendiente}=estadoPeriodo(porPeriodo.get(n),n,corte,tarifa);
+      if(!faltante)continue;
+      detalles.push({categoria:'MANTENIMIENTO',periodo:`${yy}-${String(mm).padStart(2,'0')}`,
+        monto:faltante/100,recargo:recargoPendiente/100,concepto:'Mantenimiento'});
+    }
   }
   // Etiqueta administrativa anual en el último diciembre confirmado.
   // Se deriva del origen de las cuotas: no se agrega ninguna columna SQL y
@@ -66,10 +51,12 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
   }
   return {
     ultimoMesPagado,
-    mesesPendientes,
-    recargosPendientes: recargos / 100,
-    saldoPendiente: pendiente / 100
-    ,detalles
+    mesesPendientes:resumen.mesesPendientes,
+    fechaUltimoCortePagado:resumen.fechaUltimoCortePagado,
+    fechaCorteActual:resumen.fechaCorteActual,
+    recargosPendientes:resumen.recargo,
+    saldoPendiente:resumen.adeudoTotal,
+    detalles
   };
 }
 

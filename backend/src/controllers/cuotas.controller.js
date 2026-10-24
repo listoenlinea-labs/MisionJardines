@@ -543,7 +543,7 @@ async function actualizarCuota(req, res) {
             await cuota.reload({ transaction, lock: transaction.LOCK.UPDATE });
             const anterior = vigenciaService.capturarCuota(cuota);
             await cuota.update(cambios, { transaction });
-            if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
+            if ('anio' in cambios || 'mes' in cambios || 'montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
                 await cuotasMantenimiento.registrarCambioCuota(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         });
 
@@ -700,7 +700,12 @@ async function actualizarCuotasLote(req, res) {
             throw error;
         }
 
-        for (const operacion of operaciones) {
+        // Acreditar lotes cronológicamente para no saltar el siguiente corte.
+        const ordenadas=[...operaciones].sort((a,b)=>{
+            const x=porId.get(Number(a.id)),y=porId.get(Number(b.id));
+            return Number(x.casaId)-Number(y.casaId)||Number(x.anio)-Number(y.anio)||MESES.indexOf(x.mes)-MESES.indexOf(y.mes);
+        });
+        for (const operacion of ordenadas) {
             const cuota = porId.get(Number(operacion.id));
             if (operacion.version && cuota.actualizadoEn) {
                 const esperada = new Date(operacion.version).getTime();
@@ -716,7 +721,7 @@ async function actualizarCuotasLote(req, res) {
             await cuota.reload({ transaction, lock: transaction.LOCK.UPDATE });
             const anterior = vigenciaService.capturarCuota(cuota);
             await cuota.update(cambios, { transaction });
-            if ('montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
+            if ('anio' in cambios || 'mes' in cambios || 'montoPagado' in cambios || 'estatusPago' in cambios || 'recargo' in cambios || 'referencia' in cambios || 'tipoPago' in cambios)
                 await cuotasMantenimiento.registrarCambioCuota(cuota.casaId, req.usuario.usuarioId, transaction, { origen: 'CUOTA', registro: cuota, anterior });
         }
 

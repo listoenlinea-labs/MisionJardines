@@ -14,6 +14,19 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Corrección del 24/oct/2026: adeudo por diferencia de cortes
+
+El usuario sustituyó la reconstrucción mensual del PR #288: el corte del último
+mes pagado fija la cobertura y cada mensualidad completa avanza desde él. El adeudo
+es diferencia de meses calendario por tarifa, menos abonos y más recargos pendientes;
+no busca huecos históricos ni revisa cada mes para sumar la deuda. Septiembre de
+2026 solo es base cuando no hay cobertura. La fecha del depósito sigue separada
+del mes cubierto. Las capturas nuevas no pueden saltar mensualidades; el desglose
+mensual se genera solo al pedirlo o al acreditar el historial.
+Se conserva la validación bancaria, la transacción por vivienda y el objetivo
+absoluto de C3 posterior al commit. Sin nueva migración sobre el esquema de #288.
+Preparado sobre `88cde5f`; sin consultas/escrituras en producción.
+
 ## Cambio preparado: cuotas como fuente de Pagos (23/oct/2026)
 
 Petición del usuario: permitir pagos sin TAG y reflejarlos en Análisis. La implementación

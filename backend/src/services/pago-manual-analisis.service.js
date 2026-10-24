@@ -1,7 +1,8 @@
 'use strict';
 
 const { randomUUID } = require('crypto');
-const { BASE, RECARGO, MAX_MESES, INICIO } = require('./mensualidades-mantenimiento');
+const { BASE, RECARGO, MAX_MESES } = require('./mensualidades-mantenimiento');
+const {primerPendiente}=require('./cuotas-mantenimiento-calculo');
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const PREFIX='MJMAN:';
 const fail=message=>Object.assign(new Error(message),{status:400});
@@ -20,8 +21,6 @@ function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE}){
     const fecha=new Date(Date.UTC(anio,mes-1+i,1));
     const yy=fecha.getUTCFullYear(),mm=fecha.getUTCMonth()+1;
     if(yy>2099)throw fail('Año fuera de rango');
-    const periodo=`${yy}-${String(mm).padStart(2,'0')}-01`;
-    if(periodo<'2026-09-01')throw fail('El registro manual de mensualidades comienza en septiembre de 2026');
     periodos.push({anio:yy,mes:MESES[mm-1],numeroMes:mm});
   }
   const centavos=x=>Math.round(Number(x)*100);
@@ -74,8 +73,8 @@ function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE}){
   if(!Number.isInteger(anio)||anio<actual||anio>2098||!Number.isInteger(mes)||mes<1||mes>12)
     throw fail('El año del último mes que paga debe tener cuatro dígitos y ser igual o mayor al año actual');
   const ultimo=siguienteDelUltimo(cuotas,anio,mes);
-  const minimo=indice(2026,9),fin=indice(anio,mes);
-  const inicio=ultimo?Math.max(minimo,ultimo.indice+1):minimo;
+  const fin=indice(anio,mes);
+  const inicio=primerPendiente(cuotas);
   const meses=fin-inicio+1;
   if(meses<1)throw fail('Este mes ya está cubierto por el último pago confirmado; selecciona uno posterior');
   if(meses>MAX_MESES)throw fail('Existen más de 36 meses por cubrir. Registra los períodos en varios movimientos.');

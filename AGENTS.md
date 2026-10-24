@@ -37,9 +37,14 @@ La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:
 1. La unidad de cobro es la vivienda. Fuente financiera: `cuotas` por `casa_id`,
    tarifa `direcciones.cuota_por_cobrar` (default $300). Nunca cotizar desde C3,
    `vigencias_mantenimiento` ni remanentes del diario de acceso.
-2. Compartir el cálculo por periodo con Análisis: pendientes desde septiembre de
-   2026, incluidos meses sin fila; $50 después del día 10 por mes todavía pendiente.
-   Considerar abonos, cuotas cubiertas, condonadas y canceladas. Trabajar en centavos.
+2. Por instrucción del 24/oct/2026, calcular el adeudo por DIFERENCIA de cortes:
+   meses calendario entre el corte actual y el último corte cubierto, por tarifa,
+   menos principal abonado y más recargos pendientes. No reconstruir deuda buscando
+   huecos mes por mes, ni desde septiembre ni desde el último pago. Septiembre de
+   2026 es base SOLO sin cobertura registrada. Considerar abonos y recargos ya
+   pagados; condonaciones/cancelaciones explícitas se descuentan del importe.
+   Los renglones mensuales sirven de historial y reparto, no de lista de presencia.
+   Cada mensualidad completa avanza un mes desde el último corte; nunca desde el depósito.
 3. El reporte sigue pendiente hasta conciliación bancaria. Guardar el reparto y
    acreditar cuotas + pago + diario en una transacción con lock de vivienda.
    Si cambió tarifa/cuotas desde el reporte, detener para conciliación.
@@ -47,8 +52,9 @@ La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:
    complementos con folios distintos. No repetir recargos pagados. Máximo 36 meses
    completos por movimiento; fecha bancaria admitida desde octubre de 2026.
 5. Pagar funciona sin TAG y con C3 desconectado. Un fallo de acceso no revierte un
-   abono confirmado. Solo periodos completos y consecutivos conceden nueva cobertura;
-   octubre completo sin huecos produce el 10 de noviembre.
+   abono confirmado. Solo mensualidades completas avanzan el corte; octubre
+   completo produce el 10 de noviembre. Un último mes pagado implica cobertura
+   anterior: no volver a cobrar huecos históricos. Impedir saltos nuevos desde API.
 6. Eventos nuevos `PAGO_CUOTAS` y `CUOTA_SQL` entregan el objetivo absoluto SQL
    respaldado por cuotas. No suman meses a la fecha física. Conservar las guardas
    físicas y la idempotencia; fecha física adelantada genera CONFLICTO para revisión.

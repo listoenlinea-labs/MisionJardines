@@ -40,7 +40,7 @@ test('Condonado y cancelado no se contabilizan; no se proyectan meses futuros',(
 test('Corte anterior a septiembre 2026 no inventa mensualidades',()=>{
  assert.equal(calcular(agosto,2026,8,'2026-10-14').saldoPendiente,0);
 });
-test('Pagos adelantados a diciembre y enero conservan último mes real con corte de octubre',()=>{
+test('Un último mes pagado adelantado cubre los cortes anteriores sin buscar huecos',()=>{
  const pagos=[...agosto,
   {anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',montoPagado:300},
   {anio:2026,mes:'DICIEMBRE',estatusPago:'PAGADO',montoPagado:300},
@@ -48,8 +48,8 @@ test('Pagos adelantados a diciembre y enero conservan último mes real con corte
  ];
  const r=calcular(pagos,2026,10);
  assert.deepEqual(r.ultimoMesPagado,{mes:'ENERO',anio:2027});
- assert.equal(r.saldoPendiente,350, 'No inventa deuda futura; septiembre aún se debe');
- assert.equal(r.mesesPendientes,1);
+ assert.equal(r.saldoPendiente,0, 'El último corte pagado fija la cobertura');
+ assert.equal(r.mesesPendientes,0);
 });
 test('Anticipos confirmados se distinguen de pendientes, parciales y condonados',()=>{
  const pagos=[...agosto,
@@ -60,7 +60,7 @@ test('Anticipos confirmados se distinguen de pendientes, parciales y condonados'
  ];
  const r=calcular(pagos,2026,10);
  assert.deepEqual(r.ultimoMesPagado,{mes:'DICIEMBRE',anio:2026});
- assert.equal(r.saldoPendiente,700);
+ assert.equal(r.saldoPendiente,0);
 });
 test('Vista y endpoint exhiben último pago y saldo acumulado sin editar cobros',()=>{
  const controller=fs.readFileSync(path.join(__dirname,'../src/controllers/finanzas.controller.js'),'utf8');
