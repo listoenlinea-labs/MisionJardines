@@ -64,7 +64,44 @@
       syncBankReference();
       if (!painted) throw Error('Tu usuario no tiene vivienda asociada');
     }
-    async function loadConfig() { const d = await api('/pagos/config', { headers: headers() }); config = d.data || {}; const base=Number(config.mantenimiento?.montoBase||300); $('maintenanceRateText').textContent=money(base)+' por mensualidad · '+money(config.mantenimiento?.recargoTardio||50)+' por corte vencido pendiente'; $('maintenancePaymentHint').textContent='Se aceptan abonos y mensualidades adelantadas. Si depositaste '+money(base)+' y correspondían '+money(base+50)+', reporta el importe depositado; una vez validado, podrás cubrir el complemento con otro comprobante. La vigencia avanza al completar la mensualidad y cubrir los recargos pendientes.'; $('bankName').textContent = configText(config.banco, 'BANCO AZTECA'); $('bankHolder').textContent = configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'); $('bankAccount').textContent = configText(config.cuenta, '00002128412440'); $('bankClabe').textContent = configText(config.clabe, '127320021284124409'); $('bankCard').textContent = configText(config.tarjeta, '4027666123124884'); $('bankReference').textContent = 'Consultando vivienda…'; $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas'; $('legalText').textContent = 'El artículo 1028 del Código Civil del Estado de Jalisco dispone el pago anticipado de cuotas y prevé intereses moratorios conforme al reglamento del condominio y los límites legales. Este aviso no establece por sí mismo un recargo fijo de $50.'; syncBankReference(); updatePaymentSummary() }
+    async function loadConfig() {
+      let response;
+      try {
+        response = await api('/pagos/config', { headers: headers() });
+      } catch (error) {
+        // No mostrar datos bancarios incompletos o anteriores cuando falla el API.
+        $('bankName').textContent = 'Datos bancarios no disponibles';
+        for (const id of ['bankHolder', 'bankAccount', 'bankClabe', 'bankCard']) {
+          $(id).textContent = '—';
+          $(id).closest('.bank-row')?.querySelector('[data-copy]')?.setAttribute('disabled', '');
+        }
+        throw error;
+      }
+      config = response.data || {};
+      // Pintar primero los datos oficiales; ninguna sección decorativa debe
+      // bloquear la carga bancaria al eliminarse de la página.
+      const bankFields = {
+        bankName: configText(config.banco, 'BANCO AZTECA'),
+        bankHolder: configText(config.titular, 'MARIA DEL ROCIO BAHENA JUAREZ'),
+        bankAccount: configText(config.cuenta, '00002128412440'),
+        bankClabe: configText(config.clabe, '127320021284124409'),
+        bankCard: configText(config.tarjeta, '4027666123124884')
+      };
+      for (const [id, value] of Object.entries(bankFields)) {
+        $(id).textContent = value;
+        $(id).closest('.bank-row')?.querySelector('[data-copy]')?.removeAttribute('disabled');
+      }
+      syncBankReference();
+
+      const base = Number(config.mantenimiento?.montoBase || 300);
+      $('maintenanceRateText').textContent = money(base) + ' por mensualidad · '
+        + money(config.mantenimiento?.recargoTardio || 50) + ' por corte vencido pendiente';
+      // El texto largo maintenancePaymentHint fue eliminado voluntariamente.
+      // No volver a escribir en un elemento que no existe.
+      $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas';
+      $('legalText').textContent = 'El artículo 1028 del Código Civil del Estado de Jalisco dispone el pago anticipado de cuotas y prevé intereses moratorios conforme al reglamento del condominio y los límites legales. Este aviso no establece por sí mismo un recargo fijo de $50.';
+      updatePaymentSummary();
+    }
     async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
     async function loadReceipts({ preserveOnError = false } = {}) {
       try {
