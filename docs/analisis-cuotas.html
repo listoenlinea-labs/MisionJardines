@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261022-recibos-historial">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261024-exencion-switch-1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -117,12 +117,18 @@
     <div id="houseHistoryDebts" class="history-debts"></div>
   </div>
   <aside id="houseTariffPanel" class="finance-pay-dialog history-tariff-panel" hidden aria-label="Modificar cuota de mantenimiento">
-    <div class="finance-pay-heading"><div><span class="eyebrow">TARIFA POR VIVIENDA</span><h2 id="houseTariffTitle">Modificar cuotas</h2><p id="houseTariffAddress" class="hint"></p></div><button type="button" class="soft" id="houseTariffClose">Cerrar ×</button></div>
+    <div class="finance-pay-heading"><div><span class="eyebrow">TARIFA POR VIVIENDA</span><h2 id="houseTariffTitle">Modificar cuotas</h2><p id="houseTariffAddress" class="hint"></p><div id="houseTariffSavedState" class="history-tariff-save-indicator" data-state="unknown" role="status" aria-live="polite"><span class="history-tariff-status-dot" aria-hidden="true"></span><span id="houseTariffSavedText">Consultando estado…</span></div></div><button type="button" class="soft" id="houseTariffClose">Cerrar ×</button></div>
     <form id="houseTariffForm">
       <label class="history-tariff-label" for="houseTariffInput">Cuota mensual de mantenimiento (MXN)
         <input id="houseTariffInput" name="cuotaPorCobrar" type="number" min="1" max="10000" step="1" inputmode="numeric" required placeholder="300">
       </label>
-      <label class="history-tariff-label"><input id="houseTariffNoFee" type="checkbox"> Exentar recargo de $50 por mora desde el mes actual y en meses futuros</label>
+      <label class="history-tariff-toggle-row" for="houseTariffNoFee">
+        <span class="history-tariff-toggle-copy"><strong>Exentar recargo por mora</strong><small>$50 · Desde este mes y en meses futuros</small></span>
+        <span class="history-tariff-toggle-control">
+          <input id="houseTariffNoFee" type="checkbox">
+          <span class="history-tariff-toggle-track" aria-hidden="true"></span>
+        </span>
+      </label>
       <p class="hint">Se aplicará a esta vivienda en el cálculo de mensualidades y adeudos. Los pagos confirmados, recibos y TAGs no se modifican.</p>
       <p id="houseTariffStatus" class="hint" role="status" aria-live="polite"></p>
       <button class="primary" id="houseTariffSave" type="submit">Guardar cuota mensual</button>
@@ -130,4 +136,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261022-calle-pagadas-total" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261024-adeudos-creditos" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261022-calle-pagadas-total" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261024-exencion-switch-1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

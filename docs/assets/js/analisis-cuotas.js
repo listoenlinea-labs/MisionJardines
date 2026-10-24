@@ -427,6 +427,32 @@ function renderHouses(){
  let currentHistoryHouseId=null;
  let historyMovements=[];
  const tariffPanel=$('houseTariffPanel');
+ let savedTariffSettings=null;
+ const houseHasNoFee=house=>{
+  const mes=todayC3().slice(0,7);
+  return Array.isArray(house?.exencionesRecargo)&&house.exencionesRecargo.some(r=>r?.desde<=mes&&(!r.hasta||r.hasta>=mes));
+ };
+ function paintTariffSavedIndicator(state){
+  const badge=$('houseTariffSavedState');
+  const labels={exempt:'Exención guardada',active:'Recargo activo · Guardado',pending:'Cambios sin guardar',unknown:'Sin verificar'};
+  badge.dataset.state=state;
+  $('houseTariffSavedText').textContent=labels[state]||labels.unknown;
+ }
+ function syncTariffIndicator(){
+  if(!savedTariffSettings||currentHistoryHouseId!==savedTariffSettings.casaId){
+   paintTariffSavedIndicator('unknown');return;
+  }
+  const changed=Number($('houseTariffInput').value)!==savedTariffSettings.tarifa||
+   $('houseTariffNoFee').checked!==savedTariffSettings.sinRecargo;
+  paintTariffSavedIndicator(changed?'pending':savedTariffSettings.sinRecargo?'exempt':'active');
+ }
+ function showSavedTariff(house){
+  savedTariffSettings={casaId:Number(house.casaId),tarifa:Number(house.tarifaMensual||300),sinRecargo:houseHasNoFee(house)};
+  $('houseTariffAddress').textContent=house.calle+' '+house.numero;
+  $('houseTariffInput').value=String(savedTariffSettings.tarifa);
+  $('houseTariffNoFee').checked=savedTariffSettings.sinRecargo;
+  syncTariffIndicator();
+ }
  function conceptTitle(type){return {MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuotas extraordinarias',CASA_CLUB:'Casa club'}[type]||type;}
  function debtPeriod(value){
   const match=/^(\d{4})-(\d{2})/.exec(String(value||''));
@@ -489,9 +515,7 @@ function renderHouses(){
   if(!currentHistoryHouseId||activeConcept!=='MANTENIMIENTO')return;
   const h=data?.viviendas?.find(x=>Number(x.casaId)===currentHistoryHouseId);
   if(!h)return;
-  $('houseTariffAddress').textContent=h.calle+' '+h.numero;
-  $('houseTariffInput').value=String(h.tarifaMensual||300);
-  $('houseTariffNoFee').checked=(h.exencionesRecargo||[]).some(r=>r.desde<=todayC3().slice(0,7)&&(!r.hasta||r.hasta>=todayC3().slice(0,7)));
+  showSavedTariff(h);
   $('houseTariffStatus').textContent='';
   tariffPanel.hidden=false;
   $('houseTariffInput').focus();
@@ -500,6 +524,8 @@ function renderHouses(){
   tariffPanel.hidden=true;
   $('houseTariffOpen').focus();
  });
+ $('houseTariffInput').addEventListener('input',syncTariffIndicator);
+ $('houseTariffNoFee').addEventListener('change',syncTariffIndicator);
  $('houseTariffForm').addEventListener('submit',async event=>{
   event.preventDefault();
   const casaId=currentHistoryHouseId;
@@ -512,16 +538,29 @@ function renderHouses(){
   boton.disabled=true;
   $('houseTariffStatus').textContent='Guardando cuota de la vivienda…';
   try{
-   await request('/viviendas/'+casaId+'/cuota-por-cobrar',{cuotaPorCobrar:cuota,sinRecargo:$('houseTariffNoFee').checked},'PATCH');
-   await load();
+   const sinRecargo=$('houseTariffNoFee').checked;
+   await request('/viviendas/'+casaId+'/cuota-por-cobrar',{cuotaPorCobrar:cuota,sinRecargo},'PATCH');
+   // Solo mostrar «guardado» cuando la nueva lectura de la API coincida con lo enviado.
+   const actualizado=await load();
    if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
+   if(!actualizado){
+    paintTariffSavedIndicator('unknown');
+    $('houseTariffStatus').textContent='Se envió el cambio, pero no se pudo comprobar al recargar. Vuelve a abrir para verificar.';
+    return;
+   }
    const foco=historyReturnFocus;
    await openHouseHistory(casaId,foco);
+   if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
    tariffPanel.hidden=false;
-   const casaActual=data.viviendas.find(h=>Number(h.casaId)===casaId);
-   $('houseTariffAddress').textContent=(casaActual?.calle||'')+' '+(casaActual?.numero||'');
-   $('houseTariffInput').value=String(cuota);
-   $('houseTariffStatus').textContent='Tarifa de '+fmt(cuota)+' guardada. Se actualizó el adeudo sin borrar pagos.';
+   const casaActual=data?.viviendas?.find(h=>Number(h.casaId)===casaId);
+   const confirmado=Boolean(casaActual)&&Number(casaActual.tarifaMensual)===cuota&&houseHasNoFee(casaActual)===sinRecargo;
+   if(casaActual)showSavedTariff(casaActual);
+   if(confirmado){
+    $('houseTariffStatus').textContent='Cambios guardados y verificados.';
+   }else{
+    paintTariffSavedIndicator('unknown');
+    $('houseTariffStatus').textContent='No se pudo confirmar la configuración guardada. Vuelve a consultar esta vivienda.';
+   }
    $('houseTariffInput').focus();
   }catch(error){$('houseTariffStatus').textContent=error.message;}
   finally{boton.disabled=false;}
