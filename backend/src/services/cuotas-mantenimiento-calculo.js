@@ -73,9 +73,14 @@ function contextoCuotas(cuotas,fecha,tarifa=BASE,exencionesRecargo=[]){
   if(tarifa===10&&n===2026*12+9&&n<=ultimoVencido&&c.origenImportacion==='PRUEBA_10_PESOS'&&
    cents(c.montoCuota)===1000&&cents(c.recargo)===0)exencionPrueba=RECARGO*100;
  }
- let mesesExentos=0;
- for(let n=inicio;n<=ultimoVencido;n++)if(require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)))mesesExentos++;
- const recargo=Math.max(0,(vencidos-exencionesVencidas-mesesExentos)*RECARGO*100-recargosAplicados-exencionPrueba);
+ // Calcular el recargo POR PERIODO. Evita restar dos veces exenciones,
+ // pagos de mora anteriores o abonos de otro mes.
+ const mapaCuotas=new Map(cuotas.map(c=>[indice(c),c]));
+ let recargo=0;
+ for(let n=inicio;n<=ultimoVencido;n++){
+  const exento=require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n));
+  recargo+=estadoPeriodo(mapaCuotas.get(n),n,fecha,tarifa,exento).recargoPendiente;
+ }
  const principal=Math.max(0,(meses-exenciones)*tarifa*100-principalAplicado);
  const saldoParcial=parcial?Math.max(0,cents(parcial.montoPagado)-recargoAbonado(parcial,tarifa)):0;
  return {fuente:'CUOTAS',base:tarifa,tarifa,recargo:recargo/100,adeudoTotal:(principal+recargo)/100,
