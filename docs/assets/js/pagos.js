@@ -248,9 +248,24 @@
       updatePreview();
       if (!date) { $('summaryLate').textContent = 'Selecciona fecha'; return; }
       try {
-        const result = await api('/pagos/cotizacion?fechaOperacion=' + encodeURIComponent(date), { headers: headers() });
+        const hora = normalizeTime($('operationTime').value);
+        const result = await api('/pagos/cotizacion?fechaOperacion=' + encodeURIComponent(date)
+          + '&horaOperacion=' + encodeURIComponent(hora), { headers: headers() });
         if (revision !== quoteRevision || paymentType !== 'MANTENIMIENTO') return;
-        quote = { ...result.data, minimoReporte: result.data.minimoReporte ?? result.data.minimo, fechaOperacion: date };
+        // El comprobante BBVA puede mostrar el día operativo SPEI (26), mientras
+        // el movimiento ocurrió viernes 23 después de las 18:00.
+        const fechaReal = result.data.fechaOperacionReal || date;
+        const ajusteSpei = !!result.data.ajusteSpei;
+        if (ajusteSpei && fechaReal !== date) {
+          $('operationDate').value = fechaReal;
+          $('operationDate').dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        quote = { ...result.data, minimoReporte: result.data.minimoReporte ?? result.data.minimo, fechaOperacion: fechaReal };
+        const fechaLegible = fecha => window.MJDateDisplay?.format?.(fecha) || fecha;
+        const avisoSpei = ajusteSpei
+          ? 'BBVA muestra ' + fechaLegible(date) + ' como día operativo SPEI. La transferencia ocurrió el '
+            + fechaLegible(fechaReal) + ' después de las 18:00. Esta fecha será la usada para reportar; el depósito aún requiere verificación bancaria.'
+          : '';
         if (quote.modoPrueba) {
           $('summaryBase').textContent = money(quote.minimo);
           $('summaryLate').textContent = money(0);
@@ -260,7 +275,8 @@
           $('amount').min = '10';
           $('amount').max = '10';
           $('officialConcept').value = 'Prueba controlada · abono de mantenimiento octubre 2026 · $10.00';
-          $('paymentPreview').textContent = 'Vivienda de prueba: se acepta únicamente un comprobante bancario real de $10.00. La validación sigue siendo obligatoria.';
+          $('paymentPreview').textContent = (avisoSpei ? avisoSpei + ' ' : '')
+            + 'Vivienda de prueba: se acepta únicamente un comprobante bancario real de $10.00. La validación sigue siendo obligatoria.';
           return;
         }
         $('amount').removeAttribute('max');
@@ -271,6 +287,7 @@
         $('ruleAmount').textContent = money(quote.minimo);
         $('amount').min = String(quote.minimoReporte);
         updatePreview();
+        if (avisoSpei) $('paymentPreview').textContent = avisoSpei + ' ' + $('paymentPreview').textContent;
       } catch (e) {
         if (revision !== quoteRevision) return;
         $('summaryLate').textContent = 'No disponible';
