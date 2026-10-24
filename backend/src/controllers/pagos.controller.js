@@ -11,6 +11,7 @@ const {estadoCargos}=require('../services/cargos-extraordinarios.service');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
 const {fechaMexico}=require('../services/vigencia-calculo');
 const {validarOperacion}=require('../services/mensualidades-mantenimiento');
+const {resolverFechaCapturada}=require('../services/fecha-operativa-spei.service');
 const { generarSiguienteFolio } = require('../services/folios.service');
 const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.service');
 
@@ -658,16 +659,18 @@ async function cotizacionMantenimiento(req,res) {
     try {
         if (!req.usuario.casaId) return res.status(400).json({ ok:false, message:'Selecciona una vivienda' });
         const hoy = fechaMexico();
-        if (typeof req.query.fechaOperacion === 'string' && req.query.fechaOperacion > hoy && /^\d{4}-\d{2}-\d{2}$/.test(req.query.fechaOperacion)) {
-            return res.status(400).json({ok:false,message:'El comprobante indica ' + req.query.fechaOperacion + ', posterior a hoy (' + hoy + ') en México. Comprueba la fecha del depósito.'});
-        }
+        const resuelta = resolverFechaCapturada(req.query.fechaOperacion, req.query.horaOperacion);
+        if (!resuelta.ok) return res.status(400).json({ok:false,message:resuelta.mensaje});
+        const fechaReal = validarOperacion(resuelta.fechaOperacion, hoy);
         const pruebaDiez = await esPruebaDiez(req);
-        if (pruebaDiez) validarOperacion(req.query.fechaOperacion, hoy);
         const data = pruebaDiez
           ? {base:350,recargo:0,minimo:10,minimoReporte:10,saldoParcial:0,fechaFinalC3:'—',modoPrueba:true}
           : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
-              recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
+              recargosService.contexto(req.usuario.casaId, fechaReal, transaction));
         data.fechaHoy = hoy;
+        data.fechaOperacionReal = fechaReal;
+        data.fechaComprobante = resuelta.fechaComprobante;
+        data.ajusteSpei = resuelta.ajusteSpei;
         res.setHeader('Cache-Control','private, no-store');
         return res.json({ ok:true, data });
     } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible leer el C3 para calcular recargos. Intenta nuevamente.' }); }
