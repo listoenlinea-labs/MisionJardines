@@ -15,6 +15,8 @@
       throw error;
     } return d }
     const money = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+    // Solo visual: tarjetas de resumen y recibos sin centavos; no redondea los datos guardados ni los importes bancarios.
+    const moneyCard = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
     const configText = (value, fallback) => {
       const text = String(value ?? '').trim();
       return text && !/^[—–-]+$/.test(text) ? text : fallback;
@@ -128,7 +130,7 @@
       const favor=Number(item.saldoFavor||0);
       const ultimo=item.ultimoMesPagado;
       const periodo=ultimo?.mes?ultimo.mes+' '+ultimo.anio:'Sin pago';
-      const vals=[['Estado',deuda>0?'Pendiente':'Al corriente'],['Último mes pagado',paymentType==='CASA_CLUB'?'No aplica':paymentType==='EXTRAORDINARIO'&&!ultimo?.mes?'Sin pago':periodo],['Saldo pendiente',money(deuda)],['Saldo a favor',money(favor)]];
+      const vals=[['Estado',deuda>0?'Pendiente':'Al corriente'],['Último mes pagado',paymentType==='CASA_CLUB'?'No aplica':paymentType==='EXTRAORDINARIO'&&!ultimo?.mes?'Sin pago':periodo],['Saldo pendiente',moneyCard(deuda)],['Saldo a favor',moneyCard(favor)]];
       $('paymentStatusCards').innerHTML=vals.map(([label,value])=>'<div class="ps-card"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('');
     }
     function renderClub(){
@@ -169,7 +171,7 @@
         '</strong><p><b class="receipt-period-label">'+esc(period.label)+'</b><br>'+esc(p.concepto||'Pago registrado')+'<br>'+
         esc((p.casa?.calleCorrecta || p.calleSnapshot))+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
         '</span><span class="pill">'+esc(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':p.tipoPago==='CASA_CLUB'?'Casa club':'Mantenimiento')+
-        '</span></div></div><div class="receipt-side"><b>'+money(p.monto)+'</b><button class="receipt-view-btn" type="button" data-receipt-detail="'+Number(p.id)+'">Ver detalle</button></div></article>';
+        '</span></div></div><div class="receipt-side"><b>'+moneyCard(p.monto)+'</b><button class="receipt-view-btn" type="button" data-receipt-detail="'+Number(p.id)+'">Ver detalle</button></div></article>';
     }
     function renderReceipts(items){
       if(items)receiptItems=Array.isArray(items)?items:[];
