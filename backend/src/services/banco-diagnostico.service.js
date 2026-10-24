@@ -59,6 +59,7 @@ function evaluar(pago,avisos,autenticados){
    diagnosticoReferencia:{
      capturadaComoReferencia:!!referenciaFormulario,
      reconocidaEnOcr:!!referenciaOcr,
+     extraidaDelAvisoRelacionado:avisoConReferencia.length>0,
      coincideFormularioOcr:!!(referenciaFormulario&&referenciaOcr&&referenciaFormulario===referenciaOcr),
      coincideOcrAviso:!!(referenciaOcr&&avisoConReferencia.some(a=>ids.identificadoresAviso(a).referencia===referenciaOcr)),
      coincideFormularioAviso:!!(referenciaFormulario&&avisoConReferencia.some(a=>ids.identificadoresAviso(a).referencia===referenciaFormulario))
