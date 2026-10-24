@@ -36,24 +36,30 @@ function evaluar(pago,avisos,autenticados){
   'Titan respondió, pero ninguna notificación reciente superó las comprobaciones de remitente y autenticación. No se puede confirmar ni rechazar el depósito.',base);
  const comprobante=ids.identificadoresPago(pago);
  const tiposComprobante=ids.disponibles(comprobante);
- const tiposAviso=Array.from(new Set(autenticados.flatMap(a=>ids.disponibles(ids.identificadoresAviso(a)))));
  const nombres={claveRastreo:'clave de rastreo',referencia:'referencia',folio:'folio de operación'};
- const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
  const referenciaFormulario=ids.referencia(pago?.folioOperacion);
  const referenciaOcr=comprobante.referencia||'';
  // No revelar al residente si una referencia existe en pagos de OTRA
  // vivienda: solo comparar contra avisos que ya cumplen importe, casa, cuenta
  // receptora y fecha del comprobante (sin exigir aún el identificador).
- const avisosRelacionados=autenticados.filter(a=>banco.coincideDatosBancarios(pago,a));
+ const avisosConCuenta=autenticados.filter(a=>banco.chequeosAviso(pago,a).cuenta);
+ const avisosConMonto=avisosConCuenta.filter(a=>banco.chequeosAviso(pago,a).importe);
+ const avisosConFecha=avisosConMonto.filter(a=>banco.chequeosAviso(pago,a).fecha);
+ const avisosRelacionados=avisosConFecha.filter(a=>banco.chequeosAviso(pago,a).vivienda);
+ const filtroBloqueante=!avisosConCuenta.length?'DESTINO':!avisosConMonto.length?'IMPORTE':!avisosConFecha.length?'FECHA':!avisosRelacionados.length?'VIVIENDA':'IDENTIFICADOR';
+ const tiposAviso=Array.from(new Set(avisosRelacionados.flatMap(a=>ids.disponibles(ids.identificadoresAviso(a)))));
+ const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
  const avisoConReferencia=avisosRelacionados.filter(a=>ids.identificadoresAviso(a).referencia);
  // Comparaciones booleanas únicamente: no copiar números de referencia ni
  // claves de rastreo del buzón a las respuestas visibles del residente.
  const auditoria={...base,
+   cotejoAvisos:{cuenta:avisosConCuenta.length,importe:avisosConMonto.length,fecha:avisosConFecha.length,vivienda:avisosRelacionados.length,filtroBloqueante},
    tiposComprobante:tiposComprobante.map(t=>nombres[t]),
    tiposAviso:tiposAviso.map(t=>nombres[t]),
    diagnosticoReferencia:{
      capturadaComoReferencia:!!referenciaFormulario,
      reconocidaEnOcr:!!referenciaOcr,
+     extraidaDelAvisoRelacionado:avisoConReferencia.length>0,
      coincideFormularioOcr:!!(referenciaFormulario&&referenciaOcr&&referenciaFormulario===referenciaOcr),
      coincideOcrAviso:!!(referenciaOcr&&avisoConReferencia.some(a=>ids.identificadoresAviso(a).referencia===referenciaOcr)),
      coincideFormularioAviso:!!(referenciaFormulario&&avisoConReferencia.some(a=>ids.identificadoresAviso(a).referencia===referenciaFormulario))
@@ -61,7 +67,10 @@ function evaluar(pago,avisos,autenticados){
  };
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
-  const diagnostico=tiposEnAmbas.length
+  const problemas={DESTINO:'Ningún aviso autenticado pasó la comprobación de cuenta destino.',IMPORTE:'No se encontró importe compatible en los avisos con cuenta destino correcta.',FECHA:'No hay fecha bancaria compatible en los avisos con importe y cuenta coincidentes.',VIVIENDA:'Ningún aviso con importe, cuenta y fecha compatibles identifica esta vivienda.'};
+  const diagnostico=filtroBloqueante!=='IDENTIFICADOR'
+   ? problemas[filtroBloqueante]+' Todavía no se ha comparado la referencia con un aviso de este pago.'
+   : tiposEnAmbas.length
    ? 'Ambas fuentes contienen '+tiposEnAmbas.map(t=>nombres[t]).join(' y ')+
      ', pero el OCR y el aviso autenticado no aportaron exactamente el mismo valor normalizado. Revisa la lectura, sin cambiar la referencia del depósito.'
    : tiposComprobante.length&&!tiposAviso.length
