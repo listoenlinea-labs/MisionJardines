@@ -19,6 +19,7 @@ const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
 const recargosService = require('../services/recargos-mantenimiento.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
+const idsBanco = require('../services/identificadores-bancarios.service');
 const { verificarPosibilidad } = require('../services/verificar-comprobante-identificadores.service');
 const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
@@ -149,10 +150,10 @@ async function listarMisPagos(req, res) {
                 }
             ],
             attributes: {
-                exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData']
+                exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData', 'identificadoresVerificados']
             },
             order: [['creadoEn', 'DESC']],
-            limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] }
+            limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData', 'identificadoresVerificados'] }
         });
 
         return res.json({
@@ -311,6 +312,12 @@ async function reportarPago(req, res) {
             exigirCampos: !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario.rol)
         });
         textoOcr = comprobado.texto;
+        // Conservar lo que leyó y validó el OCR DEL SERVIDOR en el momento
+        // del reporte. No depender de volver a interpretar el texto meses
+        // después, cuando las expresiones regulares puedan haber cambiado.
+        const identificadoresVerificados = idsBanco.almacenarVerificados(
+            comprobado.extraido, folioOperacion
+        );
 
         const existente = await PagoReportado.findOne({
             where: { folioOperacion }
@@ -457,6 +464,7 @@ async function reportarPago(req, res) {
             comprobanteNombre: comprobanteNombre || null,
             comprobanteMime: comprobanteMime || 'image/jpeg',
             textoOcr: textoOcr || null,
+            identificadoresVerificados,
             estatus: 'PENDIENTE_VALIDACION',
             verificacionBancaria: {version:1,etapa:'RECIBIDO',detalle:'Comprobante recibido. Se extrajeron los datos bancarios y se programó su conciliación con Titan.',fechaRevision:null,avisosConsultados:0,avisosAutenticados:0,coincidencias:0},
             reciboFolio: folio,
@@ -622,7 +630,7 @@ async function inicializarVigencia(req, res) {
 }
 async function listarPendientes(req, res) {
     try {
-        const rows = await PagoReportado.findAll({ where: { estatus: 'PENDIENTE_VALIDACION' }, include: [{ model: Casa, as: 'casa', required: false, attributes: ['id', 'calle', 'calleCorrecta', 'numero'] }], order: [['creadoEn', 'ASC']], limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] } });
+        const rows = await PagoReportado.findAll({ where: { estatus: 'PENDIENTE_VALIDACION' }, include: [{ model: Casa, as: 'casa', required: false, attributes: ['id', 'calle', 'calleCorrecta', 'numero'] }], order: [['creadoEn', 'ASC']], limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData', 'identificadoresVerificados'] } });
         return res.json({ ok: true, data: rows.map(row => pagoSeguro(req, row)) });
     } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar los comprobantes pendientes' }); }
 }
