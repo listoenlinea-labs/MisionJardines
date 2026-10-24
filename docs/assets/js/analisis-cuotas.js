@@ -491,7 +491,7 @@ function renderHouses(){
   if(!h)return;
   $('houseTariffAddress').textContent=h.calle+' '+h.numero;
   $('houseTariffInput').value=String(h.tarifaMensual||300);
-  $('houseTariffNoFee').checked=(h.exencionesRecargo||[]).some(r=>r.desde<=new Date().toISOString().slice(0,7)&&(!r.hasta||r.hasta>=new Date().toISOString().slice(0,7)));
+  $('houseTariffNoFee').checked=(h.exencionesRecargo||[]).some(r=>r.desde<=todayC3().slice(0,7)&&(!r.hasta||r.hasta>=todayC3().slice(0,7)));
   $('houseTariffStatus').textContent='';
   tariffPanel.hidden=false;
   $('houseTariffInput').focus();
