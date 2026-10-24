@@ -21,6 +21,23 @@ const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
+const CORREO_PRUEBA_DIEZ = 'condomino.prueba@example.invalid';
+async function esPruebaDiez(req) {
+    // Siempre consultar el usuario autenticado en MySQL; nunca confiar en un email enviado por el cliente.
+    const usuarioId = Number(req.usuario?.usuarioId);
+    const casaId = Number(req.usuario?.casaId);
+    if (!usuarioId || !casaId) return false;
+    const [usuario, casa] = await Promise.all([
+        Usuario.findByPk(usuarioId, { attributes: ['id', 'correo'] }),
+        Casa.findByPk(casaId, { attributes: ['id', 'calle', 'numero'] })
+    ]);
+    return String(usuario?.correo || '').trim().toLowerCase() === CORREO_PRUEBA_DIEZ
+        && String(casa?.calle || '').trim().toLowerCase() === 'prueba'
+        && String(casa?.numero || '').trim().toUpperCase() === 'TEST-001';
+}
+
+
+
 
 function nombreCompleto(usuario) {
     return [usuario?.nombre, usuario?.apellidoPaterno, usuario?.apellidoMaterno]
@@ -310,6 +327,7 @@ async function reportarPago(req, res) {
             });
         }
 
+        const pruebaDiez = tipoPago === 'MANTENIMIENTO' && await esPruebaDiez(req);
         let cuotaExtraordinaria = null;
         let cargoExtraordinario = null;
         let reservaCasaClub = null;
@@ -352,14 +370,24 @@ async function reportarPago(req, res) {
             // Validar en el backend, no confiar en importes del navegador ni OCR.
             // El recibo solo registra una solicitud: hasta validar contra el banco
             // no se activan TAGs físicos.
-            transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
-            const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
-            cortesRecargo = rule.cortesRecargo;
-            requerido = rule.total;
-            recargo = rule.recargo;
-            concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
-                '(desde octubre de 2026, pendientes primero). ' +
-                (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
+            if (pruebaDiez) {
+                if (centavos(monto) !== 1000) return res.status(400).json({ok:false,message:'Prueba: solo se acepta un comprobante de $10.00.'});
+                const previo = await PagoReportado.findOne({where:{casaId,tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION'}});
+                if (previo) return res.status(409).json({ok:false,message:'La vivienda ya tiene un comprobante en revisión.'});
+                requerido = 10;
+                recargo = 0;
+                cortesRecargo = [];
+                concepto = 'PRUEBA CONTROLADA: Abono de mantenimiento de $10.00, octubre 2026. Requiere validación bancaria.';
+            } else {
+                transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
+                const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
+                cortesRecargo = rule.cortesRecargo;
+                requerido = rule.total;
+                recargo = rule.recargo;
+                concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
+                    '(desde octubre de 2026, pendientes primero). ' +
+                    (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
+            }
         }
 
         if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
@@ -618,7 +646,7 @@ async function obtenerComprobante(req, res) {
 async function cotizacionMantenimiento(req,res) {
     try {
         if (!req.usuario.casaId) return res.status(400).json({ ok:false, message:'Selecciona una vivienda' });
-        const data = await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
+        const data = await esPruebaDiez(req) ? {base:350,recargo:0,minimo:10,minimoReporte:10,saldoParcial:0,fechaFinalC3:'—',modoPrueba:true} : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
             recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
         res.setHeader('Cache-Control','private, no-store');
         return res.json({ ok:true, data });
