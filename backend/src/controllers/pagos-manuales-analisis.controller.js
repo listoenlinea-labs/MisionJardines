@@ -80,7 +80,7 @@ async function cotizarPagoVivienda(req,res){
   try{
     const casaId=Number(req.params.casaId);
     if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
-    const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','cuotaPorCobrar']});
+    const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero','cuotaPorCobrar','exencionesRecargo']});
     if(!casa)throw fail(404,'Vivienda no encontrada');
     const cuotas=await Cuota.findAll({where:{casaId}});
     const tarifa=tarifaParaCasa(casa);
