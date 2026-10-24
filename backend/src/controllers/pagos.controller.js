@@ -18,6 +18,7 @@ const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.s
 const vigenciaService = require('../services/vigencia-mantenimiento.service');
 const { centavos } = require('../services/vigencia-calculo');
 const recargosService = require('../services/recargos-mantenimiento.service');
+const pagoPruebaService = require('../services/pago-prueba-test001.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
 const idsBanco = require('../services/identificadores-bancarios.service');
 const { verificarPosibilidad } = require('../services/verificar-comprobante-identificadores.service');
@@ -654,7 +655,14 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
                   fechaRevision:new Date().toISOString(),
                   detalle:'Pago confirmado: coincidieron los identificadores, el importe, la fecha bancaria, la cuenta y la vivienda en una notificación bancaria autenticada.'},
                 observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria autenticada.' }, { transaction });
-            if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') await recargosService.confirmar(pago, transaction);
+            if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') {
+                await recargosService.confirmar(pago, transaction);
+                // SOLO Prueba TEST-001: completar la cuota SQL de OCTUBRE con
+                // el depósito real de $10 cuando quedan exactamente $10.
+                // Misma transacción: ante cualquier inconsistencia no se valida
+                // el reporte ni se modifica la cuota.
+                await pagoPruebaService.aplicarSiCorresponde(pago, transaction);
+            }
             const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
                 ? await vigenciaService.actualizar(pago.casaId, null, transaction, { origen: 'PAGO', registro: pago }) : null;
             if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
