@@ -1084,6 +1084,44 @@
   .payments-v2 #paymentForm .form-row{grid-template-columns:minmax(0,1fr)}
   .payments-v2 #paymentForm input[type="date"],.payments-v2 #paymentForm input[type="time"]{font-size:16px}
 }
+
+/* Ver detalle: seguimiento real de conciliación, estructura compacta y adaptable. */
+.receipt-details-modal .receipt-check-header{padding:15px 17px;border:1px solid #e6dfef;border-radius:15px;background:linear-gradient(110deg,#faf6ff,#f9fbff);margin:12px 0 16px}
+.receipt-check-top{display:flex;gap:13px;justify-content:space-between;align-items:start}
+.receipt-check-top h3{margin:5px 0;font-size:17px;line-height:1.3;color:#263249}
+.receipt-check-top p{margin:5px 0 0;font-size:12px;line-height:1.6;color:#617087;max-width:62ch;overflow-wrap:anywhere}
+.receipt-check-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;font-size:10px;color:#6d7c92}
+.receipt-check-meta span{border:1px solid #e6e4ed;border-radius:99px;padding:5px 9px;background:#fff}
+.receipt-check-refresh{flex:0 0 auto;border:1px solid #ddcbed;background:#fff;color:#7952a2;padding:9px 12px;border-radius:10px;font-weight:750;font-size:11px;cursor:pointer}
+.receipt-check-refresh:disabled{opacity:.55;cursor:wait}
+.receipt-check-refresh:focus-visible{outline:2px solid #c7a5eb;outline-offset:2px}
+.receipt-timeline{display:grid;gap:0;list-style:none;margin:10px 0 20px;padding:0 2px}
+.receipt-timeline li{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:0 0 18px}
+.receipt-timeline li:last-child{padding-bottom:0}
+.receipt-timeline li:not(:last-child)::before{content:"";position:absolute;top:23px;bottom:0;left:16px;width:2px;background:#e5e8ef}
+.receipt-step-circle{position:relative;z-index:1;display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:#f2f4f8;color:#8490a2;border:1px solid #e2e5ed;font-size:13px;font-weight:800}
+.receipt-timeline li.done .receipt-step-circle{background:#eaf8f0;border-color:#bee4cd;color:#247e52}
+.receipt-timeline li.current .receipt-step-circle{background:#f4eaff;border-color:#ddc4f2;color:#714c9a;box-shadow:0 0 0 3px #f6effc}
+.receipt-timeline li.failed .receipt-step-circle{background:#fff0ef;border-color:#f2c7c7;color:#b34c55}
+.receipt-step-content{padding:2px 0 5px;min-width:0}
+.receipt-step-content strong{display:block;font-size:13px;color:#29364d}
+.receipt-step-content p{font-size:11px;line-height:1.6;color:#748096;margin:4px 0 0;overflow-wrap:anywhere}
+.receipt-timeline li.failed .receipt-step-content strong{color:#ad4450}
+.receipt-detail-sections{display:grid;gap:14px}
+.receipt-detail-section{border:1px solid #e8eaf0;border-radius:14px;padding:15px;background:#fff}
+.receipt-detail-section h3{margin:0 0 11px;font-size:13px;color:#3f4b65}
+.receipt-details-modal .receipt-detail-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin:0}
+.receipt-details-modal .receipt-detail-field{min-width:0;padding:11px 12px;border-radius:10px;background:#fafbfd}
+.receipt-details-modal .receipt-detail-field strong{font-size:12px;font-weight:750;line-height:1.45;word-break:break-word}
+.receipt-details-modal .receipt-detail-field small{font-size:10px}
+.receipt-details-modal .receipt-proof-block{margin-top:16px}
+.receipt-details-modal .receipt-check-warning{margin:0 0 16px;padding:12px 14px;background:#fff6f4;border:1px solid #f3cec8;border-radius:12px;color:#a04342;font-size:12px;line-height:1.65}
+@media(max-width:700px){.receipt-details-modal .receipt-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-check-top{flex-wrap:wrap}.receipt-check-refresh{width:100%}}
+@media(max-width:470px){.receipt-details-modal .receipt-detail-grid{grid-template-columns:1fr 1fr;gap:7px}.receipt-details-modal .receipt-detail-section{padding:11px}.receipt-details-modal .receipt-detail-field{padding:10px}.receipt-timeline li{gap:9px}.receipt-check-top h3{font-size:16px}}
+/* Safari iOS ignora frecuentemente min-width en controles nativos de hora:
+   para una hora reconocida por OCR basta mostrar HH:MM:SS en un campo de texto readonly. */
+#paymentForm #operationTime{display:block!important;box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;font-size:16px!important;font-variant-numeric:tabular-nums;text-align:left}
+#paymentForm .form-row>div:has(#operationTime){min-width:0;overflow:hidden}
 </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -1274,7 +1312,7 @@
             </div>
             <div class="form-row">
               <div><label>Fecha del depósito *</label><input id="operationDate" type="date" required readonly></div>
-              <div><label>Hora *</label><input id="operationTime" type="time" step="1" required readonly></div>
+              <div><label>Hora *</label><input id="operationTime" type="text" inputmode="none" maxlength="8" placeholder="HH:MM:SS" required readonly aria-label="Hora del depósito detectada automáticamente"></div>
             </div>
             <div><label>Concepto oficial del recibo</label><input id="officialConcept" readonly></div>
             <div class="form-row">
@@ -1373,7 +1411,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261023-referencia-bancaria-1"></script>
-  <script src="assets/js/pagos.js?v=20261023-identificadores-1"></script>
+  <script src="assets/js/pagos.js?v=20261023-seguimiento-bancario-1"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
