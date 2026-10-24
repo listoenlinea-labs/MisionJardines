@@ -95,7 +95,7 @@
 
       const base = Number(config.mantenimiento?.montoBase || 300);
       $('maintenanceRateText').textContent = money(base) + ' por mensualidad · '
-        + money(config.mantenimiento?.recargoTardio || 50) + ' por corte vencido pendiente';
+        + money(config.mantenimiento?.recargoTardio ?? 50) + ' por corte vencido pendiente';
       // El texto largo maintenancePaymentHint fue eliminado voluntariamente.
       // No volver a escribir en un elemento que no existe.
       $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas';
