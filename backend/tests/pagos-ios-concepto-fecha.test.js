@@ -20,7 +20,7 @@ test('concepto no acepta otra vivienda ni otra calle', () => {
 test('conceptos normales siguen correspondiendo a sus viviendas', () => {
   assert.equal(banco.perteneceAVivienda({ casa: { calle: 'Gardenias', numero: '5' } }, { concepto: 'GARDENIAS 5' }), true);
 });
-test('fechas futuras siguen rechazadas también en pruebas de diez pesos', () => {
+test('el cálculo de recargos no se adelanta a fechas futuras, aunque el reporte pueda conservarlas', () => {
   assert.throws(() => validarOperacion('2026-10-26', '2026-10-23'), /futura/i);
   assert.equal(validarOperacion('2026-10-23', '2026-10-23'), '2026-10-23');
   assert.throws(() => validarOperacion('2026-09-30', '2026-10-23'));
