@@ -361,7 +361,8 @@
       try {
         const hora = normalizeTime($('operationTime').value);
         const result = await api('/pagos/cotizacion?fechaOperacion=' + encodeURIComponent(date)
-          + '&horaOperacion=' + encodeURIComponent(hora), { headers: headers() });
+          + '&horaOperacion=' + encodeURIComponent(hora)
+          + (Number($('amount').value)>0?'&monto='+encodeURIComponent($('amount').value):''), { headers: headers() });
         if (revision !== quoteRevision || paymentType !== 'MANTENIMIENTO') return;
         // El comprobante BBVA puede mostrar el día operativo SPEI (26), mientras
         // el movimiento ocurrió viernes 23 después de las 18:00.
@@ -380,19 +381,6 @@
             ? 'El comprobante muestra ' + fechaLegible(date) + ', una fecha bancaria posterior a hoy. Puedes reportarlo; '
               + 'los recargos se calculan solo hasta la fecha actual y el pago continuará En revisión hasta confirmar el depósito con el banco.'
             : '';
-        if (quote.modoPrueba) {
-          $('summaryBase').textContent = money(quote.minimo);
-          $('summaryLate').textContent = money(0);
-          $('lateRow').classList.remove('late');
-          $('summaryTotal').textContent = money(10);
-          $('ruleAmount').textContent = money(10);
-          $('amount').min = '10';
-          $('amount').max = '10';
-          $('officialConcept').value = 'Prueba controlada · abono de mantenimiento octubre 2026 · $10.00';
-          $('paymentPreview').textContent = (avisoSpei ? avisoSpei + ' ' : '')
-            + 'Vivienda de prueba: se acepta únicamente un comprobante bancario real de $10.00. La validación sigue siendo obligatoria.';
-          return;
-        }
         $('amount').removeAttribute('max');
         $('summaryBase').textContent = money(quote.base);
         $('summaryLate').textContent = money(quote.recargo);
@@ -595,7 +583,7 @@
     }
     $('retryOcr').addEventListener('click', runOcr);
     $('operationDate').addEventListener('change', updatePaymentSummary);
-    $('amount').addEventListener('input', updatePreview);
+    $('amount').addEventListener('input', updatePaymentSummary);
     document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
     $('extraList').addEventListener('click', e => { const row = e.target.closest('[data-extra]'); if (!row) return; selectedExtra = extras.find(x => Number(x.id) === Number(row.dataset.extra)) || null; renderExtras(); updatePaymentSummary() });
     $('clubPaymentList').addEventListener('click',e=>{const row=e.target.closest('[data-club]');if(!row)return;selectedClub=(debts?.tipos?.CASA_CLUB||[]).find(c=>Number(c.id)===Number(row.dataset.club))||null;renderClub();updatePaymentSummary();});
@@ -699,7 +687,7 @@
           }
           if(receiptItems.some(p=>anteriores.get(Number(p.id))==='PENDIENTE_VALIDACION'&&p.estatus==='VALIDADO')){
             toast('Se confirmó un depósito. Tu recibo ya aparece como Validado.');
-            void loadValidity();void loadDebts();
+            void loadValidity();void loadDebts();void updatePaymentSummary();
           }
         }catch(error){console.warn('No se pudo actualizar el estado de recibos:',error.message)}
       },15000);
@@ -707,7 +695,7 @@
       setTab(['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(requested)?requested:'MANTENIMIENTO');
     }
     // El resumen extenso de vigencia fue retirado de la UI. Conservamos esta
-    // consulta porque el saldo parcial y el estado C3 siguen siendo necesarios.
+    // consulta con el estado contable de la vivienda.
     async function loadValidity() {
       try {
         const result = await api('/pagos/vigencia', { headers: headers() });
@@ -715,26 +703,24 @@
         updatePreview();
       } catch (error) {
         // La cotización del pago conserva sus propios errores y validaciones.
-        console.warn('No fue posible consultar la vigencia del TAG:', error);
+        console.warn('No fue posible consultar las cuotas:', error);
       }
     }
     function updatePreview() {
       if (paymentType !== 'MANTENIMIENTO') return;
       const amount = Math.round(Number($('amount').value || 0) * 100);
       if (!quote) { $('paymentPreview').textContent = 'Selecciona la fecha del depósito para consultar los recargos de la vivienda.'; return; }
-      if (quote.modoPrueba) { $('paymentPreview').textContent = 'Modo de prueba: comprobante de $10.00. El reporte permanece En revisión hasta la conciliación bancaria.'; return; }
-      const net = amount - Math.round(quote.recargo * 100);
-      const available = net + Math.round(quote.saldoParcial * 100);
-      if (amount <= 0 || net < 0) {
-        $('paymentPreview').textContent = 'Recargos pendientes: ' + money(quote.recargo) + '. Para completar una mensualidad, considerando tu saldo validado, deposita ' + money(quote.minimo) + '.'; return;
+      if (!quote.aplicaciones || Math.round(Number(quote.monto)*100)!==amount) {
+        $('paymentPreview').textContent = 'Adeudo en cuotas a la fecha del depósito: ' + money(quote.adeudoTotal) +
+          '. Recargos pendientes: ' + money(quote.recargo) + '. Para completar la siguiente mensualidad: ' + money(quote.minimo) + '.';
+        return;
       }
-      if (available < Math.round(quote.base * 100)) {
-        $('paymentPreview').textContent = 'Abono parcial: ' + money(quote.recargo) + ' de recargos y ' + money(net / 100) + ' para mantenimiento. Al validarlo tendrás ' + money(available / 100) + ' acumulados; faltarán ' + money((Math.round(quote.base * 100) - available) / 100) + ' para completar una mensualidad. La vigencia no avanza todavía. Cuando se valide este comprobante, reporta el complemento en Mantenimiento con su propio folio bancario.'; return;
-      }
-      const months = Math.floor(available / Math.round(quote.base * 100)), balance = (available % Math.round(quote.base * 100)) / 100;
-      $('paymentPreview').textContent = 'Estimación: ' + months + ' mensualidad(es), ' + money(quote.recargo) +
-        ' de recargos por cortes vencidos y ' + money(balance) + ' de saldo a favor. Fecha consultada en C3: ' + quote.fechaFinalC3 +
-        '. La vigencia se actualizará después de la validación bancaria.';
+      const cobertura=quote.fechaFinalObjetivo || 'sin mensualidades completas desde septiembre de 2026';
+      $('paymentPreview').textContent = 'Al validar este depósito se abonarán ' + quote.aplicaciones.length +
+        ' periodo(s) de cuotas y se completarán ' + quote.meses + ' mensualidad(es). Recargos: ' + money(quote.recargo) +
+        '. Cobertura resultante: ' + cobertura + '. ' +
+        (quote.abonoParcial ? 'El abono parcial queda registrado para el siguiente pago. ' : '') +
+        'Los TAGs asociados se actualizarán después de la validación bancaria; también puedes pagar sin TAG.';
     }
 
     let pendingItems = [];

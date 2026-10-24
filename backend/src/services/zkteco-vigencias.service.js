@@ -3,6 +3,8 @@ const sequelize = require('../config/database');
 const Casa = require('../models/Casa');
 const Tags = require('../models/ZkTarjeta');
 const Cuota = require('../models/Cuota');
+const PagoReportado = require('../models/PagoReportado');
+const {fechaDesdeCuotas}=require('./cuotas-mantenimiento-calculo');
 const Eventos = require('../models/PagoAccesoC3');
 const Aplicaciones = require('../models/PagoAccesoTagC3');
 const direct = require('./zkteco-direct.service');
@@ -73,11 +75,22 @@ async function preparar(casaId, now, dryRun) {
         const tags = await Aplicaciones.findAll({ where: { pagoAccesoId: event.id }, order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
         if (!tags.length) throw new Error('El pago no tiene TAGs destinatarios registrados');
         const snapshots = [];
-        // Únicamente las cuotas manuales marcadas con MJMAN llevan una fecha
-        // ABSOLUTA de corte. El resto de los pagos sigue sumando meses al C3.
-        // La fecha objetivo es la misma para cada TAG de la vivienda.
-        const fechaObjetivo=fechaFinDeReferencia(event.referencia);
+        // Los pagos nuevos entregan la cobertura SQL; los eventos antiguos conservan su intención.
+        const fechaObjetivo=['PAGO_CUOTAS','CUOTA_SQL'].includes(event.origen)?event.fechaObjetivo:fechaFinDeReferencia(event.referencia);
         try {
+        if(event.origen==='PAGO_CUOTAS'){
+            const pago=await PagoReportado.findByPk(event.origenId,{transaction});
+            const cuotas=await Cuota.findAll({where:{casaId},transaction});
+            if(!pago||Number(pago.casaId)!==Number(casaId)||pago.estatus!=='VALIDADO'||
+                !pago.aplicacionCuotas?.aplicado||pago.aplicacionCuotas.fechaFinalObjetivo!==fechaObjetivo||
+                !fechaObjetivo||String(fechaDesdeCuotas(cuotas)||'')<fechaObjetivo)
+                throw Object.assign(new Error('El objetivo del C3 no está respaldado por cuotas y un pago validado; requiere conciliación'),{status:409});
+        }
+        if(event.origen==='CUOTA_SQL'){
+            const cuotas=await Cuota.findAll({where:{casaId},transaction});
+            if(!fechaObjetivo||!cuotas.some(c=>String(c.id)===String(event.origenId))||String(fechaDesdeCuotas(cuotas)||'')<fechaObjetivo)
+                throw Object.assign(new Error('La cobertura de cuotas cambió; requiere conciliar el acceso'),{status:409});
+        }
         const loteManual=fechaObjetivo&&await esLoteManualConfirmado(event,fechaObjetivo,transaction);
         for (const tag of tags) {
             if (tag.fechaAntes) continue;

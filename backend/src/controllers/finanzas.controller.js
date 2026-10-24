@@ -29,22 +29,22 @@ async function analizar(req,res){
   const {anio,mes,mesName,start,end}=filters(req);
   const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento,foliosRegistrados]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar']}),
-   Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
+   Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
    ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']}),
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT}),
    // Historial íntegro para identificar pagos adelantados en 2027 y años posteriores.
    // El saldo sigue limitado al corte pedido por calcularAdeudoVivienda.
-   Cuota.findAll({attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','confirmadoPorUsuarioId']}),
+   Cuota.findAll({attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','confirmadoPorUsuarioId']}),
    ZkTarjeta.findAll({attributes:['id','casaId','numeroTarjeta','nombreDispositivo','departamento','fechaInicio','fechaFin','bloqueado','enControlador','puertasAutorizadas','ultimaLectura']})
    ,PagoManualConcepto.findAll({where:{creadoEn:{[Op.between]:[start+' 00:00:00',end+' 23:59:59']}},attributes:['id','casaId','tipoPago','monto','formaPago','referencia','creadoEn']})
    ,CuotaExtraordinaria.findAll({attributes:['egresoId','id']}),
    CargoExtraordinario.findAll({attributes:['id','casaId','periodo','monto'],include:[{model:CuotaExtraordinaria,as:'cuota',attributes:[],required:true,where:{activo:true}}]}),
-   PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId','monto','recargo','folioReporte','folioOperacion','fechaOperacion']}),
+   PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoManualConcepto.findAll({attributes:['id','casaId','tipoPago','cargoExtraordinarioId','reservaCasaClubId','monto','formaPago','referencia','creadoEn']}),
    ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado']}),
-   PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion']}),
+   PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion']})
   ]);
   const registros=ultimosRegistrosPago({reportados:foliosRegistrados,cuotas:historialCuotas,manuales:manualesConceptoHistoricos});

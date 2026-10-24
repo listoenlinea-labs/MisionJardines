@@ -36,7 +36,7 @@ function crearHistorialController({ PagoReportado, PagoAccesoC3, PagoAccesoTagC3
             });
             const ids = rows.map(p => p.id), casas = [...new Set(rows.map(p => p.casaId))];
             const [movimientos, tags] = rows.length ? await Promise.all([
-                PagoAccesoC3.findAll({ where: { origen: 'PAGO', origenId: { [Op.in]: ids } },
+                PagoAccesoC3.findAll({ where: { origen: { [Op.in]: ['PAGO','PAGO_CUOTAS'] }, origenId: { [Op.in]: ids } },
                     attributes: ['id', 'origenId', 'meses', 'estado'], raw: true }),
                 ZkTarjeta.findAll({ where: { casaId: { [Op.in]: casas } },
                     attributes: ['casaId', 'numeroTarjeta', 'fechaFin', 'ultimaLectura', 'enControlador'], order: [['id', 'ASC']], raw: true })

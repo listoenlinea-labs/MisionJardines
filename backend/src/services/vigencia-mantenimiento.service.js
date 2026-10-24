@@ -15,7 +15,7 @@ async function bloquearCasa(casaId, transaction) {
     return casa;
 }
 function capturarCuota(c) {
-    return { id: c.id, casaId: c.casaId, tipoPago: c.tipoPago, estatusPago: c.estatusPago,
+    return { id: c.id, casaId: c.casaId, anio:c.anio, mes:c.mes, tipoPago: c.tipoPago, estatusPago: c.estatusPago,
         montoPagado: c.montoPagado, recargo: c.recargo, referencia: c.referencia };
 }
 function principalMovimiento(cuotas, pagos) {

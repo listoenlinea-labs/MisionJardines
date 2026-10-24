@@ -23,7 +23,7 @@ acuerdo difieren, señalar la discrepancia; no restaurar silenciosamente un fluj
   Ver docs/CONDOMINOS_VIVIENDAS.md.
 - Una vivienda puede tener varias cuentas y TAGs; una cuenta puede tener varias
   viviendas. Validar siempre el vínculo activo y los permisos en el backend.
-- Referencia vigente para pagos/C3: `docs/PAGOS_ACCESO_C3.md` y servicios actuales.
+- Referencia vigente para pagos/C3: `docs/PAGOS_CUOTAS_UNIFICADOS.md` y servicios actuales.
   `backend/docs/vigencia-mantenimiento.md` contiene reglas históricas incompatibles;
   no usar sus secciones de fecha base, corte general o autoaprobación para implementar cambios.
 - No asumir acceso a MySQL, correo del banco o C3 de producción por tener el código.
@@ -31,44 +31,31 @@ acuerdo difieren, señalar la discrepancia; no restaurar silenciosamente un fluj
 
 ## Reglas vigentes de mantenimiento
 
-1. Mensualidad: **$300 MXN**. Trabajar en centavos; no redondear meses hacia arriba.
-2. Fecha final inclusiva: día **10**; desde el día **11** está vencida. Sin mes ni días
-   de gracia. El pago no compra un mes contado desde la fecha del depósito.
-3. La fuente para avanzar fechas es la **fecha física actual del C3**, no
-   `vigencias_mantenimiento.fecha_base` ni un acumulado de ingresos de toda la vida.
-4. Cada movimiento confirmado descuenta recargos, considera el remanente disponible,
-   compra meses completos y deja el sobrante registrado para el siguiente movimiento.
-   Avanzar N meses desde el mes de la fecha física y fijar el resultado en día 10,
-   aunque la fecha anterior no fuera día 10. No exigir corregir una base SQL para ello.
-5. Antes de reportar mantenimiento, leer las fechas de todos los TAGs asociados.
-   Sin TAGs, fechas inválidas/distintas, comprobantes pendientes o movimientos de
-   acceso sin terminar, detener la cotización y mostrar el problema. No sustituir
-   una lectura fallida por una fecha SQL ni elegir arbitrariamente un TAG.
-6. Recargo: **$50 por cada corte del día 10 vencido antes de la fecha bancaria**,
-   excluyendo cortes ya cubiertos. No cobrar por el mero hecho de depositar después
-   del día 10 si la vivienda ya está cubierta. Los meses adelantados no llevan recargo.
-   Una fecha histórica física de día 11 usa el corte de cobro del día 10 de ese mes.
-7. El reporte admite abonos parciales de mantenimiento, siempre que el importe sea
-   positivo y cubra todos los recargos pendientes. El principal validado se acumula
-   con el saldo previo; solo meses completos avanzan la vigencia. Si falta dinero,
-   registrar el complemento en Mantenimiento con un nuevo folio, después de validar
-   el comprobante anterior. Los recargos cubiertos no se repiten. El límite actual es 36 meses por movimiento;
-   la fecha bancaria debe ser válida, no futura y desde el 1 de octubre de 2026.
-8. Cuotas extraordinarias no conceden meses de mantenimiento ni actualizan TAGs.
-9. Recargos históricos sin cortes identificados requieren conciliación administrativa;
-   no inferir automáticamente qué meses cubrieron a partir del importe.
+La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:
+[Pagos/cuotas unificados](docs/PAGOS_CUOTAS_UNIFICADOS.md) es la referencia vigente.
 
-Ejemplos que deben conservarse:
-
-| Situación | Resultado |
-| --- | --- |
-| Fecha C3 10/oct; pago $300 el 8/oct; sin saldo ni recargo | 10/nov |
-| Después, pago $300 el 12/oct con fecha C3 10/nov | 10/dic, sin recargo |
-| Fecha C3 10/ene; pago el 8/mar de $700 | Dos cortes vencidos: $100; principal $600; fecha 10/mar |
-| Pago $725 sin recargos ni saldo previo | Dos meses y $125 de remanente |
-| Pago $300 con $50 de recargo y sin saldo previo | Abono: $50 de recargo y $250 de principal; no avanza la fecha |
-| Complemento $50 tras validar ese abono, sin nuevo corte vencido | Completa $300 netos; avanza un mes, sin repetir el recargo |
-| Fecha C3 11/sep; $600 netos confirmados | 10/nov |
+1. La unidad de cobro es la vivienda. Fuente financiera: `cuotas` por `casa_id`,
+   tarifa `direcciones.cuota_por_cobrar` (default $300). Nunca cotizar desde C3,
+   `vigencias_mantenimiento` ni remanentes del diario de acceso.
+2. Compartir el cálculo por periodo con Análisis: pendientes desde septiembre de
+   2026, incluidos meses sin fila; $50 después del día 10 por mes todavía pendiente.
+   Considerar abonos, cuotas cubiertas, condonadas y canceladas. Trabajar en centavos.
+3. El reporte sigue pendiente hasta conciliación bancaria. Guardar el reparto y
+   acreditar cuotas + pago + diario en una transacción con lock de vivienda.
+   Si cambió tarifa/cuotas desde el reporte, detener para conciliación.
+4. Cubrir recargos y después periodos más antiguos; admitir abonos parciales y
+   complementos con folios distintos. No repetir recargos pagados. Máximo 36 meses
+   completos por movimiento; fecha bancaria admitida desde octubre de 2026.
+5. Pagar funciona sin TAG y con C3 desconectado. Un fallo de acceso no revierte un
+   abono confirmado. Solo periodos completos y consecutivos conceden nueva cobertura;
+   octubre completo sin huecos produce el 10 de noviembre.
+6. Eventos nuevos `PAGO_CUOTAS` y `CUOTA_SQL` entregan el objetivo absoluto SQL
+   respaldado por cuotas. No suman meses a la fecha física. Conservar las guardas
+   físicas y la idempotencia; fecha física adelantada genera CONFLICTO para revisión.
+7. No reproducir pagos históricos ni aplicar reportes antiguos sin reparto nuevo:
+   requieren conciliación. No usar el importe para adivinar qué periodos cubrieron.
+   `recargo_pagado` NULL conserva la interpretación histórica de las cuotas.
+8. Extraordinarias y casa club no conceden meses ni actualizan TAGs.
 
 ## Confirmación bancaria y OCR
 

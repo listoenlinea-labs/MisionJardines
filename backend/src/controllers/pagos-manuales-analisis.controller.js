@@ -228,15 +228,15 @@ async function historialPagoVivienda(req,res){
   let movimientos=[],deudas=[];
   if(tipo==='MANTENIMIENTO'){
    const [cuotas,comprobantes]=await Promise.all([
-    Cuota.findAll({where:{casaId},attributes:['id','anio','mes','montoPagado','estatusPago','recargo','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','montoCuota','saldoPendiente']}),
-    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion']})
+    Cuota.findAll({where:{casaId},attributes:['id','anio','mes','montoPagado','estatusPago','recargo','recargoPagado','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','montoCuota','saldoPendiente']}),
+    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']})
    ]);
    movimientos=historialMantenimiento(cuotas,comprobantes);
    const hoy=fechaMexico();
    deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa)}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
-    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion']}),
+    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
     PagoManualConcepto.findAll({where:{casaId,tipoPago:tipo},attributes:['id','tipoPago','monto','formaPago','referencia','creadoEn']})
    ]);
    movimientos=historialConcepto(tipo,reportados,manuales);
