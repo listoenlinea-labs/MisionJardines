@@ -1,6 +1,7 @@
 const { Worker } = require('node:worker_threads');
 const path = require('node:path');
 const parser = require('./comprobante-parser');
+const idsBanco = require('./identificadores-bancarios.service');
 const { equivaleFechaSpei } = require('./fecha-operativa-spei.service');
 
 let running = 0;
@@ -58,13 +59,31 @@ async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacio
 }
 
 function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos = false) {
-  if (exigirCampos && (!(extraido.claveRastreo || extraido.folio) || ['date', 'time', 'amount'].some(field => !extraido[field]))) {
-    throw Object.assign(new Error('No se pudieron leer todos los datos bancarios del comprobante. Adjunta una imagen más clara o solicita ayuda a Administración. No se registró el pago.'), { status: 422 });
+  const faltantes = [];
+  if (!(extraido.claveRastreo || extraido.referencia || extraido.folio))
+    faltantes.push('Clave de rastreo, referencia bancaria o folio de operación');
+  for (const [campo,nombre] of [['date','Fecha de operación'],['time','Hora de operación'],['amount','Monto transferido']])
+    if (!extraido[campo]) faltantes.push(nombre);
+  if (exigirCampos && faltantes.length) {
+    throw Object.assign(new Error('El comprobante no contiene todos los campos necesarios. Adjunta el detalle del movimiento o una imagen más clara.'), {
+      status: 422, code: 'COMPROBANTE_INCOMPLETO', camposFaltantes: faltantes
+    });
   }
+  // Validar el mismo tipo de identificador que se escogió en el navegador.
+  // El identificador elegido no sirve para acreditar otro tipo de evidencia.
+  const detected = extraido.claveRastreo || extraido.referencia || extraido.folio;
+  const provided = extraido.claveRastreo
+    ? idsBanco.normal(folioOperacion)
+    : extraido.referencia ? idsBanco.referencia(folioOperacion) : idsBanco.normal(folioOperacion);
+  const expected = extraido.claveRastreo
+    ? idsBanco.normal(detected)
+    : extraido.referencia ? idsBanco.referencia(detected) : idsBanco.normal(detected);
+  if (detected && (!provided || provided !== expected))
+    throw Object.assign(new Error('El identificador seleccionado no coincide con el campo leído por OCR. Vuelve a leer el comprobante.'), {
+      status: 422, code: 'IDENTIFICADOR_NO_COINCIDE'
+    });
   // Check bank-labelled data when detected, not untrusted OCR text supplied by the browser.
   const same = (provided, detected) => !detected || String(provided).trim().toUpperCase() === String(detected).trim().toUpperCase();
-  if (extraido.claveRastreo && !same(folioOperacion, extraido.claveRastreo)) throw Object.assign(new Error('La clave de rastreo no coincide con la leída en el comprobante.'), { status: 422 });
-  if (!extraido.claveRastreo && !same(folioOperacion, extraido.folio)) throw Object.assign(new Error('El folio no coincide con Folio de operación del comprobante.'), { status: 422 });
   // BBVA puede mostrar el día operativo SPEI (lunes) en vez del viernes real
   // en una transferencia de las 18:00 en adelante. Se exige equivalencia exacta,
   // nunca se acepta una fecha futura arbitraria ni se ignora el OCR.
