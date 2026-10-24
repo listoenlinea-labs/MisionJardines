@@ -9,7 +9,7 @@ const fail=message=>Object.assign(new Error(message),{status:400});
 
 // La mensualidad de octubre vence el 10 de noviembre; todas las tarjetas
 // de la vivienda tendrán la misma fecha final (si el C3 confirma la escritura).
-function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE}){
+function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE,exencionesRecargo=[]}){
   if(!Number.isInteger(tarifa)||tarifa<1||tarifa>10000)throw fail('Tarifa mensual inválida');
   anio=Number(anio);mes=Number(mes);meses=Number(meses);
   if(!Number.isInteger(anio)||anio<2026||anio>2098||
@@ -32,18 +32,19 @@ function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE}){
   }
   const monto=Number(montoTotal),totalCentavos=centavos(monto);
   if(!Number.isFinite(monto)||Math.abs(totalCentavos/100-monto)>0.00001 ||
-     totalCentavos<tarifa*meses*100||totalCentavos>(tarifa+RECARGO)*meses*100)
+     totalCentavos<tarifa*meses*100||totalCentavos>(tarifa*meses+periodos.filter(p=>!require('./recargos-exenciones.service').exentoEn(exencionesRecargo,`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`)).length*RECARGO)*100)
     throw fail('El importe de '+meses+' mes(es) debe estar entre $'+tarifa*meses+' y $'+(tarifa+RECARGO)*meses+
       '. Para registrar un abono parcial utiliza el flujo de abonos; no marques todos los meses pagados.');
   let extras=totalCentavos-tarifa*meses*100;
   const desglose=periodos.map(p=>{
-    const recargoCentavos=Math.min(RECARGO*100,extras);
+    const exento=require('./recargos-exenciones.service').exentoEn(exencionesRecargo,`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`);
+    const recargoCentavos=exento?0:Math.min(RECARGO*100,extras);
     extras-=recargoCentavos;
     return {...p,montoCuota:(tarifa*100+recargoCentavos)/100,recargo:recargoCentavos/100};
   });
   const siguiente=new Date(Date.UTC(anio,mes-1+meses,1));
   const fechaFinObjetivo=`${siguiente.getUTCFullYear()}-${String(siguiente.getUTCMonth()+1).padStart(2,'0')}-10`;
-  return {periodos:desglose,fechaFinObjetivo,importeMes:null,tarifaMensual:tarifa,montoMinimo:tarifa*meses,montoMaximo:(tarifa+RECARGO)*meses,
+  return {periodos:desglose,fechaFinObjetivo,importeMes:null,tarifaMensual:tarifa,montoMinimo:tarifa*meses,montoMaximo:tarifa*meses+periodos.filter(p=>!require('./recargos-exenciones.service').exentoEn(exencionesRecargo,`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`)).length*RECARGO,
     recargo:(totalCentavos-tarifa*meses*100)/100,total:totalCentavos/100,meses};
 }
 
@@ -67,7 +68,7 @@ function siguienteDelUltimo(cuotas, anio, mes) {
   }
   return ultimo;
 }
-function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE}){
+function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE,exencionesRecargo=[]}){
   anio=Number(anio);mes=Number(mes);
   const actual=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Mexico_City',year:'numeric'}).format(new Date()));
   if(!Number.isInteger(anio)||anio<actual||anio>2098||!Number.isInteger(mes)||mes<1||mes>12)
@@ -79,7 +80,7 @@ function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE}){
   if(meses<1)throw fail('Este mes ya está cubierto por el último pago confirmado; selecciona uno posterior');
   if(meses>MAX_MESES)throw fail('Existen más de 36 meses por cubrir. Registra los períodos en varios movimientos.');
   const anioInicio=Math.floor(inicio/12),mesInicio=inicio%12+1;
-  const plan=prepararPlan({anio:anioInicio,mes:mesInicio,meses,montoTotal,tarifa});
+  const plan=prepararPlan({anio:anioInicio,mes:mesInicio,meses,montoTotal,tarifa,exencionesRecargo});
   return {...plan,ultimoMesPagado:ultimo,desde:{anio:anioInicio,mes:mesInicio,nombre:MESES[mesInicio-1]},
     hasta:{anio,mes,nombre:MESES[mes-1]},montoSugerido:tarifa*meses};
 }
