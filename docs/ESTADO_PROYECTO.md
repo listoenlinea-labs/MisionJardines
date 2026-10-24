@@ -523,3 +523,32 @@ una auditoría completa de seguridad.
 Requiere fusionar y desplegar backend con instalación nueva desde el lock para
 que el escáner de Hostinger evalúe el artefacto corregido. Sin SQL, variables
 nuevas ni cambios de frontend.
+
+
+## 23/oct/2026 — Reenvíos: servidores del receptor y fecha bancaria
+
+Sobre main 5ed922d8b66611261a11a3b8aa15c616cd5d512b, el original privado
+aportado por el usuario acredita DKIM/DMARC pass del dominio del administrador
+pero con otro authserv-id del mismo proveedor. El lector admitía un único
+servidor exacto. PAGOS_IMAP_AUTH_SERVER ahora admite una lista explícita separada
+por comas, conservando un solo valor y sin comodines. Cada resultado se evalúa
+por separado para no combinar DKIM de un servidor con DMARC de otro.
+
+El texto reenviado contiene Enviado del día 24 antes del depósito del día 26.
+Se reproduce la selección incorrecta; se extrae la fecha de la sección bancaria
+entre importe recibido y cuenta receptora. Fechas ausentes/contradictorias no
+usan la fecha del reenvío. Se preservan OR banco/administrador, autenticación,
+referencia normalizada, monto, vivienda, unicidad y entrega financiera/C3.
+
+Validación local: 26/26 pruebas dirigidas de reenvío, servidores, fechas,
+normalización, diagnóstico y conciliación por identificadores aprobadas. El
+original privado, leído solo localmente, devuelve autorizado=true, fecha bancaria
+26/oct y referencia/monto correctos con la lista configurada. No se publica el
+mensaje, contactos, firmas, adjuntos ni datos bancarios del usuario. Sintaxis y
+diff comprobados. Las tres suites históricas validacion-pagos-correo,
+validacion-pagos-reenvio-admin y banco-correo-monto-tablas conservan los mismos
+7 fallos antes/después (19/26 aprobadas): expectativas/dobles desactualizados y
+montos mal formados. No se corrigen ni se declara suite completa verde.
+No se ejecutaron suites físicas/financieras C3 ni operaciones de producción;
+la modificación se limita al lector de correo. Requiere despliegue backend y
+lista de servidores en hPanel. No requiere SQL ni otro reporte del comprobante.

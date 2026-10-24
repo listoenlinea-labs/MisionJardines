@@ -60,11 +60,14 @@ function parseMessage({uid,source}){
  const address=(from.match(/<([^<>\s]+@[^<>\s]+)>/)||[])[1]||
    (from.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]+/i)||[])[0]||'';
  const time=new Date(h.date||'');
- const receptor=String(process.env.PAGOS_IMAP_AUTH_SERVER||'').trim().toLowerCase();
+ // Lista explícita de authserv-id del receptor. No aceptar comodines ni
+ // resultados de servidores intermedios por el mero hecho de decir «pass».
+ const receptores=new Set(String(process.env.PAGOS_IMAP_AUTH_SERVER||'')
+  .split(',').map(x=>x.trim().toLowerCase()).filter(Boolean));
  const auth=(h['authentication-results']||'').split('\n').filter(x=>{
   const nombre=String(x).split(';')[0].trim().toLowerCase();
-  return receptor&&nombre===receptor;
- }).slice(0,1);
+  return receptores.has(nombre);
+ });
  return {id:'imap-uid:'+uid+':'+String(h['message-id']||'').slice(0,180),
   from:{emailAddress:{address}},subject:decodeHeader(h.subject),
   receivedDateTime:Number.isFinite(time.valueOf())?time.toISOString():'',

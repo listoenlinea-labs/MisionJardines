@@ -74,7 +74,14 @@ el `From` exterior del mensaje recibido en el buzón dedicado.
 
 `PAGOS_IMAP_AUTH_SERVER` es el nombre que agrega el resultado Authentication-Results
 del receptor; no equivale necesariamente al host IMAP. Confirmarlo con el mensaje
-recibido. Las credenciales del buzón son privadas y no se incluyen en el código.
+recibido. Acepta uno o varios nombres exactos separados por comas, por ejemplo
+`mx1.proveedor.example,mx2.proveedor.example`. Agregar solo servidores del receptor
+confirmados en los encabezados originales; no usar comodines ni servidores
+intermedios. DKIM/DMARC deben pasar juntos en un mismo resultado autorizado; no
+se combinan resultados de distintos servidores. El OR banco/administrador y sus
+remitentes exactos permanecen vigentes. Una firma Hotmail válida no autoriza por
+sí sola un mensaje cuyo From siga siendo el banco y cuyo DMARC falle.
+Las credenciales del buzón son privadas y no se incluyen en el código.
 Basta uno de los dos remitentes autorizados para configurar el worker, además de
 IMAP, receptor de autenticación, cuenta destino y flag de autovalidación.
 
@@ -121,3 +128,11 @@ El servidor de autenticación de ese comando es solo el fixture de las pruebas;
 no reemplaza el valor real del proveedor. Después de desplegar y configurar el
 remitente, comprobar el diagnóstico y un depósito real contra su aviso reenviado.
 La presencia del código o una prueba simulada no acredita esa conciliación real.
+
+## Fecha del depósito en reenvíos
+
+La fecha se extrae del bloque entre «Recibiste de otro banco/otra cuenta» y
+«A tu cuenta», después de convertir HTML a texto. Las fechas de «Enviado», Date
+y otras cabeceras del reenvío no sustituyen la fecha bancaria. Sin bloque/fecha
+válida o con fechas distintas entre las copias del aviso, se deja vacía y no
+se confirma. Se mantiene la equivalencia SPEI existente al cotejar el pago.
