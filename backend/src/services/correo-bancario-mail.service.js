@@ -38,10 +38,10 @@ function mimeText(message,depth=0){
    if(!parsed||/attachment/i.test(parsed.headers['content-disposition']||''))continue;
    const child=mimeText(parsed,depth+1);if(child)text.push(child);
   }
-  return text.join('\n').slice(0,50000);
+  return text.join('\n').slice(0,250000);
  }
  if(!/^text\/(plain|html)\b/i.test(type))return '';
- return decode(message.body,message.headers['content-transfer-encoding']||'').slice(0,50000);
+ // Evitar truncar la notificación bancaria antes de que se extraigan sus campos:\n // el correo HTML puede traer más de 50 KB de estilos y tablas al inicio.\n return decode(message.body,message.headers['content-transfer-encoding']||'').slice(0,250000);
 }
 function decodeHeader(value){
  return String(value||'').replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi,(_,charset,mode,content)=>{
