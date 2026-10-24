@@ -458,6 +458,7 @@ async function reportarPago(req, res) {
             comprobanteMime: comprobanteMime || 'image/jpeg',
             textoOcr: textoOcr || null,
             estatus: 'PENDIENTE_VALIDACION',
+            verificacionBancaria: {version:1,etapa:'RECIBIDO',detalle:'Comprobante recibido. Se extrajeron los datos bancarios y se programó su conciliación con Titan.',fechaRevision:null,avisosConsultados:0,avisosAutenticados:0,coincidencias:0},
             reciboFolio: folio,
             fechaEmisionRecibo: now
         }, { transaction });
@@ -641,6 +642,9 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
             if (pago.tipoPago !== 'MANTENIMIENTO' && centavos(recargo) !== 0) throw Object.assign(new Error('Este concepto no lleva recargo de mantenimiento'), { status: 400 });
             await pago.update({ estatus: 'VALIDADO', recargo, correoBancarioHash: correoHash, validadoPorUsuarioId: null,
                 fechaValidacion: new Date(), actualizadoEn: new Date(),
+                verificacionBancaria: {...(pago.verificacionBancaria||{}),version:1,etapa:'VALIDADO',
+                  fechaRevision:new Date().toISOString(),
+                  detalle:'Pago confirmado: coincidieron los identificadores, el importe, la fecha bancaria, la cuenta y la vivienda en una notificación bancaria autenticada.'},
                 observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria autenticada.' }, { transaction });
             if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') await recargosService.confirmar(pago, transaction);
             const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'

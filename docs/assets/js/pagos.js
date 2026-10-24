@@ -118,7 +118,7 @@
       return {month:'',year:'',label:'Período no especificado'};
     }
     function receiptHtml(p){
-      const period=receiptPeriod(p),status=({PENDIENTE_VALIDACION:'En revisión',VALIDADO:'Validado',RECHAZADO:'Rechazado'})[p.estatus]||p.estatus||'';
+      const period=receiptPeriod(p),status=({PENDIENTE_VALIDACION:'En revisión',VALIDADO:'Validado',RECHAZADO:'Fallido'})[p.estatus]||p.estatus||'';
       return '<article class="receipt-item"><div class="receipt-main"><strong>'+esc(p.reciboFolio||p.folioReporte||'Recibo')+
         '</strong><p><b class="receipt-period-label">'+esc(period.label)+'</b><br>'+esc(p.concepto||'Pago registrado')+'<br>'+
         esc((p.casa?.calleCorrecta || p.calleSnapshot))+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
@@ -173,23 +173,85 @@
     });
     $('showAllReceipts').addEventListener('click',()=>{$('receiptAllModal').showModal();renderReceipts();});
     $('closeReceiptAll').addEventListener('click',()=>$('receiptAllModal').close());
+    let activeReceiptId=null;
     $('closeReceiptDetails').addEventListener('click',()=>$('receiptDetailsModal').close());
+    $('receiptDetailsModal').addEventListener('close',()=>{activeReceiptId=null});
+    function renderReceiptStatus(p){
+      const el=$('receiptStatusPanel');
+      if(!el||!p)return;
+      let v=p.verificacionBancaria||{};
+      if(typeof v==='string'){try{v=JSON.parse(v)}catch{v={}}}
+      if(!v||typeof v!=='object')v={};
+      const etapa=String(v.etapa||'RECIBIDO');
+      const validado=p.estatus==='VALIDADO',fallido=p.estatus==='RECHAZADO';
+      const revisado=Boolean(v.fechaRevision);
+      const buzonError=etapa==='ERROR_BUZON'||etapa==='ERROR_PROCESO';
+      const conAvisos=(Number(v.avisosAutenticados)||0)>0;
+      const vinculado=['COINCIDENCIA_VERIFICADA','FALLIDO','VALIDADO','DATOS_INCOMPLETOS','COINCIDENCIA_AMBIGUA'].includes(etapa);
+      const fecha=v.fechaRevision?new Date(v.fechaRevision):null;
+      const fechaTexto=fecha&&Number.isFinite(fecha.getTime())
+        ?new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(fecha)
+        :'Aún no se ha ejecutado';
+      const titulo=validado?'Pago confirmado':fallido?'Validación fallida':buzonError?'Verificación interrumpida':'Comprobación bancaria en curso';
+      const mensaje=String(v.detalle||p.observacionesRevision||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
+      const formatPaso=(n,nombre,detalle,estado)=>{
+        const sym=estado==='done'?'✓':estado==='failed'?'!':estado==='current'?'•':String(n);
+        return '<li class="'+esc(estado)+'"><span class="receipt-step-circle">'+esc(sym)+'</span><div class="receipt-step-content"><strong>'+
+          esc(nombre)+'</strong><p>'+esc(detalle)+'</p></div></li>';
+      };
+      const pasos=[
+        formatPaso(1,'Comprobante recibido','El reporte se guardó correctamente y tiene un folio de seguimiento.','done'),
+        formatPaso(2,'Datos OCR extraídos','Se leyeron los datos bancarios y el destinatario del comprobante.','done'),
+        formatPaso(3,'Consulta de buzón Titan',buzonError?'La conexión o la aplicación de la consulta tuvo un problema; se reintentará.':revisado?'Última revisión: '+fechaTexto:'Se programó la búsqueda de avisos bancarios.',buzonError?'current':revisado?'done':'current'),
+        formatPaso(4,'Autenticación del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) superaron la autenticación.':revisado?'No hay avisos autenticados utilizables todavía.':'Esperando una notificación bancaria auténtica.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
+        formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se ha encontrado al menos un identificador relacionado.'):etapa==='SIN_COINCIDENCIA'?'Ninguna clave, referencia o folio encontró una correspondencia verificable.':'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
+        formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'Todavía no existe evidencia suficiente para confirmar o rechazar el depósito.',fallido?'failed':validado?'done':'waiting')
+      ];
+      el.innerHTML='<section class="receipt-check-header" aria-live="polite"><div class="receipt-check-top"><div><small class="eyebrow">SEGUIMIENTO BANCARIO</small><h3>'+
+        esc(titulo)+'</h3><p>'+esc(mensaje)+'</p></div><button type="button" class="receipt-check-refresh" data-check-refresh>'+
+        'Actualizar estado ↻</button></div><div class="receipt-check-meta"><span>Última consulta: '+esc(fechaTexto)+
+        '</span><span>Avisos consultados: '+Number(v.avisosConsultados||0)+'</span><span>Autenticados: '+Number(v.avisosAutenticados||0)+
+        '</span></div></section>'+(fallido?'<p class="receipt-check-warning" role="alert"><strong>Motivo específico del fallo:</strong> '+esc(mensaje)+'</p>':'')+
+        '<h3 class="receipt-timeline-heading">Etapas de la comprobación</h3><ol class="receipt-timeline">'+pasos.join('')+'</ol>';
+    }
+    $('receiptDetailsBody').addEventListener('click',async event=>{
+      const b=event.target.closest('[data-check-refresh]');if(!b||activeReceiptId===null)return;
+      b.disabled=true;b.textContent='Consultando…';
+      try{
+        const ok=await loadReceipts({preserveOnError:true});
+        if(!ok)throw Error('No se pudo consultar el estado. Intenta nuevamente.');
+        const actual=receiptItems.find(x=>Number(x.id)===activeReceiptId);
+        if($('receiptDetailsModal').open&&actual)renderReceiptStatus(actual);
+      }catch(error){toast(error.message)}
+      finally{if(b.isConnected){b.disabled=false;b.textContent='Actualizar estado ↻'}}
+    });
     async function openReceiptDetails(id){
       const p=receiptItems.find(x=>Number(x.id)===Number(id));
       if(!p)return toast('No se encontró el pago');
-      const fields=[
-        ['Vivienda',String((p.casa?.calleCorrecta || p.calleSnapshot)||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
-        ['Folio del reporte',p.folioReporte],['Folio del recibo',p.reciboFolio||'Pendiente'],
-        ['Identificador bancario',p.folioOperacion],['Fecha de operación',p.fechaOperacion],
-        ['Hora',p.horaOperacion],['Monto depositado',money(p.monto)],
-        ['Recargo incluido',money(p.recargo)],['Tipo',p.tipoPago],['Concepto',p.concepto],
-        ['Estatus',p.estatus],['Observaciones',p.observacionesRevision||'Sin observaciones']
+      activeReceiptId=Number(id);
+      const groups=[
+        {titulo:'Resumen de la operación', campos:[
+          ['Vivienda',String((p.casa?.calleCorrecta||p.calleSnapshot)||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
+          ['Monto depositado',money(p.monto)],['Fecha de operación',p.fechaOperacion],
+          ['Hora del depósito',p.horaOperacion],['Tipo de cuota',p.tipoPago]
+        ]},
+        {titulo:'Identificación bancaria',campos:[
+          ['Folio del reporte',p.folioReporte],['Folio del recibo',p.reciboFolio||'Pendiente'],
+          ['Identificador bancario',p.folioOperacion]
+        ]},
+        {titulo:'Concepto y recargos',campos:[
+          ['Concepto',p.concepto],['Recargo incluido',money(p.recargo)]
+        ]}
       ];
       $('receiptDetailsHeading').textContent='Pago '+String(p.reciboFolio||p.folioReporte||p.id);
       const details=$('receiptDetailsBody');
-      details.innerHTML='<div class="receipt-detail-grid">'+fields.map(([name,value])=>'<div class="receipt-detail-field"><small>'+esc(name)+'</small><strong>'+esc(value||'—')+'</strong></div>').join('')+
-        '</div><div class="receipt-proof-block"><b>Comprobante adjunto</b><p id="receiptPhotoStatus">Cargando archivo…</p><img id="receiptPhoto" alt="Comprobante bancario" hidden></div>'+
+      details.innerHTML='<div id="receiptStatusPanel"></div><div class="receipt-detail-sections">'+
+        groups.map(g=>'<section class="receipt-detail-section"><h3>'+esc(g.titulo)+'</h3><div class="receipt-detail-grid">'+
+          g.campos.map(([k,v])=>'<div class="receipt-detail-field"><small>'+esc(k)+'</small><strong>'+esc(v??'—')+'</strong></div>').join('')+
+          '</div></section>').join('')+'</div><div class="receipt-proof-block"><b>Comprobante adjunto</b>'+
+        '<p id="receiptPhotoStatus">Cargando archivo…</p><img id="receiptPhoto" alt="Comprobante bancario" hidden></div>'+
         '<div class="receipt-detail-actions"><button class="receipt-more" type="button" data-receipt-id="'+Number(p.id)+'">Abrir recibo PDF ↗</button></div>';
+      renderReceiptStatus(p);
       $('receiptDetailsModal').showModal();
       try{
         const proof=await api('/pagos/'+Number(p.id)+'/comprobante-mio',{headers:headers()});
@@ -586,6 +648,10 @@
         try{
           const anteriores=new Map(receiptItems.map(p=>[Number(p.id),p.estatus]));
           await loadReceipts();
+          if($('receiptDetailsModal').open&&activeReceiptId!==null){
+            const current=receiptItems.find(p=>Number(p.id)===activeReceiptId);
+            if(current)renderReceiptStatus(current);
+          }
           if(receiptItems.some(p=>anteriores.get(Number(p.id))==='PENDIENTE_VALIDACION'&&p.estatus==='VALIDADO')){
             toast('Se confirmó un depósito. Tu recibo ya aparece como Validado.');
             void loadValidity();void loadDebts();
