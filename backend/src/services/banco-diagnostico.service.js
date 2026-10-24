@@ -34,9 +34,29 @@ function evaluar(pago,avisos,autenticados){
   'Se consultó Titan, pero todavía no hay notificaciones bancarias recientes para cotejar este comprobante.',base);
  if(!autenticados.length)return resultado('SIN_AUTENTICACION',
   'Titan respondió, pero ninguna notificación reciente superó las comprobaciones de remitente y autenticación. No se puede confirmar ni rechazar el depósito.',base);
+ const comprobante=ids.identificadoresPago(pago);
+ const tiposComprobante=ids.disponibles(comprobante);
+ const tiposAviso=Array.from(new Set(autenticados.flatMap(a=>ids.disponibles(ids.identificadoresAviso(a)))));
+ const nombres={claveRastreo:'clave de rastreo',referencia:'referencia',folio:'folio de operación'};
+ const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
+ const auditoria={...base,
+   tiposComprobante:tiposComprobante.map(t=>nombres[t]),
+   tiposAviso:tiposAviso.map(t=>nombres[t])
+ };
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
- if(!vinculados.length)return resultado('SIN_COINCIDENCIA',
-  'Hay notificaciones bancarias autenticadas, pero ninguna contiene la misma referencia, clave de rastreo o folio del comprobante. El pago sigue en revisión; la ausencia de coincidencia no demuestra que haya fallado.',base);
+ if(!vinculados.length){
+  const diagnostico=tiposEnAmbas.length
+   ? 'Ambas fuentes contienen '+tiposEnAmbas.map(t=>nombres[t]).join(' y ')+
+     ', pero el OCR y el aviso autenticado no aportaron exactamente el mismo valor normalizado. Revisa la lectura, sin cambiar la referencia del depósito.'
+   : tiposComprobante.length&&!tiposAviso.length
+     ? 'El OCR identificó '+tiposComprobante.map(t=>nombres[t]).join(' y ')+
+       ', pero no se pudieron extraer identificadores del correo bancario autenticado.'
+     : !tiposComprobante.length
+       ? 'No se pudo recuperar del OCR guardado una clave de rastreo, referencia o folio verificable.'
+       : 'El comprobante y los correos autenticados no contienen un mismo tipo de identificador bancario para comparar.';
+  return resultado('SIN_COINCIDENCIA',diagnostico+
+   ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
+ }
  if(vinculados.length!==1)return resultado('COINCIDENCIA_AMBIGUA',
   'Más de una notificación autenticada comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...base,coincidencias:vinculados.length});
  const aviso=vinculados[0];
