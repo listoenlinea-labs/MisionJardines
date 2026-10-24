@@ -51,3 +51,21 @@ jobs:
           DB_USER: ci_test
           DB_PASSWORD: ci_only_no_connection
         run: node --test backend/tests/*.test.js
+      - name: Comparar la suite heredada contra main (solo diagnóstico)
+        continue-on-error: true
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: mision_test_ci
+          DB_USER: ci_test
+          DB_PASSWORD: ci_only_no_connection
+        run: |
+          git fetch --depth=1 origin main
+          git worktree add /tmp/mj-main FETCH_HEAD
+          cd /tmp/mj-main
+          set +e
+          NODE_PATH="$GITHUB_WORKSPACE/backend/node_modules" node --test backend/tests/*.test.js > /tmp/mj-baseline.log 2>&1
+          resultado=$?
+          grep -E '^(not ok|# tests|# pass|# fail)' /tmp/mj-baseline.log || true
+          echo "Resultado de la suite en main (0 si todas pasan): $resultado"
+          exit 0
