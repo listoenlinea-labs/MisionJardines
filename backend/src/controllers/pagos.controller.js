@@ -275,14 +275,13 @@ async function reportarPago(req, res) {
             });
         }
 
+        // La fecha del comprobante puede ser el siguiente día operativo bancario
+        // (inclusive feriados). No proyectar recargos hacia días aún no transcurridos.
+        let fechaCalculoMantenimiento = fechaOperacion;
         if (tipoPago === 'MANTENIMIENTO') {
-            // Aplicar el mismo límite de fecha a la cuenta sintética y a todos los residentes.
             const hoy = fechaMexico();
-            if (fechaOperacion > hoy && /^\d{4}-\d{2}-\d{2}$/.test(fechaOperacion)) {
-                return res.status(400).json({ ok:false,
-                    message:'La fecha del comprobante (' + fechaOperacion + ') es posterior a hoy (' + hoy + ') en México. Verifica la fecha real de la transferencia.' });
-            }
-            validarOperacion(fechaOperacion, hoy);
+            fechaCalculoMantenimiento = fechaOperacion > hoy ? hoy : fechaOperacion;
+            validarOperacion(fechaCalculoMantenimiento, hoy);
         }
 
         if (!/^\d{2}:\d{2}(:\d{2})?$/.test(horaOperacion)) {
@@ -392,7 +391,7 @@ async function reportarPago(req, res) {
                 concepto = 'PRUEBA CONTROLADA: Abono de mantenimiento de $10.00, octubre 2026. Requiere validación bancaria.';
             } else {
                 transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
-                const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
+                const rule = await recargosService.cotizar(casaId, fechaCalculoMantenimiento, req.body.monto, transaction);
                 cortesRecargo = rule.cortesRecargo;
                 requerido = rule.total;
                 recargo = rule.recargo;
@@ -661,15 +660,19 @@ async function cotizacionMantenimiento(req,res) {
         const hoy = fechaMexico();
         const resuelta = resolverFechaCapturada(req.query.fechaOperacion, req.query.horaOperacion);
         if (!resuelta.ok) return res.status(400).json({ok:false,message:resuelta.mensaje});
-        const fechaReal = validarOperacion(resuelta.fechaOperacion, hoy);
+        const fechaReportada = resuelta.fechaOperacion;
+        // Cobrar solo cortes efectivamente vencidos a la fecha de hoy.
+        const fechaCalculo = validarOperacion(fechaReportada > hoy ? hoy : fechaReportada, hoy);
         const pruebaDiez = await esPruebaDiez(req);
         const data = pruebaDiez
           ? {base:350,recargo:0,minimo:10,minimoReporte:10,saldoParcial:0,fechaFinalC3:'—',modoPrueba:true}
           : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
-              recargosService.contexto(req.usuario.casaId, fechaReal, transaction));
+              recargosService.contexto(req.usuario.casaId, fechaCalculo, transaction));
         data.fechaHoy = hoy;
-        data.fechaOperacionReal = fechaReal;
+        data.fechaOperacionReal = fechaReportada;
         data.fechaComprobante = resuelta.fechaComprobante;
+        data.fechaCalculoRecargos = fechaCalculo;
+        data.fechaPosterior = fechaReportada > hoy;
         data.ajusteSpei = resuelta.ajusteSpei;
         res.setHeader('Cache-Control','private, no-store');
         return res.json({ ok:true, data });
