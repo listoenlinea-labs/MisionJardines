@@ -44,7 +44,11 @@ function evaluar(pago,avisos,autenticados){
  // No revelar al residente si una referencia existe en pagos de OTRA
  // vivienda: solo comparar contra avisos que ya cumplen importe, casa, cuenta
  // receptora y fecha del comprobante (sin exigir aún el identificador).
- const avisosRelacionados=autenticados.filter(a=>banco.coincideDatosBancarios(pago,a));
+ const avisosConCuenta=autenticados.filter(a=>banco.chequeosAviso(pago,a).cuenta);
+ const avisosConMonto=avisosConCuenta.filter(a=>banco.chequeosAviso(pago,a).importe);
+ const avisosConFecha=avisosConMonto.filter(a=>banco.chequeosAviso(pago,a).fecha);
+ const avisosRelacionados=avisosConFecha.filter(a=>banco.chequeosAviso(pago,a).vivienda);
+ const filtroBloqueante=!avisosConCuenta.length?'DESTINO':!avisosConMonto.length?'IMPORTE':!avisosConFecha.length?'FECHA':!avisosRelacionados.length?'VIVIENDA':'IDENTIFICADOR';
  const avisoConReferencia=avisosRelacionados.filter(a=>ids.identificadoresAviso(a).referencia);
  // Comparaciones booleanas únicamente: no copiar números de referencia ni
  // claves de rastreo del buzón a las respuestas visibles del residente.
