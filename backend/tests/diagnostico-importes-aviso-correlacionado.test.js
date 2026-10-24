@@ -19,11 +19,12 @@ test('Referencia exacta, misma cuenta, vivienda y fecha pero importe bancario di
  assert.equal(banco.corresponde(pago(),a,{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
  const r=run(a);
  assert.equal(r.cotejoAvisos.filtroBloqueante,'IMPORTE');
+ assert.equal(r.etapa,'FALLIDO');
  assert.equal(r.cotejoAvisos.referenciaMismaCuenta,1);
  assert.equal(r.cotejoAvisos.referenciaMismaVivienda,1);
  assert.equal(r.cotejoAvisos.referenciaFechaCompatible,1);
  assert.equal(r.cotejoAvisos.importeLegibleReferencia,1);
- assert.match(r.detalle,/importe INTERPRETADO/i);
+ assert.match(r.detalle,/importe interpretado/i);
  assert.doesNotMatch(r.detalle,/1026|910260/);
 });
 test('Aviso autenticado de otro movimiento (misma cuenta, monto distinto, referencia distinta)',()=>{
@@ -38,6 +39,7 @@ test('Misma referencia y cuenta, pero vivienda distinta: no revelar importes',()
  const r=run(a);
  assert.equal(r.cotejoAvisos.referenciaMismaCuenta,1);
  assert.equal(r.cotejoAvisos.referenciaMismaVivienda,0);
+ assert.equal(r.etapa,'FALLIDO');
  assert.doesNotMatch(r.detalle,/15/);
 });
 test('Sin fecha compatible no afirmar que el correo es el mismo pago',()=>{
@@ -51,5 +53,5 @@ test('Sin importe leído se mantiene revisión aunque identificador coincida',()
  const r=run(a);
  assert.equal(r.cotejoAvisos.filtroBloqueante,'IMPORTE');
  assert.equal(r.cotejoAvisos.importeLegibleReferencia,0);
- assert.match(r.detalle,/extraer un importe/i);
+ assert.match(r.detalle,/extraer.*importe/i);
 });
