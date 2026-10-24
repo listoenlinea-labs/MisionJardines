@@ -15,7 +15,7 @@ function convertirTexto(html){
   .replace(/<\/(?:p|div|tr|td|li)>|<br\s*\/?\s*>/gi,'\n')
   .replace(/<[^>]*>/g,' ').replace(/&nbsp;|&#160;/gi,' ')
   .replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&[a-z]+;|&#\d+;/gi,' ')
-  .replace(/\r/g,'').slice(0,50000);
+  .replace(/\r/g,'').slice(0,200000);
 }
 const mesNumero={ENE:1,FEB:2,MAR:3,ABR:4,MAY:5,JUN:6,JUL:7,AGO:8,SEP:9,OCT:10,NOV:11,DIC:12};
 function fechaDeAviso(text){
@@ -35,15 +35,20 @@ function fechaDeAviso(text){
 // Extraer exclusivamente valores etiquetados; jamás inferir una referencia
 // de los últimos dígitos de la cuenta, de la fecha o de la descripción.
 function valorEtiquetado(texto,etiqueta,patron){
- const lines=String(texto||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
+ const lines=String(texto||'').split(/\n/).map(x=>x.trim().replace(/\s+/g,' ')).filter(Boolean);
  const found=new Set();
+ // Las palabras en leyendas genéricas no cuentan como campos: exigir que la
+ // etiqueta sea el encabezado de la línea/celda del correo.
+ const encabezado=new RegExp('^\\s*'+etiqueta.source,etiqueta.flags.replace('g',''));
  for(let i=0;i<lines.length;i++){
-  const match=lines[i].match(etiqueta);
+  const match=lines[i].match(encabezado);
   if(!match)continue;
-  const rest=lines[i].slice(match.index+match[0].length).replace(/^\s*[:#=-]\s*/,'');
-  for(const candidate of [rest,lines[i+1]||'']){
+  const rest=lines[i].slice(match[0].length).replace(/^\s*[:#=.-]\s*/,'');
+  // Los templates de Titan pueden poner etiqueta y valor en celdas distintas.
+  for(const candidate of [rest,lines[i+1]||'',lines[i+2]||'']){
    const m=candidate.match(patron);
    if(m){found.add(m[1]);break}
+   // Nunca saltar a otra etiqueta (CLAVE, CONCEPTO, BANCO, etc.) buscando dígitos.
    if(candidate&&/[A-Z]/.test(candidate))break;
   }
  }
