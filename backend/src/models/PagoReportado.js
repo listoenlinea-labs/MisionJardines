@@ -152,6 +152,7 @@ const PagoReportado = sequelize.define(
             allowNull: true,
             field: 'fecha_emision_recibo'
         },
+        verificacionBancaria: { type: DataTypes.JSON, allowNull: true, field: 'verificacion_bancaria' },
         observacionesRevision: {
             type: DataTypes.STRING(600),
             allowNull: true,
