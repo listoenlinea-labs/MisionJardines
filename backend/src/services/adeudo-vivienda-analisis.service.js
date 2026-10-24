@@ -49,8 +49,8 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
     c.origenImportacion === 'MANUAL_ANALISIS_ANUAL')) {
     ultimoMesPagado.pagoAnual = true;
   }
-  const creditos=(cuotas||[]).filter(c=>String(c.estatusPago)==='PAGO_PARCIAL' && Number(c.montoPagado)>0 && indice(Number(c.anio),MESES.indexOf(String(c.mes).toUpperCase())+1)>limite).reduce((sum,c)=>sum+Number(c.montoPagado||0),0);
-  return {
+  const creditos=(cuotas||[]).filter(c=>String(c.estatusPago)==='PAGO_PARCIAL' && Number(c.montoPagado)>0 && MESES.includes(String(c.mes).toUpperCase()) && indice(Number(c.anio),MESES.indexOf(String(c.mes).toUpperCase())+1)>=limite).reduce((sum,c)=>sum+Number(c.montoPagado||0),0);
+    return {
     saldoFavor:Math.round(creditos*100)/100,
     ultimoMesPagado,
     mesesPendientes:resumen.mesesPendientes,
