@@ -115,7 +115,9 @@ function evaluar(pago,avisos,autenticados){
  if(completos)return resultado('COINCIDENCIA_VERIFICADA',
   'Se encontró una notificación bancaria autenticada con identificador, monto, fecha, cuenta destino y vivienda coincidentes. Se está aplicando la confirmación.',{...auditoria,coincidencias:1,verificaciones:checks});
  const causas=[];
- if(!checks.importe)causas.push('El importe del aviso bancario es diferente al importe reportado.');
+ if(!checks.importe)causas.push(Number.isFinite(aviso?.monto)
+  ? 'El importe interpretado del aviso bancario no coincide con el importe reportado.'
+  : 'No se pudo extraer del aviso bancario un importe recibido verificable.');
  if(!checks.destino)causas.push('La cuenta destinataria del aviso bancario no corresponde a la cuenta oficial.');
  if(!checks.vivienda)causas.push('El concepto del aviso no identifica la vivienda reportada.');
  if(!checks.fecha)causas.push('La fecha del aviso no coincide con la fecha reportada ni con una equivalencia SPEI verificable.');
