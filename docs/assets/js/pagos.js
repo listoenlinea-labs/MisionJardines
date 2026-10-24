@@ -179,7 +179,9 @@
     function renderReceiptStatus(p){
       const el=$('receiptStatusPanel');
       if(!el||!p)return;
-      const v=p.verificacionBancaria||{};
+      let v=p.verificacionBancaria||{};
+      if(typeof v==='string'){try{v=JSON.parse(v)}catch{v={}}}
+      if(!v||typeof v!=='object')v={};
       const etapa=String(v.etapa||'RECIBIDO');
       const validado=p.estatus==='VALIDADO',fallido=p.estatus==='RECHAZADO';
       const revisado=Boolean(v.fechaRevision);
@@ -191,7 +193,7 @@
         ?new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(fecha)
         :'Aún no se ha ejecutado';
       const titulo=validado?'Pago confirmado':fallido?'Validación fallida':buzonError?'Verificación interrumpida':'Comprobación bancaria en curso';
-      const mensaje=String(v.detalle||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
+      const mensaje=String(v.detalle||p.observacionesRevision||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
       const formatPaso=(n,nombre,detalle,estado)=>{
         const sym=estado==='done'?'✓':estado==='failed'?'!':estado==='current'?'•':String(n);
         return '<li class="'+esc(estado)+'"><span class="receipt-step-circle">'+esc(sym)+'</span><div class="receipt-step-content"><strong>'+
