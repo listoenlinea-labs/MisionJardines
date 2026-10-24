@@ -316,7 +316,7 @@
       return m[1].padStart(2, '0') + ':' + m[2] + ':' + (m[3] || '00');
     }
     const isPhotoDevice = window.matchMedia('(max-width: 900px) and (pointer: coarse)').matches;
-    // En móvil se aceptan fotos o imágenes; el botón Cámara usa su propia entrada con capture.
+    // En celulares, Safari ofrece directamente su selector nativo de fotos, cámara y archivos.
     if (isPhotoDevice) {
       $('proofInput').accept = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
       $('proofInput').removeAttribute('capture');
@@ -333,7 +333,7 @@
       ocrText = '';
       proofConfirmed = false;
       proofMeta = { name: '', mime: '' };
-      for (const id of ['proofInput', 'proofLibraryInput', 'proofCameraInput', 'proofFilesInput']) $(id).value = '';
+      $('proofInput').value = '';
       $('proofPreview').removeAttribute('src');
       $('previewBox').classList.remove('show');
       $('ocrBar').style.width = '0%';
@@ -442,23 +442,7 @@
         toast(error.message);
       }
     }
-    // Menú propio: tres elecciones visibles sin depender del orden del selector de Safari.
-    const proofSources = $('proofSourceDialog');
-    $('chooseProof').addEventListener('click', () => {
-      if (isPhotoDevice) proofSources.showModal();
-      else $('proofInput').click();
-    });
-    $('closeProofSource').addEventListener('click', () => proofSources.close());
-    proofSources.addEventListener('click', e => { if (e.target === proofSources) proofSources.close(); });
-    proofSources.querySelectorAll('[data-proof-source]').forEach(button => {
-      button.addEventListener('click', () => {
-        const input = $(button.dataset.proofSource);
-        proofSources.close();
-        input.click(); // invocado desde un gesto directo para permitir el diálogo del sistema
-      });
-    });
-    ['proofInput', 'proofLibraryInput', 'proofCameraInput', 'proofFilesInput']
-      .forEach(id => $(id).addEventListener('change', onProofSelected));
+    $('proofInput').addEventListener('change', onProofSelected);
 
     for(const container of ['receiptList','receiptAllList','receiptDetailsBody']){
       $(container).addEventListener('click',event=>{
