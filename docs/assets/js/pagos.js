@@ -95,7 +95,7 @@
 
       const base = Number(config.mantenimiento?.montoBase || 300);
       $('maintenanceRateText').textContent = money(base) + ' por mensualidad · '
-        + money(config.mantenimiento?.recargoTardio || 50) + ' por corte vencido pendiente';
+        + money(config.mantenimiento?.recargoTardio ?? 50) + ' por corte vencido pendiente';
       // El texto largo maintenancePaymentHint fue eliminado voluntariamente.
       // No volver a escribir en un elemento que no existe.
       $('legalTitle').textContent = config.legal?.titulo || 'Fundamento y aviso de cuotas';
@@ -120,7 +120,16 @@
         const count=debts.tipos?.[button.dataset.tab]?.length||0;
         if(count){const badge=document.createElement('span');badge.className='mj-tab-count';badge.textContent=count;button.append(badge);}
       });
-      renderClub();document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:debts}));
+      renderClub();renderPaymentStatusCards();document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:debts}));
+    }
+    function renderPaymentStatusCards(){
+      const item=debts?.resumen?.[paymentType]||{};
+      const deuda=Number(item.saldoPendiente??debts?.totales?.[paymentType]??0);
+      const favor=Number(item.saldoFavor||0);
+      const ultimo=item.ultimoMesPagado;
+      const periodo=ultimo?.mes?ultimo.mes+' '+ultimo.anio:'Sin pago';
+      const vals=[['Estado',deuda>0?'Pendiente':'Al corriente'],['Último mes pagado',paymentType==='CASA_CLUB'?'No aplica':paymentType==='EXTRAORDINARIO'&&!ultimo?.mes?'Sin pago':periodo],['Saldo pendiente',money(deuda)],['Saldo a favor',money(favor)]];
+      $('paymentStatusCards').innerHTML=vals.map(([label,value])=>'<div class="ps-card"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('');
     }
     function renderClub(){
       const items=debts?.tipos?.CASA_CLUB||[];
@@ -399,7 +408,7 @@
     }
 
     function setTab(type) {
-      paymentType = type; document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === type)); $('paymentPreview').hidden = type !== 'MANTENIMIENTO'; $('extraCard').hidden = type !== 'EXTRAORDINARIO';$('clubPaymentCard').hidden=type!=='CASA_CLUB'; $('maintenanceRule').hidden = type !== 'MANTENIMIENTO'; $('paymentTitle').textContent = type === 'MANTENIMIENTO' ? 'Reportar mantenimiento' : type==='CASA_CLUB'?'Reportar pago de casa club':'Reportar cuota extraordinaria'; updatePaymentSummary();showDebtModal();
+      paymentType = type;renderPaymentStatusCards(); document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === type)); $('paymentPreview').hidden = type !== 'MANTENIMIENTO'; $('extraCard').hidden = type !== 'EXTRAORDINARIO';$('clubPaymentCard').hidden=type!=='CASA_CLUB'; $('maintenanceRule').hidden = type !== 'MANTENIMIENTO'; $('paymentTitle').textContent = type === 'MANTENIMIENTO' ? 'Reportar mantenimiento' : type==='CASA_CLUB'?'Reportar pago de casa club':'Reportar cuota extraordinaria'; updatePaymentSummary();showDebtModal();
     }
 
     function readFile(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file) }) }

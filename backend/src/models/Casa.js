@@ -33,6 +33,8 @@ const Casa = sequelize.define(
             field: 'cuota_por_cobrar'
         },
 
+        exencionesRecargo: { type: DataTypes.JSON, allowNull: true, field: 'exenciones_recargo' },
+
         nombre: {
             type: DataTypes.STRING(150),
             allowNull: true

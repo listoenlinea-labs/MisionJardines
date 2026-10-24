@@ -5,12 +5,13 @@ const {createHash}=require('node:crypto');
 const {BASE,RECARGO,MAX_MESES}=require('./mensualidades-mantenimiento');
 const {centavos}=require('./vigencia-calculo');
 const MESES=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-const INICIO=2026*12+8; // Solo para una vivienda SIN ningún periodo pagado.
+const INICIO=2026*12; // Solo para una vivienda SIN ningún periodo pagado.
 const cents=v=>Math.max(0,Math.round(Number(v||0)*100));
 const indice=c=>Number(c.anio)*12+MESES.indexOf(String(c.mes).toUpperCase());
 const periodo=n=>`${Math.floor(n/12)}-${String(n%12+1).padStart(2,'0')}`;
 const pagada=c=>String(c?.estatusPago).toUpperCase()==='PAGADO'&&cents(c?.montoPagado)>0;
 const cubierta=c=>['CONDONADO','CANCELADO'].includes(String(c?.estatusPago).toUpperCase())||pagada(c);
+const inicioParaCuotas=cuotas=>cuotas.some(c=>Number(c.montoPagado)>0&&String(c.estatusPago)==='PAGADO')?2026*12+8:INICIO;
 const fail=m=>Object.assign(new Error(m),{status:409});
 function ultimoPagado(cuotas=[]){
  return cuotas.reduce((last,c)=>pagada(c)&&MESES.includes(String(c.mes).toUpperCase())&&Number.isInteger(Number(c.anio))&&
@@ -35,10 +36,10 @@ function recargoAbonado(c,tarifa){
  const paid=cents(c?.montoPagado);
  return Math.min(RECARGO*100,paid,c?.recargoPagado!=null?cents(c.recargoPagado):Math.max(0,paid-tarifa*100));
 }
-function estadoPeriodo(c,n,fecha,tarifa=BASE){
+function estadoPeriodo(c,n,fecha,tarifa=BASE,exento=false){
  const pagado=cents(c?.montoPagado),abonadoRecargo=recargoAbonado(c,tarifa);
  const prueba=tarifa===10&&n===2026*12+9&&c?.origenImportacion==='PRUEBA_10_PESOS'&&cents(c.montoCuota)===1000&&cents(c.recargo)===0;
- const multa=!prueba&&fecha>periodo(n)+'-10'?RECARGO*100:0;
+ const multa=!prueba&&!exento&&fecha>periodo(n)+'-10'?RECARGO*100:0;
  const recargoTotal=Math.max(multa,abonadoRecargo),total=tarifa*100+recargoTotal;
  const faltante=cubierta(c)?0:Math.max(0,total-pagado);
  return {total,pagado,faltante,recargoTotal,recargoPendiente:cubierta(c)?0:Math.max(0,multa-abonadoRecargo)};
@@ -46,7 +47,7 @@ function estadoPeriodo(c,n,fecha,tarifa=BASE){
 function huella(cuotas,tarifa){
  return createHash('sha256').update(JSON.stringify({tarifa,cuotas:cuotas.map(c=>[String(c.id),c.anio,c.mes,c.estatusPago,cents(c.montoPagado),cents(c.montoCuota),cents(c.recargo),cents(c.saldoPendiente),c.recargoPagado==null?null:cents(c.recargoPagado)]).sort((a,b)=>a[0].localeCompare(b[0]))})).digest('hex');
 }
-function contextoCuotas(cuotas,fecha,tarifa=BASE){
+function contextoCuotas(cuotas,fecha,tarifa=BASE,exencionesRecargo=[]){
  const inicio=inicioDesdeUltimo(cuotas);
  const limite=Number(fecha.slice(0,4))*12+Number(fecha.slice(5,7))-1;
  const meses=Math.max(0,limite-inicio+1);
@@ -72,7 +73,9 @@ function contextoCuotas(cuotas,fecha,tarifa=BASE){
   if(tarifa===10&&n===2026*12+9&&n<=ultimoVencido&&c.origenImportacion==='PRUEBA_10_PESOS'&&
    cents(c.montoCuota)===1000&&cents(c.recargo)===0)exencionPrueba=RECARGO*100;
  }
- const recargo=Math.max(0,(vencidos-exencionesVencidas)*RECARGO*100-recargosAplicados-exencionPrueba);
+ let mesesExentos=0;
+ for(let n=inicio;n<=ultimoVencido;n++)if(require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)))mesesExentos++;
+ const recargo=Math.max(0,(vencidos-exencionesVencidas-mesesExentos)*RECARGO*100-recargosAplicados-exencionPrueba);
  const principal=Math.max(0,(meses-exenciones)*tarifa*100-principalAplicado);
  const saldoParcial=parcial?Math.max(0,cents(parcial.montoPagado)-recargoAbonado(parcial,tarifa)):0;
  return {fuente:'CUOTAS',base:tarifa,tarifa,recargo:recargo/100,adeudoTotal:(principal+recargo)/100,
@@ -82,17 +85,17 @@ function contextoCuotas(cuotas,fecha,tarifa=BASE){
   saldoParcial:saldoParcial/100,fechaFinalCuotas:fechaDesdeCuotas(cuotas),
   primerPeriodoPendiente:periodo(primero),huella:huella(cuotas,tarifa)};
 }
-function planificar(cuotas,fecha,monto,tarifa){
+function planificar(cuotas,fecha,monto,tarifa,exencionesRecargo=[]){
  const amount=centavos(monto);
  if(!amount)throw fail('El importe debe ser mayor que cero');
- const ctx=contextoCuotas(cuotas,fecha,tarifa),fee=cents(ctx.recargo);
+ const ctx=contextoCuotas(cuotas,fecha,tarifa,exencionesRecargo),fee=cents(ctx.recargo);
  if(amount<fee)throw fail('El depósito debe cubrir los recargos pendientes de $'+ctx.recargo.toFixed(2));
  const inicio=inicioDesdeUltimo(cuotas);
  const map=new Map(cuotas.map(c=>[indice(c),c]));
  const cambios=new Map();
  const get=n=>{
   if(!cambios.has(n)){
-   const c=map.get(n),s=estadoPeriodo(c,n,fecha,tarifa);
+   const c=map.get(n),s=estadoPeriodo(c,n,fecha,tarifa,require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)));
    cambios.set(n,{anio:Math.floor(n/12),mes:MESES[n%12],periodo:periodo(n),id:c?.id||null,
     antesPagado:s.pagado,total:s.total,recargo:s.recargoTotal,
     recargoPagado:s.recargoTotal-s.recargoPendiente,abono:0,abonoRecargo:0});
@@ -102,7 +105,7 @@ function planificar(cuotas,fecha,monto,tarifa){
  const limite=Number(fecha.slice(0,4))*12+Number(fecha.slice(5,7))-1;
  // Solo los periodos pendientes DESPUÉS del último pagado requieren reparto.
  for(let n=inicio;n<=limite;n++){
-  const s=estadoPeriodo(map.get(n),n,fecha,tarifa);
+  const s=estadoPeriodo(map.get(n),n,fecha,tarifa,require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)));
   if(s.recargoPendiente){
    const p=get(n);p.abono=s.recargoPendiente;p.abonoRecargo=s.recargoPendiente;
    p.recargoPagado+=s.recargoPendiente;
@@ -130,7 +133,7 @@ function planificar(cuotas,fecha,monto,tarifa){
   const i=despues.findIndex(c=>Number(c.anio)===p.anio&&c.mes===p.mes);
   if(i<0)despues.push(row);else despues[i]={...despues[i],...row};
  }
- const nuevo=contextoCuotas(despues,fecha,tarifa);
+ const nuevo=contextoCuotas(despues,fecha,tarifa,exencionesRecargo);
  return {...ctx,version:2,fechaCalculo:fecha,monto:amount/100,tarifa,aplicaciones,meses,
   abonoParcial:meses===0,saldoDespues:nuevo.saldoParcial,faltante:nuevo.minimo,
   fechaFinalObjetivo:fechaDesdeCuotas(despues),recargo:fee/100,total:amount/100,
