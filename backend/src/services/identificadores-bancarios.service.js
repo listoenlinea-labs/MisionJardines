@@ -36,6 +36,23 @@ function identificadoresPago(pago){
   if(typed[meta.tipo])return typed;
  }
  const extraidos=extraer(pago?.textoOcr);
+ // Recuperación conservadora de comprobantes históricos: usar el campo que
+ // fue comprobado al registrar el pago SOLO si aparece como valor explícito
+ // cerca de una etiqueta REFERENCIA en el OCR almacenado por el servidor.
+ // Nunca asignar una referencia inferida de cuentas, fechas o folios.
+ const historica=referencia(pago?.folioOperacion);
+ if(historica){
+  const lines=String(pago?.textoOcr||'').split(/\r?\n/).map(line=>String(line).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim()).filter(Boolean);
+  const candidatos=[];
+  for(let i=0;i<lines.length;i++){
+   const matched=lines[i].match(/(?:^|\b)REFERENCIA(?:\s+NUMERICA)?\s*[:#=.-]?\s*(.*)$/);
+   if(!matched)continue;
+   const combined=[matched[1],lines[i+1]||''].join(' ').trim();
+   const first=combined.match(/^(?:\s*)(\d[\d\s-]{4,20})(?:\s|$)/);
+   if(first)candidatos.push(referencia(first[1]));
+  }
+  if(candidatos.length===1&&candidatos[0]===historica)extraidos.referencia=historica;
+ }
  // Compatibilidad estricta con reportes históricos: el identificador legado
  // solo puede compararse a la CLAVE, nunca asumir que era referencia o folio.
  if(!extraidos.claveRastreo&&!extraidos.referencia&&!extraidos.folio
