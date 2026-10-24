@@ -235,6 +235,7 @@
         $('officialConcept').value=selectedClub?'Casa club '+selectedClub.periodo+' · Renta '+money(selectedClub.renta)+' + depósito '+money(selectedClub.deposito)+' + limpieza '+money(selectedClub.limpieza):'Selecciona una reservación aprobada';return;
       }
       $('lateRow').hidden = false;
+      $('amount').removeAttribute('max');
       $('summaryBase').textContent = money(config?.mantenimiento?.montoBase || 300);
       $('summaryLate').textContent = 'Consultando…';
       $('summaryTotal').textContent = '—';
@@ -247,6 +248,19 @@
         const result = await api('/pagos/cotizacion?fechaOperacion=' + encodeURIComponent(date), { headers: headers() });
         if (revision !== quoteRevision || paymentType !== 'MANTENIMIENTO') return;
         quote = { ...result.data, minimoReporte: result.data.minimoReporte ?? result.data.minimo, fechaOperacion: date };
+        if (quote.modoPrueba) {
+          $('summaryBase').textContent = money(quote.minimo);
+          $('summaryLate').textContent = money(0);
+          $('lateRow').classList.remove('late');
+          $('summaryTotal').textContent = money(10);
+          $('ruleAmount').textContent = money(10);
+          $('amount').min = '10';
+          $('amount').max = '10';
+          $('officialConcept').value = 'Prueba controlada · abono de mantenimiento octubre 2026 · $10.00';
+          $('paymentPreview').textContent = 'Vivienda de prueba: se acepta únicamente un comprobante bancario real de $10.00. La validación sigue siendo obligatoria.';
+          return;
+        }
+        $('amount').removeAttribute('max');
         $('summaryBase').textContent = money(quote.base);
         $('summaryLate').textContent = money(quote.recargo);
         $('lateRow').classList.toggle('late', quote.recargo > 0);
@@ -428,6 +442,8 @@
       const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       if(!date || date<'2026-10-01' || date>today)return toast('Selecciona una fecha real desde octubre 2026, no futura.');
       if (!quote || quote.fechaOperacion !== date) return toast('Espera la consulta de recargos o vuelve a leer el comprobante.');
+      if (quote.modoPrueba && Math.round(amount * 100) !== 1000)
+        return toast('Para esta cuenta de prueba el comprobante debe ser de $10.00 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
     } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras()]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) { toast(err.message) } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
@@ -506,6 +522,7 @@
       if (paymentType !== 'MANTENIMIENTO') return;
       const amount = Math.round(Number($('amount').value || 0) * 100);
       if (!quote) { $('paymentPreview').textContent = 'Selecciona la fecha del depósito para consultar los recargos de la vivienda.'; return; }
+      if (quote.modoPrueba) { $('paymentPreview').textContent = 'Modo de prueba: comprobante de $10.00. El reporte permanece En revisión hasta la conciliación bancaria.'; return; }
       const net = amount - Math.round(quote.recargo * 100);
       const available = net + Math.round(quote.saldoParcial * 100);
       if (amount <= 0 || net < 0) {
