@@ -14,7 +14,7 @@ async function consultarSoloMantenimiento(casaId) {
   const hoy = fechaMexico();
   const casa=await Casa.findByPk(casaId);
   if(!casa)throw Object.assign(new Error('Vivienda no encontrada'),{status:404});
-  const cuotas = await Cuota.findAll({where:{casaId},attributes:['anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente']});
+  const cuotas = await Cuota.findAll({where:{casaId},attributes:['anio','mes','estatusPago','montoPagado','montoCuota','recargo','saldoPendiente','origenImportacion']});
   const mantenimiento = calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa)});
   return {casaId,fechaConsulta:hoy,tipos:{MANTENIMIENTO:mantenimiento.detalles},
     totales:{MANTENIMIENTO:mantenimiento.saldoPendiente},total:mantenimiento.saldoPendiente};
