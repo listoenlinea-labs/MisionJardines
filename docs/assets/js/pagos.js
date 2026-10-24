@@ -248,14 +248,14 @@
         formatPaso(1,'Comprobante recibido','El reporte se guardó correctamente y tiene un folio de seguimiento.','done'),
         formatPaso(2,'Datos OCR extraídos','Se leyeron los datos bancarios y el destinatario del comprobante.','done'),
         formatPaso(3,'Consulta de buzón Titan',buzonError?'La conexión o la aplicación de la consulta tuvo un problema; se reintentará.':revisado?'Última revisión: '+fechaTexto:'Se programó la búsqueda de avisos bancarios.',buzonError?'current':revisado?'done':'current'),
-        formatPaso(4,'Autenticación del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) superaron la autenticación.':revisado?'No hay avisos autenticados utilizables todavía.':'Esperando una notificación bancaria auténtica.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
+        formatPaso(4,'Remitente del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) coinciden con el remitente autorizado.':revisado?'No hay avisos del remitente autorizado utilizables todavía.':'Esperando un aviso del remitente autorizado.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
         formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se ha encontrado al menos un identificador relacionado.'):etapa==='SIN_COINCIDENCIA'?mensaje+detallesReferencia:'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
         formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'Todavía no existe evidencia suficiente para confirmar o rechazar el depósito.',fallido?'failed':validado?'done':'waiting')
       ];
       el.innerHTML='<section class="receipt-check-header" aria-live="polite"><div class="receipt-check-top"><div><small class="eyebrow">SEGUIMIENTO BANCARIO</small><h3>'+
         esc(titulo)+'</h3><p>'+esc(mensaje)+'</p></div><button type="button" class="receipt-check-refresh" data-check-refresh>'+
         'Actualizar estado ↻</button></div><div class="receipt-check-meta"><span>Última consulta: '+esc(fechaTexto)+
-        '</span><span>Avisos consultados: '+Number(v.avisosConsultados||0)+'</span><span>Autenticados: '+Number(v.avisosAutenticados||0)+
+        '</span><span>Avisos consultados: '+Number(v.avisosConsultados||0)+'</span><span>Remitente autorizado: '+Number(v.avisosAutenticados||0)+
         '</span></div></section>'+(fallido?'<p class="receipt-check-warning" role="alert"><strong>Motivo específico del fallo:</strong> '+esc(mensaje)+'</p>':'')+
         '<h3 class="receipt-timeline-heading">Etapas de la comprobación</h3><ol class="receipt-timeline">'+pasos.join('')+'</ol>';
     }
@@ -790,7 +790,7 @@
         '<div><small>Fecha</small><strong>' + esc(p.fechaOperacion || '—') + '</strong></div>' +
         '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
         '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario, seleccionar para ampliar" role="button" tabindex="0" hidden><button type="button" class="pending-proof-zoom-button" id="pendingZoomButton" hidden>Ampliar fotografía ↗</button></div>' +
-        '<div class="pending-auto-status" role="status">En revisión automática: el sistema confirmará el depósito únicamente cuando el comprobante coincida con una notificación bancaria autenticada del buzón configurado. No es necesaria una decisión de Administración.</div>';
+        '<div class="pending-auto-status" role="status">En revisión automática: el sistema confirmará el depósito únicamente cuando el comprobante coincida con una notificación del remitente autorizado en el buzón configurado. No es necesaria una decisión de Administración.</div>';
       dialog.showModal();
       dialog.scrollTop = 0;
       try {

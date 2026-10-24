@@ -14,8 +14,8 @@ async function main(){
  const parsed=messages.map(m=>banco.datosAviso(m));
  console.log('[Diagnóstico] Conexión y lectura: OK');
  console.log('[Diagnóstico] Correos recientes encontrados:',messages.length);
- console.log('[Diagnóstico] Avisos con remitente/asunto y autenticación válidos:',parsed.filter(m=>m.autorizado).length);
- console.log('[Diagnóstico] Reenvíos autenticados del administrador autorizado:',parsed.filter(m=>m.autorizado&&m.origenVerificado==='ADMINISTRADOR').length);
+ console.log('[Diagnóstico] Avisos con remitente/asunto autorizados (sin autenticar):',parsed.filter(m=>m.autorizado).length);
+ console.log('[Diagnóstico] Reenvíos con From del administrador (sin autenticar):',parsed.filter(m=>m.autorizado&&m.origenVerificado==='ADMINISTRADOR').length);
  console.log('[Diagnóstico] Avisos con clave, monto, fecha y cuenta:',parsed.filter(m=>m.autorizado&&m.tracking&&Number.isFinite(m.monto)&&m.fecha&&m.cuenta).length);
  // Separar extracción de autenticación: un reenvío puede contener datos
  // legibles pero carecer de autenticación bancaria. Mostrar solo cantidades.
@@ -25,6 +25,6 @@ async function main(){
  console.log('[Diagnóstico] Mensajes sin concepto de vivienda reconocible:',parsed.filter(m=>!m.concepto).length);
  console.log('[Diagnóstico] No se actualizó ningún pago, TAG o mensaje.');
  if(!parsed.some(m=>m.autorizado))
-  console.warn('[Diagnóstico] Sin avisos autenticados; revisar PAGOS_IMAP_AUTH_SERVER y el remitente bancario o administrador autorizado.');
+  console.warn('[Diagnóstico] Sin avisos autorizados; revisar PAGOS_BANK_FORWARD_FROM_ADDRESS y el asunto. El origen se comprueba solo por From, sin DKIM/DMARC.');
 }
 main().catch(error=>{console.error('[Diagnóstico] Error:',error.message);process.exitCode=1});

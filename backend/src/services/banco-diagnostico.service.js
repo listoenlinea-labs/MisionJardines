@@ -1,6 +1,6 @@
 'use strict';
 // Diagnóstico trazable sin incluir datos de cuenta, correo, claves o capturas en la respuesta.
-// Solo un aviso AUTENTICADO y enlazado por identificador del MISMO tipo puede causar
+// Solo un aviso de REMITENTE AUTORIZADO y enlazado por identificador del MISMO tipo puede causar
 // un rechazo automático por discrepancia material. La falta de correo NO es prueba de fraude.
 const banco=require('./banco-correo.service');
 const ids=require('./identificadores-bancarios.service');
@@ -33,7 +33,7 @@ function evaluar(pago,avisos,autenticados){
  if(!avisos.length)return resultado('BUZON_SIN_AVISOS',
   'Se consultó Titan, pero todavía no hay notificaciones bancarias recientes para cotejar este comprobante.',base);
  if(!autenticados.length)return resultado('SIN_AUTENTICACION',
-  'Titan respondió, pero ninguna notificación reciente superó las comprobaciones de remitente y autenticación. No se puede confirmar ni rechazar el depósito.',base);
+  'Titan respondió, pero ninguna notificación reciente superó las comprobaciones de remitente y asunto. No se puede confirmar ni rechazar el depósito.',base);
  const comprobante=ids.identificadoresPago(pago);
  const tiposComprobante=ids.disponibles(comprobante);
  const nombres={claveRastreo:'clave de rastreo',referencia:'referencia',folio:'folio de operación'};
@@ -84,12 +84,12 @@ function evaluar(pago,avisos,autenticados){
  };
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
-  const problemas={DESTINO:'Ningún aviso autenticado pasó la comprobación de cuenta destino.',IMPORTE:!avisosImporteLegible.length
+  const problemas={DESTINO:'Ningún aviso de remitente autorizado pasó la comprobación de cuenta destino.',IMPORTE:!avisosImporteLegible.length
    ? 'No se pudo extraer un importe recibido verificable del correo bancario con cuenta destino correcta. Revisa el formato del aviso de Titan.'
    : avisosPorFecha.length===1 && importesLeidosRelacionados.length===1
-     ? 'Se localizó un aviso autenticado con referencia, cuenta, vivienda y fecha compatibles, pero el importe INTERPRETADO del correo es distinto al de este comprobante. La lectura del monto requiere una revisión; no se ha acreditado ni rechazado el pago.'
+     ? 'Se localizó un aviso de remitente autorizado con referencia, cuenta, vivienda y fecha compatibles, pero el importe INTERPRETADO del correo es distinto al de este comprobante. La lectura del monto requiere una revisión; no se ha acreditado ni rechazado el pago.'
      : avisosPorReferencia.length===0
-       ? 'El aviso autenticado con cuenta destino correcta contiene un importe, pero no tiene un identificador que coincida con este comprobante. Podría tratarse de otro movimiento.'
+       ? 'El aviso de remitente autorizado con cuenta destino correcta contiene un importe, pero no tiene un identificador que coincida con este comprobante. Podría tratarse de otro movimiento.'
        : avisosPorVivienda.length===0
          ? 'Existe una referencia coincidente para esa cuenta, pero el concepto del aviso no identifica esta vivienda; no se puede atribuir el correo a este pago.'
          : 'El importe leído en el correo no coincide con el comprobante o no hay evidencia suficiente para vincular el aviso con la misma fecha.',FECHA:'No hay fecha bancaria compatible en los avisos con importe y cuenta coincidentes.',VIVIENDA:'Ningún aviso con importe, cuenta y fecha compatibles identifica esta vivienda.'};
@@ -97,23 +97,23 @@ function evaluar(pago,avisos,autenticados){
    ? problemas[filtroBloqueante]+' Todavía no se ha comparado la referencia con un aviso de este pago.'
    : tiposEnAmbas.length
    ? 'Ambas fuentes contienen '+tiposEnAmbas.map(t=>nombres[t]).join(' y ')+
-     ', pero el OCR y el aviso autenticado no aportaron exactamente el mismo valor normalizado. Revisa la lectura, sin cambiar la referencia del depósito.'
+     ', pero el OCR y el aviso de remitente autorizado no aportaron exactamente el mismo valor normalizado. Revisa la lectura, sin cambiar la referencia del depósito.'
    : tiposComprobante.length&&!tiposAviso.length
      ? 'El OCR identificó '+tiposComprobante.map(t=>nombres[t]).join(' y ')+
-       ', pero no se pudieron extraer identificadores del correo bancario autenticado.'
+       ', pero no se pudieron extraer identificadores del correo bancario de remitente autorizado.'
      : !tiposComprobante.length
        ? 'No se pudo recuperar del OCR guardado una clave de rastreo, referencia o folio verificable.'
-       : 'El comprobante y los correos autenticados no contienen un mismo tipo de identificador bancario para comparar.';
+       : 'El comprobante y los correos de remitente autorizado no contienen un mismo tipo de identificador bancario para comparar.';
   return resultado('SIN_COINCIDENCIA',diagnostico+
    ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
  }
  if(vinculados.length!==1)return resultado('COINCIDENCIA_AMBIGUA',
-  'Más de una notificación autenticada comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...auditoria,coincidencias:vinculados.length});
+  'Más de una notificación de remitente autorizado comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...auditoria,coincidencias:vinculados.length});
  const aviso=vinculados[0];
  const checks=evidencia(pago,aviso);
  const completos=Object.values(checks).every(Boolean);
  if(completos)return resultado('COINCIDENCIA_VERIFICADA',
-  'Se encontró una notificación bancaria autenticada con identificador, monto, fecha, cuenta destino y vivienda coincidentes. Se está aplicando la confirmación.',{...auditoria,coincidencias:1,verificaciones:checks});
+  'Se encontró una notificación bancaria de remitente autorizado con identificador, monto, fecha, cuenta destino y vivienda coincidentes. Se está aplicando la confirmación.',{...auditoria,coincidencias:1,verificaciones:checks});
  const causas=[];
  if(!checks.importe)causas.push(Number.isFinite(aviso?.monto)
   ? 'El importe interpretado del aviso bancario no coincide con el importe reportado.'

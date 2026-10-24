@@ -1,6 +1,6 @@
 'use strict';
 // Sólo lectura. El correo bancario es evidencia secundaria: la aprobación exige
-// IMAP TLS, remitente autorizado autenticado, clave, monto, fecha y terminación receptora.
+// IMAP TLS, From autorizado (sin autenticar), identificador, monto, fecha y destino.
 const {createHash}=require('node:crypto');
 const {leerBuzon}=require('./correo-bancario-mail.service');
 const { equivaleFechaSpei }=require('./fecha-operativa-spei.service');
@@ -33,6 +33,17 @@ function fechaDeAviso(text){
  const date=new Date(Date.UTC(year,month-1,day));
  if(date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day)return '';
  return year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+}
+function fechaBancaria(text){
+ const s=normal(text);
+ // El encabezado «Enviado» del reenvío no es la fecha del depósito.
+ // Leer solo la sección entre el importe recibido y la cuenta receptora.
+ if(!/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)\b/.test(s))return '';
+ const bloques=[...s.matchAll(/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)\b([\s\S]{0,600}?)\bA\s+TU\s+CUENTA\b/g)];
+ const fechas=bloques.map(m=>fechaDeAviso(m[1]));
+ if(!fechas.length||fechas.some(f=>!f))return '';
+ const unicas=new Set(fechas);
+ return unicas.size===1?[...unicas][0]:'';
 }
 // Extraer exclusivamente valores etiquetados; jamás inferir una referencia
 // de los últimos dígitos de la cuenta, de la fecha o de la descripción.
@@ -71,21 +82,13 @@ function montoRecibido(texto){
 }
 function datosAviso(mensaje,config=process.env){
  const remitente=String(mensaje?.from?.emailAddress?.address||'').trim().toLowerCase();
- const emisor=String(config.PAGOS_BANK_FROM_ADDRESS||'').trim().toLowerCase();
  const administrador=String(config.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim().toLowerCase();
  const asunto=normal(mensaje?.subject);
  const asuntoExigido=normal(config.PAGOS_BANK_MAIL_SUBJECT||'Notificación Banco Azteca');
- const headers=mensaje?.internetMessageHeaders||[];
- const autenticacion=headers.filter(h=>String(h.name).toLowerCase()==='authentication-results').map(h=>String(h.value||'')).join(' ');
- // En un reenvío se autentica al administrador expresamente autorizado,
- // sin exigir que el encabezado exterior siga perteneciendo al banco.
- // El texto «De: Banco…» del cuerpo no puede autorizar a otro remitente.
- const origen=emisor&&remitente===emisor?'BANCO':administrador&&remitente===administrador?'ADMINISTRADOR':'';
- const dominio=origen?remitente.split('@')[1]||'':'';
- const autorizado=Boolean(origen&&asunto.includes(asuntoExigido)&&dominio
-  &&/\bdmarc=pass\b/i.test(autenticacion)
-  &&/\bdkim=pass\b/i.test(autenticacion)
-  &&new RegExp('header\\.from='+dominio.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:\\s|;|$)','i').test(autenticacion));
+ // Confianza explícita solicitada: solo From exacto del administrador.
+ // No autentica la identidad; el remitente puede falsificarse.
+ const autorizado=Boolean(administrador&&remitente===administrador&&asunto.includes(asuntoExigido));
+ const origen=autorizado?'ADMINISTRADOR':'';
  const body=convertirTexto(mensaje?.body?.content||'');
  const upper=normal(body);
  const claveMatch=upper.match(/\bCLAVE\s+DE\s+RASTREO\s*[:#=\-]?\s*([A-Z0-9][A-Z0-9\s-]{10,100})/);
@@ -97,7 +100,7 @@ function datosAviso(mensaje,config=process.env){
  const monto=montoRecibido(upper);
  const cuentas=[...new Set([...upper.matchAll(/\bA\s+TU\s+CUENTA\s*\*{2,}\s*(\d{3,4})(?!\d)/g)].map(m=>m[1]))];
  const cuenta=cuentas.length===1?cuentas[0]:'';
- const fecha=fechaDeAviso(upper);
+ const fecha=fechaBancaria(upper);
  const conceptoMatch=upper.match(/\bCONCEPTO\s*[:\-]?\s*([^\n]{2,150})/);
  const concepto=conceptoMatch?conceptoMatch[1].trim():'';
  const id=String(mensaje?.id||'');
@@ -153,8 +156,8 @@ function corresponde(pago,noticia,config=process.env){
 }
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
-  &&Boolean(env.PAGOS_IMAP_HOST&&env.PAGOS_IMAP_MAILBOX&&env.PAGOS_IMAP_PASSWORD&&env.PAGOS_IMAP_AUTH_SERVER
-    &&(String(env.PAGOS_BANK_FROM_ADDRESS||'').trim()||String(env.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim())&&env.PAGOS_DESTINO_ULTIMOS4);
+  &&Boolean(env.PAGOS_IMAP_HOST&&env.PAGOS_IMAP_MAILBOX&&env.PAGOS_IMAP_PASSWORD
+    &&String(env.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim()&&env.PAGOS_DESTINO_ULTIMOS4);
 }
 async function obtenerAvisos(){
  if(!configurado())return [];
