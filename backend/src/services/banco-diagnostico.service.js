@@ -43,6 +43,7 @@ function evaluar(pago,avisos,autenticados){
  // vivienda: solo comparar contra avisos que ya cumplen importe, casa, cuenta
  // receptora y fecha del comprobante (sin exigir aún el identificador).
  const avisosConCuenta=autenticados.filter(a=>banco.chequeosAviso(pago,a).cuenta);
+ const avisosImporteLegible=avisosConCuenta.filter(a=>Number.isFinite(a.monto));
  const avisosConMonto=avisosConCuenta.filter(a=>banco.chequeosAviso(pago,a).importe);
  const avisosConFecha=avisosConMonto.filter(a=>banco.chequeosAviso(pago,a).fecha);
  const avisosRelacionados=avisosConFecha.filter(a=>banco.chequeosAviso(pago,a).vivienda);
@@ -53,7 +54,7 @@ function evaluar(pago,avisos,autenticados){
  // Comparaciones booleanas únicamente: no copiar números de referencia ni
  // claves de rastreo del buzón a las respuestas visibles del residente.
  const auditoria={...base,
-   cotejoAvisos:{cuenta:avisosConCuenta.length,importe:avisosConMonto.length,fecha:avisosConFecha.length,vivienda:avisosRelacionados.length,filtroBloqueante},
+   cotejoAvisos:{cuenta:avisosConCuenta.length,importeLegible:avisosImporteLegible.length,importe:avisosConMonto.length,fecha:avisosConFecha.length,vivienda:avisosRelacionados.length,filtroBloqueante},
    tiposComprobante:tiposComprobante.map(t=>nombres[t]),
    tiposAviso:tiposAviso.map(t=>nombres[t]),
    diagnosticoReferencia:{
@@ -67,7 +68,7 @@ function evaluar(pago,avisos,autenticados){
  };
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
-  const problemas={DESTINO:'Ningún aviso autenticado pasó la comprobación de cuenta destino.',IMPORTE:'No se encontró importe compatible en los avisos con cuenta destino correcta.',FECHA:'No hay fecha bancaria compatible en los avisos con importe y cuenta coincidentes.',VIVIENDA:'Ningún aviso con importe, cuenta y fecha compatibles identifica esta vivienda.'};
+  const problemas={DESTINO:'Ningún aviso autenticado pasó la comprobación de cuenta destino.',IMPORTE:!avisosImporteLegible.length?'No se pudo extraer un importe recibido verificable del correo bancario con cuenta destino correcta. Revisa el formato del aviso de Titan.':'El importe leído del aviso bancario con cuenta destino correcta no coincide con el monto de este comprobante.',FECHA:'No hay fecha bancaria compatible en los avisos con importe y cuenta coincidentes.',VIVIENDA:'Ningún aviso con importe, cuenta y fecha compatibles identifica esta vivienda.'};
   const diagnostico=filtroBloqueante!=='IDENTIFICADOR'
    ? problemas[filtroBloqueante]+' Todavía no se ha comparado la referencia con un aviso de este pago.'
    : tiposEnAmbas.length

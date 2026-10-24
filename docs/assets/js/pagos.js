@@ -195,9 +195,12 @@
       const titulo=validado?'Pago confirmado':fallido?'Validación fallida':buzonError?'Verificación interrumpida':'Comprobación bancaria en curso';
       const mensaje=String(v.detalle||p.observacionesRevision||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
       const refInfo=v.diagnosticoReferencia;
+      const bloqueante=v.cotejoAvisos?.filtroBloqueante||'';
       const detallesReferencia=refInfo&&etapa==='SIN_COINCIDENCIA'
         ? ' Referencia guardada y OCR: '+(refInfo.coincideFormularioOcr?'coinciden':'no coincide o no se pudo leer')
-          +'. Referencia guardada y aviso Titan: '+(refInfo.coincideFormularioAviso?'coinciden':'no coinciden')+'.'
+          +(bloqueante && bloqueante!=='IDENTIFICADOR'
+            ? '. Referencia bancaria: pendiente de cotejar porque antes falta validar '+({DESTINO:'la cuenta',IMPORTE:'el importe',FECHA:'la fecha',VIVIENDA:'la vivienda'}[bloqueante]||'otros datos')+'.'
+            : '. Referencia guardada y aviso Titan: '+(refInfo.coincideFormularioAviso?'coinciden':'no coinciden')+'.')
         : '';
       const formatPaso=(n,nombre,detalle,estado)=>{
         const sym=estado==='done'?'✓':estado==='failed'?'!':estado==='current'?'•':String(n);

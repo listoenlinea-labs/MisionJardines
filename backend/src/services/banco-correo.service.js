@@ -14,7 +14,9 @@ function convertirTexto(html){
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ')
   .replace(/<\/(?:p|div|tr|td|li)>|<br\s*\/?\s*>/gi,'\n')
   .replace(/<[^>]*>/g,' ').replace(/&nbsp;|&#160;/gi,' ')
-  .replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&[a-z]+;|&#\d+;/gi,' ')
+  .replace(/&amp;/gi,'&').replace(/&quot;/gi,'"')
+  .replace(/&#0*36;|&#x0*24;|&dollar;/gi,'$')
+  .replace(/&[a-z]+;|&#(?:\d+|x[0-9a-f]+);/gi,' ')
   .replace(/\r/g,'').slice(0,200000);
 }
 const mesNumero={ENE:1,FEB:2,MAR:3,ABR:4,MAY:5,JUN:6,JUL:7,AGO:8,SEP:9,OCT:10,NOV:11,DIC:12};
@@ -54,6 +56,19 @@ function valorEtiquetado(texto,etiqueta,patron){
  }
  return found.size===1?[...found][0]:'';
 }
+// Reconocer únicamente el importe recibido; nunca comisión, saldo o cuenta.
+// Si hay más de un abono diferente, no interpretar un importe ambiguo.
+function montoRecibido(texto){
+ const s=normal(texto).replace(/\u00a0/g,' ');
+ const intro=/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)\s*(?:[:=-]\s*)?(?:\$\s*|MXN\s*\$?\s*)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?(?!\d)/g;
+ const label=/(?:^|\n)\s*(?:MONTO|IMPORTE)\s+(?:RECIBIDO|DEPOSITADO|ABONADO)\s*[:=-]?\s*(?:\$\s*|MXN\s*\$?\s*)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?(?!\d)/gm;
+ const cents=new Set();
+ for(const re of [intro,label])for(const m of s.matchAll(re)){
+  const n=Math.round(Number(m[1].replace(/,/g,''))*100)+Number((m[2]||'').padEnd(2,'0'));
+  if(Number.isSafeInteger(n)&&n>0&&n<=10000000000)cents.add(n);
+ }
+ return cents.size===1?[...cents][0]/100:null;
+}
 function datosAviso(mensaje,config=process.env){
  const remitente=String(mensaje?.from?.emailAddress?.address||'').trim().toLowerCase();
  const emisor=String(config.PAGOS_BANK_FROM_ADDRESS||'').trim().toLowerCase();
@@ -79,9 +94,7 @@ function datosAviso(mensaje,config=process.env){
  const folio=valorEtiquetado(upper,/\bFOLIO(?:\s+DE\s+OPERACION)?\b/,/^\s*([A-Z0-9-]{5,90})(?:\s|$)/);
  // El encabezado y el importe viven en filas HTML distintas. Admitir
  // espacios/saltos entre ellos sin saltar a Comisión, Saldo u otro campo.
- const montos=[...new Set([...upper.matchAll(/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)\s*\$\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})?)(?![\d.,])/g)]
-  .map(match=>Number(match[1].replace(/,/g,''))))];
- const monto=montos.length===1&&Number.isFinite(montos[0])?montos[0]:null;
+ const monto=montoRecibido(upper);
  const cuentas=[...new Set([...upper.matchAll(/\bA\s+TU\s+CUENTA\s*\*{2,}\s*(\d{3,4})(?!\d)/g)].map(m=>m[1]))];
  const cuenta=cuentas.length===1?cuentas[0]:'';
  const fecha=fechaDeAviso(upper);
@@ -155,4 +168,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_IMAP_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,corresponde,coincideDatosBancarios,chequeosAviso,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
+module.exports={datosAviso,montoRecibido,corresponde,coincideDatosBancarios,chequeosAviso,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
