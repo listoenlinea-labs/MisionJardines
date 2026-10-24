@@ -47,7 +47,7 @@ function estadoPeriodo(c,n,fecha,tarifa=BASE,exento=false){
 function huella(cuotas,tarifa){
  return createHash('sha256').update(JSON.stringify({tarifa,cuotas:cuotas.map(c=>[String(c.id),c.anio,c.mes,c.estatusPago,cents(c.montoPagado),cents(c.montoCuota),cents(c.recargo),cents(c.saldoPendiente),c.recargoPagado==null?null:cents(c.recargoPagado)]).sort((a,b)=>a[0].localeCompare(b[0]))})).digest('hex');
 }
-function contextoCuotas(cuotas,fecha,tarifa=BASE){
+function contextoCuotas(cuotas,fecha,tarifa=BASE,exencionesRecargo=[]){
  const inicio=inicioDesdeUltimo(cuotas);
  const limite=Number(fecha.slice(0,4))*12+Number(fecha.slice(5,7))-1;
  const meses=Math.max(0,limite-inicio+1);
@@ -73,7 +73,9 @@ function contextoCuotas(cuotas,fecha,tarifa=BASE){
   if(tarifa===10&&n===2026*12+9&&n<=ultimoVencido&&c.origenImportacion==='PRUEBA_10_PESOS'&&
    cents(c.montoCuota)===1000&&cents(c.recargo)===0)exencionPrueba=RECARGO*100;
  }
- const recargo=Math.max(0,(vencidos-exencionesVencidas)*RECARGO*100-recargosAplicados-exencionPrueba);
+ let mesesExentos=0;
+ for(let n=inicio;n<=ultimoVencido;n++)if(require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)))mesesExentos++;
+ const recargo=Math.max(0,(vencidos-exencionesVencidas-mesesExentos)*RECARGO*100-recargosAplicados-exencionPrueba);
  const principal=Math.max(0,(meses-exenciones)*tarifa*100-principalAplicado);
  const saldoParcial=parcial?Math.max(0,cents(parcial.montoPagado)-recargoAbonado(parcial,tarifa)):0;
  return {fuente:'CUOTAS',base:tarifa,tarifa,recargo:recargo/100,adeudoTotal:(principal+recargo)/100,
@@ -93,7 +95,7 @@ function planificar(cuotas,fecha,monto,tarifa,exencionesRecargo=[]){
  const cambios=new Map();
  const get=n=>{
   if(!cambios.has(n)){
-   const c=map.get(n),s=estadoPeriodo(c,n,fecha,tarifa);
+   const c=map.get(n),s=estadoPeriodo(c,n,fecha,tarifa,require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)));
    cambios.set(n,{anio:Math.floor(n/12),mes:MESES[n%12],periodo:periodo(n),id:c?.id||null,
     antesPagado:s.pagado,total:s.total,recargo:s.recargoTotal,
     recargoPagado:s.recargoTotal-s.recargoPendiente,abono:0,abonoRecargo:0});
@@ -131,7 +133,7 @@ function planificar(cuotas,fecha,monto,tarifa,exencionesRecargo=[]){
   const i=despues.findIndex(c=>Number(c.anio)===p.anio&&c.mes===p.mes);
   if(i<0)despues.push(row);else despues[i]={...despues[i],...row};
  }
- const nuevo=contextoCuotas(despues,fecha,tarifa);
+ const nuevo=contextoCuotas(despues,fecha,tarifa,exencionesRecargo);
  return {...ctx,version:2,fechaCalculo:fecha,monto:amount/100,tarifa,aplicaciones,meses,
   abonoParcial:meses===0,saldoDespues:nuevo.saldoParcial,faltante:nuevo.minimo,
   fechaFinalObjetivo:fechaDesdeCuotas(despues),recargo:fee/100,total:amount/100,
