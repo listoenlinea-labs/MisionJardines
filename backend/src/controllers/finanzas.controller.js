@@ -28,7 +28,7 @@ async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
   const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento,foliosRegistrados]=await Promise.all([
-   Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar']}),
+   Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar','exencionesRecargo']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
@@ -68,7 +68,7 @@ async function analizar(req,res){
   const streets=new Map();
   const residences=padron.casas.map(h=>{
    const q=byHouse.get(String(h.id));
-   const adeudo=calcularAdeudoVivienda(historiales.get(String(h.id))||[],{anio,mes,tarifa:tarifaParaCasa(h)});
+   const adeudo=calcularAdeudoVivienda(historiales.get(String(h.id))||[],{anio,mes,tarifa:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[]});
    const cubiertoPorCorte=adeudo.fechaUltimoCortePagado&&adeudo.fechaUltimoCortePagado>=new Date(Date.UTC(anio,mes,10)).toISOString().slice(0,10);
    const status=cubiertoPorCorte?'PAGADO':q?.estatusPago||'PENDIENTE';
    const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0);
@@ -79,7 +79,7 @@ async function analizar(req,res){
    st.total++;if(pagada)st.pagadas++;else st.pendientes++;
    st.abonos+=num(q?.montoPagado);
    const ultimoPago=historialMantenimiento(historiales.get(String(h.id))||[],bancosMantenimiento.get(String(h.id))||[])[0]||null;
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
     tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
@@ -184,6 +184,8 @@ async function modificarCuotaPorCobrar(req,res){
  try{
   const casaId=Number(req.params.casaId);
   const cuota=Number(req.body?.cuotaPorCobrar);
+  const sinRecargo=req.body?.sinRecargo;
+  if(sinRecargo!==undefined&&typeof sinRecargo!=='boolean')throw fail(400,'Valor de exención inválido');
   if(!Number.isSafeInteger(casaId)||casaId<1)throw fail(400,'Vivienda inválida');
   if(!Number.isInteger(cuota)||cuota<1||cuota>10000)
     throw fail(400,'La cuota mensual debe ser un importe entero de $1 a $10,000');
@@ -193,7 +195,7 @@ async function modificarCuotaPorCobrar(req,res){
    const anterior=tarifaParaCasa(casa);
    if(anterior!==cuota)await casa.update({cuotaPorCobrar:cuota},{transaction});
    return {casaId,calle:casa.calleCorrecta||casa.calle,numero:casa.numero,
-    cuotaPorCobrar:cuota,anterior};
+    cuotaPorCobrar:cuota,anterior,sinRecargo:require('../services/recargos-exenciones.service').activo(exenciones)};
   });
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
