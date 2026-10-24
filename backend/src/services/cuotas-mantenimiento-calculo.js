@@ -11,6 +11,7 @@ const indice=c=>Number(c.anio)*12+MESES.indexOf(String(c.mes).toUpperCase());
 const periodo=n=>`${Math.floor(n/12)}-${String(n%12+1).padStart(2,'0')}`;
 const pagada=c=>String(c?.estatusPago).toUpperCase()==='PAGADO'&&cents(c?.montoPagado)>0;
 const cubierta=c=>['CONDONADO','CANCELADO'].includes(String(c?.estatusPago).toUpperCase())||pagada(c);
+const inicioParaCuotas=cuotas=>cuotas.some(c=>Number(c.montoPagado)>0&&String(c.estatusPago)==='PAGADO')?2026*12+8:INICIO;
 const fail=m=>Object.assign(new Error(m),{status:409});
 function ultimoPagado(cuotas=[]){
  return cuotas.reduce((last,c)=>pagada(c)&&MESES.includes(String(c.mes).toUpperCase())&&Number.isInteger(Number(c.anio))&&
