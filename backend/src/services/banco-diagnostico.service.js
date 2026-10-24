@@ -36,9 +36,7 @@ function evaluar(pago,avisos,autenticados){
   'Titan respondió, pero ninguna notificación reciente superó las comprobaciones de remitente y autenticación. No se puede confirmar ni rechazar el depósito.',base);
  const comprobante=ids.identificadoresPago(pago);
  const tiposComprobante=ids.disponibles(comprobante);
- const tiposAviso=Array.from(new Set(autenticados.flatMap(a=>ids.disponibles(ids.identificadoresAviso(a)))));
  const nombres={claveRastreo:'clave de rastreo',referencia:'referencia',folio:'folio de operación'};
- const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
  const referenciaFormulario=ids.referencia(pago?.folioOperacion);
  const referenciaOcr=comprobante.referencia||'';
  // No revelar al residente si una referencia existe en pagos de OTRA
@@ -49,6 +47,8 @@ function evaluar(pago,avisos,autenticados){
  const avisosConFecha=avisosConMonto.filter(a=>banco.chequeosAviso(pago,a).fecha);
  const avisosRelacionados=avisosConFecha.filter(a=>banco.chequeosAviso(pago,a).vivienda);
  const filtroBloqueante=!avisosConCuenta.length?'DESTINO':!avisosConMonto.length?'IMPORTE':!avisosConFecha.length?'FECHA':!avisosRelacionados.length?'VIVIENDA':'IDENTIFICADOR';
+ const tiposAviso=Array.from(new Set(avisosRelacionados.flatMap(a=>ids.disponibles(ids.identificadoresAviso(a)))));
+ const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
  const avisoConReferencia=avisosRelacionados.filter(a=>ids.identificadoresAviso(a).referencia);
  // Comparaciones booleanas únicamente: no copiar números de referencia ni
  // claves de rastreo del buzón a las respuestas visibles del residente.
