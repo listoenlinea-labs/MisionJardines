@@ -10,6 +10,7 @@ const ReservaCasaClub=require('../models/ReservaCasaClub');
 const {estadoCargos}=require('../services/cargos-extraordinarios.service');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
 const {fechaMexico}=require('../services/vigencia-calculo');
+const {validarOperacion}=require('../services/mensualidades-mantenimiento');
 const { generarSiguienteFolio } = require('../services/folios.service');
 const { generarReciboPagoReportado } = require('../services/pago-reportado-pdf.service');
 
@@ -271,6 +272,16 @@ async function reportarPago(req, res) {
                 ok: false,
                 message: 'La fecha de operación no es válida'
             });
+        }
+
+        if (tipoPago === 'MANTENIMIENTO') {
+            // Aplicar el mismo límite de fecha a la cuenta sintética y a todos los residentes.
+            const hoy = fechaMexico();
+            if (fechaOperacion > hoy && /^\d{4}-\d{2}-\d{2}$/.test(fechaOperacion)) {
+                return res.status(400).json({ ok:false,
+                    message:'La fecha del comprobante (' + fechaOperacion + ') es posterior a hoy (' + hoy + ') en México. Verifica la fecha real de la transferencia.' });
+            }
+            validarOperacion(fechaOperacion, hoy);
         }
 
         if (!/^\d{2}:\d{2}(:\d{2})?$/.test(horaOperacion)) {
@@ -646,8 +657,17 @@ async function obtenerComprobante(req, res) {
 async function cotizacionMantenimiento(req,res) {
     try {
         if (!req.usuario.casaId) return res.status(400).json({ ok:false, message:'Selecciona una vivienda' });
-        const data = await esPruebaDiez(req) ? {base:350,recargo:0,minimo:10,minimoReporte:10,saldoParcial:0,fechaFinalC3:'—',modoPrueba:true} : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
-            recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
+        const hoy = fechaMexico();
+        if (typeof req.query.fechaOperacion === 'string' && req.query.fechaOperacion > hoy && /^\d{4}-\d{2}-\d{2}$/.test(req.query.fechaOperacion)) {
+            return res.status(400).json({ok:false,message:'El comprobante indica ' + req.query.fechaOperacion + ', posterior a hoy (' + hoy + ') en México. Comprueba la fecha del depósito.'});
+        }
+        const pruebaDiez = await esPruebaDiez(req);
+        if (pruebaDiez) validarOperacion(req.query.fechaOperacion, hoy);
+        const data = pruebaDiez
+          ? {base:350,recargo:0,minimo:10,minimoReporte:10,saldoParcial:0,fechaFinalC3:'—',modoPrueba:true}
+          : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
+              recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
+        data.fechaHoy = hoy;
         res.setHeader('Cache-Control','private, no-store');
         return res.json({ ok:true, data });
     } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible leer el C3 para calcular recargos. Intenta nuevamente.' }); }

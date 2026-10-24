@@ -1073,6 +1073,28 @@
       .history-months{min-width:0}
     }
   .pending-auto-status{margin:16px 0;padding:13px 15px;border:1px solid #d8e8e5;border-radius:12px;background:#f3faf8;color:#36685b;font-size:12px;line-height:1.6}
+
+/* El control nativo de fecha/hora de iOS y la fecha decorada nunca deben extender la cuadrícula. */
+.payments-v2 #paymentForm .form-grid,.payments-v2 #paymentForm .form-row,.payments-v2 #paymentForm .form-row>div{min-width:0;max-width:100%}
+.payments-v2 #paymentForm .form-row>div{width:100%;overflow:hidden}
+.payments-v2 #paymentForm input,.payments-v2 #paymentForm .mj-date-shell{display:block;box-sizing:border-box;min-width:0;max-width:100%;width:100%}
+.payments-v2 #paymentForm .mj-date-shell{width:100%!important}
+.payments-v2 #paymentForm input[type="date"],.payments-v2 #paymentForm input[type="time"]{min-width:0;max-width:100%;font-variant-numeric:tabular-nums}
+@media(max-width:900px){
+  .payments-v2 #paymentForm .form-row{grid-template-columns:minmax(0,1fr)}
+  .payments-v2 #paymentForm input[type="date"],.payments-v2 #paymentForm input[type="time"]{font-size:16px}
+}
+/* Menú propio con solo tres opciones; el selector de Archivos interno lo controla iOS. */
+.proof-hidden-input{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}
+button.upload{width:100%;font:inherit;appearance:none}
+.mj-proof-source-dialog{box-sizing:border-box;border:1px solid #e6e3ec;border-radius:18px;width:min(390px,calc(100vw - 28px));padding:20px;background:#fff;color:#25314b;box-shadow:0 24px 80px #14253d3b}
+.mj-proof-source-dialog[open]{position:fixed!important;inset:0!important;margin:auto!important}
+.mj-proof-source-dialog::backdrop{background:#20263991;backdrop-filter:blur(3px)}
+.mj-proof-source-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;font-size:16px}
+.mj-proof-source-heading button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid #e9d8f7;border-radius:50%;background:#faf5ff;color:#79549c;font-size:20px;cursor:pointer}
+.mj-proof-source-actions{display:grid;gap:9px}
+.mj-proof-source-actions button{min-height:49px;padding:12px 16px;border:1px solid #e5e7f0;border-radius:12px;background:#fafbfe;color:#2c3b58;text-align:left;font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.mj-proof-source-actions button:hover,.mj-proof-source-actions button:focus-visible{background:#f6edff;border-color:#d9c1f0;outline-offset:2px}
 </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -1225,8 +1247,11 @@
         <p>Sube una captura, fotografía o PDF. El sistema leerá folio, fecha, hora y monto, y solo permitirá enviar
           comprobantes cuyo <strong>Destino</strong> muestre a <strong>MARIA DEL ROCIO BAHENA JUAREZ</strong> y la terminación <strong>4409</strong>.</p>
 
-        <label class="upload" for="proofInput">
-          <input id="proofInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+        <input id="proofInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="proof-hidden-input">
+        <input id="proofLibraryInput" type="file" accept="image/*" class="proof-hidden-input" aria-label="Biblioteca de fotos">
+        <input id="proofCameraInput" type="file" accept="image/*" capture="environment" class="proof-hidden-input" aria-label="Tomar foto del comprobante">
+        <input id="proofFilesInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" class="proof-hidden-input" aria-label="Seleccionar archivo del comprobante">
+        <button class="upload" type="button" id="chooseProof" aria-haspopup="dialog" aria-controls="proofSourceDialog">
           <span class="upload-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none">
               <path
@@ -1237,8 +1262,16 @@
             </svg>
           </span>
           <strong>Adjuntar comprobante bancario</strong>
-          <span>En celular, selecciona una foto de tu biblioteca; en computadora también se admiten PDF.</span>
-        </label>
+          <span>Adjunta una foto o un archivo legible; en computadora también se admiten PDF.</span>
+        </button>
+        <dialog id="proofSourceDialog" class="mj-proof-source-dialog" aria-labelledby="proofSourceTitle">
+          <div class="mj-proof-source-heading"><strong id="proofSourceTitle">Adjuntar comprobante</strong><button type="button" id="closeProofSource" aria-label="Cerrar opciones de adjunto">×</button></div>
+          <div class="mj-proof-source-actions">
+            <button type="button" data-proof-source="proofLibraryInput">Biblioteca de fotos</button>
+            <button type="button" data-proof-source="proofCameraInput">Tomar foto</button>
+            <button type="button" data-proof-source="proofFilesInput">Seleccionar archivo</button>
+          </div>
+        </dialog>
 
         <div id="previewBox" class="preview">
           <div class="proof-media">
@@ -1333,7 +1366,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261022-clave-rastreo"></script>
-  <script src="assets/js/pagos.js?v=20261023-test-10"></script>
+  <script src="assets/js/pagos.js?v=20261023-ios-ocr-fecha"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
