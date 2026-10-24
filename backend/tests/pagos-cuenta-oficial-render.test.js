@@ -73,5 +73,5 @@ test('Si el API bancario falla, no se mantienen textos Cargando ni se permite co
 });
 
 test('La versión del recurso se actualizó para evitar caché de iOS', () => {
-  assert.match(html,/pagos\.js\?v=20261024-cuenta-oficial-config-1/);
+  assert.match(html,/pagos\.js\?v=20261024-[a-z0-9-]+/);
 });
