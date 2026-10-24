@@ -368,7 +368,6 @@ async function reportarPago(req, res) {
             // Validar en el backend, no confiar en importes del navegador ni OCR.
             // El recibo solo registra una solicitud: hasta validar contra el banco
             // no se activan TAGs físicos.
-            transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
             if (pruebaDiez) {
                 // Excepción aislada para validar OCR y recepción de un comprobante de $10.
                 // No se otorgan créditos ni se simula una aprobación bancaria.
@@ -377,7 +376,6 @@ async function reportarPago(req, res) {
                 }
                 const yaPendiente = await PagoReportado.findOne({
                     where: { casaId, tipoPago: 'MANTENIMIENTO', estatus: 'PENDIENTE_VALIDACION' },
-                    transaction
                 });
                 if (yaPendiente) return res.status(409).json({ok:false,message:'Ya hay un comprobante de prueba en revisión.'});
                 requerido = 10;
@@ -385,6 +383,7 @@ async function reportarPago(req, res) {
                 cortesRecargo = [];
                 concepto = 'PRUEBA CONTROLADA: abono de $10.00 de mantenimiento, octubre 2026. Validación bancaria obligatoria.';
             } else {
+                transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
                 const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
                 cortesRecargo = rule.cortesRecargo;
                 requerido = rule.total;
