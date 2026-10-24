@@ -1,0 +1,34 @@
+name: Verificar finanzas
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "docs/analisis-cuotas.html"
+      - "docs/assets/js/analisis-cuotas.js"
+      - "docs/assets/css/analisis-cuotas.css"
+      - "docs/pagos.html"
+      - "docs/assets/js/pagos.js"
+      - ".github/workflows/verificar-finanzas.yml"
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis JS frontend y backend
+        run: |
+          node --check docs/assets/js/pagos.js
+          node --check docs/assets/js/analisis-cuotas.js
+          node --check backend/src/controllers/finanzas.controller.js
+          node --check backend/src/controllers/pagos.controller.js
+          node --check backend/src/controllers/pagos-manuales-analisis.controller.js
+          node --check backend/src/services/adeudo-vivienda-analisis.service.js
+          node --check backend/src/services/cuotas-mantenimiento-calculo.js
+          node --check backend/src/services/pago-manual-analisis.service.js
+          node --check backend/src/services/recargos-exenciones.service.js
+      - name: Pruebas unitarias financieras
+        run: node --test backend/tests/adeudos-enero-saldo-favor-exencion.test.js
