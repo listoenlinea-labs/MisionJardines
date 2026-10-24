@@ -21,6 +21,21 @@ const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
+const CORREO_PRUEBA_DIEZ = 'condomino.prueba@example.invalid';
+async function esPruebaDiez(req) {
+    // Siempre consultar el usuario autenticado en MySQL; nunca confiar en un email enviado por el cliente.
+    const usuarioId = Number(req.usuario?.usuarioId);
+    const casaId = Number(req.usuario?.casaId);
+    if (!usuarioId || !casaId) return false;
+    const [usuario, casa] = await Promise.all([
+        Usuario.findByPk(usuarioId, { attributes: ['id', 'correo'] }),
+        Casa.findByPk(casaId, { attributes: ['id', 'calle', 'numero'] })
+    ]);
+    return String(usuario?.correo || '').trim().toLowerCase() === CORREO_PRUEBA_DIEZ
+        && String(casa?.calle || '').trim().toLowerCase() === 'prueba'
+        && String(casa?.numero || '').trim().toUpperCase() === 'TEST-001';
+}
+
 
 function nombreCompleto(usuario) {
     return [usuario?.nombre, usuario?.apellidoPaterno, usuario?.apellidoMaterno]
@@ -310,6 +325,7 @@ async function reportarPago(req, res) {
             });
         }
 
+        const pruebaDiez = tipoPago === 'MANTENIMIENTO' && await esPruebaDiez(req);
         let cuotaExtraordinaria = null;
         let cargoExtraordinario = null;
         let reservaCasaClub = null;
@@ -353,13 +369,563 @@ async function reportarPago(req, res) {
             // El recibo solo registra una solicitud: hasta validar contra el banco
             // no se activan TAGs físicos.
             transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
-            const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
-            cortesRecargo = rule.cortesRecargo;
-            requerido = rule.total;
-            recargo = rule.recargo;
-            concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
-                '(desde octubre de 2026, pendientes primero). ' +
-                (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
+            if (pruebaDiez) {
+                // Excepción aislada para validar OCR y recepción de un comprobante de $10.
+                // No se otorgan créditos ni se simula una aprobación bancaria.
+                if (centavos(monto) !== 1000) {
+                    return res.status(400).json({ ok: false, message: 'La vivienda de prueba únicamente acepta comprobantes de $10.00.' });
+                }
+                const yaPendiente = await PagoReportado.findOne({
+                    where: { casaId, tipoPago: 'MANTENIMIENTO', estatus: 'PENDIENTE_VALIDACION' },
+                    transaction
+                });
+                if (yaPendiente) return res.status(409).json({ok:false,message:'Ya hay un comprobante de prueba en revisión.'});
+                requerido = 10;
+                recargo = 0;
+                cortesRecargo = [];
+                concepto = 'PRUEBA CONTROLADA: abono de $10.00 de mantenimiento, octubre 2026. Validación bancaria obligatoria.';
+            } else {
+                const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
+                cortesRecargo = rule.cortesRecargo;
+                requerido = rule.total;
+                recargo = rule.recargo;
+                concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan 
+        }
+
+        if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
+            return res.status(400).json({
+                ok: false,
+                message: tipoPago === 'MANTENIMIENTO' ? 'El importe debe ser mayor que cero' : 'El comprobante debe corresponder exactamente a $' + requerido.toFixed(2) + ' MXN para este concepto'
+            });
+        }
+
+        if (!transaction) transaction = await sequelize.transaction();
+        if(cargoExtraordinario||reservaCasaClub){
+          if(cargoExtraordinario)await CargoExtraordinario.findByPk(cargoExtraordinario.id,{transaction,lock:transaction.LOCK.UPDATE});
+          if(reservaCasaClub){
+            const locked=await ReservaCasaClub.findByPk(reservaCasaClub.id,{transaction,lock:transaction.LOCK.UPDATE});
+            if(!locked||locked.estatus!=='APROBADA'||locked.pagado||fechaMexico()>locked.fechaLimitePago){const e=new Error('La reservación ya no está vigente para pagar');e.status=409;throw e;}
+          }
+          // El comprobante pendiente ya bloquea ese cargo; no duplicar folios.
+          const where=cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id};
+          const existenteConcepto=await PagoReportado.findOne({where:{...where,estatus:{[require('sequelize').Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction});
+          const manual=await PagoManualConcepto.findOne({where:cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id},transaction});
+          if(existenteConcepto||manual){const e=new Error('Este concepto ya tiene un pago registrado o pendiente de validación');e.status=409;throw e;}
+        }
+
+        const year = new Date().getFullYear();
+        const folio = await generarSiguienteFolio(year, transaction);
+        const now = new Date();
+
+        const pago = await PagoReportado.create({
+            casaId,
+            usuarioId,
+            tipoPago,
+            cuotaExtraordinariaId: cuotaExtraordinaria?.id || null,
+            cargoExtraordinarioId:cargoExtraordinario?.id||null,
+            reservaCasaClubId:reservaCasaClub?.id||null,
+            folioReporte: folio,
+            folioOperacion,
+            fechaOperacion,
+            horaOperacion: horaOperacion.length === 5
+                ? horaOperacion + ':00'
+                : horaOperacion,
+            concepto,
+            monto,
+            montoRequerido: requerido,
+            recargo: Math.min(recargo, monto),
+            cortesRecargo,
+            calleSnapshot: casa.calle,
+            numeroCasaSnapshot: casa.numero,
+            nombreReportante: nombreCompleto(usuario) || 'Residente',
+            comprobanteData,
+            comprobanteNombre: comprobanteNombre || null,
+            comprobanteMime: comprobanteMime || 'image/jpeg',
+            textoOcr: textoOcr || null,
+            estatus: 'PENDIENTE_VALIDACION',
+            reciboFolio: folio,
+            fechaEmisionRecibo: now
+        }, { transaction });
+
+
+        await transaction.commit();
+        transaction = null;
+        // No bloquear la respuesta: primero aparece en MIS RECIBOS como EN REVISIÓN.
+        // La conciliación procesa únicamente depósitos cuya evidencia sea inequívoca.
+        if (process.env.PAGOS_BANK_AUTO_VALIDATE==='true') {
+            try { require('../services/banco-correo-worker.service').programarRevision(); }
+            catch (error) { console.error('[Bancos] No fue posible programar revisión:',error.message); }
+        }
+
+        const pagoCompleto = await PagoReportado.findByPk(pago.id, {
+            include: [{
+                model: CuotaExtraordinaria,
+                as: 'cuotaExtraordinaria',
+                required: false,
+                attributes: ['id', 'concepto', 'monto']
+            }]
+        });
+
+        try {
+            const pdf = await generarReciboPagoReportado(pagoCompleto);
+            const reciboPdfUrl = construirUrlRecibo(req, pagoCompleto.id);
+
+            await pagoCompleto.update({
+                reciboPdfUrl,
+                reciboPdfData: pdf.buffer,
+                reciboPdfNombre: pdf.fileName,
+                reciboPdfMime: pdf.mimeType,
+                actualizadoEn: new Date()
+            });
+        } catch (pdfError) {
+            console.error('Pago guardado; error al generar recibo:', pdfError);
+        }
+
+        return res.status(201).json({
+            ok: true,
+            message: 'Pago reportado y en revisión bancaria automática',
+            data: pagoSeguro(req, pagoCompleto),
+            vigencia: null
+        });
+    } catch (error) {
+        if (transaction && !transaction.finished) {
+            await transaction.rollback();
+        }
+
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({
+                ok: false,
+                message: 'Este comprobante ya fue registrado'
+            });
+        }
+
+        console.error('Error al reportar pago:', error);
+        return res.status(error.status || 500).json({
+            ok: false,
+            message: error.status ? error.message : 'No fue posible registrar el comprobante de pago',
+            error: process.env.NODE_ENV === 'development'
+                ? error.message
+                : undefined
+        });
+    }
+}
+
+async function descargarRecibo(req, res) {
+    try {
+        const pago = await PagoReportado.findOne({
+            where: {
+                id: Number(req.params.id),
+                casaId: req.usuario.casaId
+            },
+            include: [{
+                model: CuotaExtraordinaria,
+                as: 'cuotaExtraordinaria',
+                required: false,
+                attributes: ['id', 'concepto', 'monto']
+            }]
+        });
+
+        if (!pago) {
+            return res.status(404).json({
+                ok: false,
+                message: 'Recibo no encontrado'
+            });
+        }
+
+        // Compatibilidad con recibos creados antes de guardar PDFs en MySQL:
+        // se regeneran una sola vez y quedan persistidos en la base de datos.
+        if (!pago.reciboPdfData || (pago.estatus === 'VALIDADO' && String(pago.reciboPdfNombre||'').startsWith('Acuse_Revision_'))) {
+            const pdf = await generarReciboPagoReportado(pago);
+            await pago.update({
+                reciboPdfData: pdf.buffer,
+                reciboPdfNombre: pdf.fileName,
+                reciboPdfMime: pdf.mimeType,
+                reciboPdfUrl: construirUrlRecibo(req, pago.id),
+                actualizadoEn: new Date()
+            });
+        }
+
+        const fileName = pago.reciboPdfNombre ||
+            ('Recibo_' + (pago.reciboFolio || pago.id) + '.pdf');
+
+        res.setHeader('Content-Type', pago.reciboPdfMime || 'application/pdf');
+        res.setHeader(
+            'Content-Disposition',
+            'inline; filename="' + fileName.replace(/"/g, '') + '"'
+        );
+        res.setHeader('Cache-Control', 'private, max-age=300');
+
+        return res.send(pago.reciboPdfData);
+    } catch (error) {
+        console.error('Error al descargar recibo PDF:', error);
+        return res.status(500).json({
+            ok: false,
+            message: 'No fue posible abrir el recibo'
+        });
+    }
+}
+
+async function obtenerComprobantePropio(req,res){
+ try{
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1||!req.usuario.casaId)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
+  const row=await PagoReportado.findOne({where:{id,casaId:req.usuario.casaId},attributes:['id','comprobanteData','comprobanteNombre','comprobanteMime']});
+  if(!row)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
+  res.setHeader('Cache-Control','private, no-store');
+  return res.json({ok:true,data:{comprobanteData:row.comprobanteData,comprobanteNombre:row.comprobanteNombre,comprobanteMime:row.comprobanteMime}});
+ }catch(e){console.error('Comprobante propio:',e);return res.status(503).json({ok:false,message:'No fue posible consultar el comprobante'});}
+}
+module.exports = { confirmarPagoDesdeBanco,
+    obtenerConfiguracion,
+    listarMisPagos,
+    listarCuotasExtraordinarias,
+    crearCuotaExtraordinaria,
+    obtenerAdeudos,
+    desactivarCuotaExtraordinaria,
+    reportarPago,
+    descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, obtenerComprobante
+};
+
+async function obtenerVigencia(req, res) {
+    try {
+        if (!req.usuario.casaId) return res.status(400).json({ ok: false, message: 'Selecciona una vivienda' });
+        return res.json({ ok: true, data: await vigenciaService.estadoCasa(req.usuario.casaId) });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar la vigencia' }); }
+}
+async function inicializarVigencia(req, res) {
+    try {
+        const casaId = Number(req.params.casaId);
+        if (!Number.isSafeInteger(casaId) || casaId <= 0) throw Object.assign(new Error('Vivienda inválida'), { status: 400 });
+        const row = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, transaction =>
+            vigenciaService.inicializar(casaId, req.body.fechaFinal, BASE_MANTENIMIENTO, req.usuario.usuarioId, transaction));
+        return res.json({ ok: true, data: vigenciaService.resumen(row) });
+    } catch (error) { return res.status(error.status || 503).json({ ok: false, message: error.status ? error.message : 'No fue posible configurar la vigencia' }); }
+}
+async function listarPendientes(req, res) {
+    try {
+        const rows = await PagoReportado.findAll({ where: { estatus: 'PENDIENTE_VALIDACION' }, include: [{ model: Casa, as: 'casa', required: false, attributes: ['id', 'calle', 'calleCorrecta', 'numero'] }], order: [['creadoEn', 'ASC']], limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] } });
+        return res.json({ ok: true, data: rows.map(row => pagoSeguro(req, row)) });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar los comprobantes pendientes' }); }
+}
+// Única vía para validar un comprobante reportado: conciliación contra el buzón.
+async function confirmarPagoDesdeBanco(pagoId, correoHash) {
+    if (!Number.isSafeInteger(Number(pagoId)) || Number(pagoId) <= 0
+        || typeof correoHash !== 'string' || !/^[a-f0-9]{64}$/.test(correoHash))
+        throw Object.assign(new Error('Confirmación bancaria inválida'), { status: 400 });
+    return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            const pago = await PagoReportado.findByPk(pagoId, { transaction, lock: transaction.LOCK.UPDATE });
+            if (!pago) throw Object.assign(new Error('Pago no encontrado'), { status: 404 });
+            if (pago.estatus !== 'PENDIENTE_VALIDACION')
+                throw Object.assign(new Error('El pago ya no está pendiente de validación bancaria'), { status: 409 });
+            // El recargo calculado al reportar el pago queda protegido.
+            const recargo = pago.recargo;
+            if (centavos(recargo) > centavos(pago.monto)) throw Object.assign(new Error('El recargo no puede superar el pago'), { status: 400 });
+            if (pago.tipoPago !== 'MANTENIMIENTO' && centavos(recargo) !== 0) throw Object.assign(new Error('Este concepto no lleva recargo de mantenimiento'), { status: 400 });
+            await pago.update({ estatus: 'VALIDADO', recargo, correoBancarioHash: correoHash, validadoPorUsuarioId: null,
+                fechaValidacion: new Date(), actualizadoEn: new Date(),
+                observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria autenticada.' }, { transaction });
+            if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') await recargosService.confirmar(pago, transaction);
+            const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
+                ? await vigenciaService.actualizar(pago.casaId, null, transaction, { origen: 'PAGO', registro: pago }) : null;
+            if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
+                const reserva=await ReservaCasaClub.findByPk(pago.reservaCasaClubId,{transaction,lock:transaction.LOCK.UPDATE});
+                if(!reserva||reserva.estatus!=='APROBADA'||reserva.pagado)throw Object.assign(new Error('La reserva ya cambió de estado. Requiere conciliación.'),{status:409});
+                await reserva.update({pagado:true,fechaPago:pago.fechaOperacion,folio:pago.folioOperacion,actualizadoEn:new Date()},{transaction});
+            }
+            return { pago: pago, vigencia };
+        });
+}
+
+async function obtenerComprobante(req, res) {
+    try {
+        const row = await PagoReportado.findByPk(req.params.id, { attributes: ['id', 'comprobanteData'] });
+        if (!row) return res.status(404).json({ ok: false, message: 'Comprobante no encontrado' });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ ok: true, data: { comprobanteData: row.comprobanteData } });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar el comprobante' }); }
+}
+
+async function cotizacionMantenimiento(req,res) {
+    try {
+        if (!req.usuario.casaId) return res.status(400).json({ ok:false, message:'Selecciona una vivienda' });
+        const data = await esPruebaDiez(req)
+            ? { base: 350, recargo: 0, minimo: 10, minimoReporte: 10, saldoParcial: 0,
+                fechaFinalC3: '—', modoPrueba: true }
+            : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
+                recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
+        res.setHeader('Cache-Control','private, no-store');
+        return res.json({ ok:true, data });
+    } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible leer el C3 para calcular recargos. Intenta nuevamente.' }); }
+}
+ + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
+                    '(desde octubre de 2026, pendientes primero). ' +
+                    (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): 
+        }
+
+        if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
+            return res.status(400).json({
+                ok: false,
+                message: tipoPago === 'MANTENIMIENTO' ? 'El importe debe ser mayor que cero' : 'El comprobante debe corresponder exactamente a $' + requerido.toFixed(2) + ' MXN para este concepto'
+            });
+        }
+
+        if (!transaction) transaction = await sequelize.transaction();
+        if(cargoExtraordinario||reservaCasaClub){
+          if(cargoExtraordinario)await CargoExtraordinario.findByPk(cargoExtraordinario.id,{transaction,lock:transaction.LOCK.UPDATE});
+          if(reservaCasaClub){
+            const locked=await ReservaCasaClub.findByPk(reservaCasaClub.id,{transaction,lock:transaction.LOCK.UPDATE});
+            if(!locked||locked.estatus!=='APROBADA'||locked.pagado||fechaMexico()>locked.fechaLimitePago){const e=new Error('La reservación ya no está vigente para pagar');e.status=409;throw e;}
+          }
+          // El comprobante pendiente ya bloquea ese cargo; no duplicar folios.
+          const where=cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id};
+          const existenteConcepto=await PagoReportado.findOne({where:{...where,estatus:{[require('sequelize').Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction});
+          const manual=await PagoManualConcepto.findOne({where:cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id},transaction});
+          if(existenteConcepto||manual){const e=new Error('Este concepto ya tiene un pago registrado o pendiente de validación');e.status=409;throw e;}
+        }
+
+        const year = new Date().getFullYear();
+        const folio = await generarSiguienteFolio(year, transaction);
+        const now = new Date();
+
+        const pago = await PagoReportado.create({
+            casaId,
+            usuarioId,
+            tipoPago,
+            cuotaExtraordinariaId: cuotaExtraordinaria?.id || null,
+            cargoExtraordinarioId:cargoExtraordinario?.id||null,
+            reservaCasaClubId:reservaCasaClub?.id||null,
+            folioReporte: folio,
+            folioOperacion,
+            fechaOperacion,
+            horaOperacion: horaOperacion.length === 5
+                ? horaOperacion + ':00'
+                : horaOperacion,
+            concepto,
+            monto,
+            montoRequerido: requerido,
+            recargo: Math.min(recargo, monto),
+            cortesRecargo,
+            calleSnapshot: casa.calle,
+            numeroCasaSnapshot: casa.numero,
+            nombreReportante: nombreCompleto(usuario) || 'Residente',
+            comprobanteData,
+            comprobanteNombre: comprobanteNombre || null,
+            comprobanteMime: comprobanteMime || 'image/jpeg',
+            textoOcr: textoOcr || null,
+            estatus: 'PENDIENTE_VALIDACION',
+            reciboFolio: folio,
+            fechaEmisionRecibo: now
+        }, { transaction });
+
+
+        await transaction.commit();
+        transaction = null;
+        // No bloquear la respuesta: primero aparece en MIS RECIBOS como EN REVISIÓN.
+        // La conciliación procesa únicamente depósitos cuya evidencia sea inequívoca.
+        if (process.env.PAGOS_BANK_AUTO_VALIDATE==='true') {
+            try { require('../services/banco-correo-worker.service').programarRevision(); }
+            catch (error) { console.error('[Bancos] No fue posible programar revisión:',error.message); }
+        }
+
+        const pagoCompleto = await PagoReportado.findByPk(pago.id, {
+            include: [{
+                model: CuotaExtraordinaria,
+                as: 'cuotaExtraordinaria',
+                required: false,
+                attributes: ['id', 'concepto', 'monto']
+            }]
+        });
+
+        try {
+            const pdf = await generarReciboPagoReportado(pagoCompleto);
+            const reciboPdfUrl = construirUrlRecibo(req, pagoCompleto.id);
+
+            await pagoCompleto.update({
+                reciboPdfUrl,
+                reciboPdfData: pdf.buffer,
+                reciboPdfNombre: pdf.fileName,
+                reciboPdfMime: pdf.mimeType,
+                actualizadoEn: new Date()
+            });
+        } catch (pdfError) {
+            console.error('Pago guardado; error al generar recibo:', pdfError);
+        }
+
+        return res.status(201).json({
+            ok: true,
+            message: 'Pago reportado y en revisión bancaria automática',
+            data: pagoSeguro(req, pagoCompleto),
+            vigencia: null
+        });
+    } catch (error) {
+        if (transaction && !transaction.finished) {
+            await transaction.rollback();
+        }
+
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({
+                ok: false,
+                message: 'Este comprobante ya fue registrado'
+            });
+        }
+
+        console.error('Error al reportar pago:', error);
+        return res.status(error.status || 500).json({
+            ok: false,
+            message: error.status ? error.message : 'No fue posible registrar el comprobante de pago',
+            error: process.env.NODE_ENV === 'development'
+                ? error.message
+                : undefined
+        });
+    }
+}
+
+async function descargarRecibo(req, res) {
+    try {
+        const pago = await PagoReportado.findOne({
+            where: {
+                id: Number(req.params.id),
+                casaId: req.usuario.casaId
+            },
+            include: [{
+                model: CuotaExtraordinaria,
+                as: 'cuotaExtraordinaria',
+                required: false,
+                attributes: ['id', 'concepto', 'monto']
+            }]
+        });
+
+        if (!pago) {
+            return res.status(404).json({
+                ok: false,
+                message: 'Recibo no encontrado'
+            });
+        }
+
+        // Compatibilidad con recibos creados antes de guardar PDFs en MySQL:
+        // se regeneran una sola vez y quedan persistidos en la base de datos.
+        if (!pago.reciboPdfData || (pago.estatus === 'VALIDADO' && String(pago.reciboPdfNombre||'').startsWith('Acuse_Revision_'))) {
+            const pdf = await generarReciboPagoReportado(pago);
+            await pago.update({
+                reciboPdfData: pdf.buffer,
+                reciboPdfNombre: pdf.fileName,
+                reciboPdfMime: pdf.mimeType,
+                reciboPdfUrl: construirUrlRecibo(req, pago.id),
+                actualizadoEn: new Date()
+            });
+        }
+
+        const fileName = pago.reciboPdfNombre ||
+            ('Recibo_' + (pago.reciboFolio || pago.id) + '.pdf');
+
+        res.setHeader('Content-Type', pago.reciboPdfMime || 'application/pdf');
+        res.setHeader(
+            'Content-Disposition',
+            'inline; filename="' + fileName.replace(/"/g, '') + '"'
+        );
+        res.setHeader('Cache-Control', 'private, max-age=300');
+
+        return res.send(pago.reciboPdfData);
+    } catch (error) {
+        console.error('Error al descargar recibo PDF:', error);
+        return res.status(500).json({
+            ok: false,
+            message: 'No fue posible abrir el recibo'
+        });
+    }
+}
+
+async function obtenerComprobantePropio(req,res){
+ try{
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1||!req.usuario.casaId)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
+  const row=await PagoReportado.findOne({where:{id,casaId:req.usuario.casaId},attributes:['id','comprobanteData','comprobanteNombre','comprobanteMime']});
+  if(!row)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
+  res.setHeader('Cache-Control','private, no-store');
+  return res.json({ok:true,data:{comprobanteData:row.comprobanteData,comprobanteNombre:row.comprobanteNombre,comprobanteMime:row.comprobanteMime}});
+ }catch(e){console.error('Comprobante propio:',e);return res.status(503).json({ok:false,message:'No fue posible consultar el comprobante'});}
+}
+module.exports = { confirmarPagoDesdeBanco,
+    obtenerConfiguracion,
+    listarMisPagos,
+    listarCuotasExtraordinarias,
+    crearCuotaExtraordinaria,
+    obtenerAdeudos,
+    desactivarCuotaExtraordinaria,
+    reportarPago,
+    descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, obtenerComprobante
+};
+
+async function obtenerVigencia(req, res) {
+    try {
+        if (!req.usuario.casaId) return res.status(400).json({ ok: false, message: 'Selecciona una vivienda' });
+        return res.json({ ok: true, data: await vigenciaService.estadoCasa(req.usuario.casaId) });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar la vigencia' }); }
+}
+async function inicializarVigencia(req, res) {
+    try {
+        const casaId = Number(req.params.casaId);
+        if (!Number.isSafeInteger(casaId) || casaId <= 0) throw Object.assign(new Error('Vivienda inválida'), { status: 400 });
+        const row = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, transaction =>
+            vigenciaService.inicializar(casaId, req.body.fechaFinal, BASE_MANTENIMIENTO, req.usuario.usuarioId, transaction));
+        return res.json({ ok: true, data: vigenciaService.resumen(row) });
+    } catch (error) { return res.status(error.status || 503).json({ ok: false, message: error.status ? error.message : 'No fue posible configurar la vigencia' }); }
+}
+async function listarPendientes(req, res) {
+    try {
+        const rows = await PagoReportado.findAll({ where: { estatus: 'PENDIENTE_VALIDACION' }, include: [{ model: Casa, as: 'casa', required: false, attributes: ['id', 'calle', 'calleCorrecta', 'numero'] }], order: [['creadoEn', 'ASC']], limit: 100, attributes: { exclude: ['comprobanteData', 'textoOcr', 'reciboPdfData'] } });
+        return res.json({ ok: true, data: rows.map(row => pagoSeguro(req, row)) });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar los comprobantes pendientes' }); }
+}
+// Única vía para validar un comprobante reportado: conciliación contra el buzón.
+async function confirmarPagoDesdeBanco(pagoId, correoHash) {
+    if (!Number.isSafeInteger(Number(pagoId)) || Number(pagoId) <= 0
+        || typeof correoHash !== 'string' || !/^[a-f0-9]{64}$/.test(correoHash))
+        throw Object.assign(new Error('Confirmación bancaria inválida'), { status: 400 });
+    return sequelize.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+            const pago = await PagoReportado.findByPk(pagoId, { transaction, lock: transaction.LOCK.UPDATE });
+            if (!pago) throw Object.assign(new Error('Pago no encontrado'), { status: 404 });
+            if (pago.estatus !== 'PENDIENTE_VALIDACION')
+                throw Object.assign(new Error('El pago ya no está pendiente de validación bancaria'), { status: 409 });
+            // El recargo calculado al reportar el pago queda protegido.
+            const recargo = pago.recargo;
+            if (centavos(recargo) > centavos(pago.monto)) throw Object.assign(new Error('El recargo no puede superar el pago'), { status: 400 });
+            if (pago.tipoPago !== 'MANTENIMIENTO' && centavos(recargo) !== 0) throw Object.assign(new Error('Este concepto no lleva recargo de mantenimiento'), { status: 400 });
+            await pago.update({ estatus: 'VALIDADO', recargo, correoBancarioHash: correoHash, validadoPorUsuarioId: null,
+                fechaValidacion: new Date(), actualizadoEn: new Date(),
+                observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria autenticada.' }, { transaction });
+            if (pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO') await recargosService.confirmar(pago, transaction);
+            const vigencia = pago.tipoPago === 'MANTENIMIENTO' && pago.estatus === 'VALIDADO'
+                ? await vigenciaService.actualizar(pago.casaId, null, transaction, { origen: 'PAGO', registro: pago }) : null;
+            if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
+                const reserva=await ReservaCasaClub.findByPk(pago.reservaCasaClubId,{transaction,lock:transaction.LOCK.UPDATE});
+                if(!reserva||reserva.estatus!=='APROBADA'||reserva.pagado)throw Object.assign(new Error('La reserva ya cambió de estado. Requiere conciliación.'),{status:409});
+                await reserva.update({pagado:true,fechaPago:pago.fechaOperacion,folio:pago.folioOperacion,actualizadoEn:new Date()},{transaction});
+            }
+            return { pago: pago, vigencia };
+        });
+}
+
+async function obtenerComprobante(req, res) {
+    try {
+        const row = await PagoReportado.findByPk(req.params.id, { attributes: ['id', 'comprobanteData'] });
+        if (!row) return res.status(404).json({ ok: false, message: 'Comprobante no encontrado' });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ ok: true, data: { comprobanteData: row.comprobanteData } });
+    } catch (error) { return res.status(503).json({ ok: false, message: 'No fue posible consultar el comprobante' }); }
+}
+
+async function cotizacionMantenimiento(req,res) {
+    try {
+        if (!req.usuario.casaId) return res.status(400).json({ ok:false, message:'Selecciona una vivienda' });
+        const data = await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
+            recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
+        res.setHeader('Cache-Control','private, no-store');
+        return res.json({ ok:true, data });
+    } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible leer el C3 para calcular recargos. Intenta nuevamente.' }); }
+}
+ + rule.recargo + '.' : 'Sin recargos pendientes.');
+            }
         }
 
         if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
