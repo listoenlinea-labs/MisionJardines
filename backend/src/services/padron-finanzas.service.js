@@ -52,8 +52,15 @@ function seleccionarPadronAnalisis(casas, cuotas) {
   let excluidas = 0;
   for (const casa of casas || []) {
     const calle = nombreCalle(casa);
-    // El registro Prueba / TEST-001 del C3 no es una vivienda del padrón.
-    if (calle === 'prueba' || calle.startsWith('prueba ')) {
+    // Excepción TEMPORAL y reversible: mostrar únicamente la vivienda de
+    // laboratorio Prueba TEST-001 (ID 738) en Análisis de cuotas.
+    // Las demás casas de prueba permanecen excluidas del padrón.
+    // Para revertir, eliminar la constante y restaurar este filtro.
+    const esPrueba = calle === 'prueba' || calle.startsWith('prueba ');
+    const mostrarTest001 = Number(casa.id) === 738
+      && normalizarCalle(casa.calle) === 'prueba'
+      && String(casa.numero ?? '').trim().toUpperCase() === 'TEST-001';
+    if (esPrueba && !mostrarTest001) {
       excluidas += 1;
       continue;
     }
