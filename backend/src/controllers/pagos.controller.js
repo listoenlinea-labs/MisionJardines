@@ -37,6 +37,8 @@ async function esPruebaDiez(req) {
 }
 
 
+
+
 function nombreCompleto(usuario) {
     return [usuario?.nombre, usuario?.apellidoPaterno, usuario?.apellidoMaterno]
         .filter(Boolean)
@@ -369,26 +371,23 @@ async function reportarPago(req, res) {
             // El recibo solo registra una solicitud: hasta validar contra el banco
             // no se activan TAGs físicos.
             if (pruebaDiez) {
-                // Excepción aislada para validar OCR y recepción de un comprobante de $10.
-                // No se otorgan créditos ni se simula una aprobación bancaria.
-                if (centavos(monto) !== 1000) {
-                    return res.status(400).json({ ok: false, message: 'La vivienda de prueba únicamente acepta comprobantes de $10.00.' });
-                }
-                const yaPendiente = await PagoReportado.findOne({
-                    where: { casaId, tipoPago: 'MANTENIMIENTO', estatus: 'PENDIENTE_VALIDACION' },
-                });
-                if (yaPendiente) return res.status(409).json({ok:false,message:'Ya hay un comprobante de prueba en revisión.'});
+                if (centavos(monto) !== 1000) return res.status(400).json({ok:false,message:'Prueba: solo se acepta un comprobante de $10.00.'});
+                const previo = await PagoReportado.findOne({where:{casaId,tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION'}});
+                if (previo) return res.status(409).json({ok:false,message:'La vivienda ya tiene un comprobante en revisión.'});
                 requerido = 10;
                 recargo = 0;
                 cortesRecargo = [];
-                concepto = 'PRUEBA CONTROLADA: abono de $10.00 de mantenimiento, octubre 2026. Validación bancaria obligatoria.';
+                concepto = 'PRUEBA CONTROLADA: Abono de mantenimiento de $10.00, octubre 2026. Requiere validación bancaria.';
             } else {
                 transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
                 const rule = await recargosService.cotizar(casaId, fechaOperacion, req.body.monto, transaction);
                 cortesRecargo = rule.cortesRecargo;
                 requerido = rule.total;
                 recargo = rule.recargo;
-                concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan 
+                concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
+                    '(desde octubre de 2026, pendientes primero). ' +
+                    (rule.tardio ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
+            }
         }
 
         if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
@@ -647,11 +646,8 @@ async function obtenerComprobante(req, res) {
 async function cotizacionMantenimiento(req,res) {
     try {
         if (!req.usuario.casaId) return res.status(400).json({ ok:false, message:'Selecciona una vivienda' });
-        const data = await esPruebaDiez(req)
-            ? { base: 350, recargo: 0, minimo: 10, minimoReporte: 10, saldoParcial: 0,
-                fechaFinalC3: '—', modoPrueba: true }
-            : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
-                recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
+        const data = await esPruebaDiez(req) ? {base:350,recargo:0,minimo:10,minimoReporte:10,saldoParcial:0,fechaFinalC3:'—',modoPrueba:true} : await sequelize.transaction({ isolationLevel:'READ COMMITTED' }, transaction =>
+            recargosService.contexto(req.usuario.casaId, req.query.fechaOperacion, transaction));
         res.setHeader('Cache-Control','private, no-store');
         return res.json({ ok:true, data });
     } catch (e) { return res.status(e.status || 503).json({ ok:false, message:e.status ? e.message : 'No fue posible leer el C3 para calcular recargos. Intenta nuevamente.' }); }
