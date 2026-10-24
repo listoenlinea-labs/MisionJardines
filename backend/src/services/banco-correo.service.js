@@ -72,10 +72,13 @@ function perteneceAVivienda(pago,noticia){
  const casa=pago?.casa;
  const concepto=' '+normal(noticia?.concepto).replace(/[^A-Z0-9]+/g,' ')+' ';
  const calle=normal(casa?.calleCorrecta||casa?.calle).replace(/[^A-Z0-9]+/g,' ').trim();
- const numero=String(casa?.numero||'').trim();
+ // Los bancos suelen eliminar signos como "-" y "·" del concepto.
+ // Normalizar el número exactamente igual que el aviso, sin omitir vivienda ni calle.
+ const numero=normal(casa?.numero).replace(/[^A-Z0-9]+/g,' ').trim();
  if(!calle||!numero||!concepto.trim())return false;
- return concepto.includes(' '+calle+' '+numero+' ')
-  || concepto.includes(' '+calle+' CASA '+numero+' ');
+ const variantes=[numero,numero.replace(/\s+/g,'')];
+ return variantes.some(n=>concepto.includes(' '+calle+' '+n+' ')
+   ||concepto.includes(' '+calle+' CASA '+n+' '));
 }
 function coincideCuenta(detectada,esperada){
  // Cuatro dígitos visibles deben coincidir completos; nunca reducir una
