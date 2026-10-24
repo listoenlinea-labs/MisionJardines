@@ -41,7 +41,11 @@ function evaluar(pago,avisos,autenticados){
  const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
  const referenciaFormulario=ids.referencia(pago?.folioOperacion);
  const referenciaOcr=comprobante.referencia||'';
- const avisoConReferencia=autenticados.filter(a=>ids.identificadoresAviso(a).referencia);
+ // No revelar al residente si una referencia existe en pagos de OTRA
+ // vivienda: solo comparar contra avisos que ya cumplen importe, casa, cuenta
+ // receptora y fecha del comprobante (sin exigir aún el identificador).
+ const avisosRelacionados=autenticados.filter(a=>banco.coincideDatosBancarios(pago,a));
+ const avisoConReferencia=avisosRelacionados.filter(a=>ids.identificadoresAviso(a).referencia);
  // Comparaciones booleanas únicamente: no copiar números de referencia ni
  // claves de rastreo del buzón a las respuestas visibles del residente.
  const auditoria={...base,
