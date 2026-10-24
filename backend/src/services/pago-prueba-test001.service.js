@@ -33,9 +33,8 @@ async function aplicarSiCorresponde(pago,transaction){
  const casa=await Casa.findByPk(pago.casaId,{transaction,lock:transaction.LOCK.UPDATE});
  if(!casa)return {aplicado:false,motivo:'SIN_VIVIENDA'};
  if(!esViviendaSintetica(casa))return {aplicado:false,motivo:'NO_ES_PRUEBA'};
- if(!esDepositoPruebaDiez(pago,casa))throw Object.assign(new Error(
-  'El movimiento de Prueba TEST-001 no corresponde a un abono sintético de mantenimiento de $10.00.'
- ),{status:409});
+ if(!esDepositoPruebaDiez(pago,casa))
+   return {aplicado:false,motivo:'NO_ES_COMPLEMENTO_DIEZ'};
  const cuota=await Cuota.findOne({
    where:{casaId:casa.id,anio:2026,mes:'OCTUBRE'},
    transaction,lock:transaction.LOCK.UPDATE
