@@ -128,7 +128,7 @@
       const favor=Number(item.saldoFavor||0);
       const ultimo=item.ultimoMesPagado;
       const periodo=ultimo?.mes?ultimo.mes+' '+ultimo.anio:'Sin pago';
-      const vals=[['Estado',deuda>0?'Pendiente':'Al corriente'],['Último mes pagado',periodo],['Saldo pendiente',money(deuda)],['Saldo a favor',money(favor)]];
+      const vals=[['Estado',deuda>0?'Pendiente':'Al corriente'],['Último mes pagado',paymentType==='CASA_CLUB'?'No aplica':paymentType==='EXTRAORDINARIO'&&!ultimo?.mes?'Sin pago':periodo],['Saldo pendiente',money(deuda)],['Saldo a favor',money(favor)]];
       $('paymentStatusCards').innerHTML=vals.map(([label,value])=>'<div class="ps-card"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('');
     }
     function renderClub(){
