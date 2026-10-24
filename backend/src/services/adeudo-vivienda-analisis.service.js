@@ -24,7 +24,7 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
   // El último mes pagado refleja TODO el historial confirmado, incluidos
   // anticipos de años posteriores; no representa el corte del saldo.
   const ultimo = siguienteDelUltimo(cuotas, 2100, 12);
-  const resumen=contextoCuotas(cuotas,corte,tarifa);
+  const resumen=contextoCuotas(cuotas,corte,tarifa,exencionesRecargo);
   const detalles = [];
   if(incluirDetalles){
     const porPeriodo=new Map((cuotas||[]).map(c=>[
@@ -33,7 +33,7 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
     // Desglose a petición: el importe total ya se obtuvo por diferencia de cortes.
     for(let n=inicioDesdeUltimo(cuotas);n<=limite;n++){
       const yy=Math.floor(n/12),mm=n%12+1;
-      const {faltante,recargoPendiente}=estadoPeriodo(porPeriodo.get(n),n,corte,tarifa);
+      const {faltante,recargoPendiente}=estadoPeriodo(porPeriodo.get(n),n,corte,tarifa,require('./recargos-exenciones.service').exentoEn(exencionesRecargo,`${yy}-${String(mm).padStart(2,'0')}`));
       if(!faltante)continue;
       detalles.push({categoria:'MANTENIMIENTO',periodo:`${yy}-${String(mm).padStart(2,'0')}`,
         monto:faltante/100,recargo:recargoPendiente/100,concepto:'Mantenimiento'});
