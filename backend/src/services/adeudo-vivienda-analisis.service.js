@@ -14,7 +14,7 @@ const indice = (anio, mes) => Number(anio) * 12 + Number(mes) - 1;
 
 // El importe se calcula por diferencia de cortes desde el último periodo pagado.
 // Solo el desglose visible enumera los periodos pendientes posteriores a ese corte.
-function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa = BASE, incluirDetalles = false }) {
+function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa = BASE, exencionesRecargo = [], incluirDetalles = false }) {
   if (!Number.isInteger(tarifa) || tarifa < 1 || tarifa > 10000) throw new Error('Tarifa mensual inválida');
   const fin = indice(anio, mes);
   const finCalendario = new Date(Date.UTC(Number(anio), Number(mes), 0))
@@ -49,7 +49,9 @@ function calcularAdeudoVivienda(cuotas, { anio, mes, hoy = fechaMexico(), tarifa
     c.origenImportacion === 'MANUAL_ANALISIS_ANUAL')) {
     ultimoMesPagado.pagoAnual = true;
   }
+  const creditos=(cuotas||[]).filter(c=>String(c.estatusPago)==='PAGO_PARCIAL' && Number(c.montoPagado)>0 && indice(Number(c.anio),MESES.indexOf(String(c.mes).toUpperCase())+1)>limite).reduce((sum,c)=>sum+Number(c.montoPagado||0),0);
   return {
+    saldoFavor:Math.round(creditos*100)/100,
     ultimoMesPagado,
     mesesPendientes:resumen.mesesPendientes,
     fechaUltimoCortePagado:resumen.fechaUltimoCortePagado,
