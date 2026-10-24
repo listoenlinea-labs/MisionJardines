@@ -3,6 +3,8 @@
 const { randomUUID } = require('crypto');
 const { BASE, RECARGO, MAX_MESES } = require('./mensualidades-mantenimiento');
 const {primerPendiente}=require('./cuotas-mantenimiento-calculo');
+const {fechaMexico}=require('./vigencia-calculo');
+const {exentoEn}=require('./recargos-exenciones.service');
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const PREFIX='MJMAN:';
 const fail=message=>Object.assign(new Error(message),{status:400});
@@ -24,28 +26,25 @@ function prepararPlan({anio,mes,meses,importeMes,montoTotal,tarifa=BASE,exencion
     periodos.push({anio:yy,mes:MESES[mm-1],numeroMes:mm});
   }
   const centavos=x=>Math.round(Number(x)*100);
-  if(montoTotal===undefined||montoTotal===null||montoTotal===''){
-    const porMes=importeMes===undefined?tarifa:Number(importeMes);
-    if(![tarifa,tarifa+RECARGO].includes(porMes))
-      throw fail('El monto por mes debe ser $'+tarifa+' o $'+(tarifa+RECARGO));
-    montoTotal=porMes*meses;
-  }
-  const monto=Number(montoTotal),totalCentavos=centavos(monto);
-  if(!Number.isFinite(monto)||Math.abs(totalCentavos/100-monto)>0.00001 ||
-     totalCentavos<tarifa*meses*100||totalCentavos>(tarifa*meses+periodos.filter(p=>!require('./recargos-exenciones.service').exentoEn(exencionesRecargo,`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`)).length*RECARGO)*100)
-    throw fail('El importe de '+meses+' mes(es) debe estar entre $'+tarifa*meses+' y $'+(tarifa+RECARGO)*meses+
-      '. Para registrar un abono parcial utiliza el flujo de abonos; no marques todos los meses pagados.');
-  let extras=totalCentavos-tarifa*meses*100;
+  const hoy=fechaMexico();
   const desglose=periodos.map(p=>{
-    const exento=require('./recargos-exenciones.service').exentoEn(exencionesRecargo,`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`);
-    const recargoCentavos=exento?0:Math.min(RECARGO*100,extras);
-    extras-=recargoCentavos;
-    return {...p,montoCuota:(tarifa*100+recargoCentavos)/100,recargo:recargoCentavos/100};
+    const clave=`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`;
+    const recargo=!exentoEn(exencionesRecargo,clave)&&hoy>clave+'-10'?RECARGO:0;
+    return {...p,montoCuota:tarifa+recargo,recargo};
   });
+  const montoExigible=desglose.reduce((s,p)=>s+p.montoCuota,0);
+  // Usar la misma regla contable para sugerir y confirmar; los recargos
+  // solo se pueden exentar mediante la configuración de esa vivienda.
+  if(montoTotal===undefined||montoTotal===null||montoTotal==='')montoTotal=montoExigible;
+  const monto=Number(montoTotal),totalCentavos=centavos(monto);
+  if(!Number.isFinite(monto)||Math.abs(totalCentavos/100-monto)>0.00001||
+     totalCentavos!==centavos(montoExigible))
+    throw fail('Para cubrir estos '+meses+' meses deben registrarse $'+montoExigible.toFixed(2)+
+      '. Si corresponde exentar el recargo, usa Modificar cuotas para esa vivienda antes de registrar el pago. Los abonos parciales se registran desde Pagos.');
   const siguiente=new Date(Date.UTC(anio,mes-1+meses,1));
   const fechaFinObjetivo=`${siguiente.getUTCFullYear()}-${String(siguiente.getUTCMonth()+1).padStart(2,'0')}-10`;
-  return {periodos:desglose,fechaFinObjetivo,importeMes:null,tarifaMensual:tarifa,montoMinimo:tarifa*meses,montoMaximo:tarifa*meses+periodos.filter(p=>!require('./recargos-exenciones.service').exentoEn(exencionesRecargo,`${p.anio}-${String(p.numeroMes).padStart(2,'0')}`)).length*RECARGO,
-    recargo:(totalCentavos-tarifa*meses*100)/100,total:totalCentavos/100,meses};
+  return {periodos:desglose,fechaFinObjetivo,importeMes:null,tarifaMensual:tarifa,montoMinimo:montoExigible,montoMaximo:montoExigible,
+    recargo:montoExigible-tarifa*meses,total:totalCentavos/100,meses};
 }
 
 // Selecciona el mes final y deduce los pendientes posteriores al último
@@ -82,7 +81,7 @@ function prepararDesdeHistorial({cuotas=[],anio,mes,montoTotal,tarifa=BASE,exenc
   const anioInicio=Math.floor(inicio/12),mesInicio=inicio%12+1;
   const plan=prepararPlan({anio:anioInicio,mes:mesInicio,meses,montoTotal,tarifa,exencionesRecargo});
   return {...plan,ultimoMesPagado:ultimo,desde:{anio:anioInicio,mes:mesInicio,nombre:MESES[mesInicio-1]},
-    hasta:{anio,mes,nombre:MESES[mes-1]},montoSugerido:tarifa*meses};
+    hasta:{anio,mes,nombre:MESES[mes-1]},montoSugerido:plan.total};
 }
 
 // El servidor decide qué es un cierre anual; un cliente no puede etiquetar
