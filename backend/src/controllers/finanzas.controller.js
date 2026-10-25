@@ -4,6 +4,7 @@ const { compararDirecciones }=require('../services/direccion-sort.service');
 const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const { calcularAdeudoVivienda }=require('../services/adeudo-vivienda-analisis.service');
+const {estadoPeriodoMantenimiento}=require('../services/estado-mantenimiento-tablas.service');
 const {tagsParaViviendas}=require('../services/analisis-tags.service');
 const {Casa,Cuota,PagoReportado,ZkTarjeta,CuotaExtraordinaria,CargoExtraordinario,PagoManualConcepto}=require('../models');
 const Egreso=require('../models/Egreso');
@@ -69,8 +70,7 @@ async function analizar(req,res){
   const residences=padron.casas.map(h=>{
    const q=byHouse.get(String(h.id));
    const adeudo=calcularAdeudoVivienda(historiales.get(String(h.id))||[],{anio,mes,tarifa:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[]});
-   const cubiertoPorCorte=adeudo.fechaUltimoCortePagado&&adeudo.fechaUltimoCortePagado>=new Date(Date.UTC(anio,mes,10)).toISOString().slice(0,10);
-   const status=cubiertoPorCorte?'PAGADO':q?.estatusPago||'PENDIENTE';
+   const status=estadoPeriodoMantenimiento(q,adeudo,anio,mes);
    const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0);
    // Pago parcial cuenta como vivienda con algún pago, pero se conserva su estatus.
    const calle=String(h.calleCorrecta||h.calle||'Sin calle');
