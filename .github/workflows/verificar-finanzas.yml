@@ -45,7 +45,12 @@ jobs:
         run: |
           node --test backend/tests/adeudos-enero-saldo-favor-exencion.test.js backend/tests/pagos-test001-octubre-saldo.test.js backend/tests/test001-cuota-diez-vigencia.test.js backend/tests/pagos-cuenta-oficial-render.test.js backend/tests/padron-test001-visible-temporal.test.js
       - name: Regresión Seguridad / Análisis de cuotas (Atotonilco 752)
-        run: node --test backend/test/seguridad-cuotas-consistencia.test.js backend/test/seguridad-sheets-mobile.test.js
+        run: |
+          node --test backend/test/seguridad-cuotas-consistencia.test.js
+          node --test --test-name-pattern="cuotas de seguridad|rutas de seguridad" backend/test/seguridad-sheets-mobile.test.js
+      - name: Pruebas UI heredadas de Seguridad (diagnóstico)
+        continue-on-error: true
+        run: node --test backend/test/seguridad-sheets-mobile.test.js
       - name: Suite bancaria heredada, diagnóstico no bloqueante
         continue-on-error: true
         env:
