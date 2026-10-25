@@ -1,34 +1,38 @@
 'use strict';
 const { Casa, Cuota } = require('../models');
 const { filtrarViviendasVisibles } = require('../services/viviendas-visibles.service');
+const { calcularAdeudoVivienda } = require('../services/adeudo-vivienda-analisis.service');
+const { tarifaParaCasa } = require('../services/tarifa-mantenimiento.service');
+const { fechaMexico } = require('../services/vigencia-calculo');
+const { estadoPeriodoMantenimiento, estadoSeguridadDesdeAnalisis } =
+  require('../services/estado-mantenimiento-tablas.service');
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-const indexMonth = new Map(MESES.map((name,i)=>[name,i+1]));
 const numeric = (a,b) => String(a).localeCompare(String(b),'es-MX',{numeric:true,sensitivity:'base'});
 function resumenVivienda(casa, registros, fecha=new Date()) {
-  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Mexico_City',year:'numeric',month:'numeric'})
-    .formatToParts(fecha);
-  const year=Number(parts.find(p=>p.type==='year')?.value);
-  const month=Number(parts.find(p=>p.type==='month')?.value);
-  const periodo = year*12+month;
-  let ultimo=null,fechaUltima=null,actual=false,pendienteAnterior=false,hayHistorico=false;
-  for(const cuota of registros) {
-    const m=indexMonth.get(String(cuota.mes||'').toUpperCase());
-    const y=Number(cuota.anio);
-    if(!m||!Number.isInteger(y))continue;
-    const position=y*12+m;
-    if(position>periodo)continue;
-    hayHistorico=true;
-    if(['PAGADO','PAGO_PARCIAL'].includes(cuota.estatusPago) && Number(cuota.montoPagado)>0){
-      if(!ultimo||position>ultimo.position)ultimo={position,anio:y,mes:MESES[m-1]};
-      const fp=cuota.fechaPago ? new Date(cuota.fechaPago) : null;
-      if(fp && !Number.isNaN(fp.getTime()) && (!fechaUltima || fp>fechaUltima))fechaUltima=fp;
-      if(position===periodo && cuota.estatusPago==='PAGADO')actual=true;
-    }else if(['PENDIENTE','PAGO_PARCIAL'].includes(cuota.estatusPago)&&position<periodo){
-      pendienteAnterior=true;
-    }
+  const hoy = fechaMexico(fecha);
+  const anio = Number(hoy.slice(0,4));
+  const mes = Number(hoy.slice(5,7));
+  const mesActual = MESES[mes-1];
+
+  // La misma fuente de deuda que usa Análisis de cuotas y Pagos.
+  // No se decide morosidad por una cuota histórica aislada ni por el C3.
+  const adeudo = calcularAdeudoVivienda(registros,{
+    anio,mes,hoy,tarifa:tarifaParaCasa(casa),
+    exencionesRecargo:casa.exencionesRecargo||[]
+  });
+  const cuotaActual=registros.find(c=>Number(c.anio)===anio &&
+    String(c.mes||'').toUpperCase()===mesActual);
+  const estadoAnalisis=estadoPeriodoMantenimiento(cuotaActual,adeudo,anio,mes);
+  const estado=estadoSeguridadDesdeAnalisis(estadoAnalisis);
+
+  let fechaUltima=null;
+  for(const cuota of registros){
+    if(!['PAGADO','PAGO_PARCIAL'].includes(String(cuota.estatusPago).toUpperCase()) ||
+       Number(cuota.montoPagado)<=0 || !cuota.fechaPago)continue;
+    const fp=new Date(cuota.fechaPago);
+    if(!Number.isNaN(fp.getTime()) && (!fechaUltima || fp>fechaUltima))fechaUltima=fp;
   }
-  let estado='SIN_DATOS';
-  if(hayHistorico)estado=actual&&!pendienteAnterior?'AL_CORRIENTE':'DEUDOR';
+  const ultimo=adeudo.ultimoMesPagado;
   return {
     calle:String(casa.calleCorrecta||casa.calle||''),
     numero:String(casa.numero||''),
@@ -45,8 +49,8 @@ async function consultar(req,res) {
     const estado=String(req.query.estado||'').trim();
     if(estado&&!['AL_CORRIENTE','DEUDOR','SIN_DATOS'].includes(estado))return res.status(400).json({ok:false,message:'Estado inválido'});
     const [casas,cuotas]=await Promise.all([
-      Casa.findAll({attributes:['id','calle','calleCorrecta','numero']}),
-      Cuota.findAll({attributes:['casaId','anio','mes','estatusPago','fechaPago','montoPagado']})
+      Casa.findAll({attributes:['id','calle','calleCorrecta','numero','cuotaPorCobrar','exencionesRecargo']}),
+      Cuota.findAll({attributes:['casaId','anio','mes','estatusPago','fechaPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','origenImportacion']})
     ]);
     const agrupadas=new Map();
     for(const cuota of cuotas){const key=String(cuota.casaId);if(!agrupadas.has(key))agrupadas.set(key,[]);agrupadas.get(key).push(cuota);}

@@ -10,24 +10,25 @@ function load(){
  const mod={exports:{}};
  const fakeRequire=id=>{
    if(id==='../models')return {Casa:{},Cuota:{}};
+   if(id.startsWith('../services/'))return require(path.resolve(root,'backend/src/controllers',id));
    throw Error('Unmocked '+id);
  };
  new Function('require','module',code)(fakeRequire,mod);
  return mod.exports;
 }
-test('cuotas de seguridad no filtran datos personales ni atribuyen deudas sin historial',()=>{
+test('cuotas de seguridad no filtran datos personales y comparten estado con Análisis',()=>{
  const {resumenVivienda}=load();
  const casa={calle:'Gardenias',numero:'5',nombre:'NO_PUBLICAR',telefono:'NO_PUBLICAR'};
  const date=new Date('2026-10-11T17:00:00Z');
  const blank=resumenVivienda(casa,[],date);
- assert.equal(blank.estado,'SIN_DATOS');
+ assert.equal(blank.estado,'DEUDOR', 'Sin pagos, Análisis calcula deuda desde enero');
  assert.deepEqual(Object.keys(blank).sort(),['calle','estado','numero','ultimaFechaPago','ultimoMesPagado'].sort());
- const paid=[{anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',fechaPago:'2026-10-08T12:00:00Z'}];
+ const paid=[{anio:2026,mes:'OCTUBRE',estatusPago:'PAGADO',montoPagado:300,fechaPago:'2026-10-08T12:00:00Z'}];
  const ok=resumenVivienda(casa,paid,date);
  assert.equal(ok.estado,'AL_CORRIENTE');
  assert.equal(ok.ultimoMesPagado,'OCTUBRE 2026');
  assert.equal(ok.ultimaFechaPago,'2026-10-08');
- assert.equal(resumenVivienda(casa,[{anio:2026,mes:'SEPTIEMBRE',estatusPago:'PENDIENTE'},...paid],date).estado,'DEUDOR');
+ assert.equal(resumenVivienda(casa,[{anio:2026,mes:'SEPTIEMBRE',estatusPago:'PENDIENTE'},...paid],date).estado,'AL_CORRIENTE', 'El último mes pagado fija la cobertura, como en Análisis');
  assert.equal(resumenVivienda(casa,[{anio:2026,mes:'SEPTIEMBRE',estatusPago:'PAGADO'}],date).estado,'DEUDOR');
 });
 test('rutas de seguridad y Sheets exigen roles',()=>{
