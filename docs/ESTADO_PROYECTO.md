@@ -1,53 +1,46 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 23/oct/2026, 23:28, America/Mexico_City.
-**SHA de main consultado:** `c5e044e1e0008ea21d7f99a51a6dd8e391c3d4f9`.
-**Fuentes de esta revisión:** comparación de main desde `cd24e60d0b325a735cad72a089dd05f34f74e9da`,
-metadatos y descripciones de los PR #267–#287, commits y estados/checks en GitHub,
-AGENTS.md, índice y estado vigentes, evidencia operativa documentada en los PR y
-la solicitud accesible del usuario de unificar Pagos con la fuente contable de Análisis.
-No se consultaron mensajes privados, MySQL, C3 ni el contenido del buzón durante esta
-revisión; no se publican credenciales, comprobantes ni identificadores bancarios.
+**Última revisión:** 24/oct/2026, 23:26, America/Mexico_City.
+**SHA de main consultado:** `bd983ec8705b9b9020d59845ba0e521dad651b09`.
+**Fuentes de esta revisión:** comparación de main desde `c5e044e1e0008ea21d7f99a51a6dd8e391c3d4f9`,
+metadatos y descripciones de los PR #288–#293, commits, estados y workflow runs de
+GitHub, AGENTS.md, índice y estado vigentes, y las instrucciones accesibles del usuario
+sobre cálculo consecutivo desde el último corte. Se excluyó del trabajo de producto el
+commit documental `1ea0ac61907d1d8e5c3eaa4677ece2f55c23b299`.
+No se consultaron mensajes privados, MySQL, C3, Hostinger ni el contenido del buzón
+durante esta revisión; no se publican credenciales, comprobantes ni datos personales.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
-## Corrección del 24/oct/2026: adeudo por diferencia de cortes
+## Implementado en main el 24/oct/2026: Pagos, cuotas y C3
 
-El usuario sustituyó la reconstrucción mensual del PR #288: el corte del último
-mes pagado fija la cobertura y cada mensualidad completa avanza desde él. El adeudo
-es diferencia de meses calendario por tarifa, menos abonos y más recargos pendientes;
-no busca huecos históricos ni revisa cada mes para sumar la deuda. Septiembre de
-2026 solo es base cuando no hay cobertura. La fecha del depósito sigue separada
-del mes cubierto. Las capturas nuevas no pueden saltar mensualidades; el desglose
-mensual se genera solo al pedirlo o al acreditar el historial.
-Se conserva la validación bancaria, la transacción por vivienda y el objetivo
-absoluto de C3 posterior al commit. Sin nueva migración sobre el esquema de #288.
-Preparado sobre `88cde5f`; sin consultas/escrituras en producción.
+Los PR #288 y #289 ya están fusionados. Pagos y Análisis comparten la fuente contable
+por vivienda; pagar no exige TAG, la acreditación financiera se confirma en una
+transacción y C3 recibe después un objetivo absoluto cuando corresponde. El cálculo
+de #289 parte del último corte cubierto, aplica mensualidades consecutivas y separa
+la fecha bancaria del periodo pagado, sin reconstruir huecos históricos. La migración
+aditiva de #288 sigue pendiente de ejecución y verificación en el MySQL de producción;
+el merge no acredita despliegue, conciliación bancaria real ni escritura física.
 
-## Cambio preparado: cuotas como fuente de Pagos (23/oct/2026)
-
-Petición del usuario: permitir pagos sin TAG y reflejarlos en Análisis. La implementación
-usa cuotas por vivienda y comparte el cálculo de deuda, registra el reparto mensual y
-acredita en una transacción al validar contra el banco. C3 recibe un objetivo absoluto
-posterior al commit; errores de acceso no deshacen el pago. Requiere tres columnas
-aditivas y conciliar comprobantes/entregas anteriores pendientes; no se reproducen
-pagos históricos. Ver [reglas y despliegue](PAGOS_CUOTAS_UNIFICADOS.md).
-Este cambio está preparado en código sobre main `c5e044e`; no certifica despliegue ni
-consulta de MySQL, correo o C3 reales. Las secciones anteriores que exijan fecha física
-para calcular pagos quedan sustituidas por esta petición.
+El PR #290 también está en main y añadió saldo a favor, exenciones de recargo,
+cotización compartida y cobertura desde enero de 2026 para viviendas sin pagos. Esto
+entra en conflicto documental con AGENTS.md, que conserva septiembre de 2026 como base
+cuando no hay cobertura registrada. La discrepancia enero/septiembre debe resolverse
+antes de usar el cálculo en producción; no se infiere cuál dato corresponde a cada
+vivienda. Los PR #291–#293 ajustan únicamente formato y controles de interfaz.
 
 ## Resumen operativo
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
-| Pagos de mantenimiento | Regla vigente $300; tarifa especial en código pendiente de conciliación | AGENTS.md mantiene mensualidad $300. #222 añadió tarifa por vivienda y #243 concilia pagos históricos de una tarifa especial con confirmación explícita. El merge no autoriza por sí solo operar $150 ni ejecutar SQL: falta reconciliar la regla, respaldar y validar en Hostinger |
+| Pagos de mantenimiento | Unificación implementada en main; despliegue y regla base pendientes | #288–#289 hacen de `cuotas`/casa la fuente compartida, admiten viviendas sin TAG, aplican pagos consecutivos desde el último corte y sincronizan C3 después del commit. #290 añade saldo a favor y exención de recargos, pero usa enero de 2026 para casas sin pagos mientras AGENTS.md conserva septiembre: reconciliar antes de producción |
 | Confirmación de comprobantes | Conciliación por correo en main; política degradada por instrucción explícita | #275–#281 amplían identificadores, trazabilidad y diagnóstico. #284 sustituye funcionalmente al PR #283 abierto: autoriza solo por remitente exacto configurado y asunto, sin DKIM/DMARC/authserv-id; AGENTS.md reconoce que el origen puede falsificarse. Siguen siendo obligatorios monto, identificador del mismo tipo, fecha, cuenta, vivienda, unicidad y no reutilización. Un merge no acredita que Titan/Hostinger esté desplegado ni que el dinero haya llegado |
 | Pagos y recibos del condómino | Mejoras amplias en main; navegador/producción pendientes | #267–#269 ajustan adeudos y controles; #271–#274 corrigen iPhone, fechas bancarias y restauran selector nativo; #276 agrega línea de tiempo bancaria/Fallido verificable; #282 restaura la cuenta oficial cuando faltaba un elemento DOM. #268 conserva refresco. La UI no valida por sí misma depósitos |
 | OCR | Clave, referencia y folio separados en main | #275 compara identificadores por tipo y normaliza solo ceros iniciales de referencias; #277 amplía lectura MIME; #278 persiste identificadores verificados por OCR del servidor. #279–#281 separan diagnóstico de cuenta, importe, fecha, vivienda e identificador. No aprobar por coincidencia numérica aislada |
-| Escritura C3 por pago | DIRECT con diario; unificación general pendiente | #246 permite corte absoluto en manuales y conserva la discrepancia con la regla histórica. #285–#286 no modifican ZKTeco: solo preparan una prueba sintética de $10; el salto físico requiere todavía hardware/controlador. La solicitud actual es que Pagos use `cuotas` como Análisis y después sincronice C3, pero no hay PR general en main que lo implemente |
+| Escritura C3 por pago | Flujo general implementado en main; hardware no verificado | #288 entrega un objetivo absoluto SQL posterior al commit, conserva idempotencia y permite acreditar sin TAG; fallos C3 no revierten el abono. No se ejecutó la migración ni se comprobó Hostinger, MySQL o controlador físico |
 | Edición manual de TAGs | Implementada en main; validación pendiente | PR #205 permite de nuevo habilitar, crear, reasignar o agregar TAGs aun con adeudo y restaura la edición de vigencia en el espejo SQL. `bloqueado=false` no prueba `userauthorize` en el C3; dos expectativas históricas de `editTag` siguen fallando en simulación |
 | Inventario C3 | Lectura periódica y manual | Reflejo SQL; no volver a usar fechas heredadas para sobreescribir el controlador |
 | Cuentas y viviendas | Relación múltiple implementada en main; migración final pendiente | PR #215 usa `condominos_viviendas` para padrón, búsqueda, cuotas, tablero y prerregistro de todos los domicilios; #216 retira `condominos.direccion_id` del modelo/código. El usuario aportó CSV con 188 relaciones originales, 188 copiadas y cero faltantes. Faltan despliegue ordenado y ejecutar/verificar los SQL 01/02 antes de retirar la columna física |
@@ -64,23 +57,24 @@ para calcular pagos quedan sustituidas por esta petición.
 | Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#151 conectan cuotas, egresos, ingresos y saldo inicial; #180 acumula adeudo; #189 separa vistas por rol; #191 muestra anticipos sin proyectar deuda. PR #193 incorpora adeudos desglosados e indicadores por concepto. Requiere migración, padrón conciliado, cotejo MySQL y despliegue reales |
 | Cuotas para Seguridad | Implementado en main; producción no verificada | PR #140 añade ruta autenticada y tabla paginada sin nombres/teléfonos. Calcula desde `direcciones`/`cuotas`, no desde TAGs ni Sheets; no se consultó la DB real |
 | Históricos Google Sheets | Backend/staging opcional conservado; controles retirados de Análisis | PR #140 añadió lectura OAuth y preparación idempotente, deshabilitadas por defecto. PR #187 retiró solo la tarjeta y el script de esa vista; no borró archivo, endpoint, tabla ni datos. Requiere decisión explícita, migración y validación antes de activar |
-| Análisis, historial y recibos | Implementado; prueba TEST-001 temporal y unificación pendiente | Se conservan Excel/recibos previos. #285 diagnostica que la validación bancaria general no actualiza `cuotas`; #285–#286 añaden únicamente una excepción controlada para TEST-001 y #287 la muestra temporalmente en Análisis, alterando transitoriamente totales/porcentajes. El usuario pidió unificar Pagos con la fuente de Análisis para viviendas con o sin TAG; ese cambio general aún no existe en main |
+| Análisis, historial y recibos | Fuente compartida implementada; producción no verificada | #288–#290 comparten cálculo con Pagos, último corte, saldo a favor, recargos y exenciones. #291 quita decimales solo en tarjetas/historial; #292–#293 verifican visualmente el estado guardado de tarifa/exención. TEST-001 permanece como apoyo sintético y puede alterar totales mientras siga visible |
 | Navegación de Administración/Comunidad | Implementada en main; validación visual pendiente | PR #187 oculta Cuotas del menú y retira la tarjeta de conciliación; #188 oculta las pestañas de Análisis, conserva sus elementos/rutas y ordena Comunidad con Pagos primero. Son cambios de interfaz, no borrado de datos ni cambio de permisos |
 | Inicio por rol | Implementado en main; producción no verificada | PR #223 restaura Inicio dentro del portal persistente: administración ve finanzas, Seguridad visitas/accesos sin cobros y Condómino solo viviendas autorizadas por `usuarios_casas`. Fallos parciales muestran «No disponible» sin inventar ceros. Faltan cuentas reales y revisión de logs/despliegue |
 | Cobranza extraordinaria y casa club | Implementada en main; bloqueada hasta preparar producción | #193 añade cargos/reservas. PR #210 fija que Casa club se bloquea por mantenimiento y/o extraordinarias exigibles, no por una deuda previa exclusiva de Casa club; devuelve desglose 409 y valida pertenencia. Requiere migración, padrón exacto de 231 y prueba real |
 | Noticias y tráfico | Implementado en main; despliegue/visual pendientes | #220/#225/#228/#238 conservan fotos, fallbacks e ilustración etiquetada. #263 corrige TomTom a `language=es-ES` y solicita los campos que consume la UI; faltan despliegue y prueba contra la API real con la llave configurada |
 | Monitor automático de adeudos C3 | Implementado en main; apagado por defecto | #204–#205 conservan piloto/dry-run y operaciones manuales. PR #210 limita el monitor exclusivamente a deuda de mantenimiento: extraordinarias y Casa club no bloquean TAGs ni cambian vigencias. No auto-reactiva al saldar. Sin prueba física ni escritura de producción |
-| Continuidad documental | Disponible en main | AGENTS.md e índice publicados; las reglas vigentes ahora documentan que #284 confía en From exacto/asunto sin DKIM/DMARC. El manual integral sigue siendo un guion de aceptación, no evidencia E2E |
+| Continuidad documental | Disponible en main, con una discrepancia nueva | AGENTS.md e índice ya referencian `PAGOS_CUOTAS_UNIFICADOS.md` y la política bancaria vigente. Debe conciliarse AGENTS.md (septiembre sin cobertura) con #290/código (enero de 2026 sin pagos). El manual integral sigue siendo un guion de aceptación, no evidencia E2E |
 
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
-No se verificaron los valores efectivos de variables de producción.
-Desde el SHA consultado en la revisión anterior, main avanzó 139 commits. Se fusionaron los
-PR #267–#282 y #284–#287; el PR #283 permanece abierto, pero su política de autenticación
-fue sustituida por #284 y contradice el AGENTS.md actual. El commit
-`d83d5ae7829eef681d590afa794bb1ef34d4a392`, dedicado al estado del 22/oct,
-se excluye del trabajo de producto. #272 quedó ampliado por #273; #271 fue corregido por
-#274; #283 no está en main. Los merges acreditan código, no despliegue, conexión Titan,
-cambios reales de MySQL ni funcionamiento físico de C3. El PR #132 continúa revertido.
+No se verificaron los valores efectivos de variables de producción ni la versión de PHP
+en Hostinger; el backend documentado continúa siendo Node.js y no hay evidencia nueva
+para afirmar que el runtime PHP haya sido actualizado.
+Desde el SHA consultado en la revisión anterior, main avanzó 60 commits. Se fusionaron
+los PR #288–#293; el PR #283 fue cerrado sin merge y quedó sustituido por #284.
+El commit `1ea0ac61907d1d8e5c3eaa4677ece2f55c23b299`, dedicado al estado del
+23/oct, se excluye del trabajo de producto. Los merges acreditan código en main, no
+despliegue, migraciones reales, conexión al buzón ni funcionamiento físico de C3.
+El PR #132 continúa revertido.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -172,6 +166,10 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 23/oct/2026 | PR #283 abierto, pruebas dirigidas de autenticación/fecha | **26/26 dirigidas**; tres suites históricas mantienen **7 fallos** (19/26) tanto en base como en la rama | No está en main y su política fue sustituida por #284 |
 | 23/oct/2026 | PR #284, pruebas de remitente exacto sin DKIM/DMARC | **8/8 aprobadas**; sintaxis/diff correctos | Política deliberadamente falsificable; sin buzón/MySQL/C3 reales |
 | 23/oct/2026 | PR #285–#287, funciones y tests de TEST-001 | Deuda/acreditación/incremento simulados correctos; tests Node agregados, ejecución con dependencias/DB/IMAP/C3 pendiente | Excepción sintética, no solución general; #287 cambia temporalmente totales de Análisis |
+| 24/oct/2026 | PR #288; pruebas dirigidas de cálculo/reporte/confirmación y selección ampliada | **20/20 nuevas**; selección **112/119**, con los mismos siete fallos heredados que la base (**92/99**) | SQL/TCP simulados; sin MySQL, IMAP o C3 reales |
+| 24/oct/2026 | PR #289; pruebas dirigidas de corte consecutivo y selección ampliada | **45/45 dirigidas**; selección **123/130**, con siete fallos heredados igual que la base (**112/119**) | Persistencia/TCP simulados; no acredita suite global, despliegue ni hardware |
+| 24/oct/2026 | PR #290, workflow `Verificar finanzas`; `node --test backend/tests/adeudos-enero-saldo-favor-exencion.test.js ...` y sintaxis JS; [Actions 40109657022](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40109657022) | Job y pasos obligatorios **success**; PR declara **30/30** obligatorias. Suite ampliada **77/84**, con siete fallos bancarios heredados; comparación de base **66/74**, con esos siete y una expectativa HTML obsoleta | CI sintético con credenciales falsas y diagnóstico heredado no bloqueante; sin DB/buzón/C3 reales |
+| 24/oct/2026 | PR #291–#293, mismo workflow financiero/sintaxis; [runs 40110902436](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40110902436), [40111488434](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40111488434) y [40112484067](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40112484067) | Los tres jobs concluyeron **success**. Además, #291 verificó cinco formatos, #292 cinco escenarios UI y #293 once comprobaciones de código | #291–#293 son presentación/estado visual; no prueban navegador físico, API desplegada ni persistencia real |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -183,12 +181,14 @@ En ambos casos el C3 simulado conservó EndTime `20260910`, cuando se esperaba
 al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
-GitHub devolvió cero estados de commit y cero workflow runs para los 20 commits de merge
-de #267–#282 y #284–#287, y para el head abierto de #283. Por tanto, no hay CI acreditado.
-Los resultados son los declarados en cada PR y no se repitieron en esta revisión. Se
-conservan los dos fallos históricos de `zkteco-vigencias`, las regresiones obsoletas y
-los siete fallos históricos citados por #283. No se ejecutaron pruebas contra MySQL,
-C3, buzón o Dahua reales.
+GitHub sigue sin acreditar estados ni workflow runs para los merges anteriores
+#267–#282 y #284–#289; #283 fue cerrado sin merge. Para los heads de #290–#293 sí
+devolvió cuatro ejecuciones exitosas de `Verificar finanzas`; los commits de merge no
+tienen runs propios. La suite bancaria heredada y su comparación con main son pasos
+diagnósticos con `continue-on-error`, por lo que un job verde no convierte esos siete
+fallos en aprobados. Se conservan los dos fallos históricos de `zkteco-vigencias` y
+las regresiones obsoletas hasta una ejecución que las explique. No se ejecutaron
+pruebas contra MySQL, C3, buzón, Hostinger o Dahua reales.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -218,7 +218,7 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | --- | --- |
 | Dos pruebas históricas fallidas de edición de TAG | PR #205 restauró la conducta manual solicitada, pero `zkteco-vigencias.test.js` sigue 7/9 por expectativas antiguas de `editTag`. Diagnosticar, acordar el comportamiento esperado y repetir sin ocultar SQL/C3 divergentes |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
-| PR #267–#282, #284–#287 y #283 sin CI acreditado | Ejecutar una suite reproducible sobre main `c5e044e`; GitHub devolvió cero estados y cero workflow runs para 20 merges y el head abierto. #283 no debe integrarse sin reconciliarlo con la política opuesta de #284/AGENTS.md |
+| CI y regresiones históricas | #290–#293 tienen workflows exitosos en sus heads, pero siete pruebas bancarias siguen como diagnóstico no bloqueante y permanecen los fallos históricos de ZKTeco/UI. Ejecutar suite reproducible sobre main actual y registrar cualquier diferencia; #283 ya está cerrado sin merge |
 | Auto-users por SMTP | La prueba individual ya recibió correo. Falta definir dirección pública, probar el enlace en incógnito hasta aceptación completa, lotes controlados, rebotes/spam y confirmar que frontend/backend desplegados usan login solo por usuario/correo y contraseña |
 | Migración de cobranza por concepto | Respaldar DB, revisar y ejecutar manualmente `backend/sql/2026-10-18-cuotas-extraordinarias-casa-club.sql` primero en prueba; después correr consultas diagnósticas. No desplegar backend/frontend nuevo antes del esquema |
 | Padrón y relaciones condómino-vivienda | El CSV reporta 188 pares copiados sin faltantes, pero el intento posterior de `mj_conciliar_padron_20261019()` devolvió error 1644 por ejecución/respaldo existente. Revisar respaldos/bitácora y conteos posteriores desde otra conexión; no afirmar todavía 231/232 ni COMMIT final |
@@ -230,7 +230,7 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | TomTom | Desplegar #263 y probar incidencias reales en español con la llave del proyecto; distinguir un HTTP 400 anterior de una respuesta válida con los campos consumidos por la UI |
 | Body-parser y dependencias | Redesplegar backend desde el lock de #270, confirmar rechazo 415 de gzip/deflate/Brotli y ejecutar smoke de login/pagos. Revisar por separado los cinco avisos restantes de npm audit sin aplicar `audit fix --force` a ciegas |
 | TEST-001 temporal | Usar únicamente clon/base de pruebas y scripts con COMMIT comentado; no borrar evidencia bancaria real ni tocar `zk_tarjetas` por SQL. #287 altera temporalmente el padrón/porcentajes de Análisis y debe revertirse después de la validación |
-| Unificación Pagos–Análisis–C3 | Implementar la solicitud general: `cuotas` debe ser la fuente contable de Pagos y Análisis para viviendas con o sin TAG; una validación bancaria debe actualizar la cuota/transacción y solo después crear una sincronización C3 si hay TAG. #285–#287 son exclusivos de TEST-001 y no resuelven el resto. Diseñar idempotencia, migración/retrocompatibilidad y pruebas antes de despliegue |
+| Despliegue de unificación Pagos–Análisis–C3 | #288–#290 ya están en main. Respaldar, aplicar/verificar la migración aditiva, conciliar reportes/entregas antiguas y probar una vivienda con y sin TAG. Confirmar que el pago persiste aunque C3 falle, que no se duplica al reintentar y que Análisis/Pagos muestran el mismo saldo |
 | Monitor automático de adeudos | Mantener apagado hasta respaldo/cotejo, piloto autorizado, padrón exacto, dry-run y lectura física. Probar que solo mantenimiento bloquea TAGs, que extraordinarias/Casa club no escriben C3, reactivación manual y ausencia de desbloqueo automático al saldar |
 | Manual integral de aceptación | Ejecutar y registrar los 24 apartados A01–A24, seis FTI y casos Z01–Z18 del manual raíz; el merge documental no los da por superados |
 | Noticias y tráfico | Desplegar frontend/backend y comprobar fotos de fondo, fallback sin imagen, Tráfico ZMG, proxy/CSP/CDN, buscador, orden por fecha y estados de error con fuente real en móvil/escritorio |
@@ -248,10 +248,12 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | Recargos históricos | Identificar cortes ya cubiertos para no cobrarlos nuevamente |
 | Conciliación bancaria por correo | Desplegar y validar Titan/Hostinger con un reporte controlado, sin repetir depósitos. La política actual #284 confía en From exacto y asunto sin DKIM/DMARC, riesgo de suplantación aceptado por instrucción documentada; mantener todos los demás cotejos y auditar antes de operar masivamente. AGENTS.md aún dice “confirmación administrativa actual” aunque #261 eliminó la aprobación manual; aclarar esa frase. #283 permanece abierto pero funcionalmente cancelado/sustituido |
 | Migración final de `direccion_id` | Respaldar; ejecutar SQL 01; desplegar todo el backend nuevo y retirar instancias/importadores antiguos; probar; después, sin escrituras, ejecutar SQL 02. DDL no revierte con ROLLBACK y código antiguo no puede volver tras retirar la columna |
-| Cuota configurable por vivienda | Resolver la discrepancia: AGENTS.md fija $300, mientras #222 y #243 implementan tarifa individual y conciliación de $150. No ejecutar la migración ni aplicar la excepción hasta aprobación de regla, respaldo y prueba; confirmar que el histórico se concilia una sola vez y sin alterar folio, referencia o C3 previo |
+| Tarifa y exención por vivienda | AGENTS.md ya reconoce `direcciones.cuota_por_cobrar` con default $300 y #290 añade exenciones persistentes. Falta migrar/verificar esquema, probar cambios de tarifa/exención y confirmar que pagos históricos, referencias y C3 no se alteran |
 | Recibos, Excel y exportación de Análisis | Desplegar frontend/backend según corresponda; descargar el XLSX vigente (#252/#253) y abrirlo en la misma versión de Excel sin reparación, verificando seis hojas/cinco gráficas y pagadas/total. Validar iconos #254/#255 y recibo por movimiento #256 en escritorio/móvil sin registrar pagos |
 | Orden por fecha, UI y pago anual en Análisis | Comprobar que #240 ya no aparece, que #244 conserva el filtro de orden, que #245 cobra solo meses faltantes y que #247 filtra Pago anual sin confundir diciembre ordinario. No registrar pagos reales hasta conciliar #243/#246 y validar con datos controlados |
 | Fechas DD-MON-YYYY | Revisar visualmente 24 páginas y selectores nativos en Safari iOS/Chrome Android; confirmar que valores ISO, zona México y folios permanecen intactos |
+| Base de deuda sin pagos: enero vs septiembre | Resolver la discrepancia antes de desplegar: #290/código limita cortes heredados a enero de 2026, mientras AGENTS.md indica septiembre de 2026 cuando no hay cobertura. Definir la regla, actualizar fuentes rectoras/código y probar casos sin historial sin inventar periodos |
+| Versión PHP en Hostinger | No hay evidencia recuperada de una consulta al entorno ni de una actualización. Confirmar en hPanel/CLI la versión efectiva y su relación con el sitio; el backend del repositorio es Node.js, por lo que no asumir que una actualización de PHP corrige este servicio |
 | Prueba integral en producción | Primero retirar la excepción temporal TEST-001 cuando termine la prueba. Después, con vivienda/TAG dedicados y referencia nueva: comprobar `cuotas` antes/después, Análisis, historial, evento C3, idempotencia y lectura física; no repetir transferencia ante una falla |
 
 ## Actualización recurrente
@@ -274,6 +276,16 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-24
+
+- Main consultado a las 23:26, America/Mexico_City, en `bd983ec8705b9b9020d59845ba0e521dad651b09`: 60 commits por delante del SHA revisado el 23/oct. Se excluyó `1ea0ac6`, que solo actualizó esta bitácora.
+- PR #288–#289 fusionados: unifican Pagos/Análisis por vivienda, aceptan pagos sin TAG, acreditan antes de sincronizar C3 y calculan meses consecutivos desde el último corte. La migración, Hostinger, MySQL, buzón y C3 reales no fueron verificados.
+- PR #290 fusionado: añade saldo a favor, exenciones y base enero de 2026 para casas sin pagos. Queda explícito el conflicto con AGENTS.md, que conserva septiembre; no se da por resuelto.
+- PR #291–#293 fusionados: formato sin decimales en tarjetas/historial y ajustes de la interfaz/confirmación de exención. No cambian pagos ni C3.
+- GitHub Actions acreditó cuatro runs exitosos para los heads de #290–#293. Los siete fallos bancarios heredados siguen siendo diagnóstico no bloqueante; #288–#289 no tuvieron workflow runs. No se ejecutaron pruebas nuevas de producción ni físicas.
+- PR #283 fue cerrado sin merge. No hay PR abiertos. Tampoco se recuperó evidencia para afirmar una versión PHP actualizada en Hostinger; se conserva como pendiente.
+
 
 ### 2026-10-23
 
