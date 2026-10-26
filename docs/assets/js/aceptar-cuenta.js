@@ -14,6 +14,13 @@
   let registration, extraHouses = [], validatedCredentials = null;
   const credentials = () => ({ nombreUsuario: $('acceptUsername').value, correo: $('acceptEmail').value,
     contrasena: $('acceptPassword').value, confirmarContrasena: $('acceptPasswordConfirm').value });
+  function setPasswordsVisible(visible) {
+    for (const id of ['acceptPassword', 'acceptPasswordConfirm']) {
+      $(id).type = visible ? 'text' : 'password';
+    }
+    $('toggleAcceptPasswords').textContent = visible ? 'Ocultar contraseñas' : 'Mostrar contraseñas';
+    $('toggleAcceptPasswords').setAttribute('aria-pressed', String(visible));
+  }
   const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
   try {
     const result = await api('consultar'); registration = result.registro;
@@ -26,6 +33,9 @@
     $('invitationState').textContent = 'Confirma tu vivienda y elige tu contraseña para activar tu cuenta.';
     $('acceptAccountForm').hidden = false;
   } catch (error) { $('invitationState').textContent = error.message; return; }
+  $('toggleAcceptPasswords').addEventListener('click', () => {
+    setPasswordsVisible($('acceptPassword').type === 'password');
+  });
   $('acceptAccountForm').addEventListener('submit', async event => {
     event.preventDefault(); const button = $('createAccount');
     if (button.disabled) return;
@@ -61,6 +71,7 @@
       sessionStorage.removeItem('mjCasaSeleccionada'); sessionStorage.removeItem('mjInvitacion');
       sessionStorage.setItem('misionJardinesToken', result.token); sessionStorage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));
       $('acceptPassword').value = $('acceptPasswordConfirm').value = ''; validatedCredentials = null;
+      setPasswordsVisible(false);
       // Newly accepted residents enter Inicio with their new session.
       location.replace('index.html');
     } catch (error) { $('confirmMessage').textContent = error.message; }
@@ -74,6 +85,7 @@
       await api('reportar', { comentario: $('registrationErrorComment').value });
       $('reportAddressError').close(); $('acceptAccountForm').hidden = true;
       $('acceptPassword').value = $('acceptPasswordConfirm').value = ''; validatedCredentials = null;
+      setPasswordsVisible(false);
       $('invitationState').textContent = 'Tu registro está en revisión. Espera una nueva invitación.';
       $('errorReportSent').showModal();
     } catch (error) { $('reportErrorMessage').textContent = error.message; }
