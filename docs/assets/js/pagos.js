@@ -107,8 +107,16 @@
     async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
     async function loadReceipts({ preserveOnError = false } = {}) {
       try {
-        const d = await api('/pagos/mios', { headers: headers() });
+        const old = new Map(receiptItems.map(p => [Number(p.id), p.estatus]));
+        const d = await api('/pagos/mios', { headers: headers(), cache: 'no-store' });
         renderReceipts(d.data || []);
+        if (receiptItems.some(p => old.get(Number(p.id)) === 'PENDIENTE_VALIDACION' && p.estatus !== 'PENDIENTE_VALIDACION')) {
+          if ($('receiptDetailsModal').open && activeReceiptId !== null) {
+            const actual = receiptItems.find(p => Number(p.id) === activeReceiptId);
+            if (actual) renderReceiptStatus(actual);
+          }
+          void Promise.allSettled([loadValidity(), loadDebts(), loadExtras()]);
+        }
         return true;
       } catch (e) {
         if (!preserveOnError) $('receiptList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
@@ -123,6 +131,8 @@
         if(count){const badge=document.createElement('span');badge.className='mj-tab-count';badge.textContent=count;button.append(badge);}
       });
       renderClub();renderPaymentStatusCards();document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:debts}));
+      document.dispatchEvent(new Event('mj:pagos-cambios'));
+      if(window.parent!==window)window.parent.postMessage({type:'MJ_PAGOS_CAMBIOS'},location.origin);
     }
     function renderPaymentStatusCards(){
       const item=debts?.resumen?.[paymentType]||{};
@@ -685,23 +695,17 @@
 
       // Estas consultas no deben impedir que la vivienda y la cuenta se pinten.
       await Promise.allSettled([loadExtras(), loadReceipts(), loadValidity(), loadAdministration(),loadDebts()]);
-      // El recibo reportado ya está en "En revisión". Refrescar silenciosamente
-      // mientras haya pendientes, para reflejar el resultado del verificador.
-      setInterval(async()=>{
-        if(document.hidden || !receiptItems.some(p=>p.estatus==='PENDIENTE_VALIDACION'))return;
-        try{
-          const anteriores=new Map(receiptItems.map(p=>[Number(p.id),p.estatus]));
-          await loadReceipts();
-          if($('receiptDetailsModal').open&&activeReceiptId!==null){
-            const current=receiptItems.find(p=>Number(p.id)===activeReceiptId);
-            if(current)renderReceiptStatus(current);
-          }
-          if(receiptItems.some(p=>anteriores.get(Number(p.id))==='PENDIENTE_VALIDACION'&&p.estatus==='VALIDADO')){
-            toast('Se confirmó un depósito. Tu recibo ya aparece como Validado.');
-            void loadValidity();void loadDebts();void updatePaymentSummary();
-          }
-        }catch(error){console.warn('No se pudo actualizar el estado de recibos:',error.message)}
-      },15000);
+      // Consultar sin recargar la página mientras existan recibos en revisión.
+      let syncBusy = false;
+      async function syncPendingReceipts() {
+        if (document.hidden || syncBusy || !receiptItems.some(p => p.estatus === 'PENDIENTE_VALIDACION')) return;
+        syncBusy = true;
+        try { await loadReceipts({preserveOnError:true}); }
+        finally { syncBusy = false; }
+      }
+      setInterval(syncPendingReceipts,10000);
+      document.addEventListener('visibilitychange',() => { if (!document.hidden) void syncPendingReceipts(); });
+      window.addEventListener('focus',() => void syncPendingReceipts());
       const requested=new URLSearchParams(location.search).get('tab');
       setTab(['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(requested)?requested:'MANTENIMIENTO');
     }
