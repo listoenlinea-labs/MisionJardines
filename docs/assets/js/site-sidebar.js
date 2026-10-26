@@ -342,6 +342,25 @@
     }
   }
 
+  // El sidebar pertenece al portal padre; Pagos corre en un iframe.
+  // Reconsultar el adeudo real cuando el módulo notifique un cambio y
+  // periódicamente mientras Pagos esté a la vista (sin inventar saldos).
+  function watchPaymentNotices(aside) {
+    const refresh = () => { if (!document.hidden) void refreshPaymentNotices(aside); };
+    document.addEventListener('mj:pagos-cambios', refresh);
+    window.addEventListener('message', event => {
+      if (!window.MJ_SHELL_MODE || event.origin !== location.origin ||
+          event.data?.type !== 'MJ_PAGOS_CAMBIOS') return;
+      const activeFrame = [...document.querySelectorAll('#mjPageA, #mjPageB')]
+        .find(frame => frame.classList.contains('is-active'));
+      if (window.MJShell?.currentPage === 'pagos.html' &&
+          event.source === activeFrame?.contentWindow) refresh();
+    });
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    setInterval(() => { if (page() === 'pagos.html') refresh(); }, 15000);
+  }
+
   function loadHomeDashboard() {
     if (window.MJ_SHELL_MODE || page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
@@ -385,6 +404,7 @@
 
     permissions(aside);
     void refreshPaymentNotices(aside);
+    watchPaymentNotices(aside);
     void alertAccountRequests(aside);
     aside.querySelector('.mj-side-logout')?.addEventListener('click', logout);
 
