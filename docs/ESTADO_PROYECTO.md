@@ -1,21 +1,21 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 24/oct/2026, 23:26, America/Mexico_City.
-**SHA de main consultado:** `bd983ec8705b9b9020d59845ba0e521dad651b09`.
-**Fuentes de esta revisión:** comparación de main desde `c5e044e1e0008ea21d7f99a51a6dd8e391c3d4f9`,
-metadatos y descripciones de los PR #288–#293, commits, estados y workflow runs de
-GitHub, AGENTS.md, índice y estado vigentes, y las instrucciones accesibles del usuario
-sobre cálculo consecutivo desde el último corte. Se excluyó del trabajo de producto el
-commit documental `1ea0ac61907d1d8e5c3eaa4677ece2f55c23b299`.
-No se consultaron mensajes privados, MySQL, C3, Hostinger ni el contenido del buzón
-durante esta revisión; no se publican credenciales, comprobantes ni datos personales.
+**Última revisión:** 25/oct/2026, 23:30, America/Mexico_City.
+**SHA de main consultado:** `853200d7460d5d8141ef7b8e09b034ca1b6cf864`.
+**Fuentes de esta revisión:** comparación de main desde `bd983ec8705b9b9020d59845ba0e521dad651b09`,
+metadatos y descripción del PR #294, commits, estado y workflow run de GitHub,
+AGENTS.md, índice y estado vigentes. Se excluyó del trabajo de producto el commit
+documental `dc3721d37f33fbdb43c20aa225c223a29d3cdf9e`.
+No hubo confirmaciones nuevas del usuario accesibles sobre despliegue, MySQL o pruebas
+físicas. No se consultaron Hostinger, C3, MySQL ni contenido del buzón, y no se publican
+credenciales, comprobantes ni datos personales.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
-## Implementado en main el 24/oct/2026: Pagos, cuotas y C3
+## Implementado en main: Pagos, cuotas, Seguridad y C3
 
 Los PR #288 y #289 ya están fusionados. Pagos y Análisis comparten la fuente contable
 por vivienda; pagar no exige TAG, la acreditación financiera se confirma en una
@@ -31,6 +31,13 @@ entra en conflicto documental con AGENTS.md, que conserva septiembre de 2026 com
 cuando no hay cobertura registrada. La discrepancia enero/septiembre debe resolverse
 antes de usar el cálculo en producción; no se infiere cuál dato corresponde a cada
 vivienda. Los PR #291–#293 ajustan únicamente formato y controles de interfaz.
+
+El PR #294 ya está fusionado: Seguridad reutiliza el mismo cálculo y clasificador de
+estado que Pagos/Análisis, incluida tarifa individual, exenciones, anticipos y abonos
+parciales. La regresión de Atotonilco 752 se cubrió con datos simulados para evitar que
+una cuota pendiente antigua marque «Deudor» cuando un pago confirmado posterior cubre
+el corte. El cambio es de lectura y no modifica cuotas, pagos ni ZKTeco. No acredita
+que el caso real ya esté desplegado o corregido en la base de producción.
 
 ## Resumen operativo
 
@@ -55,7 +62,7 @@ vivienda. Los PR #291–#293 ajustan únicamente formato y controles de interfaz
 | Seguridad, pluma y cámaras | Parcialmente implementado; hardware no verificado | PR #159 reutiliza el endpoint de pluma y prepara proxy HLS; #163 añade diagnóstico; #164 retira el visor Dahua de Seguridad, conservando backend/documentación. PR #189 habilita Inicio operativo a Seguridad con visitas de hoy y accesos sin salida, sin finanzas. Falta gateway RTSP→HLS, despliegue y pruebas con cuentas/hardware reales |
 | Visibilidad del padrón | Filtro de lectura en main | PR #177–#178 muestran solo Guadalajara 707 y Valle de México 3614 en listados compartidos. No borran ni fusionan direcciones, pagos o TAGs; falta verificar consultas reales de producción |
 | Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#151 conectan cuotas, egresos, ingresos y saldo inicial; #180 acumula adeudo; #189 separa vistas por rol; #191 muestra anticipos sin proyectar deuda. PR #193 incorpora adeudos desglosados e indicadores por concepto. Requiere migración, padrón conciliado, cotejo MySQL y despliegue reales |
-| Cuotas para Seguridad | Implementado en main; producción no verificada | PR #140 añade ruta autenticada y tabla paginada sin nombres/teléfonos. Calcula desde `direcciones`/`cuotas`, no desde TAGs ni Sheets; no se consultó la DB real |
+| Cuotas para Seguridad | Cálculo compartido implementado en main; producción no verificada | #140 creó la vista sin PII. #294 sustituye su criterio independiente por el mismo cálculo/clasificador de Pagos y Análisis, considerando tarifa, exenciones, anticipos y abonos parciales. La regresión Atotonilco 752 está cubierta con fixtures; no se consultó la DB real ni se confirmó despliegue |
 | Históricos Google Sheets | Backend/staging opcional conservado; controles retirados de Análisis | PR #140 añadió lectura OAuth y preparación idempotente, deshabilitadas por defecto. PR #187 retiró solo la tarjeta y el script de esa vista; no borró archivo, endpoint, tabla ni datos. Requiere decisión explícita, migración y validación antes de activar |
 | Análisis, historial y recibos | Fuente compartida implementada; producción no verificada | #288–#290 comparten cálculo con Pagos, último corte, saldo a favor, recargos y exenciones. #291 quita decimales solo en tarjetas/historial; #292–#293 verifican visualmente el estado guardado de tarifa/exención. TEST-001 permanece como apoyo sintético y puede alterar totales mientras siga visible |
 | Navegación de Administración/Comunidad | Implementada en main; validación visual pendiente | PR #187 oculta Cuotas del menú y retira la tarjeta de conciliación; #188 oculta las pestañas de Análisis, conserva sus elementos/rutas y ordena Comunidad con Pagos primero. Son cambios de interfaz, no borrado de datos ni cambio de permisos |
@@ -69,12 +76,11 @@ Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de variables de producción ni la versión de PHP
 en Hostinger; el backend documentado continúa siendo Node.js y no hay evidencia nueva
 para afirmar que el runtime PHP haya sido actualizado.
-Desde el SHA consultado en la revisión anterior, main avanzó 60 commits. Se fusionaron
-los PR #288–#293; el PR #283 fue cerrado sin merge y quedó sustituido por #284.
-El commit `1ea0ac61907d1d8e5c3eaa4677ece2f55c23b299`, dedicado al estado del
-23/oct, se excluye del trabajo de producto. Los merges acreditan código en main, no
-despliegue, migraciones reales, conexión al buzón ni funcionamiento físico de C3.
-El PR #132 continúa revertido.
+Desde el SHA consultado en la revisión anterior, main avanzó nueve commits. Se fusionó
+el PR #294; el commit `dc3721d37f33fbdb43c20aa225c223a29d3cdf9e`, dedicado al
+estado del 24/oct, se excluye del trabajo de producto. No hay PR abiertos. El merge
+acredita código en main, no despliegue, corrección de Atotonilco 752 en el MySQL real
+ni funcionamiento físico de C3. El PR #132 continúa revertido.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -170,6 +176,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 24/oct/2026 | PR #289; pruebas dirigidas de corte consecutivo y selección ampliada | **45/45 dirigidas**; selección **123/130**, con siete fallos heredados igual que la base (**112/119**) | Persistencia/TCP simulados; no acredita suite global, despliegue ni hardware |
 | 24/oct/2026 | PR #290, workflow `Verificar finanzas`; `node --test backend/tests/adeudos-enero-saldo-favor-exencion.test.js ...` y sintaxis JS; [Actions 40109657022](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40109657022) | Job y pasos obligatorios **success**; PR declara **30/30** obligatorias. Suite ampliada **77/84**, con siete fallos bancarios heredados; comparación de base **66/74**, con esos siete y una expectativa HTML obsoleta | CI sintético con credenciales falsas y diagnóstico heredado no bloqueante; sin DB/buzón/C3 reales |
 | 24/oct/2026 | PR #291–#293, mismo workflow financiero/sintaxis; [runs 40110902436](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40110902436), [40111488434](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40111488434) y [40112484067](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40112484067) | Los tres jobs concluyeron **success**. Además, #291 verificó cinco formatos, #292 cinco escenarios UI y #293 once comprobaciones de código | #291–#293 son presentación/estado visual; no prueban navegador físico, API desplegada ni persistencia real |
+| 25/oct/2026 | PR #294; `node --test backend/test/seguridad-cuotas-consistencia.test.js` y filtro `cuotas de seguridad|rutas de seguridad` sobre `seguridad-sheets-mobile.test.js`; workflow [40168871351](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40168871351) | Job `Verificar finanzas` y ambas regresiones obligatorias **success**; también pasaron sintaxis y la batería financiera obligatoria. La UI heredada y suite bancaria continúan como diagnósticos con `continue-on-error` | Fixtures/simulaciones: cubre Atotonilco 752, tarifas, exenciones, anticipos, parcialidad y ausencia de PII; no prueba MySQL, despliegue ni C3 reales |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -182,13 +189,13 @@ al añadir documentación. Conservar estos resultados hasta una ejecución nueva
 que explique y confirme su resolución.
 
 GitHub sigue sin acreditar estados ni workflow runs para los merges anteriores
-#267–#282 y #284–#289; #283 fue cerrado sin merge. Para los heads de #290–#293 sí
-devolvió cuatro ejecuciones exitosas de `Verificar finanzas`; los commits de merge no
-tienen runs propios. La suite bancaria heredada y su comparación con main son pasos
-diagnósticos con `continue-on-error`, por lo que un job verde no convierte esos siete
-fallos en aprobados. Se conservan los dos fallos históricos de `zkteco-vigencias` y
-las regresiones obsoletas hasta una ejecución que las explique. No se ejecutaron
-pruebas contra MySQL, C3, buzón, Hostinger o Dahua reales.
+#267–#282 y #284–#289. Los heads de #290–#294 tienen cinco ejecuciones exitosas de
+`Verificar finanzas`; los commits de merge no tienen runs propios. En #294, las
+regresiones Seguridad/Análisis son obligatorias, pero la UI heredada, la suite bancaria
+y su comparación con main siguen como pasos diagnósticos con `continue-on-error`.
+Por ello, un job verde no convierte fallos históricos en aprobados. Se conservan los
+dos fallos de `zkteco-vigencias` y las regresiones obsoletas hasta una ejecución que
+las explique. No se ejecutaron pruebas contra MySQL, C3, buzón, Hostinger o Dahua reales.
 
 ## Cotejo de base: exportaciones del 10 de octubre
 
@@ -218,13 +225,14 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | --- | --- |
 | Dos pruebas históricas fallidas de edición de TAG | PR #205 restauró la conducta manual solicitada, pero `zkteco-vigencias.test.js` sigue 7/9 por expectativas antiguas de `editTag`. Diagnosticar, acordar el comportamiento esperado y repetir sin ocultar SQL/C3 divergentes |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
-| CI y regresiones históricas | #290–#293 tienen workflows exitosos en sus heads, pero siete pruebas bancarias siguen como diagnóstico no bloqueante y permanecen los fallos históricos de ZKTeco/UI. Ejecutar suite reproducible sobre main actual y registrar cualquier diferencia; #283 ya está cerrado sin merge |
+| CI y regresiones históricas | #290–#294 tienen workflows exitosos en sus heads; #294 añade regresiones obligatorias de paridad Seguridad/Análisis. Las suites bancaria/UI heredadas siguen como diagnóstico no bloqueante y permanecen fallos históricos de ZKTeco. Ejecutar suite reproducible sobre main actual y registrar cualquier diferencia |
 | Auto-users por SMTP | La prueba individual ya recibió correo. Falta definir dirección pública, probar el enlace en incógnito hasta aceptación completa, lotes controlados, rebotes/spam y confirmar que frontend/backend desplegados usan login solo por usuario/correo y contraseña |
 | Migración de cobranza por concepto | Respaldar DB, revisar y ejecutar manualmente `backend/sql/2026-10-18-cuotas-extraordinarias-casa-club.sql` primero en prueba; después correr consultas diagnósticas. No desplegar backend/frontend nuevo antes del esquema |
 | Padrón y relaciones condómino-vivienda | El CSV reporta 188 pares copiados sin faltantes, pero el intento posterior de `mj_conciliar_padron_20261019()` devolvió error 1644 por ejecución/respaldo existente. Revisar respaldos/bitácora y conteos posteriores desde otra conexión; no afirmar todavía 231/232 ni COMMIT final |
 | Casa club y tres conceptos | Probar roles, autorización, adeudos, fechas límite, comprobantes y expiración. Confirmar la nueva política: solo mantenimiento afecta TAG/C3; mantenimiento y extraordinarias bloquean reserva; deuda exclusiva de Casa club no bloquea otra solicitud |
 | Inicio por rol | Validar con cuentas reales de administrador, Seguridad y Condómino (una y varias viviendas): alcance de listas, ausencia de finanzas en no administradores y ausencia de datos de casas ajenas |
 | Adeudo acumulado, anticipos y advertencias TAG | Cotejar contra MySQL una casa al corriente, parcial, morosa y con anticipo 2027; confirmar que Último mes pagado muestra el período real sin sumar deuda futura. Abrir modal en casas con 0/1/varios TAGs y confirmar C3 bajo demanda sin escrituras |
+| Paridad Seguridad–Análisis | Desplegar #294 y cotejar en MySQL controlado Atotonilco 752 y otras viviendas con tarifa especial, exención, anticipo, abono parcial y pendientes antiguos. Confirmar mismo estado/adeudo en ambas vistas y ausencia de PII; no cambiar registros para forzar el resultado |
 | Portal móvil y navegación | El scroll fue confirmado. El usuario reportó que el primer refresco de #231 no funcionó; desplegar #239 y validar el gesto en portal, cabecera y enlace directo en Safari/iPhone/Android. Validar también modales, X, menú, caché, Atrás/Adelante y descargas |
 | Mis recibos y seguimiento automático | Validar #267–#282 en iPhone/escritorio: adjunto nativo, fechas SPEI, cuenta oficial, línea de tiempo, estado Fallido y refresco. Confirmar que ausencia de aviso o error IMAP permanece En revisión y que solo contradicción bancaria vinculada produce Fallido |
 | TomTom | Desplegar #263 y probar incidencias reales en español con la llave del proyecto; distinguir un HTTP 400 anterior de una respuesta válida con los campos consumidos por la UI |
@@ -276,6 +284,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-25
+
+- Main consultado a las 23:30, America/Mexico_City, en `853200d7460d5d8141ef7b8e09b034ca1b6cf864`: nueve commits por delante del SHA revisado el 24/oct. Se excluyó `dc3721d`, que solo actualizó esta bitácora.
+- PR #294 fusionado: Seguridad ahora comparte con Pagos/Análisis el cálculo y clasificador de mantenimiento. Considera tarifa individual, exenciones, pagos adelantados y abonos parciales sin modificar cuotas, pagos ni ZKTeco.
+- La regresión Atotonilco 752 quedó cubierta con fixtures: un pago confirmado que cubre el corte evita clasificar como deudor por una fila pendiente antigua. Esto no confirma la base ni el despliegue reales.
+- GitHub Actions run 40168871351 concluyó exitosamente para el head de #294; las regresiones Seguridad/Análisis fueron obligatorias. Las suites UI/bancaria heredadas siguen como diagnóstico no bloqueante.
+- No hay PR abiertos ni confirmaciones físicas/operativas nuevas accesibles. Se conservan la discrepancia enero/septiembre y todos los pendientes de Hostinger, MySQL y C3.
+
 
 ### 2026-10-24
 
