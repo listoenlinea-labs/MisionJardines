@@ -260,7 +260,7 @@
     let best = { owner: false, suffix: false };
     for (let i = 0; i < lines.length; i++) {
       const line = normal(lines[i]);
-      const marker = line.match(/\b(?:DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA\s+DESTINO|CUENTA\s+RECEPTORA)\b/);
+      const marker = line.match(/\b(?:DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA\s+DESTINO|CUENTA\s+RECEPTORA|CUENTA\s+BENEFICIARIA|A\s+FAVOR\s+DE|A\s+NOMBRE\s+DE|RECEPTOR|RECIBE|ENVIADO\s+A)\b/);
       if (!marker) continue;
       const sample = [line.slice(marker.index + marker[0].length)];
       for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
