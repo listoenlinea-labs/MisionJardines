@@ -425,8 +425,8 @@
 
     function readFile(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file) }) }
     function loadImage(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src }) }
-    async function canvasToCompressed(canvas) { let q = .82, data = canvas.toDataURL('image/jpeg', q); while (data.length > 1350000 && q > .42) { q -= .1; data = canvas.toDataURL('image/jpeg', q) } if (data.length > 1500000) throw Error('El comprobante procesado es demasiado grande.'); return data }
-    async function imageToData(file) { const raw = await readFile(file); const image = await loadImage(raw); const max = 2100; const scale = Math.min(1, max / Math.max(image.width, image.height)); const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale)); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); return canvasToCompressed(canvas) }
+    async function canvasToCompressed(canvas) { let q = .9, data = canvas.toDataURL('image/jpeg', q); while (data.length > 1350000 && q > .42) { q -= .1; data = canvas.toDataURL('image/jpeg', q) } if (data.length > 1500000) throw Error('El comprobante procesado es demasiado grande.'); return data }
+    async function imageToData(file) { const raw = await readFile(file); const image = await loadImage(raw); const max = 2800; const upscale = image.width >= 500 && image.width < 1150 ? Math.min(1.75, 1150 / image.width) : 1; const scale = Math.min(upscale, max / Math.max(image.width, image.height)); const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale)); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); return canvasToCompressed(canvas) }
     async function pdfToData(file) { if (!window.mjPdfJs) throw Error('El lector PDF todavía está cargando. Intenta de nuevo en unos segundos.'); const bytes = new Uint8Array(await file.arrayBuffer()); const pdf = await window.mjPdfJs.getDocument({ data: bytes }).promise; const page = await pdf.getPage(1); const viewport = page.getViewport({ scale: 1.7 }); const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height; await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise; return canvasToCompressed(canvas) }
     function normalizeAmount(value) { const s = String(value || '').replace(/[^0-9.,]/g, ''); if (!s) return ''; const comma = s.lastIndexOf(','), dot = s.lastIndexOf('.'); const n = Number(comma > dot ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '')); return Number.isFinite(n) ? n.toFixed(2) : '' }
     function normalizeDate(v) { let m = String(v || '').match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'); m = String(v || '').match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/); if (m) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); return '' }
@@ -506,17 +506,36 @@
             }
           }
         });
-        let result;
+        const readings = [];
         try {
-          // Receipts mix large amount text with small, separate bank-detail blocks.
-          // SINGLE_BLOCK can omit the amount entirely; detect the page layout.
+          // Primero leer la página completa: preservar la validación existente.
           await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO });
-          result = await worker.recognize(proofData);
+          const first = await worker.recognize(proofData);
+          const firstText = first?.data?.text || '';
+          readings.push(firstText);
+          if (scanRevision !== revision) return;
+          const data = MJComprobante.extract(firstText);
+          const destination = MJComprobante.verifyDestination(firstText,
+            config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ',
+            config?.destinoUltimos4 || '4409');
+          if (!destination.ok || !data.amount || !data.date || !data.time ||
+              !(data.claveRastreo || data.referencia || data.folio)) {
+            // En capturas bancarias de dos columnas, AUTO puede perder los
+            // valores alineados a la derecha. Releer con texto disperso.
+            $('ocrState').textContent = 'Releyendo detalles bancarios…';
+            try {
+              await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
+              const second = await worker.recognize(proofData);
+              if (second?.data?.text?.trim()) readings.push(second.data.text);
+            } catch (fallbackError) {
+              console.warn('Segunda lectura OCR no disponible:', fallbackError.message);
+            }
+          }
         } finally {
           await worker.terminate();
         }
         if (scanRevision !== revision) return;
-        ocrText = result?.data?.text || '';
+        ocrText = readings.join(MJComprobante.OCR_PASS_MARKER);
         const beneficiary = config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ';
         const suffix = config?.destinoUltimos4 || '4409';
         const destination = MJComprobante.verifyDestination(ocrText, beneficiary, suffix);

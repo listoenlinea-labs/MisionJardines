@@ -22,7 +22,7 @@ const bank = [
 
 test('Bank proof: operation folio wins over reference, keeps leading zeros and reads Spanish operation date', () => {
   assert.deepEqual(extract(bank), {
-    folio: '0452579754', amount: '300.00', date: '2026-10-08', time: '12:49:00'
+    folio: '0452579754', claveRastreo: 'MBANO1002610080082507654', referencia: '2309260', amount: '300.00', date: '2026-10-08', time: '12:49:00'
   });
 });
 
@@ -35,7 +35,7 @@ test('Only beneficiary and last four digits inside the Destino section pass', ()
 
 test('Amount, date and folio recognize other bank layouts, including thousands', () => {
   assert.deepEqual(extract('Monto transferido: $1,200.00\nFolio de operación: 0000234567\nFecha de operación: 9 de octubre de 2026 10:23 h.'), {
-    folio: '0000234567', amount: '1200.00', date: '2026-10-09', time: '10:23:00'
+    folio: '0000234567', claveRastreo: '', referencia: '', amount: '1200.00', date: '2026-10-09', time: '10:23:00'
   });
 });
 
