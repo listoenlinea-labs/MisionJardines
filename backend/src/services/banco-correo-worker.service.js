@@ -33,10 +33,14 @@ function registrarImporteRelacionado(pago,autenticados){
   ' (solo diagnostico: NO confirma deposito)');
 }
 let ocupado=false,programado=false,timer=null;
+function datosReintento(raw){
+ if(typeof raw==='string'){try{raw=JSON.parse(raw)}catch{return {}}}
+ return raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+}
 async function persistir(pago,revision,fallido=false){
  // Conservar el contador y la bitácora de reintentos incluso cuando Titan
  // reemplace el diagnóstico. Evita reintentos infinitos después de FALLIDO.
- const anterior=require('./pagos-reintento-validacion.service').diagnosticoAnterior(pago.verificacionBancaria);
+ const anterior=datosReintento(pago.verificacionBancaria);
  const cambios={verificacionBancaria:{
    ...revision,
    reintentos:Math.max(0,Number(anterior.reintentos)||0),
