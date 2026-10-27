@@ -16,7 +16,7 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
   const forged = jwt.sign({ usuarioId: 1, rol: 'SUPER_ADMIN', sesionVersion: 0 }, process.env.JWT_SECRET);
   const send = (url, authorization, method = 'POST') => fetch(base + url, { method, headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: 'Bearer ' + authorization } : {}) }, ...(method === 'GET' ? {} : { body: '{}' }) });
   try {
-    for (const path of ['/crear', '/prueba/crear', '/prueba/1/enlace']) {
+    for (const path of ['/crear', '/individual', '/prueba/crear', '/prueba/1/enlace']) {
       assert.equal((await send(path)).status, 401);
       assert.equal((await send(path, forged)).status, 403);
     }
@@ -27,6 +27,7 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
     }
     currentRole = 'ADMINISTRADOR'; const allowed = await send('/crear', forged);
     assert.equal(allowed.status, 200); assert.equal((await allowed.json()).siguiente, null); assert.equal(queried, 1);
+    assert.equal((await send('/individual', forged)).status, 400);
     assert.equal((await send('/0/invitacion', forged)).status, 400);
     assert.equal((await send('/prueba/crear', forged)).status, 400);
     assert.equal((await send('/prueba/1/enlace', forged)).status, 400);

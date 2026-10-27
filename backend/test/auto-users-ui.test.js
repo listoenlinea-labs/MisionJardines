@@ -8,7 +8,7 @@ async function page(viviendas, validate = async () => ({ ok: true, valido: true 
   const fields = new Map(), requests = [], redirects = [], stored = new Map();
   const $ = id => {
     if (!fields.has(id)) fields.set(id, { value: '', hidden: true, textContent: '', listeners: {},
-      addEventListener(type, fn) { this.listeners[type] = fn; }, reportValidity() { return true; }, showModal() { this.open = true; }, close() { this.open = false; }, focus() {} });
+      addEventListener(type, fn) { this.listeners[type] = fn; }, setAttribute(name, value) { this[name] = value; }, reportValidity() { return true; }, showModal() { this.open = true; }, close() { this.open = false; }, focus() {} });
     return fields.get(id);
   };
   const storage = { setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) };

@@ -62,6 +62,7 @@ router.get('/config', handle(async () => {
     try { require('../services/auto-users-email.service').configuracion(); return { correoDisponible: true }; }
     catch (error) { return { correoDisponible: false, mensaje: error.message }; }
 }));
+router.post('/individual', handle(req => service.crearIndividual(req.body)));
 router.post('/crear', handle(req => service.crearLote(number(req.body.desdeId))));
 router.post('/invitaciones', handle(req => service.enviarLote(number(req.body.desdeId))));
 router.post('/:id/invitacion', handle(req => service.enviarLote(0, positive(req.params.id))));

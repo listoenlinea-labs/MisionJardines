@@ -41,8 +41,9 @@ test('capacity and deadline stop workers and allow subsequent requests', async (
     constructor() { super(); this.stopped = false; workers.push(this); }
     async terminate() { this.stopped = true; this.emit('exit', 1); }
   }
+  const serviceRequire = require('node:module').createRequire(require.resolve('../src/services/comprobante-lector.service'));
   const sandbox = {
-    require: name => name === 'node:worker_threads' ? { Worker: FakeWorker } : name === './comprobante-parser' ? require('../src/services/comprobante-parser') : require(name),
+    require: name => name === 'node:worker_threads' ? { Worker: FakeWorker } : serviceRequire(name),
     module: { exports: {} }, __dirname: require('node:path').join(__dirname, '../src/services'),
     Buffer, process, setTimeout: callback => { timers.push(callback); return timers.length; }, clearTimeout() {}
   };
