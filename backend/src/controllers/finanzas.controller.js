@@ -31,7 +31,7 @@ async function analizar(req,res){
   const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento,foliosRegistrados]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar','exencionesRecargo']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
-   PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion']}),
+   PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion','aplicacionCuotas']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
    ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']}),
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT}),
@@ -46,9 +46,9 @@ async function analizar(req,res){
    PagoManualConcepto.findAll({attributes:['id','casaId','tipoPago','cargoExtraordinarioId','reservaCasaClubId','monto','formaPago','referencia','creadoEn']}),
    ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado']}),
    PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
-   PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion']})
+   PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']})
   ]);
-  const registros=ultimosRegistrosPago({reportados:foliosRegistrados,cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
+  const registros=ultimosRegistrosPago({reportados:require('../services/pagos-reparto-datos').desglosar(foliosRegistrados),cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const padron=seleccionarPadronAnalisis(casas,cuotas);
   const historiales=new Map();
@@ -62,7 +62,7 @@ async function analizar(req,res){
    for(const row of rows){const id=String(row.casaId);if(!map.has(id))map.set(id,[]);map.get(id).push(row);}
    return map;
   };
-  const bancosMantenimiento=porCasa(comprobantesMantenimiento);
+  const bancosMantenimiento=porCasa(require('../services/pagos-reparto-datos').desglosar(comprobantesMantenimiento));
   const bancosConceptos=porCasa(pagosConceptoHistoricos);
   const manualesConceptos=porCasa(manualesConceptoHistoricos);
   const tagsPorCasa=tagsParaViviendas(padron.casas,tarjetas);
@@ -120,7 +120,7 @@ async function analizar(req,res){
    recargo:num(q.recargo),saldoPendiente:num(q.saldoPendiente),fechaPago:q.fechaPago||q.fechaConfirmacion||null,
    formaPago:q.formaPago||'',referencia:q.referencia||'',folio:q.folio||'',origen:q.origenImportacion||''
   }));
-  const pagosPeriodoDetalle=pagos.map(p=>({id:p.id,casaId:p.casaId,
+  const pagosPeriodoDetalle=require('../services/pagos-reparto-datos').desglosar(pagos).map(p=>({id:p.id,casaId:p.casaId,
    calle:viviendasPorId.get(String(p.casaId))?.calle||'',numero:viviendasPorId.get(String(p.casaId))?.numero||'',
    nombre:viviendasPorId.get(String(p.casaId))?.nombre||'',tipo:p.tipoPago,monto:num(p.monto),
    recargo:num(p.recargo),fecha:p.fechaOperacion,referencia:p.folioOperacion||p.folioReporte||''}));

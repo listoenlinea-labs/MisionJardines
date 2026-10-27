@@ -30,14 +30,14 @@ function crearHistorialController({ PagoReportado, PagoAccesoC3, PagoAccesoTagC3
             const { count, rows } = await PagoReportado.findAndCountAll({
                 where: { fechaOperacion: { [Op.gte]: periodo.desde, [Op.lt]: periodo.hastaExclusiva } },
                 attributes: ['id', 'casaId', 'folioReporte', 'folioOperacion', 'fechaOperacion', 'horaOperacion',
-                    'creadoEn', 'monto', 'recargo', 'nombreReportante', 'calleSnapshot', 'numeroCasaSnapshot', 'tipoPago', 'estatus'],
+                    'aplicacionCuotas', 'creadoEn', 'monto', 'recargo', 'nombreReportante', 'calleSnapshot', 'numeroCasaSnapshot', 'tipoPago', 'estatus'],
                 order: [['fechaOperacion', 'DESC'], ['horaOperacion', 'DESC'], ['id', 'DESC']],
                 limit: limite, offset: (pagina - 1) * limite, raw: true
             });
-            const ids = rows.map(p => p.id), casas = [...new Set(rows.map(p => p.casaId))];
+            const ids = rows.map(p => p.id), casas = [...new Set(rows.flatMap(p => [p.casaId,...(require('../services/pagos-reparto-datos').resumen(p.aplicacionCuotas).map(d=>d.casaId))]))];
             const [movimientos, tags] = rows.length ? await Promise.all([
                 PagoAccesoC3.findAll({ where: { origen: { [Op.in]: ['PAGO','PAGO_CUOTAS'] }, origenId: { [Op.in]: ids } },
-                    attributes: ['id', 'origenId', 'meses', 'estado'], raw: true }),
+                    attributes: ['id', 'casaId', 'origenId', 'meses', 'estado'], raw: true }),
                 ZkTarjeta.findAll({ where: { casaId: { [Op.in]: casas } },
                     attributes: ['casaId', 'numeroTarjeta', 'fechaFin', 'ultimaLectura', 'enControlador'], order: [['id', 'ASC']], raw: true })
             ]) : [[], []];
@@ -49,12 +49,12 @@ function crearHistorialController({ PagoReportado, PagoAccesoC3, PagoAccesoTagC3
             const data = rows.map(p => {
                 const diario = movimientos.filter(m => String(m.origenId) === String(p.id)).map(m => {
                     const intentos = entregas.filter(t => String(t.pagoAccesoId) === String(m.id));
-                    return { meses: Number(m.meses), estado: m.estado, tagsTotal: intentos.length,
+                    return { casaId:m.casaId, meses: Number(m.meses), estado: m.estado, tagsTotal: intentos.length,
                         tags: intentos.map(t => ({ numeroTarjeta: t.numeroTarjeta, fechaAntes: t.fechaAntes,
                             fechaDespues: t.fechaDespues, estado: t.estado })),
                         tagsAplicados: intentos.filter(t => t.estado === 'COMPLETADO').length };
                 });
-                return { ...p, movimientos: diario, tags: tags.filter(t => String(t.casaId) === String(p.casaId)) };
+                return { ...p, reparto:require('../services/pagos-reparto-datos').resumen(p.aplicacionCuotas), movimientos: diario, tags: tags.filter(t => [p.casaId,...require('../services/pagos-reparto-datos').resumen(p.aplicacionCuotas).map(d=>d.casaId)].some(id=>String(t.casaId)===String(id))) };
             });
             return res.json({ ok: true, ...periodo, pagina, limite, total: count, data });
         } catch (error) {

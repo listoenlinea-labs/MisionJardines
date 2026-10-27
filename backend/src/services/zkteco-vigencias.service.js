@@ -81,8 +81,9 @@ async function preparar(casaId, now, dryRun) {
         if(event.origen==='PAGO_CUOTAS'){
             const pago=await PagoReportado.findByPk(event.origenId,{transaction});
             const cuotas=await Cuota.findAll({where:{casaId},transaction});
-            if(!pago||Number(pago.casaId)!==Number(casaId)||pago.estatus!=='VALIDADO'||
-                !pago.aplicacionCuotas?.aplicado||pago.aplicacionCuotas.fechaFinalObjetivo!==fechaObjetivo||
+            const plan=require('./pagos-reparto-datos').planParaCasa(pago,casaId);
+            if(!pago||pago.estatus!=='VALIDADO'||
+                !plan?.aplicado||plan.fechaFinalObjetivo!==fechaObjetivo||
                 !fechaObjetivo||String(fechaDesdeCuotas(cuotas)||'')<fechaObjetivo)
                 throw Object.assign(new Error('El objetivo del C3 no está respaldado por cuotas y un pago validado; requiere conciliación'),{status:409});
         }

@@ -32,7 +32,7 @@ async function cargar(casaId,transaction){
 async function cotizar(casaId,fecha,monto,transaction){
  validarOperacion(fecha);
  const data=await cargar(casaId,transaction);
- if(await Pago.findOne({where:{casaId,tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION'},transaction}))throw fail('Hay un comprobante de mantenimiento pendiente; espera su revisión');
+ if(await Pago.findOne({where:{...require('./pagos-reparto.service').condicionCasa(casaId),tipoPago:'MANTENIMIENTO',estatus:'PENDIENTE_VALIDACION'},transaction}))throw fail('Hay un comprobante de mantenimiento pendiente; espera su revisión');
  const ctx=monto==null?calc.contextoCuotas(data.cuotas,fecha,data.tarifa,data.exencionesRecargo):calc.planificar(data.cuotas,fecha,monto,data.tarifa,data.exencionesRecargo);
  return ctx;
 }

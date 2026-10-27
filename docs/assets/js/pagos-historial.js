@@ -20,6 +20,7 @@
   const start = new Date(Date.UTC(Number(now.year), Number(now.month) - 1 - (Number(now.day) < 11 ? 1 : 0), 11));
   $('historyPeriod').value = start.toISOString().slice(0, 7);
   function months(payment) {
+    if(payment.reparto?.length)return payment.reparto.map(d=>'<small>'+esc(d.calle)+' · Casa '+esc(d.numero)+': '+esc(d.meses)+' mes(es) '+(d.aplicado?'acreditados':'por confirmar')+'</small>').join('');
     if (payment.tipoPago === 'EXTRAORDINARIO') return '<strong class="history-month-count">0</strong><small>Extraordinario</small>';
     if (!payment.movimientos.length) return '<strong class="history-month-count">—</strong><small>Sin aumento registrado</small>';
     const completed = m => m.estado === 'COMPLETADO' && m.tagsTotal > 0 && m.tagsAplicados === m.tagsTotal;
@@ -44,7 +45,7 @@
   function row(p) {
     const status = { VALIDADO: 'Validado', PENDIENTE_VALIDACION: 'Pendiente de validación', RECHAZADO: 'Rechazado' }[p.estatus] || 'Sin estado';
     const tags = p.tags.length ? p.tags.map(t => '<div>TAG ' + esc(t.numeroTarjeta) + ': <b>' + esc(t.fechaFin || 'Sin fecha') + '</b><small>Última lectura: ' + esc(stamp(t.ultimaLectura)) + (t.enControlador ? '' : ' · Presencia no confirmada') + '</small></div>').join('') : 'Sin TAGs asociados';
-    return '<tr><td data-label="Folio de pago"><b>' + esc(p.folioReporte) + '</b><small>Banco: ' + esc(p.folioOperacion) + '</small></td><td data-label="Depósito">' + esc(p.fechaOperacion) + '<small>' + esc(p.horaOperacion) + '</small></td><td data-label="Monto">' + esc(money(p.monto)) + '<small>Recargo: ' + esc(money(p.recargo)) + '</small></td><td data-label="Meses aplicados" class="history-months">' + months(p) + '</td><td data-label="Fecha anterior al pago">' + previousDate(p) + '</td><td data-label="Reportado por / vivienda">' + esc(p.nombreReportante || 'No registrado') + '<small>' + esc(p.calleSnapshot) + ' · ' + esc(p.numeroCasaSnapshot) + '</small></td><td data-label="Subido al sistema">' + esc(stamp(p.creadoEn)) + '</td><td data-label="Estado">' + status + '</td><td data-label="Vigencia TAG (última lectura)">' + tags + '</td></tr>';
+    return '<tr><td data-label="Folio de pago"><b>' + esc(p.folioReporte) + '</b><small>Banco: ' + esc(p.folioOperacion) + '</small></td><td data-label="Depósito">' + esc(p.fechaOperacion) + '<small>' + esc(p.horaOperacion) + '</small></td><td data-label="Monto">' + esc(money(p.monto)) + '<small>Recargo: ' + esc(money(p.recargo)) + '</small></td><td data-label="Meses aplicados" class="history-months">' + months(p) + '</td><td data-label="Fecha anterior al pago">' + previousDate(p) + '</td><td data-label="Reportado por / vivienda">' + esc(p.nombreReportante || 'No registrado') + '<small>' + (p.reparto?.length?p.reparto.map(d=>esc(d.calle)+' · '+esc(d.numero)+': '+esc(money(d.monto))).join('<br>'):esc(p.calleSnapshot) + ' · ' + esc(p.numeroCasaSnapshot)) + '</small></td><td data-label="Subido al sistema">' + esc(stamp(p.creadoEn)) + '</td><td data-label="Estado">' + status + '</td><td data-label="Vigencia TAG (última lectura)">' + tags + '</td></tr>';
   }
   async function load() {
     const current = ++revision;

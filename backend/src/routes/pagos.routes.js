@@ -30,6 +30,9 @@ const listarHistorial = crearHistorialController({ PagoReportado, ZkTarjeta,
     PagoAccesoTagC3: require('../models/PagoAccesoTagC3') });
 
 router.get('/historial', soloAdministracion, listarHistorial);
+const reparto=require('../services/pagos-reparto.service');
+router.get('/reparto',lecturaPagos,reparto.obtenerCatalogo);
+router.post('/reparto/cotizacion',lecturaPagos,reparto.cotizacion);
 router.get('/cotizacion', lecturaPagos, cotizacionMantenimiento);
 router.get('/vigencia', lecturaPagos, obtenerVigencia);
 router.put('/vigencia/:casaId', soloAdministracion, inicializarVigencia);

@@ -1,0 +1,12 @@
+.payment-allocation{padding:16px;border:1px solid #cbded3;border-radius:14px;background:#f4f9f6}
+.payment-allocation[hidden]{display:none}
+.payment-allocation h3{margin:0 0 8px;font-size:17px}
+.payment-allocation p{font-size:13px;line-height:1.5}
+.allocation-house{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px 14px;padding:14px 0;border-top:1px solid #dce8e1}
+.allocation-house label{display:flex;flex-direction:column;gap:5px;min-width:0}
+.allocation-house span,.allocation-plan{font-size:12px;line-height:1.5;color:#526475;overflow-wrap:anywhere}
+.allocation-plan{grid-column:1/-1}
+.allocation-house input{width:100%;min-width:0;background:#fff!important}
+#allocationStatus{margin:12px 0 0;font-weight:700;color:#276a47}
+#allocationStatus.invalid{color:#a43d3d}
+@media(max-width:480px){.allocation-house{grid-template-columns:minmax(0,1fr)}.allocation-house input{min-height:44px}}

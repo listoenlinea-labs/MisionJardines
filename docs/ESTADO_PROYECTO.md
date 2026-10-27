@@ -15,6 +15,17 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Preparado el 26/oct/2026: depósito repartido entre viviendas
+
+Pagos incorpora asignaciones por vivienda solo para usuarios con más de dos vínculos
+activos. Montos sumados en centavos contra OCR independiente, adeudos/cotizaciones
+por casa y reporte bancario único. Plan versión 3 en el JSON existente; acreditación
+conjunta de cuotas y diario, reversión si falla alguna vivienda. Historiales, recibos,
+fecha de último registro y C3 usan la porción propia; sin SQL ni variables nuevas.
+El recibo conjunto es privado del reportante/Administración. Pruebas locales con
+almacenamiento y OCR simulado; no se verifican MySQL o C3 físicos ni despliegue.
+Ver [reparto por viviendas](PAGOS_REPARTO_VIVIENDAS.md).
+
 ## Preparado el 26/oct/2026: conciliación sin dirección en el concepto
 
 Se retira la comparación concepto/calle/número de conciliación y diagnóstico.

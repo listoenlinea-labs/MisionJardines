@@ -98,6 +98,14 @@ La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:
   número ni coincidencia con la vivienda. La vivienda proviene del reporte creado
   con vínculo autorizado; conservar identificador, monto, fecha, cuenta, remitente,
   coincidencia única y hash de correo no reutilizable entre viviendas.
+- Reparto de mantenimiento: visible solo con MÁS DE DOS viviendas activas (una o
+  dos conservan el flujo anterior). Un depósito se reporta/valida una sola vez y
+  guarda `aplicacion_cuotas.version=3` con distribuciones y planes individuales.
+  Sumar importes en centavos contra el OCR del servidor, autorizar cada vínculo,
+  bloquear pendientes por vivienda incluso secundaria y acreditar todo en una
+  transacción. Historiales/recibos/C3 deben usar el plan de su vivienda; nunca el
+  total del depósito para cada casa. El recibo conjunto es privado del reportante
+  y Administración; otros miembros consultan su abono en el historial por casa.
 - Registrar cortes pagados, aprobación y diario de acceso en la misma transacción.
   La aprobación financiera puede persistir aunque falle la entrega posterior al C3.
 
