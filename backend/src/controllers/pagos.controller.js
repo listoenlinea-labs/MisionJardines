@@ -595,7 +595,7 @@ async function obtenerComprobantePropio(req,res){
 async function reintentarValidacion(req,res){
   try{
     const id=Number(req.params.id);
-    if(!/^\\d+$/.test(String(req.params.id||''))||!Number.isSafeInteger(id)||id<1||!req.usuario.casaId)
+    if(!Number.isSafeInteger(id)||id<1||String(id)!==String(req.params.id||'')||!req.usuario.casaId)
       return res.status(404).json({ok:false,message:'Comprobante no encontrado.'});
     const data=await require('../services/pagos-reintento-validacion.service').solicitarReintento({
       pagoId:id,casaId:Number(req.usuario.casaId),usuarioId:Number(req.usuario.usuarioId)
