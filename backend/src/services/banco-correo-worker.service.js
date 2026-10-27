@@ -72,6 +72,9 @@ async function ejecutarRevision(){
   console.info('[Bancos] Revisión: pagos pendientes='+pendientes.length+', avisos consultados='+avisos.length+', remitente autorizado recientes='+autenticados.length);
   for(const pago of pendientes){
    try{
+    // No evaluar contra Titan antes de concluir la lectura OCR del reintento.
+    // Evita que un worker periódico use datos bancarios anteriores.
+    if(datosReintento(pago.verificacionBancaria).etapa==='REINTENTO_OCR')continue;
     const revision=diagnostico.evaluar(pago,avisos,autenticados);
     if(revision.cotejoAvisos?.filtroBloqueante==='IMPORTE')
       registrarImporteRelacionado(pago,autenticados);
@@ -116,6 +119,7 @@ async function ejecutarRevision(){
   // Contraseña, DNS, TLS, IMAP, lectura incompleta: sin señales de rechazo bancario.
   console.error('[Bancos] Verificación buzón IMAP no disponible:',error.message);
   for(const pago of pendientes){
+   if(datosReintento(pago.verificacionBancaria).etapa==='REINTENTO_OCR')continue;
    try{await persistir(pago,diagnostico.resultado('ERROR_BUZON',
     'No fue posible consultar el buzón bancario Titan. El depósito sigue en revisión y se reintentará.'))}
    catch(e){console.error('[Bancos] Error guardando estado IMAP, pago ID='+pago.id+': '+e.name)}
