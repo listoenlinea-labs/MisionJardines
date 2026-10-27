@@ -53,15 +53,15 @@ async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacio
   const terminacion = process.env.PAGOS_DESTINO_ULTIMOS4 || '4409';
   const verificacion = parser.verifyDestination(texto, titular, terminacion);
   if (!verificacion.ok) throw Object.assign(new Error(verificacion.message + ' No se registró el pago.'), { status: 422 });
-  const extraido = parser.extract(texto);
+  const extraido = { ...parser.extract(texto), candidatos: parser.candidatosOperacion(texto) };
   validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos);
   return { texto: texto.slice(0, 12000), extraido };
 }
 
 function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos = false) {
   const faltantes = [];
-  if (!(extraido.claveRastreo || extraido.referencia || extraido.folio))
-    faltantes.push('Clave de rastreo, referencia bancaria o folio de operación');
+  if (!(extraido.claveRastreo || extraido.referencia || extraido.folio || extraido.candidatos?.length))
+    faltantes.push('Identificador de operación verificable');
   for (const [campo,nombre] of [['date','Fecha de operación'],['time','Hora de operación'],['amount','Monto transferido']])
     if (!extraido[campo]) faltantes.push(nombre);
   if (exigirCampos && faltantes.length) {
@@ -78,6 +78,10 @@ function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion,
   const expected = extraido.claveRastreo
     ? idsBanco.normal(detected)
     : extraido.referencia ? idsBanco.referencia(detected) : idsBanco.normal(detected);
+  if (!detected && extraido.candidatos?.length && !extraido.candidatos.some(
+    c => idsBanco.normal(c) === idsBanco.normal(folioOperacion) ||
+         (idsBanco.referencia(c) && idsBanco.referencia(c) === idsBanco.referencia(folioOperacion))
+  )) throw Object.assign(new Error('El identificador no se encontró entre los códigos de la imagen.'), {status:422});
   if (detected && (!provided || provided !== expected))
     throw Object.assign(new Error('El identificador seleccionado no coincide con el campo leído por OCR. Vuelve a leer el comprobante.'), {
       status: 422, code: 'IDENTIFICADOR_NO_COINCIDE'
