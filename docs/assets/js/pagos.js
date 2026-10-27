@@ -11,6 +11,7 @@
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
     async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) {
       const error = Error(d.message || 'No fue posible completar la solicitud');
+      error.httpStatus = r.status;
       error.code = d.code; error.camposFaltantes = d.camposFaltantes; error.camposCorreo = d.camposCorreo;
       throw error;
     } return d }
@@ -319,7 +320,13 @@
         const ok=await loadReceipts({preserveOnError:true});
         if(ok&&$('receiptDetailsModal').open){
           const actual=receiptItems.find(p=>Number(p.id)===activeReceiptId);
-          if(actual)renderReceiptStatus(actual);
+          if(actual){
+            renderReceiptStatus(actual);
+            if(actual.estatus!=='PENDIENTE_VALIDACION'){
+              const feedback=$('receiptRetryFeedback');
+              if(feedback)feedback.hidden=true;
+            }
+          }
         }
       }finally{receiptDetailsPolling=false;}
     },3000);
@@ -352,8 +359,10 @@
         if(ok&&$('receiptDetailsModal').open&&activeReceiptId===id&&actualizado)
           renderReceiptStatus(actualizado);
       }catch(error){
-        const message=String(error.message||'No fue posible iniciar el reintento.');
-        retryFeedback(message+( /404|Not Found|encontrad/i.test(message)?' Comprueba que el backend nuevo esté desplegado en Hostinger.':''),true);
+        const message=error.httpStatus===404
+          ? 'No se encontró la ruta de reintento. Comprueba que el backend actualizado esté desplegado en Hostinger.'
+          :String(error.message||'No fue posible iniciar el reintento.');
+        retryFeedback(message,true);
       }
       finally{
         bankRetryBusy=false;
