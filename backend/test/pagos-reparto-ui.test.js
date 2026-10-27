@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-function setup(count=3,quoteHook){
+function setup(count=2,quoteHook){
  const ids=new Map();
  class Element{
   constructor(tag){this.tagName=tag;this.children=[];this.handlers={};this.classList={toggle(){}};}
@@ -18,14 +18,14 @@ function setup(count=3,quoteHook){
  vm.runInNewContext(fs.readFileSync(require.resolve('../../docs/assets/js/pagos-reparto-ui'),'utf8'),{window,document});
  let latest;
  const api=async(path,opts)=>{
-  if(path==='/pagos/reparto')return {data:{habilitado:count>2,fecha:'2026-10-26',viviendas:[1,2,3].slice(0,count).map(casaId=>({casaId,calle:'Calle ficticia',numero:String(casaId),adeudo:600}))}};
+  if(path==='/pagos/reparto')return {data:{habilitado:count>=2,fecha:'2026-10-26',viviendas:[1,2,3].slice(0,count).map(casaId=>({casaId,calle:'Calle ficticia',numero:String(casaId),adeudo:600}))}};
   latest=JSON.parse(opts.body);if(quoteHook)return quoteHook(latest);return {data:{distribuciones:latest.reparto.map(d=>({...d,plan:{recargo:0,meses:1,fechaFinalObjetivo:'2026-11-10'}}))}};
  };
  const ui=window.MJRepartoUI.crear({api,headers:()=>({}),changed(){},money:v=>String(v)});
  return {ui,ids,get latest(){return latest;}};
 }
-test('UI oculta reparto para una o dos casas y conserva el domicilio',async()=>{
- for(const n of [1,2]){const c=setup(n);await c.ui.cargar();await c.ui.actualizar('MANTENIMIENTO',true,'600','2026-10-26');
+test('UI oculta reparto para una casa y conserva el domicilio',async()=>{
+ for(const n of [1]){const c=setup(n);await c.ui.cargar();await c.ui.actualizar('MANTENIMIENTO',true,'600','2026-10-26');
  assert.equal(c.ids.get('paymentAllocation').hidden,true);assert.equal(c.ids.get('residentAddress').hidden,false);}
 });
 test('UI muestra adeudos, bloquea suma incorrecta, acepta suma exacta y reinicia al quitar imagen',async()=>{

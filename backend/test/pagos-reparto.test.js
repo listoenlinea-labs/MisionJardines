@@ -20,7 +20,7 @@ for(const [name,p] of [['servidor',calculation],['navegador',browser]]){
   }
  });
 }
-function setup(t,{count=3}={}){
+function setup(t,{count=2}={}){
  const homes=[1,2,3].map(id=>({id,calle:'Calle ficticia',numero:String(id),cuotaPorCobrar:300,exencionesRecargo:[{desde:'2026-01',hasta:null}]}));
  const links=homes.slice(0,count).map(h=>({id:h.id,casaId:h.id}));
  const row=v=>({...v,async update(values){Object.assign(this,values);}});
@@ -49,11 +49,14 @@ function setup(t,{count=3}={}){
  });
  return {homes,links,fees,events,payments,writes,tx,row};
 }
-test('una o dos viviendas conservan el flujo anterior; con tres se muestran sus adeudos',async t=>{
- const c=setup(t,{count:2});assert.equal((await service.catalogo(1)).habilitado,false);
- await assert.rejects(service.cotizar(1,[{casaId:1,monto:600}],600,'2026-10-07',c.tx),/más de dos/);
- c.links.push({id:3,casaId:3});
- const catalog=await service.catalogo(1);assert.equal(catalog.habilitado,true);assert.equal(catalog.viviendas.length,3);assert.ok(catalog.viviendas[0].adeudo>catalog.viviendas[1].adeudo);
+test('una vivienda conserva el flujo anterior; dos o más habilitan el reparto y sus adeudos',async t=>{
+ const c=setup(t,{count:1});assert.equal((await service.catalogo(1)).habilitado,false);
+ await assert.rejects(service.cotizar(1,[{casaId:1,monto:600}],600,'2026-10-07',c.tx),/al menos dos/);
+ c.links.push({id:2,casaId:2});
+ const catalog=await service.catalogo(1);assert.equal(catalog.habilitado,true);assert.equal(catalog.viviendas.length,2);assert.ok(catalog.viviendas[0].adeudo>catalog.viviendas[1].adeudo);
+ const plan=await service.cotizar(1,[{casaId:1,monto:300},{casaId:2,monto:300}],600,'2026-10-07',c.tx);
+ assert.equal(plan.distribuciones.length,2);
+ c.links.push({id:3,casaId:3});assert.equal((await service.catalogo(1)).viviendas.length,3);
 });
 test('un depósito de 600 se cotiza y acredita como 300 a dos casas, sin regalar meses ni duplicar dinero',async t=>{
  const c=setup(t);

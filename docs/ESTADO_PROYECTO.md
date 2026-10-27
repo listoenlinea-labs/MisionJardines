@@ -16,6 +16,15 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Preparado el 27/oct/2026: reparto desde dos viviendas
+
+Por aclaración del usuario, el reparto se habilita a partir de dos viviendas activas,
+en lugar del umbral original de tres de #303. El catálogo y la cotización del servidor
+aceptan exactamente dos; una sola vivienda conserva el formulario individual.
+Las regresiones de servicio, UI y reporte HTTP prueban una cuenta con dos casas.
+No requiere SQL ni variables; el cliente existente usa la bandera del catálogo.
+Requiere desplegar backend. Sin consulta o modificación de datos reales.
+
 ## Implementado en main el 26/oct/2026
 
 Los PR #295–#304 están fusionados. #295 refresca historial, tarjetas y burbuja de

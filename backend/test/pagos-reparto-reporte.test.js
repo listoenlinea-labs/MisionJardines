@@ -18,7 +18,7 @@ function setup(t){
  let payment,commits=0,rollbacks=0;
  const tx={LOCK:{UPDATE:'UPDATE'},async commit(){commits++;this.finished=true;},async rollback(){rollbacks++;this.finished=true;}};
  t.mock.method(db,'transaction',async()=>tx);
- t.mock.method(models.UsuarioCasa,'findAll',async()=>[1,2,3].map(casaId=>({casaId})));
+ t.mock.method(models.UsuarioCasa,'findAll',async()=>[1,2].map(casaId=>({casaId})));
  t.mock.method(models.Casa,'findByPk',async id=>({id,calle:'Calle ficticia',numero:String(id),cuotaPorCobrar:300,exencionesRecargo:[{desde:'2026-01'}]}));
  t.mock.method(models.Usuario,'findByPk',async()=>({id:2,nombre:'Usuario sintético'}));
  t.mock.method(models.Cuota,'findOne',async({where})=>({casaId:where.casaId,anio:2026,mes:'SEPTIEMBRE',montoPagado:300,estatusPago:'PAGADO'}));
@@ -27,7 +27,7 @@ function setup(t){
  t.mock.method(models.PagoReportado,'findOne',async()=>null);
  t.mock.method(models.PagoReportado,'create',async values=>{payment={id:1,...values,async update(v){Object.assign(this,v);},toJSON(){return {...this};}};return payment;});
  t.mock.method(models.PagoReportado,'findByPk',async()=>payment);
- const req={usuario:{casaId:3,usuarioId:2,rol:'CONDOMINO'},headers:{},protocol:'https',get:()=>'prueba.invalid',
+ const req={usuario:{casaId:2,usuarioId:2,rol:'CONDOMINO'},headers:{},protocol:'https',get:()=>'prueba.invalid',
   body:{tipoPago:'MANTENIMIENTO',folioOperacion:'1234567',fechaOperacion:'2026-10-07',horaOperacion:'12:00:00',monto:600,
    comprobanteData:'data:image/png;base64,YQ==',reparto:[{casaId:1,monto:300},{casaId:2,monto:300}]}};
  const res={code:200,status(n){this.code=n;return this;},json(v){this.body=v;return this;}};
