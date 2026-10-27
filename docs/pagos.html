@@ -1098,6 +1098,13 @@
 .receipt-bank-retry:hover{background:#ffe7d1}
 .receipt-bank-retry:disabled{opacity:.55;cursor:wait}
 .receipt-bank-retry:focus-visible{outline:2px solid #efae63;outline-offset:2px}
+.receipt-retry-progress{display:flex;align-items:center;gap:12px;padding:13px 15px;margin:0 0 14px;background:#fff8ee;border:1px solid #f2d8ba;border-radius:12px;color:#825015}
+.receipt-retry-progress strong{font-size:12px}
+.receipt-retry-progress p{margin:4px 0 0;font-size:11px;line-height:1.5;color:#8b6a45}
+.receipt-retry-spinner{width:23px;height:23px;flex:none;border-radius:50%;border:3px solid #f2d2b0;border-top-color:#de7d20;animation:receipt-retry-turn .8s linear infinite}
+@keyframes receipt-retry-turn{to{transform:rotate(360deg)}}
+.receipt-retry-feedback{margin:0 0 13px;padding:10px 12px;background:#f3f9ff;border:1px solid #dce9f8;border-radius:11px;color:#345b86;font-size:12px;line-height:1.5}
+.receipt-retry-feedback.error{background:#fff3f2;border-color:#f0c8c5;color:#9f3436}
 .receipt-check-refresh{flex:0 0 auto;border:1px solid #ddcbed;background:#fff;color:#7952a2;padding:9px 12px;border-radius:10px;font-weight:750;font-size:11px;cursor:pointer}
 .receipt-check-refresh:disabled{opacity:.55;cursor:wait}
 .receipt-check-refresh:focus-visible{outline:2px solid #c7a5eb;outline-offset:2px}
@@ -1417,7 +1424,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles"></script>
-  <script src="assets/js/pagos.js?v=20261026-reintento-banco"></script>
+  <script src="assets/js/pagos.js?v=20261026-reintento-ocr-completo"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
