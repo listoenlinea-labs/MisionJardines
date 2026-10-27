@@ -242,6 +242,8 @@
       if(!v||typeof v!=='object')v={};
       const etapa=String(v.etapa||'RECIBIDO');
       const validado=p.estatus==='VALIDADO',fallido=p.estatus==='RECHAZADO';
+      const releyendo=etapa==='REINTENTO_OCR';
+      const consultandoReintento=etapa==='REINTENTO_TITAN';
       const revisado=Boolean(v.fechaRevision);
       const buzonError=etapa==='ERROR_BUZON'||etapa==='ERROR_PROCESO';
       const conAvisos=(Number(v.avisosAutenticados)||0)>0;
@@ -250,7 +252,7 @@
       const fechaTexto=fecha&&Number.isFinite(fecha.getTime())
         ?new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(fecha)
         :'Aún no se ha ejecutado';
-      const titulo=validado?'Pago confirmado':fallido?'Validación fallida':buzonError?'Verificación interrumpida':'Comprobación bancaria en curso';
+      const titulo=validado?'Pago confirmado':fallido?'Validación fallida':releyendo?'Releyendo comprobante con OCR':consultandoReintento?'Consultando banco Titan':buzonError?'Verificación interrumpida':'Comprobación bancaria en curso';
       const mensaje=String(v.detalle||p.observacionesRevision||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
       const refInfo=v.diagnosticoReferencia;
       const bloqueante=v.cotejoAvisos?.filtroBloqueante||'';
@@ -267,8 +269,15 @@
       };
       const pasos=[
         formatPaso(1,'Comprobante recibido','El reporte se guardó correctamente y tiene un folio de seguimiento.','done'),
-        formatPaso(2,'Datos OCR extraídos','Se leyeron los datos bancarios y el destinatario del comprobante.','done'),
-        formatPaso(3,'Consulta de buzón Titan',buzonError?'La conexión o la aplicación de la consulta tuvo un problema; se reintentará.':revisado?'Última revisión: '+fechaTexto:'Se programó la búsqueda de avisos bancarios.',buzonError?'current':revisado?'done':'current'),
+        formatPaso(2,releyendo?'Nueva lectura OCR en proceso':'Datos OCR extraídos',
+          releyendo?'El servidor está releyendo la imagen original para comprobar importe, fecha, hora, identificador y destino.':
+          consultandoReintento?'Nueva lectura OCR concluida; datos comprobados nuevamente.':
+          'Se leyeron los datos bancarios y el destinatario del comprobante.',releyendo?'current':'done'),
+        formatPaso(3,'Consulta de buzón Titan',releyendo?'Iniciará al finalizar la nueva lectura OCR.':
+          consultandoReintento?'Buscando una notificación auténtica y compatible en Titan.':
+          buzonError?'La conexión o la aplicación de la consulta tuvo un problema; se reintentará.':
+          revisado?'Última revisión: '+fechaTexto:'Se programó la búsqueda de avisos bancarios.',
+          releyendo?'waiting':consultandoReintento||buzonError?'current':revisado?'done':'current'),
         formatPaso(4,'Remitente del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) coinciden con el remitente autorizado.':revisado?'No hay avisos del remitente autorizado utilizables todavía.':'Esperando un aviso del remitente autorizado.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
         formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se ha encontrado al menos un identificador relacionado.'):etapa==='SIN_COINCIDENCIA'?mensaje+detallesReferencia:'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
         formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'Todavía no existe evidencia suficiente para confirmar o rechazar el depósito.',fallido?'failed':validado?'done':'waiting')
@@ -279,7 +288,12 @@
         '<button type="button" class="receipt-check-refresh" data-check-refresh>Actualizar estado ↻</button></div></div>'+
         '<div class="receipt-check-meta"><span>Última consulta: '+esc(fechaTexto)+
         '</span><span>Avisos consultados: '+Number(v.avisosConsultados||0)+'</span><span>Remitente autorizado: '+Number(v.avisosAutenticados||0)+
-        '</span></div></section>'+(fallido?'<p class="receipt-check-warning" role="alert"><strong>Motivo específico del fallo:</strong> '+esc(mensaje)+'</p>':'')+
+        '</span></div></section>'+
+        (releyendo||consultandoReintento?
+          '<div class="receipt-retry-progress" role="status" aria-live="polite"><span class="receipt-retry-spinner" aria-hidden="true"></span><div><strong>'+
+          (releyendo?'Leyendo nuevamente la imagen…':'Comparando con notificaciones bancarias…')+
+          '</strong><p>El comprobante original se conserva. La acreditación solo ocurre después de confirmar el banco.</p></div></div>':'')+
+        (fallido?'<p class="receipt-check-warning" role="alert"><strong>Motivo específico del fallo:</strong> '+esc(mensaje)+'</p>':'')+
         '<h3 class="receipt-timeline-heading">Etapas de la comprobación</h3><ol class="receipt-timeline">'+pasos.join('')+'</ol>';
     }
     $('receiptDetailsBody').addEventListener('click',async event=>{
@@ -293,6 +307,29 @@
       }catch(error){toast(error.message)}
       finally{if(b.isConnected){b.disabled=false;b.textContent='Actualizar estado ↻'}}
     });
+    // El estado visible se consulta mientras el modal esté abierto.
+    // No depende de un mensaje toast oculto detrás del <dialog>.
+    let receiptDetailsPolling=false;
+    setInterval(async()=>{
+      if(document.hidden||!$('receiptDetailsModal').open||activeReceiptId===null||receiptDetailsPolling)return;
+      const pending=receiptItems.find(p=>Number(p.id)===activeReceiptId);
+      if(!pending||pending.estatus!=='PENDIENTE_VALIDACION')return;
+      receiptDetailsPolling=true;
+      try{
+        const ok=await loadReceipts({preserveOnError:true});
+        if(ok&&$('receiptDetailsModal').open){
+          const actual=receiptItems.find(p=>Number(p.id)===activeReceiptId);
+          if(actual)renderReceiptStatus(actual);
+        }
+      }finally{receiptDetailsPolling=false;}
+    },3000);
+    function retryFeedback(message,isError=false){
+      const line=$('receiptRetryFeedback');
+      if(!line)return;
+      line.hidden=false;
+      line.classList.toggle('error',Boolean(isError));
+      line.textContent=message;
+    }
     // Reintenta con la evidencia existente; la aprobación sigue en el worker bancario.
     let bankRetryBusy=false;
     $('receiptDetailsBody').addEventListener('click',async event=>{
@@ -303,17 +340,21 @@
       if(actual?.estatus!=='RECHAZADO')return;
       bankRetryBusy=true;
       button.disabled=true;
-      button.textContent='Solicitando validación…';
+      button.textContent='Volviendo a leer OCR…';
+      retryFeedback('Preparando una nueva lectura del comprobante original…');
       try{
         await api('/pagos/'+id+'/reintentar-validacion',{
           method:'POST',headers:headers(true),body:'{}'
         });
-        toast('Reintento solicitado. Tu comprobante sigue en revisión bancaria.');
-        await loadReceipts({preserveOnError:true});
+        retryFeedback('Solicitud recibida. El servidor está releyendo el comprobante mediante OCR; después consultará Titan.');
+        const ok=await loadReceipts({preserveOnError:true});
         const actualizado=receiptItems.find(p=>Number(p.id)===id);
-        if($('receiptDetailsModal').open&&activeReceiptId===id&&actualizado)
+        if(ok&&$('receiptDetailsModal').open&&activeReceiptId===id&&actualizado)
           renderReceiptStatus(actualizado);
-      }catch(error){toast(error.message)}
+      }catch(error){
+        const message=String(error.message||'No fue posible iniciar el reintento.');
+        retryFeedback(message+( /404|Not Found|encontrad/i.test(message)?' Comprueba que el backend nuevo esté desplegado en Hostinger.':''),true);
+      }
       finally{
         bankRetryBusy=false;
         if(button.isConnected){button.disabled=false;button.textContent='Reintentar validación ↻';}
@@ -339,7 +380,7 @@
       ];
       $('receiptDetailsHeading').textContent='Pago '+String(p.reciboFolio||p.folioReporte||p.id);
       const details=$('receiptDetailsBody');
-      details.innerHTML='<div id="receiptStatusPanel"></div><div class="receipt-detail-sections">'+
+      details.innerHTML='<div id="receiptStatusPanel"></div><p id="receiptRetryFeedback" class="receipt-retry-feedback" role="status" aria-live="polite" hidden></p><div class="receipt-detail-sections">'+
         groups.map(g=>'<section class="receipt-detail-section"><h3>'+esc(g.titulo)+'</h3><div class="receipt-detail-grid">'+
           g.campos.map(([k,v])=>'<div class="receipt-detail-field"><small>'+esc(k)+'</small><strong>'+esc(v??'—')+'</strong></div>').join('')+
           '</div></section>').join('')+'</div><div class="receipt-proof-block"><b>Comprobante adjunto</b>'+
