@@ -302,7 +302,7 @@ async function reportarPago(req, res) {
         // del reporte. No depender de volver a interpretar el texto meses
         // después, cuando las expresiones regulares puedan haber cambiado.
         const identificadoresVerificados = idsBanco.almacenarVerificados(
-            comprobado.extraido, folioOperacion
+            comprobado.extraido, folioOperacion, textoOcr
         );
 
         const existente = await PagoReportado.findOne({
