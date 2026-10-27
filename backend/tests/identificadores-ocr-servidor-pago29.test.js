@@ -52,7 +52,7 @@ test('importe, destinatario y autenticación siguen siendo obligatorios',()=>{
  assert.equal(bank.corresponde(payment,{...aviso,monto:100},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
  assert.equal(bank.corresponde(payment,{...aviso,cuenta:'666'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
  assert.equal(bank.corresponde(payment,{...aviso,autorizado:false},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
- assert.equal(bank.corresponde(payment,{...aviso,concepto:'Gardenias 8'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
+ assert.equal(bank.corresponde(payment,{...aviso,concepto:'Gardenias 8'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),true);
  assert.equal(bank.corresponde(payment,{...aviso,fecha:'2026-10-30'},{PAGOS_DESTINO_ULTIMOS4:'4409'}),false);
 });
 test('diagnóstico permite saber dónde falta coincidencia sin divulgar valores',()=>{

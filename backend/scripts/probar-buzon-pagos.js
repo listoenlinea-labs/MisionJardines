@@ -19,10 +19,10 @@ async function main(){
  console.log('[Diagnóstico] Avisos con clave, monto, fecha y cuenta:',parsed.filter(m=>m.autorizado&&m.tracking&&Number.isFinite(m.monto)&&m.fecha&&m.cuenta).length);
  // Separar extracción de autenticación: un reenvío puede contener datos
  // legibles pero carecer de autenticación bancaria. Mostrar solo cantidades.
- console.log('[Diagnóstico] Mensajes con datos completos, sin considerar autenticación:',parsed.filter(m=>m.tracking&&Number.isFinite(m.monto)&&m.fecha&&m.cuenta&&m.concepto).length);
+ console.log('[Diagnóstico] Mensajes con datos completos, sin considerar autenticación:',parsed.filter(m=>m.tracking&&Number.isFinite(m.monto)&&m.fecha&&m.cuenta).length);
  console.log('[Diagnóstico] Mensajes sin clave de rastreo reconocible:',parsed.filter(m=>!m.tracking).length);
  console.log('[Diagnóstico] Mensajes sin terminación de cuenta reconocible (3 o 4 dígitos):',parsed.filter(m=>!m.cuenta).length);
- console.log('[Diagnóstico] Mensajes sin concepto de vivienda reconocible:',parsed.filter(m=>!m.concepto).length);
+ console.log('[Diagnóstico] El concepto del aviso es informativo; no se exige calle ni número de vivienda.');
  console.log('[Diagnóstico] No se actualizó ningún pago, TAG o mensaje.');
  if(!parsed.some(m=>m.autorizado))
   console.warn('[Diagnóstico] Sin avisos autorizados; revisar PAGOS_BANK_FORWARD_FROM_ADDRESS y el asunto. El origen se comprueba solo por From, sin DKIM/DMARC.');

@@ -15,6 +15,18 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Preparado el 26/oct/2026: conciliación sin dirección en el concepto
+
+Se retira la comparación concepto/calle/número de conciliación y diagnóstico.
+El concepto es informativo; la vivienda sigue siendo la autorizada en el reporte.
+Se mantienen identificador, monto, fecha, destino, remitente, coincidencia única y
+hash de aviso no reutilizable, incluida otra vivienda. El diagnóstico de SSH ya no
+cuenta concepto como dato obligatorio. Pruebas simuladas incluyen acreditación sin
+concepto, discrepancias bancarias, ambigüedad y reutilización entre viviendas.
+No se cambian estados históricos: los pendientes se reevalúan; los ya rechazados
+requieren revisión explícita. Sin SQL ni variables nuevas; backend por desplegar.
+Ver [validación por correo](VALIDACION_BANCARIA_CORREO.md).
+
 ## Preparado el 26/oct/2026: OCR con formatos flexibles
 
 Parser compartido navegador/servidor ampliado para expresiones de envío, símbolo

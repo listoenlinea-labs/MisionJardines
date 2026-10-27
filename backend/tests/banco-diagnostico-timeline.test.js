@@ -24,9 +24,9 @@ test('Cuenta destino incompatible vinculada por referencia produce fallo',()=>{
  const a={...aviso(),cuenta:'123'};const d=evaluar(pago(),[a],[a]);
  assert.equal(d.etapa,'FALLIDO');assert.match(d.detalle,/cuenta destinataria/i);
 });
-test('El mismo ID con concepto de otra vivienda produce fallo',()=>{
+test('El concepto no determina la vivienda del reporte',()=>{
  const a={...aviso(),concepto:'GARDENIAS 5'};const d=evaluar(pago(),[a],[a]);
- assert.equal(d.etapa,'FALLIDO');assert.match(d.detalle,/vivienda/i);
+ assert.equal(d.etapa,'COINCIDENCIA_VERIFICADA');assert.doesNotMatch(d.detalle,/vivienda/i);
 });
 test('Nunca se marca Fallido por falta de correo o falta de autenticación',()=>{
  assert.equal(evaluar(pago(),[],[]).etapa,'BUZON_SIN_AVISOS');

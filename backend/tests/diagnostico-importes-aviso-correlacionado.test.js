@@ -21,7 +21,6 @@ test('Referencia exacta, misma cuenta, vivienda y fecha pero importe bancario di
  assert.equal(r.cotejoAvisos.filtroBloqueante,'IMPORTE');
  assert.equal(r.etapa,'FALLIDO');
  assert.equal(r.cotejoAvisos.referenciaMismaCuenta,1);
- assert.equal(r.cotejoAvisos.referenciaMismaVivienda,1);
  assert.equal(r.cotejoAvisos.referenciaFechaCompatible,1);
  assert.equal(r.cotejoAvisos.importeLegibleReferencia,1);
  assert.match(r.detalle,/importe interpretado/i);
@@ -34,11 +33,10 @@ test('Aviso autenticado de otro movimiento (misma cuenta, monto distinto, refere
  assert.equal(r.cotejoAvisos.referenciaMismaCuenta,0);
  assert.match(r.detalle,/otro movimiento/i);
 });
-test('Misma referencia y cuenta, pero vivienda distinta: no revelar importes',()=>{
+test('Concepto distinto no bloquea el cotejo; importe incompatible sigue fallando',()=>{
  const a={...aviso(),monto:15,concepto:'Gardenias 5'};
  const r=run(a);
  assert.equal(r.cotejoAvisos.referenciaMismaCuenta,1);
- assert.equal(r.cotejoAvisos.referenciaMismaVivienda,0);
  assert.equal(r.etapa,'FALLIDO');
  assert.doesNotMatch(r.detalle,/15/);
 });
@@ -58,7 +56,7 @@ test('Sin importe leído se mantiene revisión aunque identificador coincida',()
 
 test('El importe separado en párrafos HTML de Banco Azteca debe ser exactamente $10',()=>{
  const cfg={
-  PAGOS_BANK_FROM_ADDRESS:'notificaciones@bazdigital.com',
+  PAGOS_BANK_FORWARD_FROM_ADDRESS:'administrador@example.test',
   PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',
   PAGOS_DESTINO_ULTIMOS4:'4409',
   PAGOS_BANK_MAIL_MAX_DIAS:'7'
@@ -74,7 +72,7 @@ test('El importe separado en párrafos HTML de Banco Azteca debe ser exactamente
  ].join('');
  const mensaje={
   id:'simulacion-titan-no-real',
-  from:{emailAddress:{address:'notificaciones@bazdigital.com'}},
+  from:{emailAddress:{address:'administrador@example.test'}},
   subject:'Notificación Banco Azteca',
   receivedDateTime:new Date().toISOString(),
   internetMessageHeaders:[{name:'Authentication-Results',value:

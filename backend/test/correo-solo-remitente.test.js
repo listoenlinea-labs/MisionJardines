@@ -37,7 +37,7 @@ test('worker se configura sin auth server ni banco directo, exige administrador 
 test('concilia referencia sin cero inicial y fecha bancaria, no fecha del reenvío',()=>{
  const a=banco.datosAviso(mensaje(),cfg);assert.equal(a.fecha,'2026-10-26');
  assert.equal(banco.corresponde(pago(),a,cfg),true);
- for(const changes of [{monto:21},{referencia:'8123457'},{fecha:'2026-10-28'},{cuenta:'999'},{concepto:'JARDINES 9'},{reciente:false}])assert.equal(banco.corresponde(pago(),{...a,...changes},cfg),false);
+ for(const changes of [{monto:21},{referencia:'8123457'},{fecha:'2026-10-28'},{cuenta:'999'},{reciente:false}])assert.equal(banco.corresponde(pago(),{...a,...changes},cfg),false);
 });
 test('fecha ausente o contradictoria no cae en Enviado, duplicado texto/HTML conserva fecha',()=>{
  for(const b of [body.replace('26/Oct/2026, 18:42:09',''),body+'\n'+body.replace('26/Oct/2026','27/Oct/2026')])assert.equal(banco.datosAviso(mensaje('admin@correo.example',b),cfg).fecha,'');

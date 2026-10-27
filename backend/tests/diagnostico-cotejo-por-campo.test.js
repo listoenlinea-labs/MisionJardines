@@ -12,9 +12,9 @@ test('comprobante correcto y aviso con referencia distinta: llega a comparar ide
  const r=evaluarUnico(aviso);
  assert.equal(r.etapa,'SIN_COINCIDENCIA');
  assert.equal(r.cotejoAvisos.filtroBloqueante,'IDENTIFICADOR');
- assert.equal(r.cotejoAvisos.vivienda,1);
+ assert.equal(r.cotejoAvisos.fecha,1);
  assert.equal(r.diagnosticoReferencia.extraidaDelAvisoRelacionado,true);
- assert.match(r.detalle,/valores extraídos/i);
+ assert.match(r.detalle,/mismo valor normalizado/i);
 });
 test('cuenta diferente: no afirmar que la referencia es la causa',()=>{
  const r=evaluarUnico({...aviso,cuenta:'888'});
@@ -22,7 +22,7 @@ test('cuenta diferente: no afirmar que la referencia es la causa',()=>{
  assert.equal(r.cotejoAvisos.filtroBloqueante,'DESTINO');
  assert.equal(r.cotejoAvisos.cuenta,0);
  assert.match(r.detalle,/cuenta destino/i);
- assert.doesNotMatch(r.detalle,/valores extraídos/i);
+ assert.doesNotMatch(r.detalle,/mismo valor normalizado/i);
 });
 test('importe diferente: se bloquea antes de la referencia',()=>{
  const r=evaluarUnico({...aviso,monto:50});
@@ -34,10 +34,10 @@ test('fecha sin relación: bloqueo de fecha, no de referencia',()=>{
  assert.equal(r.cotejoAvisos.filtroBloqueante,'FECHA');
  assert.equal(r.cotejoAvisos.fecha,0);
 });
-test('concepto incompatible: bloqueo de vivienda',()=>{
+test('concepto distinto no bloquea la comparación de identificadores',()=>{
  const r=evaluarUnico({...aviso,concepto:'GARDENIAS 5'});
- assert.equal(r.cotejoAvisos.filtroBloqueante,'VIVIENDA');
- assert.equal(r.cotejoAvisos.vivienda,0);
+ assert.equal(r.cotejoAvisos.filtroBloqueante,'IDENTIFICADOR');
+ assert.equal(r.etapa,'SIN_COINCIDENCIA');
 });
 test('si el aviso solo trae clave y no referencia, se indica tipo faltante',()=>{
  const r=evaluarUnico({...aviso,referencia:'',tracking:'MBAN00000123456789'});
@@ -46,7 +46,7 @@ test('si el aviso solo trae clave y no referencia, se indica tipo faltante',()=>
  assert.equal(r.diagnosticoReferencia.extraidaDelAvisoRelacionado,false);
  assert.deepEqual(r.tiposAviso,['clave de rastreo']);
 });
-test('referencia coincidente continúa requiriendo importe, destino, fecha y vivienda',()=>{
+test('referencia coincidente continúa requiriendo importe, destino y fecha',()=>{
  const a={...aviso,referencia:'910260'};
  assert.equal(banco.corresponde(pago,a,{PAGOS_DESTINO_ULTIMOS4:'4409'}),true);
  assert.equal(evaluarUnico(a).etapa,'COINCIDENCIA_VERIFICADA');
