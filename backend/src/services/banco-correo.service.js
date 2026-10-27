@@ -91,10 +91,10 @@ function datosAviso(mensaje,config=process.env){
  const origen=autorizado?'ADMINISTRADOR':'';
  const body=convertirTexto(mensaje?.body?.content||'');
  const upper=normal(body);
- const claveMatch=upper.match(/\bCLAVE\s+DE\s+RASTREO\s*[:#=\-]?\s*([A-Z0-9][A-Z0-9\s-]{10,100})/);
+ const claveMatch=upper.match(/\b(?:CLAVE\s+(?:DE\s+)?RASTREO|NUMERO\s+(?:DE\s+)?SEGUIMIENTO|ID\s+(?:DE\s+)?TRANSFERENCIA)\s*[:#=\-]?\s*([A-Z0-9][A-Z0-9\s-]{10,100})/);
  const tracking=claveMatch?clave(claveMatch[1].split(/\b(?:CONSULTA|VERIFICA|REFERENCIA|CONCEPTO|TIPO|FECHA|HORA)\b/)[0].split('\n')[0]):'';
  const referencia=valorEtiquetado(upper,/\bREFERENCIA(?:\s+NUMERICA)?\b/,/^\s*(\d{5,20})(?!\d)(?:\s|$)/);
- const folio=valorEtiquetado(upper,/\bFOLIO(?:\s+DE\s+OPERACION)?\b/,/^\s*([A-Z0-9-]{5,90})(?:\s|$)/);
+ const folio=valorEtiquetado(upper,/\b(?:FOLIO(?:\s+DE\s+OPERACION)?|NUMERO\s+DE\s+(?:OPERACION|TRANSACCION)|ID\s+DE\s+(?:OPERACION|MOVIMIENTO)|CODIGO\s+DE\s+AUTORIZACION)\b/,/^\s*([A-Z0-9-]{5,90})(?:\s|$)/);
  // El encabezado y el importe viven en filas HTML distintas. Admitir
  // espacios/saltos entre ellos sin saltar a Comisión, Saldo u otro campo.
  const monto=montoRecibido(upper);
