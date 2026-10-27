@@ -31,7 +31,7 @@ async function vinculos(usuarioId,transaction){
 async function catalogo(usuarioId){
  return sequelize.transaction({isolationLevel:'READ COMMITTED'},async tx=>{
   const ids=await vinculos(usuarioId,tx);
-  if(ids.length<=2)return {habilitado:false,viviendas:[]};
+  if(ids.length<2)return {habilitado:false,viviendas:[]};
   const viviendas=[];
   for(const casaId of ids){
    const d=await cuotas.cargar(casaId,tx);
@@ -44,7 +44,7 @@ async function catalogo(usuarioId){
 }
 async function cotizar(usuarioId,rows,total,fecha,transaction){
  const ids=await vinculos(usuarioId,transaction);
- if(ids.length<=2)throw fail(403,'El reparto está disponible solo para cuentas con más de dos viviendas activas.');
+ if(ids.length<2)throw fail(403,'El reparto está disponible para cuentas con al menos dos viviendas activas.');
  const entries=normalizar(rows,total,ids);
  const distribuciones=[];
  for(const entry of entries){
@@ -58,7 +58,7 @@ async function confirmar(pago,transaction){
  const saved=pago.aplicacionCuotas;
  if(!esReparto(saved)||saved.aplicado)throw fail(409,'El reparto no está disponible para acreditar.');
  const ids=await vinculos(pago.usuarioId,transaction);
- // No volver a exigir >2: una tercera vivienda no asignada puede haberse desvinculado.
+ // Al confirmar solo se exigen los vínculos asignados, aunque ya quede uno activo.
  const entries=normalizar(saved.distribuciones,pago.monto,ids);
  if(entries.length!==saved.distribuciones.length)throw fail(409,'El reparto guardado contiene viviendas inválidas.');
  const resultados=[],distribuciones=[];

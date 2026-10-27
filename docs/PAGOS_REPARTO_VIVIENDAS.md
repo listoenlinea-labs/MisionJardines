@@ -1,7 +1,7 @@
 # Repartir un depósito de mantenimiento entre viviendas
 
 La sección reemplaza Calle/Número en Pagos únicamente cuando el usuario tiene
-**más de dos viviendas activas** en `usuarios_casas`. Una o dos viviendas conservan
+**dos o más viviendas activas** en `usuarios_casas`. Una sola vivienda conserva
 el flujo anterior. Se limita a mantenimiento; extraordinarias y casa club mantienen
 sus cargos específicos. Cada domicilio muestra su adeudo contable a la fecha de
 consulta y un importe editable. Cero significa no asignar. Una casa con comprobante
@@ -13,6 +13,10 @@ en centavos; no se redondean asignaciones con más de dos decimales. Reportar qu
 bloqueado hasta tener lectura completa y cotización válida. Cambiar importes, fecha o
 comprobante invalida la cotización. El servidor vuelve a leer la imagen, exige monto
 extraído incluso a Administración, comprueba vínculos y recalcula los planes.
+
+El umbral se corrigió de tres a dos viviendas el 27/oct/2026; el frontend existente
+respeta la bandera `habilitado` recibida del servidor. Requiere desplegar el backend
+para que las cuentas con exactamente dos viviendas vean el reparto.
 
 ## Persistencia y acreditación
 
@@ -27,8 +31,8 @@ Las consultas de pendientes usan `JSON_CONTAINS` junto con casa_id para cubrir l
 viviendas secundarias. La conciliación verifica el depósito total una vez. Después
 se bloquean los vínculos y se aplican los planes ordenados por ID en la misma
 transacción del pago/hash. Si cambia una tarifa, cuota o vínculo asignado, todo se
-revierte y requiere revisión. No se vuelve a exigir tener tres vínculos al confirmar
-si solo se perdió una vivienda sin asignación. Los ceros no producen movimientos.
+revierte y requiere revisión. Al confirmar se exige conservar los vínculos de las viviendas asignadas,
+aunque ya solo quede uno activo. Los ceros no producen movimientos.
 
 Cada vivienda conserva recargos, mensualidades consecutivas y saldo propios. Se
 crea un evento PAGO_CUOTAS por vivienda con el mismo origen de depósito y clave
