@@ -146,7 +146,11 @@
     }
     return '';
   }
-  function extract(text) {
+  // Cada lectura OCR debe analizarse de manera independiente. Concatenar
+  // resultados directamente puede juntar la etiqueta de un campo con el
+  // valor de otro y producir una coincidencia bancaria falsa.
+  const OCR_PASS_MARKER = '\n=== MJ OCR RELECTURA ===\n';
+  function extractOne(text) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(s => s.trim()).filter(Boolean);
     // Do not use "Referencia", "Concepto" or "Clave de rastreo" if a folio exists.
     const folio = valueNear(lines, [/\bFOLIO\s+(?:DE\s+)?(?:OPERACION|TRANSACCION|TRANSFERENCIA)\b/, /\bNUMERO\s+DE\s+OPERACION\b/, /\bFOLIO\b/], 'folio');
@@ -155,7 +159,20 @@
     return { folio, claveRastreo: claveRastreo(text), referencia: referenciaBancaria(text), amount,
       date: when.date, time: when.time || horaOperacion(text) };
   }
-  function verifyDestination(text, owner, suffix) {
+  function extract(text) {
+    const parts = String(text || '').split(OCR_PASS_MARKER);
+    const reads = parts.map(extractOne);
+    const keys = ['folio', 'claveRastreo', 'referencia', 'amount', 'date', 'time'];
+    const result = {};
+    for (const key of keys) {
+      const candidates = [...new Set(reads.map(read => read[key]).filter(Boolean))];
+      // Si dos lecturas detectan valores distintos del mismo campo, no
+      // elegir arbitrariamente uno: pedir otra captura.
+      result[key] = candidates.length === 1 ? candidates[0] : '';
+    }
+    return result;
+  }
+  function verifyDestinationOne(text, owner, suffix) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(x => x.trim()).filter(Boolean);
     const desiredName = clean(owner).replace(/[0-9]+/g, '').trim();
     const last4 = String(suffix || '').replace(/\D/g, '').slice(-4);
@@ -202,5 +219,14 @@
         : 'No se encontró la terminación de cuenta ' + last4 + ' junto al beneficiario.'
     };
   }
-  return { extract, claveRastreo, referenciaBancaria, verifyDestination, fecha, hora, monto };
+  function verifyDestination(text, owner, suffix) {
+    const readings = String(text || '').split(OCR_PASS_MARKER);
+    const checks = readings.map(part => verifyDestinationOne(part, owner, suffix));
+    // Beneficiario y terminación deben coincidir EN LA MISMA lectura.
+    return checks.find(check => check.ok)
+      || checks.find(check => check.owner && check.suffix)
+      || checks.find(check => check.owner || check.suffix)
+      || checks[0];
+  }
+  return { extract, claveRastreo, referenciaBancaria, verifyDestination, fecha, hora, monto, OCR_PASS_MARKER };
 });

@@ -36,7 +36,7 @@ function reconocerImagen(imageData) {
       worker = new Worker(path.join(__dirname, 'comprobante-ocr.worker.js'), {
         workerData: { bytes, lang: process.env.PAGOS_OCR_LANG || 'spa+eng' }
       });
-      timer = setTimeout(() => finish(Object.assign(new Error('Se agotó el tiempo de lectura del comprobante. Intenta con una imagen más clara.'), { status: 503 })), 30000);
+      timer = setTimeout(() => finish(Object.assign(new Error('Se agotó el tiempo de lectura del comprobante. Intenta con una imagen más clara.'), { status: 503 })), 50000);
       worker.once('message', message => {
         if (!message.ok || typeof message.text !== 'string' || message.text.length > MAX_OCR_OUTPUT) return finish(unavailable());
         finish(null, message.text);
