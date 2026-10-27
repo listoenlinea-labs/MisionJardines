@@ -10,6 +10,39 @@ Auto-users es exclusivo de SUPER_ADMIN y ADMINISTRADOR, tanto en menú como en A
 
 Cada correo incluye nombre, domicilio y enlace personal `aceptar-cuenta.html#invitacion=…`. El token aleatorio de 256 bits dura 14 días, se almacena solo como SHA-256 y se consume al aceptar. Un reenvío reemplaza el enlace anterior. El token no viaja como query string ni se guarda en almacenamiento del navegador. Estado ENVIADO significa que SMTP aceptó el destinatario; no acredita entrega ni lectura. No hay reintento automático del envío SMTP, para evitar duplicados ante una respuesta incierta. Un fallo se registra y puede revisarse/reintentarse desde Administración.
 
+## Crear usuario individual
+
+La sección **Crear usuario individual** prepara una cuenta real desde cero para un
+residente nuevo. Administración selecciona una vivienda existente y visible, captura
+nombre completo/correo y, opcionalmente, teléfono. **Crear prerregistro** crea, en una
+transacción, el condómino, su relación en `condominos_viviendas`, el usuario y su
+invitación. Reutiliza `createOne`: rol CONDOMINO, contraseña aleatoria desconocida,
+PENDIENTE y cuenta_aceptada=false; el vínculo de `usuarios_casas` permanece inactivo.
+No consulta ni requiere TAGs y no modifica cuotas o fechas de acceso.
+
+Después se habilita **Enviar invitación** para esa única cuenta. Reutiliza la ruta
+administrativa individual SMTP y el formulario de aceptación existente, incluidas
+validación de credenciales, confirmación de vivienda y reportes. Crear no envía correo.
+Los envíos masivos y la sección ficticia de pruebas conservan su comportamiento.
+
+La nueva ruta `POST /api/auto-users/individual` está detrás de autenticación y rol
+SUPER_ADMIN/ADMINISTRADOR. Valida los datos en servidor y usa una clave de solicitud
+para que reintentar la misma creación tras un timeout no duplique cuentas. El correo
+normalizado es el usuario inicial. Un correo/usuario ya usado por otra cuenta se
+rechaza; si el correo está en un condómino existente sin cuenta, pide revisar el padrón
+y usar el flujo existente, sin fusionar identidades ni agregar otro condómino.
+Un fallo revierte persona, vínculos y cuenta de la misma operación.
+
+Varias personas pueden compartir vivienda. Crear al residente entrante conserva
+cuentas, vínculos y registros de residentes anteriores. **La baja del inquilino
+saliente se gestiona por separado en Usuarios**; la sección advierte que sus cuentas
+conservan acceso hasta que Administración gestione esa baja. No se reemplaza un
+propietario ni se elimina historial por crear otra cuenta en la misma casa.
+
+No requiere SQL ni variables adicionales sobre el esquema actual de Auto-users.
+Desplegar frontend y backend juntos. Las cuentas individuales no llevan la marca
+AUTO_USERS_PRUEBA y no se eliminan mediante el borrado de cuentas ficticias.
+
 ## Configuración
 
 El remitente utiliza el mismo servicio SMTP del proyecto:

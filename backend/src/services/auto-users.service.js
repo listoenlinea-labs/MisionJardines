@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { crearRelaciones, viviendaIds } = require('./condominos-viviendas.service');
+const {esViviendaVisible}=require('./viviendas-visibles.service');
 const { buscarUsuariosPorTelefono } = require('./telefono-cuenta.service');
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const normal = value => String(value || '').normalize('NFKC').trim().toLowerCase();
@@ -106,6 +107,45 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
             return { condominoId: id, usuarioId: user.id, resultado: 'CREADO' };
         };
         return existingTransaction ? operation(existingTransaction) : db.transaction(operation);
+    }
+    async function crearIndividual(body = {}) {
+        const casaId = Number(body.casaId);
+        const nombreCompleto = String(body.nombreCompleto || '').trim().replace(/\s+/g, ' ');
+        const correo = normal(body.correo), telefono = String(body.telefono || '').trim();
+        const clave = String(body.claveSolicitud || '');
+        if (!Number.isSafeInteger(casaId) || casaId < 1 || !nombreCompleto || nombreCompleto.length > 180)
+            throw fail(400, 'Selecciona una vivienda y escribe el nombre completo del nuevo residente.');
+        if (!correo || !validEmail(correo) || !correoSender.correoValido(correo) || !validUsername(correo))
+            throw fail(400, 'Escribe un correo válido que pueda utilizarse como nombre de usuario.');
+        if (telefono.length > 25) throw fail(400, 'Revisa el teléfono (máximo 25 caracteres).');
+        if (!/^[a-f0-9]{32}$/.test(clave)) throw fail(400, 'Identificador de solicitud inválido. Actualiza la página.');
+        names(nombreCompleto); // Validate model limits before creating any records.
+        const observaciones = 'AUTO_USERS_INDIVIDUAL:' + clave;
+        return db.transaction(async transaction => {
+            const casa = await Casa.findByPk(casaId, lock(transaction));
+            if (!casa || !esViviendaVisible(casa)) throw fail(400, 'Selecciona una vivienda disponible del padrón.');
+            const previo = await Usuario.findOne({ where: { observaciones }, transaction });
+            if (previo) {
+                const nombreAnterior = [previo.nombre, previo.apellidoPaterno, previo.apellidoMaterno].filter(Boolean).join(' ');
+                if (Number(previo.casaId) !== casaId || normal(previo.correo) !== correo ||
+                    normal(nombreAnterior) !== normal(nombreCompleto) || String(previo.telefono || '') !== telefono)
+                    throw fail(409, 'La solicitud ya creó otra cuenta. Actualiza la página antes de cambiar sus datos.');
+                return { usuarioId: previo.id, condominoId: previo.condominoId, resultado: 'EXISTENTE',
+                    cuentaAceptada: previo.cuentaAceptada, estatus: previo.estatus };
+            }
+            if (await conflicts(correo, correo, null, transaction))
+                throw fail(409, 'Ese correo o usuario ya tiene una cuenta. Revísala en Cuentas de condóminos antes de crear otra.');
+            if (await Condomino.findOne({ where: { correo }, transaction }))
+                throw fail(409, 'Ese correo ya está en el padrón. Revisa el condómino existente y usa Crear usuarios para su cuenta.');
+            const ahora = new Date();
+            const condo = await Condomino.create({ nombreCompleto, correo, telefono: telefono || null,
+                activo: true, creadoEn: ahora, actualizadoEn: ahora }, { transaction });
+            await relaciones.reemplazar(condo.id, [casaId], transaction);
+            const result = await createOne(condo.id, transaction);
+            if (result.resultado !== 'CREADO') throw fail(409, 'El correo cambió de disponibilidad. Revisa las cuentas antes de reintentar.');
+            await Usuario.update({ observaciones }, { where: { id: result.usuarioId }, transaction });
+            return { ...result, cuentaAceptada: false, estatus: 'PENDIENTE' };
+        });
     }
     async function viviendasPrueba() {
         return (await Casa.findAll({ attributes: ['id', 'calle', 'calleCorrecta', 'numero'], order: [['id', 'ASC']] })).filter(trialHouse);
@@ -424,6 +464,6 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
             totalReportes: reportsResult.count, paginaReportes: reportPage,
             reportes: reportes.map(r => ({ ...r, usuario: reportUsers.find(u => String(u.id) === String(r.usuarioId)) })) };
     }
-    return { consultarTelefono, enviarPorTelefono, listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, validar, aceptar, reportar, editar, enviarLote, sendOne, listar };
+    return { crearIndividual, consultarTelefono, enviarPorTelefono, listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, validar, aceptar, reportar, editar, enviarLote, sendOne, listar };
 }
 module.exports = { crearServicio, credentials, houseNumber, names };

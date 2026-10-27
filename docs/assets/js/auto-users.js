@@ -29,6 +29,47 @@
     } finally { clearTimeout(timeout); }
   }
 
+  let singleUserId = null, singleEligible = false, singleKey = '', singleSignature = '';
+  function singleButtons() {
+    $('singleRegistrationFields').disabled = busy;
+    $('createSingleUser').disabled = busy;
+    $('sendSingleInvitation').disabled = busy || !singleUserId || !singleEligible;
+  }
+  function invalidateSingleRegistration() {
+    if (singleUserId) {
+      singleUserId = null; singleEligible = false;
+      $('singleStatus').textContent = 'Datos modificados. Presiona Crear prerregistro para preparar otra cuenta.';
+      singleButtons();
+    }
+  }
+  for (const event of ['input', 'change']) $('singleRegistrationForm').addEventListener(event, invalidateSingleRegistration);
+  $('singleRegistrationForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (busy || !$('singleRegistrationForm').reportValidity()) return;
+    const data = { casaId: Number($('singleHouse').value), nombreCompleto: $('singleFullName').value.trim(),
+      correo: $('singleEmail').value.trim(), telefono: $('singlePhone').value.trim() };
+    const signature = JSON.stringify(data);
+    if (singleSignature !== signature) {
+      singleSignature = signature; singleKey = crypto.randomUUID().replace(/-/g, '');
+    }
+    setBusy(true); $('singleStatus').textContent = 'Creando prerregistro…';
+    try {
+      const result = await api('/individual', { ...data, claveSolicitud: singleKey }, 'POST');
+      singleUserId = result.usuarioId;
+      singleEligible = !result.cuentaAceptada && result.estatus === 'PENDIENTE';
+      $('singleStatus').textContent = 'Cuenta #' + singleUserId + (singleEligible
+        ? ' preparada para ' + data.correo + '. Presiona Enviar invitación para mandarle el enlace.'
+        : ' ya registrada. Su estado actual no permite enviar una invitación.');
+      page = Math.max(1, Math.ceil((total + (result.resultado === 'CREADO' ? 1 : 0)) / 50));
+      try { await load(); }
+      catch (error) { $('singleStatus').textContent += ' No se pudo actualizar la tabla: ' + error.message; }
+    } catch (error) { $('singleStatus').textContent = error.message; }
+    finally { setBusy(false); }
+  });
+  $('sendSingleInvitation').addEventListener('click', async () => {
+    if (!busy && singleUserId && singleEligible) await individual(singleUserId, 'singleStatus');
+  });
+
   let trialRows = [], trialPage = 1, trialTotal = 0, editingTrial = false;
   let trialId = null, trialAccepted = false, trialAvailable = false;
   let trialKey = sessionStorage.getItem('autoUsersTrialKey');
@@ -150,6 +191,7 @@
     if (!value) { $('usersPrevious').disabled = page <= 1; $('usersNext').disabled = page * 50 >= total;
       $('reportsPrevious').disabled = reportPage <= 1; $('reportsNext').disabled = reportPage * 50 >= reportTotal; }
     trialButtons();
+    singleButtons();
   }
   async function runBatch(path) {
     if (busy) return;
@@ -172,14 +214,16 @@
     } catch (error) { $('adminStatus').textContent = error.message; }
     finally { setBusy(false); }
   }
-  async function individual(id) {
+  async function individual(id, statusId = 'adminStatus') {
     if (busy) return;
     setBusy(true);
     try {
       const data = await api('/' + id + '/invitacion', {}, 'POST');
-      $('adminStatus').textContent = data.resultados.map(r => (labels[r.resultado] || r.resultado) + (r.mensaje ? ': ' + r.mensaje : '')).join(' · ');
-      await load();
-    } catch (error) { $('adminStatus').textContent = error.message; }
+      $(statusId).textContent = data.resultados.map(r => (labels[r.resultado] || r.resultado) + (r.mensaje ? ': ' + r.mensaje : '')).join(' · ');
+      if (statusId === 'singleStatus' && data.resultados.some(r => r.resultado === 'ACEPTADA_O_NO_ELEGIBLE')) singleEligible = false;
+      try { await load(); }
+      catch (error) { $(statusId).textContent += ' No se pudo actualizar la tabla: ' + error.message; }
+    } catch (error) { $(statusId).textContent = error.message; }
     finally { setBusy(false); }
   }
   function edit(id, isTrial = false) {
@@ -245,6 +289,8 @@
     if (!trialAvailable) $('trialStatus').textContent = 'Primero registra una vivienda dedicada a pruebas: calle con la palabra Prueba o número TEST-001. No selecciones viviendas reales.';
     trialButtons();
     houses = list.viviendas;
+    for (const casa of houses) { const option = document.createElement('option'); option.value = casa.id; option.textContent = (casa.calleCorrecta || casa.calle) + ' · ' + casa.numero; $('singleHouse').append(option); }
+    singleButtons();
     for (const casa of houses) { const option = document.createElement('option'); option.value = casa.id; option.textContent = (casa.calleCorrecta || casa.calle) + ' · ' + casa.numero; $('editHouse').append(option); }
     $('correoState').textContent = config.correoDisponible ? 'Correo SMTP configurado. ENVIADO indica que el proveedor aceptó el mensaje; no confirma que se haya leído.' : config.mensaje;
     await load(); $('adminWorkspace').hidden = false; $('adminAccess').hidden = true;

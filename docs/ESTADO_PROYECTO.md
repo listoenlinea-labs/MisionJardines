@@ -15,6 +15,20 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Preparado el 26/oct/2026: alta individual en Auto-users
+
+Se incorpora una sección administrativa para crear un residente individual con
+nombre, correo y vivienda existentes en el catálogo (teléfono opcional). Reutiliza
+el prerregistro pendiente, rol CONDOMINO, invitación SMTP individual y aceptación
+vigentes. La creación es transaccional, evita correos duplicados y admite reintentos
+idempotentes. Conserva las cuentas y relaciones anteriores; la baja del inquilino
+saliente se gestiona por separado, como advierte el formulario. No modifica pagos,
+TAGs ni el esquema. Requiere desplegar backend/frontend.
+Validación local: 76/76 casos de Auto-users, invitaciones y permisos, con base/SMTP
+simulados y pruebas HTTP locales. Se actualizó el mock de DOM de aceptación para
+soportar setAttribute del botón de contraseñas de #296. Sin envíos ni consultas de
+producción. Preparado sobre `6b821f3`; ver [Auto-users](AUTO_USERS.md).
+
 ## Implementado en main: Pagos, cuotas, Seguridad y C3
 
 Los PR #288 y #289 ya están fusionados. Pagos y Análisis comparten la fuente contable

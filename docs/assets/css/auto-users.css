@@ -9,3 +9,6 @@
 #additionalConfirmations label{margin:12px 0}
 #additionalHouses .address-readout{display:block}
 dialog{max-height:90vh;overflow:auto}
+/* Individual registration uses the existing card/grid, including on mobile. */
+#singleRegistrationFields{border:0;padding:0;margin:0;min-width:0}
+#singleRegistrationFields legend{font-weight:600;color:#637187}
