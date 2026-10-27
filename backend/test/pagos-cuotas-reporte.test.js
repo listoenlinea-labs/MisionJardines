@@ -41,3 +41,11 @@ test('Abono parcial guarda el faltante de la cuota, sin conceder mensualidades',
  assert.equal(c.res.code,201);assert.equal(c.payment.aplicacionCuotas.meses,0);
  assert.equal(c.payment.aplicacionCuotas.faltante,50);assert.match(c.payment.concepto,/Faltan \$50.00/);
 });
+test('Reporte acepta abono inferior al recargo y lo guarda pendiente, sin acreditar ni activar TAGs',async t=>{
+ const c=setup(t,'20.00');await controller.reportarPago(c.req,c.res);
+ assert.equal(c.res.code,201);assert.equal(c.payment.estatus,'PENDIENTE_VALIDACION');
+ assert.equal(c.payment.monto,20);assert.equal(c.payment.recargo,20);
+ assert.equal(c.payment.aplicacionCuotas.recargoPendienteDespues,30);
+ assert.equal(c.payment.aplicacionCuotas.meses,0);assert.equal(c.payment.aplicacionCuotas.aplicado,undefined);
+ assert.equal(c.commits,1);assert.equal(c.res.body.vigencia,null);
+});

@@ -16,6 +16,23 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Preparado el 27/oct/2026: abonos inferiores a los recargos
+
+Mantenimiento permite cualquier importe positivo desde $0.01, también por vivienda
+en reparto. Primero descuenta recargos por antigüedad, luego principal; solo las
+mensualidades completas avanzan cobertura. Se conserva recargo pagado y saldo para
+complementos. UI y servidor eliminan el mínimo de cubrir todos los recargos.
+Pruebas con cuotas y C3 simulados comprueban $20 + $30 a recargos y $300 posteriores
+a principal, sin entregar vigencia antes de completar el mes. Sin SQL ni cambios
+reales de DB/buzón/C3; requiere backend y frontend juntos.
+
+## Preparado el 27/oct/2026: quitar cuadros duplicados de domicilio en Pagos
+
+Se retiran del formulario los cuadros visibles Calle/Número mostrados en la captura.
+El control de reparto no vuelve a mostrarlos al cambiar de concepto. Los valores
+internos de contexto siguen disponibles; vivienda autorizada, reparto y backend no
+cambian. Ajuste de frontend con versión de recurso nueva; sin SQL ni datos reales.
+
 ## Preparado el 27/oct/2026: reparto desde dos viviendas
 
 Por aclaración del usuario, el reparto se habilita a partir de dos viviendas activas,

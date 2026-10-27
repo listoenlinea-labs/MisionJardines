@@ -48,8 +48,9 @@ La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:
 3. El reporte sigue pendiente hasta conciliación bancaria. Guardar el reparto y
    acreditar cuotas + pago + diario en una transacción con lock de vivienda.
    Si cambió tarifa/cuotas desde el reporte, detener para conciliación.
-4. Cubrir recargos y después periodos más antiguos; admitir abonos parciales y
-   complementos con folios distintos. No repetir recargos pagados. Máximo 36 meses
+4. Aceptar cualquier abono positivo al mantenimiento (desde $0.01), aunque no
+   cubra todos los recargos. Restar primero de los recargos más antiguos y solo
+   después del principal de periodos más antiguos. Admitir complementos con folios distintos. No repetir recargos pagados. Máximo 36 meses
    completos por movimiento; fecha bancaria admitida desde octubre de 2026.
 5. Pagar funciona sin TAG y con C3 desconectado. Un fallo de acceso no revierte un
    abono confirmado. Solo mensualidades completas avanzan el corte; octubre

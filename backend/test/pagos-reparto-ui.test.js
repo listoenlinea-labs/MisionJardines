@@ -24,9 +24,9 @@ function setup(count=2,quoteHook){
  const ui=window.MJRepartoUI.crear({api,headers:()=>({}),changed(){},money:v=>String(v)});
  return {ui,ids,get latest(){return latest;}};
 }
-test('UI oculta reparto para una casa y conserva el domicilio',async()=>{
+test('UI oculta reparto para una casa y no vuelve a mostrar los campos de domicilio',async()=>{
  for(const n of [1]){const c=setup(n);await c.ui.cargar();await c.ui.actualizar('MANTENIMIENTO',true,'600','2026-10-26');
- assert.equal(c.ids.get('paymentAllocation').hidden,true);assert.equal(c.ids.get('residentAddress').hidden,false);}
+ assert.equal(c.ids.get('paymentAllocation').hidden,true);assert.equal(c.ids.get('residentAddress').hidden,true);}
 });
 test('UI muestra adeudos, bloquea suma incorrecta, acepta suma exacta y reinicia al quitar imagen',async()=>{
  const c=setup();await c.ui.cargar();await c.ui.actualizar('MANTENIMIENTO',true,'600','2026-10-26');

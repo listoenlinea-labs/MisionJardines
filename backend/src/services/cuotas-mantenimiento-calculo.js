@@ -85,15 +85,15 @@ function contextoCuotas(cuotas,fecha,tarifa=BASE,exencionesRecargo=[]){
  return {fuente:'CUOTAS',base:tarifa,tarifa,recargo:recargo/100,adeudoTotal:(principal+recargo)/100,
   mesesPendientes:meses-exenciones,fechaCorteActual:periodo(limite+1)+'-10',
   fechaUltimoCortePagado:fechaDesdeCuotas(cuotas),
-  minimo:(recargo+Math.max(0,tarifa*100-saldoParcial))/100,minimoReporte:Math.max(1,recargo)/100,
+  minimo:(recargo+Math.max(0,tarifa*100-saldoParcial))/100,minimoReporte:0.01,
   saldoParcial:saldoParcial/100,fechaFinalCuotas:fechaDesdeCuotas(cuotas),
   primerPeriodoPendiente:periodo(primero),huella:huella(cuotas,tarifa)};
 }
 function planificar(cuotas,fecha,monto,tarifa,exencionesRecargo=[]){
  const amount=centavos(monto);
  if(!amount)throw fail('El importe debe ser mayor que cero');
- const ctx=contextoCuotas(cuotas,fecha,tarifa,exencionesRecargo),fee=cents(ctx.recargo);
- if(amount<fee)throw fail('El depósito debe cubrir los recargos pendientes de $'+ctx.recargo.toFixed(2));
+ const ctx=contextoCuotas(cuotas,fecha,tarifa,exencionesRecargo);
+ let restante=amount,fee=0;
  const inicio=inicioDesdeUltimo(cuotas);
  const map=new Map(cuotas.map(c=>[indice(c),c]));
  const cambios=new Map();
@@ -108,14 +108,14 @@ function planificar(cuotas,fecha,monto,tarifa,exencionesRecargo=[]){
  };
  const limite=Number(fecha.slice(0,4))*12+Number(fecha.slice(5,7))-1;
  // Solo los periodos pendientes DESPUÉS del último pagado requieren reparto.
- for(let n=inicio;n<=limite;n++){
+ for(let n=inicio;n<=limite&&restante>0;n++){
   const s=estadoPeriodo(map.get(n),n,fecha,tarifa,require('./recargos-exenciones.service').exentoEn(exencionesRecargo,periodo(n)));
   if(s.recargoPendiente){
-   const p=get(n);p.abono=s.recargoPendiente;p.abonoRecargo=s.recargoPendiente;
-   p.recargoPagado+=s.recargoPendiente;
+   const abonado=Math.min(restante,s.recargoPendiente);
+   const p=get(n);p.abono=abonado;p.abonoRecargo=abonado;
+   p.recargoPagado+=abonado;restante-=abonado;fee+=abonado;
   }
  }
- let restante=amount-fee;
  for(let n=inicio;restante>0;n++){
   if(n>=2100*12)throw fail('Año fuera de rango');
   if(cubierta(map.get(n)))continue;
@@ -140,7 +140,7 @@ function planificar(cuotas,fecha,monto,tarifa,exencionesRecargo=[]){
  const nuevo=contextoCuotas(despues,fecha,tarifa,exencionesRecargo);
  return {...ctx,version:2,fechaCalculo:fecha,monto:amount/100,tarifa,aplicaciones,meses,
   abonoParcial:meses===0,saldoDespues:nuevo.saldoParcial,faltante:nuevo.minimo,
-  fechaFinalObjetivo:fechaDesdeCuotas(despues),recargo:fee/100,total:amount/100,
+  fechaFinalObjetivo:fechaDesdeCuotas(despues),recargo:fee/100,recargoPendienteDespues:nuevo.recargo,total:amount/100,
   cortesRecargo:aplicaciones.filter(p=>p.abonoRecargo>0).map(p=>p.periodo+'-10')};
 }
 module.exports={MESES,INICIO,indice,periodo,pagada,cubierta,ultimoPagado,inicioDesdeUltimo,primerPendiente,

@@ -106,6 +106,7 @@ test('cada asignación cubre sus propios recargos antes de principal; no se toma
  const plan=await service.cotizar(1,[{casaId:1,monto:300},{casaId:2,monto:300}],600,'2026-10-15',c.tx);
  assert.equal(plan.distribuciones[0].plan.recargo,100);assert.equal(plan.distribuciones[0].plan.meses,0);
  assert.equal(plan.distribuciones[1].plan.recargo,0);assert.equal(plan.distribuciones[1].plan.meses,1);
- await assert.rejects(service.cotizar(1,[{casaId:1,monto:50},{casaId:2,monto:550}],600,'2026-10-15',c.tx),/recargos/);
+ const parcial=await service.cotizar(1,[{casaId:1,monto:50},{casaId:2,monto:550}],600,'2026-10-15',c.tx);
+ assert.equal(parcial.distribuciones[0].plan.recargo,50);assert.equal(parcial.distribuciones[0].plan.recargoPendienteDespues,50);assert.equal(parcial.distribuciones[0].plan.meses,0);
  assert.equal(c.events.length,0);assert.equal(c.fees.length,3);
 });

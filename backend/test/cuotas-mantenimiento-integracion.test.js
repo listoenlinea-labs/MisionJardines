@@ -162,3 +162,20 @@ test('La captura no permite declarar completo un mes con principal insuficiente'
  await assert.rejects(service.registrarCambioCuota(7,2,c.tx,{registro:cuota,anterior:{...cuota,estatusPago:'PENDIENTE',montoPagado:0}}),/tarifa más recargo/);
  assert.equal(c.eventos.length,0);
 });
+test('20 + 30 cubren solo recargo y 300 posteriores completan mantenimiento; C3 espera la mensualidad',async t=>{
+ const c=setup(t);c.addTag('2026-10-10');
+ const a=await c.report(20);assert.equal(a.recargo,20);await controller.confirmarPagoDesdeBanco(a.id,'b'.repeat(64));
+ assert.equal(c.cuotas[1].recargoPagado,20);assert.equal(c.cuotas[1].montoPagado,20);
+ assert.equal(c.eventos[0].principalMovimiento,0);assert.equal(c.eventos[0].estado,'COMPLETADO');
+ let ctx=await service.cotizar(7,'2026-10-15',null,c.tx);
+ assert.equal(ctx.recargo,30);assert.equal(ctx.adeudoTotal,330);assert.equal(c.hooks.length,0);
+ const b=await c.report(30);await controller.confirmarPagoDesdeBanco(b.id,'c'.repeat(64));
+ assert.equal(c.cuotas[1].recargoPagado,50);assert.equal(c.cuotas[1].estatusPago,'PAGO_PARCIAL');
+ assert.equal(c.eventos[1].principalMovimiento,0);assert.equal(c.writes.length,0);
+ ctx=await service.cotizar(7,'2026-10-15',null,c.tx);assert.equal(ctx.recargo,0);assert.equal(ctx.adeudoTotal,300);
+ const last=await c.report(300);const result=await controller.confirmarPagoDesdeBanco(last.id,'d'.repeat(64));
+ assert.equal(c.cuotas[1].montoPagado,350);assert.equal(c.cuotas[1].estatusPago,'PAGADO');
+ assert.equal(last.recargo,0);assert.equal(result.vigencia.meses,1);assert.equal(c.eventos[2].principalMovimiento,30000);
+ assert.equal(c.writes.length,0);await worker.sincronizarCasa(7,{dryRun:false});
+ assert.deepEqual(c.writes,['2026-11-10']);
+});
