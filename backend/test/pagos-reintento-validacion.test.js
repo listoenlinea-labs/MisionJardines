@@ -39,11 +39,14 @@ test('el usuario propietario puede reintentar el mismo registro fallido sin camb
   assert.equal(pago.verificacionBancaria.historialReintentos[0].detalle,'No coincide vivienda');
   assert.equal(worker.programarRevision.mock.callCount(),1);
 });
+test('tener folio y PDF de reporte no impide reintentar',()=>{
+  assert.equal(elegible(row({reciboFolio:'MJ-2026-0032',reciboPdfData:Buffer.from('RECIBO')})),true);
+});
 test('ni un VALIDADO ni uno con evidencia ya aplicada puede regresar a pendiente',async t=>{
   stub(t);
   for(const overrides of [
     {estatus:'VALIDADO'}, {correoBancarioHash:'abc'}, {aplicacionCuotas:{aplicado:true}},
-    {reciboFolio:'MJ-RC-32'}
+    {fechaValidacion:new Date()}
   ]){
     const pago=row(overrides);
     assert.equal(elegible(pago),false);
