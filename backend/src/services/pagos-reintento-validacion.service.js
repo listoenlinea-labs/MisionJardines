@@ -46,8 +46,8 @@ async function solicitarReintento({pagoId,casaId,ahora=new Date()}){
     await pago.update({
       estatus:'PENDIENTE_VALIDACION',
       verificacionBancaria:{
-        version:1,etapa:'REINTENTO_SOLICITADO',
-        detalle:'Se solicitó una nueva comparación del comprobante original con el buzón bancario Titan.',
+        version:1,etapa:'REINTENTO_OCR',
+        detalle:'Releyendo la imagen original mediante OCR antes de consultar el buzón bancario.',
         fechaRevision:null,avisosConsultados:0,avisosAutenticados:0,coincidencias:0,
         reintentos:numero+1,ultimoReintentoEn:ahora.toISOString(),
         historialReintentos:historial
@@ -57,9 +57,9 @@ async function solicitarReintento({pagoId,casaId,ahora=new Date()}){
     },{transaction});
     return {id:pago.id,estatus:'PENDIENTE_VALIDACION',reintentos:numero+1};
   });
-  // Se agenda únicamente tras COMMIT; el worker exige match de identificador,
-  // importe, fecha y cuenta, y bloquea reusar un correo ya aplicado.
-  require('./banco-correo-worker.service').programarRevision();
+  // Se agenda solo tras COMMIT; no ejecutar IMAP hasta terminar de releer
+  // la imagen original. El worker bancario conserva sus verificaciones.
+  require('./pagos-relectura-ocr.service').programarRelectura(pagoId);
   return result;
 }
 module.exports={solicitarReintento,elegible,diagnosticoAnterior,MAX_REINTENTOS,ESPERA_MS};
