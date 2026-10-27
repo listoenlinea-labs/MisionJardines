@@ -576,7 +576,24 @@ async function obtenerComprobantePropio(req,res){
   return res.json({ok:true,data:{comprobanteData:row.comprobanteData,comprobanteNombre:row.comprobanteNombre,comprobanteMime:row.comprobanteMime}});
  }catch(e){console.error('Comprobante propio:',e);return res.status(503).json({ok:false,message:'No fue posible consultar el comprobante'});}
 }
-module.exports = { confirmarPagoDesdeBanco,
+// El reintento reutiliza la evidencia guardada y SOLO retorna a revisión.
+// La aprobación sigue siendo exclusiva del worker bancario.
+async function reintentarValidacion(req,res){
+  try{
+    const id=Number(req.params.id);
+    if(!/^\\d+$/.test(String(req.params.id||''))||!Number.isSafeInteger(id)||id<1||!req.usuario.casaId)
+      return res.status(404).json({ok:false,message:'Comprobante no encontrado.'});
+    const data=await require('../services/pagos-reintento-validacion.service').solicitarReintento({
+      pagoId:id,casaId:Number(req.usuario.casaId)
+    });
+    res.setHeader('Cache-Control','private, no-store');
+    return res.json({ok:true,data,message:'Se volvió a solicitar la comprobación del mismo recibo. Sigue en revisión bancaria.'});
+  }catch(error){
+    if(!error.status)console.error('[Pagos][Reintento]',error);
+    return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible reintentar la validación.'});
+  }
+}
+module.exports = { reintentarValidacion, confirmarPagoDesdeBanco,
     obtenerConfiguracion,
     listarMisPagos,
     listarCuotasExtraordinarias,
