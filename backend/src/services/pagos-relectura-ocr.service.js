@@ -38,12 +38,6 @@ async function releerComprobante(pagoId){
     // Un banco puede omitir la hora o imprimir el día operativo SPEI.
     // Importe + identificador OCR deben estar presentes; la fecha real,
     // destino y vigencia se contrastan INDEPENDIENTEMENTE con Titan.
-    lector.validarCamposExtraidos({
-      folioOperacion:pago.folioOperacion,
-      fechaOperacion:fecha(pago.fechaOperacion),
-      horaOperacion:hora(pago.horaOperacion),
-      monto:pago.monto
-    },{...extraido,candidatos:parser.candidatosOperacion(texto)},false);
     if(!extraido.amount||centavos(extraido.amount)!==centavos(pago.monto))
       throw Error('El monto extraído de la imagen no coincide con el importe reportado.');
     const ids=identificadores.almacenarVerificados(extraido,pago.folioOperacion,texto);
