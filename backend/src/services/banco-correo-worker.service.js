@@ -33,8 +33,20 @@ function registrarImporteRelacionado(pago,autenticados){
   ' (solo diagnostico: NO confirma deposito)');
 }
 let ocupado=false,programado=false,timer=null;
+function datosReintento(raw){
+ if(typeof raw==='string'){try{raw=JSON.parse(raw)}catch{return {}}}
+ return raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+}
 async function persistir(pago,revision,fallido=false){
- const cambios={verificacionBancaria:revision,actualizadoEn:new Date()};
+ // Conservar el contador y la bitácora de reintentos incluso cuando Titan
+ // reemplace el diagnóstico. Evita reintentos infinitos después de FALLIDO.
+ const anterior=datosReintento(pago.verificacionBancaria);
+ const cambios={verificacionBancaria:{
+   ...revision,
+   reintentos:Math.max(0,Number(anterior.reintentos)||0),
+   ultimoReintentoEn:anterior.ultimoReintentoEn||null,
+   historialReintentos:Array.isArray(anterior.historialReintentos)?anterior.historialReintentos:[]
+ },actualizadoEn:new Date()};
  if(fallido){
   cambios.estatus='RECHAZADO'; // Estado existente del esquema; en UI se etiqueta Fallido.
   cambios.observacionesRevision=String(revision.detalle||'No fue posible conciliar el depósito.').slice(0,600);
@@ -49,7 +61,7 @@ async function ejecutarRevision(){
   pendientes=await PagoReportado.findAll({
    where:{estatus:'PENDIENTE_VALIDACION'},
    include:[{model:Casa,as:'casa',required:true,attributes:['calle','calleCorrecta','numero']}],
-   attributes:['id','casaId','estatus','folioOperacion','identificadoresVerificados','textoOcr','fechaOperacion','horaOperacion','monto'],
+   attributes:['id','casaId','estatus','folioOperacion','identificadoresVerificados','textoOcr','fechaOperacion','horaOperacion','monto','verificacionBancaria'],
    order:[['creadoEn','DESC']],limit:100
   });
   if(!pendientes.length)return;

@@ -7,6 +7,7 @@ const {
     desactivarCuotaExtraordinaria,
     obtenerAdeudos,
     reportarPago,
+    reintentarValidacion,
     descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, obtenerComprobante
 } = require('../controllers/pagos.controller');
 const { autenticarToken } = require('../middlewares/auth.middleware');
@@ -39,6 +40,7 @@ router.get('/mios', lecturaPagos, listarMisPagos);
 router.get('/adeudos', lecturaPagos, obtenerAdeudos);
 router.get('/:id/recibo', lecturaPagos, descargarRecibo);
 router.get('/:id/comprobante-mio', lecturaPagos, obtenerComprobantePropio);
+router.post('/:id/reintentar-validacion', lecturaPagos, reintentarValidacion);
 router.get('/extraordinarias', lecturaPagos, listarCuotasExtraordinarias);
 router.post('/extraordinarias', soloAdministracion, crearCuotaExtraordinaria);
 router.patch('/extraordinarias/:id/archivar', soloAdministracion, desactivarCuotaExtraordinaria);

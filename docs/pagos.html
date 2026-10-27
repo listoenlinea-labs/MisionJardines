@@ -1093,6 +1093,11 @@
 .receipt-check-top p{margin:5px 0 0;font-size:12px;line-height:1.6;color:#617087;max-width:62ch;overflow-wrap:anywhere}
 .receipt-check-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;font-size:10px;color:#6d7c92}
 .receipt-check-meta span{border:1px solid #e6e4ed;border-radius:99px;padding:5px 9px;background:#fff}
+.receipt-check-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.receipt-bank-retry{border:1px solid #e5b784;background:#fff2e5;color:#a94f00;padding:9px 12px;border-radius:10px;font-weight:800;font-size:11px;cursor:pointer}
+.receipt-bank-retry:hover{background:#ffe7d1}
+.receipt-bank-retry:disabled{opacity:.55;cursor:wait}
+.receipt-bank-retry:focus-visible{outline:2px solid #efae63;outline-offset:2px}
 .receipt-check-refresh{flex:0 0 auto;border:1px solid #ddcbed;background:#fff;color:#7952a2;padding:9px 12px;border-radius:10px;font-weight:750;font-size:11px;cursor:pointer}
 .receipt-check-refresh:disabled{opacity:.55;cursor:wait}
 .receipt-check-refresh:focus-visible{outline:2px solid #c7a5eb;outline-offset:2px}
@@ -1117,7 +1122,7 @@
 .receipt-details-modal .receipt-detail-field small{font-size:10px}
 .receipt-details-modal .receipt-proof-block{margin-top:16px}
 .receipt-details-modal .receipt-check-warning{margin:0 0 16px;padding:12px 14px;background:#fff6f4;border:1px solid #f3cec8;border-radius:12px;color:#a04342;font-size:12px;line-height:1.65}
-@media(max-width:700px){.receipt-details-modal .receipt-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-check-top{flex-wrap:wrap}.receipt-check-refresh{width:100%}}
+@media(max-width:700px){.receipt-details-modal .receipt-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-check-top{flex-wrap:wrap}.receipt-check-actions{width:100%}.receipt-check-actions>button{flex:1 1 auto}}
 @media(max-width:470px){.receipt-details-modal .receipt-detail-grid{grid-template-columns:1fr 1fr;gap:7px}.receipt-details-modal .receipt-detail-section{padding:11px}.receipt-details-modal .receipt-detail-field{padding:10px}.receipt-timeline li{gap:9px}.receipt-check-top h3{font-size:16px}}
 /* Safari iOS ignora frecuentemente min-width en controles nativos de hora:
    para una hora reconocida por OCR basta mostrar HH:MM:SS en un campo de texto readonly. */
@@ -1412,7 +1417,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles"></script>
-  <script src="assets/js/pagos.js?v=20261026-ocr-formatos-flexibles"></script>
+  <script src="assets/js/pagos.js?v=20261026-reintento-banco"></script>
   <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
