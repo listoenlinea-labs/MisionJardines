@@ -649,15 +649,18 @@
           return;
         }
         const extracted = MJComprobante.extract(ocrText);
-        // Never fill another payment's data; do not invent a date/hour if OCR misses it.
-        $('operationFolio').value = extracted.claveRastreo || extracted.referencia || extracted.folio || '';
+        const candidatos = MJComprobante.candidatosOperacion(ocrText);
+        const identificador = extracted.claveRastreo || extracted.referencia || extracted.folio || candidatos[0] || '';
+        // Un código sin etiqueta NO es una aprobación; Titan coteja los códigos
+        // explícitos antes de acreditar. La selección se valida en el servidor.
+        $('operationFolio').value = identificador;
         $('amount').value = extracted.amount || '';
         ocrAmount=extracted.amount||'';
         $('operationDate').value = extracted.date || '';
         $('operationTime').value = extracted.time || '';
-        const missing = !(extracted.claveRastreo || extracted.referencia || extracted.folio) || !extracted.date || !extracted.time || !extracted.amount;
+        const missing = !identificador || !extracted.date || !extracted.time || !extracted.amount;
         const camposFaltantes = [
-          ...(!(extracted.claveRastreo || extracted.referencia || extracted.folio) ? ['Clave de rastreo, referencia bancaria o folio de operación'] : []),
+          ...(!identificador ? ['Código de operación o referencia verificable'] : []),
           ...(!extracted.date ? ['Fecha de operación'] : []),
           ...(!extracted.time ? ['Hora de operación'] : []),
           ...(!extracted.amount ? ['Monto depositado'] : [])
