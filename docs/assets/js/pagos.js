@@ -364,7 +364,9 @@
           renderReceiptStatus(actualizado);
       }catch(error){
         const message=error.httpStatus===404
-          ? 'No se encontró la ruta de reintento. Comprueba que el backend actualizado esté desplegado en Hostinger.'
+          ? (/comprobante no encontrado/i.test(error.message||'')
+              ? 'No se encontró este comprobante para la vivienda seleccionada. Actualiza el historial e inténtalo nuevamente.'
+              : 'El backend no reconoce la solicitud de reintento. Confirma que Hostinger tenga desplegado el último backend.')
           :String(error.message||'No fue posible iniciar el reintento.');
         retryFeedback(message,true);
       }
