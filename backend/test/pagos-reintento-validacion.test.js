@@ -6,14 +6,14 @@ const path=require('node:path');
 const sequelize=require('../src/config/database');
 const {PagoReportado}=require('../src/models');
 const banco=require('../src/services/banco-correo.service');
-const worker=require('../src/services/banco-correo-worker.service');
+const relectura=require('../src/services/pagos-relectura-ocr.service');
 const {solicitarReintento,elegible}=require('../src/services/pagos-reintento-validacion.service');
 
 const asset=p=>fs.readFileSync(path.join(__dirname,'../..',p),'utf8');
 const stub=t=>{
   t.mock.method(banco,'configurado',()=>true);
   t.mock.method(sequelize,'transaction',async (_options,action)=>action({LOCK:{UPDATE:'UPDATE'}}));
-  t.mock.method(worker,'programarRevision',()=>{});
+  t.mock.method(relectura,'programarRelectura',()=>{});
 };
 const row=(overrides={})=>({
   id:32,casaId:738,estatus:'RECHAZADO',
@@ -34,10 +34,11 @@ test('el usuario propietario puede reintentar el mismo registro fallido sin camb
   const result=await solicitarReintento({pagoId:32,casaId:738,ahora:new Date('2026-10-26T23:02:00Z')});
   assert.deepEqual(result,{id:32,estatus:'PENDIENTE_VALIDACION',reintentos:1});
   assert.equal(pago.estatus,'PENDIENTE_VALIDACION');
+  assert.equal(pago.verificacionBancaria.etapa,'REINTENTO_OCR');
   assert.equal(pago.monto,'10.00');
   assert.equal(pago.folioOperacion,'COMPROBANTE_EXISTENTE');
   assert.equal(pago.verificacionBancaria.historialReintentos[0].detalle,'No coincide vivienda');
-  assert.equal(worker.programarRevision.mock.callCount(),1);
+  assert.equal(relectura.programarRelectura.mock.callCount(),1);
 });
 test('tener folio y PDF de reporte no impide reintentar',()=>{
   assert.equal(elegible(row({reciboFolio:'MJ-2026-0032',reciboPdfData:Buffer.from('RECIBO')})),true);
@@ -62,7 +63,7 @@ test('si no pertenece a la vivienda activa responde 404, sin filtrar datos',asyn
     return null;
   });
   await assert.rejects(solicitarReintento({pagoId:32,casaId:900}),{status:404});
-  assert.equal(worker.programarRevision.mock.callCount(),0);
+  assert.equal(relectura.programarRelectura.mock.callCount(),0);
 });
 test('respeta cooldown y máximo de reintentos',async t=>{
   stub(t);
