@@ -6,7 +6,9 @@ el flujo anterior. Los cuadros duplicados de Calle/Número se retiraron del form
 el 27/oct/2026; el domicilio sigue identificado en el reparto y el resumen del residente. Se limita a mantenimiento; extraordinarias y casa club mantienen
 sus cargos específicos. Cada domicilio muestra su adeudo contable a la fecha de
 consulta y un importe editable. Cero significa no asignar. Una casa con comprobante
-pendiente no recibe otro pago. La cotización muestra recargos, meses y corte objetivo
+pendiente no recibe otro pago. Se permiten asignaciones positivas inferiores a los recargos pendientes: pagan
+primero el recargo más antiguo y la diferencia queda pendiente. La cotización muestra
+recargos abonados y restantes, meses y corte objetivo
 por vivienda; no promete ponerla al corriente si la asignación es insuficiente.
 
 El monto bancario conserva el valor leído por OCR. La suma debe coincidir exactamente

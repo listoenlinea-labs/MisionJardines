@@ -745,7 +745,7 @@
       if (quote.modoPrueba && Math.round(amount * 100) !== 1000)
         return toast('Para esta cuenta de prueba el comprobante debe ser de $10.00 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
-        return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
+        return toast('El abono debe ser de al menos $0.01.');
     } const payload = { ...(repartoUI.activo(paymentType)?{reparto:repartoUI.datos()}:{}), tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); reportBusy=true; btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras(),...(repartoUI.activo(paymentType)?[repartoUI.cargar().catch(e=>toast(e.message))]:[])]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) {
       if (err.code === 'COMPROBANTE_INCOMPLETO' || err.code === 'COMPROBANTE_NO_CONCILIABLE'
         || err.code === 'FOLIO_NO_PRESENTE_EN_CORREO' || err.code === 'BUZON_NO_VERIFICABLE'
@@ -856,7 +856,8 @@
       }
       const cobertura=quote.fechaFinalObjetivo || 'sin mensualidades completas registradas';
       $('paymentPreview').textContent = 'Al validar este depósito se abonarán ' + quote.aplicaciones.length +
-        ' periodo(s) de cuotas y se completarán ' + quote.meses + ' mensualidad(es). Recargos: ' + money(quote.recargo) +
+        ' periodo(s) de cuotas y se completarán ' + quote.meses + ' mensualidad(es). Recargos abonados: ' + money(quote.recargo) +
+        (quote.recargoPendienteDespues>0?' · Recargos aún pendientes: '+money(quote.recargoPendienteDespues):'') +
         '. Cobertura resultante: ' + cobertura + '. ' +
         (quote.abonoParcial ? 'El abono parcial queda registrado para el siguiente pago. ' : '') +
         'Los TAGs asociados se actualizarán después de la validación bancaria; también puedes pagar sin TAG.';

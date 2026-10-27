@@ -37,12 +37,15 @@ test('300 + 50 completa octubre sin repetir recargo; las cuotas contienen ambos 
  const analisis=calcularAdeudoVivienda(aplicar(cuotas,p2),{anio:2026,mes:10,hoy:'2026-10-15'});
  assert.equal(analisis.saldoPendiente,0);assert.equal(analisis.ultimoMesPagado.mes,'OCTUBRE');
 });
-test('Los recargos pagados solos no vuelven a cobrarse y conservan el principal pendiente',()=>{
- const p=calc.planificar([],'2026-10-20',100,300);
+test('Recargos pagados solos no se cobran otra vez; también se admite pagar parte de ellos',()=>{
+ const p=calc.planificar([septiembre],'2026-11-20',100,300);
  assert.equal(p.aplicaciones.length,2);assert.equal(p.meses,0);
- const ctx=calc.contextoCuotas(aplicar([],p),'2026-10-20',300);
+ const ctx=calc.contextoCuotas(aplicar([septiembre],p),'2026-11-20',300);
  assert.equal(ctx.recargo,0);assert.equal(ctx.adeudoTotal,600);
- assert.throws(()=>calc.planificar([],'2026-10-20',99.99,300),/recargos pendientes/);
+ const parcial=calc.planificar([septiembre],'2026-11-20',99.99,300);
+ assert.equal(parcial.recargo,99.99);assert.equal(parcial.meses,0);
+ const resto=calc.contextoCuotas(aplicar([septiembre],parcial),'2026-11-20',300);
+ assert.equal(resto.recargo,0.01);assert.equal(resto.adeudoTotal,600.01);
 });
 test('Recargos solos pueden completar un renglón heredado con el principal ya cubierto',()=>{
  const rows=[septiembre,{id:2,anio:2026,mes:'OCTUBRE',estatusPago:'PAGO_PARCIAL',montoPagado:300,montoCuota:350,recargo:50}];
@@ -137,4 +140,31 @@ test('Cada peso acreditado reduce exactamente el adeudo, también con complement
    assert.equal(Math.round((antes.adeudoTotal-despues.adeudoTotal)*100),Math.round(monto*100));
   }
  }
+});
+test('Cualquier abono positivo reduce primero recargos, sin adelantar el corte ni inventar principal',()=>{
+ for(const monto of [0.01,1,20,49.99]){
+  const plan=calc.planificar([septiembre],'2026-10-20',monto,300);
+  assert.equal(plan.recargo,monto);assert.equal(plan.meses,0);assert.equal(plan.fechaFinalObjetivo,'2026-10-10');
+  assert.equal(plan.aplicaciones.reduce((s,a)=>s+a.abono,0),Math.round(monto*100));
+  assert.equal(plan.aplicaciones.reduce((s,a)=>s+a.abonoRecargo,0),Math.round(monto*100));
+  const after=calc.contextoCuotas(aplicar([septiembre],plan),'2026-10-20',300);
+  assert.equal(Math.round(after.adeudoTotal*100),35000-Math.round(monto*100));
+  assert.equal(Math.round(after.recargo*100),5000-Math.round(monto*100));
+  assert.equal(after.minimoReporte,0.01);
+ }
+});
+test('Complementos a varios recargos pagan los más antiguos y luego el mantenimiento más antiguo',()=>{
+ let rows=[{...septiembre,mes:'AGOSTO'}];
+ for(const [monto,pendiente] of [[20,80],[40,40],[40,0]]){
+  const plan=calc.planificar(rows,'2026-10-20',monto,300);rows=aplicar(rows,plan);
+  assert.equal(plan.meses,0);assert.equal(calc.contextoCuotas(rows,'2026-10-20',300).recargo,pendiente);
+ }
+ assert.equal(rows.find(r=>r.mes==='SEPTIEMBRE').recargoPagado,50);
+ assert.equal(rows.find(r=>r.mes==='OCTUBRE').recargoPagado,50);
+ const maintenance=calc.planificar(rows,'2026-10-20',300,300);rows=aplicar(rows,maintenance);
+ assert.equal(maintenance.recargo,0);assert.equal(maintenance.meses,1);
+ assert.equal(maintenance.aplicaciones[0].mes,'SEPTIEMBRE');
+ assert.equal(maintenance.fechaFinalObjetivo,'2026-10-10');
+ const analysis=calcularAdeudoVivienda(rows,{anio:2026,mes:10,hoy:'2026-10-20',tarifa:300});
+ assert.equal(analysis.saldoPendiente,300);
 });

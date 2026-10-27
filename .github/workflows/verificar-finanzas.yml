@@ -43,6 +43,8 @@ jobs:
           DB_USER: ci_test
           DB_PASSWORD: ci_only_no_connection
         run: node --test backend/test/pagos-reintento-validacion.test.js backend/test/pagos-relectura-ocr.test.js
+      - name: Abonos parciales a recargos antes del mantenimiento
+        run: node --test --test-name-pattern="Cualquier abono positivo|Complementos a varios recargos|20 \+ 30|Reporte acepta abono" backend/test/cuotas-mantenimiento-calculo.test.js backend/test/cuotas-mantenimiento-integracion.test.js backend/test/pagos-cuotas-reporte.test.js
       - name: Reparto de depósito por viviendas (servicio, reporte y UI)
         run: node --test backend/test/pagos-reparto.test.js backend/test/pagos-reparto-reporte.test.js backend/test/pagos-reparto-ui.test.js
       - name: Conciliación bancaria con concepto libre y aviso de uso único

@@ -106,3 +106,25 @@ La misma selección sobre main da **119 casos, 112 aprobados y los mismos siete 
 edición física de TAGs). Se actualizan las expectativas que exigían buscar
 huecos o imponer septiembre aun con historial porque el usuario sustituyó esa regla.
 No se afirma una suite global verde ni validación de producción.
+
+
+## Abonos inferiores a recargos (27/oct/2026)
+
+Todo depósito positivo de mantenimiento desde $0.01 se puede reportar y acreditar
+tras la coincidencia bancaria. No se exige cubrir todos los recargos. Se abona primero
+a los recargos, en orden de antigüedad, hasta agotar el dinero recibido. Solo si todos
+quedan cubiertos, el restante se asigna al principal más antiguo. También aplica a
+cada porción de un depósito repartido entre viviendas. La cuota guarda cuánto recargo
+se ha pagado y cuánto dinero acumula; el complemento no vuelve a cobrar ese recargo.
+
+Ejemplo: principal pendiente $300 y recargo $50; un depósito de $20 deja recargo $30
+y principal $300, adeudo $330. Otro de $30 termina de pagar recargos; aún debe $300.
+Al cubrir después esos $300 se completa la mensualidad y se avanza un corte. Los abonos
+a recargos no avanzan TAGs. La operación conserva conciliación única, transacción y
+cálculo compartido con Análisis; no afecta las tarifas ni condona deuda.
+
+La cotización diferencia `recargo` (importe de este depósito destinado a recargos)
+y `recargoPendienteDespues` (saldo de recargos). `minimoReporte` es $0.01; `minimo`
+conserva el importe necesario para completar una mensualidad, no un mínimo obligatorio
+de depósito. Los planes antiguos que cubrían todos los recargos conservan su reparto.
+Sin SQL ni variables nuevas; desplegar backend/frontend juntos.

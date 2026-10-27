@@ -32,7 +32,7 @@
     for(const h of catalog.viviendas){
      const assigned=plan.distribuciones.find(d=>d.casaId===h.casaId);
      const info=document.getElementById('allocationPlan'+h.casaId);
-     info.textContent=assigned?'Recargo incluido: '+money(assigned.plan.recargo)+' · Meses: '+assigned.plan.meses+' · Corte objetivo: '+(assigned.plan.fechaFinalObjetivo||'Sin avance'):'Sin asignación';
+     info.textContent=assigned?'Recargo incluido: '+money(assigned.plan.recargo)+(assigned.plan.recargoPendienteDespues>0?' · Recargos por cubrir: '+money(assigned.plan.recargoPendienteDespues):'')+' · Meses: '+assigned.plan.meses+' · Corte objetivo: '+(assigned.plan.fechaFinalObjetivo||'Sin avance'):'Sin asignación';
     }
     loading=false;paintStatus('Reparto verificado: '+money(total)+'. Puedes reportar el pago.');
    }catch(e){if(current!==revision)return;loading=false;error=e.message;paintStatus(error);}
