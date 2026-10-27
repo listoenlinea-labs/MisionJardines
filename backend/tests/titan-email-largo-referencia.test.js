@@ -27,7 +27,7 @@ function cargarAviso(){
  try{
   const msg=parseMessage({uid:27,source:Buffer.from(correoHTML(),'utf8')});
   const notice=datosAviso(msg,{
-   PAGOS_BANK_FROM_ADDRESS:'avisos@banco.example',
+   PAGOS_BANK_FORWARD_FROM_ADDRESS:'avisos@banco.example',
    PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',
    PAGOS_BANK_MAIL_MAX_DIAS:'14'
   });

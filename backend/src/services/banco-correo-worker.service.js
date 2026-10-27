@@ -8,7 +8,7 @@ const importesYaDiagnosticados=new Map();
 function registrarImporteRelacionado(pago,autenticados){
  const relacionados=autenticados.filter(aviso=>{
   const comprobacion=banco.chequeosAviso(pago,aviso);
-  return comprobacion.cuenta&&comprobacion.fecha&&comprobacion.vivienda;
+  return comprobacion.cuenta&&comprobacion.fecha&&identificadores.coinciden(pago,aviso);
  });
  if(relacionados.length!==1)return;
  const aviso=relacionados[0];
@@ -19,7 +19,7 @@ function registrarImporteRelacionado(pago,autenticados){
  if(!Number.isFinite(montoReportado))return;
  // Diagnóstico administrativo SIN correo, cuenta, concepto, referencia o clave.
  // Solo se imprimen importes de un único aviso autenticado asociado por
- // vivienda, fecha y cuenta; la referencia es un booleano (puede NO coincidir).
+ // identificador, fecha y cuenta; la referencia se muestra solo como booleano.
  // No incluye mensaje, cuenta, referencia ni correo. Este log NO aprueba pagos.
  const resumen=String(montoReportado)+'|'+String(montoCorreo)+'|'+String(identificadorCoincide)+'|'+String(Boolean(parsedIds.referencia));
  if(importesYaDiagnosticados.get(pago.id)===resumen)return;

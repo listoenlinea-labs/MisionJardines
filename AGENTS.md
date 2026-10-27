@@ -94,6 +94,10 @@ La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:
   exactos; si hay 4 no se reducen a 3 para ocultar una discrepancia. La validación OCR
   del comprobante del usuario conserva sus reglas. Monto y fecha por sí solos no
   identifican una vivienda.
+- Por petición del 26/oct, el concepto bancario es informativo: no exigir calle,
+  número ni coincidencia con la vivienda. La vivienda proviene del reporte creado
+  con vínculo autorizado; conservar identificador, monto, fecha, cuenta, remitente,
+  coincidencia única y hash de correo no reutilizable entre viviendas.
 - Registrar cortes pagados, aprobación y diario de acceso en la misma transacción.
   La aprobación financiera puede persistir aunque falle la entrega posterior al C3.
 

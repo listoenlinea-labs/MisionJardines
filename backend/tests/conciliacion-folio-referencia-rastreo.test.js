@@ -31,7 +31,7 @@ const avisoOriginal={
  internetMessageHeaders:[{name:'Authentication-Results',value:'mail.example; dkim=pass header.d=banco.example; dmarc=pass header.from=banco.example;'}],
  body:{content:'Recibiste de otro banco $10 26/Oct/2026, 18:42:09 A tu cuenta ***409\nConcepto\ncasa TEST-001\nReferencia\n910260\nClave de rastreo\nMBAN01002610260078204229'}
 };
-const cfg={PAGOS_BANK_FROM_ADDRESS:'avisos@banco.example',PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',PAGOS_DESTINO_ULTIMOS4:'4409',PAGOS_BANK_MAIL_MAX_DIAS:'7'};
+const cfg={PAGOS_BANK_FORWARD_FROM_ADDRESS:'avisos@banco.example',PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',PAGOS_DESTINO_ULTIMOS4:'4409',PAGOS_BANK_MAIL_MAX_DIAS:'7'};
 test('BBVA inicial: referencia 0910260, folio y monto sin clave',()=>{
  const data=parser.extract(textoInicial);
  assert.equal(data.folio,'1769715857');
@@ -67,7 +67,7 @@ test('email autenticado aporta referencia y clave, pero no folio',()=>{
   fechaOperacion:'2026-10-26',horaOperacion:'18:41:00',monto:10};
  assert.equal(banco.corresponde(pago,aviso,cfg),true);
  assert.equal(banco.corresponde({...pago,textoOcr:'Folio de operación\n1769715857'},aviso,cfg),false);
- assert.equal(banco.corresponde({...pago,casa:{calle:'Gardenias',numero:'TEST-001'}},aviso,cfg),false);
+ assert.equal(banco.corresponde({...pago,casa:{calle:'Gardenias',numero:'TEST-001'}},aviso,cfg),true);
  assert.equal(banco.corresponde(pago,{...aviso,autorizado:false},cfg),false);
  assert.equal(banco.corresponde(pago,{...aviso,monto:100},cfg),false);
  assert.equal(banco.corresponde(pago,{...aviso,cuenta:'999'},cfg),false);

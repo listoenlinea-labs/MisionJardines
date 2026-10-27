@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const bank=require('../src/services/banco-correo.service');
 const diagnostic=require('../src/services/banco-diagnostico.service');
-const cfg={PAGOS_BANK_FROM_ADDRESS:'notificaciones@bazdigital.com',PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',PAGOS_BANK_MAIL_MAX_DIAS:'7',PAGOS_DESTINO_ULTIMOS4:'4409'};
+const cfg={PAGOS_BANK_FORWARD_FROM_ADDRESS:'notificaciones@bazdigital.com',PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',PAGOS_BANK_MAIL_MAX_DIAS:'7',PAGOS_DESTINO_ULTIMOS4:'4409'};
 const pago=()=>({id:30,folioOperacion:'0910260',identificadoresVerificados:{version:1,origen:'OCR_SERVIDOR',tipo:'referencia',referencia:'910260'},
  fechaOperacion:'2026-10-23',horaOperacion:'18:41:00',monto:10,casa:{calle:'Prueba',numero:'TEST-001'}});
 function mail(contenido){

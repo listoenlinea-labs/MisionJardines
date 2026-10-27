@@ -629,8 +629,8 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
                 fechaValidacion: new Date(), actualizadoEn: new Date(),
                 verificacionBancaria: {...(pago.verificacionBancaria||{}),version:1,etapa:'VALIDADO',
                   fechaRevision:new Date().toISOString(),
-                  detalle:'Pago confirmado: coincidieron los identificadores, el importe, la fecha bancaria, la cuenta y la vivienda en una notificación bancaria autenticada.'},
-                observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria autenticada.' }, { transaction });
+                  detalle:'Pago confirmado: coincidieron los identificadores, el importe, la fecha bancaria y la cuenta destino en una notificación bancaria de remitente autorizado.'},
+                observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria de remitente autorizado.' }, { transaction });
             const vigencia = pago.tipoPago === 'MANTENIMIENTO'
                 ? await cuotasMantenimiento.confirmar(pago, transaction) : null;
             if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){

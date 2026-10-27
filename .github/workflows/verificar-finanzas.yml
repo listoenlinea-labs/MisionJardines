@@ -35,6 +35,8 @@ jobs:
       - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
         working-directory: backend
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Conciliación bancaria con concepto libre y aviso de uso único
+        run: node --test backend/tests/banco-concepto-opcional.test.js backend/test/correo-solo-remitente.test.js backend/tests/banco-diagnostico-timeline.test.js backend/tests/diagnostico-importes-aviso-correlacionado.test.js backend/tests/identificadores-ocr-servidor-pago29.test.js
       - name: Extracción OCR de formatos bancarios y campos ambiguos
         run: node --test backend/test/comprobante-formatos-flexibles.test.js backend/test/comprobante-parser.test.js backend/test/comprobante-ocr-doble-lectura.test.js
       - name: Pruebas financieras y de integración sintética TEST-001

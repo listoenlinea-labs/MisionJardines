@@ -110,28 +110,13 @@ function datosAviso(mensaje,config=process.env){
   &&received<=Date.now()+300000;
  return {autorizado,origenVerificado:autorizado?origen:null,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',referencia,folio,monto,cuenta,fecha,concepto,id,reciente};
 }
-function perteneceAVivienda(pago,noticia){
- const casa=pago?.casa;
- const concepto=' '+normal(noticia?.concepto).replace(/[^A-Z0-9]+/g,' ')+' ';
- const calle=normal(casa?.calleCorrecta||casa?.calle).replace(/[^A-Z0-9]+/g,' ').trim();
- // Los bancos suelen eliminar signos como "-" y "·" del concepto.
- // Normalizar el número exactamente igual que el aviso, sin omitir vivienda ni calle.
- const numero=normal(casa?.numero).replace(/[^A-Z0-9]+/g,' ').trim();
- if(!calle||!numero||!concepto.trim())return false;
- // EXCLUSIVO para la vivienda ficticia del test. BBVA permite enviar "casa TEST-001"
- // sin incluir la calle. No relajar la vinculación calle+número de residentes reales.
- if(calle==='PRUEBA' && numero==='TEST 001' && concepto.trim()==='CASA TEST 001')return true;
- const variantes=[numero,numero.replace(/\s+/g,'')];
- return variantes.some(n=>concepto.includes(' '+calle+' '+n+' ')
-   ||concepto.includes(' '+calle+' CASA '+n+' '));
-}
 function coincideCuenta(detectada,esperada){
  // Cuatro dígitos visibles deben coincidir completos; nunca reducir una
  // terminación distinta a tres. Solo se admite la máscara de 3/4 del aviso.
  return /^\d{4}$/.test(esperada)&&/^\d{3,4}$/.test(String(detectada||''))&&esperada.endsWith(detectada);
 }
 // Las comprobaciones de negocio son separadas para que el diagnóstico
-// distinga un identificador ausente de una fecha/cuenta/concepto no coincidente.
+// distinga un identificador ausente de una fecha/cuenta no coincidente.
 // Solo devuelven booleanos: nunca valores bancarios ni datos personales.
 function chequeosAviso(pago,noticia,config=process.env){
  const cuenta=suffix(config.PAGOS_DESTINO_ULTIMOS4||'4409');
@@ -144,8 +129,7 @@ function chequeosAviso(pago,noticia,config=process.env){
   fecha:Boolean(noticia?.fecha&&(noticia.fecha===fechaOperacion
    ||equivaleFechaSpei(fechaOperacion,noticia.fecha,pago?.horaOperacion)
    ||equivaleFechaSpei(noticia.fecha,fechaOperacion,pago?.horaOperacion))),
-  importe:Number.isFinite(noticia?.monto)&&centavos(noticia.monto)===centavos(pago?.monto),
-  vivienda:perteneceAVivienda(pago,noticia)
+  importe:Number.isFinite(noticia?.monto)&&centavos(noticia.monto)===centavos(pago?.monto)
  };
 }
 function coincideDatosBancarios(pago,noticia,config=process.env){
@@ -171,4 +155,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_IMAP_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,montoRecibido,corresponde,coincideDatosBancarios,chequeosAviso,perteneceAVivienda,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
+module.exports={datosAviso,montoRecibido,corresponde,coincideDatosBancarios,chequeosAviso,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};

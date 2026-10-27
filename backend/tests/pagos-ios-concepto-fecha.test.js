@@ -6,20 +6,15 @@ const assert = require('node:assert/strict');
 const banco = require('../src/services/banco-correo.service');
 const { validarOperacion } = require('../src/services/mensualidades-mantenimiento');
 
-const casa = { casa: { calle: 'Prueba', numero: 'TEST-001' } };
-test('concepto sin caracteres especiales corresponde a la vivienda de prueba', () => {
-  assert.equal(banco.perteneceAVivienda(casa, { concepto: 'PRUEBA TEST 001' }), true);
-  assert.equal(banco.perteneceAVivienda(casa, { concepto: 'Prueba Test001' }), true);
-  assert.equal(banco.perteneceAVivienda(casa, { concepto: 'Prueba Casa TEST-001' }), true);
-});
-test('concepto no acepta otra vivienda ni otra calle', () => {
-  assert.equal(banco.perteneceAVivienda(casa, { concepto: 'PRUEBA TEST 002' }), false);
-  assert.equal(banco.perteneceAVivienda(casa, { concepto: 'GARDENIAS TEST 001' }), false);
-  assert.equal(banco.perteneceAVivienda({ casa: { calle: 'Gardenias', numero: '5' } }, { concepto: 'GARDENIAS 6' }), false);
-});
-test('conceptos normales siguen correspondiendo a sus viviendas', () => {
-  assert.equal(banco.perteneceAVivienda({ casa: { calle: 'Gardenias', numero: '5' } }, { concepto: 'GARDENIAS 5' }), true);
-});
+const pago = { casa: { calle: 'Prueba', numero: 'TEST-001' }, monto:10,
+  fechaOperacion:'2026-10-26', textoOcr:'Referencia 1234567' };
+for (const concepto of ['PRUEBA TEST 001', 'Prueba Test001', 'GARDENIAS 6']) {
+  test('el concepto es informativo: '+concepto, () => {
+    const aviso={id:'sintetico',autorizado:true,reciente:true,monto:10,
+      fecha:'2026-10-26',cuenta:'409',referencia:'1234567',concepto};
+    assert.equal(banco.corresponde(pago,aviso,{PAGOS_DESTINO_ULTIMOS4:'4409'}),true);
+  });
+}
 test('el cálculo de recargos no se adelanta a fechas futuras, aunque el reporte pueda conservarlas', () => {
   assert.throws(() => validarOperacion('2026-10-26', '2026-10-23'), /futura/i);
   assert.equal(validarOperacion('2026-10-23', '2026-10-23'), '2026-10-23');
