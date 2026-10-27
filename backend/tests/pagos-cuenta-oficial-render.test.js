@@ -73,5 +73,8 @@ test('Si el API bancario falla, no se mantienen textos Cargando ni se permite co
 });
 
 test('La versión del recurso se actualizó para evitar caché de iOS', () => {
-  assert.match(html,/pagos\.js\?v=20261024-[a-z0-9-]+/);
+  const recurso=html.match(/<script\b[^>]*\bsrc=["']assets\/js\/pagos\.js\?v=(\d{8})-[a-z0-9-]+["']/);
+  assert.ok(recurso, 'Pagos debe cargar su script con una versión explícita para evitar caché antigua');
+  // El arreglo se publicó el 24/oct; las versiones posteriores también lo incluyen.
+  assert.ok(recurso[1] >= '20261024', 'La versión no debe ser anterior al arreglo de caché');
 });
