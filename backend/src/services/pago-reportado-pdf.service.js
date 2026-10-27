@@ -288,6 +288,19 @@ async function generarReciboPagoReportado(pago) {
         });
 
         drawReceipt(doc, pago, logo);
+        const reparto=require('./pagos-reparto-datos').resumen(pago.aplicacionCuotas);
+        if(reparto.length){
+            doc.addPage({margins:{top:45,right:45,bottom:45,left:45}});
+            doc.font('Helvetica-Bold').fontSize(15).text('Distribución del depósito '+folio);
+            doc.font('Helvetica').fontSize(11).text('Monto total: '+money(pago.monto)+' MXN');
+            doc.text(pago.estatus==='VALIDADO'?'Depósito confirmado':'En revisión: aún sin acreditar');
+            for(const d of reparto){
+                if(doc.y>650)doc.addPage();
+                doc.moveDown().font('Helvetica-Bold').text(d.calle+' · Casa '+d.numero);
+                doc.font('Helvetica').text('Asignación: '+money(d.monto)+' · Recargo incluido: '+money(d.recargo));
+                doc.text('Mensualidades: '+d.meses+' · Corte objetivo: '+(d.fechaFinal||'Sin avance'));
+            }
+        }
         doc.end();
     });
 }

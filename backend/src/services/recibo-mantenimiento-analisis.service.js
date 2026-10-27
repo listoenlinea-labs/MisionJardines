@@ -164,12 +164,12 @@ async function consultarPago(casaId, periodo = null, referencia = null) {
             'referencia', 'folio', 'fechaPago', 'fechaConfirmacion', 'formaPago', 'origenImportacion'
         ] }),
         PagoReportado.findAll({
-            where: { casaId, tipoPago: 'MANTENIMIENTO', estatus: 'VALIDADO' },
+            where: { ...require('./pagos-reparto.service').condicionCasa(casaId), tipoPago: 'MANTENIMIENTO', estatus: 'VALIDADO' },
             attributes: ['id', 'tipoPago', 'estatus', 'reciboFolio', 'nombreReportante',
                 'monto', 'recargo', 'folioReporte', 'folioOperacion', 'fechaOperacion', 'aplicacionCuotas']
         })
     ]);
-    return { casa, ...datosDeMovimiento(casa, cuotas, comprobantes, new Date(), periodo, referencia) };
+    return { casa, ...datosDeMovimiento(casa, cuotas, require('./pagos-reparto-datos').paraCasa(comprobantes,casaId), new Date(), periodo, referencia) };
 }
 
 async function consultarTelefonos(casa) {

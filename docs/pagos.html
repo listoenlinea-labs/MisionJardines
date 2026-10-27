@@ -1137,6 +1137,7 @@
 #paymentForm .form-row>div:has(#operationTime){min-width:0;overflow:hidden}
 </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
+  <link rel="stylesheet" href="assets/css/pagos-reparto.css?v=20261026-reparto">
 </head>
 
 <body class="payments-v2">
@@ -1328,12 +1329,18 @@
               <div><label>Hora *</label><input id="operationTime" type="text" inputmode="none" maxlength="8" placeholder="HH:MM:SS" required readonly aria-label="Hora del depósito detectada automáticamente"></div>
             </div>
             <div><label>Concepto oficial del recibo</label><input id="officialConcept" readonly></div>
-            <div class="form-row">
+            <div class="form-row" id="residentAddress">
               <div><label>Calle</label><input id="residentStreet" readonly></div>
               <div><label>Número de casa</label><input id="residentNumber" readonly></div>
             </div>
           </div>
 
+          <section id="paymentAllocation" class="payment-allocation" aria-labelledby="allocationTitle" hidden>
+            <h3 id="allocationTitle">Repartir el depósito entre mis viviendas</h3>
+            <p>Escribe cuánto asignar a cada vivienda. La suma debe ser exactamente igual al monto leído del comprobante. Usa cero en las viviendas que no vas a pagar.</p>
+            <div id="allocationHouses"></div>
+            <p id="allocationStatus" role="status" aria-live="polite"></p>
+          </section>
           <div class="summary">
             <div class="summary-row"><span>Cuota base / concepto</span><b id="summaryBase">$300.00</b></div>
             <div class="summary-row" id="lateRow"><span>Recargo por fecha</span><b id="summaryLate">$0.00</b></div>
@@ -1424,8 +1431,11 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles"></script>
-  <script src="assets/js/pagos.js?v=20261026-reintento-ocr-completo-2"></script>
-  <script src="assets/js/pagos-historial.js?v=20261013-fecha-anterior-1"></script>
+  <script src="assets/js/pagos-reparto-calculo.js?v=20261026-reparto"></script>
+  <script src="assets/js/pagos-reparto-ui.js?v=20261026-reparto"></script>
+  <script src="assets/js/pagos.js?v=20261026-reparto-viviendas"></script>
+  <script src="assets/js/pagos-historial.js?v=20261026-reparto"></script>
+
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
 

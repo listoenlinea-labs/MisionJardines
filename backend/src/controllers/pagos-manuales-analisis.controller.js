@@ -229,14 +229,14 @@ async function historialPagoVivienda(req,res){
   if(tipo==='MANTENIMIENTO'){
    const [cuotas,comprobantes]=await Promise.all([
     Cuota.findAll({where:{casaId},attributes:['id','anio','mes','montoPagado','estatusPago','recargo','recargoPagado','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','montoCuota','saldoPendiente']}),
-    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']})
+    PagoReportado.findAll({where:{...(tipo==='MANTENIMIENTO'?require('../services/pagos-reparto.service').condicionCasa(casaId):{casaId}),tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']})
    ]);
-   movimientos=historialMantenimiento(cuotas,comprobantes);
+   movimientos=historialMantenimiento(cuotas,require('../services/pagos-reparto-datos').paraCasa(comprobantes,casaId));
    const hoy=fechaMexico();
    deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[],incluirDetalles:true}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
-    PagoReportado.findAll({where:{casaId,tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
+    PagoReportado.findAll({where:{...(tipo==='MANTENIMIENTO'?require('../services/pagos-reparto.service').condicionCasa(casaId):{casaId}),tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
     PagoManualConcepto.findAll({where:{casaId,tipoPago:tipo},attributes:['id','tipoPago','monto','formaPago','referencia','creadoEn']})
    ]);
    movimientos=historialConcepto(tipo,reportados,manuales);

@@ -8,6 +8,7 @@
     let quote = null, quoteRevision = 0;
     let profile = null, config = null, proofData = '', ocrText = '', proofConfirmed = false, scanRevision = 0, proofMeta = { name: '', mime: '' }, paymentType = 'MANTENIMIENTO', extras = [], selectedExtra = null, selectedClub = null, debts = null;
 
+    let ocrAmount='', reportBusy=false;
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
     async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) {
       const error = Error(d.message || 'No fue posible completar la solicitud');
@@ -24,6 +25,9 @@
     };
     const role = () => { try { const raw = localStorage.getItem('misionJardinesUsuario') || sessionStorage.getItem('misionJardinesUsuario'); const u = JSON.parse(raw || '{}'); return u?.rol?.nombre || u?.rol || '' } catch { return '' } }
     const fullName = u => [u?.nombre, u?.apellidoPaterno, u?.apellidoMaterno].filter(Boolean).join(' ').trim() || 'Residente';
+    const repartoUI=window.MJRepartoUI.crear({api,headers,money,fechaResuelta:date=>{$('operationDate').value=date;},changed:()=>{
+      $('submitPayment').disabled=reportBusy||!proofConfirmed||!repartoUI.valido();
+    }});
     function storedUser() {
       try {
         return JSON.parse(
@@ -180,7 +184,7 @@
       const period=receiptPeriod(p),status=({PENDIENTE_VALIDACION:'En revisión',VALIDADO:'Validado',RECHAZADO:'Fallido'})[p.estatus]||p.estatus||'';
       return '<article class="receipt-item"><div class="receipt-main"><strong>'+esc(p.reciboFolio||p.folioReporte||'Recibo')+
         '</strong><p><b class="receipt-period-label">'+esc(period.label)+'</b><br>'+esc(p.concepto||'Pago registrado')+'<br>'+
-        esc((p.casa?.calleCorrecta || p.calleSnapshot))+' · Casa '+esc(p.numeroCasaSnapshot)+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
+        (p.reparto?.length?p.reparto.map(d=>esc(d.calle)+' · Casa '+esc(d.numero)+': '+money(d.monto)).join('<br>'):esc((p.casa?.calleCorrecta || p.calleSnapshot))+' · Casa '+esc(p.numeroCasaSnapshot))+'</p><div class="receipt-meta"><span class="pill '+esc(p.estatus||'')+'">'+esc(status)+
         '</span><span class="pill">'+esc(p.tipoPago==='EXTRAORDINARIO'?'Extraordinario':p.tipoPago==='CASA_CLUB'?'Casa club':'Mantenimiento')+
         '</span></div></div><div class="receipt-side"><b>'+moneyCard(p.monto)+'</b><button class="receipt-view-btn" type="button" data-receipt-detail="'+Number(p.id)+'">Ver detalle</button></div></article>';
     }
@@ -375,7 +379,7 @@
       activeReceiptId=Number(id);
       const groups=[
         {titulo:'Resumen de la operación', campos:[
-          ['Vivienda',String((p.casa?.calleCorrecta||p.calleSnapshot)||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
+          ['Vivienda / reparto',p.reparto?.length?p.reparto.map(d=>d.calle+' · Casa '+d.numero+': '+money(d.monto)).join(' / '):String((p.casa?.calleCorrecta||p.calleSnapshot)||'')+' · Casa '+String(p.numeroCasaSnapshot||'')],
           ['Monto depositado',money(p.monto)],['Fecha de operación',p.fechaOperacion],
           ['Hora del depósito',p.horaOperacion],['Tipo de cuota',p.tipoPago]
         ]},
@@ -440,6 +444,20 @@
       const revision = ++quoteRevision;
       quote = null;
       const date = $('operationDate').value;
+      void repartoUI.actualizar(paymentType,proofConfirmed,ocrAmount,date,normalizeTime($('operationTime').value));
+      if(repartoUI.activo(paymentType)){
+        $('amount').readOnly=true;
+        if(ocrAmount)$('amount').value=ocrAmount;
+        $('lateRow').hidden=true;
+        $('summaryBase').textContent='Reparto por vivienda';
+        $('summaryTotal').textContent=money(ocrAmount);
+        $('amount').min='0.01';
+        $('officialConcept').value='Mantenimiento distribuido entre viviendas';
+        $('paymentPreview').textContent='Los recargos y meses se calculan por separado para cada vivienda. El depósito completo sigue sujeto a validación bancaria.';
+        return;
+      }
+      $('amount').readOnly=!['SUPER_ADMIN','ADMINISTRADOR'].includes(role());
+
       if (paymentType === 'EXTRAORDINARIO') {
         const amount = Number(selectedExtra?.monto || 0); $('summaryBase').textContent = selectedExtra ? money(amount) : 'Selecciona una cuota'; $('summaryLate').textContent = money(0); $('lateRow').hidden = true; $('summaryTotal').textContent = money(amount); $('amount').min = amount || 1; $('officialConcept').value = selectedExtra ? 'Cuota extraordinaria: ' + selectedExtra.concepto+' · '+selectedExtra.periodo : 'Selecciona una mensualidad extraordinaria'; return;
       }
@@ -529,6 +547,8 @@
       scanRevision++;
       proofData = '';
       ocrText = '';
+      ocrAmount='';repartoUI.reset();
+      void repartoUI.actualizar(paymentType,false,'','');
       proofConfirmed = false;
       proofMeta = { name: '', mime: '' };
       $('proofInput').value = '';
@@ -632,6 +652,7 @@
         // Never fill another payment's data; do not invent a date/hour if OCR misses it.
         $('operationFolio').value = extracted.claveRastreo || extracted.referencia || extracted.folio || '';
         $('amount').value = extracted.amount || '';
+        ocrAmount=extracted.amount||'';
         $('operationDate').value = extracted.date || '';
         $('operationTime').value = extracted.time || '';
         const missing = !(extracted.claveRastreo || extracted.referencia || extracted.folio) || !extracted.date || !extracted.time || !extracted.amount;
@@ -708,8 +729,8 @@
 
     $('adminExtraBox').hidden=true;
 
-    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='EN_REVISION')) return toast('Selecciona un cargo extraordinario sin comprobante pendiente.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reservación aprobada sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType !== 'MANTENIMIENTO' && Math.abs(amount - required) > .009)) return toast(paymentType === 'MANTENIMIENTO' ? 'Ingresa un monto mayor que cero.' : 'El comprobante debe corresponder exactamente a ' + money(required) + '.');
-    if(paymentType==='MANTENIMIENTO'){
+    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if(reportBusy)return; if(repartoUI.activo(paymentType)&&!repartoUI.valido())return toast('La suma debe coincidir con el depósito y el reparto debe estar cotizado.'); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='EN_REVISION')) return toast('Selecciona un cargo extraordinario sin comprobante pendiente.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reservación aprobada sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType !== 'MANTENIMIENTO' && Math.abs(amount - required) > .009)) return toast(paymentType === 'MANTENIMIENTO' ? 'Ingresa un monto mayor que cero.' : 'El comprobante debe corresponder exactamente a ' + money(required) + '.');
+    if(paymentType==='MANTENIMIENTO' && !repartoUI.activo(paymentType)){
       const date=$('operationDate').value;
       if(!/^20\d{2}-\d{2}-\d{2}$/.test(date) || date<'2026-10-01')
         return toast('El comprobante debe contener una fecha válida desde octubre de 2026.');
@@ -720,13 +741,13 @@
         return toast('Para esta cuenta de prueba el comprobante debe ser de $10.00 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe cubrir los recargos pendientes de ' + money(quote.recargo) + '.');
-    } const payload = { tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras()]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) {
+    } const payload = { ...(repartoUI.activo(paymentType)?{reparto:repartoUI.datos()}:{}), tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); reportBusy=true; btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras(),...(repartoUI.activo(paymentType)?[repartoUI.cargar().catch(e=>toast(e.message))]:[])]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) {
       if (err.code === 'COMPROBANTE_INCOMPLETO' || err.code === 'COMPROBANTE_NO_CONCILIABLE'
         || err.code === 'FOLIO_NO_PRESENTE_EN_CORREO' || err.code === 'BUZON_NO_VERIFICABLE'
         || err.code === 'FOLIO_SIN_RESPALDO_BANCARIO') {
         mostrarCamposFaltantes(err);
       } else toast(err.message);
-    } finally { btn.disabled = false; btn.textContent = 'Reportar pago y generar recibo' } });
+    } finally { reportBusy=false; btn.disabled = !proofConfirmed||!repartoUI.valido(); btn.textContent = 'Reportar pago y generar recibo' } });
 
     // Fallback para iOS Safari cuando la Clipboard API no está habilitada.
     function fallbackCopy(value) {
@@ -783,7 +804,7 @@
       paintProfile(storedUser());
 
       try {
-        await Promise.all([loadProfile(), loadConfig()]);
+        await Promise.all([loadProfile(), loadConfig(),repartoUI.cargar()]);
         $('apiStatus').textContent = 'Conectado';
       } catch (e) {
         $('apiStatus').textContent = 'Revisar conexión';
@@ -819,6 +840,7 @@
       }
     }
     function updatePreview() {
+      if(repartoUI.activo(paymentType))return;
       if (paymentType !== 'MANTENIMIENTO') return;
       const amount = Math.round(Number($('amount').value || 0) * 100);
       if (!quote) { $('paymentPreview').textContent = 'Selecciona la fecha del depósito para consultar los recargos de la vivienda.'; return; }
@@ -887,6 +909,7 @@
         '<div class="pending-detail-meta"><div><small>Identificador bancario</small><strong>' + esc(p.folioOperacion || '—') + '</strong></div>' +
         '<div><small>Fecha</small><strong>' + esc(p.fechaOperacion || '—') + '</strong></div>' +
         '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
+        (p.reparto?.length?'<div class="pending-auto-status">'+p.reparto.map(d=>esc(d.calle)+' · Casa '+esc(d.numero)+': '+money(d.monto)).join('<br>')+'</div>':'')+
         '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario, seleccionar para ampliar" role="button" tabindex="0" hidden><button type="button" class="pending-proof-zoom-button" id="pendingZoomButton" hidden>Ampliar fotografía ↗</button></div>' +
         '<div class="pending-auto-status" role="status">En revisión automática: el sistema confirmará el depósito únicamente cuando el comprobante coincida con una notificación del remitente autorizado en el buzón configurado. No es necesaria una decisión de Administración.</div>';
       dialog.showModal();

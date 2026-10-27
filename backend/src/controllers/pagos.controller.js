@@ -21,6 +21,7 @@ const cuotasMantenimiento = require('../services/cuotas-mantenimiento.service');
 const { comprobarDestino } = require('../services/comprobante-lector.service');
 const idsBanco = require('../services/identificadores-bancarios.service');
 const { verificarPosibilidad } = require('../services/verificar-comprobante-identificadores.service');
+const repartoService=require('../services/pagos-reparto.service');
 const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const RECARGO_TARDIO = 50;
@@ -71,6 +72,7 @@ function pagoSeguro(req, pago) {
     delete data.textoOcr;
     delete data.reciboPdfData;
     delete data.correoBancarioHash;
+    data.reparto = repartoService.resumen(data.aplicacionCuotas);
     data.tieneComprobante = true;
     data.tieneReciboPdf = Boolean(pago.reciboPdfData || data.reciboPdfNombre);
     data.reciboPdfUrl = data.id ? construirUrlRecibo(req, data.id) : null;
@@ -119,7 +121,7 @@ async function listarMisPagos(req, res) {
 
         const pagos = await PagoReportado.findAll({
             where: {
-                casaId: req.usuario.casaId,
+                ...repartoService.condicionLectura(req.usuario.casaId,req.usuario.usuarioId),
                 ...(folio && { reciboFolio: folio })
             },
             include: [
@@ -215,7 +217,7 @@ async function reportarPago(req, res) {
     let transaction;
 
     try {
-        const casaId = Number(req.usuario.casaId);
+        let casaId = Number(req.usuario.casaId);
         const usuarioId = Number(req.usuario.usuarioId);
 
         if (!casaId || !usuarioId) {
@@ -234,6 +236,8 @@ async function reportarPago(req, res) {
             });
         }
 
+        const conReparto = req.body.reparto !== undefined;
+        if(conReparto && tipoPago !== 'MANTENIMIENTO')throw Object.assign(new Error('El reparto solo está disponible para mantenimiento.'),{status:400});
         const folioOperacion = limpiarTexto(req.body.folioOperacion, 180);
         const fechaOperacion = limpiarTexto(req.body.fechaOperacion, 10);
         const horaOperacion = limpiarTexto(req.body.horaOperacion, 8);
@@ -291,7 +295,7 @@ async function reportarPago(req, res) {
 
         const comprobado = await comprobarDestino({
             comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto,
-            exigirCampos: !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario.rol)
+            exigirCampos: conReparto || !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario.rol)
         });
         textoOcr = comprobado.texto;
         // Conservar lo que leyó y validó el OCR DEL SERVIDOR en el momento
@@ -312,7 +316,7 @@ async function reportarPago(req, res) {
             });
         }
 
-        const [casa, usuario] = await Promise.all([
+        let [casa, usuario] = await Promise.all([
             Casa.findByPk(casaId, {
                 attributes: ['id', 'calle', 'numero']
             }),
@@ -377,6 +381,15 @@ async function reportarPago(req, res) {
             // El recibo solo registra una solicitud: hasta validar contra el banco
             // no se activan TAGs físicos.
             transaction = await sequelize.transaction({ isolationLevel: 'READ COMMITTED' });
+            if(conReparto){
+                const plan=await repartoService.cotizar(usuarioId,req.body.reparto,comprobado.extraido.amount,fechaCalculoMantenimiento,transaction);
+                aplicacionCuotas=plan;
+                casaId=plan.distribuciones[0].casaId;
+                casa=await Casa.findByPk(casaId,{transaction});
+                requerido=monto;
+                recargo=plan.distribuciones.reduce((sum,d)=>sum+centavos(d.plan.recargo),0)/100;
+                concepto='Mantenimiento distribuido entre '+plan.distribuciones.length+' vivienda(s). Ver desglose del depósito.';
+            }else{
             const rule = await cuotasMantenimiento.cotizar(casaId, fechaCalculoMantenimiento, req.body.monto, transaction);
             aplicacionCuotas = rule;
             cortesRecargo = rule.cortesRecargo;
@@ -385,6 +398,7 @@ async function reportarPago(req, res) {
             concepto = (rule.abonoParcial ? 'Abono parcial de mantenimiento: sin avance de vigencia. Faltan $' + rule.faltante.toFixed(2) + ' para completar una mensualidad. ' : 'Mantenimiento: ' + rule.meses + ' mensualidad(es) ') +
                 '(mensualidades consecutivas desde el último corte cubierto). ' +
                 (rule.recargo > 0 ? 'Recargos por ' + cortesRecargo.length + ' corte(s) vencido(s): $' + rule.recargo + '.' : 'Sin recargos pendientes.');
+            }
         }
 
         if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
@@ -516,7 +530,7 @@ async function descargarRecibo(req, res) {
         const pago = await PagoReportado.findOne({
             where: {
                 id: Number(req.params.id),
-                casaId: req.usuario.casaId
+                ...repartoService.condicionLectura(req.usuario.casaId,req.usuario.usuarioId)
             },
             include: [{
                 model: CuotaExtraordinaria,
@@ -570,7 +584,7 @@ async function obtenerComprobantePropio(req,res){
  try{
   const id=Number(req.params.id);
   if(!Number.isSafeInteger(id)||id<1||!req.usuario.casaId)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
-  const row=await PagoReportado.findOne({where:{id,casaId:req.usuario.casaId},attributes:['id','comprobanteData','comprobanteNombre','comprobanteMime']});
+  const row=await PagoReportado.findOne({where:{id,...repartoService.condicionLectura(req.usuario.casaId,req.usuario.usuarioId)},attributes:['id','comprobanteData','comprobanteNombre','comprobanteMime']});
   if(!row)return res.status(404).json({ok:false,message:'Comprobante no encontrado'});
   res.setHeader('Cache-Control','private, no-store');
   return res.json({ok:true,data:{comprobanteData:row.comprobanteData,comprobanteNombre:row.comprobanteNombre,comprobanteMime:row.comprobanteMime}});
@@ -584,7 +598,7 @@ async function reintentarValidacion(req,res){
     if(!/^\\d+$/.test(String(req.params.id||''))||!Number.isSafeInteger(id)||id<1||!req.usuario.casaId)
       return res.status(404).json({ok:false,message:'Comprobante no encontrado.'});
     const data=await require('../services/pagos-reintento-validacion.service').solicitarReintento({
-      pagoId:id,casaId:Number(req.usuario.casaId)
+      pagoId:id,casaId:Number(req.usuario.casaId),usuarioId:Number(req.usuario.usuarioId)
     });
     res.setHeader('Cache-Control','private, no-store');
     return res.json({ok:true,data,message:'Se volvió a solicitar la comprobación del mismo recibo. Sigue en revisión bancaria.'});
@@ -649,7 +663,7 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
                   detalle:'Pago confirmado: coincidieron los identificadores, el importe, la fecha bancaria y la cuenta destino en una notificación bancaria de remitente autorizado.'},
                 observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria de remitente autorizado.' }, { transaction });
             const vigencia = pago.tipoPago === 'MANTENIMIENTO'
-                ? await cuotasMantenimiento.confirmar(pago, transaction) : null;
+                ? (repartoService.esReparto(pago.aplicacionCuotas) ? await repartoService.confirmar(pago,transaction) : await cuotasMantenimiento.confirmar(pago, transaction)) : null;
             if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
                 const reserva=await ReservaCasaClub.findByPk(pago.reservaCasaClubId,{transaction,lock:transaction.LOCK.UPDATE});
                 if(!reserva||reserva.estatus!=='APROBADA'||reserva.pagado)throw Object.assign(new Error('La reserva ya cambió de estado. Requiere conciliación.'),{status:409});
