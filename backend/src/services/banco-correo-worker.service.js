@@ -34,7 +34,16 @@ function registrarImporteRelacionado(pago,autenticados){
 }
 let ocupado=false,programado=false,timer=null;
 async function persistir(pago,revision,fallido=false){
- const cambios={verificacionBancaria:revision,actualizadoEn:new Date()};
+ // Conservar el contador y la bitácora de reintentos incluso cuando Titan
+ // reemplace el diagnóstico. Evita reintentos infinitos después de FALLIDO.
+ const registrado=await PagoReportado.findByPk(pago.id,{attributes:['id','verificacionBancaria']});
+ const anterior=require('./pagos-reintento-validacion.service').diagnosticoAnterior(registrado?.verificacionBancaria);
+ const cambios={verificacionBancaria:{
+   ...revision,
+   reintentos:Math.max(0,Number(anterior.reintentos)||0),
+   ultimoReintentoEn:anterior.ultimoReintentoEn||null,
+   historialReintentos:Array.isArray(anterior.historialReintentos)?anterior.historialReintentos:[]
+ },actualizadoEn:new Date()};
  if(fallido){
   cambios.estatus='RECHAZADO'; // Estado existente del esquema; en UI se etiqueta Fallido.
   cambios.observacionesRevision=String(revision.detalle||'No fue posible conciliar el depósito.').slice(0,600);
