@@ -35,6 +35,8 @@ jobs:
       - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
         working-directory: backend
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Extracción OCR de formatos bancarios y campos ambiguos
+        run: node --test backend/test/comprobante-formatos-flexibles.test.js backend/test/comprobante-parser.test.js backend/test/comprobante-ocr-doble-lectura.test.js
       - name: Pruebas financieras y de integración sintética TEST-001
         env:
           DB_HOST: 127.0.0.1

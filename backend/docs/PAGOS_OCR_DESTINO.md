@@ -17,4 +17,27 @@ La lectura enviada por JavaScript o el texto OCR del cliente **no se considera e
 6. En celular, el selector anuncia fotos exclusivamente (sin `capture`), mientras en escritorio acepta PDF además de imágenes. Las opciones exactas de la ventana de selección las determina iOS/Android y no pueden limitarse completamente desde HTML.
 7. Comprobar que las transferencias reconocidas permanecen `PENDIENTE_VALIDACION` hasta confirmarse por una fuente bancaria independiente. La presencia de destinatario correcto **no prueba** que el dinero haya llegado.
 
-Notas: el OCR del servidor se ejecuta con un límite de dos comprobantes simultáneos y 30 segundos por imagen, incluida la inicialización; cada lectura utiliza workers que se terminan al finalizar o al agotarse el tiempo. En caso de caída, saturación o lectura ilegible se rechaza el reporte sin crear recibo. Se recomienda contar con conciliación bancaria real antes de automatizar cambios de vigencia del C3.
+Notas: el OCR del servidor se ejecuta con un límite de dos comprobantes simultáneos y 50 segundos por imagen, incluida la inicialización; cada lectura utiliza workers que se terminan al finalizar o al agotarse el tiempo. En caso de caída, saturación o lectura ilegible se rechaza el reporte sin crear recibo. Se recomienda contar con conciliación bancaria real antes de automatizar cambios de vigencia del C3.
+
+
+## Extracción flexible (26/oct/2026)
+
+El mismo parser se entrega al navegador y al servidor. Conserva primero los campos
+bancarios etiquetados y añade respaldo por expresiones «Enviaste», «Transferiste» y
+«Transferencia por». Si no encuentra un monto etiquetado, admite un importe único
+precedido por `$`. Excluye comisión, retención, impuestos, saldo, cuentas y otros
+campos, tanto en el mismo renglón como en el siguiente. Varios candidatos diferentes
+sin contexto suficiente dejan el campo vacío: no se elige el mayor ni el primero.
+
+Reconoce los doce meses en español, abreviados o completos, fechas con diagonales,
+guiones o puntos (día/mes/año; ISO año-mes-día), y fechas y horas sin etiqueta en
+renglones independientes. Exige una fecha calendario válida con año. En el respaldo
+sin etiqueta descarta fechas de vencimiento/impresión y candidatos diferentes.
+No interpreta un nombre de mes aislado como fecha ni inventa año, hora o monto.
+
+Se conserva el OCR independiente del servidor, el destino obligatorio, la comparación
+de campos y la confirmación bancaria. No requiere servicios nuevos, SQL ni variables.
+Desplegar backend y frontend juntos; `pagos.html` renueva la versión del parser.
+Las pruebas usan texto ficticio: `node --test test/comprobante-formatos-flexibles.test.js
+test/comprobante-parser.test.js test/comprobante-ocr-doble-lectura.test.js
+test/comprobante-lector.test.js`. Una lectura correcta no acredita el depósito.

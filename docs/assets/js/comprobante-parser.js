@@ -9,15 +9,18 @@
   const clean = s => normal(s).replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
   const pad = n => String(n).padStart(2, '0');
   const months = { ENE: 1, FEB: 2, MAR: 3, ABR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, SEP: 9, SET: 9, OCT: 10, NOV: 11, DIC: 12 };
+  const monthPattern = '(?:ENERO|ENE|FEBRERO|FEB|MARZO|MAR|ABRIL|ABR|MAYO|MAY|JUNIO|JUN|JULIO|JUL|AGOSTO|AGO|SEPTIEMBRE|SETIEMBRE|SEPT|SEP|SET|OCTUBRE|OCT|NOVIEMBRE|NOV|DICIEMBRE|DIC)';
+  const namedDatePattern = '\\b(\\d{1,2})(?:\\s*(?:DE\\s+)?|\\s*[-/.]\\s*)(' + monthPattern + ')\\.?(?:\\s*(?:DE\\s+)?|\\s*[-/.]\\s*)(20\\d{2}|\\d{2})\\b';
   function fechaValida(y, m, d) {
     const t = new Date(Date.UTC(y, m - 1, d));
     return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
   }
   function fecha(text) {
     const src = normal(text);
-    let m = src.match(/\b(\d{1,2})\s*(?:DE\s*)?(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|SET|OCT|NOV|DIC)[A-Z]*\.?\s*(?:DE\s*)?(20\d{2})\b/);
+    let m = src.match(new RegExp(namedDatePattern));
     if (m) {
-      const d = Number(m[1]), mo = months[m[2]], y = Number(m[3]);
+      const d = Number(m[1]), mo = months[m[2].slice(0, 3)];
+      const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
       return fechaValida(y, mo, d) ? y + '-' + pad(mo) + '-' + pad(d) : '';
     }
     m = src.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
@@ -49,7 +52,7 @@
     return Number.isFinite(value) && value > 0 ? value.toFixed(2) : '';
   }
   function montoCerca(lines, labels) {
-    const otherField = /\b(?:ORIGEN|DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA|CLABE|TARJETA|COMISION|SALDO|CONCEPTO|REFERENCIA|FOLIO|CLAVE|FECHA|HORA)\b/;
+    const otherField = /\b(?:ORIGEN|DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA|CLABE|TARJETA|COMISION|COMISIONES|RETENCION|RETENCIONES|IMPUESTO|IMPUESTOS|IVA|SALDO|CONCEPTO|REFERENCIA|FOLIO|CLAVE|FECHA|HORA)\b/;
     const amountOnly = /^(?:(?:MXN|M\.N\.|PESOS)\s*)?[-−]?\s*\$?\s*[-−]?\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\s*(?:MXN|M\.N\.|PESOS)?[.;]?$/;
     for (const label of labels) for (let i = 0; i < lines.length; i++) {
       const line = normal(lines[i]);
@@ -71,6 +74,49 @@
       }
     }
     return '';
+  }
+  // Respaldo por posición: nunca confundir un importe de otra sección con el depósito.
+  const nonPayment = /\b(?:COMISION|COMISIONES|RETENCION|RETENCIONES|IMPUESTO|IMPUESTOS|IVA|SALDO|DISPONIBLE|COSTO|CARGO|LIMITE|CUENTA|CLABE|TARJETA|ORIGEN|DESDE|DESTINO|BENEFICIARIO|DESTINATARIO|CONCEPTO|REFERENCIA|FOLIO|RASTREO)\b/;
+  const moneyToken = /\$\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)(?![\d.,])/g;
+  const unique = values => {
+    const candidates = [...new Set(values.filter(Boolean))];
+    return candidates.length === 1 ? candidates[0] : '';
+  };
+  function montoFlexible(lines) {
+    const explicit = [], dollars = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = normal(lines[i]);
+      const payment = line.match(/\b(?:ENVIASTE|TRANSFERISTE|TRANSFERENCIA\s+POR)\b/);
+      if (payment && !nonPayment.test(line.slice(0, payment.index))) {
+        const tail = line.slice(payment.index + payment[0].length).replace(/^\s*[:=-]\s*/, '').trim();
+        // Sólo el valor inmediatamente posterior a la expresión de pago.
+        const sample = tail || normal(lines[i + 1] || '');
+        const m = sample.match(/^(?:MXN\s*)?\$?\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)(?=\s|$)/);
+        if (m) explicit.push(monto(m[1]));
+        continue;
+      }
+      if (nonPayment.test(line)) continue;
+      // Un importe aislado bajo Cuenta/Comisión/Saldo pertenece a esa sección.
+      if (nonPayment.test(normal(lines[i - 1] || '')) && /^\s*\$/.test(line)) continue;
+      for (const m of line.matchAll(moneyToken)) dollars.push(monto(m[1]));
+    }
+    return explicit.length ? unique(explicit) : unique(dollars);
+  }
+  function fechaFlexible(lines) {
+    const candidates = [];
+    const dateRow = new RegExp('^(?:' + namedDatePattern + '|\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}[-/.]\\d{1,2}[-/.](?:20\\d{2}|\\d{2}))(?:[ ,T]+(?:[01]?\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?\\s*(?:H\\.?)?)?[ .]*$');
+    for (let i = 0; i < lines.length; i++) {
+      const line = normal(lines[i]);
+      if (!dateRow.test(line) || /\b(?:VENCIMIENTO|EXPIRACION|EMISION|IMPRESION|CONSULTA|CORTE|LIMITE|SESION)\b/.test(normal(lines[i - 1] || ''))) continue;
+      const date = fecha(line);
+      if (date) candidates.push({ date, time: hora(line) });
+    }
+    const date = unique(candidates.map(c => c.date));
+    return { date, time: date ? unique(candidates.filter(c => c.date === date).map(c => c.time)) : '' };
+  }
+  function horaAislada(lines) {
+    return unique(lines.filter((line, i) => /^(?:HORA\s*:?\s*)?(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\s*(?:H\.?)?$/i.test(line) &&
+      !/\b(?:SESION|VENCIMIENTO|EXPIRACION|IMPRESION|CONSULTA)\b/.test(normal(lines[i - 1] || ''))).map(hora));
   }
   function valueNear(lines, labels, type) {
     for (const label of labels) for (let i = 0; i < lines.length; i++) {
@@ -154,10 +200,11 @@
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(s => s.trim()).filter(Boolean);
     // Do not use "Referencia", "Concepto" or "Clave de rastreo" if a folio exists.
     const folio = valueNear(lines, [/\bFOLIO\s+(?:DE\s+)?(?:OPERACION|TRANSACCION|TRANSFERENCIA)\b/, /\bNUMERO\s+DE\s+OPERACION\b/, /\bFOLIO\b/], 'folio');
-    const amount = montoCerca(lines, [/\bMONTO\s+(?:TRANSFERIDO|PAGADO|ENVIADO)\b/, /\bIMPORTE\s+(?:TRANSFERIDO|PAGADO)\b/, /\b(?:MONTO|IMPORTE|TOTAL)\b/]);
+    const amount = montoCerca(lines, [/\bMONTO\s+(?:TRANSFERIDO|PAGADO|ENVIADO)\b/, /\bIMPORTE\s+(?:TRANSFERIDO|PAGADO)\b/, /\b(?:MONTO|IMPORTE|TOTAL)\b/]) || montoFlexible(lines);
     const when = valueNear(lines, [/\bFECHA\s+(?:DE\s+)?(?:OPERACION|TRANSFERENCIA|PAGO)\b/, /\bFECHA\b/], 'date');
+    const fallback = when.date ? when : fechaFlexible(lines);
     return { folio, claveRastreo: claveRastreo(text), referencia: referenciaBancaria(text), amount,
-      date: when.date, time: when.time || horaOperacion(text) };
+      date: fallback.date, time: fallback.time || horaOperacion(text) || (fallback.date ? horaAislada(lines) : '') };
   }
   function extract(text) {
     const parts = String(text || '').split(OCR_PASS_MARKER);
