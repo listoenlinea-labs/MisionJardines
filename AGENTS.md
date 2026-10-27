@@ -29,6 +29,24 @@ acuerdo difieren, señalar la discrepancia; no restaurar silenciosamente un fluj
 - No asumir acceso a MySQL, correo del banco o C3 de producción por tener el código.
   Distinguir pruebas simuladas, resultados de exportaciones y confirmaciones del usuario.
 
+## Regla general de importes de depósitos y comprobantes
+
+Por instrucción explícita del usuario del 27/oct/2026, los residentes pueden
+hacer depósitos bancarios por cualquier cantidad positiva. No limitar ni impedir
+que se suba o reporte un comprobante únicamente porque su importe no completa
+una mensualidad, todos los recargos, una cuota extraordinaria, una reserva de
+casa club u otro concepto. Esta regla aplica a todos los conceptos y al reparto
+entre viviendas: un importe insuficiente es un abono parcial, no un comprobante
+inválido. Conservar el saldo pendiente y el historial; no condonar la diferencia
+ni exigir que el residente deposite otra vez el importe completo.
+
+En mantenimiento, aplicar primero a los recargos más antiguos y después al
+principal más antiguo; solo una mensualidad completa avanza el corte. Registrar
+un abono parcial no equivale a liquidar un concepto ni a confirmar automáticamente
+una reserva o conceder acceso. Conservar OCR, conciliación bancaria, permisos,
+coincidencia del importe real y protección contra reutilización del depósito.
+No reintroducir mínimos de cobertura sin una instrucción nueva del usuario.
+
 ## Reglas vigentes de mantenimiento
 
 La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:

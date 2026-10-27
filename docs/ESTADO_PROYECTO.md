@@ -16,6 +16,19 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Regla acordada el 27/oct/2026: cualquier importe positivo en todos los conceptos
+
+AGENTS.md establece que no se rechaza un comprobante solo porque no liquide
+un concepto. Es un abono parcial; no una liquidación, confirmación de reserva
+ni autorización de acceso. Mantenimiento ya acepta estos abonos desde el PR #306.
+Pendiente: adaptar extraordinarias y casa club, que todavía exigen importes
+completos. Este cambio documental no modifica esos flujos ni acredita su soporte.
+
+La obligación anterior de cubrir todos los recargos aparece en el commit
+`6d82095656f3d5338235eabf722bed64280b2d36` del PR #288, bajo la cuenta GitHub
+`juanheuforico95`. Los metadatos no identifican qué chat o asistente produjo
+el código; no permiten atribuirlo al chat del compañero.
+
 ## Preparado el 27/oct/2026: abonos inferiores a los recargos
 
 Mantenimiento permite cualquier importe positivo desde $0.01, también por vivienda
