@@ -72,3 +72,15 @@ test('correo con otro encabezado bancario mantiene lectura tipificada',()=>{
     PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',PAGOS_BANK_MAIL_MAX_DIAS:7});
  assert.equal(data.folio,'9999988888');
 });
+
+test('la ruta de reintento acepta IDs numéricos válidos y distingue errores 404',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const ctl=fs.readFileSync(path.resolve(__dirname,'../src/controllers/pagos.controller.js'),'utf8');
+ const ui=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/pagos.js'),'utf8');
+ const start=ctl.indexOf('async function reintentarValidacion');
+ const end=ctl.indexOf('module.exports',start);
+ const scope=ctl.slice(start,end);
+ assert.match(scope,/String\(id\)!==String\(req\.params\.id/);
+ assert.doesNotMatch(scope,/\/\^\\\\d\+\$\//);
+ assert.match(ui,/comprobante no encontrado/i);
+});
