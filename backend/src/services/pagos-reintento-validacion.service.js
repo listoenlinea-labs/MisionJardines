@@ -14,11 +14,11 @@ function diagnosticoAnterior(raw){
 }
 function elegible(pago) {
   const aplicacion=diagnosticoAnterior(pago?.aplicacionCuotas);
-  // Un estado financiero aplicado, un hash IMAP usado o un recibo emitido
-  // no se puede regresar a revisión bajo ninguna circunstancia.
+  // El folio y PDF nacen al REPORTAR, antes de verificar Titan:
+  // conservarlos en el reintento. Solo bloquear acreditaciones reales.
   return pago?.estatus==='RECHAZADO' &&
     !pago?.correoBancarioHash && !pago?.fechaValidacion &&
-    !pago?.reciboFolio && !pago?.reciboPdfData && !aplicacion.aplicado;
+    !aplicacion.aplicado;
 }
 async function solicitarReintento({pagoId,casaId,ahora=new Date()}){
   if(!Number.isSafeInteger(pagoId)||pagoId<=0||!Number.isSafeInteger(casaId)||casaId<=0)
