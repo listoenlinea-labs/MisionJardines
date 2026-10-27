@@ -35,6 +35,14 @@ jobs:
       - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
         working-directory: backend
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reintentos de comprobantes fallidos sin doble acreditación
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: mision_test_ci
+          DB_USER: ci_test
+          DB_PASSWORD: ci_only_no_connection
+        run: node --test backend/test/pagos-reintento-validacion.test.js
       - name: Conciliación bancaria con concepto libre y aviso de uso único
         run: node --test backend/tests/banco-concepto-opcional.test.js backend/test/correo-solo-remitente.test.js backend/tests/banco-diagnostico-timeline.test.js backend/tests/diagnostico-importes-aviso-correlacionado.test.js backend/tests/identificadores-ocr-servidor-pago29.test.js
       - name: Extracción OCR de formatos bancarios y campos ambiguos
