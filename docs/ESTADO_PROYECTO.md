@@ -15,6 +15,16 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Preparado el 26/oct/2026: OCR con formatos flexibles
+
+Parser compartido navegador/servidor ampliado para expresiones de envío, símbolo
+monetario sin etiqueta y fechas con los doce meses, diagonales o guiones. Excluye
+comisión, retención, saldo/cuentas y candidatos ambiguos. Se conserva destino,
+OCR del servidor y conciliación bancaria. Probado localmente con el comprobante
+privado aportado: monto, fecha, hora, folio, referencia y destino reconocidos;
+no se incorpora imagen ni datos personales al repositorio. No acredita despliegue
+ni recepción del depósito. Ver [OCR del destinatario](../backend/docs/PAGOS_OCR_DESTINO.md).
+
 ## Preparado el 26/oct/2026: alta individual en Auto-users
 
 Se incorpora una sección administrativa para crear un residente individual con
