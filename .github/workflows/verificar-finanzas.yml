@@ -42,7 +42,7 @@ jobs:
           DB_NAME: mision_test_ci
           DB_USER: ci_test
           DB_PASSWORD: ci_only_no_connection
-        run: node --test backend/test/pagos-reintento-validacion.test.js
+        run: node --test backend/test/pagos-reintento-validacion.test.js backend/test/pagos-relectura-ocr.test.js
       - name: Conciliación bancaria con concepto libre y aviso de uso único
         run: node --test backend/tests/banco-concepto-opcional.test.js backend/test/correo-solo-remitente.test.js backend/tests/banco-diagnostico-timeline.test.js backend/tests/diagnostico-importes-aviso-correlacionado.test.js backend/tests/identificadores-ocr-servidor-pago29.test.js
       - name: Extracción OCR de formatos bancarios y campos ambiguos
