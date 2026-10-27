@@ -16,6 +16,13 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
 
+## Preparado el 27/oct/2026: quitar cuadros duplicados de domicilio en Pagos
+
+Se retiran del formulario los cuadros visibles Calle/Número mostrados en la captura.
+El control de reparto no vuelve a mostrarlos al cambiar de concepto. Los valores
+internos de contexto siguen disponibles; vivienda autorizada, reparto y backend no
+cambian. Ajuste de frontend con versión de recurso nueva; sin SQL ni datos reales.
+
 ## Preparado el 27/oct/2026: reparto desde dos viviendas
 
 Por aclaración del usuario, el reparto se habilita a partir de dos viviendas activas,

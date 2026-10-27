@@ -1329,9 +1329,9 @@
               <div><label>Hora *</label><input id="operationTime" type="text" inputmode="none" maxlength="8" placeholder="HH:MM:SS" required readonly aria-label="Hora del depósito detectada automáticamente"></div>
             </div>
             <div><label>Concepto oficial del recibo</label><input id="officialConcept" readonly></div>
-            <div class="form-row" id="residentAddress">
-              <div><label>Calle</label><input id="residentStreet" readonly></div>
-              <div><label>Número de casa</label><input id="residentNumber" readonly></div>
+            <div id="residentAddress" hidden>
+              <input id="residentStreet" type="hidden">
+              <input id="residentNumber" type="hidden">
             </div>
           </div>
 
@@ -1432,7 +1432,7 @@
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles"></script>
   <script src="assets/js/pagos-reparto-calculo.js?v=20261026-reparto"></script>
-  <script src="assets/js/pagos-reparto-ui.js?v=20261026-reparto"></script>
+  <script src="assets/js/pagos-reparto-ui.js?v=20261027-sin-campos-domicilio"></script>
   <script src="assets/js/pagos.js?v=20261026-reparto-viviendas"></script>
   <script src="assets/js/pagos-historial.js?v=20261026-reparto"></script>
 

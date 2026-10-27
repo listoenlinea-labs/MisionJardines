@@ -1,8 +1,9 @@
 # Repartir un depósito de mantenimiento entre viviendas
 
-La sección reemplaza Calle/Número en Pagos únicamente cuando el usuario tiene
+La sección de reparto aparece en Pagos únicamente cuando el usuario tiene
 **dos o más viviendas activas** en `usuarios_casas`. Una sola vivienda conserva
-el flujo anterior. Se limita a mantenimiento; extraordinarias y casa club mantienen
+el flujo anterior. Los cuadros duplicados de Calle/Número se retiraron del formulario
+el 27/oct/2026; el domicilio sigue identificado en el reparto y el resumen del residente. Se limita a mantenimiento; extraordinarias y casa club mantienen
 sus cargos específicos. Cada domicilio muestra su adeudo contable a la fecha de
 consulta y un importe editable. Cero significa no asignar. Una casa con comprobante
 pendiente no recibe otro pago. La cotización muestra recargos, meses y corte objetivo
