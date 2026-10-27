@@ -219,6 +219,39 @@
     }
     return result;
   }
+  // Identificadores sin encabezado fijo (operación, autorización, ID, SPEI,
+  // tracking, código de movimiento). NO se prueban contra importes o cuentas:
+  // serán candidatos hasta encontrar una coincidencia exacta en Titan.
+  function candidatosOperacion(text) {
+    const excluded=/\b(?:CUENTA|CLABE|TARJETA|ORIGEN|DESTINO|BENEFICIARIO|DESTINATARIO|SALDO|COMISION|IVA|IMPUESTO|RETENCION|MONTO|IMPORTE|TOTAL|FECHA|HORA|RFC|CURP|TELEFONO|CELULAR|CONCEPTO|VENCIMIENTO|CORTE|CODIGO\s+POSTAL)\b/;
+    const label=/\b(?:FOLIO|REFERENCIA|RASTREO|OPERACION|TRANSACCION|MOVIMIENTO|AUTORIZACION|CONFIRMACION|SEGUIMIENTO|IDENTIFICADOR|SPEI|ID)\b/;
+    const found=new Set();
+    for(const lectura of String(text||'').split(OCR_PASS_MARKER)){
+      const lines=lectura.replace(/\r/g,'').split(/\n/).map(s=>normal(s).trim()).filter(Boolean);
+      for(let i=0;i<lines.length;i++){
+        const line=lines[i];
+        if(excluded.test(line)||fecha(line)||hora(line))continue;
+        const hasLabel=label.test(line);
+        const samples=hasLabel?[line,lines[i+1]||'']: [line];
+        for(const sample of samples){
+          if(excluded.test(sample)||fecha(sample)||hora(sample))continue;
+          const matches=sample.match(/[A-Z0-9][A-Z0-9-]{5,78}/g)||[];
+          for(const token of matches){
+            const value=token.replace(/-/g,'');
+            if(!/\d/.test(value)||!(/^[0-9]{7,17}$/.test(value)||/^[A-Z0-9]{12,80}$/.test(value)))continue;
+            if(/^(?:20\d{6}|19\d{6})$/.test(value)||/^0+$/.test(value))continue;
+            if(!hasLabel&&!/^[A-Z0-9-]+$/.test(sample))continue;
+            if(value.length>70||/^[A-Z]+$/.test(value))continue;
+            found.add(value);
+            // Clave de rastreo larga cortada por salto de línea OCR.
+            if(i+1<lines.length&&/^[0-9]{2,5}$/.test(lines[i+1])&&value.length>=12)
+              found.add(value+lines[i+1]);
+          }
+        }
+      }
+    }
+    return [...found].slice(0,30);
+  }
   function verifyDestinationOne(text, owner, suffix) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(x => x.trim()).filter(Boolean);
     const desiredName = clean(owner).replace(/[0-9]+/g, '').trim();
@@ -275,5 +308,5 @@
       || checks.find(check => check.owner || check.suffix)
       || checks[0];
   }
-  return { extract, claveRastreo, referenciaBancaria, verifyDestination, fecha, hora, monto, OCR_PASS_MARKER };
+  return { extract, candidatosOperacion, claveRastreo, referenciaBancaria, verifyDestination, fecha, hora, monto, OCR_PASS_MARKER };
 });
