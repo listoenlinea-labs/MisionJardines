@@ -36,8 +36,7 @@ let ocupado=false,programado=false,timer=null;
 async function persistir(pago,revision,fallido=false){
  // Conservar el contador y la bitácora de reintentos incluso cuando Titan
  // reemplace el diagnóstico. Evita reintentos infinitos después de FALLIDO.
- const registrado=await PagoReportado.findByPk(pago.id,{attributes:['id','verificacionBancaria']});
- const anterior=require('./pagos-reintento-validacion.service').diagnosticoAnterior(registrado?.verificacionBancaria);
+ const anterior=require('./pagos-reintento-validacion.service').diagnosticoAnterior(pago.verificacionBancaria);
  const cambios={verificacionBancaria:{
    ...revision,
    reintentos:Math.max(0,Number(anterior.reintentos)||0),
@@ -58,7 +57,7 @@ async function ejecutarRevision(){
   pendientes=await PagoReportado.findAll({
    where:{estatus:'PENDIENTE_VALIDACION'},
    include:[{model:Casa,as:'casa',required:true,attributes:['calle','calleCorrecta','numero']}],
-   attributes:['id','casaId','estatus','folioOperacion','identificadoresVerificados','textoOcr','fechaOperacion','horaOperacion','monto'],
+   attributes:['id','casaId','estatus','folioOperacion','identificadoresVerificados','textoOcr','fechaOperacion','horaOperacion','monto','verificacionBancaria'],
    order:[['creadoEn','DESC']],limit:100
   });
   if(!pendientes.length)return;
