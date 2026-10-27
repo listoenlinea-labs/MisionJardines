@@ -274,8 +274,10 @@
         formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'Todavía no existe evidencia suficiente para confirmar o rechazar el depósito.',fallido?'failed':validado?'done':'waiting')
       ];
       el.innerHTML='<section class="receipt-check-header" aria-live="polite"><div class="receipt-check-top"><div><small class="eyebrow">SEGUIMIENTO BANCARIO</small><h3>'+
-        esc(titulo)+'</h3><p>'+esc(mensaje)+'</p></div><button type="button" class="receipt-check-refresh" data-check-refresh>'+
-        'Actualizar estado ↻</button></div><div class="receipt-check-meta"><span>Última consulta: '+esc(fechaTexto)+
+        esc(titulo)+'</h3><p>'+esc(mensaje)+'</p></div><div class="receipt-check-actions">'+
+        (fallido?'<button type="button" class="receipt-bank-retry" data-bank-retry>Reintentar validación ↻</button>':'')+
+        '<button type="button" class="receipt-check-refresh" data-check-refresh>Actualizar estado ↻</button></div></div>'+
+        '<div class="receipt-check-meta"><span>Última consulta: '+esc(fechaTexto)+
         '</span><span>Avisos consultados: '+Number(v.avisosConsultados||0)+'</span><span>Remitente autorizado: '+Number(v.avisosAutenticados||0)+
         '</span></div></section>'+(fallido?'<p class="receipt-check-warning" role="alert"><strong>Motivo específico del fallo:</strong> '+esc(mensaje)+'</p>':'')+
         '<h3 class="receipt-timeline-heading">Etapas de la comprobación</h3><ol class="receipt-timeline">'+pasos.join('')+'</ol>';
@@ -290,6 +292,32 @@
         if($('receiptDetailsModal').open&&actual)renderReceiptStatus(actual);
       }catch(error){toast(error.message)}
       finally{if(b.isConnected){b.disabled=false;b.textContent='Actualizar estado ↻'}}
+    });
+    // Reintenta con la evidencia existente; la aprobación sigue en el worker bancario.
+    let bankRetryBusy=false;
+    $('receiptDetailsBody').addEventListener('click',async event=>{
+      const button=event.target.closest('[data-bank-retry]');
+      if(!button||bankRetryBusy||activeReceiptId===null)return;
+      const id=activeReceiptId;
+      const actual=receiptItems.find(p=>Number(p.id)===id);
+      if(actual?.estatus!=='RECHAZADO')return;
+      bankRetryBusy=true;
+      button.disabled=true;
+      button.textContent='Solicitando validación…';
+      try{
+        await api('/pagos/'+id+'/reintentar-validacion',{
+          method:'POST',headers:headers(true),body:'{}'
+        });
+        toast('Reintento solicitado. Tu comprobante sigue en revisión bancaria.');
+        await loadReceipts({preserveOnError:true});
+        const actualizado=receiptItems.find(p=>Number(p.id)===id);
+        if($('receiptDetailsModal').open&&activeReceiptId===id&&actualizado)
+          renderReceiptStatus(actualizado);
+      }catch(error){toast(error.message)}
+      finally{
+        bankRetryBusy=false;
+        if(button.isConnected){button.disabled=false;button.textContent='Reintentar validación ↻';}
+      }
     });
     async function openReceiptDetails(id){
       const p=receiptItems.find(x=>Number(x.id)===Number(id));
