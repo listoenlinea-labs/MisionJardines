@@ -72,6 +72,9 @@ async function ejecutarRevision(){
   console.info('[Bancos] Revisión: pagos pendientes='+pendientes.length+', avisos consultados='+avisos.length+', remitente autorizado recientes='+autenticados.length);
   for(const pago of pendientes){
    try{
+    // No evaluar contra Titan antes de concluir la lectura OCR del reintento.
+    // Evita que un worker periódico use datos bancarios anteriores.
+    if(datosReintento(pago.verificacionBancaria).etapa==='REINTENTO_OCR')continue;
     const revision=diagnostico.evaluar(pago,avisos,autenticados);
     if(revision.cotejoAvisos?.filtroBloqueante==='IMPORTE')
       registrarImporteRelacionado(pago,autenticados);
