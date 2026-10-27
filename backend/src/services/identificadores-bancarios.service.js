@@ -16,7 +16,11 @@ const extraer=text=>{
   folio:normal(data.folio)
  };
 };
-function almacenarVerificados(extraido, folioOperacion) {
+const equivalen=(a,b)=>Boolean(normal(a)&&normal(b)&&(
+  normal(a)===normal(b)||(referencia(a)&&referencia(b)&&referencia(a)===referencia(b))
+));
+const candidatos=texto=>parser.candidatosOperacion(texto||'').filter(v=>v.length>=7);
+function almacenarVerificados(extraido, folioOperacion, textoOcr='') {
  const parsed = {
   claveRastreo: normal(extraido?.claveRastreo),
   referencia: referencia(extraido?.referencia),
@@ -24,16 +28,20 @@ function almacenarVerificados(extraido, folioOperacion) {
  };
  const tipo = parsed.claveRastreo ? 'claveRastreo' : parsed.referencia ? 'referencia' : parsed.folio ? 'folio' : '';
  const valor = tipo === 'referencia' ? referencia(folioOperacion) : normal(folioOperacion);
+ const posibles=candidatos(textoOcr);
+ if (!tipo && posibles.some(c=>equivalen(c,folioOperacion)))
+   return {version:2,origen:'OCR_SERVIDOR',tipo:'candidato',...parsed,candidatos:posibles};
  if (!tipo || parsed[tipo] !== valor)
-  throw Object.assign(new Error('Los identificadores del comprobante no coinciden con el OCR del servidor.'), {status:422});
- return { version:1, origen:'OCR_SERVIDOR', tipo, ...parsed };
+   throw Object.assign(new Error('Los identificadores del comprobante no coinciden con el OCR del servidor.'), {status:422});
+ return {version:2,origen:'OCR_SERVIDOR',tipo,...parsed,candidatos:posibles};
 }
 function identificadoresPago(pago){
  const meta=pago?.identificadoresVerificados;
- if(meta&&typeof meta==='object'&&meta.version===1&&meta.origen==='OCR_SERVIDOR'
-   &&['claveRastreo','referencia','folio'].includes(meta.tipo)){
+ if(meta&&typeof meta==='object'&&[1,2].includes(meta.version)&&meta.origen==='OCR_SERVIDOR'
+   &&['claveRastreo','referencia','folio','candidato'].includes(meta.tipo)){
   const typed={claveRastreo:normal(meta.claveRastreo),referencia:referencia(meta.referencia),folio:normal(meta.folio)};
-  if(typed[meta.tipo])return typed;
+  if(typed[meta.tipo]||(meta.tipo==='candidato'&&Array.isArray(meta.candidatos)))
+   return {...typed,candidatos:meta.version===2&&Array.isArray(meta.candidatos)?meta.candidatos.filter(v=>/^[A-Z0-9]{7,80}$/.test(String(v))).slice(0,30):[]};
  }
  const extraidos=extraer(pago?.textoOcr);
  // Recuperación conservadora de comprobantes históricos: usar el campo que
@@ -58,14 +66,20 @@ function identificadoresPago(pago){
  if(!extraidos.claveRastreo&&!extraidos.referencia&&!extraidos.folio
     && !String(pago?.textoOcr||'').trim())
     extraidos.claveRastreo=normal(pago?.folioOperacion);
- return extraidos;
+ return {...extraidos,candidatos:candidatos(pago?.textoOcr)};
 }
 function identificadoresAviso(aviso){
  return {claveRastreo:normal(aviso?.tracking),referencia:referencia(aviso?.referencia),folio:normal(aviso?.folio)};
 }
 function coinciden(pago,aviso){
  const a=identificadoresPago(pago),b=identificadoresAviso(aviso);
- return ['claveRastreo','referencia','folio'].some(tipo=>a[tipo]&&b[tipo]&&a[tipo]===b[tipo]);
+ if(['claveRastreo','referencia','folio'].some(tipo=>a[tipo]&&b[tipo]&&a[tipo]===b[tipo]))return true;
+ // Candidatos OCR sin etiqueta, contra valores con etiqueta EXPLÍCITA de Titan.
+ // No transformar un campo folio etiquetado en una referencia distinta.
+ const etiquetados=[a.claveRastreo,a.referencia,a.folio].filter(Boolean);
+ const posibles=(a.candidatos||[]).filter(v=>!etiquetados.some(k=>equivalen(k,v)));
+ return posibles.some(value=>[b.claveRastreo,b.referencia,b.folio]
+   .some(bankId=>equivalen(value,bankId)));
 }
 function disponibles(v){
  return ['claveRastreo','referencia','folio'].filter(k=>v[k]);

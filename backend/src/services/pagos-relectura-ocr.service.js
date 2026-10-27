@@ -35,23 +35,18 @@ async function releerComprobante(pagoId){
     const extraido=parser.extract(texto);
     // Comprobar de nuevo todos los campos. No sustituir silenciosamente el importe,
     // identificador, fecha u hora del reporte: cambios necesitan revisión humana.
-    lector.validarCamposExtraidos({
-      folioOperacion:pago.folioOperacion,
-      fechaOperacion:fecha(pago.fechaOperacion),
-      horaOperacion:hora(pago.horaOperacion),
-      monto:pago.monto
-    },extraido,true);
-    if(centavos(extraido.amount)!==centavos(pago.monto)||
-       extraido.date!==fecha(pago.fechaOperacion)||
-       extraido.time!==hora(pago.horaOperacion))
-      throw Error('Los datos releídos difieren del reporte original. No se modificó el importe ni la fecha.');
-    const ids=identificadores.almacenarVerificados(extraido,pago.folioOperacion);
+    // Un banco puede omitir la hora o imprimir el día operativo SPEI.
+    // Importe + identificador OCR deben estar presentes; la fecha real,
+    // destino y vigencia se contrastan INDEPENDIENTEMENTE con Titan.
+    if(!extraido.amount||centavos(extraido.amount)!==centavos(pago.monto))
+      throw Error('El monto extraído de la imagen no coincide con el importe reportado.');
+    const ids=identificadores.almacenarVerificados(extraido,pago.folioOperacion,texto);
     const [updated]=await PagoReportado.update({
       textoOcr:texto.slice(0,12000),
       identificadoresVerificados:ids,
       verificacionBancaria:{
         ...previo,etapa:'REINTENTO_TITAN',fechaRevision:new Date().toISOString(),
-        detalle:'OCR repetido sobre el comprobante original: destino, identificador, importe, fecha y hora coinciden. Consultando Titan.',
+        detalle:'OCR repetido: el importe y un identificador se comprobaron sobre la imagen. Titan cotejará fecha, cuenta y datos bancarios.',
         ocrReleido:true
       },
       actualizadoEn:new Date()

@@ -10,9 +10,13 @@ function rechazo(mensaje,camposFaltantes,camposCorreo=[],code='COMPROBANTE_NO_CO
 async function verificarPosibilidad({textoOcr,casa,fechaOperacion,horaOperacion,monto}){
  const encontrados=ids.extraer(textoOcr);
  if(encontrados.claveRastreo||encontrados.referencia)return {metodo:'CLAVE_O_REFERENCIA'};
- if(!encontrados.folio)throw rechazo(
-  'La captura no contiene ningún identificador bancario verificable. Adjunta el detalle del movimiento.',
-  ['Clave de rastreo','Referencia bancaria','Folio de operación']);
+ const candidatos=require('./comprobante-parser').candidatosOperacion(textoOcr);
+ // Si no hay etiqueta, exigir que el propio buzón confirme un identificador
+ // explícito del mismo movimiento ANTES de aceptar el reporte.
+ if(!encontrados.folio&&!candidatos.length)throw rechazo(
+   'No se detectó ningún código de operación que pueda compararse con el banco.',
+   ['Código de operación o identificación bancaria']);
+
  if(!banco.configurado())throw rechazo(
   'La imagen solo contiene un folio de operación, y el buzón bancario no está disponible para compararlo. Adjunta una captura donde se vea también la referencia o la clave de rastreo.',
   ['Referencia bancaria','Clave de rastreo'],[],'FOLIO_SIN_RESPALDO_BANCARIO');
@@ -25,7 +29,8 @@ async function verificarPosibilidad({textoOcr,casa,fechaOperacion,horaOperacion,
    ['Referencia bancaria','Clave de rastreo'],[],'BUZON_NO_VERIFICABLE');
  }
  const compatibles=avisos.filter(n=>ids.coinciden({textoOcr},n));
- if(compatibles.length===1&&avisos.length===1)return {metodo:'FOLIO_CONFIRMADO_EN_CORREO'};
+ if(compatibles.length===1&&avisos.length===1)
+   return {metodo:encontrados.folio?'FOLIO_CONFIRMADO_EN_CORREO':'CODIGO_CONFIRMADO_EN_CORREO'};
  const correo=Array.from(new Set(avisos.flatMap(n=>ids.disponibles(ids.identificadoresAviso(n))))).map(k=>etiquetas[k]);
  throw rechazo(
   avisos.length
