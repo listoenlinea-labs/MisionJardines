@@ -697,7 +697,20 @@ button.finance-export-card:is(:hover,:focus-visible) .finance-export-icon{
 .house-annual-button:focus-visible{outline:2px solid #9962b5;outline-offset:2px}
 .house-annual-option p{flex:1 1 230px;margin:0;color:#687891;font-size:11px;line-height:1.55}
 .house-annual-label{display:inline-flex;align-items:center;padding:6px 10px;border:1px solid #cce8d5;border-radius:9px;background:#eef9f1;color:#2f744e;font-weight:850;white-space:nowrap}
-@media(max-width:640px){.house-annual-option{align-items:stretch;flex-direction:column;gap:7px}.house-annual-button{width:100%}}
+@media(max-width:640px){
+  .house-annual-option{
+    align-items:stretch;
+    flex-direction:column;
+    gap:6px;
+    padding:9px 11px;
+    height:auto;
+    min-height:0;
+    align-self:start;
+  }
+  .house-annual-button{width:100%}
+  /* En columna, el flex-basis de 230px del texto se convertía en altura vacía. */
+  .house-annual-option p{flex:0 1 auto;min-height:0}
+}
 
 /* Deuda pendiente: rojo pastel, con importe legible y selección preservada. */
 .houses-scroll #financeHouseRows>tr.house-row-overdue>td{
