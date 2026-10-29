@@ -1,6 +1,10 @@
 'use strict';
 
 const recibos = require('../services/recibo-mantenimiento-analisis.service');
+const jwt = require('jsonwebtoken');
+const VISTA_AUD='mj-recibo-visor';
+const VISTA_ISS='mision-jardines';
+
 
 function casaIdSolicitada(req) {
     const id = Number(req.params.casaId);
@@ -65,4 +69,42 @@ async function pdfRecibo(req, res) {
     }
 }
 
-module.exports = { datosRecibo, pdfRecibo };
+
+async function urlVistaRecibo(req,res){
+ try{
+  const casaId=casaIdSolicitada(req),periodo=periodoSolicitado(req),referencia=referenciaSolicitada(req);
+  // Evita emitir enlaces para viviendas o movimientos no autorizados/inexistentes.
+  await recibos.consultarPago(casaId,periodo,referencia);
+  const permiso=jwt.sign({tipo:'vista-recibo',casaId,periodo,referencia,usuarioId:req.usuario.usuarioId},
+   process.env.JWT_SECRET,{expiresIn:'5m',audience:VISTA_AUD,issuer:VISTA_ISS});
+  res.setHeader('Cache-Control','private, no-store');
+  return res.json({ok:true,data:{url:'/api/recibo-vista/'+encodeURIComponent(permiso)}});
+ }catch(error){return responderError(res,error);}
+}
+
+// La vista del navegador no puede enviar Authorization: Bearer. Por eso
+// usa un pase restringido a UN recibo con duración máxima de cinco minutos.
+// Nunca acepta el JWT de sesión ni parámetros de vivienda elegidos por el cliente.
+async function vistaPdfTemporal(req,res){
+ try{
+  const payload=jwt.verify(String(req.params.permiso||''),process.env.JWT_SECRET,
+   {audience:VISTA_AUD,issuer:VISTA_ISS});
+  if(payload.tipo!=='vista-recibo'||!Number.isSafeInteger(payload.casaId)||payload.casaId<1)
+   return res.status(403).json({ok:false,message:'Pase de recibo inválido'});
+  const {recibo}=await recibos.consultarPago(payload.casaId,payload.periodo||null,payload.referencia||null);
+  const {buffer,nombreArchivo}=await recibos.generarPdf(recibo);
+  const nombreSeguro=nombreArchivo.replace(/[^a-zA-Z0-9._-]/g,'_');
+  res.setHeader('Cache-Control','private, no-store');
+  res.setHeader('Referrer-Policy','no-referrer');
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition',`inline; filename="${nombreSeguro}"`);
+  res.setHeader('Content-Length',buffer.length);
+  return res.end(buffer);
+ }catch(error){
+  if(['TokenExpiredError','JsonWebTokenError','NotBeforeError'].includes(error.name))
+   return res.status(403).json({ok:false,message:'Vista de recibo vencida. Vuelve a abrir el recibo.'});
+  return responderError(res,error);
+ }
+}
+
+module.exports = { datosRecibo, pdfRecibo, urlVistaRecibo, vistaPdfTemporal };
