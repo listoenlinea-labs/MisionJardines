@@ -10,7 +10,7 @@ for (const name of ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']) {
 }
 process.env.DB_PORT ||= '3306';
 
-const { datosDeMovimiento, periodosPagados, normalizarTelefonoMX, generarPdf } =
+const { datosDeMovimiento, periodosPagados, normalizarTelefonoMX, generarPdf, folioRecibo } =
     require('../src/services/recibo-mantenimiento-analisis.service');
 
 const casa = { id: 5, calle: 'Gardenias', numero: '5', nombre: 'Persona de prueba' };
@@ -30,7 +30,7 @@ test('genera un recibo individual por mes pagado, del más reciente al más anti
     assert.equal(primero.recibo.periodosVarios, false);
     assert.equal(primero.recibo.mes, 'NOVIEMBRE 2026');
     assert.equal(primero.resumen.folio, segundo.resumen.folio);
-    assert.match(primero.resumen.folio, /^MJ-AN-5-[0-9A-F]{10}-202611$/);
+    assert.match(primero.resumen.folio, /^MJ-NOV-2026-[0-9A-F]{10}-G5-M$/);
     assert.equal(primero.recibo.sello, 'PAGADO');
     assert.deepEqual(primero.periodosDisponibles.map(p=>p.valor),['2026-11','2026-10']);
     const octubre=datosDeMovimiento(casa,cuotas,[],new Date('2026-10-20T12:00:00Z'),'2026-10');
@@ -63,7 +63,7 @@ test('un comprobante validado y su cuota representan un depósito, no dos', () =
         fechaOperacion: '2026-10-19', reciboFolio: 'MJ-2026-77' }];
     const datos = datosDeMovimiento(casa, cuotas, banco);
     assert.equal(datos.resumen.monto, 350);
-    assert.equal(datos.resumen.folio, 'MJ-2026-77');
+    assert.match(datos.resumen.folio, /^MJ-OCT-2026-[0-9A-F]{10}-G5-M$/);
 });
 
 test('un abono registrado nunca lleva el sello PAGADO', () => {
@@ -126,7 +126,7 @@ test('genera un PDF en memoria con el diseño original, sin crear un archivo ni 
     assert.ok(resultado.buffer.length > 2000);
     assert.match(resultado.buffer.toString('latin1'),/\/Subtype\s*\/Image/,
         'La versión desplegable debe incluir el logotipo real como imagen en el PDF');
-    assert.match(resultado.nombreArchivo, /^Recibo_.*\.pdf$/);
+    assert.match(resultado.nombreArchivo, /^MJ-OCT-2026-[0-9A-F]{10}-G5-M\.pdf$/);
 });
 
 test('el enlace a recibos está protegido por el middleware de administradores', () => {
@@ -170,4 +170,21 @@ test('recibos por referencia usan exactamente el importe del historial con depó
     const abono = datosDeMovimiento(casa, parcial, [], new Date(), null, 'PARCIAL-125');
     assert.equal(abono.recibo.montoPagado, 125);
     assert.equal(abono.recibo.sello, 'ABONO RECIBIDO');
+});
+
+test('folio completo por mes, calle, número y mantenimiento/proyecto/casa club', () => {
+    const common={calle:'Gardenias',numero:'5',periodo:'2026-10',referencia:'operacion-1'};
+    const base=folioRecibo({...common,tipo:'MANTENIMIENTO'});
+    assert.match(base,/^MJ-OCT-2026-[A-F0-9]{10}-G5-M$/);
+    assert.equal(base,folioRecibo({...common,tipo:'MANTENIMIENTO'}));
+    assert.match(folioRecibo({...common,tipo:'PROYECTO'}),/^MJ-OCT-2026-[A-F0-9]{10}-G5-P$/);
+    assert.match(folioRecibo({...common,tipo:'CASA_CLUB'}),/^MJ-OCT-2026-[A-F0-9]{10}-G5-C$/);
+    assert.match(folioRecibo({...common,calle:'Álamo',numero:'12 B',periodo:'2027-01'}),/^MJ-ENE-2027-[A-F0-9]{10}-A12B-M$/);
+    assert.notEqual(base,folioRecibo({...common,periodo:'2026-11'}));
+    assert.notEqual(base,folioRecibo({...common,numero:'6'}));
+});
+test('PDF descargado conserva exactamente el mismo folio sin prefijo Recibo_',async()=>{
+    const d=datosDeMovimiento(casa,[cuota(999,'OCTUBRE',300)],[]);
+    const pdf=await generarPdf(d.recibo);
+    assert.equal(pdf.nombreArchivo,d.recibo.folio+'.pdf');
 });

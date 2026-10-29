@@ -98,8 +98,9 @@ function dibujarLinea(
 
 function generarReciboPdf(cuota, opciones = {}) {
     return new Promise((resolve, reject) => {
-        const nombreArchivo =
-            'Recibo_' + cuota.folio + '.pdf';
+        const nombreArchivo = opciones.nombreArchivo
+            ? String(opciones.nombreArchivo).replace(/[^a-zA-Z0-9._-]/g, '_')
+            : 'Recibo_' + cuota.folio + '.pdf';
 
         const document = new PDFDocument({
             size: 'LETTER',

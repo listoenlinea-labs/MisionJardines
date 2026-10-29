@@ -628,7 +628,7 @@ function renderHouses(){
   if(!receiptBlob||!receiptObjectUrl||!receiptDetails)return;
   const link=document.createElement('a');
   link.href=receiptObjectUrl;
-  link.download='Recibo_'+String(receiptDetails.folio||'Mantenimiento').replace(/[^a-zA-Z0-9._-]/g,'_')+'.pdf';
+  link.download=String(receiptDetails.folio||'Mantenimiento').replace(/[^a-zA-Z0-9._-]/g,'_')+'.pdf';
   document.body.appendChild(link);link.click();link.remove();
  }
  async function cargarPdfDelPeriodo(casaId,periodo,referencia=null){
