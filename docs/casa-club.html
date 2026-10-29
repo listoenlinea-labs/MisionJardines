@@ -19,8 +19,8 @@
 <div class="calendar-nav"><button id="prevMonth" type="button" aria-label="Mes anterior">‹</button><strong id="calendarLabel"></strong><button id="nextMonth" type="button" aria-label="Mes siguiente">›</button></div>
 <div class="weekdays"><b>L</b><b>M</b><b>M</b><b>J</b><b>V</b><b>S</b><b>D</b></div>
 <div id="calendarDays" class="calendar-days" role="group" aria-label="Calendario de disponibilidad"></div>
-<p class="club-hint">La fecha se bloquea provisionalmente al solicitarla. La reserva solo se confirma cuando Administración la aprueba.</p></article>
-<article class="club-card"><span class="eyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
+<p class="club-hint" id="clubCalendarHint">La fecha se bloquea provisionalmente al solicitarla. La reserva solo se confirma cuando Administración la aprueba.</p></article>
+<article class="club-card"><span class="eyebrow" id="clubRequestEyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
 <form id="clubForm">
 <div class="form-grid"><label>Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha del calendario"></label>
 <label>Vivienda<input id="clubHouse" readonly placeholder="Vivienda seleccionada"></label>
@@ -30,7 +30,7 @@
 <label class="wide">¿Eres propietario?<select id="clubOwner" name="propietario"><option value="">Selecciona una opción</option><option value="SI">Sí, propietario</option><option value="NO">No, residente o inquilino</option></select></label>
 <label class="wide">Motivo del evento<input id="clubReason" name="motivo" maxlength="200" required placeholder="Ej. Cumpleaños, reunión familiar"></label></div>
 <button class="primary" id="clubSubmit" type="submit">Enviar solicitud de reservación</button>
-<p class="club-hint">Para reservar debes estar al corriente en mantenimiento y cuotas extraordinarias. Los pagos de Casa club son independientes de la vigencia de los TAGs.</p>
+<p class="club-hint" id="clubFormHint">Para reservar debes estar al corriente en mantenimiento y cuotas extraordinarias. Los pagos de Casa club son independientes de la vigencia de los TAGs.</p>
 </form></article></div></section>
 <section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
 <section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Registro de reservas y pagos capturados. Marca los movimientos cuando estén comprobados.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div><label class="club-table-toggle"><input id="includeUnpaid" type="checkbox"> Mostrar también reservas sin pagar para registrar sus movimientos</label><div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Registrar pago</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
@@ -46,5 +46,5 @@
 <dialog id="clubReviewModal" class="club-dialog"><form id="clubReviewForm" method="dialog"><div class="dialog-head"><div><span class="eyebrow">REVISIÓN ADMINISTRATIVA</span><h2 id="clubReviewTitle">Aprobar reservación</h2></div><button type="button" id="closeClubReview" class="xbtn" aria-label="Cerrar">×</button></div><div id="clubReviewDetails" class="review-details"></div>
 <div class="form-grid"><label>Renta (MXN)<input id="clubRecovery" type="number" min="0" step=".01" value="700"></label><label>Depósito de garantía (MXN)<input id="clubGuarantee" type="number" min="0" step=".01" value="700"></label><label>Limpieza opcional (MXN)<input id="clubCleaning" type="number" min="0" step=".01" value="0"></label><label>Fecha límite para pagar<input id="clubDueDate" type="date" required></label><label class="wide">Observaciones<textarea id="clubNotes" maxlength="600" rows="3"></textarea></label></div>
 <div class="dialog-actions"><button type="button" class="danger" id="clubReject">Rechazar</button><button class="primary" type="submit" id="clubApprove">Aprobar reservación</button></div></form></dialog>
-<script src="assets/js/casa-club.js?v=20261019-adeudos-reserva" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script>
+<script src="assets/js/casa-club.js?v=20261029-reserva-directa-admin" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script>
 </body></html>
