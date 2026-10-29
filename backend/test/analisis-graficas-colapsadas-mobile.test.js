@@ -80,6 +80,19 @@ test('Se quita el texto largo en escritorio y móvil, sin retirar filtros o cont
   'financeHouseRows','financeDonut','financeStreetChart','financeGenerateReceipt']){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
  }
- assert.match(html,/analisis-cuotas\.css\?v=20261029-graficas-colapsadas/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261029-graficas-compactas-46px/);
  assert.match(html,/analisis-cuotas\.js\?v=20261029-graficas-colapsadas/);
+});
+
+test('Las dos tarjetas cerradas miden 46px en móvil y recuperan altura al expandirse', () => {
+ const css=read('docs/assets/css/analisis-cuotas.css');
+ const mobile=css.slice(css.lastIndexOf('/* Gráficas de cumplimiento: en escritorio'));
+ assert.match(mobile, /@media\(max-width:700px\)/);
+ assert.match(mobile, /body\.page-analisis \.analysis-chart-card\{[^}]*margin-bottom:0;[^}]*min-height:0;[^}]*height:auto;/);
+ assert.match(mobile, /body\.page-analisis \.analysis-chart-card:not\(\.is-expanded\)\{\s*height:46px;\s*min-height:46px;\s*max-height:46px;/);
+ assert.match(mobile, /body\.page-analisis \.analysis-chart-toggle\{[^}]*height:46px;[^}]*min-height:46px;[^}]*padding:0 16px;/);
+ assert.match(mobile, /body\.page-analisis \.analysis-chart-card\.is-expanded \.analysis-chart-panel\{/);
+ const html=read('docs/analisis-cuotas.html');
+ assert.equal((html.match(/class="analysis-card analysis-chart-card"/g)||[]).length,2);
+ assert.match(html, /analisis-cuotas\.css\?v=20261029-graficas-compactas-46px/);
 });
