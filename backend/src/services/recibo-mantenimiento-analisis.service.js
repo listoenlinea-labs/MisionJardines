@@ -100,15 +100,13 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
     const sello = (cuotaSeleccionada ? [cuotaSeleccionada] : cuotasDelPago).some(c => c.estatusPago === 'PAGO_PARCIAL')
         ? 'ABONO RECIBIDO' : 'PAGADO';
 
-    // Los registros manuales separan principal y recargos en cuotas;
-    // un comprobante bancario validado ya contiene el depósito completo.
-    const esRegistroManual = cuotasDelPago.some(c => c.origenImportacion === 'MANUAL_ANALISIS');
-    const recargoMes = cuotaSeleccionada && cuotasDelPago.length === 1
-        ? (esRegistroManual ? Number(cuotaSeleccionada.recargo || 0) : Number(comprobante?.recargo || 0))
-        : cuotaSeleccionada && esRegistroManual ? Number(cuotaSeleccionada.recargo || 0) : 0;
-    const monto = cuotaSeleccionada ? Number(cuotaSeleccionada.montoPagado) + recargoMes
-        : comprobante ? Number(comprobante.monto)
-            : Number(movimiento.monto) + (esRegistroManual ? Number(movimiento.recargo || 0) : 0);
+    // El historial ya representa el importe cobrado, incluido el recargo:
+    // NUNCA volver a sumarlo al generar un recibo por movimiento.
+    // Solo los recibos por mes de un movimiento de varios meses usan
+    // el importe de la cuota individual (que también incluye su recargo).
+    const monto = cuotaSeleccionada && !referenciaBuscada && cuotasDelPago.length > 1
+        ? Number(cuotaSeleccionada.montoPagado)
+        : Number(movimiento.monto);
     const fuenteFolio = comprobante?.reciboFolio || cuotaPrincipal?.folio;
     const huella = createHash('sha256')
         .update(`${casa.id}:${referencia}`).digest('hex').slice(0, 10).toUpperCase();
