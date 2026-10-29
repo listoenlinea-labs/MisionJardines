@@ -8,6 +8,12 @@ const {randomUUID}=require('crypto');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
 const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
+// Mismos importes que propone la aprobación administrativa del formulario.
+const IMPORTES_RESERVA={cuotaRecuperacion:700,depositoGarantia:700,limpieza:0};
+const limitePagoReserva=fecha=>{
+ const anterior=new Date(Date.parse(fecha+'T12:00:00Z')-86400000).toISOString().slice(0,10);
+ return anterior<hoy()?hoy():anterior;
+};
 const error=(status,message,extra={})=>Object.assign(new Error(message),{status,...extra});
 const hoy=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const texto=(v,n=160)=>String(v||'').trim().slice(0,n);
@@ -69,12 +75,22 @@ async function crear(req,res){
   const membership=await UsuarioCasa.findOne({where:{usuarioId:req.usuario.usuarioId,casaId,activo:true}});
   if(!membership&&!admin(req.usuario.rol))throw error(403,'No tienes acceso a esa vivienda');
   await revisarElegibilidad(casaId);
+  // Solo el rol validado por el servidor puede reservar sin revisión humana.
+  // La fecha única sigue protegida por fecha_bloqueada, aun con concurrencia.
+  const reservaDirecta=admin(req.usuario.rol);
+  const estatus=reservaDirecta?'APROBADA':'PENDIENTE';
   const row=await Reserva.create({
    usuarioId:req.usuario.usuarioId,casaId,fecha,fechaBloqueada:fecha,
    solicitante,telefono,correo,motivo,propietario:body.propietario===true,
-   estatus:'PENDIENTE'
+   estatus,
+   ...(reservaDirecta?{
+    ...IMPORTES_RESERVA,fechaLimitePago:limitePagoReserva(fecha),
+    pagado:false,revisadoPor:req.usuario.usuarioId
+   }:{})
   });
-  return res.status(201).json({ok:true,data:{id:row.id,fecha},message:'Solicitud enviada. Administración debe aprobarla; la fecha queda apartada provisionalmente.'});
+  return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus},
+   message:reservaDirecta?'Reserva confirmada. El pago se registra por separado; no está marcado como pagado.':
+    'Solicitud enviada. Administración debe aprobarla; la fecha queda apartada provisionalmente.'});
  }catch(e){if(e.name==='SequelizeUniqueConstraintError')return res.status(409).json({ok:false,message:'Esta fecha ya está ocupada o pendiente de aprobación'});return manejar(res,e);}
 }
 async function cancelar(req,res){

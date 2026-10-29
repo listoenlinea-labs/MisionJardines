@@ -111,3 +111,99 @@ test('fechas ocupadas muestran únicamente la fecha y su estado',async t=>{
  assert.deepEqual(response.body.ocupadas,[{fecha:day,estatus:'APROBADA'}]);
  assert.equal(JSON.stringify(response.body).includes('privado'),false);
 });
+
+test('ADMINISTRADOR reserva inmediatamente con cargos sin marcarlos pagados',async t=>{
+ sinAdeudos(t);
+ t.mock.method(Casa,'findByPk',async()=>({id:5}));
+ t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
+ let payload=null;
+ t.mock.method(Reserva,'create',async v=>{payload=v;return{id:303};});
+ const nextWeek=new Date(Date.parse(day+'T12:00:00Z')+7*86400000).toISOString().slice(0,10);
+ const response=res();
+ await club.crear(req({usuario:{usuarioId:19,rol:'ADMINISTRADOR',casaId:5},
+  body:{...req().body,fecha:nextWeek}}),response);
+ assert.equal(response.code,201);
+ assert.equal(response.body.data.estatus,'APROBADA');
+ assert.match(response.body.message,/Reserva confirmada/);
+ assert.deepEqual({
+  estatus:payload.estatus,fechaBloqueada:payload.fechaBloqueada,
+  cuotaRecuperacion:payload.cuotaRecuperacion,depositoGarantia:payload.depositoGarantia,
+  limpieza:payload.limpieza,fechaLimitePago:payload.fechaLimitePago,pagado:payload.pagado,
+  revisadoPor:payload.revisadoPor
+ },{
+  estatus:'APROBADA',fechaBloqueada:nextWeek,
+  cuotaRecuperacion:700,depositoGarantia:700,limpieza:0,
+  fechaLimitePago:new Date(Date.parse(nextWeek+'T12:00:00Z')-86400000).toISOString().slice(0,10),
+  pagado:false,revisadoPor:19
+ });
+});
+
+test('SUPER_ADMIN también reserva directamente, incluso para fecha de hoy',async t=>{
+ sinAdeudos(t);
+ t.mock.method(Casa,'findByPk',async()=>({id:5}));
+ t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
+ let payload=null;
+ t.mock.method(Reserva,'create',async v=>{payload=v;return{id:304};});
+ const response=res();
+ await club.crear(req({usuario:{usuarioId:91,rol:'SUPER_ADMIN',casaId:5}}),response);
+ assert.equal(response.code,201);
+ assert.equal(payload.estatus,'APROBADA');
+ assert.equal(payload.fechaLimitePago,day,'mismo día: fecha límite no puede quedar en pasado');
+ assert.equal(payload.revisadoPor,91);
+ assert.equal(payload.pagado,false);
+});
+
+test('un residente no puede autoprobarse mediante flags ni rol falsificado en el body',async t=>{
+ sinAdeudos(t);
+ t.mock.method(Casa,'findByPk',async()=>({id:5}));
+ t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
+ let payload=null;
+ t.mock.method(Reserva,'create',async v=>{payload=v;return{id:305};});
+ const response=res();
+ await club.crear(req({body:{...req().body,rol:'ADMINISTRADOR',estatus:'APROBADA',
+  autoAprobar:true,cuotaRecuperacion:0,pagado:true}}),response);
+ assert.equal(response.code,201);
+ assert.equal(response.body.data.estatus,'PENDIENTE');
+ assert.equal(payload.estatus,'PENDIENTE');
+ assert.equal(payload.pagado,undefined);
+ assert.equal(payload.revisadoPor,undefined);
+});
+
+test('un administrador con mantenimiento vencido tampoco puede reservar directamente',async t=>{
+ t.mock.method(Reserva,'findAll',async()=>[]);
+ t.mock.method(CargoExtraordinario,'findAll',async()=>[]);
+ t.mock.method(Cuota,'findAll',async()=>[]);
+ t.mock.method(Casa,'findByPk',async()=>({id:5}));
+ t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
+ let wrote=false;
+ t.mock.method(Reserva,'create',async()=>{wrote=true;});
+ const response=res();
+ await club.crear(req({usuario:{usuarioId:19,rol:'ADMINISTRADOR',casaId:5}}),response);
+ assert.equal(response.code,409);
+ assert.equal(response.body.codigo,'ADEUDOS_RESERVA');
+ assert.equal(wrote,false);
+});
+
+test('la fecha ocupada también rechaza una reserva directa de administrador',async t=>{
+ sinAdeudos(t);
+ t.mock.method(Casa,'findByPk',async()=>({id:5}));
+ t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
+ t.mock.method(Reserva,'create',async()=>{const e=new Error('duplicate');e.name='SequelizeUniqueConstraintError';throw e;});
+ const response=res();
+ await club.crear(req({usuario:{usuarioId:19,rol:'ADMINISTRADOR',casaId:5}}),response);
+ assert.equal(response.code,409);
+ assert.match(response.body.message,/ocupada/);
+});
+
+test('Casa club muestra Reservar a admin y informa la confirmación usando el estado de la API',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const ui=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/casa-club.js'),'utf8');
+ const html=fs.readFileSync(path.resolve(__dirname,'../../docs/casa-club.html'),'utf8');
+ assert.match(ui,/\['SUPER_ADMIN','ADMINISTRADOR'\]\.includes\(role\)/);
+ assert.match(ui,/\$\('clubSubmit'\)\.textContent='Reservar'/);
+ assert.match(ui,/result\.data\?\.estatus==='APROBADA'/);
+ assert.match(ui,/notify\(result\.data\?\.estatus==='APROBADA'/);
+ assert.match(html,/id="clubCalendarHint"/);
+ assert.match(html,/id="clubFormHint"/);
+ assert.match(html,/casa-club\.js\?v=20261029-reserva-directa-admin/);
+});

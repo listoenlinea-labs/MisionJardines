@@ -10,6 +10,12 @@
  const user=(()=>{try{return JSON.parse(localStorage.getItem('misionJardinesUsuario')||sessionStorage.getItem('misionJardinesUsuario')||'{}')}catch{return {}}})();
  const role=user?.rol?.nombre||user?.rol;
  const admin=['SUPER_ADMIN','ADMINISTRADOR'].includes(role);
+ if(admin){
+  $('clubSubmit').textContent='Reservar';
+  $('clubRequestEyebrow').textContent='RESERVACIÓN DIRECTA';
+  $('clubCalendarHint').textContent='Al reservar como administrador, la fecha se confirma de inmediato. El pago se gestiona por separado.';
+  $('clubFormHint').textContent='La reserva se confirma al presionar Reservar, sin aprobación adicional. Se mantienen las reglas de adeudos y disponibilidad; el pago debe comprobarse por separado.';
+ }
  let currentMonth=today().slice(0,7),selectedDate='',occupied=new Map(),profile=null,adminRows=[],activeReview=null,activeTab='reservar';
  const headers=(json=false)=>({Authorization:'Bearer '+token,...(sessionStorage.getItem('mjCasaSeleccionada')?{'X-Casa-Id':sessionStorage.getItem('mjCasaSeleccionada')}:{}) ,...(json?{'Content-Type':'application/json'}:{})});
  async function api(path,method='GET',body){
@@ -98,7 +104,14 @@
   e.preventDefault();if(!selectedDate)return notify('Selecciona una fecha disponible del calendario.',true);
   const button=$('clubSubmit');button.disabled=true;
   const values={fecha:selectedDate,casaId:profile?.casa?.id,solicitante:$('clubName').value.trim(),telefono:$('clubPhone').value.trim(),correo:$('clubEmail').value.trim(),propietario:$('clubOwner').value==='SI',motivo:$('clubReason').value.trim()};
-  try{await api('/reservas','POST',values);notify('Solicitud enviada. La fecha está apartada provisionalmente hasta revisión de Administración.');$('clubForm').reset();$('clubDate').value='';selectedDate='';await calendar();tab('mis-reservas');}
+  try{
+   const result=await api('/reservas','POST',values);
+   notify(result.data?.estatus==='APROBADA'?
+    'Reserva confirmada. Ya está apartada; puedes consultar los cargos y pagar desde Pagos.':
+    'Solicitud enviada. La fecha está apartada provisionalmente hasta revisión de Administración.');
+   $('clubForm').reset();$('clubDate').value='';selectedDate='';
+   await calendar();tab('mis-reservas');
+  }
   catch(err){if(!showDebtAlert(err))notify(err.message,true);await calendar();}
   finally{button.disabled=false;}
  });
