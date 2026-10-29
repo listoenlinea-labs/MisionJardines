@@ -80,7 +80,7 @@ test('Se quita el texto largo en escritorio y móvil, sin retirar filtros o cont
   'financeHouseRows','financeDonut','financeStreetChart','financeGenerateReceipt']){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
  }
- assert.match(html,/analisis-cuotas\.css\?v=20261029-graficas-colapsadas/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261029-graficas-compactas-46px/);
  assert.match(html,/analisis-cuotas\.js\?v=20261029-graficas-colapsadas/);
 });
 
