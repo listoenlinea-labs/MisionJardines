@@ -804,16 +804,16 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
   }
   body.page-analisis .analysis-chart-toggle-arrow::before{content:"▾"}
   body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-toggle-arrow::before{content:"▴"}
-  /* El resumen superior usa letra de 11px en teléfonos pequeños. */
-  @media(max-width:430px){
-    body.page-analisis .analysis-chart-toggle{font-size:11px}
-  }
   body.page-analisis .analysis-chart-panel{display:none}
   body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-panel{
     display:block;
     padding:4px 14px 14px;
     min-width:0;
   }
+}
+/* El resumen superior también usa 11px en teléfonos pequeños. */
+@media(max-width:430px){
+  body.page-analisis .analysis-chart-toggle{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){
   .analysis-chart-toggle-arrow{transition:none!important}
