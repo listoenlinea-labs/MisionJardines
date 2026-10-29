@@ -741,17 +741,29 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
 @media(max-width:700px){
   body.page-analisis .analysis-chart-card{
     padding:0;
+    margin-bottom:0;
     min-width:0;
+    min-height:0;
+    height:auto;
+    align-self:start;
     overflow:hidden;
+  }
+  /* Mismo alto compacto que «Otros indicadores financieros» al estar cerrada. */
+  body.page-analisis .analysis-chart-card:not(.is-expanded){
+    height:46px;
+    min-height:46px;
+    max-height:46px;
   }
   body.page-analisis .analysis-chart-toggle{
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
+    box-sizing:border-box;
     width:100%;
+    height:46px;
     min-height:46px;
-    padding:13px 16px;
+    padding:0 16px;
     border:0;
     background:transparent;
     color:#9a510d;
