@@ -1,13 +1,12 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 27/oct/2026, 23:25, America/Mexico_City.
-**SHA de main consultado:** `01ffc661de5ea1609d9d31cd6a6b7be4c18b6fb2`.
-**Fuentes de esta revisión:** comparación de main desde `737f1f4dee50f85a8f5d39a7ac02beb6f0b0e068`,
-metadatos y descripciones de los PR #305–#307, commits, estados y workflow runs de
-GitHub, AGENTS.md, índice y estado vigentes, y las solicitudes accesibles del usuario
-sobre reparto desde dos viviendas, eliminación de domicilio duplicado y aceptación
-de cualquier depósito positivo. Se excluyó del trabajo de producto el commit
-documental `61c7f9c04223a5754ace27009c13a844047fcb51`.
+**Última revisión:** 28/oct/2026, 23:25, America/Mexico_City.
+**SHA de main consultado:** `4cb42defbe74243d0ce2edc1f024a3a2307101ee`.
+**Fuentes de esta revisión:** comparación de main desde `01ffc661de5ea1609d9d31cd6a6b7be4c18b6fb2`,
+commits y PR de GitHub, AGENTS.md, índice y estado vigentes. El único commit nuevo fue
+`4cb42defbe74243d0ce2edc1f024a3a2307101ee`, actualización de esta misma bitácora,
+por lo que se excluyó del trabajo de producto. No hubo PR abiertos, cambios de producto
+ni checks nuevos que registrar.
 No hubo confirmaciones nuevas accesibles de despliegue, MySQL, Titan o pruebas físicas.
 No se consultaron Hostinger, C3, MySQL ni contenido privado del buzón, y no se publican
 credenciales, comprobantes ni datos personales.
@@ -132,12 +131,11 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de producción ni la versión PHP de Hostinger;
 el backend documentado continúa siendo Node.js.
-Desde el SHA consultado en la revisión anterior, main avanzó ocho commits. Se
-fusionaron los PR #305–#307 y no hay PR abiertos. Se excluyó
-`61c7f9c04223a5754ace27009c13a844047fcb51`, dedicado únicamente al estado del
-26/oct. #305/#306 acreditan código en main y #307 una regla documental; ninguno
-acredita despliegue, cambios reales en MySQL, lectura de Titan ni C3 físico. El PR
-#132 continúa revertido.
+Desde el SHA consultado en la revisión anterior, main avanzó un commit: `4cb42def`,
+dedicado únicamente al estado del 27/oct y excluido del trabajo de producto. No hay
+PR abiertos ni cambios verificables de producto, checks nuevos, despliegues o pruebas
+físicas que registrar. Se conservan sin cambios los pendientes de MySQL, Titan,
+Hostinger y C3, y el PR #132 continúa revertido.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -354,6 +352,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-28
+
+- Main consultado a las 23:25, America/Mexico_City, en `4cb42defbe74243d0ce2edc1f024a3a2307101ee`: un commit por delante del SHA de producto revisado el 27/oct.
+- El único commit nuevo fue `4cb42def`, que actualizó exclusivamente `docs/ESTADO_PROYECTO.md`; se excluyó de la lista de trabajo de producto.
+- No hay PR abiertos, cambios verificables de producto ni checks nuevos. Tampoco hubo confirmaciones accesibles de despliegue, MySQL, Titan o pruebas físicas.
+- Se conservan las reglas vigentes, el historial de pruebas y todos los pendientes, incluidos extraordinarias/casa club, la discrepancia enero/septiembre y la validación real en Hostinger/C3.
+
 
 ### 2026-10-27
 
