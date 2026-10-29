@@ -15,6 +15,7 @@ router.post('/pagos-concepto',pagosManuales.registrarPagoConcepto);
 router.get('/pagos-vivienda/:casaId/cotizar',pagosManuales.cotizarPagoVivienda);
 router.get('/pagos-vivienda/:casaId/historial',pagosManuales.historialPagoVivienda);
 router.get('/pagos-vivienda/:casaId/recibo/datos',recibosMantenimiento.datosRecibo);
+router.get('/pagos-vivienda/:casaId/recibo/vista',recibosMantenimiento.urlVistaRecibo);
 router.get('/pagos-vivienda/:casaId/recibo',recibosMantenimiento.pdfRecibo);
 router.get('/pagos-vivienda/:casaId/estado-c3',pagosManuales.estadoPagoVivienda);
 module.exports=router;
