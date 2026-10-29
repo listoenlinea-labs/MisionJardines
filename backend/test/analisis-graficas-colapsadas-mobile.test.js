@@ -80,7 +80,7 @@ test('Se quita el texto largo en escritorio y móvil, sin retirar filtros o cont
   'financeHouseRows','financeDonut','financeStreetChart','financeGenerateReceipt']){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
  }
- assert.match(html,/analisis-cuotas\.css\?v=20261029-graficas-compactas-46px/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261029-acordeones-alineados/);
  assert.match(html,/analisis-cuotas\.js\?v=20261029-graficas-colapsadas/);
 });
 
@@ -90,9 +90,27 @@ test('Las dos tarjetas cerradas miden 46px en móvil y recuperan altura al expan
  assert.match(mobile, /@media\(max-width:700px\)/);
  assert.match(mobile, /body\.page-analisis \.analysis-chart-card\{[^}]*margin-bottom:0;[^}]*min-height:0;[^}]*height:auto;/);
  assert.match(mobile, /body\.page-analisis \.analysis-chart-card:not\(\.is-expanded\)\{\s*height:46px;\s*min-height:46px;\s*max-height:46px;/);
- assert.match(mobile, /body\.page-analisis \.analysis-chart-toggle\{[^}]*height:46px;[^}]*min-height:46px;[^}]*padding:0 16px;/);
+ assert.match(mobile, /body\.page-analisis \.analysis-chart-toggle\{[^}]*height:46px;[^}]*min-height:46px;[^}]*padding:0 14px;/);
  assert.match(mobile, /body\.page-analisis \.analysis-chart-card\.is-expanded \.analysis-chart-panel\{/);
  const html=read('docs/analisis-cuotas.html');
  assert.equal((html.match(/class="analysis-card analysis-chart-card"/g)||[]).length,2);
- assert.match(html, /analisis-cuotas\.css\?v=20261029-graficas-compactas-46px/);
+ assert.match(html, /analisis-cuotas\.css\?v=20261029-acordeones-alineados/);
+});
+
+test('El estilo compartido no recorta los títulos y los tres desplegables se ven iguales', () => {
+ const css=read('docs/assets/css/analisis-cuotas.css');
+ const product=read('docs/assets/css/product-ui.css');
+ assert.match(product,/body\.page-analisis\.mj-shared-sidebar-enabled \.analysis-card\{padding:12px!important\}/);
+ const rules=css.slice(css.lastIndexOf('/* Gráficas de cumplimiento: en escritorio'));
+ assert.match(rules,/body\.page-analisis\.mj-shared-sidebar-enabled \.analysis-columns > \.analysis-card\.analysis-chart-card\{\s*padding:0!important;\s*margin-bottom:0!important;/);
+ assert.match(rules,/\.analysis-chart-card:not\(\.is-expanded\)\{\s*height:46px;\s*min-height:46px;\s*max-height:46px;/);
+ assert.match(rules,/\.analysis-chart-toggle\{[\s\S]*?align-items:center;[\s\S]*?height:46px;/);
+ assert.match(rules,/padding:0 14px;[\s\S]*?color:#965418;\s*font-size:12px;\s*font-weight:800;/);
+ assert.match(rules,/\.analysis-chart-toggle-arrow::before\{content:"▾"\}/);
+ assert.match(rules,/\.analysis-chart-card\.is-expanded \.analysis-chart-toggle-arrow::before\{content:"▴"\}/);
+ assert.match(rules,/@media\(max-width:430px\)\{\s*body\.page-analisis \.analysis-chart-toggle\{font-size:11px\}/);
+ assert.match(rules,/\.analysis-chart-card\.is-expanded \.analysis-chart-panel\{/);
+ const html=read('docs/analisis-cuotas.html');
+ assert.equal((html.match(/class="analysis-chart-toggle"/g)||[]).length,2);
+ assert.match(html, /analisis-cuotas\.css\?v=20261029-acordeones-alineados/);
 });
