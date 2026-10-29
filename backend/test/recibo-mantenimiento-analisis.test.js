@@ -47,7 +47,7 @@ test('la lista de meses omite períodos sin pago y no confunde años futuros',()
 });
 
 test('incluye recargos del cobro manual sin sumar dos veces los importes de una importación', () => {
-    const manual = datosDeMovimiento(casa, [cuota(21, 'OCTUBRE', 300, { recargo: 50 })], []);
+    const manual = datosDeMovimiento(casa, [cuota(21, 'OCTUBRE', 350, { recargo: 50 })], []);
     assert.equal(manual.resumen.monto, 350);
 
     const importada = datosDeMovimiento(casa, [cuota(22, 'OCTUBRE', 350, {
@@ -134,4 +134,40 @@ test('el enlace a recibos está protegido por el middleware de administradores',
     assert.match(routes, /router\.use\(autenticarToken,autorizarRoles\('SUPER_ADMIN','ADMINISTRADOR'\)\)/);
     assert.match(routes, /\/pagos-vivienda\/:casaId\/recibo\/datos/);
     assert.match(routes, /\/pagos-vivienda\/:casaId\/recibo'/);
+});
+
+test('Jardines 335: recibo por referencia coincide con $650 del historial y no duplica $50 de recargo', () => {
+    const ref = 'MJM:10-DIC-2026:ejemplo-650';
+    const cuotas = [
+        cuota(201, 'OCTUBRE', 350, { referencia: ref, recargo: 50, fechaConfirmacion: '2026-10-28' }),
+        cuota(202, 'NOVIEMBRE', 300, { referencia: ref, recargo: 0, fechaConfirmacion: '2026-10-28' })
+    ];
+    const { historialMantenimiento } = require('../src/services/historial-pagos-vivienda.service');
+    const movimiento = historialMantenimiento(cuotas)[0];
+    assert.equal(movimiento.monto, 650);
+    assert.equal(movimiento.recargo, 50);
+    const datos = datosDeMovimiento(casa, cuotas, [], new Date('2026-10-29T12:00:00Z'), null, ref);
+    assert.equal(datos.resumen.monto, movimiento.monto);
+    assert.equal(datos.recibo.montoPagado, 650);
+    assert.equal(datos.resumen.periodo, 'OCTUBRE 2026 A NOVIEMBRE 2026');
+    const mes = datosDeMovimiento(casa, cuotas, [], new Date(), '2026-10');
+    assert.equal(mes.resumen.monto, 350);
+});
+
+test('recibos por referencia usan exactamente el importe del historial con depósito bancario o abono', () => {
+    const cuotas = [cuota(203, 'OCTUBRE', 350, { referencia: 'PAGO-350', recargo: 50 })];
+    const banco = [{ id: 21, tipoPago: 'MANTENIMIENTO', estatus: 'VALIDADO',
+        monto: 350, recargo: 50, folioOperacion: 'PAGO-350', fechaOperacion: '2026-10-28' }];
+    const { historialMantenimiento } = require('../src/services/historial-pagos-vivienda.service');
+    for (const comprobantes of [[], banco]) {
+        const movimiento = historialMantenimiento(cuotas, comprobantes)[0];
+        const datos = datosDeMovimiento(casa, cuotas, comprobantes, new Date(), null, 'PAGO-350');
+        assert.equal(datos.recibo.montoPagado, movimiento.monto);
+        assert.equal(datos.resumen.monto, 350);
+    }
+    const parcial = [cuota(204, 'NOVIEMBRE', 125, { referencia: 'PARCIAL-125', recargo: 0,
+        estatusPago: 'PAGO_PARCIAL' })];
+    const abono = datosDeMovimiento(casa, parcial, [], new Date(), null, 'PARCIAL-125');
+    assert.equal(abono.recibo.montoPagado, 125);
+    assert.equal(abono.recibo.sello, 'ABONO RECIBIDO');
 });
