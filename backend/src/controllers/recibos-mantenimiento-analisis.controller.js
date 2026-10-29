@@ -96,6 +96,12 @@ async function vistaPdfTemporal(req,res){
   const nombreSeguro=nombreArchivo.replace(/[^a-zA-Z0-9._-]/g,'_');
   res.setHeader('Cache-Control','private, no-store');
   res.setHeader('Referrer-Policy','no-referrer');
+  // Helmet protege las otras rutas, pero este PDF debe poder incrustarse en
+  // la app oficial de GitHub Pages, en un iframe de origen diferente.
+  res.removeHeader('X-Frame-Options');
+  res.setHeader('Cross-Origin-Resource-Policy','cross-origin');
+  res.setHeader('Content-Security-Policy',
+   "default-src 'none'; frame-ancestors 'self' https://listoenlinea-labs.github.io");
   res.setHeader('Content-Type','application/pdf');
   res.setHeader('Content-Disposition',`inline; filename="${nombreSeguro}"`);
   res.setHeader('Content-Length',buffer.length);
