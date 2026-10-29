@@ -655,7 +655,13 @@ function renderHouses(){
    receiptBlob=pdf;
    receiptDetails=detail;
    receiptObjectUrl=URL.createObjectURL(pdf);
-   $('houseReceiptPreview').src=receiptObjectUrl;
+   // Chrome descarga con UUID cuando el iframe recibe blob:. Esta URL
+   // temporal devuelve Content-Disposition con el folio del recibo.
+   const {data:vista}=await request('/pagos-vivienda/'+casaId+'/recibo/vista'+query);
+   if(seq!==receiptSequence||receiptModal.hidden)return;
+   if(!vista?.url||!vista.url.startsWith('/api/recibo-vista/'))throw Error('No fue posible abrir la vista protegida del PDF');
+   $('houseReceiptPreview').referrerPolicy='no-referrer';
+   $('houseReceiptPreview').src=new URL(vista.url,new URL(API).origin).href;
    $('houseReceiptPreview').hidden=false;
    $('houseReceiptAddress').textContent=detail.calle+' '+detail.numero+' · '+(detail.nombre||'Sin residente');
    $('houseReceiptTitle').textContent='Recibo '+detail.folio;
