@@ -734,3 +734,63 @@ button.finance-export-card:is(:hover,:focus-visible) .finance-export-icon{
 body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr.house-row-overdue:not(.house-receipt-selected)>td{
   background:#fff1f2!important;
 }
+
+/* Gráficas de cumplimiento: en escritorio permanecen visibles.
+   Solo el móvil muestra un botón independiente para cada panel. */
+.analysis-chart-toggle{display:none}
+@media(max-width:700px){
+  body.page-analisis .analysis-chart-card{
+    padding:0;
+    min-width:0;
+    overflow:hidden;
+  }
+  body.page-analisis .analysis-chart-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    width:100%;
+    min-height:46px;
+    padding:13px 16px;
+    border:0;
+    background:transparent;
+    color:#9a510d;
+    font-size:12px;
+    font-weight:850;
+    text-align:left;
+    cursor:pointer;
+  }
+  body.page-analisis .analysis-chart-toggle:focus-visible{
+    outline:3px solid #d09b65;
+    outline-offset:-4px;
+    border-radius:13px;
+  }
+  body.page-analisis .analysis-chart-toggle-action{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    flex:0 0 auto;
+    font-size:12px;
+  }
+  body.page-analisis .analysis-chart-toggle-arrow{
+    display:inline-block;
+    width:7px;
+    height:7px;
+    border-right:1.5px solid currentColor;
+    border-bottom:1.5px solid currentColor;
+    transform:translateY(-2px) rotate(45deg);
+    transition:transform .18s ease;
+  }
+  body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-toggle-arrow{
+    transform:translateY(2px) rotate(225deg);
+  }
+  body.page-analisis .analysis-chart-panel{display:none}
+  body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-panel{
+    display:block;
+    padding:4px 14px 14px;
+    min-width:0;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .analysis-chart-toggle-arrow{transition:none!important}
+}

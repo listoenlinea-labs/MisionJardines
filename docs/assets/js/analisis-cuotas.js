@@ -47,6 +47,20 @@
  let activeConcept='MANTENIMIENTO';
  let selectedReceiptHouseId=null;
  const HOUSE_PAGE_SIZE=12;
+
+ // Cada gráfica tiene su propio control; en escritorio el CSS deja ambos
+ // paneles visibles y oculta estos botones, sin alterar el render financiero.
+ document.querySelectorAll('.analysis-chart-toggle').forEach(button=>{
+  const card=button.closest('.analysis-chart-card');
+  const label=button.querySelector('.analysis-chart-toggle-label');
+  if(!card||!label)return;
+  button.addEventListener('click',()=>{
+   const expanded=card.classList.toggle('is-expanded');
+   button.setAttribute('aria-expanded',String(expanded));
+   label.textContent=expanded?'Ocultar':'Mostrar';
+  });
+ });
+
  const notice=(msg,kind='error')=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;el.dataset.kind=kind;};
  async function request(path,body,method=body?'POST':'GET'){
   const response=await fetch(API+'/finanzas'+path,{method,
