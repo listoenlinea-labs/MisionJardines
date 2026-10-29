@@ -698,3 +698,26 @@ button.finance-export-card:is(:hover,:focus-visible) .finance-export-icon{
 .house-annual-option p{flex:1 1 230px;margin:0;color:#687891;font-size:11px;line-height:1.55}
 .house-annual-label{display:inline-flex;align-items:center;padding:6px 10px;border:1px solid #cce8d5;border-radius:9px;background:#eef9f1;color:#2f744e;font-weight:850;white-space:nowrap}
 @media(max-width:640px){.house-annual-option{align-items:stretch;flex-direction:column;gap:7px}.house-annual-button{width:100%}}
+
+/* Deuda pendiente: rojo pastel, con importe legible y selección preservada. */
+.houses-scroll #financeHouseRows>tr.house-row-overdue>td{
+  background:#fff1f2;border-bottom-color:#f5d9dc;
+}
+.houses-scroll #financeHouseRows>tr.house-row-overdue>td:first-child{
+  box-shadow:inset 3px 0 #e7a2aa;
+}
+.houses-scroll #financeHouseRows .house-amount.is-overdue{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:80px;padding:8px 12px;border:1px solid #efbbc1;
+  border-radius:10px;background:#ffe1e4;color:#ae3446;
+  font-weight:850;font-variant-numeric:tabular-nums;
+}
+.houses-scroll #financeHouseRows>tr.house-row-overdue .house-paid-history.is-pending{
+  border-color:#efc6ca;background:#fff9fa;color:#a34e59;
+}
+.maintenance-receipt-active .houses-scroll #financeHouseRows>tr.house-row-overdue.house-receipt-selected>td{
+  background:#f5d0a7;border-bottom-color:#daa576;
+}
+body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr.house-row-overdue:not(.house-receipt-selected)>td{
+  background:#fff1f2!important;
+}
