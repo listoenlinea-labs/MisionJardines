@@ -748,6 +748,16 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
     align-self:start;
     overflow:hidden;
   }
+  /* product-ui.css fuerza 12px !important en .analysis-card.
+     Hay que neutralizarlo solo para estos dos acordeones. */
+  body.page-analisis.mj-shared-sidebar-enabled .analysis-columns > .analysis-card.analysis-chart-card{
+    padding:0!important;
+    margin-bottom:0!important;
+  }
+  /* Conservar separación con "Consulta de viviendas" después del segundo panel. */
+  body.page-analisis.mj-shared-sidebar-enabled .analysis-columns > .analysis-chart-card:last-child{
+    margin-bottom:13px!important;
+  }
   /* Mismo alto compacto que «Otros indicadores financieros» al estar cerrada. */
   body.page-analisis .analysis-chart-card:not(.is-expanded){
     height:46px;
@@ -763,12 +773,12 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
     width:100%;
     height:46px;
     min-height:46px;
-    padding:0 16px;
+    padding:0 14px;
     border:0;
     background:transparent;
-    color:#9a510d;
+    color:#965418;
     font-size:12px;
-    font-weight:850;
+    font-weight:800;
     text-align:left;
     cursor:pointer;
   }
@@ -786,15 +796,17 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
   }
   body.page-analisis .analysis-chart-toggle-arrow{
     display:inline-block;
-    width:7px;
-    height:7px;
-    border-right:1.5px solid currentColor;
-    border-bottom:1.5px solid currentColor;
-    transform:translateY(-2px) rotate(45deg);
-    transition:transform .18s ease;
+    width:auto;
+    height:auto;
+    border:0;
+    transform:none;
+    line-height:1;
   }
-  body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-toggle-arrow{
-    transform:translateY(2px) rotate(225deg);
+  body.page-analisis .analysis-chart-toggle-arrow::before{content:"▾"}
+  body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-toggle-arrow::before{content:"▴"}
+  /* El resumen superior usa letra de 11px en teléfonos pequeños. */
+  @media(max-width:430px){
+    body.page-analisis .analysis-chart-toggle{font-size:11px}
   }
   body.page-analisis .analysis-chart-panel{display:none}
   body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-panel{
