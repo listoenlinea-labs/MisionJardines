@@ -6,6 +6,21 @@ const { Casa, Cuota, PagoReportado, Condomino, CondominoVivienda, Usuario, Usuar
 const { historialMantenimiento } = require('./historial-pagos-vivienda.service');
 const { generarReciboPdf } = require('./pdf.service');
 
+const abreviaturasMes = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+function folioRecibo({calle,numero,periodo,referencia,tipo='MANTENIMIENTO'}) {
+    const [anio,mes] = String(periodo || '').split('-').map(Number);
+    if (!Number.isInteger(anio) || !Number.isInteger(mes) || mes < 1 || mes > 12)
+        throw new Error('El período del recibo no es válido');
+    const inicial = String(calle || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .trim().charAt(0).toUpperCase().replace(/[^A-Z]/g,'');
+    const numeroSeguro = String(numero || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    const tipoCodigo = {MANTENIMIENTO:'M',PROYECTO:'P',EXTRAORDINARIO:'P',CASA_CLUB:'C'}[tipo];
+    if (!inicial || !numeroSeguro || !tipoCodigo) throw new Error('Datos de vivienda o concepto inválidos para el folio');
+    // Misma referencia + período + vivienda = mismo folio en cada vista y descarga.
+    const codigo = createHash('sha256').update([referencia,periodo,calle,numero,tipoCodigo].join(':'))
+        .digest('hex').slice(0,10).toUpperCase();
+    return `MJ-${abreviaturasMes[mes-1]}-${anio}-${codigo}-${inicial}${numeroSeguro}-${tipoCodigo}`;
+}
 const errorDeRecibo = (status, message) => Object.assign(new Error(message), { status });
 const refNormalizada = value => String(value || '').trim().toLowerCase();
 const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
@@ -107,13 +122,12 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
     const monto = cuotaSeleccionada && !referenciaBuscada && cuotasDelPago.length > 1
         ? Number(cuotaSeleccionada.montoPagado)
         : Number(movimiento.monto);
-    const fuenteFolio = comprobante?.reciboFolio || cuotaPrincipal?.folio;
-    const huella = createHash('sha256')
-        .update(`${casa.id}:${referencia}`).digest('hex').slice(0, 10).toUpperCase();
-    // Distintos meses del mismo depósito necesitan folios distintos.
-    const folio = cuotaSeleccionada && cuotasDelPago.length > 1
-        ? `MJ-AN-${casa.id}-${huella}-${periodo.replace('-', '')}`
-        : fuenteFolio || `MJ-AN-${casa.id}-${huella}`;
+    // Para depósitos de varios meses, el recibo del movimiento usa el primer
+    // período cubierto; un recibo mensual usa exclusivamente el mes seleccionado.
+    const primerPeriodo = [...periodos].sort((a,b)=>a.anio-b.anio||meses.indexOf(a.mes)-meses.indexOf(b.mes))[0];
+    const periodoFolio = periodo || (primerPeriodo && `${primerPeriodo.anio}-${String(meses.indexOf(primerPeriodo.mes)+1).padStart(2,'0')}`);
+    const folio = folioRecibo({calle:casa.calleCorrecta||casa.calle,numero:casa.numero,
+        periodo:periodoFolio,referencia,tipo:'MANTENIMIENTO'});
 
     const recibo = {
         folio,
@@ -211,7 +225,7 @@ async function consultarTelefonos(casa) {
 }
 
 async function generarPdf(recibo) {
-    return generarReciboPdf(recibo, { enMemoria: true });
+    return generarReciboPdf(recibo, { enMemoria: true, nombreArchivo: recibo.folio + '.pdf' });
 }
 
 module.exports = {
@@ -220,5 +234,6 @@ module.exports = {
     datosDeMovimiento,
     consultarPago,
     consultarTelefonos,
-    generarPdf
+    generarPdf,
+    folioRecibo
 };
