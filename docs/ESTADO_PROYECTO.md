@@ -1,13 +1,13 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 28/oct/2026, 23:25, America/Mexico_City.
-**SHA de main consultado:** `4cb42defbe74243d0ce2edc1f024a3a2307101ee`.
-**Fuentes de esta revisión:** comparación de main desde `01ffc661de5ea1609d9d31cd6a6b7be4c18b6fb2`,
-commits y PR de GitHub, AGENTS.md, índice y estado vigentes. El único commit nuevo fue
-`4cb42defbe74243d0ce2edc1f024a3a2307101ee`, actualización de esta misma bitácora,
-por lo que se excluyó del trabajo de producto. No hubo PR abiertos, cambios de producto
-ni checks nuevos que registrar.
-No hubo confirmaciones nuevas accesibles de despliegue, MySQL, Titan o pruebas físicas.
+**Última revisión:** 29/oct/2026, 23:30, America/Mexico_City.
+**SHA de main consultado:** `26b5ffea50c538dcbaf93a81eebbfcf33f721682`.
+**Fuentes de esta revisión:** comparación de main desde `4cb42defbe74243d0ce2edc1f024a3a2307101ee`,
+metadatos y descripciones de los PR #308–#317, commits, checks y logs de GitHub,
+AGENTS.md, índice y estado vigentes. Se excluyó del trabajo de producto el commit
+documental `e489b2c43b3d4f12c27764ce418a32d11c253592`.
+No hubo confirmaciones nuevas accesibles de despliegue, MySQL, Titan, navegador físico
+o pruebas de C3.
 No se consultaron Hostinger, C3, MySQL ni contenido privado del buzón, y no se publican
 credenciales, comprobantes ni datos personales.
 
@@ -15,6 +15,36 @@ Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 29/oct/2026
+
+Los PR #308–#317 están fusionados. #308 corrige los recibos de mantenimiento de
+Análisis para tomar el importe exacto del movimiento y no volver a sumar un recargo
+ya incluido; también distingue viviendas sin pagos y resalta saldos pendientes sin
+quitar las acciones. El caso sintético de $650 con $50 de recargo debe conservar
+$650 en historial, vista previa y PDF, no $700.
+
+Los PR #309–#314 ajustan exclusivamente la experiencia móvil de Análisis: resumen del
+historial en cuadrícula 2×2, tarjeta de Pago anual compacta, gráficas inicialmente
+plegadas y de 46 px, alineación uniforme de los tres desplegables y KPI financieros
+legibles en dos columnas. No cambian cálculos, registros, SQL ni C3.
+
+El PR #315 permite que ADMINISTRADOR y SUPER_ADMIN reserven Casa Club directamente
+como APROBADA usando el rol autenticado del servidor. Conserva elegibilidad financiera,
+fecha única y cargos; aprobar no registra ni valida el pago. Los residentes siguen con
+solicitud PENDIENTE.
+
+Los PR #316–#317 incorporan para recibos de mantenimiento emitidos desde Análisis el
+folio y nombre `MJ-MES-AÑO-CÓDIGO-CASA-M.pdf`. La descarga nativa del visor de Chrome
+usa una URL HTTP firmada por cinco minutos, limitada al recibo y a roles administrativos.
+No altera comprobantes históricos ni implementa todavía emisores de Proyectos/Casa Club.
+
+Los diez heads tuvieron workflow **Verificar finanzas** con conclusión `success`.
+Los pasos obligatorios pasaron, pero la suite bancaria heredada siguió como diagnóstico:
+en el run de #317, `node --test backend/tests/*.test.js` quedó **87/88** por la
+expectativa conocida «si falta identificador devuelve campos necesarios para modal»,
+igual que main base. No hubo validación visual en dispositivo, MySQL/Casa Club real,
+despliegue de main en Hostinger ni descarga nativa confirmada en navegador.
 
 ## Implementado en main el 27/oct/2026
 
@@ -111,7 +141,7 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Seguridad HTTP | Corrección DoS en main; despliegue pendiente | #270 actualiza body-parser a 2.4.0, fija override mínimo y rechaza cuerpos JSON/form comprimidos antes de descomprimir. La prueba HTTP real reporta 7/7; `npm audit --omit=dev` conserva cinco dependencias ajenas a esa alerta |
 | Depuración de viviendas | Fusión de tres pares reportada por el usuario | Falta confirmación explícita de COMMIT y lectura posterior desde otra conexión; cinco registros externos siguen pendientes según la conversación. No hay verificación nueva de producción |
-| Interfaz, navegación y fechas | Implementado en main; aceptación parcial | #208 conserva DD-MON-YYYY; #223–#230 implementan portal persistente y corrigen estilos/scroll. El usuario confirmó el scroll. #231 añadió el primer gesto de refresco, que el usuario reportó sin efecto; #239 amplía la instalación a páginas directas, paneles y cabecera, pero aún no tiene confirmación física. #232–#237 corrigen cabeceras/modales y unifican la X; falta validación visual |
+| Interfaz, navegación y fechas | Implementado en main; aceptación parcial | #208 conserva DD-MON-YYYY; #223–#239 corrigen portal, estilos, navegación y refresco, con el primer intento reportado sin efecto. #309–#314 compactan historial, pago anual, gráficas, desplegables y KPI de Análisis en móvil. Son cambios estructurales/visuales; falta validar en Safari, Android y escritorio tras despliegue |
 | Historial administrativo de pagos | Implementado en main; producción no verificada | PR #160–#162 conservan historial 11–10. PR #209 añade historial por vivienda/concepto, total del último movimiento y separación explícita entre vigencia C3 verificada y MySQL; #214 oculta solo el aviso naranja, no la diferencia. No corrige fechas automáticamente |
 | Pagos manuales desde Análisis | Implementado en main; migración/uso real pendientes | PR #171 y #173–#176 implementan pagos manuales de mantenimiento; #190 separa el botón por vivienda. PR #193 amplía el registro manual por concepto y mantiene extraordinarias/casa club separadas de la vigencia física de mantenimiento. No se ejecutó la migración ni se probó con MySQL/C3 reales |
 | Auto-users | Alta individual implementada; SMTP/producción pendientes | #296 añade mostrar/ocultar contraseñas. #297 crea prerregistro individual transaccional por vivienda, idempotente y sin enviar correo al crear; conserva cuentas/vínculos anteriores y separa la baja del inquilino saliente. La invitación individual anterior fue recibida por el usuario, pero este flujo nuevo no se probó con MySQL/SMTP reales |
@@ -120,10 +150,10 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 | Finanzas históricas y dashboard | Implementado en main; producción no verificada | PR #143–#151 conectan cuotas, egresos, ingresos y saldo inicial; #180 acumula adeudo; #189 separa vistas por rol; #191 muestra anticipos sin proyectar deuda. PR #193 incorpora adeudos desglosados e indicadores por concepto. Requiere migración, padrón conciliado, cotejo MySQL y despliegue reales |
 | Cuotas para Seguridad | Cálculo compartido implementado en main; producción no verificada | #140 creó la vista sin PII. #294 sustituye su criterio independiente por el mismo cálculo/clasificador de Pagos y Análisis, considerando tarifa, exenciones, anticipos y abonos parciales. La regresión Atotonilco 752 está cubierta con fixtures; no se consultó la DB real ni se confirmó despliegue |
 | Históricos Google Sheets | Backend/staging opcional conservado; controles retirados de Análisis | PR #140 añadió lectura OAuth y preparación idempotente, deshabilitadas por defecto. PR #187 retiró solo la tarjeta y el script de esa vista; no borró archivo, endpoint, tabla ni datos. Requiere decisión explícita, migración y validación antes de activar |
-| Análisis, historial y recibos | Fuente compartida implementada; producción no verificada | #288–#290 comparten cálculo con Pagos, último corte, saldo a favor, recargos y exenciones. #291 quita decimales solo en tarjetas/historial; #292–#293 verifican visualmente el estado guardado de tarifa/exención. TEST-001 permanece como apoyo sintético y puede alterar totales mientras siga visible |
+| Análisis, historial y recibos | Fuente compartida, recibo exacto y folio nuevo implementados; producción no verificada | #288–#293 comparten cálculo, corte, saldo y recargos. #308 evita duplicar recargos y resalta adeudos; #316 genera folio/nombre MJ-MES-AÑO-CÓDIGO-CASA-M; #317 prepara nombre correcto en el visor nativo mediante pase firmado temporal. TEST-001 sigue sintético; falta despliegue y prueba real del caso $650, PDF y navegador |
 | Navegación de Administración/Comunidad | Implementada en main; validación visual pendiente | PR #187 oculta Cuotas del menú y retira la tarjeta de conciliación; #188 oculta las pestañas de Análisis, conserva sus elementos/rutas y ordena Comunidad con Pagos primero. Son cambios de interfaz, no borrado de datos ni cambio de permisos |
 | Inicio por rol | Implementado en main; producción no verificada | PR #223 restaura Inicio dentro del portal persistente: administración ve finanzas, Seguridad visitas/accesos sin cobros y Condómino solo viviendas autorizadas por `usuarios_casas`. Fallos parciales muestran «No disponible» sin inventar ceros. Faltan cuentas reales y revisión de logs/despliegue |
-| Cobranza extraordinaria y casa club | Implementada en main; abonos arbitrarios y preparación de producción pendientes | #193 añade cargos/reservas y #210 fija sus bloqueos. #307 documenta que cualquier importe positivo debe aceptarse como abono, pero esos dos conceptos todavía exigen adaptar código y pruebas; no confundir la regla documental con implementación. Requiere migración y prueba real |
+| Cobranza extraordinaria y casa club | Reserva directa administrativa en main; abonos arbitrarios y producción pendientes | #193/#210 añaden cargos, reservas y bloqueos. #315 permite aprobación directa solo a ADMINISTRADOR/SUPER_ADMIN autenticados, sin registrar pago. #307 exige aceptar cualquier importe positivo, pero extraordinarias y Casa Club todavía requieren adaptar código y pruebas. Requiere migración y prueba real |
 | Noticias y tráfico | Implementado en main; despliegue/visual pendientes | #220/#225/#228/#238 conservan fotos, fallbacks e ilustración etiquetada. #263 corrige TomTom a `language=es-ES` y solicita los campos que consume la UI; faltan despliegue y prueba contra la API real con la llave configurada |
 | Monitor automático de adeudos C3 | Implementado en main; apagado por defecto | #204–#205 conservan piloto/dry-run y operaciones manuales. PR #210 limita el monitor exclusivamente a deuda de mantenimiento: extraordinarias y Casa club no bloquean TAGs ni cambian vigencias. No auto-reactiva al saldar. Sin prueba física ni escritura de producción |
 | Continuidad documental | Reglas de concepto, reparto y abonos actualizadas; discrepancia enero/septiembre pendiente | #307 fija cualquier importe positivo como abono; #305 corrige el reparto a dos o más viviendas. Debe conciliarse AGENTS.md (septiembre sin cobertura) con #290/código (enero de 2026 sin pagos), y extender la regla de abonos a extraordinarias/casa club. El manual integral sigue siendo guion, no evidencia E2E |
@@ -131,11 +161,11 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de producción ni la versión PHP de Hostinger;
 el backend documentado continúa siendo Node.js.
-Desde el SHA consultado en la revisión anterior, main avanzó un commit: `4cb42def`,
-dedicado únicamente al estado del 27/oct y excluido del trabajo de producto. No hay
-PR abiertos ni cambios verificables de producto, checks nuevos, despliegues o pruebas
-físicas que registrar. Se conservan sin cambios los pendientes de MySQL, Titan,
-Hostinger y C3, y el PR #132 continúa revertido.
+Desde el SHA consultado en la revisión anterior, main avanzó 55 commits. Se fusionaron
+los PR #308–#317 y no hay PR abiertos. Se excluyó `e489b2c`, dedicado únicamente al
+estado del 28/oct. Los merges y diez workflows exitosos acreditan código y checks en
+GitHub, no despliegue en Hostinger, funcionamiento real de MySQL/Casa Club ni pruebas
+de navegador o C3. El PR #132 continúa revertido.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -241,6 +271,9 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 27/oct/2026 | PR #305; pruebas locales de reparto y workflow [40598808015](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40598808015) | **15/15** pruebas locales de reparto; job **success**, incluidos reparto, reintento, concepto, OCR, finanzas y Seguridad | Cubre cuentas sintéticas con dos viviendas; DB/OCR simulados, sin datos, depósito ni despliegue real |
 | 27/oct/2026 | PR #306; regresiones de abonos y workflow [40601173808](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40601173808) | Pasaron cuatro casos nuevos ($0.01, varios recargos, HTTP $20 y secuencia $20+$30+$300), reparto/UI **15/15** y el paso obligatorio de abonos; job **success**. Un grupo amplio quedó **124/125** por una expectativa heredada del parser, además de fallos antiguos enero/septiembre y pagos/C3 en otras selecciones | Almacenamiento, TCP y C3 simulados; no prueba MySQL, buzón, depósito, cobertura física ni despliegue |
 | 27/oct/2026 | PR #307, solo documentación; `git diff --check` | Sin errores; no hubo workflow de Actions por el alcance documental | Fija la regla en AGENTS.md, pero no implementa abonos arbitrarios en extraordinarias o casa club |
+| 29/oct/2026 | PR #308–#317; workflows **Verificar finanzas** [40908504070](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40908504070) a [40971893271](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40971893271) | **10/10 jobs success**; sintaxis y pasos obligatorios de reintento, abonos, reparto, conciliación, OCR, finanzas y Seguridad concluyeron success | Checks sobre heads/merge de PR; no prueban despliegue, navegador físico, MySQL, Casa Club o C3 reales |
+| 29/oct/2026 | PR #317; `NODE_PATH=backend/node_modules node --test backend/tests/*.test.js` en head y comparación con main | **87 aprobadas, 1 fallida** en ambos; falla «si falta identificador devuelve campos necesarios para modal» | Paso diagnóstico con `continue-on-error`; el job verde no equivale a suite heredada totalmente verde |
+| 29/oct/2026 | Validaciones declaradas en PR #308–#317 | #310: 7; #311: 11; #312: 10; #313: 12; #314: 11 comprobaciones estáticas; #315/#317 sintaxis y diff. #308/#309/#316 añadieron casos pero declararon ejecución local pendiente | Evidencia de rama y CI general; falta ejecutar explícitamente todos los nuevos archivos sobre main y validar visualmente |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -291,16 +324,16 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | --- | --- |
 | Dos pruebas históricas fallidas de edición de TAG | PR #205 restauró la conducta manual solicitada, pero `zkteco-vigencias.test.js` sigue 7/9 por expectativas antiguas de `editTag`. Diagnosticar, acordar el comportamiento esperado y repetir sin ocultar SQL/C3 divergentes |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
-| CI y regresiones históricas | #295 falló su primer workflow; #296 y #307 no lo activaron; #297–#306 tienen diez runs exitosos. #306 añadió regresiones obligatorias verdes, pero un grupo amplio quedó 124/125 por una expectativa heredada y persisten fallos antiguos de enero/septiembre y pagos/C3. Ejecutar suite reproducible sobre main actual y no declarar todo verde por pasos `continue-on-error` |
+| CI y regresiones históricas | #308–#317 suman diez workflows exitosos, además de los diez de #297–#306; aun así, el run #317 mostró 87/88 en la suite bancaria heredada, con la misma expectativa fallida de identificador en main. Ejecutar en main los nuevos tests de recibos, móvil, Casa Club y visor PDF, y no declarar todo verde por pasos `continue-on-error` |
 | Auto-users por SMTP | La prueba individual anterior recibió correo. #297 añade alta individual sin envío automático. Falta desplegar y probar con una vivienda controlada: creación idempotente, invitación separada, enlace en incógnito, aceptación completa, reintento SMTP, duplicados y conservación del residente anterior |
 | Migración de cobranza por concepto | Respaldar DB, revisar y ejecutar manualmente `backend/sql/2026-10-18-cuotas-extraordinarias-casa-club.sql` primero en prueba; después correr consultas diagnósticas. No desplegar backend/frontend nuevo antes del esquema |
 | Padrón y relaciones condómino-vivienda | El CSV reporta 188 pares copiados sin faltantes, pero el intento posterior de `mj_conciliar_padron_20261019()` devolvió error 1644 por ejecución/respaldo existente. Revisar respaldos/bitácora y conteos posteriores desde otra conexión; no afirmar todavía 231/232 ni COMMIT final |
-| Casa club y tres conceptos | Adaptar extraordinarias y casa club para aceptar cualquier importe positivo sin marcar liquidación, reserva o acceso; conservar saldo y verificación bancaria. Después probar roles, autorización, adeudos, fechas límite, comprobantes y expiración. Solo mantenimiento afecta TAG/C3; mantenimiento y extraordinarias bloquean reserva |
+| Casa club y tres conceptos | #315 ya permite reserva directa administrativa, pero falta probar con MySQL controlado roles ADMINISTRADOR/SUPER_ADMIN, spoofing, colisión, cargos, plazo y que APROBADA siga impaga. Adaptar extraordinarias/Casa Club para aceptar cualquier importe positivo sin marcar liquidación, reserva o acceso; conservar saldo y verificación bancaria |
 | Inicio por rol | Validar con cuentas reales de administrador, Seguridad y Condómino (una y varias viviendas): alcance de listas, ausencia de finanzas en no administradores y ausencia de datos de casas ajenas |
 | Adeudo acumulado, anticipos y advertencias TAG | Cotejar contra MySQL una casa al corriente, parcial, morosa y con anticipo 2027; confirmar que Último mes pagado muestra el período real sin sumar deuda futura. Abrir modal en casas con 0/1/varios TAGs y confirmar C3 bajo demanda sin escrituras |
 | Paridad Seguridad–Análisis | Desplegar #294 y cotejar en MySQL controlado Atotonilco 752 y otras viviendas con tarifa especial, exención, anticipo, abono parcial y pendientes antiguos. Confirmar mismo estado/adeudo en ambas vistas y ausencia de PII; no cambiar registros para forzar el resultado |
-| Portal móvil y navegación | El scroll fue confirmado. El usuario reportó que el primer refresco de #231 no funcionó; desplegar #239 y validar el gesto en portal, cabecera y enlace directo en Safari/iPhone/Android. Validar también modales, X, menú, caché, Atrás/Adelante y descargas |
-| Mis recibos, refresco y reintento | Desplegar #295 y #301–#304 en frontend/backend. Validar en app.html y página directa que historial/burbuja se actualicen, que un rechazado conserve folio/PDF e inicie OCR→Titan, que el 404 distinga comprobante/ruta y que un pago validado o hash usado nunca se reabra |
+| Portal móvil y navegación | El scroll fue confirmado y el primer refresco de #231 fue reportado sin efecto. Desplegar #239 y #309–#314; validar en Safari/iPhone/Android las cuadrículas 2×2, Pago anual, gráficas/desplegables de 46 px, KPI, caché, modales, navegación y descargas. Los checks estáticos no sustituyen revisión visual |
+| Mis recibos, refresco y reintento | Desplegar #295, #301–#304 y #308/#316/#317 en frontend/backend. Validar refresco y reintento OCR→Titan; comprobar que el movimiento de $650 no genere $700, que modal/PDF compartan folio MJ, y que tanto Guardar como el visor nativo de Chrome usen el nombre correcto, respeten rol, expiración de cinco minutos y CSP |
 | TomTom | Desplegar #263 y probar incidencias reales en español con la llave del proyecto; distinguir un HTTP 400 anterior de una respuesta válida con los campos consumidos por la UI |
 | Body-parser y dependencias | Redesplegar backend desde el lock de #270, confirmar rechazo 415 de gzip/deflate/Brotli y ejecutar smoke de login/pagos. Revisar por separado los cinco avisos restantes de npm audit sin aplicar `audit fix --force` a ciegas |
 | TEST-001 temporal | Usar únicamente clon/base de pruebas y scripts con COMMIT comentado; no borrar evidencia bancaria real ni tocar `zk_tarjetas` por SQL. #287 altera temporalmente el padrón/porcentajes de Análisis y debe revertirse después de la validación |
@@ -352,6 +385,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-29
+
+- Main consultado a las 23:30, America/Mexico_City, en `26b5ffea50c538dcbaf93a81eebbfcf33f721682`: 55 commits por delante del SHA revisado el 28/oct. Se excluyó `e489b2c`, que solo actualizó esta bitácora.
+- PR #308–#314 fusionados: recibos sin recargo duplicado, adeudos resaltados y ajustes móviles de historial, Pago anual, gráficas, desplegables y KPI. Son cambios en main; no hay confirmación visual ni de despliegue.
+- PR #315 fusionado: administradores autenticados pueden reservar Casa Club directamente como APROBADA, sin registrar pago. PR #316–#317 fusionados: folio/nombre MJ para recibos de mantenimiento de Análisis y descarga nativa de Chrome mediante pase firmado temporal.
+- Los diez workflows de #308–#317 concluyeron **success**. En el run [40971893271](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40971893271), la suite heredada diagnóstica quedó **87/88** por la misma expectativa de identificador que falla en main; no se considera resuelta.
+- No hay PR abiertos ni nuevas confirmaciones físicas accesibles. Los previews de ramas no acreditan despliegue de main; no se consultaron ni modificaron MySQL, Titan, Casa Club, Hostinger, C3 o datos reales.
+
 
 ### 2026-10-28
 
