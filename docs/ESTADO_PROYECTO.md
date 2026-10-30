@@ -1,13 +1,14 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 29/oct/2026, 23:30, America/Mexico_City.
-**SHA de main consultado:** `26b5ffea50c538dcbaf93a81eebbfcf33f721682`.
-**Fuentes de esta revisión:** comparación de main desde `4cb42defbe74243d0ce2edc1f024a3a2307101ee`,
-metadatos y descripciones de los PR #308–#317, commits, checks y logs de GitHub,
-AGENTS.md, índice y estado vigentes. Se excluyó del trabajo de producto el commit
-documental `e489b2c43b3d4f12c27764ce418a32d11c253592`.
-No hubo confirmaciones nuevas accesibles de despliegue, MySQL, Titan, navegador físico
-o pruebas de C3.
+**Última revisión:** 29/oct/2026, 23:35, America/Mexico_City.
+**SHA de main consultado:** `7f66b501541f6e3f913d3e0c73d821a722345c55`.
+**Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes, y
+comparación de main desde `26b5ffea50c538dcbaf93a81eebbfcf33f721682`.
+El único commit nuevo fue `7f66b501541f6e3f913d3e0c73d821a722345c55`,
+actualización de esta misma bitácora, y se excluyó del trabajo de producto. La entrada
+del 29/oct conserva la evidencia de los PR #308–#317 y sus checks sin duplicarse.
+No hubo cambios verificables adicionales, PR abiertos ni confirmaciones nuevas de
+despliegue, MySQL, Titan, navegador físico o pruebas de C3.
 No se consultaron Hostinger, C3, MySQL ni contenido privado del buzón, y no se publican
 credenciales, comprobantes ni datos personales.
 
@@ -161,11 +162,12 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de producción ni la versión PHP de Hostinger;
 el backend documentado continúa siendo Node.js.
-Desde el SHA consultado en la revisión anterior, main avanzó 55 commits. Se fusionaron
-los PR #308–#317 y no hay PR abiertos. Se excluyó `e489b2c`, dedicado únicamente al
-estado del 28/oct. Los merges y diez workflows exitosos acreditan código y checks en
-GitHub, no despliegue en Hostinger, funcionamiento real de MySQL/Casa Club ni pruebas
-de navegador o C3. El PR #132 continúa revertido.
+Desde el SHA consultado en la revisión anterior, main avanzó un commit: `7f66b50`,
+dedicado únicamente a actualizar este estado y excluido del trabajo de producto. No
+hay PR abiertos ni cambios verificables adicionales. Los PR #308–#317 y sus diez
+workflows exitosos permanecen como lo registrado antes el mismo día: acreditan código
+y checks en GitHub, no despliegue en Hostinger, MySQL/Casa Club real, navegador o C3.
+El PR #132 continúa revertido.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
 
@@ -388,11 +390,11 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
 
 ### 2026-10-29
 
-- Main consultado a las 23:30, America/Mexico_City, en `26b5ffea50c538dcbaf93a81eebbfcf33f721682`: 55 commits por delante del SHA revisado el 28/oct. Se excluyó `e489b2c`, que solo actualizó esta bitácora.
+- Main consultado inicialmente a las 23:30 en `26b5ffea50c538dcbaf93a81eebbfcf33f721682` y releído a las 23:35, America/Mexico_City, en `7f66b501541f6e3f913d3e0c73d821a722345c55`. Desde el primer corte solo avanzó `7f66b50`, commit de esta bitácora, y se excluyó del trabajo de producto; se mantiene una sola entrada del 29/oct.
 - PR #308–#314 fusionados: recibos sin recargo duplicado, adeudos resaltados y ajustes móviles de historial, Pago anual, gráficas, desplegables y KPI. Son cambios en main; no hay confirmación visual ni de despliegue.
 - PR #315 fusionado: administradores autenticados pueden reservar Casa Club directamente como APROBADA, sin registrar pago. PR #316–#317 fusionados: folio/nombre MJ para recibos de mantenimiento de Análisis y descarga nativa de Chrome mediante pase firmado temporal.
 - Los diez workflows de #308–#317 concluyeron **success**. En el run [40971893271](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/40971893271), la suite heredada diagnóstica quedó **87/88** por la misma expectativa de identificador que falla en main; no se considera resuelta.
-- No hay PR abiertos ni nuevas confirmaciones físicas accesibles. Los previews de ramas no acreditan despliegue de main; no se consultaron ni modificaron MySQL, Titan, Casa Club, Hostinger, C3 o datos reales.
+- En la relectura no aparecieron PR, checks ni cambios de producto adicionales. No hay nuevas confirmaciones físicas accesibles; los previews de ramas no acreditan despliegue de main y no se consultaron ni modificaron MySQL, Titan, Casa Club, Hostinger, C3 o datos reales.
 
 
 ### 2026-10-28
