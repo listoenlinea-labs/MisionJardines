@@ -13,19 +13,21 @@ function normalizarCalle(valor){
     .replace(/^(?:avenida|avda|av)\s+/,'').replace(/\s+/g,' ');
 }
 
-// TEST-001 es una vivienda sintética retirada del padrón operativo.
- // Identificar por domicilio (no solo ID) evita ocultar otra casa si cambia el ID.
-function esViviendaTest001(casa){
+// TEST-001 y TEST-002 son viviendas de laboratorio, no del padrón operativo.
+// La identidad se coteja por domicilio: el ID de direcciones no es estable.
+function esViviendaDeLaboratorio(casa,numeroPrueba){
   if(!casa)return false;
   const c=casa.get?casa.get({plain:true}):casa;
   const numero=String(c.numero??c.numeroCasaSnapshot??c.numero_casa_snapshot??'').trim().toUpperCase();
   const calles=[c.calle,c.calleCorrecta,c.calle_correcta,c.calleSnapshot,c.calle_snapshot];
-  return numero==='TEST-001' && calles.some(valor=>normalizarCalle(valor)==='prueba');
+  return numero===numeroPrueba && calles.some(valor=>normalizarCalle(valor)==='prueba');
 }
+function esViviendaTest001(casa){return esViviendaDeLaboratorio(casa,'TEST-001');}
+function esViviendaTest002(casa){return esViviendaDeLaboratorio(casa,'TEST-002');}
 
 function esViviendaVisible(casa){
   if(!casa)return false;
-  if(esViviendaTest001(casa))return false;
+  if(esViviendaTest001(casa)||esViviendaTest002(casa))return false;
   const c=casa.get?casa.get({plain:true}):casa;
   const calle=normalizarCalle(c.calleCorrecta||c.calle_correcta||c.calle||
     c.calleSnapshot||c.calle_snapshot);
@@ -38,7 +40,7 @@ function esDepartamentoVisible(departamento){
   // La tarjeta puede carecer de casaId; en ese caso leer DEPTNAME sin
   // confundir "Valle de México 88.5" con el 3614.
   const nombre=normalizarCalle(departamento);
-  if(nombre==='prueba test 001')return false;
+  if(nombre==='prueba test 001'||nombre==='prueba test 002')return false;
   for(const [calle,numero] of Object.entries(NUMEROS_VISIBLES)){
     if(nombre===calle||nombre.startsWith(calle+' ')){
       return nombre===calle+' '+numero;
@@ -51,4 +53,4 @@ function filtrarViviendasVisibles(casas){
   return (casas||[]).filter(esViviendaVisible);
 }
 
-module.exports={NUMEROS_VISIBLES,normalizarCalle,esViviendaTest001,esViviendaVisible,esDepartamentoVisible,filtrarViviendasVisibles};
+module.exports={NUMEROS_VISIBLES,normalizarCalle,esViviendaTest001,esViviendaTest002,esViviendaVisible,esDepartamentoVisible,filtrarViviendasVisibles};
