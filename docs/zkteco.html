@@ -135,6 +135,7 @@
           <div class="field zk-order-field"><label for="zkTagOrder">ORDENAR TAGs</label><select id="zkTagOrder" aria-label="Ordenar por incorporación de TAGs a la base de datos"><option value="alta_desc">TAGs agregados más recientemente</option><option value="alta_asc">TAGs agregados más antiguos</option></select></div>
           <button id="applyFilters" class="btn">Buscar</button>
           <button id="clearFilters" class="btn clear">Limpiar filtros</button>
+          <button id="diagnoseConnection" class="btn clear" type="button">Diagnosticar C3</button>
           <button id="openLogs" class="btn clear">Logs</button>
           <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
         </div>
@@ -210,6 +211,7 @@
       <button id="closeLogsModal" class="close" type="button">×</button>
     </div>
     <div class="modal-body">
+      <div id="connectionDiagnosis" class="logs-list" role="status" aria-live="polite"></div>
       <div id="logsList" class="logs-list"><div class="empty">Cargando logs…</div></div>
     </div>
     <div class="modal-foot"><button id="refreshLogs" class="btn clear" type="button">Actualizar</button><button id="closeLogs" class="btn primary" type="button">Cerrar</button></div>
@@ -486,7 +488,7 @@ async function refreshPage(page,{notify=false,reason}={}){
       permissionsUncertain=syncResponse?.data?.autorizacionesConfiables===false;
     }catch(syncError){
       synchronized=false;
-      toast('No se pudo sincronizar antes de cargar la página: '+syncError.message,7000);
+      toast('No se pudo sincronizar antes de cargar la página: '+errorText(syncError),11000);
     }
     await loadRows();
     loaded=true;
@@ -869,6 +871,34 @@ async function loadLogs(){
     $('logsList').innerHTML='<div class="modal-error show"><strong>No se pudieron cargar los logs</strong>'+esc(errorText(e))+'</div>';
   }
 }
+async function runConnectionDiagnosis(){
+  const button=$('diagnoseConnection');
+  const target=$('connectionDiagnosis');
+  $('logsModal').hidden=false;
+  target.innerHTML='<div class="empty">Probando puerto TCP, sesión C3 y lectura de inventario desde Hostinger, sin modificar TAGs…</div>';
+  button.disabled=true;
+  try{
+    const result=await api('/zkteco/diagnostico/conexion',{headers:headers()});
+    const data=result.data||{};
+    const config=data.configuracion||{};
+    const steps=(data.pruebas||[]).map(step=>'<article class="log-item">'+
+      '<div class="log-top"><span class="log-action">'+esc(step.etapa||'ETAPA')+' · '+(step.ok?'Correcto':'Error')+'</span></div>'+
+      '<div class="log-error">'+esc([step.codigo,step.detalle].filter(Boolean).join(' · '))+'</div>'+
+      (step.serial?'<div class="log-meta">Serie de controlador: '+esc(step.serial)+'</div>':'')+
+      '</article>').join('');
+    target.innerHTML='<article class="log-item"><div class="log-top"><span class="log-action">Conexión: '+esc(data.estado||'SIN_VERIFICAR')+'</span></div>'+
+      '<div class="log-meta">Origen de host: '+esc(config.origenHost||'—')+
+      ' · Puerto: '+esc(config.puerto||'—')+' · Tiempo límite: '+esc(config.timeoutMs||'—')+' ms</div>'+
+      '<div class="log-error">'+esc(data.recomendacion||'Sin recomendación')+'</div></article>'+
+      steps+
+      (data.autoSync?.ultimoError?'<article class="log-item"><div class="log-action">Último error de sincronización automática</div>'+
+        '<div class="log-error">'+esc(data.autoSync.ultimoError)+'</div></article>':'');
+    await loadLogs();
+  }catch(error){
+    target.innerHTML='<div class="modal-error show"><strong>No se pudo completar el diagnóstico</strong>'+esc(errorText(error))+'</div>';
+  }finally{button.disabled=false;}
+}
+$('diagnoseConnection').onclick=runConnectionDiagnosis;
 async function openLogsModal(){
   $('logsModal').hidden=false;
   await loadLogs();
@@ -907,7 +937,7 @@ const gateCollapse=$('gateCollapse');
 gateCollapse?.addEventListener('toggle',()=>{
   $('gateCollapseLabel').textContent=gateCollapse.open?'Ocultar':'Mostrar';
 });
-if(!canAdmin){$('sync').style.display='none';$('openLogs').style.display='none';}
+if(!canAdmin){$('sync').style.display='none';$('openLogs').style.display='none';$('diagnoseConnection').style.display='none';}
 (async()=>{
   await loadStatus();
   await refreshPage(1,{reason:'Actualizando página 1 con ZKTeco…'});
