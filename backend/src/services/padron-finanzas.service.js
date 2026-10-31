@@ -11,6 +11,8 @@
  * IMPORTANTE: esta selección es de SOLO LECTURA. No edita direcciones,
  * cuotas, pagos, TAGs ni fechas físicas del controlador C3.
  */
+const { esViviendaVisible } = require('./viviendas-visibles.service');
+
 const AVENIDAS_PADRON = Object.freeze({
   atotonilco: '752',
   guadalajara: '707',
@@ -52,15 +54,10 @@ function seleccionarPadronAnalisis(casas, cuotas) {
   let excluidas = 0;
   for (const casa of casas || []) {
     const calle = nombreCalle(casa);
-    // Excepción TEMPORAL y reversible: mostrar únicamente la vivienda de
-    // laboratorio Prueba TEST-001 (ID 738) en Análisis de cuotas.
-    // Las demás casas de prueba permanecen excluidas del padrón.
-    // Para revertir, eliminar la constante y restaurar este filtro.
-    const esPrueba = calle === 'prueba' || calle.startsWith('prueba ');
-    const mostrarTest001 = Number(casa.id) === 738
-      && normalizarCalle(casa.calle) === 'prueba'
-      && String(casa.numero ?? '').trim().toUpperCase() === 'TEST-001';
-    if (esPrueba && !mostrarTest001) {
+    // Sin excepciones para viviendas de laboratorio: TEST-001 queda fuera
+    // del padrón y los otros domicilios "Prueba" siguen excluidos.
+    // Es solo visibilidad, no se borran cuotas, pagos ni TAGs.
+    if (!esViviendaVisible(casa) || calle === 'prueba' || calle.startsWith('prueba ')) {
       excluidas += 1;
       continue;
     }
