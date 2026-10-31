@@ -1,14 +1,13 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 29/oct/2026, 23:35, America/Mexico_City.
-**SHA de main consultado:** `7f66b501541f6e3f913d3e0c73d821a722345c55`.
+**Última revisión:** 30/oct/2026, 23:28, America/Mexico_City.
+**SHA de main consultado:** `3084ff40d02aaba4271b018708cc3de559cf41b6`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes, y
-comparación de main desde `26b5ffea50c538dcbaf93a81eebbfcf33f721682`.
-El único commit nuevo fue `7f66b501541f6e3f913d3e0c73d821a722345c55`,
-actualización de esta misma bitácora, y se excluyó del trabajo de producto. La entrada
-del 29/oct conserva la evidencia de los PR #308–#317 y sus checks sin duplicarse.
-No hubo cambios verificables adicionales, PR abiertos ni confirmaciones nuevas de
-despliegue, MySQL, Titan, navegador físico o pruebas de C3.
+comparación de main desde `7f66b501541f6e3f913d3e0c73d821a722345c55`.
+El único commit nuevo fue `3084ff40d02aaba4271b018708cc3de559cf41b6`,
+actualización de esta misma bitácora, y se excluyó del trabajo de producto.
+No hubo cambios verificables de producto, PR abiertos, checks nuevos ni confirmaciones
+nuevas de despliegue, MySQL, Titan, navegador físico o pruebas de C3.
 No se consultaron Hostinger, C3, MySQL ni contenido privado del buzón, y no se publican
 credenciales, comprobantes ni datos personales.
 
@@ -162,10 +161,10 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de producción ni la versión PHP de Hostinger;
 el backend documentado continúa siendo Node.js.
-Desde el SHA consultado en la revisión anterior, main avanzó un commit: `7f66b50`,
-dedicado únicamente a actualizar este estado y excluido del trabajo de producto. No
-hay PR abiertos ni cambios verificables adicionales. Los PR #308–#317 y sus diez
-workflows exitosos permanecen como lo registrado antes el mismo día: acreditan código
+Desde el SHA consultado en la revisión anterior, main avanzó un commit: `3084ff4`,
+dedicado únicamente a consolidar este estado y excluido del trabajo de producto. No
+hay PR abiertos, cambios verificables de producto ni checks nuevos. Los PR #308–#317
+y sus diez workflows exitosos permanecen como evidencia histórica: acreditan código
 y checks en GitHub, no despliegue en Hostinger, MySQL/Casa Club real, navegador o C3.
 El PR #132 continúa revertido.
 
@@ -387,6 +386,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-10-30
+
+- Main consultado a las 23:28, America/Mexico_City, en `3084ff40d02aaba4271b018708cc3de559cf41b6`: un commit por delante del SHA guardado en la revisión anterior.
+- El único commit nuevo fue `3084ff4`, que consolidó exclusivamente `docs/ESTADO_PROYECTO.md`; se excluyó del trabajo de producto.
+- No hay PR abiertos, cambios verificables de producto ni checks nuevos. Se conservan los PR #308–#317 y sus resultados ya documentados, sin contarlos otra vez ni duplicar la entrada del 29/oct.
+- No hubo confirmaciones físicas nuevas accesibles y no se consultaron ni modificaron Hostinger, MySQL, Titan, Casa Club, C3 o datos privados. Se preservan reglas, historial de pruebas y pendientes.
 
 ### 2026-10-29
 
