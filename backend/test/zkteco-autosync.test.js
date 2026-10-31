@@ -43,3 +43,46 @@ test('una lectura cero sospechosa no declara inexistentes los TAGs que antes est
  assert.equal(modified,false);
  assert.equal(existing.enControlador,true);
 });
+
+test('Una lectura TCP transitoria se reintenta una sola vez y recupera la sincronización',async t=>{
+  let calls=0;
+  t.mock.method(direct,'syncUsers',async()=>{
+    calls++;
+    if(calls===1)throw Object.assign(new Error('read ECONNRESET'),{code:'ECONNRESET'});
+    return {totalPanel:3,procesados:3};
+  });
+  const result=await autosync.runAutoSync();
+  assert.equal(result.totalPanel,3);
+  assert.equal(calls,2);
+  const health=autosync.getZktecoAutoSyncStatus();
+  assert.equal(health.lastAttempts,2);
+  assert.equal(health.consecutiveFailures,0);
+  assert.equal(health.lastError,null);
+  assert.ok(health.lastSuccessAt);
+});
+
+test('Una contraseña inválida no genera bucles de reintentos',async t=>{
+  let calls=0;
+  t.mock.method(direct,'syncUsers',async()=>{
+    calls++;
+    throw new Error('Contraseña de comunicación ZKTeco incorrecta');
+  });
+  await assert.rejects(autosync.runAutoSync(),/Contraseña/);
+  assert.equal(calls,1);
+  assert.equal(autosync.getZktecoAutoSyncStatus().lastAttempts,1);
+  assert.equal(autosync.esFalloTransitorio({message:'Contraseña de comunicación ZKTeco incorrecta'}),false);
+  assert.equal(autosync.esFalloTransitorio({code:'ETIMEDOUT',message:'connect ETIMEDOUT'}),true);
+});
+
+test('Una conexión que falla en handshake cierra el socket parcial',async t=>{
+  const {withC3}=require('../src/services/zkteco-c3-client.service');
+  let destroyed=0,disconnected=0;
+  t.mock.method(C3Client.prototype,'connect',async function(){
+    this.socket={destroy(){destroyed++;}};
+    throw Error('El ZKTeco no respondió a tiempo');
+  });
+  t.mock.method(C3Client.prototype,'disconnect',async()=>{disconnected++;});
+  await assert.rejects(withC3(async()=>{}),/no respondió/);
+  assert.equal(destroyed,1);
+  assert.equal(disconnected,0);
+});
