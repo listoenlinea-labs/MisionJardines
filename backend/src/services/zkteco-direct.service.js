@@ -1234,6 +1234,7 @@ async function operateGate(action){
 
 async function dashboard({calle,numero,tag,pagina,limite,casaId,orden}={}){
   const {ordenarViviendasPorTags,modoSeguro}=require('./zkteco-orden-consulta.service');
+  const {esViviendaVisible}=require('./viviendas-visibles.service');
   // Enlaces desde Análisis seleccionan el ID real para evitar coincidencias
   // por direcciones duplicadas o variantes de nombre de calle.
   const linkedId=Number(casaId);
@@ -1316,7 +1317,7 @@ async function dashboard({calle,numero,tag,pagina,limite,casaId,orden}={}){
   }
 
   const rows=houses
-    .filter(h=>canonicalOnlyHouse(h.calle,h.numero))
+    .filter(h=>canonicalOnlyHouse(h.calle,h.numero)&&esViviendaVisible(h))
     .map(h=>{
       const controls=normalizeTokens(h.controles);
       const matched=[];
