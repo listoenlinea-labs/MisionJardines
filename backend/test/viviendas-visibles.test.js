@@ -109,3 +109,30 @@ test('TEST-001 queda oculto de los módulos compartidos incluso cuando tiene ID 
   assert.equal(esDepartamentoVisible('Gardenias 5'),true);
   assert.deepEqual(filtrarViviendasVisibles([prueba,{id:111,calle:'Gardenias',numero:'5'}]).map(c=>c.id),[111]);
 });
+
+test('TEST-002 se excluye del estado de cuotas de Seguridad y de los demás listados',()=>{
+  const {esViviendaTest001,esViviendaTest002}=require('../src/services/viviendas-visibles.service');
+  const prueba001={id:738,calle:'Prueba',numero:'TEST-001'};
+  const prueba002={id:739,calle:'Prueba',calleCorrecta:'Prueba',numero:'TEST-002'};
+  const real={id:111,calle:'Gardenias',numero:'5'};
+  assert.equal(esViviendaTest001(prueba001),true);
+  assert.equal(esViviendaTest002(prueba001),false);
+  assert.equal(esViviendaTest002(prueba002),true);
+  assert.equal(esViviendaTest001(prueba002),false);
+  assert.equal(esViviendaVisible(prueba001),false);
+  assert.equal(esViviendaVisible(prueba002),false);
+  assert.equal(esViviendaVisible({id:982,calle_correcta:'PRUEBA',numero_casa_snapshot:'test-002'}),false);
+  assert.equal(esViviendaVisible({get:()=>({calle:'Prueba',numero:'TEST-002'})}),false);
+  assert.equal(esViviendaVisible({id:739,calle:'Gardenias',numero:'5'}),true);
+  assert.deepEqual(filtrarViviendasVisibles([prueba001,prueba002,real]).map(x=>x.id),[111]);
+  assert.equal(esDepartamentoVisible('Prueba TEST-002'),false);
+  assert.equal(esDepartamentoVisible('PRUEBA TEST-001'),false);
+  assert.equal(esDepartamentoVisible('Prueba TEST-003'),true);
+  const padron=seleccionarPadronAnalisis([prueba001,prueba002,real],[]);
+  assert.deepEqual(padron.casas.map(x=>x.id),[111]);
+  assert.equal(padron.excluidas,2);
+  const seguridad=fs.readFileSync(path.resolve(__dirname,'../src/controllers/seguridad-cuotas.controller.js'),'utf8');
+  assert.match(seguridad,/filtrarViviendasVisibles\\(casas\\)/);
+  const zkteco=fs.readFileSync(path.resolve(__dirname,'../src/services/zkteco-direct.service.js'),'utf8');
+  assert.match(zkteco,/canonicalOnlyHouse\\(h\\.calle,h\\.numero\\)\\&\\&esViviendaVisible\\(h\\)/);
+});
