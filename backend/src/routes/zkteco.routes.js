@@ -10,6 +10,7 @@ r.get('/estado',autenticarToken,operar,c.estado);
 r.get('/calles',autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','MESA_DIRECTIVA','SEGURIDAD'),c.callesEdicion);
 r.get('/tarjetas',autenticarToken,admin,c.inventario);
 r.get('/diagnostico/viviendas/:id',autenticarToken,admin,c.diagnosticoVivienda);
+r.get('/diagnostico/conexion',autenticarToken,admin,c.conexionDiagnostico);
 r.get('/logs',autenticarToken,admin,c.logs);
 r.get('/viviendas',autenticarToken,operar,c.viviendas);
 r.get('/viviendas/:id/vigencia',autenticarToken,admin,c.vigenciaVivienda);
