@@ -480,11 +480,16 @@ function getDirectConfig() {
 
 async function withC3(callback) {
   const client = new C3Client(getDirectConfig());
-  await client.connect();
+  let connected = false;
   try {
+    await client.connect();
+    connected = true;
     return await callback(client);
   } finally {
-    await client.disconnect();
+    // Incluso cuando falla el handshake/GETPARAM, cerrar el socket parcial.
+    // Evita conexiones huérfanas y acumulación de sesiones tras cortes de red.
+    if (connected) await client.disconnect();
+    else client._destroySocket();
   }
 }
 

@@ -51,16 +51,16 @@
     @media(max-width:560px){
       .house-actions .btn{max-width:100%}
     }
-    /* Los cuatro filtros se agrupan en una única fila cuando hay espacio.
+    /* Los tres filtros (calle+número, TAG, orden) se agrupan cuando hay espacio.
        Los botones conservan sus acciones y se envuelven al reducir la vista. */
-    .toolbar{grid-template-columns:minmax(155px,1.25fr) minmax(105px,.62fr)
-      minmax(120px,.73fr) minmax(180px,1.2fr) repeat(4,auto);
+    .toolbar{grid-template-columns:minmax(230px,1.7fr) minmax(150px,.8fr)
+      minmax(190px,1.1fr) repeat(5,auto);
       gap:8px;min-width:0}
     .toolbar .zk-order-field select{padding:0 29px 0 11px;min-width:0;
       font-size:10px;text-overflow:ellipsis;white-space:nowrap}
     @media(max-width:1350px){
       .toolbar{grid-template-columns:repeat(4,minmax(0,1fr))}
-      .toolbar .field:first-child{grid-column:auto}
+      .toolbar .field:first-child{grid-column:span 2}
       .toolbar .btn{width:100%}
     }
     @media(max-width:820px){
@@ -71,7 +71,7 @@
     @media(max-width:560px){
       .toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
       .toolbar .field:first-child,.toolbar .zk-order-field{grid-column:1/-1}
-      .toolbar>.field:nth-child(2),.toolbar>.field:nth-child(3){grid-column:auto}
+      .toolbar .field{grid-column:1/-1}
       .toolbar .btn{min-width:0;white-space:normal}
     }
   </style>
@@ -129,8 +129,7 @@
           <div class="metric bad"><small>Bloqueadas</small><strong id="mBlocked">0</strong></div>
         </div>
         <div class="toolbar">
-          <div class="field"><label for="street">CALLE</label><input id="street" placeholder="Escribe o selecciona una calle" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="streetOptions" aria-describedby="streetHint"><div id="streetOptions" class="zk-street-options" role="listbox" aria-label="Calles para buscar TAGs" hidden></div><span id="streetHint" class="zk-street-sr" role="status">Escribe o selecciona una calle del padrón.</span></div>
-          <div class="field"><label>NÚMERO DE CASA</label><input id="houseNumber" placeholder="Ej. 11"></div>
+          <div class="field"><label for="street">CALLE Y NÚMERO</label><input id="street" placeholder="Ej. Gardenias 5 o solo Gardenias" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="streetOptions" aria-describedby="streetHint"><div id="streetOptions" class="zk-street-options" role="listbox" aria-label="Calles para buscar TAGs" hidden></div><span id="streetHint" class="zk-street-sr" role="status">Escribe o selecciona una calle del padrón.</span></div>
           <div class="field"><label>NÚMERO DE TAG</label><input id="tagNumber" inputmode="numeric" autocomplete="off" placeholder="Ej. 5112343"></div>
           <div class="field zk-order-field"><label for="zkTagOrder">ORDENAR TAGs</label><select id="zkTagOrder" aria-label="Ordenar por incorporación de TAGs a la base de datos"><option value="alta_desc">TAGs agregados más recientemente</option><option value="alta_asc">TAGs agregados más antiguos</option></select></div>
           <button id="applyFilters" class="btn">Buscar</button>
@@ -221,6 +220,7 @@
 <div id="busy" class="busy" hidden><div class="busy-card"><div class="spinner"></div><div><strong id="busyTitle">Procesando…</strong><span id="busyText">No cierres esta ventana.</span></div></div></div>
 <div id="toast" class="toast"></div>
 
+<script src="assets/js/zkteco-address-filter.js?v=20261031-direccion"></script>
 <script>
 const API='https://api-misionjardines.listoenlinea.host/api';
 const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
@@ -239,8 +239,9 @@ const linkParams=new URLSearchParams(window.location.search);
 const queryCasaId=Number(linkParams.get('casaId'));
 let linkedCasaId=Number.isSafeInteger(queryCasaId)&&queryCasaId>0?queryCasaId:null;
 if(linkedCasaId){
-  $('street').value=String(linkParams.get('calle')||'').slice(0,120);
-  $('houseNumber').value=String(linkParams.get('numero')||'').slice(0,30);
+  const linkCalle=String(linkParams.get('calle')||'').trim();
+  const linkNumero=String(linkParams.get('numero')||'').trim();
+  $('street').value=[linkCalle,linkNumero].filter(Boolean).join(' ').slice(0,150);
 }
 let pagination={page:1,limit:PAGE_SIZE,total:0,totalPages:1,hasPrev:false,hasNext:false};
 let pageRefreshInFlight=false;
@@ -440,8 +441,9 @@ window.toggleTags=toggleTags;
 
 async function loadRows(){
   const q=new URLSearchParams();
-  if($('street').value.trim())q.set('calle',$('street').value.trim());
-  if($('houseNumber').value.trim())q.set('numero',$('houseNumber').value.trim());
+  const direccion=window.MJZkAddressSearch.separarDireccionZkteco($('street').value);
+  if(direccion.calle)q.set('calle',direccion.calle);
+  if(direccion.numero)q.set('numero',direccion.numero);
   if($('tagNumber').value.trim())q.set('tag',$('tagNumber').value.trim());
   if(linkedCasaId)q.set('casaId',String(linkedCasaId));
   q.set('orden',$('zkTagOrder').value);
@@ -483,7 +485,10 @@ async function refreshPage(page,{notify=false,reason}={}){
   setPageSyncStatus(reason||('Actualizando página '+target+' con ZKTeco…'),true);
   try{
     try{
-      const syncResponse=await syncBeforePageLoad({notify});
+      // Cambiar página o buscar solo consulta el reflejo en MySQL.
+      // El sondeo físico sigue activo cada ~60 s desde el backend y no
+      // se generan múltiples sesiones simultáneas por navegación.
+      const syncResponse=notify?await syncBeforePageLoad({notify}):null;
       partialCount=Number(syncResponse?.data?.noObservados||0);
       permissionsUncertain=syncResponse?.data?.autorizacionesConfiables===false;
     }catch(syncError){
@@ -496,19 +501,20 @@ async function refreshPage(page,{notify=false,reason}={}){
     pageRefreshInFlight=false;
     const message=!loaded?'No se pudo actualizar la página':
       !synchronized?'Datos locales; verificar lectura C3':
+      !notify?'Datos guardados en MySQL · sincronización física automática en segundo plano':
       partialCount?'Lectura parcial: '+partialCount+' TAG(s) no observados · revisar inventario':
       permissionsUncertain?'C3 leído · autorizaciones sin confirmar':
       'Inventario C3 confirmado para TAGs observados';
     setPageSyncStatus(message,false);
     window.clearTimeout(window.zkPageSyncStatusTimer);
-    window.zkPageSyncStatusTimer=setTimeout(()=>setPageSyncStatus(''),3500);
+    if(synchronized)window.zkPageSyncStatusTimer=setTimeout(()=>setPageSyncStatus(''),6500);
   }
 }
 async function goPage(page){
   const totalPages=Math.max(1,Number(pagination.totalPages||1));
   const target=Math.min(totalPages,Math.max(1,Number(page)||1));
   if(target===currentPage||pageRefreshInFlight)return;
-  await refreshPage(target,{reason:'Actualizando página '+target+' con ZKTeco…'});
+  await refreshPage(target,{reason:'Cargando página '+target+' desde MySQL…'});
   document.querySelector('.house-list')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 window.goPage=goPage;
@@ -516,17 +522,16 @@ async function applySearch(){
   if(pageRefreshInFlight)return;
   linkedCasaId=null;
   currentPage=1;
-  await refreshPage(1,{reason:'Buscando y actualizando resultados con ZKTeco…'});
+  await refreshPage(1,{reason:'Buscando viviendas en MySQL…'});
 }
 async function clearFilters(){
   if(pageRefreshInFlight)return;
   linkedCasaId=null;
   $('street').value='';
-  $('houseNumber').value='';
   $('tagNumber').value='';
   $('zkTagOrder').value='alta_desc';
   currentPage=1;
-  await refreshPage(1,{reason:'Limpiando filtros y actualizando página 1…'});
+  await refreshPage(1,{reason:'Actualizando filtros en MySQL…'});
 }
 const ACCESS_RETRY_MAX_ATTEMPTS=5;
 const ACCESS_RETRY_DELAY_MS=1200;
@@ -932,7 +937,7 @@ $('sync').onclick=async()=>{
   }catch(e){toast(errorText(e))}
   finally{hideBusy()}
 };
-['street','houseNumber','tagNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'&&!(e.target.getAttribute('aria-expanded')==='true'&&e.target.hasAttribute('aria-activedescendant')))applySearch()}));
+['street','tagNumber'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'&&!(e.target.getAttribute('aria-expanded')==='true'&&e.target.hasAttribute('aria-activedescendant')))applySearch()}));
 const gateCollapse=$('gateCollapse');
 gateCollapse?.addEventListener('toggle',()=>{
   $('gateCollapseLabel').textContent=gateCollapse.open?'Ocultar':'Mostrar';
@@ -940,12 +945,15 @@ gateCollapse?.addEventListener('toggle',()=>{
 if(!canAdmin){$('sync').style.display='none';$('openLogs').style.display='none';$('diagnoseConnection').style.display='none';}
 (async()=>{
   await loadStatus();
-  await refreshPage(1,{reason:'Actualizando página 1 con ZKTeco…'});
+  await refreshPage(1,{reason:'Cargando viviendas desde MySQL…'});
 })().catch(e=>toast(errorText(e),7000));
 setInterval(async()=>{
   if(pageRefreshInFlight)return;
-  try{await Promise.all([loadStatus(),loadRows()])}catch(_){}
+  try{await loadRows()}catch(_){}
 },30000);
+// Una verificación de sesión directa cada dos minutos es suficiente para
+// la etiqueta de conexión; el autosync del servidor ya hace lectura periódica.
+setInterval(()=>{if(!pageRefreshInFlight)void loadStatus()},120000);
 </script>
 <script src="assets/js/zkteco-calles.js?v=20261009-buscador"></script>
 <script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll"></script>
