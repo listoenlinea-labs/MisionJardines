@@ -22,6 +22,8 @@ const {runAutoSync,getZktecoAutoSyncStatus}=require('../services/zkteco-autosync
 const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
 const {isPullSdkBridgeConfigured,testBridge,describeFetchError}=require('../services/zkteco-pullsdk-bridge.service');
 const {recordZkError,listZkErrors,exactError}=require('../services/zkteco-error-log.service');
+const {diagnosticarConexion,errorSeguro}=require('../services/zkteco-diagnostico-conexion.service');
+const {getDirectConfig}=require('../services/zkteco-c3-client.service');
 
 async function callesEdicion(req,res){
   try {
@@ -55,6 +57,25 @@ async function estado(req,res){
     }});
   }catch(error){
     res.status(503).json({ok:false,message:'No fue posible conectar directamente con el ZKTeco',error:error.message});
+  }
+}
+// Diagnóstico administrativo de solo lectura; no altera el C3, MySQL ni sus TAGs.
+async function conexionDiagnostico(req,res){
+  try{
+    res.setHeader('Cache-Control','private, no-store');
+    const data=await diagnosticarConexion();
+    res.json({ok:true,data:{
+      ...data,
+      autoSync:{
+        ultimoIntento:getZktecoAutoSyncStatus().lastRun,
+        ultimoError:getZktecoAutoSyncStatus().lastError
+          ?errorSeguro({message:getZktecoAutoSyncStatus().lastError},getDirectConfig().host).detalle
+          :null
+      }
+    }});
+  }catch(error){
+    console.error('[ZKTeco] Falló diagnóstico de conexión:',exactError(error));
+    res.status(503).json({ok:false,message:'No se pudo completar el diagnóstico de conexión C3'});
   }
 }
 async function inventario(req,res){
@@ -318,4 +339,4 @@ async function viviendas(req,res){
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
 
-module.exports={callesEdicion,actualizarVigenciaViviendaTags,vigenciaVivienda,diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};
+module.exports={conexionDiagnostico,callesEdicion,actualizarVigenciaViviendaTags,vigenciaVivienda,diagnosticoVivienda,estado,inventario,sincronizar,bloquear,bloquearVivienda,asignarTarjeta,crearTarjeta,editarTarjeta,agregarExistenteC3,eliminarTarjeta,logs,importarMdb,actualizarVigencia,pluma,viviendas,simular};

@@ -35,6 +35,11 @@ jobs:
       - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
         working-directory: backend
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Diagnóstico seguro de conexión C3-200
+        run: |
+          node --check backend/src/services/zkteco-diagnostico-conexion.service.js
+          node --check backend/src/controllers/zkteco.controller.js
+          node --test backend/test/zkteco-diagnostico-conexion.test.js
       - name: Reintentos de comprobantes fallidos sin doble acreditación
         env:
           DB_HOST: 127.0.0.1

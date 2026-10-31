@@ -266,7 +266,7 @@
        headers:{Authorization:'Bearer '+token},cache:'no-store'
      });
      const json=await response.json().catch(()=>({}));
-     if(!response.ok||!json.ok)throw Error(json.message||'No fue posible verificar el C3');
+     if(!response.ok||!json.ok)throw Error([json.message,json.error].filter((value,index,parts)=>value&&parts.indexOf(value)===index).join(' · ')||'No fue posible verificar el C3');
      if(requestId!==tagVerificationSequence||openedTagsHouse!==h)return;
      h.tagDiagnostico=json.data;
      $('houseTagsC3Status').textContent=json.data?.panel?.permisosConfiables
