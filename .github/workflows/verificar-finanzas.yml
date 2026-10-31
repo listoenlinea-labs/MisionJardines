@@ -40,6 +40,12 @@ jobs:
           node --check backend/src/services/zkteco-diagnostico-conexion.service.js
           node --check backend/src/controllers/zkteco.controller.js
           node --test backend/test/zkteco-diagnostico-conexion.test.js
+      - name: Resiliencia C3 y búsqueda unificada de viviendas
+        run: |
+          node --check backend/src/services/zkteco-autosync.service.js
+          node --check backend/src/services/zkteco-c3-client.service.js
+          node --check docs/assets/js/zkteco-address-filter.js
+          node --test backend/test/zkteco-address-filter.test.js backend/test/zkteco-autosync.test.js
       - name: Reintentos de comprobantes fallidos sin doble acreditación
         env:
           DB_HOST: 127.0.0.1
