@@ -22,7 +22,8 @@ const {runAutoSync,getZktecoAutoSyncStatus}=require('../services/zkteco-autosync
 const {importZkAccessMdb}=require('../services/zkteco-mdb.service');
 const {isPullSdkBridgeConfigured,testBridge,describeFetchError}=require('../services/zkteco-pullsdk-bridge.service');
 const {recordZkError,listZkErrors,exactError}=require('../services/zkteco-error-log.service');
-const {diagnosticarConexion}=require('../services/zkteco-diagnostico-conexion.service');
+const {diagnosticarConexion,errorSeguro}=require('../services/zkteco-diagnostico-conexion.service');
+const {getDirectConfig}=require('../services/zkteco-c3-client.service');
 
 async function callesEdicion(req,res){
   try {
@@ -68,6 +69,8 @@ async function conexionDiagnostico(req,res){
       autoSync:{
         ultimoIntento:getZktecoAutoSyncStatus().lastRun,
         ultimoError:getZktecoAutoSyncStatus().lastError
+          ?errorSeguro({message:getZktecoAutoSyncStatus().lastError},getDirectConfig().host).detalle
+          :null
       }
     }});
   }catch(error){
