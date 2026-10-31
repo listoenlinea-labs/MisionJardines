@@ -98,3 +98,14 @@ test('El padrón financiero mantiene Valle de México 3614 y no incluye 88.5',()
   assert.deepEqual(seleccion.casas.map(c=>c.id).sort((a,b)=>a-b),[91,92]);
   assert.equal(seleccion.excluidas,1);
 });
+
+test('TEST-001 queda oculto de los módulos compartidos incluso cuando tiene ID 738',()=>{
+  const {esViviendaVisible,esDepartamentoVisible,filtrarViviendasVisibles}=require('../src/services/viviendas-visibles.service');
+  const prueba={id:738,calle:'Prueba',calleCorrecta:'Prueba',numero:'TEST-001'};
+  assert.equal(esViviendaVisible(prueba),false);
+  assert.equal(esViviendaVisible({id:738,calle:'Gardenias',numero:'5'}),true);
+  assert.equal(esViviendaVisible({id:739,calle:'PRUEBA',numero:'test-001'}),false);
+  assert.equal(esDepartamentoVisible('Prueba TEST-001'),false);
+  assert.equal(esDepartamentoVisible('Gardenias 5'),true);
+  assert.deepEqual(filtrarViviendasVisibles([prueba,{id:111,calle:'Gardenias',numero:'5'}]).map(c=>c.id),[111]);
+});
