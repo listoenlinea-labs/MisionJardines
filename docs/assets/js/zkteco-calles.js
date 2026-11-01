@@ -108,5 +108,5 @@
   }
   }
   attachStreetPicker('editTagStreet', 'editTagStreetOptions', 'editTagStreetHint', 'editTagModal');
-  attachStreetPicker('street', 'streetOptions', 'streetHint', null);
+  // La búsqueda Calle y número es texto libre; el selector solo queda en el modal de edición.
 })();

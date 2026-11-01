@@ -46,6 +46,8 @@ jobs:
           node --check backend/src/services/zkteco-c3-client.service.js
           node --check docs/assets/js/zkteco-address-filter.js
           node --test backend/test/zkteco-address-filter.test.js backend/test/zkteco-autosync.test.js
+      - name: Campo libre Calle y número sin listado desplegable
+        run: node --test backend/test/zkteco-calle-libre.test.js
       - name: Reintentos de comprobantes fallidos sin doble acreditación
         env:
           DB_HOST: 127.0.0.1
