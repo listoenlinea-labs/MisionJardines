@@ -11,12 +11,12 @@ function zip(entries){
  const chunks=[],central=[];let offset=0;
  for(const {name,data} of entries){
   const raw=Buffer.from(data),def=zlib.deflateRawSync(raw),fname=Buffer.from(name.replace(/[^a-zA-Z0-9._\/-]/g,'_'));
-  const local=Buffer.alloc(30);local.writeUInt32LE(0x04034b50,0);local.writeUInt16LE(20,4);local.writeUInt16LE(8,6);
+  const local=Buffer.alloc(30);local.writeUInt32LE(0x04034b50,0);local.writeUInt16LE(20,4);local.writeUInt16LE(0,6);
   local.writeUInt16LE(8,8);local.writeUInt32LE(crc32(raw),14);local.writeUInt32LE(def.length,18);
   local.writeUInt32LE(raw.length,22);local.writeUInt16LE(fname.length,26);
   chunks.push(local,fname,def);
   const cent=Buffer.alloc(46);cent.writeUInt32LE(0x02014b50,0);cent.writeUInt16LE(20,4);
-  cent.writeUInt16LE(20,6);cent.writeUInt16LE(8,8);cent.writeUInt16LE(8,10);
+  cent.writeUInt16LE(20,6);cent.writeUInt16LE(0,8);cent.writeUInt16LE(8,10);
   cent.writeUInt32LE(crc32(raw),16);cent.writeUInt32LE(def.length,20);cent.writeUInt32LE(raw.length,24);
   cent.writeUInt16LE(fname.length,28);cent.writeUInt32LE(offset,42);
   central.push(cent,fname);offset+=local.length+fname.length+def.length;
