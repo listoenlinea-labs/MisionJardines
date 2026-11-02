@@ -35,6 +35,7 @@ async function generar(periodo){
  const {anio,mes}=parsePeriodo(periodo);
  const rows=await Cuota.findAll({attributes:['casaId'],where:{anio,mes,estatusPago:'PAGADO'},raw:true});
  const ids=[...new Set(rows.map(r=>Number(r.casaId)))];
+ if(!ids.length)throw fail(404,'No hay viviendas con mantenimiento pagado para '+periodo);
  const entries=[],errors=[];
  for(const id of ids){
   try{
