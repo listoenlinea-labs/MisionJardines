@@ -165,6 +165,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/casa-club', require('./routes/casa-club.routes'));
 app.get('/api/recibo-vista/:permiso', require('./controllers/recibos-mantenimiento-analisis.controller').vistaPdfTemporal);
+app.get('/api/finanzas/drive/callback', require('./controllers/drive-respaldos.controller').callback);
 app.use('/api/finanzas', require('./routes/finanzas.routes'));
 app.use('/api/seguridad-cuotas',require('./routes/seguridad-cuotas.routes'));
 // Google Sheets remains disabled until the private source and database staging
