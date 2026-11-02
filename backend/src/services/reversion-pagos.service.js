@@ -62,12 +62,17 @@ async function preparar(casaId,referencia,transaction){
   if(!nueva)throw fail(409,'La cuota '+c.mes+' '+c.anio+' fue sobrescrita sin instantánea anterior. No puede restablecerse automáticamente; requiere conciliación SQL con respaldo.');
   return {cuota:c,original:null};
  });
- const restauradas=cuotas.filter(c=>!elegidas.includes(c)).concat(decisiones.filter(d=>d.original).map(d=>d.original));
+ const extras=cuotas.filter(c=>!elegidas.includes(c)&&antes.has(String(c.id))).map(c=>({
+  cuota:c,original:typeof antes.get(String(c.id))==='string'?JSON.parse(antes.get(String(c.id))):antes.get(String(c.id))
+ }));
+ if(extras.some(d=>!d.original))throw fail(409,'Instantánea de conciliación incompleta');
+ const restauradas=cuotas.filter(c=>!elegidas.includes(c)&&!extras.some(d=>d.cuota.id===c.id))
+   .concat(decisiones.filter(d=>d.original).map(d=>d.original),extras.map(d=>d.original));
  const fechaObjetivo=fechaDesdeCuotas(restauradas);
  const tags=await ZkTarjeta.findAll({where:{casaId},transaction});
  if(tags.length&&!/^\d{4}-\d\d-\d\d$/.test(String(fechaObjetivo||'')))
   throw fail(409,'No se pudo calcular la vigencia previa de los TAGs a partir de cuotas confirmadas');
- return {casa,cuotas:decisiones,evento,fechaObjetivo,tags};
+ return {casa,cuotas:decisiones,extras,evento,fechaObjetivo,tags};
 }
 async function vistaPrevia(casaId,referencia){
  const x=await preparar(Number(casaId),referencia);
@@ -80,7 +85,7 @@ async function anular(casaId,referencia,usuarioId){
  const resultado=await sequelize.transaction(async transaction=>{
   const x=await preparar(Number(casaId),referencia,transaction);
   // Archivo de auditoría: un movimiento no se borra sin dejar constancia.
-  const detalle=x.cuotas.map(d=>({cuota:d.cuota.get({plain:true}),anterior:d.original}));
+  const detalle=[...x.cuotas,...x.extras].map(d=>({cuota:d.cuota.get({plain:true}),anterior:d.original}));
   await sequelize.query('INSERT INTO pagos_anulaciones (casa_id,referencia,usuario_id,fecha_objetivo,detalle) VALUES (?,?,?,?,?)',
    {replacements:[casaId,referencia,usuarioId,x.fechaObjetivo||null,JSON.stringify({cuotas:detalle,evento:x.evento.get({plain:true})})],transaction});
   // Excluir la orden antigua de la cola ANTES de crear una nueva orden.
@@ -92,6 +97,7 @@ async function anular(casaId,referencia,usuarioId){
     await d.cuota.update(original,{transaction});
    }else await d.cuota.destroy({transaction});
   }
+  for(const d of x.extras){const original={...d.original};delete original.id;delete original.casaId;await d.cuota.update(original,{transaction});}
   let reparacion=null;
   if(x.tags.length){
    const estado='PENDIENTE';
@@ -105,7 +111,7 @@ async function anular(casaId,referencia,usuarioId){
    reparacion={id:evento.id,estado};
    transaction.afterCommit(()=>solicitar(Number(casaId)));
   }
-  return {casaId,referencia,periodosRestaurados:x.cuotas.length,fechaObjetivo:x.fechaObjetivo,
+  return {casaId,referencia,periodosRestaurados:x.cuotas.length,conciliacionesRestauradas:x.extras.length,fechaObjetivo:x.fechaObjetivo,
    restauracionC3:reparacion||{estado:'SIN_TAGS'}};
  });
  return resultado;
