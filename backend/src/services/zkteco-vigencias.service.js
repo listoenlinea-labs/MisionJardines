@@ -10,7 +10,7 @@ const Aplicaciones = require('../models/PagoAccesoTagC3');
 const direct = require('./zkteco-direct.service');
 const { incrementar, fechaReal } = require('./pago-acceso-calculo');
 const {fechaFinDeReferencia}=require('./pago-manual-analisis.service');
-const terminales = ['COMPLETADO', 'SIN_TAGS'];
+const terminales = ['COMPLETADO', 'SIN_TAGS', 'ANULADO'];
 let timer, running = false, draining = false;
 const queue = new Set();
 function solicitar(casaId) {
