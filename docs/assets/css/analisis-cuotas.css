@@ -896,3 +896,12 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
 .finance-backup-check input{width:17px;height:17px}
 .finance-backup-actions{display:flex;justify-content:flex-end;margin-top:15px}
 @media(max-width:700px){.finance-export-tools{display:grid;grid-template-columns:1fr 1fr}.finance-export-tools button{min-width:0}.finance-export-tools button:last-child{grid-column:1/-1}}
+
+/* Los estilos personalizados del modal no deben cancelar el atributo hidden. */
+#financeBackupModal [hidden]{display:none!important}
+#financeBackupModal select{width:100%;padding:12px;border:1px solid #ced9e6;border-radius:10px;background:#fff;margin-top:7px}
+#financeBackupModal select:disabled,#financeBackupModal button:disabled{opacity:.55;cursor:wait}
+#financeBackupPeriodsNote{margin-top:6px;margin-bottom:12px}
+#financeBackupStatus[data-kind="error"]{color:#ae3941}
+#financeBackupStatus[data-kind="success"]{color:#246f4d}
+#houseHistoryDeleteStatus{min-height:0;line-height:1.5}
