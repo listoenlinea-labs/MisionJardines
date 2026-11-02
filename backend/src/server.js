@@ -27,6 +27,8 @@ async function iniciarServidor() {
 
         await require('./services/auto-users-schema.service').asegurarAutoUsers();
         await asegurarEsquemaPagos();
+        await require('./services/reversion-pagos.service').asegurarTablas();
+        await require('./services/drive-respaldos.service').init();
         await require('./services/cuentas-schema.service').asegurarCuentas();
         await require('./services/casa-club-schema.service').asegurarCasaClub();
         await require('./services/finanzas-schema.service').asegurarFinanzas();

@@ -153,7 +153,7 @@
    hojas,resumen:[...resumen,...detalles]};
  }
 
- async function descargarReporte(data,tipo,ExcelJS){
+ async function descargarReporte(data,tipo,ExcelJS,options={}){
   if(!ExcelJS?.Workbook)throw Error('No se cargó el generador de archivos Excel. Actualiza la página e inténtalo nuevamente.');
   const reporte=prepararReporte(data,tipo);
   const workbook=new ExcelJS.Workbook();
@@ -294,7 +294,8 @@
     throw Error('No se cargó el complemento de gráficas editables para Excel. Actualiza la página.');
    buffer=await root.MJFinanceExcelCharts.insertarGraficas(buffer,chartSpecs,root.JSZip);
   }
-  const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  if(options.returnBuffer)return buffer;
+   const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;a.download=`MJ_${reporte.nombre}_${data.anio}_${String(data.mes).padStart(2,'0')}.xlsx`;

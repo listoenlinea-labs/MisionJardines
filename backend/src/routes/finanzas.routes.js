@@ -6,6 +6,16 @@ const pagosManuales=require('../controllers/pagos-manuales-analisis.controller')
 const recibosMantenimiento=require('../controllers/recibos-mantenimiento-analisis.controller');
 router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
 router.get('/analisis',controller.analizar);
+const masivos=require('../controllers/recibos-masivos.controller');
+const drive=require('../controllers/drive-respaldos.controller');
+router.get('/recibos-masivos/periodos',masivos.lista);
+router.get('/recibos-masivos/zip',masivos.zip);
+router.get('/drive/status',drive.status);
+router.get('/drive/conectar',drive.link);
+router.post('/drive/respaldo',drive.backup);
+const reversion=require('../controllers/reversion-pagos.controller');
+router.get('/pagos-vivienda/:casaId/anulacion',reversion.vista);
+router.post('/pagos-vivienda/:casaId/anulacion',reversion.anular);
 router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorCobrar);
 router.post('/egresos',controller.registrarEgreso);
 router.post('/egresos/:id/activar-cuota',controller.activarCuotaExistente);

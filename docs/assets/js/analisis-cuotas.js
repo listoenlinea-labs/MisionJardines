@@ -515,7 +515,7 @@ function renderHouses(){
       (Number(p.recargo)>0?'<p class="history-penalty">Incluye '+esc(fmt(p.recargo))+' de recargo por pago tardío.</p>':'')+
       '<div class="history-event-footer"><small>'+esc(p.formaPago||'Pago registrado')+(p.referencia?' · Ref. '+esc(p.referencia):'')+'</small>'+
       (activeConcept==='MANTENIMIENTO'?'<button type="button" class="history-receipt-button" data-history-receipt="'+index+'"'+(p.referencia?'':' disabled title="No hay referencia verificable para este movimiento"')+' aria-label="Generar recibo del pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'">Generar recibo</button>':'')+
-      '</div></div></article>';
+      (activeConcept==='MANTENIMIENTO'&&/^MJMAN:/.test(p.referencia||'')?'<button type="button" class="history-delete-button" data-history-delete="'+index+'" aria-label="Borrar movimiento de '+esc(fmt(p.monto))+'">Borrar</button>':'')+'</div></div></article>';
    }).join(''):'<div class="history-empty">Esta vivienda todavía no tiene pagos confirmados de este concepto.</div>';
    $('houseHistoryDebts').innerHTML='<h3>Deudas pendientes ('+debts.length+')</h3>'+
     (debts.length?'<div class="history-debt-list">'+debts.map(d=>'<div class="history-debt"><div><strong>'+esc(d.concepto||conceptTitle(activeConcept))+'</strong><small>'+esc(debtPeriod(d.periodo))+(d.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</small></div><div><b>'+esc(fmt(d.monto))+'</b>'+

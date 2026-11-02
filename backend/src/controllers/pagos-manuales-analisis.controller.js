@@ -8,6 +8,7 @@ const {estadoCargos}=require('../services/cargos-extraordinarios.service');
 const {randomUUID}=require('crypto');
 const PagoAcceso=require('../models/PagoAccesoC3');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
+const reversion=require('../services/reversion-pagos.service');
 const {prepararDesdeHistorial,generarReferencia,validarPagoAnual}=require('../services/pago-manual-analisis.service');
 const {clasificarCuotaParaPago}=require('../services/cuota-pendiente-historica.service');
 const {calcularAdeudoVivienda}=require('../services/adeudo-vivienda-analisis.service');
@@ -143,6 +144,7 @@ async function registrarPagoVivienda(req,res){
       // aun si el espejo SQL contiene una fecha física posterior.
       // El worker valida el movimiento confirmado y la fecha real del C3,
       // sin relajar la validación de pertenencia, PIN ni autorizaciones.
+      const referencia=generarReferencia(plan.fechaFinObjetivo);
       // Conciliación autorizada y atómica: sin nuevo pago para los períodos
       // ya abonados. Preservar montos, fechas, folios y eventos C3 originales.
       for(const ajuste of conciliaciones){
@@ -152,13 +154,13 @@ async function registrarPagoVivienda(req,res){
           ': abono de $'+ajuste.montoPagado+' del '+ajuste.fechaPago+
           ' cubre '+ajuste.mes+' '+ajuste.anio+
           ' con tarifa $'+tarifa+'. Conservados importe, referencia y fecha originales.';
+        await reversion.guardarInstantanea(casaId,referencia,original,original.get({plain:true}),transaction);
         await original.update({
           estatusPago:'PAGADO',montoCuota:tarifa,saldoPendiente:0,
           observaciones:[original.observaciones,audit].filter(Boolean).join('\n'),
           actualizadoEn:new Date()
         },{transaction});
       }
-      const referencia=generarReferencia(plan.fechaFinObjetivo);
       const guardadas=[];
       for(const {periodo,cuota,revision} of evaluadas){
         const observacionesAnteriores=String(cuota?.observaciones||'').trim();
@@ -180,8 +182,16 @@ async function registrarPagoVivienda(req,res){
           observaciones:(observacionesAnteriores?observacionesAnteriores+'\n':'')+auditoria,
           nombrePagador:casa.nombre||null,numeroCasaSnapshot:casa.numero,calleSnapshot:casa.calle
         };
-        if(cuota){await cuota.update(valores,{transaction});guardadas.push(cuota);}
-        else guardadas.push(await Cuota.create(valores,{transaction}));
+        if(cuota){
+          const anterior=cuota.get({plain:true});
+          await cuota.update(valores,{transaction});
+          await reversion.guardarInstantanea(casaId,referencia,cuota,anterior,transaction);
+          guardadas.push(cuota);
+        }else{
+          const creada=await Cuota.create(valores,{transaction});
+          await reversion.guardarInstantanea(casaId,referencia,creada,null,transaction);
+          guardadas.push(creada);
+        }
       }
       // Un evento por cobro/lote y por vivienda, no un evento por mensualidad.
       const evento=await vigenciaService.registrarLoteManual(casaId,req.usuario.usuarioId,transaction,{
