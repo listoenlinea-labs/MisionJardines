@@ -58,18 +58,27 @@ async function folder(token,name,parent){
  const r=await fetch('https://www.googleapis.com/drive/v3/files?'+q,{headers:{Authorization:'Bearer '+token}});
  const j=await r.json();if(!r.ok)throw fail(502,'No se pudo consultar carpetas de Drive');
  if(j.files?.length)return j.files[0].id;
- return (await upload(token,name,'application/vnd.google-apps.folder',Buffer.alloc(0),parent)).id;
+ const created=await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',...(parent?{parents:[parent]}:{})})});
+ const obj=await created.json();if(!created.ok)throw fail(502,'No se pudo crear carpeta en Drive: '+(obj.error?.message||'error'));
+ return obj.id;
 }
 async function status(){const r=await record();return {connected:!!r,email:r?.email||null,configured:!!process.env.GOOGLE_DRIVE_CLIENT_ID};}
-async function backup({periodo,xlsx}){
+async function backup({periodo,xlsx,todos=false}){
  recibos.parsePeriodo(periodo);
- const bytes=Buffer.from(String(xlsx||''),'base64');if(!bytes.length||bytes.length>8*1024*1024||bytes[0]!==0x50||bytes[1]!==0x4B)throw fail(400,'El Excel del padrón no es válido (máximo 8 MB)');
+ const bytes=Buffer.from(String(xlsx||''),'base64');if(!bytes.length||bytes.length>1400*1024||bytes[0]!==0x50||bytes[1]!==0x4B)throw fail(400,'El Excel del padrón no es válido (máximo 1.4 MB)');
  const token=await access();
  const root=await folder(token,'Misión Jardines - Respaldos');
- const dir=await folder(token,periodo,root);
- const {buffer,cantidad}=await recibos.generar(periodo);
- const zip=await upload(token,'Recibos_'+periodo+'.zip','application/zip',buffer,dir);
- const excel=await upload(token,'Padron_'+periodo+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',bytes,dir);
- return {periodo,cantidad,zipId:zip.id,excelId:excel.id};
+ const periodos=todos?await recibos.periodos():[periodo];
+ if(periodos.length>96)throw fail(409,'Hay demasiados períodos para un respaldo en una sola operación; elige períodos individuales');
+ const respaldados=[];
+ for(const p of periodos){
+  const dir=await folder(token,p,root);
+  const {buffer,cantidad}=await recibos.generar(p);
+  const zip=await upload(token,'Recibos_'+p+'.zip','application/zip',buffer,dir);
+  respaldados.push({periodo:p,cantidad,zipId:zip.id});
+ }
+ const dirExcel=await folder(token,periodo,root);
+ const excel=await upload(token,'Padron_'+periodo+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',bytes,dirExcel);
+ return {periodo,cantidad:respaldados.reduce((n,p)=>n+p.cantidad,0),meses:respaldados.length,respaldados,excelId:excel.id};
 }
 module.exports={init,loginUrl,callback,status,backup,fail};
