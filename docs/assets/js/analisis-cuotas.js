@@ -756,6 +756,205 @@ function renderHouses(){
   }catch(error){notice('No se pudo descargar el Excel: '+error.message);}
   finally{card.disabled=false;}
  });
+
+ // Acciones financieras: un botón no es funcional si no tiene un listener registrado.
+ const backupModal=$('financeBackupModal');
+ const backupPeriod=$('financeBackupPeriod');
+ const backupStatus=$('financeBackupStatus');
+ const backupConfirm=$('financeBackupConfirm');
+ const backupAllMonths=$('financeBackupAllMonths');
+ const backupPeriodHint=$('financeBackupPeriodsNote');
+ let backupAction=null;
+ let backupBusy=false;
+ const backupMonths=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+ const backupSelectedPeriod=()=>String($('financeYear').value)+'-'+String($('financeMonth').value).padStart(2,'0');
+ const validBackupPeriod=value=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(String(value||''));
+ function setBackupStatus(message,kind='info'){
+  backupStatus.textContent=message;
+  backupStatus.dataset.kind=kind;
+ }
+ function setBackupBusy(value){
+  backupBusy=value;
+  backupConfirm.disabled=value || (backupAction!=='connect'&&!backupPeriod.value);
+  $('financeBackupClose').disabled=value;
+  backupPeriod.disabled=value;
+  backupAllMonths.disabled=value;
+ }
+ function closeBackupModal(){
+  if(backupBusy)return;
+  backupModal.hidden=true;
+  backupAction=null;
+ }
+ async function loadBackupPeriods(){
+  const initial=backupSelectedPeriod();
+  backupPeriod.innerHTML='<option value="">Consultando meses disponibles…</option>';
+  backupPeriod.value='';
+  setBackupBusy(true);
+  try{
+   const response=await request('/recibos-masivos/periodos');
+   if(backupModal.hidden||backupAction==='connect')return;
+   const periods=(response.data?.periodos||[]).filter(validBackupPeriod).sort().reverse();
+   backupPeriod.innerHTML=periods.map(p=>{
+    const year=p.slice(0,4),month=Number(p.slice(5,7));
+    return '<option value="'+p+'">'+backupMonths[month-1]+' '+year+'</option>';
+   }).join('')||'<option value="">No hay mensualidades pagadas</option>';
+   backupPeriod.value=periods.includes(initial)?initial:periods[0]||'';
+   backupPeriodHint.textContent=periods.length
+    ?'Hay '+periods.length+' meses con pagos registrados. Selecciona el mes del que necesitas los PDF.'
+    :'Todavía no hay meses con pagos confirmados para descargar.';
+   setBackupStatus(periods.length?'Selecciona el mes y pulsa continuar.':'No hay recibos disponibles.',periods.length?'info':'error');
+  }catch(error){
+   backupPeriod.innerHTML='<option value="">No se pudieron consultar meses</option>';
+   backupPeriodHint.textContent='';
+   setBackupStatus('No fue posible consultar los meses disponibles: '+error.message,'error');
+  }finally{
+   setBackupBusy(false);
+  }
+ }
+ function openBackupModal(mode){
+  backupAction=mode;
+  backupModal.hidden=false;
+  backupAllMonths.checked=false;
+  backupAllMonths.parentElement.hidden=mode!=='drive';
+  backupPeriod.parentElement.hidden=mode==='connect';
+  backupPeriodHint.hidden=mode==='connect';
+  $('financeDriveConfig').hidden=mode!=='connect';
+  $('financeBackupTitle').textContent=mode==='zip'?'Descargar todos los recibos':mode==='drive'?'Generar respaldo en Google Drive':'Conectar con Google Drive';
+  $('financeBackupDescription').textContent=mode==='zip'
+   ?'Elige el mes. Se descargará un ZIP con los PDF de las viviendas que pagaron mantenimiento en ese período.'
+   :mode==='drive'
+    ?'Guarda los recibos del mes y el Excel completo del padrón en tu cuenta conectada de Google Drive.'
+    :'Autoriza una cuenta Google. Las credenciales OAuth se configuran en Hostinger; no las escribas aquí.';
+  backupConfirm.textContent=mode==='zip'?'Descargar ZIP':mode==='drive'?'Generar respaldo':'Autorizar con Google';
+  backupPeriod.innerHTML='';
+  backupPeriod.value='';
+  backupPeriodHint.textContent='';
+  setBackupStatus(mode==='connect'?'Se abrirá el consentimiento de Google.':'Cargando meses disponibles…');
+  backupConfirm.disabled=mode!=='connect';
+  if(mode!=='connect')void loadBackupPeriods();
+  else backupConfirm.focus();
+ }
+ async function downloadZip(periodo){
+  const response=await fetch(API+'/finanzas/recibos-masivos/zip?periodo='+encodeURIComponent(periodo),{
+   headers:{Authorization:'Bearer '+token,Accept:'application/zip'}
+  });
+  if(response.status===401){location.replace('login.html');throw Error('Sesión expirada');}
+  if(!response.ok){
+   const result=await response.json().catch(()=>({}));
+   throw Error(result.message||'No se pudo generar el ZIP ('+response.status+').');
+  }
+  const blob=await response.blob();
+  if(!blob.size)throw Error('El servidor devolvió un ZIP vacío');
+  const total=Number(response.headers.get('X-Recibos-Count')||0);
+  const link=document.createElement('a'),url=URL.createObjectURL(blob);
+  link.href=url;
+  link.download='MJ_Recibos_'+periodo+'.zip';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+  return total;
+ }
+ async function excelForDrive(periodo){
+  if(!window.MJFinanceExport?.descargarReporte||!window.ExcelJS||!window.JSZip)
+   throw Error('El módulo Excel aún no terminó de cargar. Recarga la página.');
+  const [year,month]=periodo.split('-').map(Number);
+  const periodoData=Number(data?.anio)===year&&Number(data?.mes)===month
+   ?data:(await request('/analisis?anio='+year+'&mes='+month)).data;
+  const array=await window.MJFinanceExport.descargarReporte(periodoData,'padron',window.ExcelJS,{returnBuffer:true});
+  const bytes=new Uint8Array(array);
+  let binary='';
+  for(let offset=0;offset<bytes.length;offset+=8192)
+   binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));
+  return btoa(binary);
+ }
+ $('financeDownloadAllReceipts').addEventListener('click',()=>openBackupModal('zip'));
+ $('financeDriveConnect').addEventListener('click',()=>openBackupModal('connect'));
+ $('financeDriveBackup').addEventListener('click',()=>openBackupModal('drive'));
+ $('financeBackupClose').addEventListener('click',closeBackupModal);
+ backupModal.addEventListener('click',event=>{if(event.target===backupModal)closeBackupModal();});
+ backupPeriod.addEventListener('change',()=>{backupConfirm.disabled=backupBusy||!backupPeriod.value;});
+ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!backupModal.hidden)closeBackupModal();});
+ backupConfirm.addEventListener('click',async()=>{
+  if(backupBusy||!backupAction)return;
+  const action=backupAction,periodo=backupPeriod.value;
+  if(action!=='connect'&&!validBackupPeriod(periodo)){
+   setBackupStatus('Elige un mes válido antes de continuar.','error');return;
+  }
+  // Abrir la pestaña en el gesto original: evita el bloqueo del navegador
+  // cuando la solicitud de autorización tarda en contestar.
+  const googleTab=action==='connect'?window.open('about:blank','_blank'):null;
+  setBackupBusy(true);
+  setBackupStatus(action==='zip'?'Preparando PDFs y comprimiendo ZIP…'
+   :action==='drive'?'Creando Excel y enviando respaldo a Drive…':'Preparando autorización de Google…');
+  try{
+   if(action==='connect'){
+    const result=await request('/drive/conectar');
+    if(!result.data?.url)throw Error('El servidor no proporcionó la URL de Google');
+    if(googleTab&&!googleTab.closed){
+     googleTab.opener=null;
+     googleTab.location.replace(result.data.url);
+     setBackupStatus('Autoriza en la nueva pestaña. Al terminar, vuelve aquí para generar el respaldo.','success');
+    }else{
+     setBackupStatus('Se abrirá Google para autorizar tu cuenta.','info');
+     window.location.assign(result.data.url);
+    }
+   }else if(action==='zip'){
+    const count=await downloadZip(periodo);
+    setBackupStatus('Descarga iniciada: '+count+' PDF de '+periodo+'.','success');
+   }else{
+    const estado=(await request('/drive/status')).data;
+    if(!estado?.connected)throw Error('Primero usa "Conectar con Google Drive" y autoriza tu cuenta.');
+    const xlsx=await excelForDrive(periodo);
+    const result=await request('/drive/respaldo',{periodo,xlsx,todos:backupAllMonths.checked});
+    setBackupStatus('Respaldo finalizado: '+(result.data?.cantidad||0)+' recibos de '+(result.data?.meses||0)+' mes(es) y Excel del padrón.','success');
+   }
+  }catch(error){
+   if(googleTab&&!googleTab.closed)googleTab.close();
+   setBackupStatus('No se completó la operación: '+error.message,'error');
+  }finally{
+   setBackupBusy(false);
+  }
+ });
+ // Delegación: los movimientos del historial se renderizan después de cada carga.
+ historyModal.addEventListener('click',async event=>{
+  const button=event.target.closest('button[data-history-delete]');
+  if(!button||historyModal.hidden||activeConcept!=='MANTENIMIENTO'||!historyModal.contains(button))return;
+  event.preventDefault();
+  const index=Number(button.dataset.historyDelete);
+  const casaId=currentHistoryHouseId;
+  const movimiento=historyMovements[index];
+  const status=$('houseHistoryDeleteStatus');
+  if(!Number.isSafeInteger(index)||!casaId||!movimiento?.referencia)return;
+  if(button.disabled)return;
+  button.disabled=true;
+  status.textContent='Verificando el pago y la fecha anterior del TAG…';
+  try{
+   const path='/pagos-vivienda/'+Number(casaId)+'/anulacion';
+   const preview=(await request(path+'?referencia='+encodeURIComponent(movimiento.referencia))).data;
+   if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
+   if(!window.confirm('¿Anular '+fmt(preview.importe)+' de '+preview.periodos.join(', ')+'? Se restaurarán cuotas y se solicitará verificar el TAG con fecha '+displayDate(preview.fechaObjetivo)+'.')) {
+    status.textContent='Operación cancelada; no se modificó ningún dato.';return;
+   }
+   if(window.prompt('Escribe ANULAR para confirmar que este pago es incorrecto:')!=='ANULAR'){
+    status.textContent='Operación cancelada; no se modificó ningún dato.';return;
+   }
+   status.textContent='Anulando el pago y programando la corrección de ZKTeco…';
+   const result=(await request(path,{referencia:movimiento.referencia,confirmacion:'ANULAR'})).data;
+   const message='Pago anulado; '+result.periodosRestaurados+' período(s) restaurados. C3: '+result.restauracionC3.estado+'. Verifica el TAG físicamente.';
+   await load();
+   if(!historyModal.hidden&&currentHistoryHouseId===casaId){
+    await openHouseHistory(casaId,null);
+    status.textContent=message;
+   }
+   notice(message,'success');
+  }catch(error){
+   status.textContent='No se borró el pago: '+error.message;
+  }finally{
+   button.disabled=false;
+  }
+ });
+
  function initializePaymentYears(){
   const now=mexicoYear(),yearSelect=$('housePaymentYear');
   yearSelect.innerHTML=Array.from({length:Math.max(0,2098-now+1)},(_,i)=>now+i).map(y=>'<option value="'+y+'">'+y+'</option>').join('');
