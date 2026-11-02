@@ -144,6 +144,7 @@ async function registrarPagoVivienda(req,res){
       // aun si el espejo SQL contiene una fecha física posterior.
       // El worker valida el movimiento confirmado y la fecha real del C3,
       // sin relajar la validación de pertenencia, PIN ni autorizaciones.
+      const referencia=generarReferencia(plan.fechaFinObjetivo);
       // Conciliación autorizada y atómica: sin nuevo pago para los períodos
       // ya abonados. Preservar montos, fechas, folios y eventos C3 originales.
       for(const ajuste of conciliaciones){
@@ -153,13 +154,13 @@ async function registrarPagoVivienda(req,res){
           ': abono de $'+ajuste.montoPagado+' del '+ajuste.fechaPago+
           ' cubre '+ajuste.mes+' '+ajuste.anio+
           ' con tarifa $'+tarifa+'. Conservados importe, referencia y fecha originales.';
+        await reversion.guardarInstantanea(casaId,referencia,original,original.get({plain:true}),transaction);
         await original.update({
           estatusPago:'PAGADO',montoCuota:tarifa,saldoPendiente:0,
           observaciones:[original.observaciones,audit].filter(Boolean).join('\n'),
           actualizadoEn:new Date()
         },{transaction});
       }
-      const referencia=generarReferencia(plan.fechaFinObjetivo);
       const guardadas=[];
       for(const {periodo,cuota,revision} of evaluadas){
         const observacionesAnteriores=String(cuota?.observaciones||'').trim();
