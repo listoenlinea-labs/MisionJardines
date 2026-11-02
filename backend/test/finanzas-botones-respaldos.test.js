@@ -14,8 +14,9 @@ test('los botones visibles tienen controladores y el modal respeta hidden',()=>{
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(source,/data-history-delete/);
  assert.match(source,/historyModal\.addEventListener\('click',async event=>/);
- for(const id of ['financeDownloadAllReceipts','financeDriveConnect','financeDriveBackup','financeBackupClose','financeBackupConfirm'])
+ for(const id of ['financeDownloadAllReceipts','financeDriveConnect','financeDriveBackup','financeBackupClose'])
   assert.ok(source.includes("$('"+id+"').addEventListener('click'"),id+' debe tener listener');
+ assert.match(source,/backupConfirm\.addEventListener\('click'/);
  assert.match(source,/\/recibos-masivos\/periodos/);
  assert.match(source,/\/recibos-masivos\/zip/);
  assert.match(source,/\/drive\/respaldo/);
