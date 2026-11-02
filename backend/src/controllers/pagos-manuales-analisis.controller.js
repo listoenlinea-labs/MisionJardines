@@ -8,6 +8,7 @@ const {estadoCargos}=require('../services/cargos-extraordinarios.service');
 const {randomUUID}=require('crypto');
 const PagoAcceso=require('../models/PagoAccesoC3');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
+const reversion=require('../services/reversion-pagos.service');
 const {prepararDesdeHistorial,generarReferencia,validarPagoAnual}=require('../services/pago-manual-analisis.service');
 const {clasificarCuotaParaPago}=require('../services/cuota-pendiente-historica.service');
 const {calcularAdeudoVivienda}=require('../services/adeudo-vivienda-analisis.service');
@@ -180,8 +181,16 @@ async function registrarPagoVivienda(req,res){
           observaciones:(observacionesAnteriores?observacionesAnteriores+'\n':'')+auditoria,
           nombrePagador:casa.nombre||null,numeroCasaSnapshot:casa.numero,calleSnapshot:casa.calle
         };
-        if(cuota){await cuota.update(valores,{transaction});guardadas.push(cuota);}
-        else guardadas.push(await Cuota.create(valores,{transaction}));
+        if(cuota){
+          const anterior=cuota.get({plain:true});
+          await cuota.update(valores,{transaction});
+          await reversion.guardarInstantanea(casaId,referencia,cuota,anterior,transaction);
+          guardadas.push(cuota);
+        }else{
+          const creada=await Cuota.create(valores,{transaction});
+          await reversion.guardarInstantanea(casaId,referencia,creada,null,transaction);
+          guardadas.push(creada);
+        }
       }
       // Un evento por cobro/lote y por vivienda, no un evento por mensualidad.
       const evento=await vigenciaService.registrarLoteManual(casaId,req.usuario.usuarioId,transaction,{
