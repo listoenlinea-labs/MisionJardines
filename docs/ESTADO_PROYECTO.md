@@ -1,15 +1,13 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 31/oct/2026, 23:34, America/Mexico_City.
-**SHA de main consultado:** `4775252f3e1ab183ea9d5090b5eb2f9e2ec001dd`.
-**Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `3084ff40d02aaba4271b018708cc3de559cf41b6`,
-PR #318–#322, sus workflows y evidencia accesible de la conversación.
-Main avanzó 34 commits; se excluyó `6c0352515caea1f18d8fc25772d29e0c1e1ab647`,
-que solo actualizó esta bitácora. Los cinco PR están fusionados, no hay PR abiertos y
-sus workflows concluyeron success, con fallos heredados no bloqueantes aún presentes.
-El usuario reportó pérdida de conexión con el C3 tras un apagón/cambio de IP pública;
-esto es una incidencia operativa informada, no una prueba de reparación o despliegue.
+**Última revisión:** 1/nov/2026, 23:30, America/Mexico_City.
+**SHA de main consultado:** `1b4ba3185c50f30007fac5c149a16e68f5adbef4`.
+**Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes, y
+comparación de main desde `4775252f3e1ab183ea9d5090b5eb2f9e2ec001dd`.
+El único commit nuevo fue `1b4ba3185c50f30007fac5c149a16e68f5adbef4`,
+actualización de esta misma bitácora, y se excluyó del trabajo de producto.
+No hubo cambios verificables de producto, PR abiertos, checks nuevos ni confirmaciones
+nuevas de despliegue, MySQL, IP/DDNS, navegador o pruebas físicas de C3.
 No se consultaron Hostinger, C3, MySQL ni contenido privado del buzón, y no se publican
 credenciales, comprobantes ni datos personales.
 
@@ -190,11 +188,12 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de producción ni la versión PHP de Hostinger;
 el backend documentado continúa siendo Node.js.
-Desde el SHA consultado en la revisión anterior, main avanzó 34 commits. Se excluyó
-`6c03525`, dedicado únicamente a esta bitácora; el trabajo de producto se agrupa en
-los PR #318–#322, todos fusionados y con workflow exitoso. No hay PR abiertos. Los
-checks acreditan código y simulaciones, no despliegue en Hostinger, conteo MySQL, IP
-pública estable ni comunicación con el C3 físico.
+Desde el SHA consultado en la revisión anterior, main avanzó un commit: `1b4ba31`,
+dedicado únicamente a actualizar este estado y excluido del trabajo de producto. No
+hay PR abiertos, cambios verificables de producto ni checks nuevos. Los PR #318–#322
+y sus cinco workflows exitosos permanecen como evidencia histórica: acreditan código
+y simulaciones, no despliegue en Hostinger, conteo MySQL, IP/DDNS estable ni
+comunicación con el C3 físico.
 El PR #132 continúa revertido.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
@@ -419,6 +418,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-01
+
+- Main consultado a las 23:30, America/Mexico_City, en `1b4ba3185c50f30007fac5c149a16e68f5adbef4`: un commit por delante del SHA guardado.
+- El único commit nuevo fue `1b4ba31`, que actualizó exclusivamente `docs/ESTADO_PROYECTO.md`; se excluyó del trabajo de producto.
+- No hay PR abiertos, cambios verificables de producto ni checks nuevos. Se conservan los PR #318–#322 y sus resultados ya documentados, sin contarlos otra vez.
+- No hubo confirmaciones nuevas accesibles de despliegue, MySQL, IP/DDNS, navegador o C3 físico. Se preservan las reglas, el historial de pruebas y todos los pendientes.
 
 ### 2026-10-31
 
