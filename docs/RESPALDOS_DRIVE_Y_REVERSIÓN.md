@@ -28,10 +28,10 @@ En **Análisis de cuotas → Historial de mantenimiento**, presionar **Borrar** 
 El historial proporcionado muestra que **octubre de 2026** fue un pago real ($300, referencia `MJ-2026-0367`) y el pago manual accidental cubrió **noviembre y diciembre de 2026**, $600, con referencia:
 
 ```
-MJMAN:10-ENE-2027:4ef8d39c-9767-4238-9f61-f6c9c1c1d756
+MJMAN:2027-01-10:4ef8d39c-9767-4238-9f61-f6c9c1c1d756
 ```
 
-**Importante:** cotejar el UUID y el ID real de vivienda desde MySQL antes de operar. El sistema debe regresar a octubre de 2026 como último período pagado, y su vigencia esperada es 10-NOV-2026, *si no existen otros pagos válidos*. No modificar la fecha del TAG solo en la tabla SQL: también hay que comprobar el controlador físico C3.
+**Importante:** la interfaz presenta las fechas como DD-MON-AAAA; en MySQL se guarda `2027-01-10` en la referencia. Cotejar el UUID y el ID real de vivienda desde MySQL antes de operar. El sistema debe regresar a octubre de 2026 como último período pagado, y su vigencia esperada es 10-NOV-2026, *si no existen otros pagos válidos*. No modificar la fecha del TAG solo en la tabla SQL: también hay que comprobar el controlador físico C3.
 
 Consulta de lectura recomendada:
 
@@ -49,7 +49,7 @@ ORDER BY c.anio DESC,FIELD(c.mes,'ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO
 
 SELECT p.id,p.casa_id,p.referencia,p.origen,p.estado,p.fecha_objetivo
 FROM pagos_acceso_c3 p
-WHERE p.referencia='MJMAN:10-ENE-2027:4ef8d39c-9767-4238-9f61-f6c9c1c1d756';
+WHERE p.referencia='MJMAN:2027-01-10:4ef8d39c-9767-4238-9f61-f6c9c1c1d756';
 
 SELECT t.id,t.numero_tarjeta,t.fecha_fin,t.ultima_lectura FROM zk_tarjetas t
 JOIN direcciones d ON d.id=t.casa_id
