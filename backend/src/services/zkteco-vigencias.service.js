@@ -76,7 +76,7 @@ async function preparar(casaId, now, dryRun) {
         if (!tags.length) throw new Error('El pago no tiene TAGs destinatarios registrados');
         const snapshots = [];
         // Los pagos nuevos entregan la cobertura SQL; los eventos antiguos conservan su intención.
-        const fechaObjetivo=['PAGO_CUOTAS','CUOTA_SQL'].includes(event.origen)?event.fechaObjetivo:fechaFinDeReferencia(event.referencia);
+        const fechaObjetivo=['PAGO_CUOTAS','CUOTA_SQL','REVERSA'].includes(event.origen)?event.fechaObjetivo:fechaFinDeReferencia(event.referencia);
         try {
         if(event.origen==='PAGO_CUOTAS'){
             const pago=await PagoReportado.findByPk(event.origenId,{transaction});
@@ -86,6 +86,11 @@ async function preparar(casaId, now, dryRun) {
                 !plan?.aplicado||plan.fechaFinalObjetivo!==fechaObjetivo||
                 !fechaObjetivo||String(fechaDesdeCuotas(cuotas)||'')<fechaObjetivo)
                 throw Object.assign(new Error('El objetivo del C3 no está respaldado por cuotas y un pago validado; requiere conciliación'),{status:409});
+        }
+        if(event.origen==='REVERSA'){
+            const respaldo=await sequelize.query('SELECT id FROM pagos_anulaciones WHERE casa_id=? AND referencia=? LIMIT 1',{replacements:[event.casaId,String(event.referencia||'').replace(/^REVERSA:/,'')],transaction});
+            if(!respaldo[0]?.length || !fechaObjetivo || fechaDesdeCuotas(await Cuota.findAll({where:{casaId},transaction}))!==fechaObjetivo)
+                throw Object.assign(new Error('La reversión ya no coincide con las cuotas; se requiere conciliación'),{status:409});
         }
         if(event.origen==='CUOTA_SQL'){
             const cuotas=await Cuota.findAll({where:{casaId},transaction});
@@ -98,7 +103,7 @@ async function preparar(casaId, now, dryRun) {
             await comprobarVinculo(tag, event, transaction);
             const actual = await direct.readUserValidity(tag.numeroTarjeta);
             const fechaAntes=fechaReal(actual.fechaFinal);
-            if(fechaObjetivo && fechaObjetivo<fechaAntes && !loteManual)
+            if(fechaObjetivo && fechaObjetivo<fechaAntes && !loteManual && event.origen!=='REVERSA')
                 throw Object.assign(new Error('La vigencia física ya termina después del mes confirmado; no se acortaron los TAGs. Revisar meses seleccionados.'),{status:409});
             // Incluso cuando se acorta EndTime por un pago manual, se conservan
             // controles de vínculo, PIN, puertas, escritura y verificación física.
