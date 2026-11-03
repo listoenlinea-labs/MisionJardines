@@ -1507,3 +1507,24 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
 
 /* Dirección y residente con espacio visible en la lista de 231 viviendas */
 #financeProjectRulesModal .finance-rules-resident{display:inline;font-size:11px;font-weight:500;color:#72819b;white-space:normal;}
+
+
+/* Cuotas extraordinarias: distinción semántica entre pago y vivienda exenta */
+#houseProjectNoAplica[hidden],#houseProjectNoAplicaStatus[hidden]{display:none!important}
+.house-project-no-aplica-button{background:#eff8f3;border-color:#b7dbc7;color:#266e51;min-height:42px}
+.house-project-no-aplica-button:not(:disabled):hover{background:#e0f3e7;border-color:#88bf9d}
+.house-project-no-aplica-button[aria-pressed="true"]{background:#e4f4eb;border-color:#a8d0b8;color:#267149}
+.house-project-no-aplica-button:disabled{opacity:.7;cursor:not-allowed}
+.house-project-no-aplica-status{margin:0 0 10px;text-align:right;color:#536a60}
+.house-no-aplica-tag,.house-amount-no-aplica,.house-not-applicable-pay{
+ display:inline-flex;align-items:center;justify-content:center;
+ padding:7px 10px;border-radius:9px;border:1px solid #cfe4d8;
+ background:#f0f7f3;color:#39745b;font-size:12px;font-weight:800;
+}
+.house-not-applicable-pay{min-height:38px;white-space:nowrap}
+.house-paid-history.is-neutral .house-no-aplica-tag{border:0;background:transparent;padding:0}
+@media(max-width:600px){
+ .history-tariff-toolbar{gap:8px!important}
+ .house-project-no-aplica-button{min-height:40px}
+ .house-project-no-aplica-status{text-align:left}
+}
