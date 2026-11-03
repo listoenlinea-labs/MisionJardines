@@ -6,7 +6,7 @@ const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const { calcularAdeudoVivienda }=require('../services/adeudo-vivienda-analisis.service');
 const {estadoPeriodoMantenimiento}=require('../services/estado-mantenimiento-tablas.service');
 const {tagsParaViviendas}=require('../services/analisis-tags.service');
-const {Casa,Cuota,PagoReportado,ZkTarjeta,CuotaExtraordinaria,CargoExtraordinario,PagoManualConcepto}=require('../models');
+const {Casa,Cuota,PagoReportado,ZkTarjeta,CuotaExtraordinaria,CargoExtraordinario,PagoManualConcepto,AportacionExtraordinaria}=require('../models');
 const Egreso=require('../models/Egreso');
 const {referenciaEgreso}=require('../services/egreso-referencia.service');
 const {validarCambio,categoriasEquivalentes,prepararAjuste,esAjuste}=require('../services/ajuste-egresos-mensuales.service');
@@ -30,7 +30,7 @@ function filters(req){
 async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
-  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento,foliosRegistrados]=await Promise.all([
+  const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento,foliosRegistrados,aportacionesExtraordinarias]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar','exencionesRecargo']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion','aplicacionCuotas']}),
@@ -42,13 +42,14 @@ async function analizar(req,res){
    Cuota.findAll({attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','confirmadoPorUsuarioId']}),
    ZkTarjeta.findAll({attributes:['id','casaId','numeroTarjeta','nombreDispositivo','departamento','fechaInicio','fechaFin','bloqueado','enControlador','puertasAutorizadas','ultimaLectura']})
    ,PagoManualConcepto.findAll({where:{creadoEn:{[Op.between]:[start+' 00:00:00',end+' 23:59:59']}},attributes:['id','casaId','tipoPago','monto','formaPago','referencia','creadoEn']})
-   ,CuotaExtraordinaria.findAll({attributes:['egresoId','id']}),
-   CargoExtraordinario.findAll({attributes:['id','casaId','periodo','monto'],include:[{model:CuotaExtraordinaria,as:'cuota',attributes:[],required:true,where:{activo:true}}]}),
+   ,CuotaExtraordinaria.findAll({attributes:['egresoId','id','codigo','concepto','activo','fechaInicio']}),
+   CargoExtraordinario.findAll({attributes:['id','cuotaExtraordinariaId','casaId','periodo','monto'],include:[{model:CuotaExtraordinaria,as:'cuota',attributes:[],required:true,where:{activo:true}}]}),
    PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoManualConcepto.findAll({attributes:['id','casaId','tipoPago','cargoExtraordinarioId','reservaCasaClubId','monto','formaPago','referencia','creadoEn']}),
    ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado']}),
    PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
-   PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']})
+   PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']}),
+    AportacionExtraordinaria.findAll({attributes:['id','cuotaExtraordinariaId','cargoExtraordinarioId','casaId','fecha','monto','referencia']})
   ]);
   const egresosHistoricos=await Egreso.findAll({
    where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto'],raw:true
@@ -89,7 +90,10 @@ async function analizar(req,res){
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
   const viviendasConceptos=resumenConceptos({viviendas:residences,cargos:cargosExtraordinarios,reportados:pagosConceptoHistoricos,
-   manuales:manualesConceptoHistoricos,reservas:reservasAprobadas,anio,mes});
+   manuales:manualesConceptoHistoricos,aportaciones:aportacionesExtraordinarias,reservas:reservasAprobadas,anio,mes});
+  const proyectosExtraordinarios=require('../services/proyectos-extraordinarios.service').juntar(
+   cuotasExtras.filter(p=>p.activo),cargosExtraordinarios,aportacionesExtraordinarias,
+   manualesConceptoHistoricos,pagosConceptoHistoricos,residences);
   for(const tipo of ['EXTRAORDINARIO','CASA_CLUB']){
    for(const row of viviendasConceptos[tipo]){
     const casaId=String(row.casaId);
@@ -150,7 +154,7 @@ async function analizar(req,res){
    anio,mes,periodo:mesName+' '+anio,
    casas:residences.length,pagadas,pendientes:residences.length-pagadas,
    porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
-   calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,
+   calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,proyectosExtraordinarios,
    cuotasPeriodoDetalle,pagosPeriodoDetalle,manualesConceptoPeriodoDetalle,
    padronExcluidos:padron.excluidas,padronDuplicados:padron.duplicadas,
    avisoPadron:padron.excluidas ? 'El porcentaje de cumplimiento excluye '+padron.excluidas+' registros auxiliares, fuera del padrón o de prueba. Los registros, cuotas y pagos originales permanecen en la base de datos.' : '',
