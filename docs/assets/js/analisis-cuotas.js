@@ -89,7 +89,7 @@
  }
  function canonicalExpenseCategory(value){return ({LUZ:'CFE',AGUA:'SIAPA',PROYECTOS:'CUOTA_EXTRAORDINARIA'})[value]||value;}
  function expenseLabel(value){return {CFE:'CFE',SIAPA:'SIAPA',JARDINERIA:'Jardinería',MANTENIMIENTO:'Mantenimiento',
-  CUOTA_EXTRAORDINARIA:'Cuota extraordinaria',INTERNET:'Internet',SERVICIOS:'Servicios',OTROS:'Otros'}[canonicalExpenseCategory(value)]||value;}
+  CUOTA_EXTRAORDINARIA:'Cuota extraordinaria',PROYECTO:'Proyecto',INTERNET:'Internet',SERVICIOS:'Servicios',OTROS:'Otros'}[canonicalExpenseCategory(value)]||value;}
  function periodTotals(monthly,accumulated){
   return '<span>Este mes: <b>'+esc(fmt(monthly))+'</b></span><span>Acumulado: <b>'+esc(fmt(accumulated))+'</b></span>';
  }
