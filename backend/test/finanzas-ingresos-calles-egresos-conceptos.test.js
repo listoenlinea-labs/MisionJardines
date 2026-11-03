@@ -80,7 +80,8 @@ test('egresos conservan gastos LUZ/AGUA/PROYECTOS sin mutarlos, y agregan Intern
 test('HTML muestra solo las ocho barras de ingresos y conserva tabla de egresos',()=>{
  const html=root('docs/analisis-cuotas.html'),js=root('docs/assets/js/analisis-cuotas.js');
  for(const id of ['financeIncomeTotals','financeCashChart',
-  'financeExpenseTotals','financeExpenseChart','financeExpensesConceptRows','financeExpensesConceptTotal'])
+  'financeExpenseTotals','financeExpenseChart','financeExpenseHistory',
+  'financeExpenseHistoryRows','financeExpenseHistoryTotal','financeExpenseHistoryClose'])
   assert.match(html,new RegExp('id="'+id+'"'));
  const cats=['CFE','SIAPA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','INTERNET','SERVICIOS','OTROS'];
  for(const c of cats)assert.ok(html.split('<option value="'+c+'">').length>=3,c+' está en formulario y filtro');
@@ -88,7 +89,12 @@ test('HTML muestra solo las ocho barras de ingresos y conserva tabla de egresos'
  assert.doesNotMatch(html,/id="financeIncomeStreetRows"|id="financeIncomeStreetTotal"/);
  assert.match(html,/<h2>Ingresos<\/h2>/);
  assert.match(html,/<p class="finance-card-subtitle">Ingresos por calle<\/p>/);
- assert.match(js,/Total acumulado de mantenimiento:/);
+ assert.match(js,/Mantenimiento de '/);
+ assert.match(js,/Number\(c\.mes\|\|0\)/);
+ assert.match(html,/<th>Concepto<\/th><th>Mes<\/th><th>Total pagado<\/th>/);
+ assert.doesNotMatch(html,/id="financeExpensesConceptRows"|id="financeExpensesConceptTotal"/);
+ assert.match(js,/selectedExpenseCategory===category\?null:category/);
+ assert.match(js,/renderExpenseHistory\(\)/);
  assert.match(js,/canonicalExpenseCategory\(e\.categoria\)===category/);
  assert.match(js,/data\.ingresosMantenimientoCalles/);
  assert.match(js,/data\.egresosPorConcepto/);
@@ -133,7 +139,56 @@ test('historical sin fecha en varias calles y anualidad se contabiliza una sola 
 test('el portal fuerza la carga de Análisis de cuotas actualizado en iframe',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const html=root('docs/analisis-cuotas.html'),app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*income-streets-20261103/);
+ assert.match(shell,/_mjVersion.*finanzas-mensuales-conceptos-20261103/);
  assert.match(html,/analisis-cuotas\.js\?v=20261103-ingresos-ocho-calles/);
  assert.match(app,/app-shell\.js\?v=20261103-ingresos-calles/);
+});
+
+test('ambos gráficos muestran solo el mes seleccionado y no el acumulado histórico',()=>{
+ const html=root('docs/analisis-cuotas.html'),js=root('docs/assets/js/analisis-cuotas.js');
+ assert.match(html,/Mantenimiento cobrado durante el mes y año seleccionados/);
+ assert.match(js,/bar\(c\.calle,Number\(c\.mes\|\|0\),max,false,fmt\(c\.mes\)\)/);
+ assert.match(js,/bar\(c\.concepto,Number\(c\.mes\|\|0\),max,true,fmt\(c\.mes\)\)/);
+ assert.match(js,/Mantenimiento del mes/);
+ assert.match(js,/Egresos de '/);
+ assert.doesNotMatch(js,/bar\(c\.calle,Number\(c\.acumulado\)/);
+ assert.doesNotMatch(js,/bar\(c\.concepto,Number\(c\.acumulado\)/);
+});
+
+test('detalle CFE enero a noviembre 2026: meses vacíos, varios gastos y exclusión diciembre',()=>{
+ const rows=[
+  {categoria:'LUZ',monto:2000,fecha:'2026-01-05'},
+  {categoria:'CFE',monto:7000,fecha:'2026-11-01'},
+  {categoria:'LUZ',monto:3000,fecha:'2026-11-11'},
+  {categoria:'CFE',monto:2500,fecha:'2026-12-01'},
+  {categoria:'SIAPA',monto:1600,fecha:'2026-11-03'},
+  {categoria:'CFE',monto:900,fecha:'2025-10-04'}
+ ];
+ const x=resumenEgresos(rows,'2026-11-01','2026-11-30');
+ const cfe=x.historialMensual.CFE;
+ assert.equal(cfe.length,11);
+ assert.deepEqual(cfe.map(m=>m.mes),
+  ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre']);
+ assert.equal(cfe[0].totalPagado,2000);
+ assert.equal(cfe[1].totalPagado,0);
+ assert.equal(cfe[10].totalPagado,10000);
+ assert.equal(x.conceptos.find(c=>c.categoria==='CFE').mes,10000);
+ assert.equal(x.mes,11600);
+ // Acumulado de ejercicios previos se conserva fuera de la gráfica mensual.
+ assert.equal(x.conceptos.find(c=>c.categoria==='CFE').acumulado,12900);
+ assert.equal(cfe.reduce((sum,m)=>sum+m.totalPagado,0),12000);
+ assert.equal(x.historialMensual.SIAPA[10].totalPagado,1600);
+ assert.equal(x.historialMensual.INTERNET.length,11);
+ assert.equal(x.historialMensual.INTERNET[10].totalPagado,0);
+});
+
+test('seleccionar marzo no muestra abril-diciembre en el historial',()=>{
+ const x=resumenEgresos([
+  {categoria:'CFE',monto:100,fecha:'2026-02-28'},
+  {categoria:'CFE',monto:300,fecha:'2026-04-01'}
+ ],'2026-03-01','2026-03-31');
+ assert.equal(x.historialMensual.CFE.length,3);
+ assert.equal(x.historialMensual.CFE[1].totalPagado,100);
+ assert.equal(x.historialMensual.CFE[2].totalPagado,0);
+ assert.equal(x.mes,0);
 });
