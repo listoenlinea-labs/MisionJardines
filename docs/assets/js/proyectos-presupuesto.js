@@ -21,13 +21,13 @@
    const id=Number(e.casaId);
    if(!idSet.has(id)||fixed.has(id))return fail('Hay excepciones duplicadas o ajenas al padrón.');
    const amount=cents(e.monto);
-   if(amount<=0)return fail('Cada excepción debe ser mayor a cero.');
+   if(amount<0)return fail('La excepción no puede ser negativa.');
    fixed.set(id,amount);
   }
   const others=ids.filter(id=>!fixed.has(id)).sort((a,b)=>a-b);
   if(!others.length)return fail('Deja al menos una vivienda para distribuir el importe restante.');
   const remaining=total-[...fixed.values()].reduce((a,b)=>a+b,0);
-  if(remaining<others.length)return fail('Las excepciones exceden el presupuesto; no queda una cuota positiva para todas las viviendas.');
+  if(remaining<others.length)return fail('Las excepciones exceden el presupuesto; no queda una cuota positiva para todas las viviendas sin excepción.');
   const base=Math.floor(remaining/others.length),remainder=remaining%others.length;
   const standard=new Map(others.map((id,i)=>[id,base+(i<remainder?1:0)]));
   const rows=ids.map(casaId=>({
