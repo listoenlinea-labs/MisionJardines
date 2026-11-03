@@ -40,3 +40,16 @@ Comprobaciones manuales recomendadas con un entorno de pruebas: comprobar el sel
 - Dirección y residente se separan con espacio, por ejemplo Atotonilco 752 Saida Teresa Aguilar Aguilar.
 
 Revisar en entorno de prueba: proyecto de $50,000, una excepción de cero y total exacto entre 230 casas; casa sin aportaciones que pasa a cero; casa con $200 abonados que rechaza cuota cero. Reabrir el editor masivo para confirmar la excepción guardada.
+
+## Actualización: estado «No aplica» en el historial y la tabla
+
+En el Historial de cuotas extraordinarias se agrega **No aplica** junto a **Modificar cuota del proyecto**, únicamente para la vivienda y el proyecto seleccionados. Solicita confirmación y usa la misma actualización individual auditada con cuota $0. No altera mantenimiento ni TAGs.
+
+- No se permite exentar una vivienda que tenga aportaciones recibidas o comprobantes pendientes de validación; el servidor rechaza la acción y no borra pagos.
+- Estado, Pagado y Saldo pendiente muestran **No aplica**, con verde pastel. Último abono también muestra No aplica y se desactiva el registro de pago mientras la casa está exenta. Pagado sigue abriendo el historial.
+- El backend clasifica los cargos de cero sin aportaciones como NO_APLICA; esas viviendas no cuentan como pagadas ni pendientes. El KPI de casas cumplidas muestra el denominador de viviendas con cuota aplicable.
+- El filtro Estado incorpora **No aplica** solo en cuotas extraordinarias.
+- Para volver a cobrar, se puede asignar otra cuota mediante Modificar cuota del proyecto, recalculando automáticamente su estado.
+- Se reutiliza la auditoría existente de proyectos_cuotas_auditoria: no requiere migración SQL.
+
+Verificar con MySQL de pruebas: una vivienda sin abonos con saldo $1,000 pasa a No aplica y saldo $0; otra con $200 abonados rechaza la exención; la casa exenta puede volver a una cuota de $500, y las demás casas no se alteran. No ejecutado en Hostinger.
