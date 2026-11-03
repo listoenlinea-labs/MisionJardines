@@ -979,3 +979,38 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
 .finance-expense-history .finance-monthly-table td{font-variant-numeric:tabular-nums}
 .finance-expense-history .finance-monthly-table tfoot{background:#f5edf6}
 @media(max-width:700px){.finance-expense-history{padding:10px}.finance-expense-select{padding:6px 3px}}
+
+/* Historial financiero: dos modales en lugar de tablas bajo las gráficas. */
+.finance-history-overlay[hidden]{display:none!important}
+.finance-history-overlay{z-index:10120}
+.finance-historical-dialog{width:min(780px,100%);max-height:min(750px,calc(100vh - 36px));overflow:hidden;
+ display:flex;flex-direction:column;gap:12px;padding:22px}
+.finance-historical-dialog .finance-pay-heading{flex:0 0 auto}
+.finance-historical-dialog .finance-pay-heading h2{font-size:20px;margin:4px 0 0}
+.finance-historical-dialog>p{margin:0}
+.finance-historical-table{max-height:58vh;min-height:0;overflow:auto;border:1px solid #e2e8f0;border-radius:12px}
+.finance-historical-table table{width:100%;border-collapse:collapse;min-width:340px}
+.finance-historical-table th,.finance-historical-table td{padding:12px 14px;border-bottom:1px solid #edf0f3;
+ font-size:12px;line-height:1.4}
+.finance-historical-table thead{position:sticky;top:0;background:#f7f4fa;z-index:1}
+.finance-historical-table thead th{text-align:left;color:#6d5887;font-weight:850}
+.finance-historical-table th:nth-child(3),.finance-historical-table td:nth-child(3){text-align:right;font-variant-numeric:tabular-nums}
+.finance-historical-table tbody tr:hover{background:#fafcfb}
+.finance-historical-table tbody th{font-weight:650;color:#36445c;text-align:left}
+.finance-historical-table tfoot{position:sticky;bottom:0;background:#eaf7ef;z-index:1}
+.finance-historical-table tfoot th,.finance-historical-table tfoot td{border-bottom:0;font-weight:900;color:#2d6146}
+.finance-monthly-columns .finance-income-select,
+.finance-monthly-columns .finance-expense-select{display:block;width:100%;min-width:0;padding:6px 8px;margin:0;
+ border:1px solid transparent;border-radius:10px;background:transparent;color:inherit;text-align:left;
+ font:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+.finance-monthly-columns .finance-income-select:hover{background:#f0faf4;border-color:#bfe1ca}
+.finance-monthly-columns .finance-income-select:focus-visible{outline:3px solid #8bc9a0;outline-offset:1px}
+.finance-monthly-columns .finance-income-select .bar-row,
+.finance-monthly-columns .finance-expense-select .bar-row{width:100%;margin:0}
+.finance-monthly-columns .finance-income-select .track{pointer-events:none}
+.finance-history-hint{margin:7px 0 10px}
+@media(max-width:650px){
+ .finance-historical-dialog{width:min(100%,700px);padding:14px;max-height:calc(100vh - 20px)}
+ .finance-historical-table th,.finance-historical-table td{padding:10px 8px;font-size:11px}
+ .finance-history-overlay{padding:10px}
+}
