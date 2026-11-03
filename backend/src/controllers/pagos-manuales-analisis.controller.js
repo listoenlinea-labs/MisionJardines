@@ -246,14 +246,26 @@ async function historialPagoVivienda(req,res){
    deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[],incluirDetalles:true}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
-    PagoReportado.findAll({where:{...(tipo==='MANTENIMIENTO'?require('../services/pagos-reparto.service').condicionCasa(casaId):{casaId}),tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
-    PagoManualConcepto.findAll({where:{casaId,tipoPago:tipo},attributes:['id','tipoPago','monto','formaPago','referencia','creadoEn']})
+    PagoReportado.findAll({where:{...(tipo==='MANTENIMIENTO'?require('../services/pagos-reparto.service').condicionCasa(casaId):{casaId}),tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','cargoExtraordinarioId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
+    PagoManualConcepto.findAll({where:{casaId,tipoPago:tipo},attributes:['id','cargoExtraordinarioId','tipoPago','monto','formaPago','referencia','creadoEn']})
    ]);
-   movimientos=historialConcepto(tipo,reportados,manuales);
    if(tipo==='EXTRAORDINARIO'){
-    const cargos=await estadoCargos(casaId);
+    const proyectoId=req.query.proyectoId?Number(req.query.proyectoId):null;
+    if(req.query.proyectoId&&(!Number.isSafeInteger(proyectoId)||proyectoId<1))throw fail(400,'Proyecto inválido');
+    const cargos=(await estadoCargos(casaId)).filter(c=>!proyectoId||Number(c.cuotaExtraordinariaId)===proyectoId);
+    const cargoIds=new Set(cargos.map(c=>String(c.id)));
+    movimientos=historialConcepto(tipo,reportados.filter(p=>cargoIds.has(String(p.cargoExtraordinarioId))),
+     manuales.filter(p=>cargoIds.has(String(p.cargoExtraordinarioId))));
+    const aportaciones=await AportacionExtraordinaria.findAll({where:{casaId},
+     attributes:['cargoExtraordinarioId','monto','fecha','referencia','formaPago']});
+    movimientos.push(...aportaciones.filter(a=>cargoIds.has(String(a.cargoExtraordinarioId))).map(a=>({
+     referencia:a.referencia,fecha:a.fecha,monto:Number(a.monto),recargo:0,meses:0,periodos:[],
+     formaPago:a.formaPago||'Aportación registrada',fuente:'APORTACION'
+    })));
+    movimientos.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
     deudas=cargos.filter(c=>c.estado!=='PAGADO').map(c=>({categoria:tipo,periodo:c.periodo,concepto:c.concepto,monto:c.monto,estado:c.estado}));
    }else{
+    movimientos=historialConcepto(tipo,reportados,manuales);
     const reservas=await Reserva.findAll({where:{casaId,estatus:'APROBADA',pagado:false},attributes:['fecha','cuotaRecuperacion','depositoGarantia','limpieza']});
     deudas=reservas.map(r=>({categoria:tipo,periodo:r.fecha,concepto:'Reserva de casa club',monto:Number(r.cuotaRecuperacion||0)+Number(r.depositoGarantia||0)+Number(r.limpieza||0)}));
    }
