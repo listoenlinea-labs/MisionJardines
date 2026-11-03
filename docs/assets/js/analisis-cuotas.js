@@ -75,6 +75,12 @@
   const pct=Math.max(0,Math.min(100,max?100*value/max:0));
   return '<div class="bar-row"><strong>'+esc(name)+'</strong><div class="track"><div class="fill'+(cost?' cost':'')+'" style="width:'+pct.toFixed(2)+'%"></div></div><b>'+esc(suffix||pct.toFixed(0)+'%')+'</b></div>';
  }
+ function canonicalExpenseCategory(value){return ({LUZ:'CFE',AGUA:'SIAPA',PROYECTOS:'CUOTA_EXTRAORDINARIA'})[value]||value;}
+ function expenseLabel(value){return {CFE:'CFE',SIAPA:'SIAPA',JARDINERIA:'Jardinería',MANTENIMIENTO:'Mantenimiento',
+  CUOTA_EXTRAORDINARIA:'Cuota extraordinaria',INTERNET:'Internet',SERVICIOS:'Servicios',OTROS:'Otros'}[canonicalExpenseCategory(value)]||value;}
+ function periodTotals(monthly,accumulated){
+  return '<span>Este mes: <b>'+esc(fmt(monthly))+'</b></span><span>Acumulado: <b>'+esc(fmt(accumulated))+'</b></span>';
+ }
  function financialCard(label,value){return '<div class="metric"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>';}
  // El icono es decorativo: toda la tarjeta sigue siendo el mismo botón de Excel.
  const financeDownloadIcon='<span class="finance-export-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg></span>';
@@ -86,7 +92,7 @@
   const houses=data.casas||0;
   const financialCards=[
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],[data.esCargaHistorica?'Cuotas históricas registradas':'Ingresos bancarios validados',fmt(data.ingresosParaBalance)],
+   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento cobrado del mes',fmt(data.ingresosMantenimientoCalles?.mes??data.ingresosParaBalance)],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
    ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
@@ -104,17 +110,37 @@
   $('financeStreetChart').innerHTML=data.calles.length?data.calles.map(c=>bar(c.calle,c.porcentaje,100,false,c.pagadas+'/'+c.total)).join(''):'Sin datos';
   const padronNote=$('financePadronNote');
   if(padronNote){padronNote.textContent=data.avisoPadron||'';padronNote.hidden=!data.avisoPadron;}
-  const cash=data.esCargaHistorica ? [['Mantenimiento histórico',data.ingresosHistoricos],['Ingresos adicionales',data.ingresosAdicionales],['Saldo inicial',data.saldoInicial],['Egresos',data.totalEgresos]] : [['Mantenimiento validado',data.ingresosReportados.mantenimiento],['Extraordinarios validados',data.ingresosReportados.extraordinarios],['Ingresos adicionales',data.ingresosAdicionales],['Saldo inicial',data.saldoInicial],['Egresos',data.totalEgresos]];
-  // Solo cobros recibidos (bancarios validados + manuales), no reservas aprobadas sin pagar.
-  cash.splice(cash.length-1,0,['Casa club cobrado',Number(data.ingresosReportados.casaClub||0)+Number(data.manualesCasaClub||0)]);
-  const max=Math.max(1,...cash.map(x=>x[1]));
-  $('financeCashChart').innerHTML=cash.map(([n,v],i)=>'<div class="money-row"><strong>'+esc(n)+'</strong><div class="track"><div class="fill '+(n==='Egresos'?'cost':'')+'" style="width:'+(v/max*100).toFixed(2)+'%"></div></div><strong>'+esc(fmt(v))+'</strong></div>').join('')+
-    '<div class="hint">Abonos anotados en tabla de cuotas (sin duplicar en ingresos): <b>'+fmt(data.cobrosCuotasRegistrados)+'</b></div>';
-  $('financeWarning').textContent=data.avisoConciliacion;
-  const cat=Object.entries(data.egresosCategorias);
-  const maxCategory=Math.max(1,...cat.map(([,v])=>v));
-  $('financeExpenseChart').innerHTML=cat.map(([n,v])=>bar(n,v,maxCategory,true,fmt(v))).join('');
-  renderExpenses();
+  const ingresos=data.ingresosMantenimientoCalles;
+   if(ingresos){
+    const rows=ingresos.calles||[];
+    const max=Math.max(1,...rows.map(c=>Number(c.acumulado||0)));
+    $('financeIncomeTotals').innerHTML=periodTotals(ingresos.mes,ingresos.acumulado);
+    $('financeCashChart').innerHTML=rows.map(c=>bar(c.calle,Number(c.acumulado),max,false,fmt(c.acumulado))).join('');
+    $('financeIncomeStreetRows').innerHTML=rows.map(c=>'<tr><th scope="row">'+esc(c.calle)+'</th><td>'+esc(fmt(c.mes))+'</td><td>'+esc(fmt(c.acumulado))+'</td></tr>').join('');
+    $('financeIncomeStreetTotal').innerHTML='<tr><th>Total mantenimiento</th><td>'+esc(fmt(ingresos.mes))+'</td><td>'+esc(fmt(ingresos.acumulado))+'</td></tr>';
+    $('financeWarning').textContent=data.avisoConciliacion+(ingresos.sinFecha?' '+ingresos.sinFecha+' movimiento(s) sin fecha verificable quedan fuera del total hasta conciliarlos.':'');
+   }else{
+    $('financeIncomeTotals').textContent='Actualiza el backend de Hostinger para consultar ingresos por calle.';
+    $('financeCashChart').textContent='';
+    $('financeIncomeStreetRows').innerHTML='';
+    $('financeIncomeStreetTotal').innerHTML='';
+    $('financeWarning').textContent='El servidor no entrega el resumen por calle.';
+   }
+   const egresos=data.egresosPorConcepto;
+   if(egresos){
+    const rows=egresos.conceptos||[];
+    const max=Math.max(1,...rows.map(c=>Number(c.acumulado||0)));
+    $('financeExpenseTotals').innerHTML=periodTotals(egresos.mes,egresos.acumulado);
+    $('financeExpenseChart').innerHTML=rows.map(c=>bar(c.concepto,Number(c.acumulado),max,true,fmt(c.acumulado))).join('');
+    $('financeExpensesConceptRows').innerHTML=rows.map(c=>'<tr><th scope="row">'+esc(c.concepto)+'</th><td>'+esc(fmt(c.mes))+'</td><td>'+esc(fmt(c.acumulado))+'</td></tr>').join('');
+    $('financeExpensesConceptTotal').innerHTML='<tr><th>Total egresos</th><td>'+esc(fmt(egresos.mes))+'</td><td>'+esc(fmt(egresos.acumulado))+'</td></tr>';
+   }else{
+    $('financeExpenseTotals').textContent='Actualiza el backend de Hostinger para consultar egresos por concepto.';
+    $('financeExpenseChart').textContent='';
+    $('financeExpensesConceptRows').innerHTML='';
+    $('financeExpensesConceptTotal').innerHTML='';
+   }
+   renderExpenses();
   const select=$('financeStreet'),selected=select.value;
   select.innerHTML='<option value="">Todas las calles</option>'+[...data.calles].sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'})).map(c=>'<option value="'+esc(c.calle)+'">'+esc(c.calle)+'</option>').join('');
   select.value=data.calles.some(x=>x.calle===selected)?selected:'';
@@ -132,7 +158,7 @@
   const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value;
   const order=$('expenseSort').value;
   const result=egresos.filter(e=>(!concept||normalize(e.concepto).includes(concept))
-    &&(!category||e.categoria===category)
+    &&(!category||canonicalExpenseCategory(e.categoria)===category)
     &&(!from||String(e.fecha)>=from)
     &&(!to||String(e.fecha)<=to));
   result.sort((a,b)=>{
@@ -148,7 +174,7 @@
   $('expenseResultCount').textContent='Mostrando '+result.length+' de '+egresos.length+' egresos del período seleccionado';
   const expenseCell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
   $('financeExpenseRows').innerHTML=result.length?result.map(e=>'<tr>'+
-    expenseCell('Fecha',esc(e.fecha))+expenseCell('Categoría',esc(e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS'?'CUOTA EXTRAORDINARIA':e.categoria))+
+    expenseCell('Fecha',esc(e.fecha))+expenseCell('Categoría',esc(expenseLabel(e.categoria)))+
     expenseCell('Concepto',esc(e.concepto))+expenseCell('Referencia',esc(e.referencia||'—'))+
     expenseCell('Monto',esc(fmt(e.monto)))+expenseCell('Cobro',e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS'?(e.tieneCuota?'<span class="status-paid">Programado</span>':'<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>'):'—')+'</tr>').join(''):
     '<tr><td colspan="6">'+(egresos.length?'No hay egresos que coincidan con los filtros.':'No hay egresos registrados para este mes.')+'</td></tr>';
