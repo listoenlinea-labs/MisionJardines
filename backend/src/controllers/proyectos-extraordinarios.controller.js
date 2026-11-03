@@ -30,4 +30,11 @@ async function ajustar(req,res){
   return res.json({ok:true,data,message:'Tarifa específica del proyecto actualizada sin cambiar mantenimiento o TAGs.'});
  }catch(e){return error(res,e);}
 }
-module.exports={previsualizar,importar,crear,ajustar};
+
+async function ajustarProyecto(req,res){
+ try{
+  const data=await svc.ajustarCuotasProyecto(req.params.id,req.body,req.usuario.usuarioId);
+  return res.json({ok:true,data,message:'Metas y excepciones guardadas con auditoría para las 231 viviendas.'});
+ }catch(e){return error(res,e);}
+}
+module.exports={previsualizar,importar,crear,ajustar,ajustarProyecto};
