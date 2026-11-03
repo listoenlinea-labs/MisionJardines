@@ -665,7 +665,7 @@ function renderHouses(){
    $('houseReceiptPreview').hidden=false;
    $('houseReceiptAddress').textContent=detail.calle+' '+detail.numero+' · '+(detail.nombre||'Sin residente');
    $('houseReceiptTitle').textContent='Recibo '+detail.folio;
-   receiptStatus('Pago registrado: '+fmt(detail.monto)+' · '+(detail.periodo||'')+' · '+(detail.sello||'PAGADO'));
+   receiptStatus((detail.pagoAnual?'Pago ANUAL registrado: ':'Pago registrado: ')+fmt(detail.monto)+' · '+(detail.periodo||'')+' · '+(detail.sello||'PAGADO'));
    $('houseReceiptDownload').disabled=false;
    updateReceiptPhone();
    if(!$('houseReceiptPhoneInput').value){

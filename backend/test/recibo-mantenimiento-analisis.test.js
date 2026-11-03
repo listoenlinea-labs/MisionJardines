@@ -22,21 +22,25 @@ const cuota = (id, mes, montoPagado, extras = {}) => ({
     origenImportacion: 'MANUAL_ANALISIS', ...extras
 });
 
-test('genera un recibo individual por mes pagado, del más reciente al más antiguo', () => {
+test('los meses cubiertos por la misma referencia devuelven un único recibo completo con folio estable', () => {
     const cuotas = [cuota(11, 'OCTUBRE', 300), cuota(12, 'NOVIEMBRE', 300)];
     const primero = datosDeMovimiento(casa, cuotas, [], new Date('2026-10-20T12:00:00Z'));
     const segundo = datosDeMovimiento(casa, cuotas, [], new Date('2026-10-21T12:00:00Z'));
-    assert.equal(primero.resumen.monto, 300);
-    assert.equal(primero.recibo.periodosVarios, false);
-    assert.equal(primero.recibo.mes, 'NOVIEMBRE 2026');
+    assert.equal(primero.resumen.monto, 600);
+    assert.equal(primero.recibo.periodosVarios, true);
+    assert.equal(primero.recibo.mes, 'OCTUBRE 2026 A NOVIEMBRE 2026');
+    assert.equal(primero.recibo.pagoAnual, false);
     assert.equal(primero.resumen.folio, segundo.resumen.folio);
-    assert.match(primero.resumen.folio, /^MJ-NOV-2026-[0-9A-F]{10}-G5-M$/);
+    assert.match(primero.resumen.folio, /^MJ-OCT-2026-[0-9A-F]{10}-G5-M$/);
     assert.equal(primero.recibo.sello, 'PAGADO');
     assert.deepEqual(primero.periodosDisponibles.map(p=>p.valor),['2026-11','2026-10']);
     const octubre=datosDeMovimiento(casa,cuotas,[],new Date('2026-10-20T12:00:00Z'),'2026-10');
-    assert.equal(octubre.resumen.periodo,'OCTUBRE 2026');
-    assert.equal(octubre.resumen.monto,300);
-    assert.notEqual(octubre.resumen.folio,primero.resumen.folio);
+    const noviembre=datosDeMovimiento(casa,cuotas,[],new Date('2026-10-20T12:00:00Z'),'2026-11');
+    assert.equal(octubre.resumen.periodo,'OCTUBRE 2026 A NOVIEMBRE 2026');
+    assert.equal(octubre.resumen.monto,600);
+    assert.equal(noviembre.resumen.monto,600);
+    assert.equal(octubre.resumen.folio,primero.resumen.folio);
+    assert.equal(noviembre.resumen.folio,primero.resumen.folio);
     assert.throws(()=>datosDeMovimiento(casa,cuotas,[],new Date(),'2026-12'),/no tiene un pago/);
 });
 
@@ -151,7 +155,9 @@ test('Jardines 335: recibo por referencia coincide con $650 del historial y no d
     assert.equal(datos.recibo.montoPagado, 650);
     assert.equal(datos.resumen.periodo, 'OCTUBRE 2026 A NOVIEMBRE 2026');
     const mes = datosDeMovimiento(casa, cuotas, [], new Date(), '2026-10');
-    assert.equal(mes.resumen.monto, 350);
+    assert.equal(mes.resumen.monto, 650);
+    assert.equal(mes.resumen.folio,datos.resumen.folio);
+    assert.equal(mes.resumen.periodo,datos.resumen.periodo);
 });
 
 test('recibos por referencia usan exactamente el importe del historial con depósito bancario o abono', () => {
@@ -187,4 +193,47 @@ test('PDF descargado conserva exactamente el mismo folio sin prefijo Recibo_',as
     const d=datosDeMovimiento(casa,[cuota(999,'OCTUBRE',300)],[]);
     const pdf=await generarPdf(d.recibo);
     assert.equal(pdf.nombreArchivo,d.recibo.folio+'.pdf');
+});
+
+test('Gardenias 4: pago anual noviembre-diciembre produce mismo recibo de $600 en todos los puntos de entrada', async () => {
+    const gardenias4 = { id: 4, calle: 'Gardenias', numero: '4', nombre: 'Maria de Lourdes Ibanez Valencia' };
+    const referencia = 'MJMAN:2027-01-10:214bb22-valor-ejemplo';
+    const cuotas = [
+        cuota(401, 'NOVIEMBRE', 300, { referencia, origenImportacion: 'MANUAL_ANALISIS_ANUAL', fechaConfirmacion: '2026-11-02T12:00:00.000Z' }),
+        cuota(402, 'DICIEMBRE', 300, { referencia, origenImportacion: 'MANUAL_ANALISIS_ANUAL', fechaConfirmacion: '2026-11-02T12:00:00.000Z' })
+    ];
+    const porHistorial = datosDeMovimiento(gardenias4, cuotas, [], new Date('2026-11-02T12:00:00Z'), null, referencia);
+    const desdeGenerarRecibo = datosDeMovimiento(gardenias4, cuotas, [], new Date('2026-11-02T12:00:00Z'), '2026-12');
+    const desdeZipYDrive = datosDeMovimiento(gardenias4, cuotas, [], new Date('2026-11-02T12:00:00Z'), '2026-11');
+    for (const item of [porHistorial,desdeGenerarRecibo,desdeZipYDrive]) {
+        assert.equal(item.recibo.montoPagado, 600);
+        assert.equal(item.recibo.mes, 'NOVIEMBRE 2026 A DICIEMBRE 2026');
+        assert.equal(item.recibo.periodosVarios, true);
+        assert.equal(item.recibo.pagoAnual, true);
+        assert.equal(item.resumen.pagoAnual, true);
+        assert.equal(item.resumen.mesesCubiertos, 2);
+        assert.equal(item.recibo.folio, porHistorial.recibo.folio);
+        assert.match(item.recibo.folio,/^MJ-NOV-2026-[0-9A-F]{10}-G4-M$/);
+        const pdf=await generarPdf(item.recibo);
+        assert.equal(pdf.nombreArchivo,porHistorial.recibo.folio+'.pdf');
+        assert.match(pdf.buffer.subarray(0,8).toString(),/^%PDF-/);
+    }
+    const pdfFuente = fs.readFileSync(path.resolve(__dirname, '../src/services/pdf.service.js'),'utf8');
+    assert.match(pdfFuente,/PAGO ANUAL DE MANTENIMIENTO/);
+    assert.match(pdfFuente,/Período cubierto:/);
+});
+
+test('recibos de varias mensualidades NO anuales, y abonos parciales, conservan concepto correcto',()=>{
+    const referencia='PAGO-NORMAL-2-MESES';
+    const multiples=[
+       cuota(410,'NOVIEMBRE',300,{referencia,origenImportacion:'MANUAL_ANALISIS'}),
+       cuota(411,'DICIEMBRE',300,{referencia,origenImportacion:'MANUAL_ANALISIS'})
+    ];
+    const ambos=datosDeMovimiento(casa,multiples,[],new Date(),'2026-12');
+    assert.equal(ambos.recibo.montoPagado,600);
+    assert.equal(ambos.recibo.periodosVarios,true);
+    assert.equal(ambos.recibo.pagoAnual,false);
+    const parcial=datosDeMovimiento(casa,[cuota(412,'OCTUBRE',75,{referencia:'PAGO-PARCIAL',estatusPago:'PAGO_PARCIAL'})],[],new Date(),'2026-10');
+    assert.equal(parcial.recibo.sello,'ABONO RECIBIDO');
+    assert.equal(parcial.recibo.pagoAnual,false);
 });

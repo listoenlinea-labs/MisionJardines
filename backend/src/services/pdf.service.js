@@ -302,25 +302,27 @@ function generarReciboPdf(cuota, opciones = {}) {
                 317
             );
 
+        // Un concepto uniforme en TODAS las salidas PDF (visor, descarga,
+        // historial, ZIP y Google Drive). Pago anual es el tipo de operación:
+        // puede cubrir únicamente los meses que restaban del año.
+        const conceptoMantenimiento = cuota.pagoAnual
+            ? 'PAGO ANUAL DE MANTENIMIENTO'
+            : cuota.periodosVarios
+                ? 'Pago de mantenimiento de varios meses'
+                : 'Pago de mantenimiento';
+        const etiquetaPeriodo = cuota.periodosVarios
+            ? 'Período cubierto: '
+            : 'Mes cubierto: ';
+        document
+            .font('Helvetica-Bold')
+            .fontSize(9.5)
+            .text(conceptoMantenimiento, 32, 330, { width: 545 });
         document
             .font('Helvetica')
-            .fontSize(10)
-            .text(
-                cuota.periodosVarios
-                    ? 'Pago de mantenimiento correspondiente a los meses de '
-                    : 'Pago de mantenimiento correspondiente al mes de ',
-                32,
-                334,
-                {
-                    continued: true
-                }
-            )
+            .fontSize(9)
+            .text(etiquetaPeriodo, 32, 348, { continued: true, width: 545 })
             .font('Helvetica-Bold')
-            .text(
-                String(
-                    cuota.mes || ''
-                ).toUpperCase()
-            );
+            .text(String(cuota.mes || '').toUpperCase());
 
         dibujarLinea(
             document,

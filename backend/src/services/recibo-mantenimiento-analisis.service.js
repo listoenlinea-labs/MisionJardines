@@ -103,29 +103,36 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
     }
 
     const cuotaPrincipal = cuotaSeleccionada || cuotasDelPago[0];
-    const periodos = cuotaSeleccionada
-        ? [{ mes: String(cuotaSeleccionada.mes).toUpperCase(), anio: Number(cuotaSeleccionada.anio) }]
-        : movimiento.periodos || [];
+    // El selector de mes SOLO identifica qué movimiento pagó ese período.
+    // El recibo siempre representa el MOVIMIENTO COMPLETO: referencia, meses
+    // e importe exacto. Así coincide con Historial, ZIP mensual y Google Drive.
+    // Un movimiento bancario antiguo sin desglose conserva el período elegido
+    // solo como reserva verificable, nunca se inventan otros meses.
+    const periodos = movimiento.periodos?.length ? movimiento.periodos :
+        cuotaSeleccionada ? [{
+            mes: String(cuotaSeleccionada.mes).toUpperCase(), anio: Number(cuotaSeleccionada.anio)
+        }] : [];
+    const pagoAnual = Boolean(movimiento.pagoAnual ||
+        cuotasDelPago.some(c => c.origenImportacion === 'MANUAL_ANALISIS_ANUAL'));
     const primero = periodos[0];
     const ultimo = periodos[periodos.length - 1];
     const nombrePeriodo = periodos.length > 1
         ? `${primero.mes} ${primero.anio} A ${ultimo.mes} ${ultimo.anio}`
         : primero ? `${primero.mes} ${primero.anio}` : 'PAGO REGISTRADO';
 
-    const sello = (cuotaSeleccionada ? [cuotaSeleccionada] : cuotasDelPago).some(c => c.estatusPago === 'PAGO_PARCIAL')
+    // Si una de las cuotas del movimiento aún es parcial, el recibo debe
+    // decir ABONO, nunca PAGADO (aunque el mes elegido sí esté liquidado).
+    const sello = cuotasDelPago.some(c => c.estatusPago === 'PAGO_PARCIAL')
         ? 'ABONO RECIBIDO' : 'PAGADO';
 
-    // El historial ya representa el importe cobrado, incluido el recargo:
-    // NUNCA volver a sumarlo al generar un recibo por movimiento.
-    // Solo los recibos por mes de un movimiento de varios meses usan
-    // el importe de la cuota individual (que también incluye su recargo).
-    const monto = cuotaSeleccionada && !referenciaBuscada && cuotasDelPago.length > 1
-        ? Number(cuotaSeleccionada.montoPagado)
-        : Number(movimiento.monto);
-    // Para depósitos de varios meses, el recibo del movimiento usa el primer
-    // período cubierto; un recibo mensual usa exclusivamente el mes seleccionado.
+    // Historial ya calcula el importe del MOVIMIENTO, incluyendo el recargo,
+    // sin volver a sumar comprobantes bancarios. Jamás cobrar por mes al
+    // representar una misma referencia de varios períodos.
+    const monto = Number(movimiento.monto);
+    // Un solo folio estable por movimiento y vivienda (primer mes cubierto):
+    // Generar recibo, Historial, ZIP y Drive producen el mismo documento.
     const primerPeriodo = [...periodos].sort((a,b)=>a.anio-b.anio||meses.indexOf(a.mes)-meses.indexOf(b.mes))[0];
-    const periodoFolio = periodo || (primerPeriodo && `${primerPeriodo.anio}-${String(meses.indexOf(primerPeriodo.mes)+1).padStart(2,'0')}`);
+    const periodoFolio = primerPeriodo && `${primerPeriodo.anio}-${String(meses.indexOf(primerPeriodo.mes)+1).padStart(2,'0')}`;
     const folio = folioRecibo({calle:casa.calleCorrecta||casa.calle,numero:casa.numero,
         periodo:periodoFolio,referencia,tipo:'MANTENIMIENTO'});
 
@@ -137,6 +144,7 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
         numeroCasaSnapshot: casa.numero,
         mes: nombrePeriodo,
         periodosVarios: periodos.length > 1,
+        pagoAnual,
         montoPagado: monto,
         formaPago: cuotaPrincipal?.formaPago || (comprobante ? 'TRANSFERENCIA' : 'No especificada'),
         referencia: movimiento.referencia,
@@ -157,6 +165,8 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
             referencia: movimiento.referencia,
             formaPago: recibo.formaPago,
             periodo: nombrePeriodo,
+            pagoAnual,
+            mesesCubiertos: periodos.length,
             sello,
             periodosDisponibles: disponibles,
             periodoSeleccionado: periodo
