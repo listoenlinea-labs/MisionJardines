@@ -1019,9 +1019,12 @@ function renderHouses(){
    }else{
     const estado=(await request('/drive/status')).data;
     if(!estado?.connected)throw Error('Primero usa "Conectar con Google Drive" y autoriza tu cuenta.');
+    if(!estado.folderConfigured)throw Error('Antes de respaldar pulsa "Elegir carpeta 02_Recibos_PDF".');
+    const summary=await respaldarPdfDrive(periodo,backupAllMonths.checked);
+    setBackupStatus('PDF terminados: '+summary.pdfCount+' de '+summary.months+' mes(es). Guardando Excel…');
     const xlsx=await excelForDrive(periodo);
-    const result=await request('/drive/respaldo',{periodo,xlsx,todos:backupAllMonths.checked});
-    setBackupStatus('Respaldo finalizado: '+(result.data?.cantidad||0)+' recibos de '+(result.data?.meses||0)+' mes(es) y Excel del padrón.','success');
+    await request('/drive/respaldo',{periodo,xlsx,soloExcel:true});
+    setBackupStatus('Respaldo terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados) en carpetas por año y Excel del padrón guardado.','success');
    }
   }catch(error){
    if(googleTab&&!googleTab.closed)googleTab.close();
