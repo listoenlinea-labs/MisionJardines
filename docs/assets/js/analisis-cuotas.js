@@ -423,7 +423,7 @@ function cumpleUltimoPago(h,month,year){
   const actual=indiceUltimoMesPagado(h.ultimoMesPagado);
   return actual!==null&&actual>=year*12+month-1;
 }
-function elegirConcepto(concepto){
+function elegirConcepto(concepto,{resetPage=true}={}){
   if(!data)return;
   const registros=data.viviendasConceptos?.[concepto];
   if(concepto!=='MANTENIMIENTO'&&!Array.isArray(registros)){
@@ -458,7 +458,9 @@ function elegirConcepto(concepto){
     EXTRAORDINARIO:'Cuotas extraordinarias: solo proyectos con mensualidades configuradas. Los egresos sin repartir todavía no generan deuda.',
     CASA_CLUB:'Casa club: solo reservas aprobadas. El saldo vence en la fecha límite de pago, no en la fecha del evento.'
   }[concepto];
-  housePage=1;
+  // Cambio explícito de pestaña: página 1. La recarga de datos tras
+  // editar, anular o registrar un pago preserva la página actual.
+  if(resetPage)housePage=1;
   actualizarAniosUltimoPago();
   renderHouses();
 }
@@ -860,6 +862,7 @@ function renderHouses(){
  let backupBusy=false;
  let backupAvailablePeriods=[];
  let drivePickerLoading=null;
+ let drivePickerActive=false;
  const backupMonths=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const backupSelectedPeriod=()=>String($('financeYear').value)+'-'+String($('financeMonth').value).padStart(2,'0');
  const validBackupPeriod=value=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(String(value||''));
@@ -875,8 +878,16 @@ function renderHouses(){
   backupAllMonths.disabled=value;
   $('financeDriveChooseFolder').disabled=value;
  }
+ function setDrivePickerActive(active){
+  drivePickerActive=Boolean(active);
+  // Google Picker no expone un método público confiable para z-index.
+  // Se oculta solo visualmente este overlay mientras se usa Google Picker.
+  backupModal.classList.toggle('finance-picker-active',drivePickerActive);
+  if(drivePickerActive)backupModal.setAttribute('aria-hidden','true');
+  else backupModal.removeAttribute('aria-hidden');
+ }
  function closeBackupModal(){
-  if(backupBusy)return;
+  if(backupBusy||drivePickerActive)return;
   backupModal.hidden=true;
   backupAction=null;
  }
@@ -1007,15 +1018,17 @@ function renderHouses(){
  }
  async function pickDriveFolder(){
   const button=$('financeDriveChooseFolder');
-  if(backupBusy||button.disabled)return;
+  if(backupBusy||button.disabled||drivePickerActive)return;
   button.disabled=true;
   $('financeDriveFolderStatus').textContent='Abriendo selector de carpetas de Google…';
   try{
    const {data:config}=await request('/drive/selector');
-   if(!config?.accessToken||!config.apiKey||!config.appId)throw Error('Faltan los datos del selector Google Picker');
+   if(!config?.accessToken||!config.apiKey||!config.appId)
+    throw Error('Faltan los datos del selector Google Picker');
    await ensureGooglePicker();
    const pickerApi=window.google?.picker;
-   if(!pickerApi?.PickerBuilder||!pickerApi?.DocsView)throw Error('No se cargó la biblioteca Google Picker');
+   if(!pickerApi?.PickerBuilder||!pickerApi?.DocsView)
+    throw Error('No se cargó la biblioteca Google Picker');
    const folderView=new pickerApi.DocsView(pickerApi.ViewId.FOLDERS)
     .setIncludeFolders(true).setSelectFolderEnabled(true);
    const picker=new pickerApi.PickerBuilder()
@@ -1026,11 +1039,23 @@ function renderHouses(){
     .setOrigin(window.location.origin)
     .setTitle('Elige Mision Jardines - Administración / 02_Recibos_PDF')
     .setCallback(async result=>{
-     if(result[pickerApi.Response.ACTION]!==pickerApi.Action.PICKED)return;
+     const action=result?.[pickerApi.Response.ACTION];
+     // LOADED no debe restaurar el modal; esperar CANCEL o PICKED.
+     if(action!==pickerApi.Action.CANCEL&&action!==pickerApi.Action.PICKED)return;
+     if(!drivePickerActive)return;
+     // Restaurar el formulario al cerrar el selector (también al cancelar).
+     setDrivePickerActive(false);
+     if(action===pickerApi.Action.CANCEL){
+      $('financeDriveFolderStatus').textContent='Selección cancelada. Puedes volver a elegir la carpeta.';
+      button.disabled=false;
+      return;
+     }
      const doc=result[pickerApi.Response.DOCUMENTS]?.[0];
      const folderId=doc?.[pickerApi.Document.ID]||doc?.id;
      if(!folderId){
-      $('financeDriveFolderStatus').textContent='No se recibió una carpeta válida de Google.';return;
+      $('financeDriveFolderStatus').textContent='No se recibió una carpeta válida de Google.';
+      button.disabled=false;
+      return;
      }
      $('financeDriveFolderStatus').textContent='Verificando permisos para guardar recibos…';
      try{
@@ -1041,13 +1066,18 @@ function renderHouses(){
      }catch(error){
       $('financeDriveFolderStatus').textContent='No se configuró la carpeta: '+error.message;
       setBackupStatus(error.message,'error');
-     }
+     }finally{button.disabled=false;}
     }).build();
+   // El overlay original tiene z-index 10090: tapaba Google Picker.
+   setDrivePickerActive(true);
    picker.setVisible(true);
   }catch(error){
+   setDrivePickerActive(false);
    $('financeDriveFolderStatus').textContent='No se pudo abrir el selector: '+error.message;
    setBackupStatus(error.message,'error');
-  }finally{button.disabled=false;}
+  }finally{
+   if(!drivePickerActive)button.disabled=false;
+  }
  }
  $('financeDriveChooseFolder').addEventListener('click',()=>void pickDriveFolder());
  async function respaldarPdfDrive(periodo,allMonths){
@@ -1443,7 +1473,7 @@ function renderHouses(){
    data.viviendasMantenimiento=data.viviendas;
    if(activeConcept!=='MANTENIMIENTO'&&!Array.isArray(data.viviendasConceptos?.[activeConcept]))activeConcept='MANTENIMIENTO';
    render();
-   elegirConcepto(activeConcept);
+   elegirConcepto(activeConcept,{resetPage:false});
    return true;
   }catch(e){notice(e.message);return false;}
   finally{$('updateFinance').disabled=false;}
