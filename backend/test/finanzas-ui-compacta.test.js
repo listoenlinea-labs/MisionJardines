@@ -66,10 +66,10 @@ test('orden visual e instrucción de folio se retiran sin desactivar funciones',
 
 test('se actualizan versiones de JS, CSS y shell sin modificar rutas',()=>{
  const app=root('docs/app.html'),shell=root('docs/assets/js/app-shell.js');
- assert.match(html,/analisis-cuotas\.js\?v=20261103-compactar-finanzas/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-borrar-historicos/);
  assert.match(html,/analisis-cuotas\.css\?v=20261103-compactar-finanzas/);
- assert.match(shell,/_mjVersion.*finanzas-compactas-toolbar-20261103/);
- assert.match(app,/app-shell\.js\?v=20261103-finanzas-compactas/);
+ assert.match(shell,/_mjVersion.*borrar-todos-movimientos-20261103/);
+ assert.match(app,/app-shell\.js\?v=20261103-borrar-historicos/);
  assert.match(html,/id="financeTabMaintenance"/);
  assert.match(html,/id="financeTabExtra"/);
  assert.match(html,/id="financeTabClub"/);

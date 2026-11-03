@@ -615,6 +615,7 @@ function renderHouses(){
   $('houseHistorySummary').textContent='Consultando pagos y saldos confirmados…';
   $('houseHistoryTimeline').innerHTML='';
   $('houseHistoryDebts').innerHTML='';
+  $('houseHistoryDeleteStatus').textContent='';
   $('houseHistoryClose').focus();
   try{
    const {data:detail}=await request('/pagos-vivienda/'+Number(casaId)+'/historial?concepto='+activeConcept);
@@ -634,7 +635,7 @@ function renderHouses(){
       (Number(p.recargo)>0?'<p class="history-penalty">Incluye '+esc(fmt(p.recargo))+' de recargo por pago tardío.</p>':'')+
       '<div class="history-event-footer"><small>'+esc(p.formaPago||'Pago registrado')+(p.referencia?' · Ref. '+esc(p.referencia):'')+'</small>'+
       (activeConcept==='MANTENIMIENTO'?'<button type="button" class="history-receipt-button" data-history-receipt="'+index+'"'+(p.referencia?'':' disabled title="No hay referencia verificable para este movimiento"')+' aria-label="Generar recibo del pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'">Generar recibo</button>':'')+
-      (activeConcept==='MANTENIMIENTO'&&/^MJMAN:/.test(p.referencia||'')?'<button type="button" class="history-delete-button" data-history-delete="'+index+'" aria-label="Borrar movimiento de '+esc(fmt(p.monto))+'">Borrar</button>':'')+'</div></div></article>';
+      (activeConcept==='MANTENIMIENTO'?'<button type="button" class="history-delete-button" data-history-delete="'+index+'" aria-label="Borrar pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'" title="Verificar y anular este movimiento de mantenimiento">Borrar</button>':'')+'</div></div></article>';
    }).join(''):'<div class="history-empty">Esta vivienda todavía no tiene pagos confirmados de este concepto.</div>';
    $('houseHistoryDebts').innerHTML='<h3>Deudas pendientes ('+debts.length+')</h3>'+
     (debts.length?'<div class="history-debt-list">'+debts.map(d=>'<div class="history-debt"><div><strong>'+esc(d.concepto||conceptTitle(activeConcept))+'</strong><small>'+esc(debtPeriod(d.periodo))+(d.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</small></div><div><b>'+esc(fmt(d.monto))+'</b>'+
@@ -1189,15 +1190,22 @@ function renderHouses(){
   const casaId=currentHistoryHouseId;
   const movimiento=historyMovements[index];
   const status=$('houseHistoryDeleteStatus');
-  if(!Number.isSafeInteger(index)||!casaId||!movimiento?.referencia)return;
+  if(!Number.isSafeInteger(index)||!casaId||!movimiento)return;
+  if(!movimiento.referencia){
+   status.textContent='Este pago no tiene referencia identificable. No se borró ningún dato; necesita conciliación.';
+   return;
+  }
   if(button.disabled)return;
   button.disabled=true;
-  status.textContent='Verificando el pago y la fecha anterior del TAG…';
+  status.textContent='Verificando el pago, los movimientos posteriores y la vigencia de los TAGs…';
   try{
    const path='/pagos-vivienda/'+Number(casaId)+'/anulacion';
    const preview=(await request(path+'?referencia='+encodeURIComponent(movimiento.referencia))).data;
    if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
-   if(!window.confirm('¿Anular '+fmt(preview.importe)+' de '+preview.periodos.join(', ')+'? Se restaurarán cuotas y se solicitará verificar el TAG con fecha '+displayDate(preview.fechaObjetivo)+'.')) {
+   if(!window.confirm('¿Anular '+fmt(preview.importe)+' de '+preview.periodos.join(', ')+'? '+
+   'Se guardará una auditoría del movimiento y se actualizarán las cuotas. '+
+   (preview.tags?'Los TAGs requerirán verificar la fecha '+displayDate(preview.fechaObjetivo)+'.':
+    'Esta vivienda no tiene TAGs para actualizar.'))) {
     status.textContent='Operación cancelada; no se modificó ningún dato.';return;
    }
    if(window.prompt('Escribe ANULAR para confirmar que este pago es incorrecto:')!=='ANULAR'){
