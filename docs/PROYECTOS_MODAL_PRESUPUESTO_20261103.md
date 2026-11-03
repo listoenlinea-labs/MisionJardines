@@ -30,3 +30,13 @@ node --test test/proyectos-extraordinarios-reglas.test.js
 Comprobaciones manuales recomendadas con un entorno de pruebas: comprobar el selector verde pastel y su foco de teclado; abrir «Importes por vivienda» y verificar las excepciones históricas; editar una vivienda desde historial, recargar y comprobar la sincronización con el editor masivo; simular una edición concurrente y comprobar error 409; conservar el flujo de creación de proyectos por presupuesto y su modal. Además: abrir modal con 231 viviendas; crear proyecto con costo total, con/sin excepciones; verificar suma exacta incluso con centavos; guardar una excepción individual desde el historial; intentar reducir cuota por debajo de un abono; verificar mantenimiento, recibos y TAGs intactos.
 
 **Importante:** merge y pruebas de código no demuestran conexión a MySQL de producción ni verificación en Hostinger. No ejecutar cargas reales en la base por una prueba automatizada.
+
+## Actualización 03-nov-2026: cuota extraordinaria $0.00
+
+- **Historial de vivienda → Modificar cuota del proyecto:** admite cero como exención de una casa sin aportaciones. La meta del proyecto disminuye; no redistribuye automáticamente al editar una cuota individual de un proyecto existente.
+- **Nuevo proyecto:** cero como regla especial deja exenta a la vivienda, mantiene fijo el costo total y redistribuye el saldo entre las casas sin excepción, al centavo. La tabla actualiza en vivo las cuotas mientras se escribe, conservando el foco.
+- **Importes por vivienda:** cuota general o especial de cero, recalcula la meta sumando las 231 cuotas, con auditoría y sin redistribuir automáticamente el presupuesto original.
+- Campos vacíos y negativos continúan inválidos. No se permite reducir a cero una casa con abonos recibidos o en validación; mantenimiento y TAGs quedan intactos.
+- Dirección y residente se separan con espacio, por ejemplo Atotonilco 752 Saida Teresa Aguilar Aguilar.
+
+Revisar en entorno de prueba: proyecto de $50,000, una excepción de cero y total exacto entre 230 casas; casa sin aportaciones que pasa a cero; casa con $200 abonados que rechaza cuota cero. Reabrir el editor masivo para confirmar la excepción guardada.
