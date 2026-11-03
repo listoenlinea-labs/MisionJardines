@@ -47,4 +47,27 @@ async function generar(periodo){
  if(errors.length)throw fail(409,'No se generó ZIP parcial: '+errors.length+' recibos necesitan conciliación. Ejemplos: '+errors.slice(0,5).map(x=>x.casaId+' '+x.error).join('; '));
  return {periodo,buffer:zip(entries),cantidad:entries.length};
 }
-module.exports={parsePeriodo,periodos,generar,zip};
+
+// Prepara un lote pequeño de PDF individuales para subir al Drive existente.
+// Limitar el lote evita un timeout HTTP cuando hay 200+ viviendas pagadas.
+async function lotePdf(periodo,offset=0,limit=10){
+ const {anio,mes}=parsePeriodo(periodo);
+ if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>20)
+  throw fail(400,'Parámetros de paginación inválidos');
+ const rows=await Cuota.findAll({attributes:['casaId'],where:{anio,mes,estatusPago:'PAGADO'},raw:true});
+ const ids=[...new Set(rows.map(r=>Number(r.casaId)))].sort((a,b)=>a-b);
+ if(!ids.length)throw fail(404,'No hay mensualidades pagadas en '+periodo);
+ const selected=ids.slice(offset,offset+limit),files=[],errors=[];
+ for(const id of selected){
+  try{
+   const {recibo}=await recibos.consultarPago(id,periodo);
+   const pdf=await recibos.generarPdf(recibo);
+   if(!pdf?.buffer?.length)throw Error('El generador devolvió un PDF vacío');
+   files.push({casaId:id,name:String(pdf.nombreArchivo||recibo.folio+'.pdf'),data:pdf.buffer});
+  }catch(e){errors.push({casaId:id,message:e.message});}
+ }
+ if(errors.length)throw fail(409,'No se subió este lote: '+errors.length+' recibo(s) requieren conciliación. '+errors.slice(0,3).map(e=>e.casaId+': '+e.message).join('; '));
+ return {periodo,total:ids.length,offset,nextOffset:Math.min(ids.length,offset+selected.length),files};
+}
+
+module.exports={parsePeriodo,periodos,generar,zip,lotePdf};
