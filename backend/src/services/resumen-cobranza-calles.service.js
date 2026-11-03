@@ -4,6 +4,12 @@
 const {historialMantenimiento}=require('./historial-pagos-vivienda.service');
 const {normalizarCalle}=require('./padron-finanzas.service');
 
+// Solo las ocho calles oficiales del padrón; su orden nunca depende de filas
+// de MySQL ni del año o mes seleccionado.
+const CALLES=Object.freeze([
+ 'Atotonilco','Gardenias','Guadalajara','Jardines',
+ 'Lirios','Magnolias','Rosas','Valle de México'
+]);
 const CENTS=n=>Math.round(Number(n||0)*100);
 const MX_TIME=new Intl.DateTimeFormat('en-US',{
  timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'
@@ -33,30 +39,34 @@ function agrupacionMantenimiento({padron=[],cuotas=[],comprobantes=[],inicio,fin
   if(!pagosByHouse.has(key))pagosByHouse.set(key,[]);
   pagosByHouse.get(key).push(p);
  }
- const streets=new Map();
- let sinFecha=0;
+ const streets=new Map(CALLES.map(calle=>[
+  normalizarCalle(calle),{calle,acumuladoCentavos:0,mesCentavos:0,movimientos:0}
+ ]));
+ let sinFecha=0,fueraDeCalles=0;
  for(const casa of padron){
-  const calle=String(casa.calleCorrecta||casa.calle||'Sin calle').trim();
+  const calle=String(casa.calleCorrecta||casa.calle||'').trim();
   const key=normalizarCalle(calle);
-  if(!streets.has(key))streets.set(key,{calle,acumuladoCentavos:0,mesCentavos:0,movimientos:0});
   const st=streets.get(key);
+  if(!st){fueraDeCalles++;continue;}
   const movimientos=historialMantenimiento(byHouse.get(String(casa.id))||[],pagosByHouse.get(String(casa.id))||[]);
   for(const m of movimientos){
    const amount=CENTS(m.monto);
-   if(amount<=0)continue;
+   if(amount<=0)continue; // pagos anulados, condonaciones y registros vacíos
    const fecha=fechaCobro(m.fecha);
-   if(!fecha){sinFecha++;continue;}
-   if(fecha>fin)continue; // jamás proyectar ingreso por un mes futuro abonado
+   // El total acumulado es lo que YA figura pagado en la base de datos, sin
+   // depender de que el histórico importado tenga fecha o de cuál período
+   // esté seleccionado. No inventar fechas para atribuirlo a un mes.
    st.acumuladoCentavos+=amount;
    st.movimientos++;
-   if(fecha>=inicio)st.mesCentavos+=amount;
+   if(!fecha){sinFecha++;continue;}
+   if(fecha>=inicio&&fecha<=fin)st.mesCentavos+=amount;
   }
  }
  const calles=[...streets.values()].map(({calle,acumuladoCentavos,mesCentavos,movimientos})=>({
   calle,acumulado:acumuladoCentavos/100,mes:mesCentavos/100,movimientos
- })).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
- return {calles,acumulado:calles.reduce((s,x)=>s+CENTS(x.acumulado),0)/100,
-  mes:calles.reduce((s,x)=>s+CENTS(x.mes),0)/100,sinFecha,
-  criterio:'Fecha del cobro registrado; pagos manuales y bancarios conciliados; cada movimiento cuenta una sola vez'};
+ }));
+ return {calles,acumulado:calles.reduce((sum,x)=>sum+CENTS(x.acumulado),0)/100,
+  mes:calles.reduce((sum,x)=>sum+CENTS(x.mes),0)/100,sinFecha,fueraDeCalles,
+  criterio:'Acumulado de mantenimiento pagado en las ocho calles oficiales, incluso cuotas históricas sin fecha; una sola vez por movimiento'};
 }
-module.exports={fechaCobro,agrupacionMantenimiento};
+module.exports={CALLES,fechaCobro,agrupacionMantenimiento};
