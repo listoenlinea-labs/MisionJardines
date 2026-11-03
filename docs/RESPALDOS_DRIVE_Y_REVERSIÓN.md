@@ -14,6 +14,54 @@ Conservar `JWT_SECRET` estable (se utiliza para cifrar tokens Drive almacenados 
 
 **Límites operativos:** los respaldos de muchos meses pueden tardar más que el timeout HTTP de Hostinger. Hasta implementar trabajos persistentes asíncronos, utilice períodos individuales si el historial es grande. El respaldo devuelve error en caso de PDF pendiente de conciliación; no debe confundirse con un respaldo completo. El endpoint no elimina archivos anteriores: ejecuciones repetidas crean versiones nuevas en la carpeta.
 
+
+## Nuevo destino: Drive existente / 02_Recibos_PDF / 2026
+
+Cuando la administración use **Análisis de cuotas → Generar respaldo en Drive**, podrá seleccionar con Google Picker la carpeta ya existente:
+
+```
+Mision Jardines - Administración/
+└── 02_Recibos_PDF/
+    └── 2026/
+        ├── MJ-OCT-2026-...-M.pdf
+        ├── MJ-SEP-2026-...-M.pdf
+        └── ...
+```
+
+- Se guarda el **PDF individual de cada vivienda y mes pagado**, no un ZIP, bajo la subcarpeta del año del recibo. Los meses de otros años crean `2025`, `2027`, etc.
+- No se mueven ni borran las carpetas o archivos que ya existían.
+- Los PDF generados por la aplicación se actualizan por el mismo nombre, evitando duplicados por reintentos.
+- Los archivos Excel de padrón siguen guardándose en `Misión Jardines - Respaldos/AAAA-MM` (flujo histórico). Su ubicación no cambia.
+- Un mes grande se sube en lotes de 10 PDF, con información de progreso. En caso de error, la operación se detiene e indica el problema; se puede reintentar sin duplicar los PDF guardados.
+- La cuenta OAuth debe tener permiso para agregar archivos a la carpeta seleccionada. El backend valida que sea una carpeta accesible, que se llame exactamente `02_Recibos_PDF` y que tenga permiso de escritura.
+
+**Variables de Hostinger adicionales a las tres credenciales OAuth ya configuradas:**
+
+```env
+GOOGLE_PICKER_API_KEY=CLAVE_PUBLICA_DE_GOOGLE_PICKER_RESTRINGIDA
+GOOGLE_CLOUD_PROJECT_NUMBER=NUMERO_DE_PROYECTO_GOOGLE_CLOUD
+```
+
+Pasos Google Cloud:
+1. Mantener habilitada **Google Drive API** y agregar **Google Picker API** en el mismo proyecto OAuth.
+2. Ir a **APIs y servicios → Credenciales → Crear credenciales → Clave de API**. Limitar su uso a Google Picker API.
+3. En restricciones para sitios web incluir `https://listoenlinea-labs.github.io/*` y `https://docs.google.com/*` (Google Picker utiliza un iframe alojado en docs.google.com). La clave es visible al navegador: **no se debe tratar como secreto**, pero debe restringirse.
+4. Obtener el **número del proyecto** (no el ID de cliente) en el panel de Google Cloud.
+5. Reiniciar el backend Node.js tras agregar las variables.
+
+**Flujo:** Conectar con Google Drive → Autorizar → Generar respaldo en Drive → **Elegir carpeta 02_Recibos_PDF** → en Google Picker navegar a `Mision Jardines - Administración/02_Recibos_PDF`, seleccionar esa carpeta → elegir mes (o activar todos los meses) → Generar respaldo. Después, en Drive, aparecerá `02_Recibos_PDF/2026` y los PDF.
+
+El permiso OAuth sigue siendo `drive.file`, no `drive` global. Como las carpetas existentes no son accesibles a la app automáticamente, Google Picker permite al usuario autorizar la carpeta específicamente. Se guarda su ID en `google_drive_respaldo.folder_id`, no sus credenciales. El token OAuth de corta duración para Picker se entrega solo a administradores autenticados y nunca se persiste en el navegador por la aplicación. La API de selector retorna `Cache-Control: no-store`.
+
+Nuevas rutas administrativas:
+
+- `GET /api/finanzas/drive/selector` devuelve temporalmente datos de Picker y token OAuth de corta duración.
+- `POST /api/finanzas/drive/carpeta` con `{folderId}` valida y guarda la carpeta elegida.
+- `POST /api/finanzas/drive/recibos` con `{periodo:"2026-10",offset:0}` sube el siguiente lote de hasta 10 PDF y devuelve `nextOffset,terminado,folderUrl`.
+- `POST /api/finanzas/drive/respaldo` con `soloExcel:true` conserva exportación del padrón separada.
+
+**Antes de desplegar:** probar selector en la misma cuenta Google, un período con pocas viviendas, un período con cientos y descarga/lectura de PDFs; revisar permisos, no duplicación por reintentos y vencimiento de tokens OAuth en modo Testing.
+
 ## Cómo anular un pago manual
 
 En **Análisis de cuotas → Historial de mantenimiento**, presionar **Borrar** en un movimiento con referencia `MJMAN:...`. El botón solicita confirmación y palabra `ANULAR`. La API en una transacción revisa vivienda, referencia, meses, ausencia de pagos posteriores, instantáneas previas, estado del diario C3, y conserva auditoría en `pagos_anulaciones`.
