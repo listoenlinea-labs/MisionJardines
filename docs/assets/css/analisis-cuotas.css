@@ -1528,3 +1528,20 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
  .house-project-no-aplica-button{min-height:40px}
  .house-project-no-aplica-status{text-align:left}
 }
+
+
+/* Etiquetas semánticas de casas exentas en la tabla principal */
+.houses-scroll #financeHouseRows .house-paid-history.is-no-aplica{
+ border-color:#cfe4d8;background:#f0f7f3;color:#39745b;
+}
+.houses-scroll #financeHouseRows .house-paid-history.is-no-aplica:hover,
+.houses-scroll #financeHouseRows .house-paid-history.is-no-aplica:focus-visible{
+ border-color:#92c4a8;background:#e5f2eb;
+}
+@media(min-width:1024px){
+ .houses-scroll #financeHouseRows .house-field-value>.house-no-aplica-tag,
+ .houses-scroll #financeHouseRows .house-field-value>.house-amount-no-aplica{
+  box-sizing:border-box;min-width:128px;max-width:128px;width:128px;min-height:36px;
+  display:inline-flex;align-items:center;justify-content:center;text-align:center;
+ }
+}

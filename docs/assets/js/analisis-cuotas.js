@@ -611,7 +611,7 @@ function renderHouses(){
     houseCell('Estado','<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
       ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
       :h.estatus)+'</span>')+
-    houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)||h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+    houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)?' is-no-aplica':h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?(isProjectNoAplica(h)?'No aplica':Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
        :(Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos'))+'</strong></button>')+
     houseCell('Último mes pagado',activeConcept==='EXTRAORDINARIO'&&activeProyectoId
@@ -830,9 +830,11 @@ function renderHouses(){
    notice(error.message);
   }finally{
    projectNoAplicaSaving=false;
-   if(!saved&&currentHistoryHouseId===id&&activeConcept==='EXTRAORDINARIO'&&Number(activeProyectoId)===pid)
-    syncProjectNoAplica(data?.viviendas?.find(h=>Number(h.casaId)===id));
-   else if(saved)projectNoAplicaButton.disabled=true;
+   if(saved)projectNoAplicaButton.disabled=true;
+   else if(currentHistoryHouseId===id&&activeConcept==='EXTRAORDINARIO'&&Number(activeProyectoId)===pid){
+    const current=data?.viviendas?.find(h=>Number(h.casaId)===id);
+    projectNoAplicaButton.disabled=!current||isProjectNoAplica(current)||Number(current.montoPagado||0)>0;
+   }
   }
  });
  $('houseTariffOpen').addEventListener('click',()=>{
