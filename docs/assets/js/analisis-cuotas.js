@@ -45,6 +45,7 @@
  let housePage=1;
  let houseSort={key:"calle",direction:"asc"};
  let activeConcept='MANTENIMIENTO';
+ let selectedExpenseCategory=null;
  let selectedReceiptHouseId=null;
  const HOUSE_PAGE_SIZE=12;
 
@@ -87,12 +88,33 @@
  function downloadableFinancialCard(label,value,tipo){
   return '<button type="button" class="metric finance-export-card" data-finance-export="'+tipo+'" title="Descargar reporte completo en Excel" aria-label="Descargar Excel de '+esc(label)+'"><small>'+financeDownloadIcon+'<span class="finance-export-label">'+esc(label)+'</span></small><strong>'+esc(value)+'</strong></button>';
  }
+ function renderExpenseHistory(){
+  const panel=$('financeExpenseHistory');
+  const rows=data?.egresosPorConcepto?.historialMensual?.[selectedExpenseCategory];
+  if(!selectedExpenseCategory||!Array.isArray(rows)){
+   panel.hidden=true;
+   $('financeExpenseHistoryRows').innerHTML='';
+   $('financeExpenseHistoryTotal').innerHTML='';
+   return;
+  }
+  const name=expenseLabel(selectedExpenseCategory);
+  $('financeExpenseHistoryTitle').textContent='Historial de '+name;
+  $('financeExpenseHistoryDescription').textContent='Desde enero hasta '+data.periodo+'; los meses sin egresos aparecen con $0.';
+  $('financeExpenseHistoryRows').innerHTML=rows.map(r=>
+   '<tr><th scope="row">'+esc(r.concepto)+'</th><td>'+esc(r.mes+' '+r.anio)+
+   '</td><td>'+esc(fmt(r.totalPagado))+'</td></tr>'
+  ).join('');
+  const cents=rows.reduce((sum,r)=>sum+Math.round(Number(r.totalPagado||0)*100),0);
+  $('financeExpenseHistoryTotal').innerHTML='<tr><th>Total '+esc(name)+'</th><td>Hasta '+esc(data.periodo)+
+   '</td><td>'+esc(fmt(cents/100))+'</td></tr>';
+  panel.hidden=false;
+ }
  function render(){
   if(!data)return;
   const houses=data.casas||0;
   const financialCards=[
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento acumulado',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.acumulado):'Actualiza API'],
+   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
    ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
@@ -111,37 +133,34 @@
   const padronNote=$('financePadronNote');
   if(padronNote){padronNote.textContent=data.avisoPadron||'';padronNote.hidden=!data.avisoPadron;}
   const ingresos=data.ingresosMantenimientoCalles;
-   if(ingresos&&Array.isArray(ingresos.calles)){
-    const rows=ingresos.calles;
-    const max=Math.max(1,...rows.map(c=>Number(c.acumulado||0)));
-    $('financeIncomeTotals').innerHTML='<span>Total acumulado de mantenimiento: <b>'+
-     esc(fmt(ingresos.acumulado))+'</b></span>';
-    $('financeCashChart').innerHTML=rows.map(c=>
-     bar(c.calle,Number(c.acumulado),max,false,fmt(c.acumulado))
-    ).join('');
-    $('financeWarning').textContent=ingresos.sinFecha
-     ?'Se incluyen '+ingresos.sinFecha+' pago(s) registrado(s) sin fecha original; no se les asignó un mes de cobro.'
-     :'Importes correspondientes a pagos registrados, sin duplicar los meses de una misma anualidad.';
-   }else{
-    $('financeIncomeTotals').textContent='La API debe actualizarse para mostrar el mantenimiento acumulado por calle.';
-    $('financeCashChart').textContent='';
-    $('financeWarning').textContent='Despliega también el backend de Hostinger y actualiza la página.';
-   }
-   const egresos=data.egresosPorConcepto;
-   if(egresos){
-    const rows=egresos.conceptos||[];
-    const max=Math.max(1,...rows.map(c=>Number(c.acumulado||0)));
-    $('financeExpenseTotals').innerHTML=periodTotals(egresos.mes,egresos.acumulado);
-    $('financeExpenseChart').innerHTML=rows.map(c=>bar(c.concepto,Number(c.acumulado),max,true,fmt(c.acumulado))).join('');
-    $('financeExpensesConceptRows').innerHTML=rows.map(c=>'<tr><th scope="row">'+esc(c.concepto)+'</th><td>'+esc(fmt(c.mes))+'</td><td>'+esc(fmt(c.acumulado))+'</td></tr>').join('');
-    $('financeExpensesConceptTotal').innerHTML='<tr><th>Total egresos</th><td>'+esc(fmt(egresos.mes))+'</td><td>'+esc(fmt(egresos.acumulado))+'</td></tr>';
-   }else{
-    $('financeExpenseTotals').textContent='Actualiza el backend de Hostinger para consultar egresos por concepto.';
-    $('financeExpenseChart').textContent='';
-    $('financeExpensesConceptRows').innerHTML='';
-    $('financeExpensesConceptTotal').innerHTML='';
-   }
-   renderExpenses();
+  if(ingresos?.calles){
+   const max=Math.max(1,...ingresos.calles.map(c=>Number(c.mes||0)));
+   $('financeIncomeTotals').innerHTML='<span>Mantenimiento de '+esc(data.periodo)+': <b>'+esc(fmt(ingresos.mes))+'</b></span>';
+   $('financeCashChart').innerHTML=ingresos.calles.map(c=>bar(c.calle,Number(c.mes||0),max,false,fmt(c.mes))).join('');
+   $('financeWarning').textContent=ingresos.sinFecha
+    ?ingresos.sinFecha+' pago(s) sin fecha no se pueden atribuir a un mes concreto; se conservan registrados.'
+    :'Los pagos anuales se contabilizan una sola vez en el mes en que se recibieron.';
+  }else{
+   $('financeIncomeTotals').textContent='Actualiza el backend para consultar el mantenimiento del mes.';
+   $('financeCashChart').textContent='';
+   $('financeWarning').textContent='Requiere desplegar también la API de Hostinger.';
+  }
+  const egresos=data.egresosPorConcepto;
+  if(egresos?.conceptos){
+   const max=Math.max(1,...egresos.conceptos.map(c=>Number(c.mes||0)));
+   $('financeExpenseTotals').innerHTML='<span>Egresos de '+esc(data.periodo)+': <b>'+esc(fmt(egresos.mes))+'</b></span>';
+   $('financeExpenseChart').innerHTML=egresos.conceptos.map(c=>
+    '<button type="button" class="finance-expense-select" data-expense-concept="'+esc(c.categoria)+
+    '" aria-controls="financeExpenseHistory" aria-expanded="'+String(selectedExpenseCategory===c.categoria)+
+    '" title="Ver historial de '+esc(c.concepto)+'">'+
+    bar(c.concepto,Number(c.mes||0),max,true,fmt(c.mes))+'</button>'
+   ).join('');
+  }else{
+   $('financeExpenseTotals').textContent='Actualiza el backend para consultar los egresos del mes.';
+   $('financeExpenseChart').textContent='';
+  }
+  renderExpenseHistory();
+  renderExpenses();
   const select=$('financeStreet'),selected=select.value;
   select.innerHTML='<option value="">Todas las calles</option>'+[...data.calles].sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'})).map(c=>'<option value="'+esc(c.calle)+'">'+esc(c.calle)+'</option>').join('');
   select.value=data.calles.some(x=>x.calle===selected)?selected:'';
@@ -1396,6 +1415,26 @@ function renderHouses(){
    elegirConcepto(tabs[next].dataset.financeConcept);
    tabs.find(t=>t.getAttribute('aria-selected')==='true')?.focus();
   });
+ });
+ $('financeExpenseChart').addEventListener('click',event=>{
+  const button=event.target.closest('button[data-expense-concept]');
+  if(!button)return;
+  const category=button.dataset.expenseConcept;
+  if(!data?.egresosPorConcepto?.historialMensual?.[category])return;
+  selectedExpenseCategory=selectedExpenseCategory===category?null:category;
+  $('financeExpenseChart').querySelectorAll('button[data-expense-concept]').forEach(el=>{
+   const active=el.dataset.expenseConcept===selectedExpenseCategory;
+   el.classList.toggle('is-selected',active);
+   el.setAttribute('aria-expanded',String(active));
+  });
+  renderExpenseHistory();
+ });
+ $('financeExpenseHistoryClose').addEventListener('click',()=>{
+  selectedExpenseCategory=null;
+  $('financeExpenseChart').querySelectorAll('button[data-expense-concept]').forEach(el=>{
+   el.classList.remove('is-selected');el.setAttribute('aria-expanded','false');
+  });
+  renderExpenseHistory();
  });
  $('expenseFilterConcept').addEventListener('input',renderExpenses);
  for(const id of ['expenseFilterCategory','expenseFilterFrom','expenseFilterTo','expenseSort'])
