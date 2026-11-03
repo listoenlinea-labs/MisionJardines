@@ -49,7 +49,7 @@ function agrupacionMantenimiento({padron=[],cuotas=[],comprobantes=[],inicio,fin
  const streets=new Map(CALLES.map(calle=>[
   normalizarCalle(calle),{calle,acumuladoCentavos:0,mesCentavos:0,movimientos:0,mensuales:Array(ultimoMes).fill(0)}
  ]));
- let sinFecha=0,sinPeriodo=0,montoSinPeriodoCentavos=0,fueraDeCalles=0;
+ let sinFecha=0,sinPeriodo=0,montoSinPeriodoCentavos=0,recibidoMesCentavos=0,fueraDeCalles=0;
  for(const casa of padron){
   const calle=String(casa.calleCorrecta||casa.calle||'').trim();
   const key=normalizarCalle(calle);
@@ -66,6 +66,9 @@ function agrupacionMantenimiento({padron=[],cuotas=[],comprobantes=[],inicio,fin
    st.acumuladoCentavos+=amount;
    st.movimientos++;
    if(!fecha)sinFecha++;
+   // El flujo de CAJA se preserva por fecha de depósito/registro, separado
+   // del ingreso mensual por cuotas cubiertas mostrado en las gráficas.
+   if(fecha&&fecha>=inicio&&fecha<=fin)recibidoMesCentavos+=amount;
    // No usar la fecha del depósito para el reparto entre meses. Un pago anual
    // de $600 por noviembre y diciembre genera $300 en cada mensualidad.
    // El importe de p.monto proviene de cuota.montoPagado (incluye recargo)
@@ -98,6 +101,7 @@ function agrupacionMantenimiento({padron=[],cuotas=[],comprobantes=[],inicio,fin
  }));
  return {calles,acumulado:calles.reduce((sum,x)=>sum+CENTS(x.acumulado),0)/100,
   mes:calles.reduce((sum,x)=>sum+CENTS(x.mes),0)/100,
+  recibidoMes:recibidoMesCentavos/100,
   sinFecha,sinPeriodo,montoSinPeriodo:montoSinPeriodoCentavos/100,fueraDeCalles,
   criterio:'Mensualidades efectivamente acreditadas por periodo cubierto, incluidos recargos ya pagados; el acumulado conserva el total recibido sin doble registro'};
 }
