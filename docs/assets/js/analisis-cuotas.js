@@ -65,7 +65,7 @@
  let activeProyectoId=null;
  let importacionExtraordinaria=null;
  let importacionPrevisualizada=false;
- let projectDraftRules=new Map();
+ 
  let selectedExpenseCategory=null;
  let expenseMonthlySaving=false;
  let selectedIncomeStreet=null;
@@ -474,7 +474,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   }
   const proyectos=data.proyectosExtraordinarios||[];
   $('financeProjectPanel').hidden=concepto!=='EXTRAORDINARIO';
-  $('financeProjectRulesEdit').hidden=concepto!=='EXTRAORDINARIO'||!(data.proyectosExtraordinarios||[]).length;
+  
   let seleccionado=null;
   if(concepto==='EXTRAORDINARIO'){
    seleccionado=proyectos.find(p=>Number(p.id)===Number(activeProyectoId))||proyectos[0]||null;
@@ -484,20 +484,18 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     :'<option value="">Aún no hay proyectos configurados</option>';
    $('financeProjectSelect').value=String(activeProyectoId||'');
    $('financeProjectMetrics').innerHTML=seleccionado?[
-    ['Viviendas',String(seleccionado.viviendas)],
     ['Meta',fmt(seleccionado.totalEsperado)],
     ['Recaudado',fmt(seleccionado.recaudado)],
-    ['Falta para la meta',fmt(seleccionado.saldoPendiente)],
-    ['Cumplidas',String(seleccionado.cumplidos)],
-    ['Abonos parciales',String(seleccionado.parciales)],
+    ['Por recaudar',fmt(seleccionado.saldoPendiente)],
+    ['Casas cumplidas',String(seleccionado.cumplidos)+' / '+String(seleccionado.viviendas)],
     ['Sin aportaciones',String(seleccionado.pendientes)],
     ['Avance',String(seleccionado.porcentaje)+'%']
    ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')
-    :'<p class="hint">Crea un proyecto o importa las aportaciones históricas de los dos Excel.</p>';
+    :'<p class="hint">Crea un proyecto para configurar el presupuesto y sus 231 viviendas.</p>';
    $('financeProjectInfo').textContent=seleccionado
     ?'Proyecto: '+seleccionado.nombre+'. Los importes son independientes del mantenimiento y no bloquean TAGs.'+
      (seleccionado.sinCargo?' Atención: '+seleccionado.sinCargo+' viviendas sin cargo.':'')
-    :'Los proyectos se cobrarán a las 231 casas al registrarlos. Revisa las reglas antes de importar.';
+    :'Las aportaciones se registran por proyecto sin modificar mantenimiento ni TAGs.';
   }
   const registrosProyecto=seleccionado?.viviendasDetalle||null;
   const financial=new Map((registrosProyecto||registros||[]).map(h=>[String(h.casaId),h]));
@@ -603,9 +601,7 @@ function renderHouses(){
       esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount'+(String(h.estatus||'').toUpperCase()==='PENDIENTE'&&Number(h.saldoPendiente)>0?' is-overdue':'')+'">'+esc(fmt(h.saldoPendiente))+'</span>')+
     houseCell('TAGs',renderHouseTagCell(h))+
-    houseCell('Pago',renderHousePayCell(h)+
-      (activeConcept==='EXTRAORDINARIO'&&activeProyectoId?
-       '<button type="button" class="house-project-edit" data-edit-project-house="'+Number(h.casaId)+'">Modificar cuota</button>':''))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
+    houseCell('Pago',renderHousePayCell(h))'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;
@@ -675,7 +671,8 @@ function renderHouses(){
   historyReturnFocus=trigger||null;
   currentHistoryHouseId=Number(casaId);
   tariffPanel.hidden=true;
-  $('houseTariffOpen').hidden=activeConcept!=='MANTENIMIENTO';
+  $('houseTariffOpen').hidden=activeConcept==='CASA_CLUB'||(activeConcept==='EXTRAORDINARIO'&&!activeProyectoId);
+  $('houseTariffOpen').textContent=activeConcept==='EXTRAORDINARIO'?'Modificar cuota del proyecto':'Modificar cuotas';
   historyModal.hidden=false;
   $('houseHistoryTitle').textContent='Historial de '+conceptTitle(activeConcept).toLowerCase();
   $('houseHistoryAddress').textContent=house.calle+' '+house.numero+' · '+(house.nombre||'Sin residente');
@@ -714,7 +711,7 @@ function renderHouses(){
  }
  $('houseHistoryClose').addEventListener('click',closeHouseHistory);
  $('houseTariffOpen').addEventListener('click',()=>{
-  if(!currentHistoryHouseId||activeConcept!=='MANTENIMIENTO')return;
+  if(!currentHistoryHouseId||!['MANTENIMIENTO','EXTRAORDINARIO'].includes(activeConcept))return;
   const h=data?.viviendas?.find(x=>Number(x.casaId)===currentHistoryHouseId);
   if(!h)return;
   showSavedTariff(h);
@@ -1551,25 +1548,6 @@ function renderHouses(){
    }finally{btn.disabled=true;}
  }
  $('financeHouseRows').addEventListener('click',async event=>{
-  const edit=event.target.closest('[data-edit-project-house]');
-  if(edit&&activeConcept==='EXTRAORDINARIO'&&activeProyectoId){
-   const house=data.viviendas.find(h=>Number(h.casaId)===Number(edit.dataset.editProjectHouse));
-   if(!house)return;
-   const raw=prompt('Nueva cuota de '+house.calle+' '+house.numero+' para este proyecto (MXN). Aportado: '+fmt(house.montoPagado)+'.',
-    Number(house.montoCuota).toFixed(2));
-   if(raw===null)return;
-   const monto=Number(raw);
-   if(!Number.isFinite(monto)||monto<=0||Math.round(monto*100)<Math.round(Number(house.montoPagado)*100)){
-    notice('La nueva cuota debe ser positiva y no menor al dinero ya recibido.');return;
-   }
-   if(!confirm('¿Modificar la cuota de '+house.calle+' '+house.numero+' a '+fmt(monto)+'? Quedará auditado.'))return;
-   edit.disabled=true;
-   try{
-    await request('/proyectos-extraordinarios/'+activeProyectoId+'/viviendas/'+house.casaId,{monto},'PATCH');
-    await load();notice('Cuota del proyecto actualizada correctamente.','success');
-   }catch(error){notice(error.message);}finally{edit.disabled=false;}
-   return;
-  }
   const historyButton=event.target.closest('[data-paid-history]');
   if(historyButton){void openHouseHistory(historyButton.dataset.paidHistory,historyButton);return;}
   const tagButton=event.target.closest('[data-tags-house]');
