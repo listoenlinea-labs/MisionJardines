@@ -766,6 +766,8 @@ function renderHouses(){
  const backupPeriodHint=$('financeBackupPeriodsNote');
  let backupAction=null;
  let backupBusy=false;
+ let backupAvailablePeriods=[];
+ let drivePickerLoading=null;
  const backupMonths=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const backupSelectedPeriod=()=>String($('financeYear').value)+'-'+String($('financeMonth').value).padStart(2,'0');
  const validBackupPeriod=value=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(String(value||''));
@@ -779,6 +781,7 @@ function renderHouses(){
   $('financeBackupClose').disabled=value;
   backupPeriod.disabled=value;
   backupAllMonths.disabled=value;
+  $('financeDriveChooseFolder').disabled=value;
  }
  function closeBackupModal(){
   if(backupBusy)return;
@@ -794,6 +797,7 @@ function renderHouses(){
    const response=await request('/recibos-masivos/periodos');
    if(backupModal.hidden||backupAction==='connect')return;
    const periods=(response.data?.periodos||[]).filter(validBackupPeriod).sort().reverse();
+   backupAvailablePeriods=periods;
    backupPeriod.innerHTML=periods.map(p=>{
     const year=p.slice(0,4),month=Number(p.slice(5,7));
     return '<option value="'+p+'">'+backupMonths[month-1]+' '+year+'</option>';
@@ -814,6 +818,8 @@ function renderHouses(){
  function openBackupModal(mode){
   backupAction=mode;
   backupModal.hidden=false;
+  $('financeDriveFolderSection').hidden=mode!=='drive';
+  if(mode==='drive')void refreshDriveFolder();
   backupAllMonths.checked=false;
   backupAllMonths.parentElement.hidden=mode!=='drive';
   backupPeriod.parentElement.hidden=mode==='connect';
@@ -823,7 +829,7 @@ function renderHouses(){
   $('financeBackupDescription').textContent=mode==='zip'
    ?'Elige el mes. Se descargará un ZIP con los PDF de las viviendas que pagaron mantenimiento en ese período.'
    :mode==='drive'
-    ?'Guarda los recibos del mes y el Excel completo del padrón en tu cuenta conectada de Google Drive.'
+    ?'Guarda PDF individuales en 02_Recibos_PDF / año (por ejemplo, 2026). El Excel del padrón conservará su respaldo financiero separado.'
     :'Autoriza una cuenta Google. Las credenciales OAuth se configuran en Hostinger; no las escribas aquí.';
   backupConfirm.textContent=mode==='zip'?'Descargar ZIP':mode==='drive'?'Generar respaldo':'Autorizar con Google';
   backupPeriod.innerHTML='';
