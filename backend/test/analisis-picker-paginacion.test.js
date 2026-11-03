@@ -154,6 +154,6 @@ test('versiones cache-busting actualizan la página del iframe y el picker',()=>
  assert.match(html,/analisis-cuotas\.css\?v=20261103-editar-egresos-mensuales/);
  const shell=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/app-shell.js'),'utf8');
  const app=fs.readFileSync(path.resolve(__dirname,'../../docs/app.html'),'utf8');
- assert.match(shell,/_mjVersion.*editar-egresos-mensuales-20261103/);
+ assert.match(shell,/_mjVersion.*graficas-alineadas-colapsadas-20261103/);
  assert.match(app,/app-shell\.js\?v=20261103-editar-egresos-mensuales/);
 });
