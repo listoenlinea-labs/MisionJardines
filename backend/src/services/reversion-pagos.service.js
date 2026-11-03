@@ -10,6 +10,8 @@ const EventoTag=require('../models/PagoAccesoTagC3');
 const {fechaDesdeCuotas}=require('./cuotas-mantenimiento-calculo');
 const {solicitar}=require('./zkteco-vigencias.service');
 const {referenciaHistoricaValida,estadoPendienteHistorico}=require('./reversion-historicos.helper');
+const {condicionCasa}=require('./pagos-reparto.service');
+const {planParaCasa}=require('./pagos-reparto-datos');
 const meses=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const refValida=ref=>/^MJMAN:\d{4}-(?:0[1-9]|1[0-2])-10:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(ref||''));
@@ -58,10 +60,21 @@ async function preparar(casaId,referencia,transaction){
    [Op.or]:[{folioOperacion:referencia},{folioReporte:referencia}]},
    transaction,...(transaction?{lock:transaction.LOCK.UPDATE}:{})});
   if(bancaria)throw fail(409,'Pago bancario validado: no se puede anular sin revertir también su conciliación y comprobante.');
+  const bancarios=await PagoReportado.findAll({where:{...condicionCasa(casaId),
+   tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},
+   attributes:['id','casaId','aplicacionCuotas','folioOperacion','folioReporte'],
+   transaction,...(transaction?{lock:transaction.LOCK.UPDATE}:{})});
+  const periodos=new Set(elegidas.map(c=>c.anio+':'+String(c.mes).toUpperCase()));
+  if(bancarios.some(p=>{
+   const plan=planParaCasa(p,casaId);
+   return plan?.aplicado&&(plan.aplicaciones||[]).some(a=>
+    periodos.has(a.anio+':'+String(a.mes).toUpperCase()));
+  }))throw fail(409,'La cuota está vinculada a un depósito bancario conciliado, aunque tenga otra referencia. Requiere una reversión bancaria completa.');
  }
- const eventos=await Evento.findAll({where:{casaId,referencia,origen:'CUOTA'},transaction,
+ const eventos=await Evento.findAll({where:{casaId,referencia},transaction,
   ...(transaction?{lock:transaction.LOCK.UPDATE}:{})});
- if((manual&&eventos.length!==1)||eventos.length>1||eventos.some(e=>e.estado==='ANULADO'))
+ if((manual&&eventos.length!==1)||eventos.length>1||
+  eventos.some(e=>e.estado==='ANULADO'||e.origen!=='CUOTA'))
   throw fail(409,'No existe un evento C3 único y vigente para este pago; requiere conciliación.');
  const evento=eventos[0]||null;
  if(evento){
