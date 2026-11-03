@@ -1622,12 +1622,19 @@ function renderHouses(){
   if(event.key==='Escape'){
    event.preventDefault();closeFinanceHistory(kind);
   }else if(event.key==='Tab'){
-   // El único botón accionable dentro de estos comparativos es Cerrar.
-   const modalId=kind==='income'?'financeIncomeHistoryModal':'financeExpenseHistory';
-   const closeId=kind==='income'?'financeIncomeHistoryClose':'financeExpenseHistoryClose';
-   const modal=$(modalId);
-   if(!modal.contains(document.activeElement)||event.shiftKey||document.activeElement===$(closeId)){
-    event.preventDefault();$(closeId).focus();
+   // Mantener la navegación por teclado de Guardar/Cancelar/Editar,
+   // y contener el foco dentro del diálogo cuando está abierto.
+   const modal=$(kind==='income'?'financeIncomeHistoryModal':'financeExpenseHistory');
+   const elements=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled])')]
+    .filter(el=>!el.closest('[hidden]')&&el.getClientRects().length>0);
+   if(!elements.length)return;
+   const first=elements[0],last=elements[elements.length-1];
+   if(!modal.contains(document.activeElement)){
+    event.preventDefault();first.focus();
+   }else if(event.shiftKey&&document.activeElement===first){
+    event.preventDefault();last.focus();
+   }else if(!event.shiftKey&&document.activeElement===last){
+    event.preventDefault();first.focus();
    }
   }
  });
