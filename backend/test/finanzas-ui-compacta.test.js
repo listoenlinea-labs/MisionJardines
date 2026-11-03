@@ -39,7 +39,7 @@ test('barra horizontal evita saltos, es desplazable en móvil y se adapta al con
  assert.match(js,/\$\('financeGenerateReceipt'\)\.addEventListener\('click'/);
 });
 
-test('las ocho filas de ambas gráficas son más compactas y tienen separador',()=>{
+test('las barras de ambas gráficas son más compactas y tienen separador',()=>{
  assert.match(css,/\.finance-chart-card \.money-bars\s*\{\s*display:grid;\s*gap:0;/);
  assert.match(css,/\.finance-chart-card \.finance-income-select,\s*\.finance-monthly-columns \.finance-chart-card \.finance-expense-select\s*\{[\s\S]*?min-height:37px/);
  assert.match(css,/\.finance-chart-card \.money-bars > button:not\(:first-child\)::before\s*\{[\s\S]*?background:#e7eaf0/);
@@ -66,10 +66,10 @@ test('orden visual e instrucción de folio se retiran sin desactivar funciones',
 
 test('se actualizan versiones de JS, CSS y shell sin modificar rutas',()=>{
  const app=root('docs/app.html'),shell=root('docs/assets/js/app-shell.js');
- assert.match(html,/analisis-cuotas\.js\?v=20261103-borrar-historicos/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-egreso-proyecto/);
  assert.match(html,/analisis-cuotas\.css\?v=20261103-compactar-finanzas/);
- assert.match(shell,/_mjVersion.*borrar-todos-movimientos-20261103/);
- assert.match(app,/app-shell\.js\?v=20261103-borrar-historicos/);
+ assert.match(shell,/_mjVersion.*egreso-proyecto-20261103/);
+ assert.match(app,/app-shell\.js\?v=20261103-egreso-proyecto/);
  assert.match(html,/id="financeTabMaintenance"/);
  assert.match(html,/id="financeTabExtra"/);
  assert.match(html,/id="financeTabClub"/);
