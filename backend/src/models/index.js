@@ -18,6 +18,7 @@ const CuotaExtraordinaria = require('./CuotaExtraordinaria');
 const CargoExtraordinario = require('./CargoExtraordinario');
 const ZkTarjeta = require('./ZkTarjeta');
 const PagoManualConcepto = require('./PagoManualConcepto');
+const AportacionExtraordinaria = require('./AportacionExtraordinaria');
 
 /*
  * Casa 1 --- N Usuarios
@@ -239,6 +240,7 @@ module.exports = {
     CuotaExtraordinaria,
     CargoExtraordinario,
     PagoManualConcepto,
+    AportacionExtraordinaria,
     ZkTarjeta
 };
 
