@@ -1,11 +1,12 @@
 'use strict';
 // Se conserva compatibilidad con datos históricos LUZ, AGUA y PROYECTOS.
 const categorias=Object.freeze(['CFE','SIAPA','JARDINERIA','MANTENIMIENTO',
- 'CUOTA_EXTRAORDINARIA','INTERNET','SERVICIOS','OTROS']);
+ 'CUOTA_EXTRAORDINARIA','PROYECTO','INTERNET','SERVICIOS','OTROS']);
 const anteriores=Object.freeze(['LUZ','AGUA','PROYECTOS']);
 const etiquetas=Object.freeze({
  CFE:'CFE',SIAPA:'SIAPA',JARDINERIA:'Jardinería',
  MANTENIMIENTO:'Mantenimiento',CUOTA_EXTRAORDINARIA:'Cuota extraordinaria',
+ PROYECTO:'Proyecto',
  INTERNET:'Internet',SERVICIOS:'Servicios',OTROS:'Otros'
 });
 function canonica(value){

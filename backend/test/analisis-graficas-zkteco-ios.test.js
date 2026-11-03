@@ -72,7 +72,7 @@ test('dos colapsables independientes: mostrar, ocultar, estado aria y espacio li
  assert.equal(buttons[1].attrs.get('aria-expanded'),'true');
 });
 
-test('paneles de ingresos y egresos tienen ocho barras gemelas y hover accesible',()=>{
+test('paneles de ingresos y egresos comparten estilos de barra, incluso con nueve categorías',()=>{
  const income=html.slice(html.indexOf('id="financeIncomeCard"'),html.indexOf('id="financeExpenseCard"'));
  const expense=html.slice(html.indexOf('id="financeExpenseCard"'),html.indexOf('<!-- Los comparativos'));
  for(const panel of [income,expense]){
@@ -141,9 +141,9 @@ test('entrada de TAG conserva ceros iniciales y elimina caracteres no numéricos
 test('nuevas versiones se cargan desde app shell, análisis y zkteco',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*borrar-todos-movimientos-20261103/);
+ assert.match(shell,/_mjVersion.*egreso-proyecto-20261103/);
  assert.match(shell,/_mjVersion.*tag-ios-sin-autofill-20261103/);
- assert.match(app,/app-shell\.js\?v=20261103-borrar-historicos/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-borrar-historicos/);
+ assert.match(app,/app-shell\.js\?v=20261103-egreso-proyecto/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-egreso-proyecto/);
  assert.match(html,/analisis-cuotas\.css\?v=20261103-compactar-finanzas/);
 });

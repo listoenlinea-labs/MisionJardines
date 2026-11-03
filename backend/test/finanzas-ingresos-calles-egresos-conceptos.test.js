@@ -63,10 +63,11 @@ test('fecha del cobro se interpreta en hora México para timestamps UTC',()=>{
  assert.equal(fechaCobro('2026-12-01T05:30:00.000Z'),'2026-11-30');
  assert.equal(fechaCobro('2026-11-02 21:15:00'),'2026-11-02');
 });
-test('egresos conservan gastos LUZ/AGUA/PROYECTOS sin mutarlos, y agregan Internet y Servicios',()=>{
- assert.deepEqual(categorias,['CFE','SIAPA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','INTERNET','SERVICIOS','OTROS']);
+test('egresos conservan categorías legadas y agregan Proyecto independiente de cuota extraordinaria',()=>{
+ assert.deepEqual(categorias,['CFE','SIAPA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','PROYECTO','INTERNET','SERVICIOS','OTROS']);
  assert.equal(canonica('LUZ'),'CFE');assert.equal(canonica('AGUA'),'SIAPA');
  assert.equal(canonica('PROYECTOS'),'CUOTA_EXTRAORDINARIA');
+ assert.equal(canonica('PROYECTO'),'PROYECTO');
  const rows=[
   {categoria:'LUZ',monto:150,fecha:'2026-10-30'},
   {categoria:'CFE',monto:300,fecha:'2026-11-01'},
@@ -81,14 +82,14 @@ test('egresos conservan gastos LUZ/AGUA/PROYECTOS sin mutarlos, y agregan Intern
  assert.equal(result.conceptos.find(c=>c.categoria==='INTERNET').mes,500);
  assert.equal(result.mes,900);assert.equal(result.acumulado,1050);
 });
-test('HTML muestra solo las ocho barras de ingresos y conserva tabla de egresos',()=>{
+test('HTML mantiene las ocho calles de ingresos y las nueve categorías de egresos',()=>{
  const html=root('docs/analisis-cuotas.html'),js=root('docs/assets/js/analisis-cuotas.js');
  for(const id of ['financeIncomeTotals','financeCashChart',
   'financeExpenseTotals','financeExpenseChart','financeExpenseHistory','financeIncomeHistoryModal',
   'financeExpenseHistoryRows','financeExpenseHistoryTotal','financeExpenseHistoryClose',
   'financeIncomeHistoryRows','financeIncomeHistoryTotal','financeIncomeHistoryClose'])
   assert.match(html,new RegExp('id="'+id+'"'));
- const cats=['CFE','SIAPA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','INTERNET','SERVICIOS','OTROS'];
+ const cats=['CFE','SIAPA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','PROYECTO','INTERNET','SERVICIOS','OTROS'];
  for(const c of cats)assert.ok(html.split('<option value="'+c+'">').length>=3,c+' está en formulario y filtro');
  assert.doesNotMatch(html,/<option value="LUZ">|<option value="AGUA">/);
  assert.doesNotMatch(html,/id="financeIncomeStreetRows"|id="financeIncomeStreetTotal"/);
@@ -145,9 +146,9 @@ test('historical sin fecha en varias calles y anualidad se contabiliza una sola 
 test('el portal fuerza la carga de Análisis de cuotas actualizado en iframe',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const html=root('docs/analisis-cuotas.html'),app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*borrar-todos-movimientos-20261103/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-borrar-historicos/);
- assert.match(app,/app-shell\.js\?v=20261103-borrar-historicos/);
+ assert.match(shell,/_mjVersion.*egreso-proyecto-20261103/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-egreso-proyecto/);
+ assert.match(app,/app-shell\.js\?v=20261103-egreso-proyecto/);
 });
 
 test('ambos gráficos muestran solo el mes seleccionado y no el acumulado histórico',()=>{
