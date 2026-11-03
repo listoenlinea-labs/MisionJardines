@@ -53,3 +53,14 @@ En el Historial de cuotas extraordinarias se agrega **No aplica** junto a **Modi
 - Se reutiliza la auditoría existente de proyectos_cuotas_auditoria: no requiere migración SQL.
 
 Verificar con MySQL de pruebas: una vivienda sin abonos con saldo $1,000 pasa a No aplica y saldo $0; otra con $200 abonados rechaza la exención; la casa exenta puede volver a una cuota de $500, y las demás casas no se alteran. No ejecutado en Hostinger.
+
+
+## Resaltado de vivienda seleccionada — 03-nov-2026
+
+La pestaña Cuotas extraordinarias utiliza el mismo fondo naranja pastel de Mantenimiento (#f5d0a7) al seleccionar una vivienda para generar recibos. Se conserva el indicador de foco visible y el estilo móvil. El resaltado es visual; no cambia cuotas, aportaciones ni TAGs.
+
+- Clic en el espacio de una fila o Enter/Espacio con la fila enfocada: se ilumina la fila completa y se mantiene aria-selected.
+- Clic en Registrar pago, TAGs o Pagado/Historial: las acciones siguen abriendo sus propios paneles sin forzar una nueva selección.
+- Cambio de pestaña o de proyecto: se limpia la selección anterior; una recarga del mismo proyecto conserva la selección mientras su fila siga visible.
+- Casa Club no adquiere selección para recibos; el comportamiento de Mantenimiento se conserva.
+- Sin migraciones SQL ni cambios de API/backend.

@@ -467,11 +467,11 @@ body.page-analisis .analysis-page nav.analysis-tabs[hidden]{
 .finance-receipt-toolbar button{min-height:37px;padding:9px 18px;border-radius:11px;white-space:nowrap}
 .finance-receipt-toolbar button:disabled{opacity:.48;cursor:not-allowed}
 .maintenance-receipt-active .houses-scroll table{min-width:1120px}
-.maintenance-receipt-active .houses-scroll #financeHouseRows>tr[data-receipt-row]{cursor:pointer}
-.maintenance-receipt-active .houses-scroll #financeHouseRows>tr[data-receipt-row]:focus-visible{outline:3px solid #b4753b;outline-offset:-3px}
-.maintenance-receipt-active .houses-scroll #financeHouseRows>tr.house-receipt-selected{background:#f5d0a7}
-.maintenance-receipt-active .houses-scroll #financeHouseRows>tr.house-receipt-selected>td{background:#f5d0a7;border-bottom-color:#daa576}
-.maintenance-receipt-active .houses-scroll #financeHouseRows>tr.house-receipt-selected>td:first-child{box-shadow:none}
+:is(.maintenance-receipt-active,.extraordinary-receipt-active) .houses-scroll #financeHouseRows>tr[data-receipt-row]{cursor:pointer}
+:is(.maintenance-receipt-active,.extraordinary-receipt-active) .houses-scroll #financeHouseRows>tr[data-receipt-row]:focus-visible{outline:3px solid #b4753b;outline-offset:-3px}
+:is(.maintenance-receipt-active,.extraordinary-receipt-active) .houses-scroll #financeHouseRows>tr.house-receipt-selected{background:#f5d0a7}
+:is(.maintenance-receipt-active,.extraordinary-receipt-active) .houses-scroll #financeHouseRows>tr.house-receipt-selected>td{background:#f5d0a7;border-bottom-color:#daa576}
+:is(.maintenance-receipt-active,.extraordinary-receipt-active) .houses-scroll #financeHouseRows>tr.house-receipt-selected>td:first-child{box-shadow:none}
 .finance-receipt-dialog{width:min(800px,100%)}
 .finance-receipt-status{margin:12px 0;padding:10px 13px;border:1px solid #e4e7ef;border-radius:10px;background:#f9f8fb;color:#59647a;font-size:12px;line-height:1.5}
 .finance-receipt-status[data-kind="error"]{border-color:#ecc9b5;background:#fff4ec;color:#985037}
