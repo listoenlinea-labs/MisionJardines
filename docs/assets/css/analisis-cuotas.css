@@ -905,3 +905,10 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
 #financeBackupStatus[data-kind="error"]{color:#ae3941}
 #financeBackupStatus[data-kind="success"]{color:#246f4d}
 #houseHistoryDeleteStatus{min-height:0;line-height:1.5}
+
+.finance-drive-folder{padding:13px 15px;margin:15px 0;border:1px solid #deeadf;border-radius:12px;background:#f8fcf9}
+.finance-drive-folder[hidden],.finance-drive-folder a[hidden]{display:none!important}
+.finance-drive-folder #financeDriveChooseFolder{margin:4px 0 9px}
+.finance-drive-folder #financeDriveFolderStatus{color:#415b51;margin:3px 0 9px;font-weight:700}
+.finance-drive-folder a{font-size:12px;font-weight:750;color:#305f91;text-decoration:underline}
+.finance-drive-folder button:disabled{opacity:.5;cursor:wait}
