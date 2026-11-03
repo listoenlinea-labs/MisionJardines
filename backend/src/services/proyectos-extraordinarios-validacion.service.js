@@ -86,6 +86,9 @@ function validarPaquete(body,padron){
   const warnings=[];
   if(summaryDifference)warnings.push('El resumen del Excel y las filas individuales tienen importes distintos; prevalecerá el detalle revisado.');
   if(source?.duplicados?.length)warnings.push('El Excel contiene direcciones repetidas; revisar las filas originales.');
+  if(source&&Number.isInteger(Number(source.direccionesUnicas))&&Number(source.direccionesUnicas)<padron.length)
+   warnings.push('El archivo tiene '+source.direccionesUnicas+' direcciones únicas y el padrón oficial '+padron.length+
+    '. Se generará la cuota a todas las viviendas del padrón, sin inventar pagos para las ausentes.');
   if(sinConfirmar)warnings.push(sinConfirmar+' tarifas especiales fueron inferidas y necesitan autorización de Administración.');
   const sourceAddresses=new Set((raw.aportaciones||[]).map(a=>key(a.calle,a.numero)));
   const sinPago=padron.filter(h=>!sourceAddresses.has(key(h.calleCorrecta||h.calle,h.numero))).length;
