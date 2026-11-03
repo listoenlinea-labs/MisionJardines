@@ -991,7 +991,8 @@ function renderHouses(){
   backupPeriod.value='';
   setBackupBusy(true);
   try{
-   const response=await request('/recibos-masivos/periodos');
+   const projectQuery=activeConcept==='EXTRAORDINARIO'&&activeProyectoId?'?proyectoId='+encodeURIComponent(activeProyectoId):'';
+   const response=await request('/recibos-masivos/periodos'+projectQuery);
    if(backupModal.hidden||backupAction==='connect')return;
    const periods=(response.data?.periodos||[]).filter(validBackupPeriod).sort().reverse();
    backupAvailablePeriods=periods;
@@ -1024,9 +1025,9 @@ function renderHouses(){
   $('financeDriveConfig').hidden=mode!=='connect';
   $('financeBackupTitle').textContent=mode==='zip'?'Descargar todos los recibos':mode==='drive'?'Generar respaldo en Google Drive':'Conectar con Google Drive';
   $('financeBackupDescription').textContent=mode==='zip'
-   ?'Elige el mes. Se descargará un ZIP con los PDF de las viviendas que pagaron mantenimiento en ese período.'
+   ?'Elige el mes para descargar los PDF de '+(activeConcept==='EXTRAORDINARIO'?'aportaciones del proyecto':'mantenimiento')+'.'
    :mode==='drive'
-    ?'Guarda PDF individuales en 02_Recibos_PDF / año (por ejemplo, 2026). El Excel del padrón conservará su respaldo financiero separado.'
+    ?'Guarda PDF individuales en Drive, '+(activeConcept==='EXTRAORDINARIO'?'separados por proyecto y año.':'en la carpeta del año junto con el Excel del padrón.')
     :'Autoriza una cuenta Google. Las credenciales OAuth se configuran en Hostinger; no las escribas aquí.';
   backupConfirm.textContent=mode==='zip'?'Descargar ZIP':mode==='drive'?'Generar respaldo':'Autorizar con Google';
   backupPeriod.innerHTML='';
@@ -1038,7 +1039,8 @@ function renderHouses(){
   else backupConfirm.focus();
  }
  async function downloadZip(periodo){
-  const response=await fetch(API+'/finanzas/recibos-masivos/zip?periodo='+encodeURIComponent(periodo),{
+  const extraQuery=activeConcept==='EXTRAORDINARIO'&&activeProyectoId?'&proyectoId='+encodeURIComponent(activeProyectoId):'';
+  const response=await fetch(API+'/finanzas/recibos-masivos/zip?periodo='+encodeURIComponent(periodo)+extraQuery,{
    headers:{Authorization:'Bearer '+token,Accept:'application/zip'}
   });
   if(response.status===401){location.replace('login.html');throw Error('Sesión expirada');}
@@ -1051,7 +1053,7 @@ function renderHouses(){
   const total=Number(response.headers.get('X-Recibos-Count')||0);
   const link=document.createElement('a'),url=URL.createObjectURL(blob);
   link.href=url;
-  link.download='MJ_Recibos_'+periodo+'.zip';
+  link.download='MJ_'+(activeConcept==='EXTRAORDINARIO'?'Proyecto_':'Recibos_')+periodo+'.zip';
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -1183,7 +1185,7 @@ function renderHouses(){
    do{
     if(rounds++>300)throw Error('Se detuvo el respaldo por demasiados lotes');
     setBackupStatus('Subiendo recibos de '+month+' (procesados '+offset+')…');
-    const {data:page}=await request('/drive/recibos',{periodo:month,offset});
+    const {data:page}=await request('/drive/recibos',{periodo:month,offset,...(activeConcept==='EXTRAORDINARIO'?{proyectoId:activeProyectoId}:{})});
     if(!Number.isSafeInteger(page?.nextOffset)||page.nextOffset<=offset)
      throw Error('La API no avanzó al siguiente lote de '+month);
     pdfCount+=Number(page.procesados||0);
@@ -1237,10 +1239,13 @@ function renderHouses(){
     if(!estado?.connected)throw Error('Primero usa "Conectar con Google Drive" y autoriza tu cuenta.');
     if(!estado.folderConfigured)throw Error('Antes de respaldar pulsa "Elegir carpeta 02_Recibos_PDF".');
     const summary=await respaldarPdfDrive(periodo,backupAllMonths.checked);
-    setBackupStatus('PDF terminados: '+summary.pdfCount+' de '+summary.months+' mes(es). Guardando Excel…');
-    const xlsx=await excelForDrive(periodo);
-    await request('/drive/respaldo',{periodo,xlsx,soloExcel:true});
-    setBackupStatus('Respaldo terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados) en carpetas por año y Excel del padrón guardado.','success');
+    if(activeConcept==='EXTRAORDINARIO')setBackupStatus('Respaldo del proyecto terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados).','success');
+    else{
+     setBackupStatus('PDF terminados: '+summary.pdfCount+' de '+summary.months+' mes(es). Guardando Excel…');
+     const xlsx=await excelForDrive(periodo);
+     await request('/drive/respaldo',{periodo,xlsx,soloExcel:true});
+     setBackupStatus('Respaldo terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados) en carpetas por año y Excel del padrón guardado.','success');
+    }
    }
   }catch(error){
    if(googleTab&&!googleTab.closed)googleTab.close();

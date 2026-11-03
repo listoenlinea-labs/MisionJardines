@@ -1322,3 +1322,5 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
 .finance-rules-scroll input{width:125px;max-width:100%;padding:7px;border:1px solid #ddd;border-radius:8px}
 .finance-rules-actions{display:flex;justify-content:flex-end;gap:10px}
 @media(max-width:600px){.finance-rules-controls{grid-template-columns:1fr}.finance-rules-scroll input{width:86px}}
+
+#financeNewProjectRules[hidden]{display:none!important}
