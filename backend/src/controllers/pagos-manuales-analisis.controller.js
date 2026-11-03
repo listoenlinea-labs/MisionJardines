@@ -5,6 +5,7 @@ const {Casa,Cuota,ZkTarjeta,PagoReportado}=require('../models');
 const {CargoExtraordinario,PagoManualConcepto,AportacionExtraordinaria}=require('../models');
 const Reserva=require('../models/ReservaCasaClub');
 const {estadoCargos}=require('../services/cargos-extraordinarios.service');
+const {consultarSaldoCargo}=require('../services/saldo-aportaciones-extraordinarias.service');
 const {randomUUID}=require('crypto');
 const PagoAcceso=require('../models/PagoAccesoC3');
 const vigenciaService=require('../services/vigencia-mantenimiento.service');
@@ -307,30 +308,35 @@ async function registrarPagoConcepto(req,res){
    const reserva=tipo==='CASA_CLUB'?await Reserva.findOne({where:{id,casaId,estatus:'APROBADA',pagado:false},transaction,lock:transaction.LOCK.UPDATE}):null;
    if(tipo==='EXTRAORDINARIO'&&!cargo||tipo==='CASA_CLUB'&&!reserva)
     throw fail(409,'El cargo seleccionado ya no está pendiente');
-   const where=tipo==='EXTRAORDINARIO'?{cargoExtraordinarioId:id}:{reservaCasaClubId:id};
-   const [reportado,manual]=await Promise.all([
-    PagoReportado.findOne({where:{...where,estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction}),
-    PagoManualConcepto.findOne({where,transaction})
-   ]);
-   if(reportado||manual)throw fail(409,'Este cargo tiene un pago previo o comprobante pendiente; requiere conciliación.');
    const monto=Number(req.body?.monto),importe=cents(monto);
-   if(!Number.isFinite(monto)||!Number.isSafeInteger(importe)||importe<1)
-    throw fail(400,'El abono debe ser mayor a cero y tener máximo dos decimales.');
+   if(!Number.isFinite(monto)||!Number.isSafeInteger(importe)||importe<1||
+      Math.abs(monto*100-importe)>0.001)
+    throw fail(400,'El abono debe ser mayor que cero y tener máximo dos decimales.');
    const referencia='MJ'+(tipo==='CASA_CLUB'?'CLUB':'EXTRA')+':'+randomUUID();
    if(tipo==='EXTRAORDINARIO'){
-    const prev=await AportacionExtraordinaria.findAll({where:{cargoExtraordinarioId:id},transaction,lock:transaction.LOCK.UPDATE});
-    const abonado=prev.reduce((sum,a)=>sum+cents(a.monto),0);
-    const restante=Math.max(0,cents(cargo.monto)-abonado);
-    if(!restante)throw fail(409,'Esta cuota extraordinaria ya está completamente cubierta.');
-    if(importe>restante)throw fail(409,'El abono supera el saldo pendiente de $'+(restante/100).toFixed(2));
+    // Un cargo es una meta de proyecto, no una mensualidad obligatoria.
+    // Varios abonos en fechas distintas conservan su folio, sin vencimiento ni recargo.
+    const saldo=await consultarSaldoCargo(cargo,{transaction});
+    if(saldo.restante<=0)throw fail(409,'Esta vivienda ya alcanzó la meta del proyecto.');
+    if(importe>cents(saldo.disponible))
+     throw fail(409,'El abono excede lo disponible para aportar: $'+saldo.disponible.toFixed(2)+
+      ' (ya aportado $'+saldo.abonado.toFixed(2)+', comprobantes en revisión $'+saldo.pendienteValidacion.toFixed(2)+').');
     await AportacionExtraordinaria.create({
      cuotaExtraordinariaId:cargo.cuotaExtraordinariaId,cargoExtraordinarioId:id,
      casaId,monto:importe/100,fecha:fechaMexico(),formaPago,referencia,
      origen:'ADMIN',registradoPor:req.usuario.usuarioId
     },{transaction});
-    return {casaId,tipoPago:tipo,monto:importe/100,
-     saldoPendiente:(restante-importe)/100,referencia};
+    const restante=Math.round((saldo.restante*100-importe))/100;
+    return {casaId,tipoPago:tipo,monto:importe/100,meta:saldo.meta,
+     totalAbonado:Math.round((saldo.abonado*100+importe))/100,
+     saldoPendiente:restante,metaAlcanzada:restante===0,referencia};
    }
+   const where={reservaCasaClubId:id};
+   const [reportado,manual]=await Promise.all([
+    PagoReportado.findOne({where:{...where,estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction}),
+    PagoManualConcepto.findOne({where,transaction})
+   ]);
+   if(reportado||manual)throw fail(409,'La reserva tiene un pago previo o comprobante pendiente; requiere conciliación.');
    const total=Number(reserva.cuotaRecuperacion)+Number(reserva.depositoGarantia)+Number(reserva.limpieza);
    if(importe!==cents(total))throw fail(409,'Para Casa Club el importe debe ser $'+total.toFixed(2));
    await PagoManualConcepto.create({casaId,tipoPago:tipo,cargoExtraordinarioId:null,reservaCasaClubId:id,
