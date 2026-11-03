@@ -145,7 +145,11 @@
       const favor=Number(item.saldoFavor||0);
       const ultimo=item.ultimoMesPagado;
       const periodo=ultimo?.mes?ultimo.mes+' '+ultimo.anio:'Sin pago';
-      const vals=[['Estado',deuda>0?'Pendiente':'Al corriente'],['Último mes pagado',paymentType==='CASA_CLUB'?'No aplica':paymentType==='EXTRAORDINARIO'&&!ultimo?.mes?'Sin pago':periodo],['Saldo pendiente',moneyCard(deuda)],['Saldo a favor',moneyCard(favor)]];
+      const vals=paymentType==='EXTRAORDINARIO'
+       ?[['Estado',deuda>0?'Meta en progreso':'Meta alcanzada'],['Meta asignada',moneyCard(item.totalMeta||0)],
+         ['Aportaciones confirmadas',moneyCard(item.totalAbonado||0)],['Falta para la meta',moneyCard(deuda)]]
+       :[['Estado',deuda>0?'Pendiente':'Al corriente'],['Último mes pagado',paymentType==='CASA_CLUB'?'No aplica':periodo],
+         ['Saldo pendiente',moneyCard(deuda)],['Saldo a favor',moneyCard(favor)]];
       $('paymentStatusCards').innerHTML=vals.map(([label,value])=>'<div class="ps-card"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('');
     }
     function renderClub(){
@@ -155,7 +159,7 @@
     function showDebtModal(){
       const items=debts?.tipos?.[paymentType]||[];if(!items.length)return;
       const names={MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuota extraordinaria',CASA_CLUB:'Casa club'};
-      $('debtTitle').textContent='Adeudos de '+names[paymentType];
+      $('debtTitle').textContent=paymentType==='EXTRAORDINARIO'?'Metas voluntarias de proyectos':'Adeudos de '+names[paymentType];
       $('debtDetails').innerHTML=items.map(c=>'<div class="mj-debt-item '+(paymentType==='EXTRAORDINARIO'?'extra':paymentType==='CASA_CLUB'?'club':'')+'"><strong>'+esc(c.concepto||names[paymentType])+(c.recargo?'<small>Incluye '+money(c.recargo)+' de recargo por corte del día 10 vencido</small>':'')+'</strong><span>'+esc(c.periodo||'')+(c.fechaLimitePago?' · Límite '+esc(c.fechaLimitePago):'')+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</span><b>'+money(c.monto)+'</b></div>').join('');
       $('debtTotal').textContent=money(debts.totales?.[paymentType]||0);
       if(!$('debtModal').open)$('debtModal').showModal();
@@ -164,7 +168,15 @@
     $('debtModal').addEventListener('click',event=>{if(event.target===$('debtModal'))$('debtModal').close()});
 
     function renderExtras() {
-      $('extraList').innerHTML = extras.length ? extras.map(x => '<div class="extra' + (selectedExtra && Number(selectedExtra.id) === Number(x.id) ? ' selected' : '') + '" data-extra="' + Number(x.id) + '"><div><strong>' + esc(x.concepto) + '</strong><small>Mensualidad ' + esc(x.periodo) + (x.estado==='EN_REVISION'?' · Comprobante en revisión':' · Pendiente') + '</small></div><b>' + money(x.monto) + '</b></div>').join('') : '<div class="empty">No tienes mensualidades extraordinarias pendientes.</div>';
+      $('extraList').innerHTML = extras.length ? extras.map(x =>
+        '<div class="extra'+(selectedExtra&&Number(selectedExtra.id)===Number(x.id)?' selected':'')+
+        '" data-extra="'+Number(x.id)+'"><div><strong>'+esc(x.concepto)+'</strong>'+
+        '<small>Meta: '+money(x.montoOriginal)+' · Aportado: '+money(x.montoPagado)+
+        ' · Falta: '+money(x.monto)+
+        (Number(x.pendienteValidacion)>0?' · Verificando '+money(x.pendienteValidacion):'')+
+        (x.estado==='PAGADO'?' · Meta alcanzada':' · Abona cuando quieras, sin recargos ni fechas obligatorias')+
+        '</small></div><b>'+money(x.monto)+'</b></div>').join('')
+       :'<div class="empty">No hay proyectos extraordinarios activos para tu vivienda.</div>';
     }
     let receiptItems = [];
     const receiptFilter = {month:'',year:''};
@@ -459,9 +471,25 @@
         return;
       }
       $('amount').readOnly=!['SUPER_ADMIN','ADMINISTRADOR'].includes(role());
+      $('amount').removeAttribute('max');
 
       if (paymentType === 'EXTRAORDINARIO') {
-        const amount = Number(selectedExtra?.monto || 0); $('summaryBase').textContent = selectedExtra ? money(amount) : 'Selecciona una cuota'; $('summaryLate').textContent = money(0); $('lateRow').hidden = true; $('summaryTotal').textContent = money(amount); $('amount').min = amount || 1; $('officialConcept').value = selectedExtra ? 'Cuota extraordinaria: ' + selectedExtra.concepto+' · '+selectedExtra.periodo : 'Selecciona una mensualidad extraordinaria'; return;
+        const available=Number(selectedExtra?.montoDisponible??selectedExtra?.monto??0);
+        // El residente decide el tamaño y la fecha de cada abono; el OCR y el
+        // backend contrastan que el importe coincida con el depósito real.
+        $('amount').readOnly=false;
+        $('amount').min='0.01';
+        $('amount').max=String(Math.max(0,available));
+        $('summaryBase').textContent=selectedExtra
+         ?'Meta '+money(selectedExtra.montoOriginal)+' · Aportado '+money(selectedExtra.montoPagado)
+         :'Selecciona un proyecto';
+        $('summaryLate').textContent=money(0);
+        $('lateRow').hidden=true;
+        $('summaryTotal').textContent=money(available);
+        $('officialConcept').value=selectedExtra
+         ?'Aportación voluntaria: '+selectedExtra.concepto
+         :'Selecciona un proyecto para aportar';
+        return;
       }
       if(paymentType==='CASA_CLUB'){
         const amount=Number(selectedClub?.monto||0);$('summaryBase').textContent=selectedClub?money(amount):'Selecciona reservación';$('lateRow').hidden=true;$('summaryTotal').textContent=money(amount);$('amount').min=amount||1;
@@ -734,7 +762,12 @@
 
     $('adminExtraBox').hidden=true;
 
-    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if(reportBusy)return; if(repartoUI.activo(paymentType)&&!repartoUI.valido())return toast('La suma debe coincidir con el depósito y el reparto debe estar cotizado.'); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='EN_REVISION')) return toast('Selecciona un cargo extraordinario sin comprobante pendiente.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reservación aprobada sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType !== 'MANTENIMIENTO' && Math.abs(amount - required) > .009)) return toast(paymentType === 'MANTENIMIENTO' ? 'Ingresa un monto mayor que cero.' : 'El comprobante debe corresponder exactamente a ' + money(required) + '.');
+    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if(reportBusy)return; if(repartoUI.activo(paymentType)&&!repartoUI.valido())return toast('La suma debe coincidir con el depósito y el reparto debe estar cotizado.'); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='PAGADO'||Number(selectedExtra.montoDisponible??selectedExtra.monto)<=0))
+       return toast('Selecciona un proyecto que todavía permita nuevas aportaciones.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reservación aprobada sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'CASA_CLUB' && Math.abs(amount - required) > .009) ||
+       (paymentType === 'EXTRAORDINARIO' && Math.round(amount*100)>Math.round(required*100))) return toast(paymentType==='EXTRAORDINARIO'
+        ?'Puedes aportar cualquier cantidad desde $0.01 hasta '+money(required)+' en este momento.'
+        :paymentType==='MANTENIMIENTO'?'Ingresa un monto mayor que cero.':
+         'El comprobante debe corresponder exactamente a '+money(required)+'.');
     if(paymentType==='MANTENIMIENTO' && !repartoUI.activo(paymentType)){
       const date=$('operationDate').value;
       if(!/^20\d{2}-\d{2}-\d{2}$/.test(date) || date<'2026-10-01')
