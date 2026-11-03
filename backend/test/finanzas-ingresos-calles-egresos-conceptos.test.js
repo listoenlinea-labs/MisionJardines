@@ -16,16 +16,20 @@ const houses=[
 ];
 const periodo={inicio:'2026-11-01',fin:'2026-11-30'};
 
-test('manual anual en noviembre suma el movimiento una sola vez, incluso si cubre diciembre',()=>{
+test('pago anual de $600 aporta $300 a noviembre y $300 a diciembre sin duplicar efectivo',()=>{
  const cuotas=[
   cuota(1,4,'NOVIEMBRE',300,'2026-11-02T18:00:00.000Z','MJMAN-ANUAL-4','MANUAL_ANALISIS_ANUAL'),
   cuota(2,4,'DICIEMBRE',300,'2026-11-02T18:00:00.000Z','MJMAN-ANUAL-4','MANUAL_ANALISIS_ANUAL')
  ];
  const x=agrupacionMantenimiento({padron:houses,cuotas,comprobantes:[],...periodo});
- assert.equal(x.mes,600);
+ assert.equal(x.mes,300);
+ assert.equal(x.recibidoMes,600);
  assert.equal(x.acumulado,600);
  assert.equal(x.calles.find(c=>c.calle==='Gardenias').movimientos,1);
- assert.equal(x.calles.find(c=>c.calle==='Gardenias').mes,600);
+ assert.equal(x.calles.find(c=>c.calle==='Gardenias').mes,300);
+ const dec=agrupacionMantenimiento({padron:houses,cuotas,comprobantes:[],inicio:'2026-12-01',fin:'2026-12-31'});
+ assert.equal(dec.mes,300);
+ assert.equal(dec.recibidoMes,0);
  assert.equal(x.calles.find(c=>c.calle==='Rosas').mes,0);
 });
 test('cobros anteriores van al acumulado, no vuelven a sumarse a noviembre',()=>{
@@ -45,15 +49,15 @@ test('depósito bancario ya aplicado a cuotas no se cuenta dos veces',()=>{
  assert.equal(x.acumulado,300);
  assert.equal(x.mes,300);
 });
-test('casa de prueba fuera del padrón no infla total y fecha posterior no se atribuye a noviembre',()=>{
+test('casa de prueba fuera del padrón no infla total y pago tardío corresponde al período cubierto',()=>{
  const cuotas=[cuota(2,90,'NOVIEMBRE',999,'2026-11-02','PRUEBA'),
    cuota(3,4,'NOVIEMBRE',300,'2026-12-04','FUTURO')];
  const x=agrupacionMantenimiento({padron:houses,cuotas,comprobantes:[],...periodo});
- assert.equal(x.mes,0);assert.equal(x.acumulado,300);
+ assert.equal(x.mes,300);assert.equal(x.recibidoMes,0);assert.equal(x.acumulado,300);
 });
-test('una cuota pagada sin fecha suma al acumulado, pero no inventa un cobro mensual',()=>{
+test('una cuota pagada sin fecha suma en su mes cubierto, aunque no se invente fecha de cobro',()=>{
  const x=agrupacionMantenimiento({padron:houses,cuotas:[cuota(3,4,'NOVIEMBRE',300,null,'SIN-FECHA')],comprobantes:[],...periodo});
- assert.equal(x.mes,0);assert.equal(x.acumulado,300);assert.equal(x.sinFecha,1);
+ assert.equal(x.mes,300);assert.equal(x.recibidoMes,0);assert.equal(x.acumulado,300);assert.equal(x.sinFecha,1);
 });
 test('fecha del cobro se interpreta en hora México para timestamps UTC',()=>{
  assert.equal(fechaCobro('2026-12-01T05:30:00.000Z'),'2026-11-30');
@@ -136,14 +140,14 @@ test('historical sin fecha en varias calles y anualidad se contabiliza una sola 
  assert.equal(result.calles.find(c=>c.calle==='Gardenias').movimientos,1);
  assert.equal(result.calles.find(c=>c.calle==='Rosas').acumulado,350);
  assert.equal(result.calles.find(c=>c.calle==='Valle de México').acumulado,150);
- assert.equal(result.mes,0);
+ assert.equal(result.mes,300);
 });
 test('el portal fuerza la carga de Análisis de cuotas actualizado en iframe',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const html=root('docs/analisis-cuotas.html'),app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*picker-paginacion-20261103/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-picker-frente-pagina-fija/);
- assert.match(app,/app-shell\.js\?v=20261103-picker-paginacion/);
+ assert.match(shell,/_mjVersion.*cuotas-por-mes-20261103/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-mantenimiento-por-cuota/);
+ assert.match(app,/app-shell\.js\?v=20261103-cuotas-por-mes/);
 });
 
 test('ambos gráficos muestran solo el mes seleccionado y no el acumulado histórico',()=>{
@@ -151,7 +155,7 @@ test('ambos gráficos muestran solo el mes seleccionado y no el acumulado histó
  assert.match(html,/Mantenimiento cobrado durante el mes y año seleccionados/);
  assert.match(js,/bar\(c\.calle,Number\(c\.mes\|\|0\),max,false,fmt\(c\.mes\)\)/);
  assert.match(js,/bar\(c\.concepto,Number\(c\.mes\|\|0\),max,true,fmt\(c\.mes\)\)/);
- assert.match(js,/Mantenimiento del mes/);
+ assert.match(js,/Cuotas cubiertas del mes/);
  assert.match(js,/Egresos de '/);
  assert.doesNotMatch(js,/bar\(c\.calle,Number\(c\.acumulado\)/);
  assert.doesNotMatch(js,/bar\(c\.concepto,Number\(c\.acumulado\)/);
@@ -211,11 +215,11 @@ test('historial de ingresos por calle: enero a noviembre e importes por movimien
   ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre']);
  assert.equal(gardenias.historialMensual[0].totalPagado,300);
  assert.equal(gardenias.historialMensual[9].totalPagado,0);
- assert.equal(gardenias.historialMensual[10].totalPagado,600);
- assert.equal(gardenias.mes,600);
+ assert.equal(gardenias.historialMensual[10].totalPagado,300);
+ assert.equal(gardenias.mes,300);
  assert.equal(gardenias.acumulado,1050);
  assert.equal(r.calles.find(c=>c.calle==='Rosas').historialMensual[10].totalPagado,350);
- assert.equal(r.mes,950);
+ assert.equal(r.mes,650);
  assert.equal(r.sinFecha,1);
 });
 test('historial de ingresos en marzo excluye meses posteriores',()=>{
@@ -248,4 +252,101 @@ test('los dos históricos son modales accesibles y nunca tablas debajo de los pa
  assert.match(js,/financeIncomeHistoryTitle/);
  assert.match(js,/financeExpenseHistoryTitle/);
  assert.doesNotMatch(html,/id="financeExpensesConceptRows"|id="financeIncomeStreetRows"/);
+});
+
+test('Gardenias: cinco anualidades y tres mensualidades dan $2,400 en noviembre, no $3,900',()=>{
+ const casas=Array.from({length:8},(_,i)=>({id:101+i,calle:'Gardenias'}));
+ const cuotas=[];
+ let id=1000;
+ for(let i=0;i<5;i++){
+  const ref='ANUAL-G-'+i;
+  cuotas.push(cuota(++id,101+i,'NOVIEMBRE',300,'2026-11-02T18:00:00Z',ref,'MANUAL_ANALISIS_ANUAL'));
+  cuotas.push(cuota(++id,101+i,'DICIEMBRE',300,'2026-11-02T18:00:00Z',ref,'MANUAL_ANALISIS_ANUAL'));
+ }
+ for(let i=5;i<8;i++){
+  cuotas.push(cuota(++id,101+i,'NOVIEMBRE',300,'2026-11-02T18:00:00Z','NORMAL-G-'+i));
+ }
+ const result=agrupacionMantenimiento({padron:casas,cuotas,comprobantes:[],...periodo});
+ const gardenias=result.calles.find(c=>c.calle==='Gardenias');
+ assert.equal(gardenias.mes,2400);
+ assert.equal(result.mes,2400);
+ assert.equal(result.recibidoMes,3900); // Entrada de efectivo, NO la gráfica.
+ assert.equal(result.acumulado,3900);
+ assert.equal(gardenias.movimientos,8);
+ assert.equal(gardenias.historialMensual[10].totalPagado,2400);
+ const diciembre=agrupacionMantenimiento({padron:casas,cuotas,comprobantes:[],
+  inicio:'2026-12-01',fin:'2026-12-31'});
+ assert.equal(diciembre.mes,1500);
+ assert.equal(diciembre.recibidoMes,0);
+ assert.equal(diciembre.acumulado,3900);
+});
+
+test('recargo registrado dentro de la cuota se atribuye al mes al que corresponde, no al mes del depósito',()=>{
+ const casas=[{id:4,calle:'Gardenias'}];
+ const cuotas=[
+  {...cuota(1,4,'OCTUBRE',350,'2026-11-02T18:00:00Z','PAGADO-TARDE'),recargo:50,recargoPagado:50},
+  {...cuota(2,4,'NOVIEMBRE',300,'2026-11-02T18:00:00Z','PAGADO-TARDE'),recargo:0,recargoPagado:0},
+  {...cuota(3,4,'DICIEMBRE',300,'2026-11-02T18:00:00Z','PAGADO-TARDE'),recargo:0,recargoPagado:0}
+ ];
+ const noviembre=agrupacionMantenimiento({padron:casas,cuotas,comprobantes:[],...periodo});
+ assert.equal(noviembre.mes,300); // Octubre fue tardío, no inflar noviembre.
+ assert.equal(noviembre.recibidoMes,950);
+ assert.equal(noviembre.acumulado,950);
+ const octubre=agrupacionMantenimiento({padron:casas,cuotas,comprobantes:[],
+  inicio:'2026-10-01',fin:'2026-10-31'});
+ assert.equal(octubre.mes,350);
+ assert.equal(octubre.recibidoMes,0);
+ const diciembre=agrupacionMantenimiento({padron:casas,cuotas,comprobantes:[],
+  inicio:'2026-12-01',fin:'2026-12-31'});
+ assert.equal(diciembre.mes,300);
+});
+
+test('noviembre con recargo propio pagado muestra $350, incluso en adelantos y pagos parciales',()=>{
+ const cuotas=[
+  {...cuota(1,4,'NOVIEMBRE',350,'2026-12-02T18:00:00Z','G-RECARGO'),recargo:50,recargoPagado:50},
+  {...cuota(2,4,'DICIEMBRE',300,'2026-12-02T18:00:00Z','G-RECARGO'),recargo:0},
+  {...cuota(3,11,'NOVIEMBRE',150,'2026-11-01T18:00:00Z','R-ABONO'),estatusPago:'PAGO_PARCIAL'}
+ ];
+ const x=agrupacionMantenimiento({padron:houses,cuotas,comprobantes:[],...periodo});
+ assert.equal(x.calles.find(c=>c.calle==='Gardenias').mes,350);
+ assert.equal(x.calles.find(c=>c.calle==='Rosas').mes,150);
+ assert.equal(x.mes,500);
+ assert.equal(x.recibidoMes,150);
+ const dec=agrupacionMantenimiento({padron:houses,cuotas,comprobantes:[],
+  inicio:'2026-12-01',fin:'2026-12-31'});
+ assert.equal(dec.mes,300);
+ assert.equal(dec.recibidoMes,650);
+});
+
+test('depósito bancario agrupado en dos cuotas no se duplica y respeta recargo',()=>{
+ const cuotas=[
+  {...cuota(1,4,'OCTUBRE',350,'2026-11-02','BANCO-650','PAGO_BANCARIO_CUOTAS'),recargo:50},
+  cuota(2,4,'NOVIEMBRE',300,'2026-11-02','BANCO-650','PAGO_BANCARIO_CUOTAS')
+ ];
+ const comprobantes=[{id:22,casaId:4,tipoPago:'MANTENIMIENTO',estatus:'VALIDADO',
+  monto:650,recargo:50,folioOperacion:'BANCO-650',fechaOperacion:'2026-11-02'}];
+ const x=agrupacionMantenimiento({padron:houses,cuotas,comprobantes,...periodo});
+ assert.equal(x.mes,300);assert.equal(x.recibidoMes,650);
+ assert.equal(x.acumulado,650);assert.equal(x.montoSinPeriodo,0);
+});
+
+test('depósito sin desglose no se adjudica a un mes ni genera recargo artificial',()=>{
+ const comprobantes=[{id:50,casaId:4,tipoPago:'MANTENIMIENTO',estatus:'VALIDADO',
+  monto:450,recargo:0,folioOperacion:'SIN-CONCILIAR',fechaOperacion:'2026-11-02'}];
+ const x=agrupacionMantenimiento({padron:houses,cuotas:[],comprobantes,...periodo});
+ assert.equal(x.mes,0);
+ assert.equal(x.acumulado,450);
+ assert.equal(x.recibidoMes,450);
+ assert.equal(x.sinPeriodo,1);
+ assert.equal(x.montoSinPeriodo,450);
+});
+
+test('flujo de caja / balance no cambia por el nuevo reparto de las gráficas',()=>{
+ const controller=root('backend/src/controllers/finanzas.controller.js');
+ assert.match(controller,/ingresosBase=cobranzaMantenimiento\.recibidoMes\+/);
+ assert.doesNotMatch(controller,/ingresosBase=cobranzaMantenimiento\.mes\+/);
+ const ui=root('docs/assets/js/analisis-cuotas.js'),html=root('docs/analisis-cuotas.html');
+ assert.match(ui,/Cuotas pagadas de '/);
+ assert.match(ui,/ingresos\.sinPeriodo/);
+ assert.match(html,/Los pagos anticipados se distribuyen por cada mensualidad cubierta/);
 });

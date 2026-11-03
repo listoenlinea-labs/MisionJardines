@@ -150,10 +150,10 @@ test('error en Picker o denegación de carpeta nunca dejan el formulario oculto'
 });
 
 test('versiones cache-busting actualizan la página del iframe y el picker',()=>{
- assert.match(html,/analisis-cuotas\.js\?v=20261103-picker-frente-pagina-fija/);
- assert.match(html,/analisis-cuotas\.css\?v=20261103-picker-frente-pagina-fija/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-mantenimiento-por-cuota/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261103-mantenimiento-por-cuota/);
  const shell=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/app-shell.js'),'utf8');
  const app=fs.readFileSync(path.resolve(__dirname,'../../docs/app.html'),'utf8');
- assert.match(shell,/_mjVersion.*picker-paginacion-20261103/);
- assert.match(app,/app-shell\.js\?v=20261103-picker-paginacion/);
+ assert.match(shell,/_mjVersion.*cuotas-por-mes-20261103/);
+ assert.match(app,/app-shell\.js\?v=20261103-cuotas-por-mes/);
 });

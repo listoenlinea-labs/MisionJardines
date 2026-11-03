@@ -7,29 +7,38 @@ cuotas registradas como **PAGADO** por el administrador. Ese número no era el
 total de mantenimiento cobrado: sumaba exclusivamente movimientos bancarios
 validados y dejaba pagos manuales separados de ingresos principales.
 
-## Tablero nuevo
+## Tablero de ingresos por mensualidad cubierta
 
-**Ingresos: Mantenimiento cobrado por calle**. Por cada una de las calles del
-padrón oficial, muestra:
-- **Mes seleccionado:** dinero realmente registrado como recibido entre el
-  primer y el último día de ese mes, independientemente de los meses cubiertos.
-- **Total acumulado:** dinero registrado como recibido hasta el último día del
-  período elegido, incluyendo meses anteriores.
-- **Total general:** suma de las calles visibles del padrón.
+**Ingresos por calle** se calcula con el importe efectivamente abonado a
+**cada cuota de mantenimiento correspondiente al mes seleccionado**, NO con el
+importe de un movimiento de caja que liquide varios meses de una sola vez.
+El sistema muestra ocho calles oficiales; pagos manuales, históricos y bancarios
+conciliados suman por su período real (año y mes guardado en `cuotas`).
 
-El cálculo agrupa por vivienda y movimiento contable (referencia), usando el
-mismo historial que el modal de mantenimiento. Incluye cuotas y pagos manuales,
-depósitos bancarios validados conciliados, recargos incluidos en el importe
-registrado y pagos importados fechados. No vuelve a sumar un banco cuando ya
-está aplicado a una cuota. **Un pago anual de $600 registrado el 2 de noviembre
-por noviembre y diciembre se cuenta una vez, con $600 de ingreso de noviembre**.
-No se atribuye $300 adicional a diciembre si no hubo otro cobro allí.
+**Ejemplo:** Un recibo anual de $600, registrado el 2 de noviembre para cubrir
+NOVIEMBRE y DICIEMBRE de 2026, produce **$300 en la barra de noviembre y
+$300 en la de diciembre**, usando `monto_pagado` de cada cuota. Un pago
+de $350 por una mensualidad atrasada se muestra como **$350 en el mes cubierto**
+si el pago realmente incluye un recargo de $50; no se vuelve a sumar el recargo.
 
-Los movimientos sin fecha verificable quedan fuera de la gráfica y se informa
-cuántos requieren conciliación. Las viviendas auxiliares/test fuera del padrón
-no inflan el total. El resultado del panel es **cobranza registrada**, no un
-estado de cuenta bancario auditado. Los ingresos por cuotas extraordinarias,
-Casa Club y otros conceptos no se suman al gráfico de mantenimiento.
+El modal histórico de una calle utiliza **el mismo reparto** de enero al mes
+elegido, con meses vacíos en $0. Si un pago cubre varios meses, el modal
+reparte conforme a sus aplicaciones y no por una división presupuesta.
+
+**Importante: contabilidad de caja vs mensualidades cubiertas.** El total
+recibido el día de la operación se mantiene en `recibidoMes` y alimenta el
+balance del sistema. El campo `mes` de ingresos por calle ahora describe
+**mensualidades cubiertas**, no depósitos recibidos ese mes. El acumulado
+`acumulado` sigue siendo el total recibido con todos los movimientos únicos.
+
+Si un banco validado no dispone de un desglose por cuota, su monto sigue en el
+acumulado/caja pero **no** se asigna arbitrariamente a noviembre: se indica
+`sinPeriodo` para conciliarlo. Las mensualidades importadas **sin fecha de
+cobro** cuentan correctamente en el mes cubierto porque conocemos su
+`anio`, `mes` y `montoPagado`. No se inventan fechas.
+
+Las viviendas de prueba/auxiliares fuera del padrón no afectan el agregado.
+El indicador no sustituye una conciliación bancaria auditada.
 
 **Egresos: Gastos por concepto.** Tanto el importe del mes como el acumulado
 hasta el corte se calculan por fecha real del egreso. No se reparten como
@@ -59,7 +68,7 @@ ejecutar manualmente **después de respaldar**
 ## Excel
 
 El botón de descarga de la cuarta tarjeta financiera ahora agrega una hoja
-`Mantenimiento por calle` con total cobrado durante el mes y acumulado, además
+`Mantenimiento por calle` con cuotas cubiertas del mes y total de movimientos acumulado, además
 de conservar cuotas, bancos, ingresos adicionales y pagos manuales para
 conciliación.
 
@@ -84,8 +93,8 @@ automáticos a largo plazo sin completar la configuración de publicación.
    el arranque de `asegurarFinanzas`.
 2. Actualizar GitHub Pages y recargar Análisis de cuotas. Seleccionar
    **noviembre de 2026**.
-3. Comprobar un pago manual real en noviembre: su calle muestra el importe
-   cobrado una única vez en el mes y en el acumulado.
+3. Comprobar un pago manual real en noviembre: su calle muestra el monto de la cuota correspondiente al mes seleccionado
+   sin incluir el mes siguiente de un pago anual.
 4. Registrar egreso de prueba en entorno de pruebas bajo Internet y comprobar
    que aparece en el panel y el filtro. Revisar Luz/Agua históricos.
 5. Comprobar la descarga del Excel financiero y que el padrón

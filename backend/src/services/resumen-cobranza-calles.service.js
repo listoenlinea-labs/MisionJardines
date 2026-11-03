@@ -1,6 +1,7 @@
 'use strict';
-// Resumen de dinero cobrado, no de meses cubiertos. El movimiento se reconoce
-// una sola vez en la fecha de recepción, incluso si es un pago anual adelantado.
+// Gráficas por MES CUBIERTO de mantenimiento: un movimiento puede liquidar
+// varios meses y se debe distribuir por la cuota efectivamente acreditada.
+// El ingreso de caja en fecha de recepción es otro indicador contable.
 const {historialMantenimiento}=require('./historial-pagos-vivienda.service');
 const {normalizarCalle}=require('./padron-finanzas.service');
 
@@ -48,7 +49,7 @@ function agrupacionMantenimiento({padron=[],cuotas=[],comprobantes=[],inicio,fin
  const streets=new Map(CALLES.map(calle=>[
   normalizarCalle(calle),{calle,acumuladoCentavos:0,mesCentavos:0,movimientos:0,mensuales:Array(ultimoMes).fill(0)}
  ]));
- let sinFecha=0,fueraDeCalles=0;
+ let sinFecha=0,sinPeriodo=0,montoSinPeriodoCentavos=0,recibidoMesCentavos=0,fueraDeCalles=0;
  for(const casa of padron){
   const calle=String(casa.calleCorrecta||casa.calle||'').trim();
   const key=normalizarCalle(calle);
@@ -64,24 +65,44 @@ function agrupacionMantenimiento({padron=[],cuotas=[],comprobantes=[],inicio,fin
    // esté seleccionado. No inventar fechas para atribuirlo a un mes.
    st.acumuladoCentavos+=amount;
    st.movimientos++;
-   if(!fecha){sinFecha++;continue;}
-   if(fecha>=inicio&&fecha<=fin)st.mesCentavos+=amount;
-   if(fecha.slice(0,4)===String(anio)&&fecha<=fin){
-    const indice=Number(fecha.slice(5,7))-1;
-    if(indice>=0&&indice<ultimoMes)st.mensuales[indice]+=amount;
+   if(!fecha)sinFecha++;
+   // El flujo de CAJA se preserva por fecha de depósito/registro, separado
+   // del ingreso mensual por cuotas cubiertas mostrado en las gráficas.
+   if(fecha&&fecha>=inicio&&fecha<=fin)recibidoMesCentavos+=amount;
+   // No usar la fecha del depósito para el reparto entre meses. Un pago anual
+   // de $600 por noviembre y diciembre genera $300 en cada mensualidad.
+   // El importe de p.monto proviene de cuota.montoPagado (incluye recargo)
+   // o de la aplicación bancaria validada, sin volver a sumar el recargo.
+   let asignadoCentavos=0;
+   for(const p of m.periodos||[]){
+    const yyyy=Number(p.anio);
+    const indice=MESES.findIndex(nombre=>nombre.toUpperCase()===String(p.mes||'').trim().toUpperCase());
+    const abonado=CENTS(p.monto);
+    if(!Number.isInteger(yyyy)||indice<0||abonado<=0)continue;
+    asignadoCentavos+=abonado;
+    if(yyyy!==anio||indice>=ultimoMes)continue;
+    st.mensuales[indice]+=abonado;
+    if(indice===ultimoMes-1)st.mesCentavos+=abonado;
    }
+   // Si existe un comprobante que aún no está distribuido a cuotas,
+   // mantenerlo en el acumulado recibido, pero NUNCA atribuir su saldo
+   // arbitrariamente a noviembre (ni dividir el resto en partes iguales).
+   const pendiente=Math.max(0,amount-asignadoCentavos);
+   if(pendiente>0){sinPeriodo++;montoSinPeriodoCentavos+=pendiente;}
   }
  }
  const calles=[...streets.values()].map(({calle,acumuladoCentavos,mesCentavos,movimientos,mensuales})=>({
   calle,acumulado:acumuladoCentavos/100,mes:mesCentavos/100,movimientos,
-  // Cada mes representa cobros recibidos; no confundir con meses cubiertos.
+  // Cada mes representa cuotas acreditadas por período cubierto; no el día del depósito.
   historialMensual:mensuales.map((centavos,i)=>({
    calle,mes:MESES[i],anio,periodo:anio+'-'+String(i+1).padStart(2,'0'),
    totalPagado:centavos/100
   }))
  }));
  return {calles,acumulado:calles.reduce((sum,x)=>sum+CENTS(x.acumulado),0)/100,
-  mes:calles.reduce((sum,x)=>sum+CENTS(x.mes),0)/100,sinFecha,fueraDeCalles,
-  criterio:'Acumulado de mantenimiento pagado en las ocho calles oficiales, incluso cuotas históricas sin fecha; una sola vez por movimiento'};
+  mes:calles.reduce((sum,x)=>sum+CENTS(x.mes),0)/100,
+  recibidoMes:recibidoMesCentavos/100,
+  sinFecha,sinPeriodo,montoSinPeriodo:montoSinPeriodoCentavos/100,fueraDeCalles,
+  criterio:'Mensualidades efectivamente acreditadas por periodo cubierto, incluidos recargos ya pagados; el acumulado conserva el total recibido sin doble registro'};
 }
 module.exports={CALLES,fechaCobro,agrupacionMantenimiento};

@@ -144,12 +144,12 @@
   const cobrado=data.ingresosMantenimientoCalles;
   if(cobrado){
    hojas.unshift(sheet('Mantenimiento por calle',
-    ['Calle','Cobrado en mes (MXN)','Total acumulado (MXN)','Movimientos'],
+    ['Calle','Cuotas pagadas del mes (MXN)','Total acumulado (MXN)','Movimientos'],
     [...(cobrado.calles||[]).map(c=>[texto(c.calle),dinero(c.mes),dinero(c.acumulado),Number(c.movimientos||0)]),
      ['TOTAL',dinero(cobrado.mes),dinero(cobrado.acumulado),'']]));
   }
-  const detalles=[['Base del indicador',cobrado?'Pagos de mantenimiento por fecha de cobro':(data.esCargaHistorica?'Cuotas históricas':'Bancos validados')],
-   ['Mantenimiento cobrado en mes (MXN)',dinero(cobrado?.mes||0)],
+  const detalles=[['Base del indicador',cobrado?'Mensualidades de mantenimiento cubiertas':(data.esCargaHistorica?'Cuotas históricas':'Bancos validados')],
+   ['Cuotas cubiertas del mes (MXN)',dinero(cobrado?.mes||0)],
    ['Mantenimiento acumulado (MXN)',dinero(cobrado?.acumulado||0)],
    ['Cuotas históricas registradas (MXN)',dinero(data.cobrosCuotasRegistrados)],
    ['Ingresos bancarios validados (MXN)',dinero(data.ingresosValidados)],
@@ -158,7 +158,7 @@
    ['Importe del indicador (MXN)',dinero(data.ingresosParaBalance)],
    ['Advertencia','Los abonos históricos y depósitos bancarios pueden ser el mismo dinero; no sumarlos si el período está importado.']];
   return {nombre:cobrado?'Mantenimiento_por_calle':data.esCargaHistorica?'Cuotas_historicas':'Ingresos_validados',
-   titulo:cobrado?'Mantenimiento cobrado por calle':data.esCargaHistorica?'Cuotas históricas e ingresos':'Ingresos validados y conciliación',
+   titulo:cobrado?'Mantenimiento pagado por mes y calle':data.esCargaHistorica?'Cuotas históricas e ingresos':'Ingresos validados y conciliación',
    hojas,resumen:[...resumen,...detalles]};
  }
 

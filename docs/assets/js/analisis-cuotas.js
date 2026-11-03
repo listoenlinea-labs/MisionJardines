@@ -125,8 +125,8 @@
   }
   $('financeIncomeHistoryTitle').textContent='Historial de '+street.calle;
   $('financeIncomeHistoryDescription').textContent=
-   'Mantenimiento recibido de '+street.calle+' desde enero hasta '+data.periodo+
-   '. Los meses sin cobros muestran $0; pagos sin fecha verificable no se asignan artificialmente a un mes.';
+   'Cuotas cubiertas de '+street.calle+' desde enero hasta '+data.periodo+
+   '. Los meses sin pagos muestran $0; cada pago anual se distribuye según los meses que cubre.';
   $('financeIncomeHistoryRows').innerHTML=rows.map(r=>
    '<tr><th scope="row">'+esc(r.calle)+'</th><td>'+esc(r.mes+' '+r.anio)+
    '</td><td>'+esc(fmt(r.totalPagado))+'</td></tr>'
@@ -154,7 +154,7 @@
   const houses=data.casas||0;
   const financialCards=[
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
+   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Cuotas cubiertas del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
    ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
@@ -175,16 +175,16 @@
   const ingresos=data.ingresosMantenimientoCalles;
   if(ingresos?.calles){
    const max=Math.max(1,...ingresos.calles.map(c=>Number(c.mes||0)));
-   $('financeIncomeTotals').innerHTML='<span>Mantenimiento de '+esc(data.periodo)+': <b>'+esc(fmt(ingresos.mes))+'</b></span>';
+   $('financeIncomeTotals').innerHTML='<span>Cuotas pagadas de '+esc(data.periodo)+': <b>'+esc(fmt(ingresos.mes))+'</b></span>';
    $('financeCashChart').innerHTML=ingresos.calles.map(c=>
     '<button type="button" class="finance-income-select" data-income-street="'+esc(c.calle)+
     '" aria-controls="financeIncomeHistoryModal" aria-expanded="'+String(selectedIncomeStreet===c.calle)+
     '" title="Ver historial de mantenimiento de '+esc(c.calle)+'">'+
     bar(c.calle,Number(c.mes||0),max,false,fmt(c.mes))+'</button>'
    ).join('');
-   $('financeWarning').textContent=ingresos.sinFecha
-    ?ingresos.sinFecha+' pago(s) sin fecha no se pueden atribuir a un mes concreto; se conservan registrados.'
-    :'Los pagos anuales se contabilizan una sola vez en el mes en que se recibieron.';
+   $('financeWarning').textContent=ingresos.sinPeriodo
+    ?ingresos.sinPeriodo+' movimiento(s) sin mensualidad asignada ('+fmt(ingresos.montoSinPeriodo)+') requieren conciliación; no se imputan arbitrariamente.'
+    :'Cada cuota se contabiliza en el mes que cubre, incluyendo el recargo efectivamente pagado; los anticipos no se duplican.';
   }else{
    $('financeIncomeTotals').textContent='Actualiza el backend para consultar el mantenimiento del mes.';
    $('financeCashChart').textContent='';
