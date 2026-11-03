@@ -7,10 +7,10 @@ const centavos=value=>Math.round(Number(value||0)*100);
 const id=value=>String(value??'');
 const mesDe=value=>String(value||'').slice(0,7);
 
-function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],reservas=[],anio,mes}){
+function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],aportaciones=[],reservas=[],anio,mes}){
   const elegido=anio+'-'+String(mes).padStart(2,'0');
   const ids=new Set(viviendas.map(v=>id(v.casaId)));
-  const nuevo=()=>({montoPagadoCentavos:0,saldoCentavos:0,conCargos:false,ultimoPeriodo:null});
+  const nuevo=()=>({montoPagadoCentavos:0,saldoCentavos:0,conCargos:false,ultimoPeriodo:null,parcial:false});
   const extra=new Map([...ids].map(k=>[k,nuevo()]));
   const club=new Map([...ids].map(k=>[k,nuevo()]));
   const validosExtra=new Set(reportados.filter(p=>p.tipoPago==='EXTRAORDINARIO'&&p.estatus==='VALIDADO'&&p.cargoExtraordinarioId).map(p=>id(p.cargoExtraordinarioId)));
@@ -34,9 +34,24 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],rese
     }
   }
 
+  const aportadoPorCargo=new Map();
+  for(const p of aportaciones)if(p.cargoExtraordinarioId){
+   const k=id(p.cargoExtraordinarioId);
+   aportadoPorCargo.set(k,(aportadoPorCargo.get(k)||0)+centavos(p.monto));
+  }
   for(const cargo of cargos){
-    const paid=validosExtra.has(id(cargo.id))||manualesExtra.has(id(cargo.id));
-    incluir(extra,cargo.casaId,cargo.periodo,cargo.monto,paid);
+    const row=extra.get(id(cargo.casaId)),period=mesDe(cargo.periodo);
+    if(!row||!/^\\d{4}-(0[1-9]|1[0-2])$/.test(period))continue;
+    const cargoCents=centavos(cargo.monto),abonos=aportadoPorCargo.get(id(cargo.id))||0;
+    const pagado=validosExtra.has(id(cargo.id))||manualesExtra.has(id(cargo.id))
+     ?cargoCents:Math.min(cargoCents,abonos);
+    if(period===elegido)row.montoPagadoCentavos+=pagado;
+    if(pagado>0&&(!row.ultimoPeriodo||period>row.ultimoPeriodo))row.ultimoPeriodo=period;
+    if(period<=elegido){
+     row.conCargos=true;
+     row.saldoCentavos+=Math.max(0,cargoCents-pagado);
+     if(pagado>0&&pagado<cargoCents)row.parcial=true;
+    }
   }
   for(const reserva of reservas){
     if(reserva.estatus!=='APROBADA')continue;
@@ -51,7 +66,7 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],rese
       const row=map.get(id(v.casaId));
       const date=row.ultimoPeriodo;
       return {casaId:v.casaId,
-        estatus:row.saldoCentavos>0?'PENDIENTE':row.conCargos?'PAGADO':'SIN CARGOS',
+        estatus:row.saldoCentavos>0?(row.parcial?'PAGO_PARCIAL':'PENDIENTE'):row.conCargos?'PAGADO':'SIN CARGOS',
         montoPagado:row.montoPagadoCentavos/100,
         saldoPendiente:row.saldoCentavos/100,
         ultimoMesPagado:date?{mes:MESES[Number(date.slice(5,7))-1],anio:Number(date.slice(0,4))}:null};
