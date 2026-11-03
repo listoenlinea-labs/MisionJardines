@@ -80,8 +80,9 @@ test('egresos conservan gastos LUZ/AGUA/PROYECTOS sin mutarlos, y agregan Intern
 test('HTML muestra solo las ocho barras de ingresos y conserva tabla de egresos',()=>{
  const html=root('docs/analisis-cuotas.html'),js=root('docs/assets/js/analisis-cuotas.js');
  for(const id of ['financeIncomeTotals','financeCashChart',
-  'financeExpenseTotals','financeExpenseChart','financeExpenseHistory',
-  'financeExpenseHistoryRows','financeExpenseHistoryTotal','financeExpenseHistoryClose'])
+  'financeExpenseTotals','financeExpenseChart','financeExpenseHistory','financeIncomeHistoryModal',
+  'financeExpenseHistoryRows','financeExpenseHistoryTotal','financeExpenseHistoryClose',
+  'financeIncomeHistoryRows','financeIncomeHistoryTotal','financeIncomeHistoryClose'])
   assert.match(html,new RegExp('id="'+id+'"'));
  const cats=['CFE','SIAPA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','INTERNET','SERVICIOS','OTROS'];
  for(const c of cats)assert.ok(html.split('<option value="'+c+'">').length>=3,c+' está en formulario y filtro');
@@ -93,7 +94,8 @@ test('HTML muestra solo las ocho barras de ingresos y conserva tabla de egresos'
  assert.match(js,/Number\(c\.mes\|\|0\)/);
  assert.match(html,/<th>Concepto<\/th><th>Mes<\/th><th>Total pagado<\/th>/);
  assert.doesNotMatch(html,/id="financeExpensesConceptRows"|id="financeExpensesConceptTotal"/);
- assert.match(js,/selectedExpenseCategory===category\?null:category/);
+ assert.match(js,/selectedExpenseCategory=categoria/);
+ assert.match(js,/selectedIncomeStreet=calle/);
  assert.match(js,/renderExpenseHistory\(\)/);
  assert.match(js,/canonicalExpenseCategory\(e\.categoria\)===category/);
  assert.match(js,/data\.ingresosMantenimientoCalles/);
@@ -139,9 +141,9 @@ test('historical sin fecha en varias calles y anualidad se contabiliza una sola 
 test('el portal fuerza la carga de Análisis de cuotas actualizado en iframe',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const html=root('docs/analisis-cuotas.html'),app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*finanzas-mensuales-conceptos-20261103/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-ingresos-ocho-calles/);
- assert.match(app,/app-shell\.js\?v=20261103-ingresos-calles/);
+ assert.match(shell,/_mjVersion.*finanzas-modales-mensuales-20261103/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-modales-cobros-egresos/);
+ assert.match(app,/app-shell\.js\?v=20261103-modales-mensuales/);
 });
 
 test('ambos gráficos muestran solo el mes seleccionado y no el acumulado histórico',()=>{
@@ -191,4 +193,59 @@ test('seleccionar marzo no muestra abril-diciembre en el historial',()=>{
  assert.equal(x.historialMensual.CFE[1].totalPagado,100);
  assert.equal(x.historialMensual.CFE[2].totalPagado,0);
  assert.equal(x.mes,0);
+});
+
+test('historial de ingresos por calle: enero a noviembre e importes por movimiento',()=>{
+ const casas=[{id:4,calleCorrecta:'Gardenias',calle:'Gardenias'},{id:10,calle:'Rosas'}];
+ const cuotas=[
+  cuota(901,4,'ENERO',300,'2026-01-09T18:00:00Z','G-ENE'),
+  cuota(902,4,'NOVIEMBRE',300,'2026-11-02T18:00:00Z','G-ANUAL','MANUAL_ANALISIS_ANUAL'),
+  cuota(903,4,'DICIEMBRE',300,'2026-11-02T18:00:00Z','G-ANUAL','MANUAL_ANALISIS_ANUAL'),
+  cuota(904,4,'OCTUBRE',150,null,'G-SIN-FECHA'),
+  cuota(905,10,'NOVIEMBRE',350,'2026-11-12T16:00:00Z','R-NOV')
+ ];
+ const r=agrupacionMantenimiento({padron:casas,cuotas,comprobantes:[],...periodo});
+ const gardenias=r.calles.find(c=>c.calle==='Gardenias');
+ assert.equal(gardenias.historialMensual.length,11);
+ assert.deepEqual(gardenias.historialMensual.map(x=>x.mes),
+  ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre']);
+ assert.equal(gardenias.historialMensual[0].totalPagado,300);
+ assert.equal(gardenias.historialMensual[9].totalPagado,0);
+ assert.equal(gardenias.historialMensual[10].totalPagado,600);
+ assert.equal(gardenias.mes,600);
+ assert.equal(gardenias.acumulado,1050);
+ assert.equal(r.calles.find(c=>c.calle==='Rosas').historialMensual[10].totalPagado,350);
+ assert.equal(r.mes,950);
+ assert.equal(r.sinFecha,1);
+});
+test('historial de ingresos en marzo excluye meses posteriores',()=>{
+ const cuotas=[cuota(1,4,'MARZO',300,'2026-03-09','G-MAR'),cuota(2,4,'JUNIO',600,'2026-06-09','G-JUN')];
+ const r=agrupacionMantenimiento({padron:houses,cuotas,comprobantes:[],
+  inicio:'2026-03-01',fin:'2026-03-31'});
+ const meses=r.calles.find(c=>c.calle==='Gardenias').historialMensual;
+ assert.equal(meses.length,3);
+ assert.equal(meses[2].totalPagado,300);
+ assert.equal(r.mes,300);
+ assert.ok(meses.every(x=>x.periodo<='2026-03'));
+});
+test('los dos históricos son modales accesibles y nunca tablas debajo de los paneles',()=>{
+ const html=root('docs/analisis-cuotas.html'),js=root('docs/assets/js/analisis-cuotas.js');
+ for(const id of ['financeIncomeHistoryModal','financeExpenseHistory']){
+  const start=html.indexOf('<section id="'+id+'"');
+  assert.ok(start>0,id+' tiene modal');
+  assert.match(html.slice(start,start+400),/class="finance-pay-overlay finance-history-overlay" hidden/);
+  assert.match(html.slice(start,start+400),/aria-hidden="true"/);
+  assert.match(html.slice(start,start+600),/role="dialog" aria-modal="true"/);
+ }
+ assert.match(js,/bar\(c\.calle,Number\(c\.mes\|\|0\),max,false,fmt\(c\.mes\)\)/);
+ assert.match(js,/data-income-street/);
+ assert.match(js,/data-expense-concept/);
+ assert.match(js,/financeCashChart'\)\.addEventListener\('click'/);
+ assert.match(js,/financeExpenseChart'\)\.addEventListener\('click'/);
+ assert.match(js,/event\.key==='Escape'/);
+ assert.match(js,/event\.target===\$\(id\)/);
+ assert.match(js,/historyPreviousFocus\?\.isConnected/);
+ assert.match(js,/financeIncomeHistoryTitle/);
+ assert.match(js,/financeExpenseHistoryTitle/);
+ assert.doesNotMatch(html,/id="financeExpensesConceptRows"|id="financeIncomeStreetRows"/);
 });
