@@ -681,7 +681,8 @@ function renderHouses(){
   $('houseHistoryDeleteStatus').textContent='';
   $('houseHistoryClose').focus();
   try{
-   const {data:detail}=await request('/pagos-vivienda/'+Number(casaId)+'/historial?concepto='+activeConcept);
+   const {data:detail}=await request('/pagos-vivienda/'+Number(casaId)+'/historial?concepto='+activeConcept+
+    (activeConcept==='EXTRAORDINARIO'&&activeProyectoId?'&proyectoId='+Number(activeProyectoId):''));
    if(seq!==historySequence||historyModal.hidden)return;
    const movements=detail.movimientos||[],debts=detail.deudas||[];
    historyMovements=movements;
@@ -1300,17 +1301,26 @@ function renderHouses(){
  const isOther=()=>$('housePaymentType').value!=='MANTENIMIENTO';
  function renderOtherConcept(){
   const type=$('housePaymentType').value;
-  const items=otherConcepts[type]||[];
+  const items=(otherConcepts[type]||[]).filter(c=>type!=='EXTRAORDINARIO'||!activeProyectoId||
+    Number(c.cuotaExtraordinariaId)===Number(activeProyectoId));
   $('houseConceptSelect').innerHTML=items.length?items.map(c=>'<option value="'+Number(c.id)+'">'+esc(c.concepto)+' · '+esc(c.periodo)+' · '+esc(fmt(c.monto))+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</option>').join(''):'<option value="">Sin cobros disponibles</option>';
   previewOtherConcept();
  }
- function previewOtherConcept(){
+ function previewOtherConcept({resetAmount=true}={}){
   const type=$('housePaymentType').value;
   const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
-  $('housePaymentAmount').value=item?Number(item.monto).toFixed(2):'';
-  $('housePaymentAmount').readOnly=true;
-  $('housePaymentSubmit').disabled=!item||item.estado==='EN_REVISION';
-  $('housePaymentPreview').textContent=item?(item.estado==='EN_REVISION'?'Ya existe un comprobante en revisión. Espera la respuesta de Administración.':'Se registrará '+fmt(item.monto)+' de '+item.concepto+' ('+item.periodo+'). Este concepto NO modifica los TAGs.'):'No hay conceptos pendientes en esta categoría.';
+  if(resetAmount)$('housePaymentAmount').value=item?Number(item.monto).toFixed(2):'';
+  $('housePaymentAmount').readOnly=type!=='EXTRAORDINARIO';
+  const amount=Number($('housePaymentAmount').value);
+  const valid=Boolean(item)&&Number.isFinite(amount)&&amount>0&&
+   Math.round(amount*100)<=Math.round(Number(item.monto)*100);
+  $('housePaymentSubmit').disabled=!valid||item?.estado==='EN_REVISION';
+  $('housePaymentPreview').textContent=item?(item.estado==='EN_REVISION'
+   ?'Existe un comprobante en revisión. Espera a Administración.'
+   :'Saldo de este cargo: '+fmt(item.monto)+'. Abono que registrarás: '+
+    (Number.isFinite(amount)?fmt(amount):'inválido')+'.'+
+    (!valid?' El abono debe ser mayor a cero y no exceder el saldo.':'')+
+    ' No modifica mantenimiento ni TAGs.'):'No hay cargos pendientes de este proyecto.';
  }
  async function switchPaymentType(){
   const other=isOther();
@@ -1327,7 +1337,7 @@ function renderHouses(){
  }
  const monthsES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  function paymentPreview(){
-   if(isOther()){previewOtherConcept();return;}
+   if(isOther()){previewOtherConcept({resetAmount:false});return;}
    const output=$('housePaymentPreview'),submit=$('housePaymentSubmit');
    submit.disabled=true;
    if(!currentPaymentQuote){output.textContent='Consultando el historial de cuotas…';return;}
@@ -1460,10 +1470,14 @@ function renderHouses(){
     const type=$('housePaymentType').value;
     const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
     if(!activePaymentHouse||!item||item.estado==='EN_REVISION')return;
-    if(!confirm('¿Confirmas que recibiste '+fmt(item.monto)+' de '+activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+item.concepto+'?'))return;
+    const abono=Number($('housePaymentAmount').value);
+    if(!Number.isFinite(abono)||abono<=0||Math.round(abono*100)>Math.round(Number(item.monto)*100)){
+     $('housePaymentStatus').textContent='El abono no puede superar '+fmt(item.monto)+'.';return;
+    }
+    if(!confirm('¿Confirmas que recibiste '+fmt(abono)+' de '+activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+item.concepto+'?'))return;
     $('housePaymentSubmit').disabled=true;
     try{
-     const result=await request('/pagos-concepto',{casaId:Number(activePaymentHouse.casaId),tipoPago:type,conceptoId:Number(item.id),monto:Number(item.monto),formaPago:$('housePaymentMethod').value});
+     const result=await request('/pagos-concepto',{casaId:Number(activePaymentHouse.casaId),tipoPago:type,conceptoId:Number(item.id),monto:abono,formaPago:$('housePaymentMethod').value});
      closeHousePayment();await load();notice(result.message+' Referencia: '+result.data.referencia,'success');
     }catch(e){$('housePaymentStatus').textContent=e.message;await switchPaymentType();}
     return;
