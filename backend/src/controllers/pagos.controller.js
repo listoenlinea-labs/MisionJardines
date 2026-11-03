@@ -8,6 +8,7 @@ const {
 const {CargoExtraordinario,PagoManualConcepto}=require('../models');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
 const {estadoCargos}=require('../services/cargos-extraordinarios.service');
+const {consultarSaldoCargo}=require('../services/saldo-aportaciones-extraordinarias.service');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
 const {fechaMexico}=require('../services/vigencia-calculo');
 const {validarOperacion}=require('../services/mensualidades-mantenimiento');
@@ -352,7 +353,7 @@ async function reportarPago(req, res) {
             if (!Number.isInteger(extraId) || extraId <= 0) {
                 return res.status(400).json({
                     ok: false,
-                    message: 'Selecciona una mensualidad extraordinaria pendiente'
+                    message: 'Selecciona el proyecto al que deseas hacer tu aportación'
                 });
             }
 
@@ -367,7 +368,7 @@ async function reportarPago(req, res) {
             }
 
             requerido = Number(cargoExtraordinario.monto);
-            concepto = 'Cuota extraordinaria: ' + cuotaExtraordinaria.concepto+' · '+cargoExtraordinario.periodo.slice(0,7);
+            concepto = 'Aportación libre al proyecto: ' + cuotaExtraordinaria.concepto;
         } else if(tipoPago==='CASA_CLUB'){
             const reservaId=Number(req.body.reservaCasaClubId);
             reservaCasaClub=await ReservaCasaClub.findOne({where:{id:reservaId,casaId,estatus:'APROBADA',pagado:false}});
@@ -401,16 +402,29 @@ async function reportarPago(req, res) {
             }
         }
 
-        if (!Number.isFinite(monto) || monto <= 0 || (tipoPago !== 'MANTENIMIENTO' && Math.abs(monto - requerido) > 0.009)) {
+        if (!Number.isFinite(monto) || monto <= 0 || (tipoPago === 'CASA_CLUB' && Math.abs(monto - requerido) > 0.009)) {
             return res.status(400).json({
                 ok: false,
-                message: tipoPago === 'MANTENIMIENTO' ? 'El importe debe ser mayor que cero' : 'El comprobante debe corresponder exactamente a $' + requerido.toFixed(2) + ' MXN para este concepto'
+                message: tipoPago === 'CASA_CLUB' ? 'Casa Club requiere exactamente $' + requerido.toFixed(2) + ' MXN' : 'El importe debe ser mayor que cero'
             });
         }
 
         if (!transaction) transaction = await sequelize.transaction();
         if(cargoExtraordinario||reservaCasaClub){
-          if(cargoExtraordinario)await CargoExtraordinario.findByPk(cargoExtraordinario.id,{transaction,lock:transaction.LOCK.UPDATE});
+          if(cargoExtraordinario){
+            // Bloqueo de la meta evita que dos aportaciones simultáneas rebasen el límite.
+            const locked=await CargoExtraordinario.findOne({where:{id:cargoExtraordinario.id,casaId},
+              transaction,lock:transaction.LOCK.UPDATE,
+              include:[{model:CuotaExtraordinaria,as:'cuota',required:true,where:{activo:true}}]});
+            if(!locked)throw Object.assign(new Error('El proyecto ya no está disponible'),{status:409});
+            const saldo=await consultarSaldoCargo(locked,{transaction});
+            if(saldo.restante<=0)throw Object.assign(new Error('Ya se alcanzó la meta de esta vivienda'),{status:409});
+            if(centavos(monto)>centavos(saldo.disponible))throw Object.assign(
+              new Error('Puedes aportar hasta $'+saldo.disponible.toFixed(2)+
+              '. Ya aportado: $'+saldo.abonado.toFixed(2)+
+              '. En revisión: $'+saldo.pendienteValidacion.toFixed(2)+'.'),{status:409});
+            requerido=saldo.restante;
+          }
           if(reservaCasaClub){
             const locked=await ReservaCasaClub.findByPk(reservaCasaClub.id,{transaction,lock:transaction.LOCK.UPDATE});
             if(!locked||locked.estatus!=='APROBADA'||locked.pagado||fechaMexico()>locked.fechaLimitePago){const e=new Error('La reservación ya no está vigente para pagar');e.status=409;throw e;}
@@ -419,7 +433,7 @@ async function reportarPago(req, res) {
           const where=cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id};
           const existenteConcepto=await PagoReportado.findOne({where:{...where,estatus:{[require('sequelize').Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction});
           const manual=await PagoManualConcepto.findOne({where:cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id},transaction});
-          if(existenteConcepto||manual){const e=new Error('Este concepto ya tiene un pago registrado o pendiente de validación');e.status=409;throw e;}
+          if(reservaCasaClub&&(existenteConcepto||manual)){const e=new Error('Esta reserva ya tiene un pago o comprobante pendiente');e.status=409;throw e;}
         }
 
         const year = new Date().getFullYear();

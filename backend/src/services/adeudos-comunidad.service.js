@@ -30,8 +30,15 @@ async function consultarAdeudos(casaId) {
   const reservaIds=reservas.map(r=>r.id);
   const proofs=reservaIds.length?await PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},estatus:'PENDIENTE_VALIDACION'},attributes:['reservaCasaClubId']}):[];
   const submitted=new Set(proofs.map(p=>String(p.reservaCasaClubId)));
-  const extras = cargos.filter(x=>x.estado!=='PAGADO'&&x.periodo.slice(0,7)<=hoy.slice(0,7))
-    .map(x=>({categoria:'EXTRAORDINARIO',id:x.id,concepto:x.concepto,periodo:x.periodo.slice(0,7),monto:x.monto,estado:x.estado}));
+  // La fecha de alta del proyecto NO es un vencimiento. Se muestran todas las
+   // metas activas y lo aportado hasta hoy, sin imponer períodos ni recargos.
+   const extras = cargos.map(x=>({
+    categoria:'EXTRAORDINARIO',id:x.id,concepto:x.concepto,
+    cuotaExtraordinariaId:x.cuotaExtraordinariaId,periodo:x.periodo.slice(0,7),
+    monto:x.monto,montoOriginal:x.montoOriginal,montoPagado:x.montoPagado,
+    montoDisponible:x.montoDisponible,pendienteValidacion:x.pendienteValidacion,
+    estado:x.estado,esAportacionVoluntaria:true
+   }));
   const club = reservas.map(r=>({categoria:'CASA_CLUB',id:r.id,concepto:'Casa club',periodo:r.fecha,monto:Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza),
     renta:Number(r.cuotaRecuperacion),deposito:Number(r.depositoGarantia),limpieza:Number(r.limpieza),fechaLimitePago:r.fechaLimitePago,estado:submitted.has(String(r.id))?'EN_REVISION':'PENDIENTE'}));
   const tipos = {
@@ -43,7 +50,10 @@ async function consultarAdeudos(casaId) {
   const ultimaExtra=cargos.filter(c=>c.estado==='PAGADO').sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo)))[0];
   const nombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
   const ultimoExtra=ultimaExtra?{mes:nombres[Number(String(ultimaExtra.periodo).slice(5,7))-1]||null,anio:Number(String(ultimaExtra.periodo).slice(0,4))}:null;
-  const resumen={...soloMantenimiento.resumen,EXTRAORDINARIO:{ultimoMesPagado:ultimoExtra,saldoPendiente:totales.EXTRAORDINARIO,saldoFavor:0},CASA_CLUB:{ultimoMesPagado:null,saldoPendiente:totales.CASA_CLUB,saldoFavor:0}};
+  const resumen={...soloMantenimiento.resumen,EXTRAORDINARIO:{ultimoMesPagado:ultimoExtra,saldoPendiente:totales.EXTRAORDINARIO,saldoFavor:0,
+    totalMeta:Math.round(cargos.reduce((a,c)=>a+Math.round(Number(c.montoOriginal)*100),0))/100,
+    totalAbonado:Math.round(cargos.reduce((a,c)=>a+Math.round(Number(c.montoPagado)*100),0))/100,
+    enRevision:Math.round(cargos.reduce((a,c)=>a+Math.round(Number(c.pendienteValidacion)*100),0))/100},CASA_CLUB:{ultimoMesPagado:null,saldoPendiente:totales.CASA_CLUB,saldoFavor:0}};
   return {casaId,fechaConsulta:hoy,tipos,totales,resumen,total:Math.round(Object.values(totales).reduce((a,b)=>a+b,0)*100)/100,
     cantidad:Object.values(tipos).reduce((a,b)=>a+b.length,0)};
 }

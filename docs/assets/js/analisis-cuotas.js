@@ -485,10 +485,10 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     ['Viviendas',String(seleccionado.viviendas)],
     ['Meta',fmt(seleccionado.totalEsperado)],
     ['Recaudado',fmt(seleccionado.recaudado)],
-    ['Saldo pendiente',fmt(seleccionado.saldoPendiente)],
+    ['Falta para la meta',fmt(seleccionado.saldoPendiente)],
     ['Cumplidas',String(seleccionado.cumplidos)],
     ['Abonos parciales',String(seleccionado.parciales)],
-    ['Pendientes',String(seleccionado.pendientes)],
+    ['Sin aportaciones',String(seleccionado.pendientes)],
     ['Avance',String(seleccionado.porcentaje)+'%']
    ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')
     :'<p class="hint">Crea un proyecto o importa las aportaciones históricas de los dos Excel.</p>';
@@ -585,10 +585,12 @@ function renderHouses(){
     ? 'Vivienda seleccionada: '+selected.calle+' '+selected.numero+' · '+(selected.nombre||'Sin residente')
     : 'Selecciona una sola vivienda para generar el recibo de su último pago registrado.';
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
-  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(String(h.estatus||'').toUpperCase()==='PENDIENTE'&&Number(h.saldoPendiente)>0?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
+  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&String(h.estatus||'').toUpperCase()==='PENDIENTE'&&Number(h.saldoPendiente)>0?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
-    houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
+    houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+      ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA'}[h.estatus]||h.estatus)
+      :h.estatus)+'</span>')+
     houseCell('Pagado','<button type="button" class="house-paid-history'+(h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?(Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
        :(Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos'))+'</strong></button>')+
@@ -1309,18 +1311,25 @@ function renderHouses(){
  function previewOtherConcept({resetAmount=true}={}){
   const type=$('housePaymentType').value;
   const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
-  if(resetAmount)$('housePaymentAmount').value=item?Number(item.monto).toFixed(2):'';
+  if(resetAmount)$('housePaymentAmount').value=item?Number(type==='EXTRAORDINARIO'
+    ?item.montoDisponible??item.monto:item.monto).toFixed(2):'';
   $('housePaymentAmount').readOnly=type!=='EXTRAORDINARIO';
   const amount=Number($('housePaymentAmount').value);
   const valid=Boolean(item)&&Number.isFinite(amount)&&amount>0&&
-   Math.round(amount*100)<=Math.round(Number(item.monto)*100);
-  $('housePaymentSubmit').disabled=!valid||item?.estado==='EN_REVISION';
-  $('housePaymentPreview').textContent=item?(item.estado==='EN_REVISION'
-   ?'Existe un comprobante en revisión. Espera a Administración.'
-   :'Saldo de este cargo: '+fmt(item.monto)+'. Abono que registrarás: '+
-    (Number.isFinite(amount)?fmt(amount):'inválido')+'.'+
-    (!valid?' El abono debe ser mayor a cero y no exceder el saldo.':'')+
-    ' No modifica mantenimiento ni TAGs.'):'No hay cargos pendientes de este proyecto.';
+   Math.round(amount*100)<=Math.round(Number(type==='EXTRAORDINARIO'
+      ?item.montoDisponible??item.monto:item.monto)*100);
+  $('housePaymentSubmit').disabled=!valid||(type==='CASA_CLUB'&&item?.estado==='EN_REVISION');
+  $('housePaymentPreview').textContent=item?(type==='CASA_CLUB'&&item.estado==='EN_REVISION'
+   ?'Existe un comprobante de Casa Club en revisión.'
+   :(type==='EXTRAORDINARIO'?
+    'Meta de la vivienda: '+fmt(item.montoOriginal)+'. Ya aportado: '+fmt(item.montoPagado)+
+    '. Falta para la meta: '+fmt(item.monto)+'. En revisión: '+fmt(item.pendienteValidacion||0)+
+    '. Disponible para abonar ahora: '+fmt(item.montoDisponible??item.monto)+'. ':
+    'Total por cubrir: '+fmt(item.monto)+'. ')+
+    'Abono que registrarás: '+(Number.isFinite(amount)?fmt(amount):'inválido')+'.'+
+    (!valid?' Ingresa cualquier importe positivo hasta el disponible.':'')+
+    ' Sin fechas obligatorias, recargos ni cambios a TAGs.')
+   :'No hay aportaciones disponibles de este proyecto.';
  }
  async function switchPaymentType(){
   const other=isOther();
@@ -1469,9 +1478,10 @@ function renderHouses(){
    if(isOther()){
     const type=$('housePaymentType').value;
     const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
-    if(!activePaymentHouse||!item||item.estado==='EN_REVISION')return;
+    if(!activePaymentHouse||!item||(type==='CASA_CLUB'&&item.estado==='EN_REVISION'))return;
     const abono=Number($('housePaymentAmount').value);
-    if(!Number.isFinite(abono)||abono<=0||Math.round(abono*100)>Math.round(Number(item.monto)*100)){
+    if(!Number.isFinite(abono)||abono<=0||Math.round(abono*100)>Math.round(Number(type==='EXTRAORDINARIO'
+      ?item.montoDisponible??item.monto:item.monto)*100)){
      $('housePaymentStatus').textContent='El abono no puede superar '+fmt(item.monto)+'.';return;
     }
     if(!confirm('¿Confirmas que recibiste '+fmt(abono)+' de '+activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+item.concepto+'?'))return;
