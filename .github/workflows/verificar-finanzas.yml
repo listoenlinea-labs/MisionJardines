@@ -35,6 +35,15 @@ jobs:
       - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
         working-directory: backend
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Cuotas extraordinarias de $0 y distribución exacta del presupuesto
+        run: |
+          node --check docs/assets/js/proyectos-presupuesto.js
+          node --check backend/src/services/proyectos-presupuesto.service.js
+          node --check backend/src/services/proyectos-extraordinarios.service.js
+          node --check backend/src/services/proyectos-extraordinarios-validacion.service.js
+          node --check backend/src/services/proyectos-cuotas-version.service.js
+          node --test backend/test/proyectos-presupuesto.test.js backend/test/proyectos-cuotas-version.test.js backend/test/proyectos-cero-edicion.test.js
+          node --test --test-name-pattern='la tarifa especial .0 reduce meta' backend/test/proyectos-extraordinarios-reglas.test.js
       - name: Diagnóstico seguro de conexión C3-200
         run: |
           node --check backend/src/services/zkteco-diagnostico-conexion.service.js
