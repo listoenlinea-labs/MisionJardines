@@ -7,6 +7,7 @@ const {Casa,CuotaExtraordinaria:Proyecto,CargoExtraordinario:Cargo,
 const {padronOficial}=require('./cargos-extraordinarios.service');
 const {norm,cents,validarPaquete,fail}=require('./proyectos-extraordinarios-validacion.service');
 const {fechaMexico}=require('./vigencia-calculo');
+const {distribuirPresupuesto}=require('./proyectos-presupuesto.service');
 
 function juntar(proyectos,cargos,aportes,manuales,reportados,viviendas){
  const base=new Map((viviendas||[]).map(h=>[String(h.casaId??h.id),h]));
@@ -133,10 +134,22 @@ async function crearLote(body,admin,{aceptarDiferencias=false,confirmarTarifas=f
  });
 }
 async function crearProyecto(input,actor){
+ let cuotaBase=input?.cuotaBase,tarifasEspeciales=input?.tarifasEspeciales||[];
+ if(input?.montoTotal!==undefined){
+  // La API recalcula el presupuesto: no acepta montos calculados en el navegador.
+  const padron=await padronOficial();
+  const distribuido=distribuirPresupuesto(padron,input.montoTotal,input.excepciones||[]);
+  cuotaBase=distribuido.cuotaBase;
+  const porId=new Map(padron.map(h=>[Number(h.id),h]));
+  tarifasEspeciales=distribuido.cargos.filter(c=>c.monto!==cuotaBase).map(c=>{
+   const h=porId.get(c.casaId);
+   return {calle:h.calleCorrecta||h.calle,numero:String(h.numero),monto:c.monto};
+  });
+ }
  const proyecto={
   codigo:'MJPROY-'+randomUUID().replace(/-/g,'').slice(0,16).toUpperCase(),
-  nombre:input?.nombre,fechaInicio:input?.fechaInicio,cuotaBase:input?.cuotaBase,
-  tarifasEspeciales:input?.tarifasEspeciales||[],aportaciones:[]
+  nombre:input?.nombre,fechaInicio:input?.fechaInicio,cuotaBase,
+  tarifasEspeciales,aportaciones:[]
  };
  return crearLote({version:1,padronEsperado:231,proyectos:[proyecto]},actor,{confirmarTarifas:true});
 }
@@ -152,7 +165,7 @@ async function ajustarCuota(proyectoId,casaId,importe,actor){
   const [aportes,manuales,bancos]=await Promise.all([
    Aportacion.findAll({where:{cargoExtraordinarioId:cargo.id},transaction:tx}),
    PagoManualConcepto.findAll({where:{cargoExtraordinarioId:cargo.id},transaction:tx}),
-   PagoReportado.findAll({where:{cargoExtraordinarioId:cargo.id,estatus:'VALIDADO'},transaction:tx})
+   PagoReportado.findAll({where:{cargoExtraordinarioId:cargo.id,estatus:{[Op.in]:['VALIDADO','PENDIENTE_VALIDACION']}},transaction:tx})
   ]);
   const pagado=[...aportes,...manuales,...bancos].reduce((sum,a)=>sum+cents(a.monto),0);
   if(cents(nuevo)<pagado)throw fail(409,'La nueva cuota no puede ser menor al total ya recibido para esta vivienda.');
