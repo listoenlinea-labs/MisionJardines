@@ -630,22 +630,36 @@ function renderHouses(){
  };
  function paintTariffSavedIndicator(state){
   const badge=$('houseTariffSavedState');
-  const labels={exempt:'Exención guardada',active:'Recargo activo · Guardado',pending:'Cambios sin guardar',unknown:'Sin verificar'};
+  const project=activeConcept==='EXTRAORDINARIO';
+  const labels=project?{active:'Cuota guardada',pending:'Cambios sin guardar',unknown:'Sin verificar'}:
+   {exempt:'Exención guardada',active:'Recargo activo · Guardado',pending:'Cambios sin guardar',unknown:'Sin verificar'};
   badge.dataset.state=state;
   $('houseTariffSavedText').textContent=labels[state]||labels.unknown;
  }
  function syncTariffIndicator(){
-  if(!savedTariffSettings||currentHistoryHouseId!==savedTariffSettings.casaId){
-   paintTariffSavedIndicator('unknown');return;
-  }
-  const changed=Number($('houseTariffInput').value)!==savedTariffSettings.tarifa||
-   $('houseTariffNoFee').checked!==savedTariffSettings.sinRecargo;
-  paintTariffSavedIndicator(changed?'pending':savedTariffSettings.sinRecargo?'exempt':'active');
+  if(!savedTariffSettings||currentHistoryHouseId!==savedTariffSettings.casaId||
+     savedTariffSettings.tipo!==activeConcept){paintTariffSavedIndicator('unknown');return;}
+  const changed=Math.round(Number($('houseTariffInput').value)*100)!==Math.round(savedTariffSettings.tarifa*100)||
+   (activeConcept==='MANTENIMIENTO'&&$('houseTariffNoFee').checked!==savedTariffSettings.sinRecargo);
+  paintTariffSavedIndicator(changed?'pending':activeConcept==='MANTENIMIENTO'&&savedTariffSettings.sinRecargo?'exempt':'active');
  }
  function showSavedTariff(house){
-  savedTariffSettings={casaId:Number(house.casaId),tarifa:Number(house.tarifaMensual||300),sinRecargo:houseHasNoFee(house)};
-  $('houseTariffAddress').textContent=house.calle+' '+house.numero;
-  $('houseTariffInput').value=String(savedTariffSettings.tarifa);
+  const project=activeConcept==='EXTRAORDINARIO';
+  const amount=Number(project?house.montoCuota:(house.tarifaMensual||300));
+  savedTariffSettings={casaId:Number(house.casaId),tarifa:amount,
+   sinRecargo:project?false:houseHasNoFee(house),tipo:activeConcept,proyectoId:project?Number(activeProyectoId):null};
+  $('houseTariffAddress').textContent=house.calle+' '+house.numero+
+   (project?' · '+((data?.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(activeProyectoId))?.nombre||'Proyecto'):'');
+  $('houseTariffConceptLabel').textContent=project?'CUOTA EXTRAORDINARIA POR VIVIENDA':'TARIFA POR VIVIENDA';
+  $('houseTariffTitle').textContent=project?'Modificar cuota del proyecto':'Modificar cuotas';
+  $('houseTariffAmountLabel').textContent=project?'Importe por aportar al proyecto (MXN)':'Cuota mensual de mantenimiento (MXN)';
+  $('houseTariffInput').min=project?'0.01':'1';
+  $('houseTariffInput').max=project?'10000000':'10000';
+  $('houseTariffInput').step=project?'0.01':'1';
+  $('houseTariffInput').value=String(amount);
+  $('houseTariffNoFeeWrap').hidden=project;
+  $('houseProjectTariffInfo').hidden=!project;
+  $('houseTariffSave').textContent=project?'Guardar cuota del proyecto':'Guardar cuota mensual';
   $('houseTariffNoFee').checked=savedTariffSettings.sinRecargo;
   syncTariffIndicator();
  }
@@ -729,6 +743,46 @@ function renderHouses(){
   event.preventDefault();
   const casaId=currentHistoryHouseId;
   const cuota=Number($('houseTariffInput').value);
+  if(activeConcept==='EXTRAORDINARIO'){
+   if(!casaId||!activeProyectoId||!Number.isFinite(cuota)||cuota<=0||cuota>10000000||
+      Math.abs(cuota*100-Math.round(cuota*100))>0.001){
+    $('houseTariffStatus').textContent='Ingresa un importe válido con máximo dos decimales.';
+    return;
+   }
+   const house=data?.viviendas?.find(h=>Number(h.casaId)===casaId);
+   if(!house)return;
+   if(Math.round(cuota*100)<Math.round(Number(house.montoPagado||0)*100)){
+    $('houseTariffStatus').textContent='El importe no puede ser menor a '+fmt(house.montoPagado)+' ya aportados.';
+    return;
+   }
+   if(!confirm('¿Actualizar la cuota extraordinaria de '+house.calle+' '+house.numero+' a '+fmt(cuota)+'? No se alterarán ni los pagos, ni el mantenimiento, ni los TAGs.'))return;
+   const button=$('houseTariffSave');button.disabled=true;
+   $('houseTariffStatus').textContent='Guardando cuota del proyecto…';
+   const pid=Number(activeProyectoId);
+   try{
+    await request('/proyectos-extraordinarios/'+pid+'/viviendas/'+casaId,{monto:cuota},'PATCH');
+    const updated=await load();
+    if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
+    if(!updated){
+     paintTariffSavedIndicator('unknown');
+     $('houseTariffStatus').textContent='Se guardó el cambio, pero no se pudo comprobar al recargar. Verifica antes de repetirlo.';
+     return;
+    }
+    const focus=historyReturnFocus;
+    await openHouseHistory(casaId,focus);
+    if(historyModal.hidden||currentHistoryHouseId!==casaId)return;
+    tariffPanel.hidden=false;
+    const actual=data?.viviendas?.find(h=>Number(h.casaId)===casaId);
+    if(actual)showSavedTariff(actual);
+    const ok=Number(activeProyectoId)===pid&&Math.round(Number(actual?.montoCuota||0)*100)===Math.round(cuota*100);
+    $('houseTariffStatus').textContent=ok
+     ?'Cuota extraordinaria de '+fmt(cuota)+' guardada. Se recalcularon los saldos y metas.'
+     :'No se pudo confirmar el importe en la lectura nueva. Revisa el proyecto.';
+    if(!ok)paintTariffSavedIndicator('unknown');
+   }catch(error){$('houseTariffStatus').textContent=error.message;}
+   finally{button.disabled=false;}
+   return;
+  }
   if(!casaId||!Number.isInteger(cuota)||cuota<1||cuota>10000){
    $('houseTariffStatus').textContent='Ingresa una cuota mensual entera de $1 a $10,000.';
    return;
