@@ -49,7 +49,7 @@ async function analizar(req,res){
    ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado']}),
    PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']}),
-    AportacionExtraordinaria.findAll({attributes:['id','cuotaExtraordinariaId','cargoExtraordinarioId','casaId','fecha','monto','referencia']})
+    AportacionExtraordinaria.findAll({attributes:['id','cuotaExtraordinariaId','cargoExtraordinarioId','casaId','fecha','monto','referencia','origen']})
   ]);
   const egresosHistoricos=await Egreso.findAll({
    where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto'],raw:true
@@ -123,8 +123,10 @@ async function analizar(req,res){
   // No sumar de nuevo los bancos de mantenimiento, incluidos por referencia.
   const ingresosBase=cobranzaMantenimiento.recibidoMes+
    ingresosReportados.extraordinarios+ingresosReportados.casaClub;
+  // Los importes del Excel son un historial de cobranza, no depósitos nuevos:
+  // NO sumarlos otra vez al flujo de caja hasta conciliar con contabilidad.
   const ingresosAportacionesExtraordinarias=aportacionesExtraordinarias
-    .filter(x=>String(x.fecha).slice(0,10)>=start&&String(x.fecha).slice(0,10)<=end)
+    .filter(x=>x.origen!=='EXCEL_HISTORICO'&&String(x.fecha).slice(0,10)>=start&&String(x.fecha).slice(0,10)<=end)
     .reduce((sum,x)=>sum+num(x.monto),0);
   const ingresosParaBalance=ingresosBase+ingresosAdicionales+totalManualConcepto+ingresosAportacionesExtraordinarias;
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
