@@ -96,7 +96,8 @@ async function analizar(req,res){
     row.ultimoPago=historialConcepto(tipo,bancosConceptos.get(casaId)||[],manualesConceptos.get(casaId)||[])[0]||null;
    }
   }
-  // Fecha del MOVIMIENTO (no mensualidad cubierta), agrupado por referencia.
+  // Las gráficas imputan cada cuota por mes cubierto; se conserva el flujo de caja
+  // independiente para balance y no se vuelven a sumar bancos conciliados.
   const cobranzaMantenimiento=agrupacionMantenimiento({
    padron:padron.casas,cuotas:historialCuotas,
    comprobantes:require('../services/pagos-reparto-datos').desglosar(comprobantesMantenimiento),
@@ -115,7 +116,7 @@ async function analizar(req,res){
   const ingresosAdicionales=ingresosManuales.filter(x=>x.tipo!=='SALDO_INICIAL').reduce((a,x)=>a+num(x.monto),0);
   const saldoInicial=ingresosManuales.filter(x=>x.tipo==='SALDO_INICIAL').reduce((a,x)=>a+num(x.monto),0);
   // No sumar de nuevo los bancos de mantenimiento, incluidos por referencia.
-  const ingresosBase=cobranzaMantenimiento.mes+
+  const ingresosBase=cobranzaMantenimiento.recibidoMes+
    ingresosReportados.extraordinarios+ingresosReportados.casaClub;
   const ingresosParaBalance=ingresosBase+ingresosAdicionales+totalManualConcepto;
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
@@ -157,7 +158,7 @@ async function analizar(req,res){
    ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>({...e.toJSON(),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))})),
-   avisoConciliacion:'Ingresos acumulados de mantenimiento por vivienda: cuotas pagadas, abonos y bancos conciliados, agrupados por movimiento. Se incluyen históricos sin fecha en el acumulado, pero no en un mes concreto.'
+   avisoConciliacion:'Los ingresos por calle se asignan a la mensualidad cubierta (con recargo efectivamente pagado). El saldo de caja se calcula por fecha del cobro, sin duplicar depósitos. Los movimientos sin período requieren conciliación.'
   }});
  }catch(e){return sendErr(res,e);}
 }
