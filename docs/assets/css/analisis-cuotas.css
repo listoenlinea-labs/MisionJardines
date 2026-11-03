@@ -955,3 +955,27 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
  #financeIncomeCard .bar-row{grid-template-columns:minmax(78px,110px) minmax(28px,1fr) minmax(68px,82px);gap:7px}
  #financeIncomeCard .bar-row b{font-size:10px}
 }
+
+/* Resumen financiero mensual y desglose histórico bajo demanda. */
+.finance-expense-select{display:block;width:100%;margin:0;padding:6px 8px;border:1px solid transparent;
+ border-radius:10px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer;
+ transition:background .15s ease,border-color .15s ease}
+.finance-expense-select:hover{background:#fbf5f0;border-color:#f0d5cb}
+.finance-expense-select:focus-visible{outline:3px solid #e6a57f;outline-offset:2px}
+.finance-expense-select.is-selected{background:#fff4eb;border-color:#e8bfa9}
+.finance-expense-select .bar-row{width:100%;margin:0}
+.finance-expense-select .bar-row strong{min-width:0}
+.finance-expense-select .bar-row .track{pointer-events:none}
+.finance-expense-click-hint{margin:4px 0 12px}
+.finance-expense-history[hidden]{display:none!important}
+.finance-expense-history{margin-top:17px;padding:13px;border:1px solid #e4dbe9;border-radius:13px;
+ background:#fefcff}
+.finance-expense-history-heading{display:flex;align-items:center;justify-content:space-between;
+ gap:12px;margin-bottom:7px}
+.finance-expense-history-heading h3{font-size:15px;margin:0;color:#35445d}
+.finance-expense-history-heading button{flex:0 0 auto}
+.finance-expense-history .finance-monthly-table{max-height:440px;overflow:auto}
+.finance-expense-history .finance-monthly-table th,
+.finance-expense-history .finance-monthly-table td{font-variant-numeric:tabular-nums}
+.finance-expense-history .finance-monthly-table tfoot{background:#f5edf6}
+@media(max-width:700px){.finance-expense-history{padding:10px}.finance-expense-select{padding:6px 3px}}
