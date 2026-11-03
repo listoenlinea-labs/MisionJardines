@@ -2041,7 +2041,7 @@ function renderHouses(){
  // para nuevos proyectos y del editor individual en el Historial de pagos.
  const bulkModal=$('financeProjectBulkModal');
  let bulkProjectId=null,bulkProjectName='',bulkExceptions=new Map(),bulkPaid=new Map(),
-  bulkSaving=false,bulkPreviousFocus=null,bulkOpening=false;
+  bulkSaving=false,bulkPreviousFocus=null,bulkOpening=false,bulkOriginalSnapshot=null;
  const bulkHouses=()=>[...(data?.viviendasMantenimiento||[])].sort((a,b)=>
   String(a.calle).localeCompare(String(b.calle),'es',{numeric:true})||
   String(a.numero).localeCompare(String(b.numero),'es',{numeric:true}));
@@ -2097,13 +2097,14 @@ function renderHouses(){
  function closeBulk(){
   if(bulkSaving||bulkOpening)return;
   bulkModal.hidden=true;
-  bulkProjectId=null;bulkPreviousFocus?.focus();bulkPreviousFocus=null;
+  bulkProjectId=null;bulkOriginalSnapshot=null;bulkPreviousFocus?.focus();bulkPreviousFocus=null;
  }
  async function openBulk(){
   if(bulkOpening||bulkSaving)return;
   if(activeConcept!=='EXTRAORDINARIO'||!activeProyectoId){notice('Selecciona un proyecto extraordinario.');return;}
   bulkOpening=true;
   const originalId=Number(activeProyectoId),button=$('financeProjectRulesEdit');
+  bulkPreviousFocus=button;
   button.disabled=true;
   try{
    // La vista del historial individual y este editor parten de la MISMA lectura fresca.
@@ -2127,7 +2128,8 @@ function renderHouses(){
     if(value!==amount)bulkExceptions.set(id,(value/100).toFixed(2));
    }
    bulkProjectId=originalId;bulkProjectName=project.nombre;
-   bulkPreviousFocus=document.activeElement;
+   bulkOriginalSnapshot={cuotaBase:amount/100,
+    cargos:cargos.map(c=>({casaId:Number(c.casaId),monto:Number(c.montoCuota)}))};
    $('financeBulkBase').value=(amount/100).toFixed(2);
    $('financeBulkSearch').value='';
    $('financeBulkTitle').textContent='Modificar metas de '+project.nombre;
@@ -2220,7 +2222,8 @@ function renderHouses(){
   try{
    const result=await request('/proyectos-extraordinarios/'+projectId+'/cuotas',{
     cuotaBase:computed.base/100,
-    excepciones:[...bulkExceptions].map(([casaId,value])=>({casaId,monto:bulkCents(value)/100}))
+    excepciones:[...bulkExceptions].map(([casaId,value])=>({casaId,monto:bulkCents(value)/100})),
+    snapshot:bulkOriginalSnapshot
    },'PATCH');
    bulkSaving=false;closeBulk();
    const refreshed=await load();
