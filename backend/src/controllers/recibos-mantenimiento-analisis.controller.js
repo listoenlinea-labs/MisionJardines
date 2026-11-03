@@ -1,7 +1,22 @@
 'use strict';
 
 const recibos = require('../services/recibo-mantenimiento-analisis.service');
+const extra = require('../services/recibo-extraordinario-analisis.service');
 const jwt = require('jsonwebtoken');
+function contexto(req){
+ const concepto=String(req.query?.concepto||'MANTENIMIENTO').toUpperCase();
+ if(!['MANTENIMIENTO','EXTRAORDINARIO'].includes(concepto))
+  throw Object.assign(new Error('Concepto de recibo inválido'),{status:400});
+ return {concepto,proyectoId:concepto==='EXTRAORDINARIO'?extra.proyectoValido(req.query.proyectoId):null};
+}
+async function consultar(req,id,periodo,referencia){
+ const {concepto,proyectoId}=contexto(req);
+ if(concepto==='EXTRAORDINARIO'){
+  if(periodo)throw Object.assign(new Error('Los proyectos no tienen mensualidades'),{status:400});
+  return extra.consultarPago(id,proyectoId,referencia);
+ }
+ return recibos.consultarPago(id,periodo,referencia);
+}
 const VISTA_AUD='mj-recibo-visor';
 const VISTA_ISS='mision-jardines';
 
@@ -45,7 +60,7 @@ function responderError(res, error) {
 
 async function datosRecibo(req, res) {
     try {
-        const { casa, resumen } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req), referenciaSolicitada(req));
+        const { casa, resumen } = await consultar(req,casaIdSolicitada(req), periodoSolicitado(req), referenciaSolicitada(req));
         const telefonos = await recibos.consultarTelefonos(casa);
         res.setHeader('Cache-Control', 'private, no-store');
         return res.json({ ok: true, data: { ...resumen, telefonos } });
@@ -56,7 +71,7 @@ async function datosRecibo(req, res) {
 
 async function pdfRecibo(req, res) {
     try {
-        const { recibo } = await recibos.consultarPago(casaIdSolicitada(req), periodoSolicitado(req), referenciaSolicitada(req));
+        const { recibo } = await consultar(req,casaIdSolicitada(req), periodoSolicitado(req), referenciaSolicitada(req));
         const { buffer, nombreArchivo } = await recibos.generarPdf(recibo);
         const nombreSeguro = nombreArchivo.replace(/[^a-zA-Z0-9._-]/g, '_');
         res.setHeader('Cache-Control', 'private, no-store');
@@ -74,8 +89,9 @@ async function urlVistaRecibo(req,res){
  try{
   const casaId=casaIdSolicitada(req),periodo=periodoSolicitado(req),referencia=referenciaSolicitada(req);
   // Evita emitir enlaces para viviendas o movimientos no autorizados/inexistentes.
-  await recibos.consultarPago(casaId,periodo,referencia);
-  const permiso=jwt.sign({tipo:'vista-recibo',casaId,periodo,referencia,usuarioId:req.usuario.usuarioId},
+  await consultar(req,casaId,periodo,referencia);
+  const {concepto,proyectoId}=contexto(req);
+  const permiso=jwt.sign({tipo:'vista-recibo',casaId,periodo,referencia,concepto,proyectoId,usuarioId:req.usuario.usuarioId},
    process.env.JWT_SECRET,{expiresIn:'5m',audience:VISTA_AUD,issuer:VISTA_ISS});
   res.setHeader('Cache-Control','private, no-store');
   return res.json({ok:true,data:{url:'/api/recibo-vista/'+encodeURIComponent(permiso)}});
@@ -91,7 +107,9 @@ async function vistaPdfTemporal(req,res){
    {audience:VISTA_AUD,issuer:VISTA_ISS});
   if(payload.tipo!=='vista-recibo'||!Number.isSafeInteger(payload.casaId)||payload.casaId<1)
    return res.status(403).json({ok:false,message:'Pase de recibo inválido'});
-  const {recibo}=await recibos.consultarPago(payload.casaId,payload.periodo||null,payload.referencia||null);
+  const {recibo}=payload.concepto==='EXTRAORDINARIO'
+   ?await extra.consultarPago(payload.casaId,payload.proyectoId,payload.referencia||null)
+   :await recibos.consultarPago(payload.casaId,payload.periodo||null,payload.referencia||null);
   const {buffer,nombreArchivo}=await recibos.generarPdf(recibo);
   const nombreSeguro=nombreArchivo.replace(/[^a-zA-Z0-9._-]/g,'_');
   res.setHeader('Cache-Control','private, no-store');
