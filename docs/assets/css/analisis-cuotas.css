@@ -1152,3 +1152,127 @@ body.page-analisis .analysis-chart-card.is-expanded .analysis-chart-panel:not([h
   .finance-monthly-columns .finance-chart-card .finance-income-select,
   .finance-monthly-columns .finance-chart-card .finance-expense-select{transition:none}
 }
+
+
+/* PR UI: gráficos de ingresos y egresos más compactos, sin espacio entre
+   renglones y con un divisor muy sutil que no bloquea el hover. */
+.finance-monthly-columns .finance-chart-card .money-bars{
+  display:grid;
+  gap:0;
+  margin:3px 0 8px;
+  overflow:visible;
+}
+.finance-monthly-columns .finance-chart-card .finance-income-select,
+.finance-monthly-columns .finance-chart-card .finance-expense-select{
+  position:relative;
+  min-height:37px;
+  padding:6px 9px;
+  border-radius:8px;
+}
+.finance-monthly-columns .finance-chart-card .money-bars > button:not(:first-child)::before{
+  content:"";
+  position:absolute;
+  left:9px;
+  right:9px;
+  top:0;
+  height:1px;
+  background:#e7eaf0;
+  pointer-events:none;
+}
+.finance-monthly-columns .finance-chart-card .bar-row .track{
+  height:13px;
+}
+.finance-monthly-columns .finance-chart-card .bar-row strong{
+  line-height:1.15;
+}
+.finance-monthly-columns .finance-chart-card .bar-row b{
+  line-height:1.15;
+}
+@media(max-width:700px){
+  .finance-monthly-columns .finance-chart-card .finance-income-select,
+  .finance-monthly-columns .finance-chart-card .finance-expense-select{
+    min-height:35px;
+    padding:6px 7px;
+  }
+}
+
+/* Compactar la consulta sin eliminar los anuncios accesibles del orden. */
+.finance-visually-hidden{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+
+/* Cuatro acciones, una sola línea. A ancho reducido se desplazan
+   horizontalmente; los botones nunca se cortan ni se apilan. */
+body.page-analisis .finance-export-tools.finance-actions-row{
+  box-sizing:border-box;
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  justify-content:flex-start;
+  align-items:center;
+  gap:8px;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  padding:4px 0 7px;
+  margin:4px 0 8px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-inline:contain;
+  scrollbar-width:thin;
+  -webkit-overflow-scrolling:touch;
+}
+body.page-analisis .finance-actions-row >button,
+body.page-analisis .finance-actions-row #financeGenerateReceipt{
+  box-sizing:border-box;
+  flex:0 0 auto;
+  width:auto!important;
+  min-width:0!important;
+  min-height:40px;
+  padding:9px 13px;
+  font-size:11px;
+  line-height:1.2;
+  border-radius:10px;
+  white-space:nowrap;
+  grid-column:auto!important;
+}
+body.page-analisis .finance-actions-row >button:first-child{
+  margin-left:auto;
+}
+body.page-analisis .finance-actions-row .finance-receipt-inline{
+  display:contents;
+  border:0;
+  background:transparent;
+  padding:0;
+  margin:0;
+}
+body.page-analisis .finance-actions-row .finance-receipt-inline[hidden]{
+  display:none!important;
+}
+body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+@media(max-width:700px){
+  body.page-analisis .finance-actions-row >button,
+  body.page-analisis .finance-actions-row #financeGenerateReceipt{
+    min-height:39px;
+    padding:9px 12px;
+  }
+}
+
+/* El campo Concepto ocupa el espacio liberado por la nota de referencia;
+   la referencia sigue generándose automáticamente en el servidor. */
+.expense-form > .expense-concept-field{
+  grid-column:span 2;
+}
+@media(max-width:700px){
+  .expense-form > .expense-concept-field{grid-column:auto}
+}

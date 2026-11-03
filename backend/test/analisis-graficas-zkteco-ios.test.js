@@ -89,7 +89,7 @@ test('paneles de ingresos y egresos tienen ocho barras gemelas y hover accesible
  assert.match(css,/\.finance-chart-card \.finance-income-select \.bar-row,/);
  assert.match(css,/\.finance-chart-card \.finance-expense-select \.bar-row/);
  assert.match(css,/grid-template-columns:minmax\(86px,138px\) minmax\(20px,1fr\) minmax\(72px,95px\)/);
- assert.match(css,/\.finance-chart-card \.bar-row \.track\s*\{\s*height:16px/);
+ assert.match(css,/\.finance-chart-card \.bar-row \.track\s*\{\s*height:13px/);
  assert.match(css,/\.finance-income-select:hover/);
  assert.match(css,/\.finance-expense-select:hover/);
  assert.match(css,/:focus-visible/);
@@ -141,9 +141,9 @@ test('entrada de TAG conserva ceros iniciales y elimina caracteres no numéricos
 test('nuevas versiones se cargan desde app shell, análisis y zkteco',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*graficas-alineadas-colapsadas-20261103/);
+ assert.match(shell,/_mjVersion.*finanzas-compactas-toolbar-20261103/);
  assert.match(shell,/_mjVersion.*tag-ios-sin-autofill-20261103/);
- assert.match(app,/app-shell\.js\?v=20261103-graficas-tag-ios/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-graficas-colapsadas/);
- assert.match(html,/analisis-cuotas\.css\?v=20261103-graficas-uniformes/);
+ assert.match(app,/app-shell\.js\?v=20261103-finanzas-compactas/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-compactar-finanzas/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261103-compactar-finanzas/);
 });

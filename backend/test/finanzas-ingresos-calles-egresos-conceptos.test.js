@@ -145,9 +145,9 @@ test('historical sin fecha en varias calles y anualidad se contabiliza una sola 
 test('el portal fuerza la carga de Análisis de cuotas actualizado en iframe',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const html=root('docs/analisis-cuotas.html'),app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*graficas-alineadas-colapsadas-20261103/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-editar-egresos-mensuales/);
- assert.match(app,/app-shell\.js\?v=20261103-editar-egresos-mensuales/);
+ assert.match(shell,/_mjVersion.*finanzas-compactas-toolbar-20261103/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-compactar-finanzas/);
+ assert.match(app,/app-shell\.js\?v=20261103-finanzas-compactas/);
 });
 
 test('ambos gráficos muestran solo el mes seleccionado y no el acumulado histórico',()=>{
