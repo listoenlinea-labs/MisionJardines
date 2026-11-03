@@ -520,6 +520,10 @@ function renderHouses(){
   if(!selectionAvailable||!visible.some(h=>Number(h.casaId)===selectedReceiptHouseId))selectedReceiptHouseId=null;
   const selected=visible.find(h=>Number(h.casaId)===selectedReceiptHouseId);
   $('financeGenerateReceipt').disabled=!selected;
+  $('financeGenerateReceipt').title=selected
+    ?'Generar recibo de '+selected.calle+' '+selected.numero
+    :'Selecciona una vivienda de la tabla para generar su recibo';
+  $('financeGenerateReceipt').setAttribute('aria-label',$('financeGenerateReceipt').title);
   $('financeReceiptSelection').textContent=selected
     ? 'Vivienda seleccionada: '+selected.calle+' '+selected.numero+' · '+(selected.nombre||'Sin residente')
     : 'Selecciona una sola vivienda para generar el recibo de su último pago registrado.';
