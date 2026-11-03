@@ -141,9 +141,9 @@ test('entrada de TAG conserva ceros iniciales y elimina caracteres no numéricos
 test('nuevas versiones se cargan desde app shell, análisis y zkteco',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*egreso-proyecto-20261103/);
+ assert.match(shell,/_mjVersion.*proyectos-extraordinarios-20261103/);
  assert.match(shell,/_mjVersion.*tag-ios-sin-autofill-20261103/);
- assert.match(app,/app-shell\.js\?v=20261103-egreso-proyecto/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-egreso-proyecto/);
- assert.match(html,/analisis-cuotas\.css\?v=20261103-compactar-finanzas/);
+ assert.match(app,/app-shell\.js\?v=20261103-proyectos-extraordinarios/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-proyectos-extraordinarios/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261103-proyectos-extraordinarios/);
 });
