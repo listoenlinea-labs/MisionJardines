@@ -43,8 +43,9 @@ function validarPaquete(body,padron){
    const k=key(v.calle,v.numero);const house=map.get(k);
    if(!house){errors.push('Tarifa especial sin vivienda: '+String(v.calle)+' '+String(v.numero));continue;}
    if(overrides.has(String(house.id))){errors.push('Tarifa especial duplicada: '+String(v.calle)+' '+String(v.numero));continue;}
+   if(v.monto==null||String(v.monto).trim()==='')
+    throw fail(400,'Cada tarifa especial requiere un importe explícito (se admite $0.00).');
    const m=cents(v.monto);
-   if(!m)throw fail(400,'Cada tarifa especial debe ser mayor a $0.');
    overrides.set(String(house.id),m);
    if(v.requiereConfirmacion)sinConfirmar++;
   }

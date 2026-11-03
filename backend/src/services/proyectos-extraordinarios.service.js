@@ -155,9 +155,11 @@ async function crearProyecto(input,actor){
  return crearLote({version:1,padronEsperado:231,proyectos:[proyecto]},actor,{confirmarTarifas:true});
 }
 async function ajustarCuota(proyectoId,casaId,importe,actor){
+ if(importe==null||String(importe).trim()==='')
+  throw fail(400,'Ingresa la cuota extraordinaria; se admite $0.00.');
  const pid=Number(proyectoId),cid=Number(casaId),admin=Number(actor),nuevo=cents(importe)/100;
  if(!Number.isSafeInteger(pid)||pid<1||!Number.isSafeInteger(cid)||cid<1||
-  !Number.isSafeInteger(admin)||admin<1||nuevo<=0)throw fail(400,'Proyecto, vivienda o importe inválidos');
+  !Number.isSafeInteger(admin)||admin<1)throw fail(400,'Proyecto, vivienda o importe inválidos');
  return db.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async tx=>{
   const project=await Proyecto.findOne({where:{id:pid,activo:true},transaction:tx,lock:tx.LOCK.UPDATE});
   if(!project)throw fail(404,'Proyecto no encontrado');
@@ -182,15 +184,19 @@ async function ajustarCuota(proyectoId,casaId,importe,actor){
 }
 
 async function ajustarCuotasProyecto(proyectoId,input,actor){
- const pid=Number(proyectoId),admin=Number(actor),base=cents(input?.cuotaBase);
- if(!Number.isSafeInteger(pid)||pid<1||!Number.isSafeInteger(admin)||admin<1||base<=0)
+ if(input?.cuotaBase==null||String(input.cuotaBase).trim()==='')
+  throw fail(400,'Indica la cuota general (se admite $0.00).');
+ const pid=Number(proyectoId),admin=Number(actor),base=cents(input.cuotaBase);
+ if(!Number.isSafeInteger(pid)||pid<1||!Number.isSafeInteger(admin)||admin<1)
   throw fail(400,'Proyecto, administrador o cuota general inválidos.');
  const excepciones=input?.excepciones||[];
  if(!Array.isArray(excepciones)||excepciones.length>231)throw fail(400,'Lista de excepciones inválida.');
  const overrides=new Map();
  for(const item of excepciones){
-  const cid=Number(item?.casaId),amount=cents(item?.monto);
-  if(!Number.isSafeInteger(cid)||cid<1||amount<=0||overrides.has(cid))
+  if(item?.monto==null||String(item.monto).trim()==='')
+   throw fail(400,'La excepción requiere un importe (se admite $0.00).');
+  const cid=Number(item?.casaId),amount=cents(item.monto);
+  if(!Number.isSafeInteger(cid)||cid<1||overrides.has(cid))
    throw fail(400,'Hay una excepción duplicada o una tarifa inválida.');
   overrides.set(cid,amount);
  }
