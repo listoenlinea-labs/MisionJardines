@@ -101,7 +101,7 @@
   function frameUrl(route) {
     const url = new URL(route.target, base);
     url.searchParams.set('_mjFrame', '1');
-    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','income-streets-20261103');
+    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','finanzas-mensuales-conceptos-20261103');
     return url.href;
   }
 
