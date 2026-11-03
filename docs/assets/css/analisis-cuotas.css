@@ -1014,3 +1014,12 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
  .finance-historical-table th,.finance-historical-table td{padding:10px 8px;font-size:11px}
  .finance-history-overlay{padding:10px}
 }
+
+/* Picker es un diálogo que Google inserta fuera de nuestro modal.
+   El overlay financiero tiene z-index:10090 y tapaba su iframe.
+   Mientras Picker está activo, ocultar SOLO el overlay del formulario;
+   nunca marcarlo como hidden, así conservamos el mes y datos ingresados. */
+#financeBackupModal.finance-picker-active{
+ visibility:hidden!important;
+ pointer-events:none!important;
+}
