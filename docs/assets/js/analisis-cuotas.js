@@ -35,8 +35,25 @@
   text.textContent=formatted||'Elegir fecha';
   text.classList.toggle('is-empty',!formatted);
  }
+ // El input nativo está transparente para mostrar DD-MES-AAAA. En Chrome,
+ // tocar la zona de texto solo le da foco; abrir el calendario explícitamente
+ // desde la interacción del usuario permite seleccionar cualquier fecha.
+ function openExpenseDatePicker(input){
+  if(input.disabled||input.readOnly)return;
+  if(typeof input.showPicker==='function'){
+   try{input.showPicker();return;}catch(_){/* Safari/navegador sin picker programático */}
+  }
+  input.focus();
+ }
  const expenseDateInputs=['expenseDate','expenseFilterFrom','expenseFilterTo'].map($);
  expenseDateInputs.forEach(input=>{
+  input.addEventListener('click',()=>openExpenseDatePicker(input));
+  input.addEventListener('keydown',event=>{
+   if(typeof input.showPicker==='function'&&(event.key==='Enter'||event.key===' ')){
+    event.preventDefault();
+    openExpenseDatePicker(input);
+   }
+  });
   input.addEventListener('input',()=>syncExpenseDateDisplay(input));
   input.addEventListener('change',()=>syncExpenseDateDisplay(input));
   syncExpenseDateDisplay(input);
@@ -1661,6 +1678,10 @@ function renderHouses(){
  $('expenseFilterConcept').addEventListener('input',renderExpenses);
  for(const id of ['expenseFilterCategory','expenseFilterFrom','expenseFilterTo','expenseSort'])
   $(id).addEventListener('change',renderExpenses);
+ // Algunos selectores nativos notifican primero input; reflejar el rango en
+ // la tabla sin esperar a que el usuario cierre o pierda foco.
+ for(const id of ['expenseFilterFrom','expenseFilterTo'])
+  $(id).addEventListener('input',renderExpenses);
  $('expenseClearFilters').addEventListener('click',()=>{
   for(const id of ['expenseFilterConcept','expenseFilterCategory','expenseFilterFrom','expenseFilterTo'])$(id).value='';
   expenseDateInputs.forEach(syncExpenseDateDisplay);

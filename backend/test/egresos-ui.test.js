@@ -26,3 +26,19 @@ test('Registro genera referencia en backend después de guardar ID, sin alterar 
   assert.match(controller, /await row\.update\(\{referencia\},\{transaction\}\)/);
   assert.match(js, /saved\.referencia/);
 });
+
+test('Calendarios de egresos abren al hacer clic en toda el área y tienen acceso por teclado', () => {
+  assert.match(js, /function openExpenseDatePicker\(input\)/);
+  assert.match(js, /input\.showPicker\(\)/);
+  assert.match(js, /input\.focus\(\)/);
+  assert.match(js, /input\.addEventListener\('click',\(\)=>openExpenseDatePicker\(input\)\)/);
+  assert.match(js, /event\.key==='Enter'\|\|event\.key===' '/);
+  assert.match(html, /analisis-cuotas\.js\?v=20261103-egresos-filtros-fecha/);
+});
+
+test('Fecha desde y hasta filtran ante input o change sin modificar egresos', () => {
+  assert.match(js, /\(!from\|\|String\(e\.fecha\)>=from\)/);
+  assert.match(js, /\(!to\|\|String\(e\.fecha\)<=to\)/);
+  assert.match(js, /for\(const id of \['expenseFilterFrom','expenseFilterTo'\]\)\s*\$\(id\)\.addEventListener\('input',renderExpenses\)/);
+  assert.match(js, /for\(const id of \['expenseFilterCategory','expenseFilterFrom','expenseFilterTo','expenseSort'\]\)\s*\$\(id\)\.addEventListener\('change',renderExpenses\)/);
+});
