@@ -1324,3 +1324,83 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
 @media(max-width:600px){.finance-rules-controls{grid-template-columns:1fr}.finance-rules-scroll input{width:86px}}
 
 #financeNewProjectRules[hidden]{display:none!important}
+
+
+/* Proyectos extraordinarios · ficha compacta y detalles plegables (nov 2026) */
+.finance-project-panel-compact{padding:13px 16px;margin:12px 0;background:linear-gradient(115deg,#fbf9ff,#f8fbfa)}
+.finance-project-panel-compact .finance-project-top{gap:12px;align-items:end}
+.finance-project-panel-compact .finance-project-top>label{min-width:min(240px,100%);font-size:12px;color:#3a4a64}
+.finance-project-panel-compact .finance-project-top select{height:42px;margin-top:6px}
+.finance-project-panel-compact .finance-project-actions{width:auto;flex:none}
+.finance-project-panel-compact .finance-project-actions .primary{min-height:42px;padding:10px 18px;white-space:nowrap}
+.finance-project-details{margin-top:10px;border:1px solid #e3e7ed;background:#fff;border-radius:11px;overflow:hidden}
+.finance-project-details:not([open])>:not(summary){display:none!important}
+.finance-project-details>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 13px;cursor:pointer;list-style:none;font-size:12px;font-weight:750;color:#445273;user-select:none}
+.finance-project-details>summary::-webkit-details-marker{display:none}
+.finance-project-details>summary:before{content:"▸";margin-right:4px;color:#7a6b9d;transition:transform .2s ease}
+.finance-project-details[open]>summary:before{transform:rotate(90deg)}
+.finance-project-details>summary span:first-child{margin-right:auto}
+.finance-project-expand-label{color:#8266ad;font-size:11px;font-weight:700}
+.finance-project-details[open] .finance-project-expand-label{font-size:0}
+.finance-project-details[open] .finance-project-expand-label:after{content:"Ocultar indicadores";font-size:11px}
+.finance-project-details .finance-project-metrics{grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:0;padding:0 12px 10px}
+.finance-project-details .finance-project-metrics>div{padding:8px 9px;border-radius:8px;background:#fafbfd}
+.finance-project-details .finance-project-metrics small{font-size:10px;line-height:1.3}
+.finance-project-details .finance-project-metrics strong{font-size:14px;margin-top:4px}
+.finance-project-details .finance-project-info{margin:0 12px 11px;font-size:11px}
+
+/* Alta en un solo modal: presupuesto, reparto exacto y excepciones en 231 filas */
+#financeProjectRulesModal .finance-rules-dialog{width:min(1060px,100%);height:min(92vh,900px);max-height:calc(100vh - 24px);overflow:hidden;padding:20px;gap:12px}
+#financeProjectRulesModal .finance-pay-heading{align-items:start}
+#financeProjectRulesModal .finance-pay-heading h2{font-size:22px;margin:3px 0 5px}
+#financeProjectRulesModal .finance-rules-controls{grid-template-columns:minmax(170px,2fr) minmax(165px,1.3fr) minmax(140px,1fr);gap:10px}
+#financeProjectRulesModal .finance-rules-controls label{font-size:12px;color:#3d4b66}
+#financeProjectRulesModal .finance-rules-controls input{height:43px;background:#fff;font-size:13px;border:1px solid #d9e2ed}
+#financeProjectRulesModal .finance-rules-controls input:focus,#financeProjectRulesModal .finance-rules-list-heading input:focus{outline:2px solid #c2aedf;outline-offset:1px}
+.finance-rules-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.finance-rules-overview>div{background:#f7fafb;border:1px solid #e4ecf0;border-radius:10px;padding:8px 10px;min-width:0}
+.finance-rules-overview span{display:block;color:#77839a;font-size:10px}
+.finance-rules-overview strong{display:block;color:#1e4544;font-size:15px;margin-top:3px;overflow-wrap:anywhere}
+.finance-rules-list-heading{display:flex;gap:14px;align-items:end;justify-content:space-between}
+.finance-rules-list-heading>div{flex:1;min-width:0}
+.finance-rules-list-heading strong{font-size:13px;color:#253a55}
+.finance-rules-list-heading .hint{font-size:11px;line-height:1.5;margin:5px 0 0}
+.finance-rules-list-heading label{min-width:210px;font-size:11px;font-weight:700;color:#536482}
+.finance-rules-list-heading input{display:block;margin-top:4px;width:100%;height:38px;padding:8px 10px;border-radius:9px;border:1px solid #dce3ee}
+#financeProjectRulesModal .finance-rules-scroll{min-height:110px;flex:1;overflow:auto;border:1px solid #e0e6ee;border-radius:11px}
+#financeProjectRulesModal .finance-rules-scroll table{width:100%;border-collapse:collapse;font-size:12px}
+#financeProjectRulesModal .finance-rules-scroll th{position:sticky;top:0;background:#f5f3fa;z-index:1;font-size:11px;color:#5e6585;text-align:left;padding:11px 12px}
+#financeProjectRulesModal .finance-rules-scroll td{border-bottom:1px solid #ebedf3;padding:8px 12px;vertical-align:middle}
+#financeProjectRulesModal .finance-rules-scroll tbody tr:hover{background:#fcfbff}
+#financeProjectRulesModal .finance-rules-scroll td:first-child{font-weight:750}
+#financeProjectRulesModal .finance-rules-scroll td:nth-child(2){font-variant-numeric:tabular-nums;white-space:nowrap;color:#224f49;font-weight:750}
+#financeProjectRulesModal .finance-rules-scroll input{width:115px;padding:8px;border-radius:7px;border:1px solid #cbb8e3;background:#fff}
+#financeProjectRulesModal .finance-rules-scroll .soft{font-size:11px;padding:7px 9px}
+#financeProjectRulesModal .finance-rules-actions{border-top:1px solid #e8ecf2;padding-top:10px;flex:none}
+#financeProjectRulesModal #financeRulesStatus{margin:0;color:#985124;font-size:12px}
+#financeProjectRulesModal #financeRulesStatus:empty{display:none}
+#houseProjectTariffInfo:not([hidden]){font-size:12px;line-height:1.5;padding:9px 10px;border-radius:8px;background:#f7f8fc}
+#houseTariffNoFeeWrap[hidden],#houseProjectTariffInfo[hidden]{display:none!important}
+@media(max-width:980px){
+ .finance-project-details .finance-project-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #financeProjectRulesModal .finance-rules-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+ .finance-project-panel-compact{padding:11px}
+ .finance-project-panel-compact .finance-project-top{align-items:stretch}
+ .finance-project-panel-compact .finance-project-actions{width:100%}
+ .finance-project-panel-compact .finance-project-actions .primary{width:100%}
+ .finance-project-details .finance-project-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #financeProjectRulesModal .finance-rules-dialog{height:calc(100vh - 12px);max-height:calc(100vh - 12px);padding:12px;gap:9px}
+ #financeProjectRulesModal .finance-pay-heading h2{font-size:17px}
+ #financeProjectRulesModal .finance-rules-controls{grid-template-columns:1fr;gap:7px}
+ #financeProjectRulesModal .finance-rules-controls input{height:39px}
+ .finance-rules-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+ .finance-rules-overview>div{padding:6px 8px}
+ .finance-rules-overview strong{font-size:13px}
+ .finance-rules-list-heading{display:block}
+ .finance-rules-list-heading label{display:block;min-width:0;margin-top:7px}
+ #financeProjectRulesModal .finance-rules-scroll th,#financeProjectRulesModal .finance-rules-scroll td{padding:7px 5px}
+ #financeProjectRulesModal .finance-rules-scroll input{width:82px}
+ #financeProjectRulesModal .finance-rules-actions button{flex:1}
+}
