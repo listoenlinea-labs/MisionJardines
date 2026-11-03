@@ -21,3 +21,12 @@ test('rechaza versiones incompletas o duplicadas',()=>{
  const repeated=snapshot.cargos.map(c=>({...c}));repeated[1].casaId=1;
  assert.throws(()=>verificarSnapshotCuotas({...snapshot,cargos:repeated},{monto:1000},cargos),e=>e.status===400);
 });
+
+test('acepta cuotas individuales en $0 en snapshot',()=>{
+ const withZero=cargos.map(c=>({...c}));withZero[29].monto=0;
+ assert.equal(verificarSnapshotCuotas({cuotaBase:1000,cargos:withZero.map(c=>({...c}))},{monto:1000},withZero),true);
+});
+test('acepta cuota general $0 en snapshot',()=>{
+ const free=cargos.map(c=>({...c,monto:0}));
+ assert.equal(verificarSnapshotCuotas({cuotaBase:0,cargos:free.map(c=>({...c}))},{monto:0},free),true);
+});

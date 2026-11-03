@@ -17,8 +17,10 @@ function distribuirPresupuesto(padron,montoTotal,excepciones=[]){
   const id=Number(entry?.casaId);
   if(!Number.isSafeInteger(id)||!allowed.has(id)||fixed.has(id))
    throw fail(400,'Vivienda de excepción inexistente o duplicada.');
-  const amount=cents(entry?.monto);
-  if(amount<=0)throw fail(400,'El importe excepcional debe ser mayor a cero.');
+  if(entry?.monto==null||String(entry.monto).trim()==='')
+   throw fail(400,'Indica el importe de la excepción (se admite $0.00).');
+  const amount=cents(entry.monto);
+  // La excepción $0.00 permanece fija y no recibe parte del presupuesto.
   fixed.set(id,amount);
  }
  const remainingHouses=ids.filter(id=>!fixed.has(id)).sort((a,b)=>a-b);

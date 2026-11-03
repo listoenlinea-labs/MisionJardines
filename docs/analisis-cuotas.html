@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-proyecto-pastel-tarifas-v3">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-proyecto-cero-v1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -106,10 +106,10 @@
   <div class="finance-pay-heading"><h2 id="financeBulkTitle">Modificar metas de proyecto</h2>
    <button type="button" id="financeBulkClose" class="soft" aria-label="Cerrar edición de importes">Cerrar ×</button></div>
   <div class="finance-rules-controls">
-   <label>Cuota general (MXN)<input id="financeBulkBase" type="number" min="0.01" max="10000000" step="0.01" inputmode="decimal" required></label>
+   <label>Cuota general (MXN)<input id="financeBulkBase" type="number" min="0" max="10000000" step="0.01" inputmode="decimal" required></label>
    <label>Buscar vivienda<input id="financeBulkSearch" type="search" placeholder="Ej. Gardenias 5"></label>
   </div>
-  <p class="hint">Todas las viviendas reciben la cuota general. «Generar excepción» permite modificar una casa individualmente, incluso para que aporte menos.</p>
+  <p class="hint">Todas las viviendas reciben la cuota general. «Generar excepción» permite ajustar cada casa, incluso a $0.00 cuando no haya pagos acreditados.</p>
   <p id="financeBulkTotal" class="finance-bulk-total" role="status" aria-live="polite"></p>
   <div class="finance-rules-scroll"><table aria-label="Importes del proyecto por vivienda"><thead>
    <tr><th scope="col">Vivienda</th><th scope="col">Cuota</th><th scope="col">Excepción</th></tr></thead>
@@ -139,7 +139,7 @@
    <div><span>Reparto exacto</span><strong id="financeRulesDiff">Sin diferencia</strong></div>
   </div>
   <div class="finance-rules-list-heading">
-   <div><strong>Importe por vivienda</strong><p class="hint">Una excepción fija el importe de esa casa; el saldo se redistribuye entre las demás para conservar el costo total. Los centavos se asignan automáticamente.</p></div>
+   <div><strong>Importe por vivienda</strong><p class="hint">Una excepción fija el importe de esa casa. Puedes poner $0.00 para exentar a una vivienda; el saldo se redistribuye entre las demás para conservar el costo total exacto.</p></div>
    <label>Buscar vivienda<input id="financeRulesSearch" type="search" placeholder="Calle, número o residente"></label>
   </div>
   <div class="finance-rules-scroll"><table aria-label="Distribución de cuotas del nuevo proyecto"><thead><tr><th>Vivienda</th><th>Cuota calculada</th><th>Regla especial</th></tr></thead><tbody id="financeRulesRows"></tbody></table></div>
@@ -234,16 +234,16 @@
     <div class="finance-pay-heading"><div><span class="eyebrow" id="houseTariffConceptLabel">TARIFA POR VIVIENDA</span><h2 id="houseTariffTitle">Modificar cuotas</h2><p id="houseTariffAddress" class="hint"></p><div id="houseTariffSavedState" class="history-tariff-save-indicator" data-state="unknown" role="status" aria-live="polite"><span class="history-tariff-status-dot" aria-hidden="true"></span><span id="houseTariffSavedText">Consultando estado…</span></div></div><button type="button" class="soft" id="houseTariffClose">Cerrar ×</button></div>
     <form id="houseTariffForm">
       <label class="history-tariff-label" for="houseTariffInput"><span id="houseTariffAmountLabel">Cuota mensual de mantenimiento (MXN)</span>
-        <input id="houseTariffInput" name="cuotaPorCobrar" type="number" min="1" max="10000" step="1" inputmode="numeric" required placeholder="300">
+        <input id="houseTariffInput" name="cuotaPorCobrar" type="number" min="0" max="10000" step="1" inputmode="numeric" required placeholder="300">
       </label>
       <label class="history-tariff-checkline" id="houseTariffNoFeeWrap" for="houseTariffNoFee">
         <input id="houseTariffNoFee" type="checkbox">
         <span>Exentar recargo de $50 por mora desde el mes actual y en meses futuros</span>
       </label>
-      <p id="houseProjectTariffInfo" class="hint" hidden>La meta individual de este proyecto es independiente de mantenimiento y no modifica los TAGs. No puedes establecer una cuota inferior a los abonos ya recibidos o pendientes de validación.</p><p id="houseTariffStatus" class="hint" role="status" aria-live="polite"></p>
+      <p id="houseProjectTariffInfo" class="hint" hidden>La meta individual de este proyecto es independiente de mantenimiento y no modifica los TAGs. No puedes establecer una cuota de $0.00 si esa vivienda tiene abonos recibidos o en validación.</p><p id="houseTariffStatus" class="hint" role="status" aria-live="polite"></p>
       <button class="primary" id="houseTariffSave" type="submit">Guardar cuota mensual</button>
     </form>
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-cuotas-por-mes" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-proyecto-pastel-tarifas-v3" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-cuotas-por-mes" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

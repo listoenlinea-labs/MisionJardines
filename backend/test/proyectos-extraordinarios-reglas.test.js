@@ -47,6 +47,16 @@ test('normalización de calle y número permite cotejar acentos, espacios y cero
  assert.equal(key('  JÁrdines  ','00173'),key('jardines','173'));
  assert.equal(cents('203500.00'),20350000);
 });
+
+test('la tarifa especial $0 reduce meta sin crear un pago artificial',()=>{
+ const p=proyecto('MJ-PROYECTO-CERO-2026','Proyecto de prueba con exención',1000);
+ p.tarifasEspeciales=[{calle:'Jardines',numero:'1',monto:0}];
+ const result=validarPaquete(bundle(p),padron);
+ assert.deepEqual(result.errors,[]);
+ assert.equal(result.proyectos[0].cargos.find(h=>h.casaId===1).montoCentavos,0);
+ assert.equal(result.proyectos[0].resumen.totalEsperado,230000);
+ assert.equal(result.proyectos[0].cuotasEspeciales,1);
+});
 test('padrón inconsistente no permite crear cargos ni importar pagos',()=>{
  assert.throws(()=>validarPaquete(bundle(proyecto('MJ-PROYECTO-2026','Proyecto de prueba de pagos',600)),padron.slice(1)),{status:409});
  assert.throws(()=>validarPaquete(bundle(proyecto('MJ-PROYECTO-2026','Proyecto de prueba de pagos',600)),[...padron.slice(0,230),{...padron[0],id:300}]),{status:409});

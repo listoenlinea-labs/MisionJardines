@@ -7,11 +7,11 @@ function verificarSnapshotCuotas(snapshot,project,cargos){
     snapshot.cargos.length!==231||cargos.length!==231)
   throw fail(400,'Versión de cuotas inválida. Vuelve a abrir Importes por vivienda.');
  const base=cents(snapshot.cuotaBase);
- if(base<=0)throw fail(400,'Cuota general anterior inválida.');
+ // Una cuota general de cero es válida para proyectos extraordinarios.
  const originales=new Map();
  for(const entry of snapshot.cargos){
   const id=Number(entry?.casaId),amount=cents(entry?.monto);
-  if(!Number.isSafeInteger(id)||id<1||amount<=0||originales.has(id))
+  if(!Number.isSafeInteger(id)||id<1||originales.has(id))
    throw fail(400,'La versión de las viviendas contiene cuotas o casas inválidas.');
   originales.set(id,amount);
  }
