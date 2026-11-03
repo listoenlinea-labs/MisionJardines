@@ -130,7 +130,7 @@
         </div>
         <div class="toolbar">
           <div class="field"><label for="street">CALLE Y NÚMERO</label><input id="street" type="text" placeholder="Ej. Gardenias 5 o solo Gardenias" autocomplete="off" spellcheck="false" aria-label="Buscar por calle y número de casa"></div>
-          <div class="field"><label>NÚMERO DE TAG</label><input id="tagNumber" inputmode="numeric" autocomplete="off" placeholder="Ej. 5112343"></div>
+          <div class="field"><label>NÚMERO DE TAG</label><input id="tagNumber" name="zk_access_tag_lookup" type="search" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" data-1p-ignore="true" data-lpignore="true" placeholder="Ej. 5112343" aria-label="Buscar número de TAG"></div>
           <div class="field zk-order-field"><label for="zkTagOrder">ORDENAR TAGs</label><select id="zkTagOrder" aria-label="Ordenar por incorporación de TAGs a la base de datos"><option value="alta_desc">TAGs agregados más recientemente</option><option value="alta_asc">TAGs agregados más antiguos</option></select></div>
           <button id="applyFilters" class="btn">Buscar</button>
           <button id="clearFilters" class="btn clear">Limpiar filtros</button>
@@ -157,7 +157,7 @@
       <div id="tagModalError" class="modal-error" role="alert"></div>
       <div class="modal-grid">
         <div class="field wide"><label>TAG EXISTENTE SIN VIVIENDA</label><select id="existingTag"><option value="">— Crear un TAG nuevo —</option></select></div>
-        <div class="field wide"><label>NÚMERO DE TAG / TARJETA NUEVA</label><input id="newTagNumber" inputmode="numeric" placeholder="Ej. 5015731"></div>
+        <div class="field wide"><label>NÚMERO DE TAG NUEVO</label><input id="newTagNumber" name="zk_access_tag_create" type="search" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-1p-ignore="true" data-lpignore="true" placeholder="Ej. 5015731"></div>
         <div class="field"><label>FECHA INICIAL</label><input id="newTagStart" type="date"></div>
         <div class="field"><label>FECHA FINAL DE VIGENCIA</label><input id="newTagEnd" type="date"></div>
         <div class="field wide"><label>ETIQUETA EN ZKTECO</label><input id="newTagName" maxlength="48" placeholder="Se autocompleta con calle y número"></div>
@@ -178,7 +178,7 @@
     <div class="modal-body">
       <div id="editTagError" class="modal-error" role="alert"></div>
       <div class="modal-grid">
-        <div class="field wide"><label>NÚMERO DE TAG / TARJETA</label><input id="editTagNumber" inputmode="numeric"></div>
+        <div class="field wide"><label>NÚMERO DE TAG</label><input id="editTagNumber" name="zk_access_tag_edit" type="search" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-1p-ignore="true" data-lpignore="true"></div>
         <div class="field"><label>FECHA INICIAL</label><input id="editTagStart" type="date" readonly disabled></div>
         <div class="field"><label>FECHA FINAL</label><input id="editTagEnd" type="date" readonly disabled></div>
         <div class="field">
@@ -226,6 +226,16 @@ const API='https://api-misionjardines.listoenlinea.host/api';
 const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
 if(!token) location.replace('login.html');
 const $=id=>document.getElementById(id);
+// Son identificadores de acceso, NO números de tarjeta bancaria.
+// search + inputmode numérico conserva teclado de dígitos en iOS, sin
+// declararlos como campos de pago. Mantener cadena para ceros iniciales.
+for(const id of ['tagNumber','newTagNumber','editTagNumber']){
+ const field=$(id);
+ field?.addEventListener('input',()=>{
+  const digits=field.value.replace(/[^0-9]/g,'');
+  if(digits!==field.value)field.value=digits;
+ });
+}
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 const headers=(json=false)=>({Authorization:'Bearer '+token,...(json?{'Content-Type':'application/json'}:{})});
 let role='';try{const u=JSON.parse(localStorage.getItem('misionJardinesUsuario')||sessionStorage.getItem('misionJardinesUsuario')||'{}');role=u?.rol?.nombre||u?.rol||''}catch(_){}
