@@ -141,9 +141,9 @@ test('historical sin fecha en varias calles y anualidad se contabiliza una sola 
 test('el portal fuerza la carga de Análisis de cuotas actualizado en iframe',()=>{
  const shell=root('docs/assets/js/app-shell.js');
  const html=root('docs/analisis-cuotas.html'),app=root('docs/app.html');
- assert.match(shell,/_mjVersion.*finanzas-modales-mensuales-20261103/);
- assert.match(html,/analisis-cuotas\.js\?v=20261103-modales-cobros-egresos/);
- assert.match(app,/app-shell\.js\?v=20261103-modales-mensuales/);
+ assert.match(shell,/_mjVersion.*picker-paginacion-20261103/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-picker-frente-pagina-fija/);
+ assert.match(app,/app-shell\.js\?v=20261103-picker-paginacion/);
 });
 
 test('ambos gráficos muestran solo el mes seleccionado y no el acumulado histórico',()=>{
