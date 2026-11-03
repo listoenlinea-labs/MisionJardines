@@ -71,13 +71,13 @@ function historialConcepto(tipo,comprobantes=[],manuales=[]){
   const rows=[];
   for(const p of comprobantes){
     if(p.tipoPago!==tipo||p.estatus!=='VALIDADO')continue;
-    rows.push({referencia:p.folioOperacion||p.folioReporte,fecha:isoDate(p.fechaOperacion),
+    rows.push({movimientoId:Number(p.id),origenTipo:'BANCO',referencia:p.folioOperacion||p.folioReporte,fecha:isoDate(p.fechaOperacion),
       monto:Number(p.monto),recargo:Number(p.recargo||0),meses:0,periodos:[],
       formaPago:'TRANSFERENCIA',fuente:'COMPROBANTE_VALIDADO'});
   }
   for(const p of manuales){
     if(p.tipoPago!==tipo)continue;
-    rows.push({referencia:p.referencia,fecha:isoDate(p.creadoEn),monto:Number(p.monto),
+    rows.push({movimientoId:Number(p.id),origenTipo:'MANUAL',referencia:p.referencia,fecha:isoDate(p.creadoEn),monto:Number(p.monto),
       recargo:0,meses:0,periodos:[],formaPago:p.formaPago,fuente:'REGISTRO_MANUAL'});
   }
   return rows.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))||
