@@ -94,3 +94,60 @@ test('un campo vacío no es una instrucción para exentar a una vivienda',async(
  },17),e=>e.status===400);
  assert.equal(x.audits.length,0);
 });
+
+test('No aplica no se cuenta como pagada ni pendiente y no altera los otros saldos',()=>{
+ const x=fixture();
+ const project={id:7,concepto:'Proyecto prueba',codigo:'MJ-P-TEST',monto:1000,activo:true,fechaInicio:'2026-11-01'};
+ const cargos=[
+  {id:30,casaId:30,cuotaExtraordinariaId:7,monto:0},
+  {id:31,casaId:31,cuotaExtraordinariaId:7,monto:1000},
+  {id:32,casaId:32,cuotaExtraordinariaId:7,monto:1000}
+ ];
+ const viviendas=cargos.map(c=>({casaId:c.casaId,calle:'Jardines',numero:c.casaId}));
+ const aportes=[{cargoExtraordinarioId:31,monto:1000,fecha:'2026-11-03',referencia:'MJ-TEST-31'}];
+ const [result]=x.service.juntar([project],cargos,aportes,[],[],viviendas);
+ assert.equal(result.viviendas,3);
+ assert.equal(result.noAplica,1);
+ assert.equal(result.cumplidos,1);
+ assert.equal(result.pendientes,1);
+ assert.equal(result.totalEsperado,2000);
+ assert.equal(result.recaudado,1000);
+ assert.equal(result.saldoPendiente,1000);
+ const exempt=result.viviendasDetalle.find(c=>c.casaId===30);
+ assert.equal(exempt.estatus,'NO_APLICA');
+ assert.equal(exempt.noAplica,true);
+ assert.equal(exempt.montoCuota,0);
+ assert.equal(exempt.montoPagado,0);
+ assert.equal(exempt.saldoPendiente,0);
+ assert.equal(result.viviendasDetalle.find(c=>c.casaId===31).estatus,'PAGADO');
+ assert.equal(result.viviendasDetalle.find(c=>c.casaId===32).estatus,'PENDIENTE');
+});
+
+test('No aplica se revierte asignando nueva cuota sin modificar otros cargos',async()=>{
+ const x=fixture();
+ await x.service.ajustarCuota(7,30,0,17);
+ assert.equal(x.cargos[29].monto,0);
+ assert.equal(x.project.montoTotal,230000);
+ await x.service.ajustarCuota(7,30,500,17);
+ assert.equal(x.cargos[29].monto,500);
+ assert.equal(x.project.montoTotal,230500);
+ assert.equal(x.cargos[30].monto,1000);
+ assert.equal(x.audits.length,2);
+});
+
+test('UI distingue No aplica en Estado, Pagado, Saldo y cobro',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../../docs/analisis-cuotas.html'),'utf8');
+ const js=fs.readFileSync(path.join(__dirname,'../../docs/assets/js/analisis-cuotas.js'),'utf8');
+ assert.match(html,/id="houseProjectNoAplica"/);
+ assert.match(html,/id="houseProjectNoAplicaStatus"/);
+ assert.match(html,/value="NO_APLICA"/);
+ assert.match(js,/status==='NO_APLICA'/);
+ assert.match(js,/NO_APLICA:'No aplica'/);
+ assert.match(js,/houseCell\('Pagado'/);
+ assert.match(js,/houseCell\('Saldo pendiente',isProjectNoAplica/);
+ assert.match(js,/isProjectNoAplica\(h\)/);
+ assert.match(js,/No aplica; no hay recibo por generar/);
+ assert.match(js,/projectNoAplicaButton\.addEventListener\('click'/);
+ assert.match(js,/viviendas\/'\+id,\{monto:0\},'PATCH'/);
+ assert.doesNotThrow(()=>new Function(js));
+});

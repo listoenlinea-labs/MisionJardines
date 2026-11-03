@@ -16,7 +16,7 @@ function juntar(proyectos,cargos,aportes,manuales,reportados,viviendas){
   id:Number(p.id),codigo:p.codigo||null,nombre:p.concepto,cuotaBase:Number(p.monto||0),
   activo:!!p.activo,fechaInicio:p.fechaInicio||null,viviendas:0,
   totalEsperado:0,recaudado:0,saldoPendiente:0,saldoFavor:0,
-  cumplidos:0,parciales:0,pendientes:0,sinCargo:0,viviendasDetalle:[],ultimoPago:null
+  cumplidos:0,parciales:0,pendientes:0,noAplica:0,sinCargo:0,viviendasDetalle:[],ultimoPago:null
  }]));
  const money=new Map(), fechas=new Map();
  const sumar=(cargoId,monto,fecha,referencia,fuente)=>{
@@ -38,15 +38,18 @@ function juntar(proyectos,cargos,aportes,manuales,reportados,viviendas){
   if(!h)continue;
   const due=cents(c.monto),paid=money.get(String(c.id))||0;
   const balance=Math.max(0,due-paid)/100,credit=Math.max(0,paid-due)/100;
-  const status=paid>=due?'PAGADO':paid>0?'PAGO_PARCIAL':'PENDIENTE';
+  // Un cargo en $0 sin movimientos es una exención, NO una cuota pagada.
+  const status=due===0&&paid===0?'NO_APLICA':paid>=due?'PAGADO':paid>0?'PAGO_PARCIAL':'PENDIENTE';
   const ultima=fechas.get(String(c.id))||null;
   p.viviendas++;p.totalEsperado+=due/100;p.recaudado+=paid/100;
   p.saldoPendiente+=balance;p.saldoFavor+=credit;
-  if(status==='PAGADO')p.cumplidos++;
+  if(status==='NO_APLICA')p.noAplica++;
+  else if(status==='PAGADO')p.cumplidos++;
   else if(status==='PAGO_PARCIAL')p.parciales++;
   else p.pendientes++;
   p.viviendasDetalle.push({casaId:Number(c.casaId),cargoId:Number(c.id),
    montoCuota:due/100,montoPagado:paid/100,saldoPendiente:balance,saldoFavor:credit,
+   noAplica:status==='NO_APLICA',
    estatus:status,ultimoPago:ultima?{fecha:ultima.fecha,monto:ultima.monto,referencia:ultima.referencia}:null,
    ultimoMesPagado:paid?{mes:'APORTACIÓN',anio:Number(String(ultima?.fecha||fechaMexico()).slice(0,4))}:null});
   if(ultima&&(!p.ultimoPago||String(ultima.fecha)>String(p.ultimoPago.fecha)))p.ultimoPago=ultima;
