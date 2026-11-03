@@ -157,7 +157,7 @@ async function analizar(req,res){
    ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>({...e.toJSON(),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))})),
-   avisoConciliacion:'Ingresos de mantenimiento registrados por fecha de cobro, incluyendo pagos manuales, bancarios conciliados e históricos con fecha válida. No se suman dos veces los períodos cubiertos por una misma referencia.'
+   avisoConciliacion:'Ingresos acumulados de mantenimiento por vivienda: cuotas pagadas, abonos y bancos conciliados, agrupados por movimiento. Se incluyen históricos sin fecha en el acumulado, pero no en un mes concreto.'
   }});
  }catch(e){return sendErr(res,e);}
 }
