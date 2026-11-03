@@ -101,7 +101,7 @@
   function frameUrl(route) {
     const url = new URL(route.target, base);
     url.searchParams.set('_mjFrame', '1');
-    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','borrar-todos-movimientos-20261103');
+    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','egreso-proyecto-20261103');
     if(route.page==='zkteco.html')url.searchParams.set('_mjVersion','tag-ios-sin-autofill-20261103');
     return url.href;
   }
