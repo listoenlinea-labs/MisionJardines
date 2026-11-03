@@ -1828,5 +1828,115 @@ function renderHouses(){
   catch(e){notice(e.message);}
   finally{$('saveExpense').disabled=false;}
  });
+ // Navegación y administración de proyectos extraordinarios. Todas las escrituras
+ // requieren rol administrativo en el backend; la importación siempre tiene vista previa.
+ $('financeProjectSelect').addEventListener('change',()=>{
+  const id=Number($('financeProjectSelect').value);
+  activeProyectoId=Number.isSafeInteger(id)&&id>0?id:null;
+  elegirConcepto('EXTRAORDINARIO');
+ });
+ $('financeNewProjectToggle').addEventListener('click',()=>{
+  const panel=$('financeNewProjectForm');
+  panel.hidden=!panel.hidden;
+  $('financeImportProjectsForm').hidden=true;
+  if(!panel.hidden)$('financeNewProjectName').focus();
+ });
+ $('financeImportProjectsToggle').addEventListener('click',()=>{
+  const panel=$('financeImportProjectsForm');
+  panel.hidden=!panel.hidden;
+  $('financeNewProjectForm').hidden=true;
+  if(!panel.hidden)$('financeProjectImportFile').focus();
+ });
+ $('financeNewProjectMonth').value=$('expenseDate').value.slice(0,7);
+ function parseProjectRules(value){
+  return String(value||'').split('\n').map(x=>x.trim()).filter(Boolean).map((line,n)=>{
+   const match=/^(.+?)\s+([0-9]+[A-Za-z]?)\s*=\s*([0-9]+(?:\.[0-9]{1,2})?)$/.exec(line);
+   if(!match)throw Error('Regla '+(n+1)+' inválida: '+line+'. Usa «Jardines 201 = 2500».');
+   return {calle:match[1],numero:match[2],monto:Number(match[3])};
+  });
+ }
+ $('financeNewProjectForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const button=event.submitter||$('financeNewProjectForm').querySelector('button[type=submit]');
+  let especiales;
+  try{especiales=parseProjectRules($('financeNewProjectRules').value);}
+  catch(error){notice(error.message);return;}
+  const nombre=$('financeNewProjectName').value.trim(),
+   cuotaBase=Number($('financeNewProjectBase').value),
+   fechaInicio=$('financeNewProjectMonth').value+'-01';
+  if(!nombre||!Number.isFinite(cuotaBase)||cuotaBase<=0||
+   !/^20\d{2}-(?:0[1-9]|1[0-2])-01$/.test(fechaInicio)){
+   notice('Revisa nombre, importe general y mes del proyecto.');return;
+  }
+  if(!confirm('¿Crear «'+nombre+'» para exactamente 231 viviendas con cuota general de '+
+   fmt(cuotaBase)+' y '+especiales.length+' tarifas especiales?'))return;
+  button.disabled=true;
+  try{
+   const response=await request('/proyectos-extraordinarios',
+    {nombre,cuotaBase,fechaInicio,tarifasEspeciales:especiales});
+   activeProyectoId=response.data?.proyectos?.[0]?.id||null;
+   $('financeNewProjectForm').reset();
+   $('financeNewProjectForm').hidden=true;
+   await load();notice('Proyecto creado y cargos guardados para las 231 viviendas.','success');
+  }catch(error){notice(error.message);}finally{button.disabled=false;}
+ });
+ $('financeProjectImportFile').addEventListener('change',()=>{
+  importacionExtraordinaria=null;
+  importacionPrevisualizada=false;
+  $('financeProjectCommit').disabled=true;
+  $('financeProjectPreviewResult').textContent='';
+ });
+ $('financeProjectPreview').addEventListener('click',async()=>{
+  const file=$('financeProjectImportFile').files?.[0];
+  const output=$('financeProjectPreviewResult');
+  if(!file){output.textContent='Selecciona el archivo JSON privado con los aportes del cliente.';return;}
+  if(file.size>2000000){output.textContent='Archivo demasiado grande (máximo 2 MB).';return;}
+  const button=$('financeProjectPreview');
+  button.disabled=true;
+  importacionPrevisualizada=false;
+  $('financeProjectCommit').disabled=true;
+  output.textContent='Comparando pagos y las 231 direcciones del padrón actual...';
+  try{
+   const json=JSON.parse(await file.text());
+   const {data:preview}=await request('/proyectos-extraordinarios/previsualizar',json);
+   importacionExtraordinaria=json;
+   importacionPrevisualizada=Boolean(preview.reconciliado);
+   output.innerHTML=preview.proyectos.map(p=>
+    '<div class="finance-project-preview-card"><strong>'+esc(p.nombre)+'</strong>'+
+    '<p>Viviendas: '+p.resumen.viviendas+' · Cuotas especiales: '+p.cuotasEspeciales+
+    ' · Con aportación: '+p.resumen.abonaron+' · Total esperado: '+esc(fmt(p.resumen.totalEsperado))+
+    ' · Total recibido: '+esc(fmt(p.resumen.recaudado))+
+    ' · Saldo: '+esc(fmt(p.resumen.saldoPendiente))+'</p>'+
+    (p.advertencias||[]).map(w=>'<p class="finance-project-warning">'+esc(w)+'</p>').join('')+
+    (p.errores||[]).map(w=>'<p class="finance-project-error">'+esc(w)+'</p>').join('')+'</div>'
+   ).join('')+(preview.existentes?.length?'<p class="finance-project-error">Ya existe un proyecto con el mismo código o nombre. No se importará dos veces.</p>':'')+
+    (!preview.reconciliado?'<p class="finance-project-error">No se permite importar: resuelve las diferencias de vivienda o proyectos existentes.</p>':'');
+   $('financeProjectCommit').disabled=!importacionPrevisualizada;
+  }catch(error){
+   importacionExtraordinaria=null;
+   output.textContent='No se pudo previsualizar: '+error.message;
+  }finally{button.disabled=false;}
+ });
+ $('financeProjectCommit').addEventListener('click',async()=>{
+  if(!importacionPrevisualizada||!importacionExtraordinaria)return;
+  if(!$('financeProjectApproveExceptions').checked||!$('financeProjectApproveDifference').checked){
+   notice('Antes de importar, confirma las tres viviendas con tarifa especial y la diferencia de $1,000 del Excel.');return;
+  }
+  if(!confirm('Se crearán dos proyectos y sus cargos para 231 casas, con los abonos históricos verificados. ¿Confirmas IMPORTAR?'))return;
+  const button=$('financeProjectCommit');button.disabled=true;
+  try{
+   const response=await request('/proyectos-extraordinarios/importar',{
+    ...importacionExtraordinaria,confirmacion:'IMPORTAR',
+    confirmarTarifas:true,aceptarDiferencias:true
+   });
+   activeProyectoId=response.data?.proyectos?.[0]?.id||null;
+   importacionExtraordinaria=null;importacionPrevisualizada=false;
+   $('financeImportProjectsForm').hidden=true;
+   await load();
+   notice('Importación finalizada. Dos proyectos y sus abonos históricos guardados sin tocar ZKTeco.','success');
+  }catch(error){notice(error.message);}
+  finally{button.disabled=!importacionPrevisualizada;}
+ });
+
  await load();
 })();
