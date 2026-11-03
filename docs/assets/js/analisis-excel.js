@@ -141,15 +141,24 @@
     ['ID movimiento','ID vivienda','Calle','Número','Concepto','Monto (MXN)','Forma de pago','Fecha','Referencia'],
     manuales.map(p=>[p.id,p.casaId,texto(p.calle),texto(p.numero),texto(p.tipo),
      dinero(p.monto),texto(p.formaPago),fecha(p.fecha),texto(p.referencia)]))];
-  const detalles=[['Base del indicador',data.esCargaHistorica?'Cuotas históricas':'Bancos validados'],
+  const cobrado=data.ingresosMantenimientoCalles;
+  if(cobrado){
+   hojas.unshift(sheet('Mantenimiento por calle',
+    ['Calle','Cobrado en mes (MXN)','Total acumulado (MXN)','Movimientos'],
+    [...(cobrado.calles||[]).map(c=>[texto(c.calle),dinero(c.mes),dinero(c.acumulado),Number(c.movimientos||0)]),
+     ['TOTAL',dinero(cobrado.mes),dinero(cobrado.acumulado),'']]));
+  }
+  const detalles=[['Base del indicador',cobrado?'Pagos de mantenimiento por fecha de cobro':(data.esCargaHistorica?'Cuotas históricas':'Bancos validados')],
+   ['Mantenimiento cobrado en mes (MXN)',dinero(cobrado?.mes||0)],
+   ['Mantenimiento acumulado (MXN)',dinero(cobrado?.acumulado||0)],
    ['Cuotas históricas registradas (MXN)',dinero(data.cobrosCuotasRegistrados)],
    ['Ingresos bancarios validados (MXN)',dinero(data.ingresosValidados)],
    ['Ingresos adicionales (MXN)',dinero(data.ingresosAdicionales)],
    ['Pagos manuales por concepto (MXN)',dinero(data.totalManualConcepto)],
    ['Importe del indicador (MXN)',dinero(data.ingresosParaBalance)],
    ['Advertencia','Los abonos históricos y depósitos bancarios pueden ser el mismo dinero; no sumarlos si el período está importado.']];
-  return {nombre:data.esCargaHistorica?'Cuotas_historicas':'Ingresos_validados',
-   titulo:data.esCargaHistorica?'Cuotas históricas e ingresos':'Ingresos validados y conciliación',
+  return {nombre:cobrado?'Mantenimiento_por_calle':data.esCargaHistorica?'Cuotas_historicas':'Ingresos_validados',
+   titulo:cobrado?'Mantenimiento cobrado por calle':data.esCargaHistorica?'Cuotas históricas e ingresos':'Ingresos validados y conciliación',
    hojas,resumen:[...resumen,...detalles]};
  }
 

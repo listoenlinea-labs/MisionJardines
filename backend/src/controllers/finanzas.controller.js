@@ -14,8 +14,9 @@ const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
 const {ultimosRegistrosPago}=require('../services/ultimo-registro-pago.service');
+const {agrupacionMantenimiento}=require('../services/resumen-cobranza-calles.service');
+const {categorias,canonica,resumenEgresos}=require('../services/categorias-egresos.service');
 const mesNombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-const categorias=['LUZ','AGUA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','OTROS'];
 const num=x=>Number(x||0);
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const sendErr=(res,e)=>{if(!e.status)console.error('[finanzas]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible consultar las finanzas'});};
@@ -48,6 +49,9 @@ async function analizar(req,res){
    PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']})
   ]);
+  const egresosHistoricos=await Egreso.findAll({
+   where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto'],raw:true
+  });
   const registros=ultimosRegistrosPago({reportados:require('../services/pagos-reparto-datos').desglosar(foliosRegistrados),cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   const padron=seleccionarPadronAnalisis(casas,cuotas);
@@ -92,10 +96,17 @@ async function analizar(req,res){
     row.ultimoPago=historialConcepto(tipo,bancosConceptos.get(casaId)||[],manualesConceptos.get(casaId)||[])[0]||null;
    }
   }
+  // Fecha del MOVIMIENTO (no mensualidad cubierta), agrupado por referencia.
+  const cobranzaMantenimiento=agrupacionMantenimiento({
+   padron:padron.casas,cuotas:historialCuotas,
+   comprobantes:require('../services/pagos-reparto-datos').desglosar(comprobantesMantenimiento),
+   inicio:start,fin:end
+  });
+  const egresosAcumulados=resumenEgresos(egresosHistoricos,start,end);
   const ingresosReportados={mantenimiento:0,extraordinarios:0,casaClub:0};
   for(const p of pagos)ingresosReportados[p.tipoPago==='EXTRAORDINARIO'?'extraordinarios':p.tipoPago==='CASA_CLUB'?'casaClub':'mantenimiento']+=num(p.monto);
   const categoriasGasto=Object.fromEntries(categorias.map(c=>[c,0]));
-  for(const e of egresos)categoriasGasto[e.categoria==='PROYECTOS'?'CUOTA_EXTRAORDINARIA':e.categoria]+=num(e.monto);
+  for(const e of egresos){const key=canonica(e.categoria);if(Object.hasOwn(categoriasGasto,key))categoriasGasto[key]+=num(e.monto);}
   const ingresosValidados=ingresosReportados.mantenimiento+ingresosReportados.extraordinarios+ingresosReportados.casaClub;
   const totalManualConcepto=pagosManualesConcepto.reduce((a,p)=>a+num(p.monto),0);
   const manualesCasaClub=pagosManualesConcepto.filter(p=>p.tipoPago==='CASA_CLUB').reduce((a,p)=>a+num(p.monto),0);
@@ -103,7 +114,9 @@ async function analizar(req,res){
   const esCargaHistorica=cuotas.some(q=>String(q.origenImportacion||'').startsWith('EXCEL_'));
   const ingresosAdicionales=ingresosManuales.filter(x=>x.tipo!=='SALDO_INICIAL').reduce((a,x)=>a+num(x.monto),0);
   const saldoInicial=ingresosManuales.filter(x=>x.tipo==='SALDO_INICIAL').reduce((a,x)=>a+num(x.monto),0);
-  const ingresosBase=esCargaHistorica ? cobrosHistoricos : ingresosValidados;
+  // No sumar de nuevo los bancos de mantenimiento, incluidos por referencia.
+  const ingresosBase=cobranzaMantenimiento.mes+
+   ingresosReportados.extraordinarios+ingresosReportados.casaClub;
   const ingresosParaBalance=ingresosBase+ingresosAdicionales+totalManualConcepto;
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
   for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
@@ -142,8 +155,9 @@ async function analizar(req,res){
    cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,
    ingresosParaBalance,ingresosAdicionales,totalManualConcepto,saldoInicial,ingresosManuales,
    ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
+   ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>({...e.toJSON(),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))})),
-   avisoConciliacion:esCargaHistorica?'Periodo histórico: cuotas importadas, ingresos adicionales y saldo inicial se calculan una sola vez. Depósitos bancarios validados se muestran aparte sin sumarlos de nuevo.':'Periodo actual: ingresos bancarios validados más ingresos manuales y saldo inicial registrados; las cuotas históricas se muestran aparte para no duplicar depósitos.'
+   avisoConciliacion:'Ingresos de mantenimiento registrados por fecha de cobro, incluyendo pagos manuales, bancarios conciliados e históricos con fecha válida. No se suman dos veces los períodos cubiertos por una misma referencia.'
   }});
  }catch(e){return sendErr(res,e);}
 }
