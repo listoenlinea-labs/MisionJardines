@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-proyectos-extraordinarios">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-proyectos-nuevas-reglas">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -19,7 +19,7 @@
   <label>Proyecto extraordinario<select id="financeProjectSelect" aria-label="Seleccionar proyecto extraordinario"><option value="">Sin proyectos configurados</option></select></label>
   <div class="finance-project-actions">
    <button type="button" id="financeNewProjectToggle" class="soft">Nuevo proyecto</button>
-   <button type="button" id="financeImportProjectsToggle" class="soft">Importar aportaciones</button>
+   <button type="button" id="financeImportProjectsToggle" class="soft" hidden>Importar aportaciones</button><button type="button" id="financeProjectRulesEdit" class="soft" hidden>Importes por vivienda</button>
   </div>
  </div>
  <div id="financeProjectMetrics" class="finance-project-metrics" aria-live="polite"></div>
@@ -32,10 +32,9 @@
    <label>Cuota general (MXN)<input id="financeNewProjectBase" type="number" min="0.01" step="0.01" required placeholder="600.00"></label>
    <label>Mes de inicio<input id="financeNewProjectMonth" type="month" required></label>
   </div>
-  <label>Tarifas especiales por vivienda (opcional)
-   <textarea id="financeNewProjectRules" rows="4" placeholder="Jardines 201 = 2500&#10;Jardines 205 = 2500"></textarea>
-  </label>
-  <p class="hint">Una dirección y su importe por línea. Las viviendas que no aparezcan conservarán la cuota general.</p>
+  <button type="button" id="financeNewProjectRulesOpen" class="soft">Configurar importes de las 231 viviendas</button>
+  <p id="financeNewProjectRulesSummary" class="hint">Todas las casas reciben la cuota general salvo excepciones.</p>
+  <textarea id="financeNewProjectRules" hidden></textarea>
   <button type="submit" class="primary">Crear proyecto para las 231 viviendas</button>
  </form>
  <div id="financeImportProjectsForm" class="finance-project-form" hidden>
@@ -122,6 +121,13 @@
 <p id="expenseResultCount" class="expense-results" role="status" aria-live="polite"></p>
 <div class="table-scroll expense-table-scroll"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Referencia</th><th>Monto</th><th>Cobro</th></tr></thead><tbody id="financeExpenseRows"></tbody></table></div></section>
 <section id="historicalExtraModal" class="finance-pay-overlay" hidden aria-label="Programar cuota extraordinaria histórica"><div class="finance-pay-dialog" role="dialog" aria-modal="true"><div class="finance-pay-heading"><div><span class="eyebrow">CUOTA EXTRAORDINARIA</span><h2>Programar proyecto anterior</h2><p id="historicalExtraName" class="hint"></p></div><button id="historicalExtraClose" class="soft" type="button">Cerrar</button></div><form id="historicalExtraForm" class="house-payment-form"><label>Meses para cubrir el egreso<input id="historicalExtraMonths" type="number" min="1" max="36" value="1" required></label><label>Primer mes de cobro<input id="historicalExtraStart" type="month" min="2026-10" required></label><p class="hint">Se cobrarán las mensualidades entre las 231 viviendas del padrón, conservando cada centavo y sin actualizar TAGs.</p><button type="submit" class="primary">Generar mensualidades</button></form><p id="historicalExtraStatus" role="status"></p></div></section>
+<section id="financeProjectRulesModal" class="finance-pay-overlay" hidden aria-label="Importes por vivienda"><div class="finance-pay-dialog finance-rules-dialog" role="dialog" aria-modal="true" aria-labelledby="financeRulesTitle">
+<div class="finance-pay-heading"><h2 id="financeRulesTitle">Configurar importes para 231 casas</h2><button type="button" id="financeRulesClose" class="soft">Cerrar</button></div>
+<div class="finance-rules-controls"><label>Cuota general (MXN)<input id="financeRulesBase" type="number" min="0.01" max="10000000" step="0.01"></label><label>Buscar vivienda<input id="financeRulesSearch" type="search" placeholder="Ej. Gardenias 5"></label></div>
+<p class="hint">Todas las viviendas reciben la cuota general. «Generar excepción» permite modificar una casa individualmente, incluso para que aporte menos.</p>
+<p id="financeRulesTotal" role="status"></p>
+<div class="finance-rules-scroll"><table><thead><tr><th>Vivienda</th><th>Cuota</th><th>Excepción</th></tr></thead><tbody id="financeRulesRows"></tbody></table></div>
+<p id="financeRulesStatus" role="status"></p><div class="finance-rules-actions"><button type="button" id="financeRulesCancel" class="soft">Cancelar</button><button type="button" id="financeRulesApply" class="primary">Guardar importes</button></div></div></section>
 <section id="houseReceiptModal" class="finance-pay-overlay" hidden aria-label="Recibo de mantenimiento">
   <div class="finance-pay-dialog finance-receipt-dialog" role="dialog" aria-modal="true" aria-labelledby="houseReceiptTitle" tabindex="-1">
     <div class="finance-pay-heading"><div><span class="eyebrow">COMPROBANTE DE MANTENIMIENTO</span><h2 id="houseReceiptTitle">Recibo de pago</h2><p id="houseReceiptAddress" class="hint"></p></div><button type="button" id="houseReceiptClose" class="soft">Cerrar</button></div>
@@ -221,4 +227,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-cuotas-por-mes" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-aportaciones-libres" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-cuotas-por-mes" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-proyectos-nuevas-reglas" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
