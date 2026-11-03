@@ -109,7 +109,15 @@
       $('legalText').textContent = 'El artículo 1028 del Código Civil del Estado de Jalisco dispone el pago anticipado de cuotas y prevé intereses moratorios conforme al reglamento del condominio y los límites legales. Este aviso no establece por sí mismo un recargo fijo de $50.';
       updatePaymentSummary();
     }
-    async function loadExtras() { try { const d = await api('/pagos/extraordinarias', { headers: headers() }); extras = d.data || []; renderExtras() } catch (e) { $('extraList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>' } }
+    async function loadExtras() { try {
+      const d=await api('/pagos/extraordinarias',{headers:headers(),cache:'no-store'});
+      extras=d.data||[];
+      // Tras validar cualquier transferencia, refrescar también la meta y
+      // el disponible del proyecto actualmente seleccionado, sin datos obsoletos.
+      if(selectedExtra)selectedExtra=extras.find(e=>Number(e.id)===Number(selectedExtra.id))||null;
+      renderExtras();
+      if(paymentType==='EXTRAORDINARIO')updatePaymentSummary();
+    }catch(e){$('extraList').innerHTML='<div class="empty">'+esc(e.message)+'</div>'} }
     async function loadReceipts({ preserveOnError = false } = {}) {
       try {
         const old = new Map(receiptItems.map(p => [Number(p.id), p.estatus]));
