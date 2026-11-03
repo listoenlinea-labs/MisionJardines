@@ -5,7 +5,7 @@ const Egreso=require('../models/Egreso');
 // Agrega nuevas opciones al ENUM conservando todos los valores anteriores;
 // no convierte ni elimina gastos existentes.
 const opciones=['LUZ','AGUA','JARDINERIA','MANTENIMIENTO','CUOTA_EXTRAORDINARIA','OTROS',
- 'PROYECTOS','CFE','SIAPA','INTERNET','SERVICIOS'];
+ 'PROYECTOS','CFE','SIAPA','INTERNET','SERVICIOS','PROYECTO'];
 async function asegurarFinanzas(){
  await Egreso.sync();
  const [col]=await db.query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS "+
