@@ -92,7 +92,7 @@
   const houses=data.casas||0;
   const financialCards=[
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento cobrado del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
+   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento acumulado',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.acumulado):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
    ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
