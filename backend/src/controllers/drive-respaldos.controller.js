@@ -8,4 +8,13 @@ async function callback(req,res){
  catch(e){console.error('[Google OAuth]',e);return res.status(e.status||500).type('text').send('No fue posible conectar Drive: '+e.message);}
 }
 async function backup(req,res){try{return res.json({ok:true,data:await s.backup(req.body||{})});}catch(e){return error(res,e);}}
-module.exports={status,link,callback,backup};
+async function selector(req,res){
+ try{res.set('Cache-Control','no-store');return res.json({ok:true,data:await s.selector()});}catch(e){return error(res,e);}
+}
+async function elegirCarpeta(req,res){
+ try{return res.json({ok:true,data:await s.elegirCarpeta(req.body?.folderId)});}catch(e){return error(res,e);}
+}
+async function recibos(req,res){
+ try{return res.json({ok:true,data:await s.subirRecibos(req.body||{})});}catch(e){return error(res,e);}
+}
+module.exports={status,link,callback,backup,selector,elegirCarpeta,recibos};

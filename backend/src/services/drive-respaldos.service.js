@@ -62,12 +62,22 @@ async function folder(token,name,parent){
  const obj=await created.json();if(!created.ok)throw fail(502,'No se pudo crear carpeta en Drive: '+(obj.error?.message||'error'));
  return obj.id;
 }
-async function status(){const r=await record();return {connected:!!r,email:r?.email||null,configured:!!process.env.GOOGLE_DRIVE_CLIENT_ID};}
-async function backup({periodo,xlsx,todos=false}){
+async function status(){
+ const r=await record();
+ return {connected:!!r,email:r?.email||null,configured:!!process.env.GOOGLE_DRIVE_CLIENT_ID,
+  folderConfigured:!!r?.folder_id,folderName:r?.folder_id?'02_Recibos_PDF':null,
+  folderUrl:r?.folder_id?'https://drive.google.com/drive/folders/'+r.folder_id:null};
+}
+async function backup({periodo,xlsx,todos=false,soloExcel=false}){
  recibos.parsePeriodo(periodo);
  const bytes=Buffer.from(String(xlsx||''),'base64');if(!bytes.length||bytes.length>1400*1024||bytes[0]!==0x50||bytes[1]!==0x4B)throw fail(400,'El Excel del padrón no es válido (máximo 1.4 MB)');
  const token=await access();
  const root=await folder(token,'Misión Jardines - Respaldos');
+ if(soloExcel){
+  const dir=await folder(token,periodo,root);
+  const x=await upload(token,'Padron_'+periodo+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',bytes,dir);
+  return {periodo,cantidad:0,meses:0,excelId:x.id,excelGuardado:true};
+ }
  const periodos=todos?await recibos.periodos():[periodo];
  if(periodos.length>96)throw fail(409,'Hay demasiados períodos para un respaldo en una sola operación; elige períodos individuales');
  const respaldados=[];
@@ -81,4 +91,80 @@ async function backup({periodo,xlsx,todos=false}){
  const excel=await upload(token,'Padron_'+periodo+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',bytes,dirExcel);
  return {periodo,cantidad:respaldados.reduce((n,p)=>n+p.cantidad,0),meses:respaldados.length,respaldados,excelId:excel.id};
 }
-module.exports={init,loginUrl,callback,status,backup,fail};
+
+// Google Picker autoriza carpetas que ya existían antes de la instalación.
+// La API key es pública y debe estar limitada a Google Picker + dominios autorizados.
+async function selector(){
+ const apiKey=String(process.env.GOOGLE_PICKER_API_KEY||'').trim();
+ const appId=String(process.env.GOOGLE_CLOUD_PROJECT_NUMBER||'').trim();
+ if(!apiKey||!/^\d{5,20}$/.test(appId))throw fail(503,'Configura GOOGLE_PICKER_API_KEY y GOOGLE_CLOUD_PROJECT_NUMBER en Hostinger y habilita Google Picker API');
+ const accessToken=await access();
+ return {accessToken,apiKey,appId};
+}
+async function elegirCarpeta(folderId){
+ if(typeof folderId!=='string'||!/^[a-zA-Z0-9_-]{12,150}$/.test(folderId))
+  throw fail(400,'El identificador de carpeta no es válido');
+ const r=await record();if(!r)throw fail(409,'Conecta primero tu cuenta Google');
+ const token=await access();
+ const response=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(folderId)
+  +'?fields=id,name,mimeType,trashed,capabilities(canAddChildren),webViewLink',
+  {headers:{Authorization:'Bearer '+token}});
+ const info=await response.json().catch(()=>({}));
+ if(!response.ok)throw fail(response.status===404?409:502,
+  'Google no permitió acceder a esa carpeta. Selecciónala desde Google Picker usando la misma cuenta conectada. '+(info.error?.message||''));
+ if(info.trashed||info.mimeType!=='application/vnd.google-apps.folder'||info.name!=='02_Recibos_PDF')
+  throw fail(409,'Selecciona exactamente la carpeta 02_Recibos_PDF dentro de Mision Jardines - Administración');
+ if(info.capabilities?.canAddChildren===false)
+  throw fail(403,'La cuenta Google conectada no tiene permiso para escribir dentro de 02_Recibos_PDF');
+ await sequelize.query('UPDATE google_drive_respaldo SET folder_id=? WHERE id=1',{replacements:[folderId]});
+ return {folderName:info.name,folderId,url:'https://drive.google.com/drive/folders/'+folderId};
+}
+const safeFolderId=id=>typeof id==='string'&&/^[a-zA-Z0-9_-]{12,150}$/.test(id);
+async function pdfExistente(token,parent,name){
+ const query="name = '"+String(name).replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+  +"' and mimeType = 'application/pdf' and trashed = false and '"+parent+"' in parents";
+ const response=await fetch('https://www.googleapis.com/drive/v3/files?'
+  +new URLSearchParams({q:query,fields:'files(id,name),nextPageToken',pageSize:'20'}),
+  {headers:{Authorization:'Bearer '+token}});
+ const j=await response.json().catch(()=>({}));
+ if(!response.ok)throw fail(502,'No se pudo comprobar si el recibo ya existe: '+(j.error?.message||''));
+ return j.files?.find(x=>x.name===name)||null;
+}
+async function guardarPdf(token,folderId,item){
+ const existing=await pdfExistente(token,folderId,item.name);
+ if(!existing){
+  await upload(token,item.name,'application/pdf',item.data,folderId);
+  return 'creado';
+ }
+ const result=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+encodeURIComponent(existing.id)+'?uploadType=media&fields=id',
+ {method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/pdf'},body:item.data});
+ if(!result.ok){
+  const info=await result.json().catch(()=>({}));
+  throw fail(502,'No se pudo actualizar '+item.name+': '+(info.error?.message||result.status));
+ }
+ return 'actualizado';
+}
+async function subirRecibos({periodo,offset=0}){
+ recibos.parsePeriodo(periodo);
+ const n=Number(offset);
+ if(!Number.isSafeInteger(n)||n<0||n>50000)throw fail(400,'Posición de lote inválida');
+ const r=await record();
+ if(!r||!safeFolderId(r.folder_id))
+  throw fail(409,'Selecciona primero la carpeta 02_Recibos_PDF desde el botón Elegir carpeta de Drive');
+ const token=await access();
+ // IMPORTANTE: carpeta existente /02_Recibos_PDF/2026/ y archivos PDF individuales.
+ const year=periodo.slice(0,4);
+ const destino=await folder(token,year,r.folder_id);
+ const lote=await recibos.lotePdf(periodo,n,10);
+ let creados=0,actualizados=0;
+ for(const item of lote.files){
+  const resultado=await guardarPdf(token,destino,item);
+  if(resultado==='creado')creados++;else actualizados++;
+ }
+ return {periodo,anio:year,folderId:destino,
+  folderUrl:'https://drive.google.com/drive/folders/'+destino,
+  total:lote.total,nextOffset:lote.nextOffset,terminado:lote.nextOffset>=lote.total,
+  procesados:lote.files.length,creados,actualizados};
+}
+
+module.exports={init,loginUrl,callback,status,backup,fail,selector,elegirCarpeta,subirRecibos};
