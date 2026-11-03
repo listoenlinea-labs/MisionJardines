@@ -1,7 +1,7 @@
 'use strict';
 // Correcciones de totales mediante asientos firmados: jamás borrar ni
 // sobrescribir una erogación individual, incluso cuando hay varias en el mes.
-const {categorias,canonica}=require('./categorias-egresos.service');
+const {categorias}=require('./categorias-egresos.service');
 const LEGACY={CFE:['CFE','LUZ'],SIAPA:['SIAPA','AGUA'],
  CUOTA_EXTRAORDINARIA:['CUOTA_EXTRAORDINARIA','PROYECTOS']};
 const PREFIX='AJUSTE MENSUAL DEL TOTAL';
@@ -11,14 +11,14 @@ function fail(message,status=400){
 function cents(value){
  if(typeof value!=='number'&&typeof value!=='string')throw fail('Monto inválido');
  const text=String(value).trim();
- if(!/^(?:0|[1-9]\\d{0,8})(?:\\.\\d{1,2})?$/.test(text))
+ if(!/^(?:0|[1-9]\d{0,8})(?:\.\d{1,2})?$/.test(text))
   throw fail('Ingresa un importe de $0 a $100,000,000 con máximo dos decimales');
  const n=Math.round(Number(text)*100);
  if(!Number.isSafeInteger(n)||n>10000000000)throw fail('Monto fuera de rango');
  return n;
 }
 function periodoValido(periodo){
- if(typeof periodo!=='string'||!/^20\\d{2}-(?:0[1-9]|1[0-2])$/.test(periodo))
+ if(typeof periodo!=='string'||!/^20\d{2}-(?:0[1-9]|1[0-2])$/.test(periodo))
   throw fail('Selecciona un mes y año válidos');
  const [year,month]=periodo.split('-').map(Number);
  const inicio=periodo+'-01';
