@@ -1,6 +1,6 @@
 'use strict';
 const { Op } = require('sequelize');
-const { Casa, Cuota, CargoExtraordinario, CuotaExtraordinaria, PagoReportado, PagoManualConcepto } = require('../models');
+const { Casa, Cuota, CargoExtraordinario, CuotaExtraordinaria, PagoReportado, PagoManualConcepto, AportacionExtraordinaria } = require('../models');
 const { seleccionarPadronAnalisis } = require('./padron-finanzas.service');
 const { fechaMexico } = require('./vigencia-calculo');
 
@@ -55,14 +55,27 @@ async function estadoCargos(casaId,{transaction}={}) {
   const cargos = await CargoExtraordinario.findAll({where:{casaId},include:[{model:CuotaExtraordinaria,as:'cuota',required:true,where:{activo:true}}],order:[['periodo','ASC']],transaction});
   if(!cargos.length)return [];
   const ids=cargos.map(c=>c.id);
-  const [reportados,manuales] = await Promise.all([
+  const [reportados,manuales,aportaciones] = await Promise.all([
     PagoReportado.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids},estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},attributes:['cargoExtraordinarioId','estatus'],transaction}),
-    PagoManualConcepto.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids}},attributes:['cargoExtraordinarioId'],transaction})
+    PagoManualConcepto.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids}},attributes:['cargoExtraordinarioId'],transaction}),
+    AportacionExtraordinaria.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids}},
+      attributes:['cargoExtraordinarioId','monto'],transaction})
   ]);
   const manualSet=new Set(manuales.map(p=>String(p.cargoExtraordinarioId)));
   const validSet=new Set(reportados.filter(p=>p.estatus==='VALIDADO').map(p=>String(p.cargoExtraordinarioId)));
   const pendingSet=new Set(reportados.filter(p=>p.estatus==='PENDIENTE_VALIDACION').map(p=>String(p.cargoExtraordinarioId)));
-  return cargos.map(c=>({id:c.id,periodo:c.periodo,monto:Number(c.monto),concepto:c.cuota.concepto,cuotaExtraordinariaId:c.cuotaExtraordinariaId,
-    estado:manualSet.has(String(c.id))||validSet.has(String(c.id))?'PAGADO':pendingSet.has(String(c.id))?'EN_REVISION':'PENDIENTE'}));
+  const abonos=new Map();
+  for(const a of aportaciones){
+   const k=String(a.cargoExtraordinarioId);
+   abonos.set(k,(abonos.get(k)||0)+Math.round(Number(a.monto||0)*100));
+  }
+  return cargos.map(c=>{
+   const id=String(c.id),total=Math.round(Number(c.monto)*100);
+   const pagado=manualSet.has(id)||validSet.has(id)?total:abonos.get(id)||0;
+   const saldo=Math.max(0,total-pagado);
+   const estado=saldo===0?'PAGADO':pendingSet.has(id)?'EN_REVISION':pagado>0?'PAGO_PARCIAL':'PENDIENTE';
+   return {id:c.id,periodo:c.periodo,monto:saldo/100,montoOriginal:total/100,montoPagado:pagado/100,
+     concepto:c.cuota.concepto,cuotaExtraordinariaId:c.cuotaExtraordinariaId,estado};
+  });
 }
 module.exports={NUM_VIVIENDAS,distribuir,padronOficial,crearPorEgreso,estadoCargos,error};
