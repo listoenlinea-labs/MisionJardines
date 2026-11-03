@@ -718,7 +718,12 @@ function renderHouses(){
       (Number(p.recargo)>0?'<p class="history-penalty">Incluye '+esc(fmt(p.recargo))+' de recargo por pago tardío.</p>':'')+
       '<div class="history-event-footer"><small>'+esc(p.formaPago||'Pago registrado')+(p.referencia?' · Ref. '+esc(p.referencia):'')+'</small>'+
       (['MANTENIMIENTO','EXTRAORDINARIO'].includes(activeConcept)?'<button type="button" class="history-receipt-button" data-history-receipt="'+index+'"'+(p.referencia?'':' disabled title="No hay referencia verificable para este movimiento"')+' aria-label="Generar recibo del pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'">Generar recibo</button>':'')+
-      (activeConcept==='MANTENIMIENTO'?'<button type="button" class="history-delete-button" data-history-delete="'+index+'" aria-label="Borrar pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'" title="Verificar y anular este movimiento de mantenimiento">Borrar</button>':'')+'</div></div></article>';
+      (activeConcept==='MANTENIMIENTO'?'<button type="button" class="history-delete-button" data-history-delete="'+index+'" aria-label="Borrar pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'" title="Verificar y anular este movimiento de mantenimiento">Borrar</button>':'')+
+       (activeConcept==='EXTRAORDINARIO'?'<button type="button" class="history-delete-button" data-extra-history-delete="'+index+'"'+
+        (!['APORTACION','MANUAL'].includes(p.origenTipo)||!Number.isSafeInteger(Number(p.movimientoId))?
+         ' disabled title="Comprobante bancario o movimiento sin identificador: requiere conciliación."':
+         ' title="Anular con auditoría solo esta aportación del proyecto"')+
+        ' aria-label="Borrar aportación de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'">Borrar</button>':'')+'</div></div></article>';
    }).join(''):'<div class="history-empty">Esta vivienda todavía no tiene pagos confirmados de este concepto.</div>';
    $('houseHistoryDebts').innerHTML='<h3>Deudas pendientes ('+debts.length+')</h3>'+
     (debts.length?'<div class="history-debt-list">'+debts.map(d=>'<div class="history-debt"><div><strong>'+esc(d.concepto||conceptTitle(activeConcept))+'</strong><small>'+esc(debtPeriod(d.periodo))+(d.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</small></div><div><b>'+esc(fmt(d.monto))+'</b>'+
@@ -1353,6 +1358,53 @@ function renderHouses(){
   }finally{
    button.disabled=false;
   }
+ });
+
+
+ // La reversión de proyectos no modifica las cuotas de mantenimiento ni las vigencias C3.
+ historyModal.addEventListener('click',async event=>{
+  const button=event.target.closest('button[data-extra-history-delete]');
+  if(!button||button.disabled||historyModal.hidden||activeConcept!=='EXTRAORDINARIO'||
+     !historyModal.contains(button)||!activeProyectoId)return;
+  event.preventDefault();
+  const index=Number(button.dataset.extraHistoryDelete),casaId=Number(currentHistoryHouseId),
+   projectId=Number(activeProyectoId),movimiento=historyMovements[index],
+   status=$('houseHistoryDeleteStatus');
+  if(!Number.isSafeInteger(index)||index<0||!Number.isSafeInteger(casaId)||casaId<1||
+     !Number.isSafeInteger(projectId)||projectId<1||!movimiento)return;
+  const source=String(movimiento.origenTipo||''),id=Number(movimiento.movimientoId);
+  if(!['APORTACION','MANUAL'].includes(source)||!Number.isSafeInteger(id)||id<1){
+   status.textContent='Este movimiento requiere conciliación antes de anular.';return;
+  }
+  button.disabled=true;
+  status.textContent='Verificando la aportación y los saldos del proyecto…';
+  const route='/proyectos-extraordinarios/'+projectId+'/viviendas/'+casaId+
+   '/aportaciones/'+encodeURIComponent(source)+'/'+id+'/anulacion';
+  try{
+   const preview=(await request(route)).data;
+   if(historyModal.hidden||currentHistoryHouseId!==casaId||
+      Number(activeProyectoId)!==projectId||activeConcept!=='EXTRAORDINARIO')return;
+   if(!window.confirm('¿Anular la aportación de '+fmt(preview.monto)+' del proyecto «'+preview.proyecto+'»?'+
+      '\nReferencia: '+preview.referencia+'\n\n'+preview.advertencia+
+      '\nEl adeudo se recalculará sin alterar mantenimiento ni TAGs.\n'+preview.avisoRecibos)){
+    status.textContent='Cancelado; ningún abono fue modificado.';return;
+   }
+   if(window.prompt('Escribe ANULAR para confirmar que registraste este abono por error:')!=='ANULAR'){
+    status.textContent='Cancelado; ningún abono fue modificado.';return;
+   }
+   status.textContent='Archivando el abono y actualizando el saldo…';
+   const result=(await request(route,{confirmacion:'ANULAR',referencia:preview.referencia,monto:preview.monto})).data;
+   if(!result?.anulado)throw Error('El servidor no confirmó la anulación; verifica antes de repetir.');
+   const refreshed=await load();
+   const msg=refreshed?'Aportación de '+fmt(preview.monto)+' anulada y archivada. Saldo actualizado.':
+    'Anulación confirmada en el servidor. No se pudo recargar; verifica el historial antes de intentarlo otra vez.';
+   if(!historyModal.hidden&&currentHistoryHouseId===casaId&&
+      Number(activeProyectoId)===projectId&&activeConcept==='EXTRAORDINARIO'){
+    await openHouseHistory(casaId,null);status.textContent=msg;
+   }
+   notice(msg,'success');
+  }catch(error){status.textContent='No se anuló la aportación: '+error.message;}
+  finally{button.disabled=false;}
  });
 
  function initializePaymentYears(){
