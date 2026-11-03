@@ -2,6 +2,7 @@
 const {Cuota}=require('../models');
 const recibos=require('./recibo-mantenimiento-analisis.service');
 const zlib=require('node:zlib');
+const extra=require('./recibo-extraordinario-analisis.service');
 const nombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 function parsePeriodo(p){const m=/^(20\d{2})-(0[1-9]|1[0-2])$/.exec(String(p||''));if(!m)throw fail(400,'Período inválido: usa AAAA-MM');return {anio:Number(m[1]),mes:nombres[Number(m[2])-1]};}
@@ -27,11 +28,13 @@ function zip(entries){
  end.writeUInt32LE(centralSize,12);end.writeUInt32LE(offset,16);
  return Buffer.concat([...chunks,...central,end]);
 }
-async function periodos(){
+async function periodos(proyectoId=null){
+ if(proyectoId!=null){const {items}=await extra.movimientosProyecto(proyectoId);return [...new Set(items.map(x=>fechaItem(x.fecha).slice(0,7)).filter(p=>/^20\d{2}-(?:0[1-9]|1[0-2])$/.test(p)))].sort();}
  const rows=await Cuota.findAll({attributes:['anio','mes'],where:{estatusPago:'PAGADO'},raw:true});
  return [...new Set(rows.map(r=>String(r.anio)+'-'+String(nombres.indexOf(r.mes)+1).padStart(2,'0')).filter(p=>!p.endsWith('-00')))].sort();
 }
-async function generar(periodo){
+async function generar(periodo,proyectoId=null){
+ if(proyectoId!=null){const batch=await extraordinariosPdf(periodo,proyectoId,0,5000);return {periodo,buffer:zip(batch.files),cantidad:batch.files.length};}
  const {anio,mes}=parsePeriodo(periodo);
  const rows=await Cuota.findAll({attributes:['casaId'],where:{anio,mes,estatusPago:'PAGADO'},raw:true});
  const ids=[...new Set(rows.map(r=>Number(r.casaId)))];
@@ -50,7 +53,8 @@ async function generar(periodo){
 
 // Prepara un lote pequeño de PDF individuales para subir al Drive existente.
 // Limitar el lote evita un timeout HTTP cuando hay 200+ viviendas pagadas.
-async function lotePdf(periodo,offset=0,limit=10){
+async function lotePdf(periodo,offset=0,limit=10,proyectoId=null){
+ if(proyectoId!=null)return extraordinariosPdf(periodo,proyectoId,offset,limit);
  const {anio,mes}=parsePeriodo(periodo);
  if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>20)
   throw fail(400,'Parámetros de paginación inválidos');
@@ -70,4 +74,30 @@ async function lotePdf(periodo,offset=0,limit=10){
  return {periodo,total:ids.length,offset,nextOffset:Math.min(ids.length,offset+selected.length),files};
 }
 
+
+function fechaItem(value){
+ if(value instanceof Date)return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(value);
+ return String(value||'').slice(0,10);
+}
+async function extraordinariosPdf(periodo,proyectoId,offset=0,limit=10){
+ parsePeriodo(periodo);
+ const pid=extra.proyectoValido(proyectoId);
+ if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>5000)
+  throw fail(400,'Límite de recibos o paginación inválidos');
+ const {items}=await extra.movimientosProyecto(pid);
+ const movements=items.filter(x=>fechaItem(x.fecha).slice(0,7)===periodo)
+  .sort((a,b)=>Number(a.casaId)-Number(b.casaId)||fechaItem(a.fecha).localeCompare(fechaItem(b.fecha))||a.referencia.localeCompare(b.referencia));
+ if(!movements.length)throw fail(404,'No hay aportaciones confirmadas de este proyecto en '+periodo);
+ const files=[],errors=[],selected=movements.slice(offset,offset+limit);
+ for(const item of selected){
+  try{
+   const {recibo}=await extra.consultarPago(item.casaId,pid,item.referencia);
+   const pdf=await recibos.generarPdf(recibo);
+   if(!pdf?.buffer?.length)throw Error('PDF vacío');
+   files.push({casaId:item.casaId,name:pdf.nombreArchivo||recibo.folio+'.pdf',data:pdf.buffer});
+  }catch(e){errors.push({casaId:item.casaId,error:e.message});}
+ }
+ if(errors.length)throw fail(409,'No se entregará lote incompleto: '+errors.slice(0,5).map(x=>x.casaId+': '+x.error).join('; '));
+ return {periodo,total:movements.length,offset,nextOffset:Math.min(movements.length,offset+selected.length),files};
+}
 module.exports={parsePeriodo,periodos,generar,zip,lotePdf};

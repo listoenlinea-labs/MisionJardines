@@ -1309,3 +1309,18 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
 .house-project-edit:hover{background:#edf5fc}
 @media(max-width:850px){.finance-project-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-project-fields{grid-template-columns:1fr}.finance-project-top{align-items:stretch}.finance-project-actions{width:100%}}
 @media(max-width:480px){.finance-project-panel{padding:12px}.finance-project-metrics strong{font-size:14px}.finance-project-actions .soft{flex:1;padding:10px 8px}}
+
+.finance-project-actions [hidden]{display:none!important}
+.finance-rules-dialog{width:min(900px,100%);max-height:calc(100vh - 20px);display:flex;flex-direction:column;gap:10px}
+.finance-rules-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.finance-rules-controls label{font-size:12px;font-weight:700}
+.finance-rules-controls input{display:block;width:100%;margin-top:5px;padding:10px;border:1px solid #d8dfea;border-radius:8px}
+.finance-rules-scroll{flex:1;overflow:auto;min-height:130px}
+.finance-rules-scroll table{width:100%;border-collapse:collapse}
+.finance-rules-scroll th{position:sticky;top:0;background:#fafbfe;text-align:left}
+.finance-rules-scroll td,.finance-rules-scroll th{border-bottom:1px solid #e8edf3;padding:8px}
+.finance-rules-scroll input{width:125px;max-width:100%;padding:7px;border:1px solid #ddd;border-radius:8px}
+.finance-rules-actions{display:flex;justify-content:flex-end;gap:10px}
+@media(max-width:600px){.finance-rules-controls{grid-template-columns:1fr}.finance-rules-scroll input{width:86px}}
+
+#financeNewProjectRules[hidden]{display:none!important}

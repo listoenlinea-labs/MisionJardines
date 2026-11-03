@@ -65,6 +65,7 @@
  let activeProyectoId=null;
  let importacionExtraordinaria=null;
  let importacionPrevisualizada=false;
+ let projectDraftRules=new Map();
  let selectedExpenseCategory=null;
  let expenseMonthlySaving=false;
  let selectedIncomeStreet=null;
@@ -473,6 +474,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   }
   const proyectos=data.proyectosExtraordinarios||[];
   $('financeProjectPanel').hidden=concepto!=='EXTRAORDINARIO';
+  $('financeProjectRulesEdit').hidden=concepto!=='EXTRAORDINARIO'||!(data.proyectosExtraordinarios||[]).length;
   let seleccionado=null;
   if(concepto==='EXTRAORDINARIO'){
    seleccionado=proyectos.find(p=>Number(p.id)===Number(activeProyectoId))||proyectos[0]||null;
@@ -504,8 +506,8 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     return;
   }
   activeConcept=concepto;
-  if(concepto!=='MANTENIMIENTO')selectedReceiptHouseId=null;
-  $('financeReceiptToolbar').hidden=concepto!=='MANTENIMIENTO';
+  if(concepto==='CASA_CLUB')selectedReceiptHouseId=null;
+  $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
   data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
@@ -573,7 +575,7 @@ function renderHouses(){
   const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
   housePage=Math.min(Math.max(housePage,1),totalPages);
   const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
-  const selectionAvailable=activeConcept==='MANTENIMIENTO';
+  const selectionAvailable=activeConcept==='MANTENIMIENTO'||(activeConcept==='EXTRAORDINARIO'&&!!activeProyectoId);
   if(!selectionAvailable||!visible.some(h=>Number(h.casaId)===selectedReceiptHouseId))selectedReceiptHouseId=null;
   const selected=visible.find(h=>Number(h.casaId)===selectedReceiptHouseId);
   $('financeGenerateReceipt').disabled=!selected;
@@ -700,7 +702,7 @@ function renderHouses(){
       (months.length?'<div class="history-months">'+months.map(name=>'<span>'+esc(name)+'</span>').join('')+'</div>':'')+
       (Number(p.recargo)>0?'<p class="history-penalty">Incluye '+esc(fmt(p.recargo))+' de recargo por pago tardío.</p>':'')+
       '<div class="history-event-footer"><small>'+esc(p.formaPago||'Pago registrado')+(p.referencia?' · Ref. '+esc(p.referencia):'')+'</small>'+
-      (activeConcept==='MANTENIMIENTO'?'<button type="button" class="history-receipt-button" data-history-receipt="'+index+'"'+(p.referencia?'':' disabled title="No hay referencia verificable para este movimiento"')+' aria-label="Generar recibo del pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'">Generar recibo</button>':'')+
+      (['MANTENIMIENTO','EXTRAORDINARIO'].includes(activeConcept)?'<button type="button" class="history-receipt-button" data-history-receipt="'+index+'"'+(p.referencia?'':' disabled title="No hay referencia verificable para este movimiento"')+' aria-label="Generar recibo del pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'">Generar recibo</button>':'')+
       (activeConcept==='MANTENIMIENTO'?'<button type="button" class="history-delete-button" data-history-delete="'+index+'" aria-label="Borrar pago de '+esc(fmt(p.monto))+' del '+esc(displayDate(p.fecha))+'" title="Verificar y anular este movimiento de mantenimiento">Borrar</button>':'')+'</div></div></article>';
    }).join(''):'<div class="history-empty">Esta vivienda todavía no tiene pagos confirmados de este concepto.</div>';
    $('houseHistoryDebts').innerHTML='<h3>Deudas pendientes ('+debts.length+')</h3>'+
@@ -826,7 +828,7 @@ function renderHouses(){
   $('houseReceiptDownload').disabled=true;
   $('houseReceiptWhatsApp').disabled=true;
   receiptStatus('Generando el recibo del mes seleccionado…');
-  const query=referencia?'?referencia='+encodeURIComponent(referencia):periodo?'?periodo='+encodeURIComponent(periodo):'';
+  const qs=new URLSearchParams();if(activeConcept==='EXTRAORDINARIO'){qs.set('concepto','EXTRAORDINARIO');qs.set('proyectoId',activeProyectoId);}if(referencia)qs.set('referencia',referencia);else if(periodo&&activeConcept==='MANTENIMIENTO')qs.set('periodo',periodo);const query=qs.toString()?'?'+qs:'';
   try{
    const {data:detail}=await request('/pagos-vivienda/'+casaId+'/recibo/datos'+query);
    if(seq!==receiptSequence||receiptModal.hidden)return;
@@ -862,13 +864,13 @@ function renderHouses(){
   }
  }
  async function openHouseReceipt(casaId=selectedReceiptHouseId,referencia=null,trigger=document.activeElement){
-  if(activeConcept!=='MANTENIMIENTO'||!Number.isSafeInteger(Number(casaId))||Number(casaId)<1)return;
+  if(!['MANTENIMIENTO','EXTRAORDINARIO'].includes(activeConcept)||!Number.isSafeInteger(Number(casaId))||Number(casaId)<1||(activeConcept==='EXTRAORDINARIO'&&!activeProyectoId))return;
   casaId=Number(casaId);
   const seq=++receiptSequence;
   receiptCurrentHouseId=casaId;
   receiptReturnFocus=trigger;
   receiptModal.hidden=false;
-  $('houseReceiptTitle').textContent='Generar recibo de mantenimiento';
+  $('houseReceiptTitle').textContent=activeConcept==='EXTRAORDINARIO'?'Generar recibo del proyecto':'Generar recibo de mantenimiento';
   $('houseReceiptAddress').textContent='Consultando vivienda…';
   receiptStatus(referencia?'Consultando el pago del historial seleccionado…':'Buscando los meses pagados y los teléfonos registrados…');
   $('houseReceiptPeriod').hidden=true;
@@ -881,7 +883,7 @@ function renderHouses(){
   $('houseReceiptPreview').hidden=true;
   $('houseReceiptClose').focus();
   try{
-   const {data:detail}=await request('/pagos-vivienda/'+casaId+'/recibo/datos'+(referencia?'?referencia='+encodeURIComponent(referencia):''));
+   const qs=new URLSearchParams();if(referencia)qs.set('referencia',referencia);if(activeConcept==='EXTRAORDINARIO'){qs.set('concepto','EXTRAORDINARIO');qs.set('proyectoId',activeProyectoId);}const {data:detail}=await request('/pagos-vivienda/'+casaId+'/recibo/datos'+(qs.toString()?'?'+qs:''));
    if(seq!==receiptSequence||receiptModal.hidden)return;
    const periodos=detail.periodosDisponibles||[];
    if(!referencia&&periodos.length){
@@ -900,7 +902,7 @@ function renderHouses(){
  // Reutilizar el visor PDF existente para la referencia exacta del movimiento.
  historyModal.addEventListener('click',event=>{
   const button=event.target.closest('button[data-history-receipt]');
-  if(!button||!historyModal.contains(button)||historyModal.hidden||activeConcept!=='MANTENIMIENTO')return;
+  if(!button||!historyModal.contains(button)||historyModal.hidden||!['MANTENIMIENTO','EXTRAORDINARIO'].includes(activeConcept))return;
   const index=Number(button.dataset.historyReceipt);
   if(!Number.isSafeInteger(index)||index<0||!currentHistoryHouseId)return;
   const movement=historyMovements[index];
@@ -922,7 +924,7 @@ function renderHouses(){
  $('houseReceiptWhatsApp').addEventListener('click',()=>{
   const phone=normalizeReceiptPhone($('houseReceiptPhoneInput').value);
   if(!receiptBlob||!receiptDetails||!phone)return;
-  const message='Hola, te compartimos tu recibo de mantenimiento de Misión Jardines, folio '+receiptDetails.folio+'. Adjunto el documento PDF.';
+  const message='Hola, te compartimos tu recibo de '+(activeConcept==='EXTRAORDINARIO'?'proyecto extraordinario':'mantenimiento')+' de Misión Jardines, folio '+receiptDetails.folio+'. Adjunto el documento PDF.';
   const link=receiptIsMobile()
    ? 'https://wa.me/'+encodeURIComponent(phone)+'?text='+encodeURIComponent(message)
    : 'https://web.whatsapp.com/send?phone='+encodeURIComponent(phone)+'&text='+encodeURIComponent(message);
@@ -989,7 +991,8 @@ function renderHouses(){
   backupPeriod.value='';
   setBackupBusy(true);
   try{
-   const response=await request('/recibos-masivos/periodos');
+   const projectQuery=activeConcept==='EXTRAORDINARIO'&&activeProyectoId?'?proyectoId='+encodeURIComponent(activeProyectoId):'';
+   const response=await request('/recibos-masivos/periodos'+projectQuery);
    if(backupModal.hidden||backupAction==='connect')return;
    const periods=(response.data?.periodos||[]).filter(validBackupPeriod).sort().reverse();
    backupAvailablePeriods=periods;
@@ -1022,9 +1025,9 @@ function renderHouses(){
   $('financeDriveConfig').hidden=mode!=='connect';
   $('financeBackupTitle').textContent=mode==='zip'?'Descargar todos los recibos':mode==='drive'?'Generar respaldo en Google Drive':'Conectar con Google Drive';
   $('financeBackupDescription').textContent=mode==='zip'
-   ?'Elige el mes. Se descargará un ZIP con los PDF de las viviendas que pagaron mantenimiento en ese período.'
+   ?'Elige el mes para descargar los PDF de '+(activeConcept==='EXTRAORDINARIO'?'aportaciones del proyecto':'mantenimiento')+'.'
    :mode==='drive'
-    ?'Guarda PDF individuales en 02_Recibos_PDF / año (por ejemplo, 2026). El Excel del padrón conservará su respaldo financiero separado.'
+    ?'Guarda PDF individuales en Drive, '+(activeConcept==='EXTRAORDINARIO'?'separados por proyecto y año.':'en la carpeta del año junto con el Excel del padrón.')
     :'Autoriza una cuenta Google. Las credenciales OAuth se configuran en Hostinger; no las escribas aquí.';
   backupConfirm.textContent=mode==='zip'?'Descargar ZIP':mode==='drive'?'Generar respaldo':'Autorizar con Google';
   backupPeriod.innerHTML='';
@@ -1036,7 +1039,8 @@ function renderHouses(){
   else backupConfirm.focus();
  }
  async function downloadZip(periodo){
-  const response=await fetch(API+'/finanzas/recibos-masivos/zip?periodo='+encodeURIComponent(periodo),{
+  const extraQuery=activeConcept==='EXTRAORDINARIO'&&activeProyectoId?'&proyectoId='+encodeURIComponent(activeProyectoId):'';
+  const response=await fetch(API+'/finanzas/recibos-masivos/zip?periodo='+encodeURIComponent(periodo)+extraQuery,{
    headers:{Authorization:'Bearer '+token,Accept:'application/zip'}
   });
   if(response.status===401){location.replace('login.html');throw Error('Sesión expirada');}
@@ -1049,7 +1053,7 @@ function renderHouses(){
   const total=Number(response.headers.get('X-Recibos-Count')||0);
   const link=document.createElement('a'),url=URL.createObjectURL(blob);
   link.href=url;
-  link.download='MJ_Recibos_'+periodo+'.zip';
+  link.download='MJ_'+(activeConcept==='EXTRAORDINARIO'?'Proyecto_':'Recibos_')+periodo+'.zip';
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -1181,7 +1185,7 @@ function renderHouses(){
    do{
     if(rounds++>300)throw Error('Se detuvo el respaldo por demasiados lotes');
     setBackupStatus('Subiendo recibos de '+month+' (procesados '+offset+')…');
-    const {data:page}=await request('/drive/recibos',{periodo:month,offset});
+    const {data:page}=await request('/drive/recibos',{periodo:month,offset,...(activeConcept==='EXTRAORDINARIO'?{proyectoId:activeProyectoId}:{})});
     if(!Number.isSafeInteger(page?.nextOffset)||page.nextOffset<=offset)
      throw Error('La API no avanzó al siguiente lote de '+month);
     pdfCount+=Number(page.procesados||0);
@@ -1235,10 +1239,13 @@ function renderHouses(){
     if(!estado?.connected)throw Error('Primero usa "Conectar con Google Drive" y autoriza tu cuenta.');
     if(!estado.folderConfigured)throw Error('Antes de respaldar pulsa "Elegir carpeta 02_Recibos_PDF".');
     const summary=await respaldarPdfDrive(periodo,backupAllMonths.checked);
-    setBackupStatus('PDF terminados: '+summary.pdfCount+' de '+summary.months+' mes(es). Guardando Excel…');
-    const xlsx=await excelForDrive(periodo);
-    await request('/drive/respaldo',{periodo,xlsx,soloExcel:true});
-    setBackupStatus('Respaldo terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados) en carpetas por año y Excel del padrón guardado.','success');
+    if(activeConcept==='EXTRAORDINARIO')setBackupStatus('Respaldo del proyecto terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados).','success');
+    else{
+     setBackupStatus('PDF terminados: '+summary.pdfCount+' de '+summary.months+' mes(es). Guardando Excel…');
+     const xlsx=await excelForDrive(periodo);
+     await request('/drive/respaldo',{periodo,xlsx,soloExcel:true});
+     setBackupStatus('Respaldo terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados) en carpetas por año y Excel del padrón guardado.','success');
+    }
    }
   }catch(error){
    if(googleTab&&!googleTab.closed)googleTab.close();
@@ -1571,12 +1578,12 @@ function renderHouses(){
   if(btn){openHousePayment(btn.dataset.payHouse);return;}
   if(event.target.closest('input,button,a,select,label'))return;
   const row=event.target.closest('[data-receipt-row]');
-  if(row&&activeConcept==='MANTENIMIENTO'){
+  if(row&&(activeConcept==='MANTENIMIENTO'||(activeConcept==='EXTRAORDINARIO'&&activeProyectoId))){
    selectedReceiptHouseId=Number(row.dataset.receiptRow);renderHouses();
   }
  });
  $('financeHouseRows').addEventListener('keydown',event=>{
-  if(activeConcept!=='MANTENIMIENTO'||!['Enter',' '].includes(event.key))return;
+  if(!['MANTENIMIENTO','EXTRAORDINARIO'].includes(activeConcept)||!['Enter',' '].includes(event.key))return;
   const row=event.target.closest('[data-receipt-row]');
   if(!row||event.target!==row)return;
   event.preventDefault();
@@ -1857,6 +1864,101 @@ function renderHouses(){
   $('financeNewProjectForm').hidden=true;
   if(!panel.hidden)$('financeProjectImportFile').focus();
  });
+ 
+ // Configurar cuota general y excepciones sobre el padrón de 231 viviendas.
+ let rateMode='create',rateExceptions=new Map(),rateBusy=false,rateReturn=null;
+ const rateModal=$('financeProjectRulesModal');
+ const rateValid=n=>Number.isFinite(Number(n))&&Number(n)>0&&Number(n)<=10000000&&Math.abs(Number(n)*100-Math.round(Number(n)*100))<0.001;
+ const rateProject=()=>(data?.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(activeProyectoId));
+ const rateHouses=()=>[...(data?.viviendasMantenimiento||[])].sort((a,b)=>String(a.calle).localeCompare(String(b.calle),'es',{numeric:true})||String(a.numero).localeCompare(String(b.numero),'es',{numeric:true}));
+ const rateBase=()=>Number($('financeRulesBase').value);
+ const rateFor=id=>rateExceptions.get(Number(id))??rateBase();
+ function rateRender(){
+  const houses=rateHouses(),q=$('financeRulesSearch').value.toLowerCase(),project=rateMode==='edit'?rateProject():null;
+  const paid=new Map((project?.viviendasDetalle||[]).map(v=>[Number(v.casaId),Number(v.montoPagado||0)]));
+  $('financeRulesRows').innerHTML=houses.filter(h=>(h.calle+' '+h.numero+' '+(h.nombre||'')).toLowerCase().includes(q)).map(h=>{
+   const id=Number(h.casaId),special=rateExceptions.has(id);
+   return '<tr><td>'+esc(h.calle+' '+h.numero)+'</td><td>'+esc(fmt(rateFor(id)))+(project?' <small>Abonado '+esc(fmt(paid.get(id)||0))+'</small>':'')+'</td><td>'+
+   (special?'<input type="number" min="0.01" max="10000000" step="0.01" data-exception-value="'+id+'" value="'+rateFor(id).toFixed(2)+'"> <button type="button" class="soft" data-exception-remove="'+id+'">Quitar</button>':
+   '<button type="button" class="soft" data-exception-add="'+id+'">Generar excepción</button>')+'</td></tr>';
+  }).join('')||'<tr><td colspan="3">Sin coincidencias</td></tr>';
+  const total=houses.reduce((n,h)=>n+Math.round(rateFor(h.casaId)*100),0)/100;
+  $('financeRulesTotal').textContent=houses.length+' viviendas · '+rateExceptions.size+' excepciones · Meta: '+fmt(total);
+  $('financeRulesApply').disabled=rateBusy||houses.length!==231||!rateValid(rateBase());
+ }
+ function rateClose(){if(rateBusy)return;rateModal.hidden=true;rateReturn?.focus();}
+ function rateOpen(mode){
+  if(rateHouses().length!==231){notice('El padrón no tiene 231 viviendas.');return;}
+  const p=mode==='edit'?rateProject():null;
+  if(mode==='edit'&&!p){notice('Selecciona un proyecto.');return;}
+  rateMode=mode;rateReturn=document.activeElement;rateExceptions=new Map();
+  const base=mode==='edit'?Number(p.cuotaBase):Number($('financeNewProjectBase').value);
+  $('financeRulesBase').value=rateValid(base)?String(base):'600';
+  if(p)for(const h of p.viviendasDetalle||[])if(Math.round(Number(h.montoCuota)*100)!==Math.round(rateBase()*100))
+   rateExceptions.set(Number(h.casaId),Number(h.montoCuota));
+  if(!p)for(const [id,monto] of projectDraftRules)rateExceptions.set(id,monto);
+  $('financeRulesTitle').textContent=p?'Modificar metas de '+p.nombre:'Nuevo proyecto: configurar importes';
+  $('financeRulesSearch').value='';$('financeRulesStatus').textContent='';
+  rateModal.hidden=false;rateRender();$('financeRulesClose').focus();
+ }
+ $('financeProjectRulesEdit').addEventListener('click',()=>rateOpen('edit'));
+ $('financeNewProjectRulesOpen').addEventListener('click',()=>rateOpen('create'));
+ $('financeRulesClose').addEventListener('click',rateClose);
+ $('financeRulesCancel').addEventListener('click',rateClose);
+ rateModal.addEventListener('click',e=>{if(e.target===rateModal)rateClose();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!rateModal.hidden)rateClose();});
+ $('financeRulesSearch').addEventListener('input',rateRender);
+ $('financeRulesBase').addEventListener('input',rateRender);
+ $('financeRulesRows').addEventListener('click',e=>{
+  const add=e.target.closest('[data-exception-add]'),remove=e.target.closest('[data-exception-remove]');
+  if(add){rateExceptions.set(Number(add.dataset.exceptionAdd),rateBase());rateRender();
+   $('financeRulesRows').querySelector('[data-exception-value="'+Number(add.dataset.exceptionAdd)+'"]')?.focus();}
+  if(remove){rateExceptions.delete(Number(remove.dataset.exceptionRemove));rateRender();}
+ });
+ $('financeRulesRows').addEventListener('change',e=>{
+  const input=e.target.closest('[data-exception-value]');if(!input)return;
+  if(!rateValid(input.value)){input.setCustomValidity('Monto inválido');input.reportValidity();return;}
+  input.setCustomValidity('');
+  const id=Number(input.dataset.exceptionValue),monto=Number(input.value);
+  if(Math.round(monto*100)===Math.round(rateBase()*100))rateExceptions.delete(id);else rateExceptions.set(id,monto);
+  rateRender();
+ });
+ $('financeRulesApply').addEventListener('click',async()=>{
+  if(rateBusy||rateHouses().length!==231||!rateValid(rateBase())){notice('Revisa el importe y el padrón.');return;}
+  for(const input of $('financeRulesRows').querySelectorAll('[data-exception-value]')){
+   if(!rateValid(input.value)){input.setCustomValidity('Monto inválido');input.reportValidity();return;}
+   rateExceptions.set(Number(input.dataset.exceptionValue),Number(input.value));
+  }
+  for(const [id,monto] of rateExceptions)if(Math.round(monto*100)===Math.round(rateBase()*100))rateExceptions.delete(id);
+  if(rateMode==='edit'){
+   const p=rateProject(),byId=new Map((p?.viviendasDetalle||[]).map(h=>[Number(h.casaId),h]));
+   for(const h of rateHouses()){
+    const old=byId.get(Number(h.casaId));
+    if(!old||Math.round(rateFor(h.casaId)*100)<Math.round(Number(old.montoPagado||0)*100)){
+     $('financeRulesStatus').textContent='No se puede bajar la meta de '+h.calle+' '+h.numero+' por debajo de lo aportado.';return;
+    }
+   }
+   if(!confirm('¿Guardar las metas de las 231 viviendas con auditoría?'))return;
+   rateBusy=true;rateRender();
+   try{
+    const result=await request('/proyectos-extraordinarios/'+activeProyectoId+'/cuotas',{
+     cuotaBase:rateBase(),excepciones:[...rateExceptions].map(([casaId,monto])=>({casaId,monto}))
+    },'PATCH');
+    rateBusy=false;rateClose();await load();notice(result.message,'success');
+   }catch(e){$('financeRulesStatus').textContent=e.message;notice(e.message);}
+   finally{rateBusy=false;rateRender();}
+  }else{
+   projectDraftRules.clear();for(const [id,monto] of rateExceptions)projectDraftRules.set(id,monto);
+   $('financeNewProjectBase').value=String(rateBase());
+   const houses=new Map(rateHouses().map(h=>[Number(h.casaId),h]));
+   $('financeNewProjectRules').value=[...projectDraftRules].map(([id,monto])=>{
+    const h=houses.get(id);return h.calle+' '+h.numero+' = '+monto.toFixed(2);
+   }).join('\n');
+   $('financeNewProjectRulesSummary').textContent=projectDraftRules.size+' excepciones configuradas.';
+   rateClose();
+  }
+ });
+
  $('financeNewProjectMonth').value=$('expenseDate').value.slice(0,7);
  function parseProjectRules(value){
   return String(value||'').split('\n').map(x=>x.trim()).filter(Boolean).map((line,n)=>{
@@ -1885,7 +1987,7 @@ function renderHouses(){
    const response=await request('/proyectos-extraordinarios',
     {nombre,cuotaBase,fechaInicio,tarifasEspeciales:especiales});
    activeProyectoId=response.data?.proyectos?.[0]?.id||null;
-   $('financeNewProjectForm').reset();
+   $('financeNewProjectForm').reset();projectDraftRules.clear();
    $('financeNewProjectForm').hidden=true;
    await load();notice('Proyecto creado y cargos guardados para las 231 viviendas.','success');
   }catch(error){notice(error.message);}finally{button.disabled=false;}

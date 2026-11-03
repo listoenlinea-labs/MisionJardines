@@ -11,7 +11,7 @@ const {fechaMexico}=require('./vigencia-calculo');
 function juntar(proyectos,cargos,aportes,manuales,reportados,viviendas){
  const base=new Map((viviendas||[]).map(h=>[String(h.casaId??h.id),h]));
  const porProyecto=new Map((proyectos||[]).map(p=>[String(p.id),{
-  id:Number(p.id),codigo:p.codigo||null,nombre:p.concepto,
+  id:Number(p.id),codigo:p.codigo||null,nombre:p.concepto,cuotaBase:Number(p.monto||0),
   activo:!!p.activo,fechaInicio:p.fechaInicio||null,viviendas:0,
   totalEsperado:0,recaudado:0,saldoPendiente:0,saldoFavor:0,
   cumplidos:0,parciales:0,pendientes:0,sinCargo:0,viviendasDetalle:[],ultimoPago:null
@@ -59,7 +59,7 @@ function juntar(proyectos,cargos,aportes,manuales,reportados,viviendas){
 }
 async function leerProyectos(padron){
  const [proyectos,cargos,aportes,manuales,reportados]=await Promise.all([
-  Proyecto.findAll({where:{activo:true},attributes:['id','codigo','concepto','activo','fechaInicio']}),
+  Proyecto.findAll({where:{activo:true},attributes:['id','codigo','concepto','monto','activo','fechaInicio']}),
   Cargo.findAll({attributes:['id','cuotaExtraordinariaId','casaId','monto','periodo']}),
   Aportacion.findAll({attributes:['id','cuotaExtraordinariaId','cargoExtraordinarioId','casaId','monto','fecha','referencia']}),
   PagoManualConcepto.findAll({where:{tipoPago:'EXTRAORDINARIO'},attributes:['cargoExtraordinarioId','tipoPago','monto','creadoEn','referencia']}),
@@ -166,4 +166,57 @@ async function ajustarCuota(proyectoId,casaId,importe,actor){
   return {proyectoId:pid,casaId:cid,anterior:anterior/100,monto:nuevo};
  });
 }
-module.exports={juntar,leerProyectos,previsualizar,crearLote,crearProyecto,ajustarCuota};
+
+async function ajustarCuotasProyecto(proyectoId,input,actor){
+ const pid=Number(proyectoId),admin=Number(actor),base=cents(input?.cuotaBase);
+ if(!Number.isSafeInteger(pid)||pid<1||!Number.isSafeInteger(admin)||admin<1||base<=0)
+  throw fail(400,'Proyecto, administrador o cuota general inválidos.');
+ const excepciones=input?.excepciones||[];
+ if(!Array.isArray(excepciones)||excepciones.length>231)throw fail(400,'Lista de excepciones inválida.');
+ const overrides=new Map();
+ for(const item of excepciones){
+  const cid=Number(item?.casaId),amount=cents(item?.monto);
+  if(!Number.isSafeInteger(cid)||cid<1||amount<=0||overrides.has(cid))
+   throw fail(400,'Hay una excepción duplicada o una tarifa inválida.');
+  overrides.set(cid,amount);
+ }
+ return db.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async tx=>{
+  const project=await Proyecto.findOne({where:{id:pid,activo:true},transaction:tx,lock:tx.LOCK.UPDATE});
+  if(!project)throw fail(404,'Proyecto no encontrado');
+  const padron=await padronOficial(tx);
+  const cargos=await Cargo.findAll({where:{cuotaExtraordinariaId:pid},transaction:tx,lock:tx.LOCK.UPDATE});
+  const authorized=new Set(padron.map(h=>Number(h.id)));
+  if(cargos.length!==231||new Set(cargos.map(c=>Number(c.casaId))).size!==231||
+    cargos.some(c=>!authorized.has(Number(c.casaId)))||
+    [...overrides.keys()].some(id=>!authorized.has(id)))
+   throw fail(409,'Los cargos del proyecto no coinciden con el padrón actual de 231 viviendas.');
+  const ids=cargos.map(c=>c.id);
+  const [historicos,manuales,bancarios]=await Promise.all([
+   Aportacion.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids}},transaction:tx}),
+   PagoManualConcepto.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids},tipoPago:'EXTRAORDINARIO'},transaction:tx}),
+   PagoReportado.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids},tipoPago:'EXTRAORDINARIO',
+    estatus:{[Op.in]:['VALIDADO','PENDIENTE_VALIDACION']}},transaction:tx})
+  ]);
+  const reservado=new Map();
+  for(const r of [...historicos,...manuales,...bancarios]){
+   const id=String(r.cargoExtraordinarioId);
+   reservado.set(id,(reservado.get(id)||0)+cents(r.monto));
+  }
+  let total=0,cambios=0;
+  for(const cargo of cargos){
+   const amount=overrides.get(Number(cargo.casaId))??base,anterior=cents(cargo.monto);
+   if(amount<(reservado.get(String(cargo.id))||0))
+    throw fail(409,'La cuota de vivienda '+cargo.casaId+' es menor a lo ya aportado o en validación. No se cambió nada.');
+   total+=amount;
+   if(amount===anterior)continue;
+   await cargo.update({monto:amount/100},{transaction:tx});
+   await db.query('INSERT INTO proyectos_cuotas_auditoria (cuota_extraordinaria_id,casa_id,monto_anterior,monto_nuevo,usuario_id) VALUES (?,?,?,?,?)',
+    {replacements:[pid,cargo.casaId,anterior/100,amount/100,admin],transaction:tx});
+   cambios++;
+  }
+  await project.update({monto:base/100,montoTotal:total/100,actualizadoEn:new Date()},{transaction:tx});
+  return {proyectoId:pid,viviendas:231,cambios,metaTotal:total/100,excepciones:overrides.size};
+ });
+}
+
+module.exports={juntar,leerProyectos,previsualizar,crearLote,crearProyecto,ajustarCuota,ajustarCuotasProyecto};

@@ -115,7 +115,7 @@ function generarReciboPdf(cuota, opciones = {}) {
                 Author:
                     'Administración Misión Jardines',
                 Subject:
-                    'Recibo de pago de mantenimiento'
+                    (cuota.tipo === 'EXTRAORDINARIO' ? 'Recibo de pago de proyecto' : (cuota.tipo === 'EXTRAORDINARIO' ? 'Recibo de pago de proyecto' : 'Recibo de pago de mantenimiento'))
             }
         });
 
@@ -305,12 +305,14 @@ function generarReciboPdf(cuota, opciones = {}) {
         // Un concepto uniforme en TODAS las salidas PDF (visor, descarga,
         // historial, ZIP y Google Drive). Pago anual es el tipo de operación:
         // puede cubrir únicamente los meses que restaban del año.
-        const conceptoMantenimiento = cuota.pagoAnual
+        const conceptoMantenimiento = cuota.tipo === 'EXTRAORDINARIO'
+            ? 'APORTACIÓN · ' + String(cuota.conceptoProyecto || 'Proyecto extraordinario')
+            : cuota.pagoAnual
             ? 'PAGO ANUAL DE MANTENIMIENTO'
             : cuota.periodosVarios
                 ? 'Pago de mantenimiento de varios meses'
                 : 'Pago de mantenimiento';
-        const etiquetaPeriodo = cuota.periodosVarios
+        const etiquetaPeriodo = cuota.tipo === 'EXTRAORDINARIO' ? 'Fecha de aportación: ' : cuota.periodosVarios
             ? 'Período cubierto: '
             : 'Mes cubierto: ';
         document
@@ -358,7 +360,7 @@ function generarReciboPdf(cuota, opciones = {}) {
         document
             .font('Helvetica')
             .text(
-                'Mantenimiento',
+                (cuota.tipo === 'EXTRAORDINARIO' ? 'Proyecto' : 'Mantenimiento'),
                 32,
                 446
             )

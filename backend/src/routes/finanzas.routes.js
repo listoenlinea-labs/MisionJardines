@@ -11,6 +11,7 @@ router.post('/proyectos-extraordinarios/previsualizar',proyectos.previsualizar);
 router.post('/proyectos-extraordinarios/importar',proyectos.importar);
 router.post('/proyectos-extraordinarios',proyectos.crear);
 router.patch('/proyectos-extraordinarios/:id/viviendas/:casaId',proyectos.ajustar);
+router.patch('/proyectos-extraordinarios/:id/cuotas',proyectos.ajustarProyecto);
 const masivos=require('../controllers/recibos-masivos.controller');
 const drive=require('../controllers/drive-respaldos.controller');
 router.get('/recibos-masivos/periodos',masivos.lista);
