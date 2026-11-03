@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-egresos-click-mes">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-modales-cobros-egresos">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -25,6 +25,7 @@
 <p class="finance-card-subtitle">Ingresos por calle</p>
 <p class="hint">Mantenimiento cobrado durante el mes y año seleccionados; pagos anuales contabilizados una sola vez en su fecha de cobro.</p>
 <div id="financeIncomeTotals" class="finance-period-summary" role="status" aria-live="polite"></div>
+<p class="hint finance-history-hint">Haz clic en una calle para comparar sus ingresos de enero al mes seleccionado.</p>
 <div id="financeCashChart" class="money-bars" aria-label="Mantenimiento cobrado en el mes por calle"></div>
 <p class="hint" id="financeWarning"></p></section>
 <section class="analysis-card"><span class="eyebrow">EGRESOS</span><h2>Gastos por concepto</h2>
@@ -32,20 +33,39 @@
 <div id="financeExpenseTotals" class="finance-period-summary" role="status"></div>
 <p class="hint finance-expense-click-hint">Haz clic en un concepto para consultar su historial mensual del año seleccionado.</p>
 <div id="financeExpenseChart" class="money-bars" aria-label="Gastos del mes por concepto"></div>
-<section id="financeExpenseHistory" class="finance-expense-history" hidden aria-live="polite">
-  <div class="finance-expense-history-heading">
-    <h3 id="financeExpenseHistoryTitle">Historial mensual</h3>
-    <button type="button" id="financeExpenseHistoryClose" class="soft" aria-label="Cerrar historial de concepto">Cerrar</button>
+
+</section></div>
+<!-- Los comparativos se abren fuera de los paneles: no aumentan su altura. -->
+<section id="financeIncomeHistoryModal" class="finance-pay-overlay finance-history-overlay" hidden
+ aria-label="Historial mensual de ingresos por calle" aria-hidden="true">
+ <div class="finance-pay-dialog finance-historical-dialog" role="dialog" aria-modal="true"
+  aria-labelledby="financeIncomeHistoryTitle" tabindex="-1">
+  <div class="finance-pay-heading">
+   <div><span class="eyebrow">INGRESOS DE MANTENIMIENTO</span><h2 id="financeIncomeHistoryTitle">Historial de calle</h2></div>
+   <button type="button" id="financeIncomeHistoryClose" class="soft" aria-label="Cerrar historial de calle">Cerrar ×</button>
+  </div>
+  <p class="hint" id="financeIncomeHistoryDescription"></p>
+  <div class="table-scroll finance-historical-table">
+   <table><thead><tr><th>Calle</th><th>Mes</th><th>Total pagado</th></tr></thead>
+    <tbody id="financeIncomeHistoryRows"></tbody><tfoot id="financeIncomeHistoryTotal"></tfoot></table>
+  </div>
+ </div>
+</section>
+<section id="financeExpenseHistory" class="finance-pay-overlay finance-history-overlay" hidden
+ aria-label="Historial mensual de egresos por concepto" aria-hidden="true">
+ <div class="finance-pay-dialog finance-historical-dialog" role="dialog" aria-modal="true"
+  aria-labelledby="financeExpenseHistoryTitle" tabindex="-1">
+  <div class="finance-pay-heading">
+   <div><span class="eyebrow">EGRESOS POR CONCEPTO</span><h2 id="financeExpenseHistoryTitle">Historial mensual</h2></div>
+   <button type="button" id="financeExpenseHistoryClose" class="soft" aria-label="Cerrar historial de concepto">Cerrar ×</button>
   </div>
   <p class="hint" id="financeExpenseHistoryDescription"></p>
-  <div class="table-scroll finance-monthly-table">
-    <table><thead><tr><th>Concepto</th><th>Mes</th><th>Total pagado</th></tr></thead>
-      <tbody id="financeExpenseHistoryRows"></tbody>
-      <tfoot id="financeExpenseHistoryTotal"></tfoot>
-    </table>
+  <div class="table-scroll finance-historical-table">
+   <table><thead><tr><th>Concepto</th><th>Mes</th><th>Total pagado</th></tr></thead>
+    <tbody id="financeExpenseHistoryRows"></tbody><tfoot id="financeExpenseHistoryTotal"></tfoot></table>
   </div>
+ </div>
 </section>
-</section></div>
 <section class="analysis-card"><div class="heading"><div><span class="eyebrow">REGISTRO DE EGRESOS</span><h2>Registrar un gasto</h2><p>Registra gastos por concepto, sin modificar cuotas ni movimientos anteriores.</p></div></div>
 <form id="newExpense" class="expense-form"><label>Fecha<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input id="expenseDate" type="date" required></div></label><label>Categoría<select id="expenseCategory" required><option value="CFE">CFE</option><option value="SIAPA">SIAPA</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="CUOTA_EXTRAORDINARIA">Cuota extraordinaria</option><option value="INTERNET">Internet</option><option value="SERVICIOS">Servicios</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min=".01" step=".01" required></label><label>Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><label class="extra-expense-option" hidden>Meses para cubrir el proyecto<input id="expenseMonths" type="number" min="1" max="36" value="1"></label><label class="extra-expense-option" hidden>Primer mes de cobro<input id="expenseStart" type="month" min="2026-10"></label><div class="expense-reference-note" role="note"><strong>Referencia automática</strong><span>Al guardar, el sistema genera un folio único para este egreso.</span></div><button id="saveExpense" class="primary">Registrar egreso</button></form>
 <div class="expense-filters" role="search" aria-label="Filtrar y ordenar egresos">
@@ -158,4 +178,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-mantenimiento-calle" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-egresos-click-mes" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-mantenimiento-calle" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-modales-cobros-egresos" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
