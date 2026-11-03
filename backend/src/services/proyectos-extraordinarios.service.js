@@ -8,6 +8,7 @@ const {padronOficial}=require('./cargos-extraordinarios.service');
 const {norm,cents,validarPaquete,fail}=require('./proyectos-extraordinarios-validacion.service');
 const {fechaMexico}=require('./vigencia-calculo');
 const {distribuirPresupuesto}=require('./proyectos-presupuesto.service');
+const {verificarSnapshotCuotas}=require('./proyectos-cuotas-version.service');
 
 function juntar(proyectos,cargos,aportes,manuales,reportados,viviendas){
  const base=new Map((viviendas||[]).map(h=>[String(h.casaId??h.id),h]));
@@ -203,6 +204,7 @@ async function ajustarCuotasProyecto(proyectoId,input,actor){
     cargos.some(c=>!authorized.has(Number(c.casaId)))||
     [...overrides.keys()].some(id=>!authorized.has(id)))
    throw fail(409,'Los cargos del proyecto no coinciden con el padrón actual de 231 viviendas.');
+  if(input?.snapshot!=null)verificarSnapshotCuotas(input.snapshot,project,cargos);
   const ids=cargos.map(c=>c.id);
   const [historicos,manuales,bancarios]=await Promise.all([
    Aportacion.findAll({where:{cargoExtraordinarioId:{[Op.in]:ids}},transaction:tx}),
