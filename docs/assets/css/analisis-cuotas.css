@@ -1404,3 +1404,103 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
  #financeProjectRulesModal .finance-rules-scroll input{width:82px}
  #financeProjectRulesModal .finance-rules-actions button{flex:1}
 }
+
+
+/* Proyecto seleccionado: acento pastel menta, legible sin perder la flecha nativa. */
+#financeProjectPanel #financeProjectSelect[data-has-selection="true"]{
+ background-color:#e3f4ed;border-color:#a2d5bd;
+ color:#185647;font-weight:800;
+ box-shadow:0 0 0 2px rgba(83,165,129,.12);
+ transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+#financeProjectPanel #financeProjectSelect[data-has-selection="true"]:hover{
+ background-color:#d9efe4;border-color:#7dbda0;
+}
+#financeProjectPanel #financeProjectSelect:focus-visible{
+ outline:2px solid #3c9775;outline-offset:2px;
+}
+#financeProjectPanel #financeProjectSelect option{background-color:#fff;color:#273851}
+#financeProjectPanel #financeProjectRulesEdit[disabled]{opacity:.48;cursor:not-allowed}
+#financeProjectPanel .finance-project-actions .soft{min-height:42px;padding:10px 14px;white-space:nowrap}
+#financeProjectPanel .finance-project-actions .soft:not([disabled]):hover{
+ background:#f5effb;border-color:#dac3ed;
+}
+
+/* Restauración del editor masivo anterior, independiente del modal Nuevo proyecto. */
+#financeProjectBulkModal .finance-bulk-dialog{
+ width:min(1100px,100%);
+ height:min(88vh,860px);
+ max-height:calc(100vh - 24px);
+ min-height:0;
+ display:flex;flex-direction:column;gap:16px;
+ overflow:hidden;padding:24px 28px;
+}
+#financeProjectBulkModal .finance-pay-heading{align-items:center;gap:15px}
+#financeProjectBulkModal .finance-pay-heading h2{
+ margin:0;color:#23354e;font-size:clamp(17px,1.65vw,23px);line-height:1.35;
+ overflow-wrap:anywhere;
+}
+#financeProjectBulkModal .finance-rules-controls{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+}
+#financeProjectBulkModal .finance-rules-controls label{font-size:12px;color:#44536f;font-weight:800}
+#financeProjectBulkModal .finance-rules-controls input{
+ display:block;width:100%;height:46px;margin-top:7px;
+ padding:10px 13px;border:1px solid #d4dff0;border-radius:11px;
+ background:#fff;color:#263b54;font-size:14px;
+}
+#financeProjectBulkModal .finance-rules-controls input:focus-visible,
+#financeProjectBulkModal .finance-rules-scroll input:focus-visible{
+ outline:2px solid #baa5db;outline-offset:1px;
+}
+#financeProjectBulkModal .finance-rules-controls+.hint{
+ font-size:12px;color:#72809b;margin:1px 0;
+}
+#financeProjectBulkModal .finance-bulk-total{
+ font-size:14px;color:#304157;font-weight:600;
+ margin:4px 0 0;padding:7px 0;
+ font-variant-numeric:tabular-nums;
+}
+#financeProjectBulkModal .finance-rules-scroll{
+ min-height:120px;flex:1;overflow:auto;border:1px solid #e8ecf1;border-radius:10px;
+}
+#financeProjectBulkModal .finance-rules-scroll table{border-collapse:collapse;width:100%;font-size:13px}
+#financeProjectBulkModal .finance-rules-scroll thead th{
+ position:sticky;top:0;z-index:1;background:#f8f9fc;color:#686c91;
+ padding:13px 10px;text-align:left;font-size:12px;
+}
+#financeProjectBulkModal .finance-rules-scroll td{
+ padding:9px 10px;border-bottom:1px solid #e8edf4;vertical-align:middle;color:#475775;
+}
+#financeProjectBulkModal .finance-rules-scroll td:nth-child(2){
+ font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+#financeProjectBulkModal .finance-rules-scroll td:nth-child(2) small{
+ display:inline-block;margin-left:6px;color:#75809b;font-size:11px;
+}
+#financeProjectBulkModal .finance-rules-scroll tr.has-exception{background:#f8fbf8}
+#financeProjectBulkModal .finance-rules-scroll .soft{font-size:12px;padding:8px 11px}
+#financeProjectBulkModal .finance-rules-scroll input{
+ width:135px;max-width:100%;padding:9px 10px;
+ border:1px solid #cbb6e3;border-radius:9px;font:inherit;
+}
+#financeProjectBulkModal #financeBulkStatus{font-size:12px;margin:0;color:#a24c30}
+#financeProjectBulkModal #financeBulkStatus:empty{display:none}
+#financeProjectBulkModal .finance-rules-actions{
+ flex:none;display:flex;gap:12px;justify-content:flex-end;
+ padding-top:10px;border-top:1px solid #edf0f5;
+}
+#financeProjectBulkModal .finance-rules-actions button{min-height:44px}
+@media(max-width:700px){
+ #financeProjectBulkModal .finance-bulk-dialog{
+  height:calc(100vh - 16px);max-height:calc(100vh - 16px);
+  padding:14px;gap:10px;
+ }
+ #financeProjectBulkModal .finance-rules-controls{grid-template-columns:1fr;gap:8px}
+ #financeProjectBulkModal .finance-rules-controls input{height:41px}
+ #financeProjectBulkModal .finance-rules-scroll thead th,
+ #financeProjectBulkModal .finance-rules-scroll td{padding:8px 5px;font-size:12px}
+ #financeProjectBulkModal .finance-rules-scroll td:nth-child(2) small{display:block;margin:2px 0 0}
+ #financeProjectBulkModal .finance-rules-scroll input{width:82px}
+ #financeProjectBulkModal .finance-rules-actions button{flex:1}
+}
