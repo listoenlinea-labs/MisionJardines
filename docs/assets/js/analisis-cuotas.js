@@ -71,6 +71,8 @@
  let selectedIncomeStreet=null;
  let historyPreviousFocus=null;
  let selectedReceiptHouseId=null;
+ // La selección corresponde al concepto y al proyecto, nunca a otra pestaña.
+ let receiptSelectionScope=null;
  const HOUSE_PAGE_SIZE=12;
 
  // Cada gráfica tiene su propio control; en escritorio el CSS deja ambos
@@ -516,9 +518,16 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     return;
   }
   activeConcept=concepto;
+  // Al cambiar de concepto o de proyecto, no arrastrar la fila ni su recibo.
+  // Una recarga del MISMO proyecto sí conserva la selección que siga visible.
+  const nextSelectionScope=concepto==='EXTRAORDINARIO'
+   ?'EXTRAORDINARIO:'+String(activeProyectoId||''):concepto;
+  if(receiptSelectionScope!==nextSelectionScope)selectedReceiptHouseId=null;
+  receiptSelectionScope=nextSelectionScope;
   if(concepto==='CASA_CLUB')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
+  $('financeHousePanel').classList.toggle('extraordinary-receipt-active',concepto==='EXTRAORDINARIO'&&!!seleccionado);
   data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
   $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
