@@ -943,3 +943,15 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
  .finance-monthly-columns .finance-monthly-table table{min-width:330px}
  .finance-period-summary{gap:8px;font-size:11px}
 }
+
+/* Resumen exclusivo de ingresos de mantenimiento por las ocho calles. */
+#financeIncomeCard .finance-card-subtitle{margin:3px 0 8px;font-size:15px;font-weight:800;color:#3d6a56}
+#financeIncomeCard .finance-period-summary{justify-content:flex-start;margin:14px 0 16px}
+#financeIncomeCard .money-bars{display:grid;gap:13px;margin:12px 0 20px;max-height:none;overflow:visible}
+#financeIncomeCard .bar-row{grid-template-columns:minmax(100px,145px) minmax(30px,1fr) minmax(70px,100px)}
+#financeIncomeCard .bar-row b{text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
+#financeIncomeCard .bar-row .track{height:18px}
+@media(max-width:700px){
+ #financeIncomeCard .bar-row{grid-template-columns:minmax(78px,110px) minmax(28px,1fr) minmax(68px,82px);gap:7px}
+ #financeIncomeCard .bar-row b{font-size:10px}
+}
