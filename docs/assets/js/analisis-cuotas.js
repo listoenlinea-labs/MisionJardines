@@ -62,6 +62,9 @@
  let housePage=1;
  let houseSort={key:"calle",direction:"asc"};
  let activeConcept='MANTENIMIENTO';
+ let activeProyectoId=null;
+ let importacionExtraordinaria=null;
+ let importacionPrevisualizada=false;
  let selectedExpenseCategory=null;
  let expenseMonthlySaving=false;
  let selectedIncomeStreet=null;
@@ -468,7 +471,34 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     notice('El servidor todavía no ofrece el análisis de '+(concepto==='CASA_CLUB'?'Casa club':'Cuotas extraordinarias')+'. Despliega también el backend para consultar saldos reales.');
     return;
   }
-  const financial=new Map((registros||[]).map(h=>[String(h.casaId),h]));
+  const proyectos=data.proyectosExtraordinarios||[];
+  $('financeProjectPanel').hidden=concepto!=='EXTRAORDINARIO';
+  let seleccionado=null;
+  if(concepto==='EXTRAORDINARIO'){
+   seleccionado=proyectos.find(p=>Number(p.id)===Number(activeProyectoId))||proyectos[0]||null;
+   activeProyectoId=seleccionado?.id||null;
+   $('financeProjectSelect').innerHTML=proyectos.length
+    ?proyectos.map(p=>'<option value="'+Number(p.id)+'">'+esc(p.nombre)+'</option>').join('')
+    :'<option value="">Aún no hay proyectos configurados</option>';
+   $('financeProjectSelect').value=String(activeProyectoId||'');
+   $('financeProjectMetrics').innerHTML=seleccionado?[
+    ['Viviendas',String(seleccionado.viviendas)],
+    ['Meta',fmt(seleccionado.totalEsperado)],
+    ['Recaudado',fmt(seleccionado.recaudado)],
+    ['Saldo pendiente',fmt(seleccionado.saldoPendiente)],
+    ['Cumplidas',String(seleccionado.cumplidos)],
+    ['Abonos parciales',String(seleccionado.parciales)],
+    ['Pendientes',String(seleccionado.pendientes)],
+    ['Avance',String(seleccionado.porcentaje)+'%']
+   ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')
+    :'<p class="hint">Crea un proyecto o importa las aportaciones históricas de los dos Excel.</p>';
+   $('financeProjectInfo').textContent=seleccionado
+    ?'Proyecto: '+seleccionado.nombre+'. Los importes son independientes del mantenimiento y no bloquean TAGs.'+
+     (seleccionado.sinCargo?' Atención: '+seleccionado.sinCargo+' viviendas sin cargo.':'')
+    :'Los proyectos se cobrarán a las 231 casas al registrarlos. Revisa las reglas antes de importar.';
+  }
+  const registrosProyecto=seleccionado?.viviendasDetalle||null;
+  const financial=new Map((registrosProyecto||registros||[]).map(h=>[String(h.casaId),h]));
   if(concepto!=='MANTENIMIENTO'&&data.viviendasMantenimiento.some(h=>!financial.has(String(h.casaId)))){
     notice('Faltan movimientos por vivienda en la respuesta del servidor. No se mostrarán importes incompletos.');
     return;
@@ -477,7 +507,17 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   if(concepto!=='MANTENIMIENTO')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto!=='MANTENIMIENTO';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
-  data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId))});
+  data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
+   ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
+  $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
+  if(concepto==='EXTRAORDINARIO'){
+   $('financeLastPaidMonth').value='';
+   const periodFilter=document.querySelector('.paid-through-filter');
+   if(periodFilter)periodFilter.hidden=!!seleccionado;
+  }else{
+   const periodFilter=document.querySelector('.paid-through-filter');
+   if(periodFilter)periodFilter.hidden=false;
+  }
   document.querySelectorAll('[data-finance-concept]').forEach(tab=>{
     const selected=tab.dataset.financeConcept===concepto;
     tab.classList.toggle('active',selected);
@@ -493,7 +533,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    $('financeStatus').value='';
   $('financeConceptHint').textContent={
     MANTENIMIENTO:'Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.',
-    EXTRAORDINARIO:'Cuotas extraordinarias: solo proyectos con mensualidades configuradas. Los egresos sin repartir todavía no generan deuda.',
+    EXTRAORDINARIO:'Selecciona un proyecto para consultar sus aportaciones, cuotas especiales y saldos. El proyecto es independiente de mantenimiento y TAGs.',
     CASA_CLUB:'Casa club: solo reservas aprobadas. El saldo vence en la fecha límite de pago, no en la fecha del evento.'
   }[concepto];
   // Cambio explícito de pestaña: página 1. La recarga de datos tras
@@ -549,13 +589,19 @@ function renderHouses(){
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
     houseCell('Estado','<span class="'+(h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(h.estatus)+'</span>')+
-    houseCell('Pagado','<button type="button" class="house-paid-history'+(h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos')+'</strong></button>')+
-    houseCell('Último mes pagado',h.ultimoMesPagado?.pagoAnual?
+    houseCell('Pagado','<button type="button" class="house-paid-history'+(h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+       ?(Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
+       :(Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos'))+'</strong></button>')+
+    houseCell('Último mes pagado',activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+     ?esc(h.ultimoPago?.fecha?displayDate(h.ultimoPago.fecha):'Sin abono')
+     :h.ultimoMesPagado?.pagoAnual?
       '<span class="house-annual-label" title="Hasta diciembre de '+esc(h.ultimoMesPagado.anio)+'">Pago anual</span>':
       esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente','<span class="house-amount'+(String(h.estatus||'').toUpperCase()==='PENDIENTE'&&Number(h.saldoPendiente)>0?' is-overdue':'')+'">'+esc(fmt(h.saldoPendiente))+'</span>')+
     houseCell('TAGs',renderHouseTagCell(h))+
-    houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
+    houseCell('Pago',renderHousePayCell(h)+
+      (activeConcept==='EXTRAORDINARIO'&&activeProyectoId?
+       '<button type="button" class="house-project-edit" data-edit-project-house="'+Number(h.casaId)+'">Modificar cuota</button>':''))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
   $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;
@@ -635,7 +681,8 @@ function renderHouses(){
   $('houseHistoryDeleteStatus').textContent='';
   $('houseHistoryClose').focus();
   try{
-   const {data:detail}=await request('/pagos-vivienda/'+Number(casaId)+'/historial?concepto='+activeConcept);
+   const {data:detail}=await request('/pagos-vivienda/'+Number(casaId)+'/historial?concepto='+activeConcept+
+    (activeConcept==='EXTRAORDINARIO'&&activeProyectoId?'&proyectoId='+Number(activeProyectoId):''));
    if(seq!==historySequence||historyModal.hidden)return;
    const movements=detail.movimientos||[],debts=detail.deudas||[];
    historyMovements=movements;
@@ -1254,17 +1301,26 @@ function renderHouses(){
  const isOther=()=>$('housePaymentType').value!=='MANTENIMIENTO';
  function renderOtherConcept(){
   const type=$('housePaymentType').value;
-  const items=otherConcepts[type]||[];
+  const items=(otherConcepts[type]||[]).filter(c=>type!=='EXTRAORDINARIO'||!activeProyectoId||
+    Number(c.cuotaExtraordinariaId)===Number(activeProyectoId));
   $('houseConceptSelect').innerHTML=items.length?items.map(c=>'<option value="'+Number(c.id)+'">'+esc(c.concepto)+' · '+esc(c.periodo)+' · '+esc(fmt(c.monto))+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</option>').join(''):'<option value="">Sin cobros disponibles</option>';
   previewOtherConcept();
  }
- function previewOtherConcept(){
+ function previewOtherConcept({resetAmount=true}={}){
   const type=$('housePaymentType').value;
   const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
-  $('housePaymentAmount').value=item?Number(item.monto).toFixed(2):'';
-  $('housePaymentAmount').readOnly=true;
-  $('housePaymentSubmit').disabled=!item||item.estado==='EN_REVISION';
-  $('housePaymentPreview').textContent=item?(item.estado==='EN_REVISION'?'Ya existe un comprobante en revisión. Espera la respuesta de Administración.':'Se registrará '+fmt(item.monto)+' de '+item.concepto+' ('+item.periodo+'). Este concepto NO modifica los TAGs.'):'No hay conceptos pendientes en esta categoría.';
+  if(resetAmount)$('housePaymentAmount').value=item?Number(item.monto).toFixed(2):'';
+  $('housePaymentAmount').readOnly=type!=='EXTRAORDINARIO';
+  const amount=Number($('housePaymentAmount').value);
+  const valid=Boolean(item)&&Number.isFinite(amount)&&amount>0&&
+   Math.round(amount*100)<=Math.round(Number(item.monto)*100);
+  $('housePaymentSubmit').disabled=!valid||item?.estado==='EN_REVISION';
+  $('housePaymentPreview').textContent=item?(item.estado==='EN_REVISION'
+   ?'Existe un comprobante en revisión. Espera a Administración.'
+   :'Saldo de este cargo: '+fmt(item.monto)+'. Abono que registrarás: '+
+    (Number.isFinite(amount)?fmt(amount):'inválido')+'.'+
+    (!valid?' El abono debe ser mayor a cero y no exceder el saldo.':'')+
+    ' No modifica mantenimiento ni TAGs.'):'No hay cargos pendientes de este proyecto.';
  }
  async function switchPaymentType(){
   const other=isOther();
@@ -1281,7 +1337,7 @@ function renderHouses(){
  }
  const monthsES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  function paymentPreview(){
-   if(isOther()){previewOtherConcept();return;}
+   if(isOther()){previewOtherConcept({resetAmount:false});return;}
    const output=$('housePaymentPreview'),submit=$('housePaymentSubmit');
    submit.disabled=true;
    if(!currentPaymentQuote){output.textContent='Consultando el historial de cuotas…';return;}
@@ -1414,10 +1470,14 @@ function renderHouses(){
     const type=$('housePaymentType').value;
     const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
     if(!activePaymentHouse||!item||item.estado==='EN_REVISION')return;
-    if(!confirm('¿Confirmas que recibiste '+fmt(item.monto)+' de '+activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+item.concepto+'?'))return;
+    const abono=Number($('housePaymentAmount').value);
+    if(!Number.isFinite(abono)||abono<=0||Math.round(abono*100)>Math.round(Number(item.monto)*100)){
+     $('housePaymentStatus').textContent='El abono no puede superar '+fmt(item.monto)+'.';return;
+    }
+    if(!confirm('¿Confirmas que recibiste '+fmt(abono)+' de '+activePaymentHouse.calle+' '+activePaymentHouse.numero+' para '+item.concepto+'?'))return;
     $('housePaymentSubmit').disabled=true;
     try{
-     const result=await request('/pagos-concepto',{casaId:Number(activePaymentHouse.casaId),tipoPago:type,conceptoId:Number(item.id),monto:Number(item.monto),formaPago:$('housePaymentMethod').value});
+     const result=await request('/pagos-concepto',{casaId:Number(activePaymentHouse.casaId),tipoPago:type,conceptoId:Number(item.id),monto:abono,formaPago:$('housePaymentMethod').value});
      closeHousePayment();await load();notice(result.message+' Referencia: '+result.data.referencia,'success');
     }catch(e){$('housePaymentStatus').textContent=e.message;await switchPaymentType();}
     return;
@@ -1473,7 +1533,26 @@ function renderHouses(){
      $('housePaymentStatus').textContent=error.message;
    }finally{btn.disabled=true;}
  }
- $('financeHouseRows').addEventListener('click',event=>{
+ $('financeHouseRows').addEventListener('click',async event=>{
+  const edit=event.target.closest('[data-edit-project-house]');
+  if(edit&&activeConcept==='EXTRAORDINARIO'&&activeProyectoId){
+   const house=data.viviendas.find(h=>Number(h.casaId)===Number(edit.dataset.editProjectHouse));
+   if(!house)return;
+   const raw=prompt('Nueva cuota de '+house.calle+' '+house.numero+' para este proyecto (MXN). Aportado: '+fmt(house.montoPagado)+'.',
+    Number(house.montoCuota).toFixed(2));
+   if(raw===null)return;
+   const monto=Number(raw);
+   if(!Number.isFinite(monto)||monto<=0||Math.round(monto*100)<Math.round(Number(house.montoPagado)*100)){
+    notice('La nueva cuota debe ser positiva y no menor al dinero ya recibido.');return;
+   }
+   if(!confirm('¿Modificar la cuota de '+house.calle+' '+house.numero+' a '+fmt(monto)+'? Quedará auditado.'))return;
+   edit.disabled=true;
+   try{
+    await request('/proyectos-extraordinarios/'+activeProyectoId+'/viviendas/'+house.casaId,{monto},'PATCH');
+    await load();notice('Cuota del proyecto actualizada correctamente.','success');
+   }catch(error){notice(error.message);}finally{edit.disabled=false;}
+   return;
+  }
   const historyButton=event.target.closest('[data-paid-history]');
   if(historyButton){void openHouseHistory(historyButton.dataset.paidHistory,historyButton);return;}
   const tagButton=event.target.closest('[data-tags-house]');
@@ -1749,5 +1828,115 @@ function renderHouses(){
   catch(e){notice(e.message);}
   finally{$('saveExpense').disabled=false;}
  });
+ // Navegación y administración de proyectos extraordinarios. Todas las escrituras
+ // requieren rol administrativo en el backend; la importación siempre tiene vista previa.
+ $('financeProjectSelect').addEventListener('change',()=>{
+  const id=Number($('financeProjectSelect').value);
+  activeProyectoId=Number.isSafeInteger(id)&&id>0?id:null;
+  elegirConcepto('EXTRAORDINARIO');
+ });
+ $('financeNewProjectToggle').addEventListener('click',()=>{
+  const panel=$('financeNewProjectForm');
+  panel.hidden=!panel.hidden;
+  $('financeImportProjectsForm').hidden=true;
+  if(!panel.hidden)$('financeNewProjectName').focus();
+ });
+ $('financeImportProjectsToggle').addEventListener('click',()=>{
+  const panel=$('financeImportProjectsForm');
+  panel.hidden=!panel.hidden;
+  $('financeNewProjectForm').hidden=true;
+  if(!panel.hidden)$('financeProjectImportFile').focus();
+ });
+ $('financeNewProjectMonth').value=$('expenseDate').value.slice(0,7);
+ function parseProjectRules(value){
+  return String(value||'').split('\n').map(x=>x.trim()).filter(Boolean).map((line,n)=>{
+   const match=/^(.+?)\s+([0-9]+[A-Za-z]?)\s*=\s*([0-9]+(?:\.[0-9]{1,2})?)$/.exec(line);
+   if(!match)throw Error('Regla '+(n+1)+' inválida: '+line+'. Usa «Jardines 201 = 2500».');
+   return {calle:match[1],numero:match[2],monto:Number(match[3])};
+  });
+ }
+ $('financeNewProjectForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const button=event.submitter||$('financeNewProjectForm').querySelector('button[type=submit]');
+  let especiales;
+  try{especiales=parseProjectRules($('financeNewProjectRules').value);}
+  catch(error){notice(error.message);return;}
+  const nombre=$('financeNewProjectName').value.trim(),
+   cuotaBase=Number($('financeNewProjectBase').value),
+   fechaInicio=$('financeNewProjectMonth').value+'-01';
+  if(!nombre||!Number.isFinite(cuotaBase)||cuotaBase<=0||
+   !/^20\d{2}-(?:0[1-9]|1[0-2])-01$/.test(fechaInicio)){
+   notice('Revisa nombre, importe general y mes del proyecto.');return;
+  }
+  if(!confirm('¿Crear «'+nombre+'» para exactamente 231 viviendas con cuota general de '+
+   fmt(cuotaBase)+' y '+especiales.length+' tarifas especiales?'))return;
+  button.disabled=true;
+  try{
+   const response=await request('/proyectos-extraordinarios',
+    {nombre,cuotaBase,fechaInicio,tarifasEspeciales:especiales});
+   activeProyectoId=response.data?.proyectos?.[0]?.id||null;
+   $('financeNewProjectForm').reset();
+   $('financeNewProjectForm').hidden=true;
+   await load();notice('Proyecto creado y cargos guardados para las 231 viviendas.','success');
+  }catch(error){notice(error.message);}finally{button.disabled=false;}
+ });
+ $('financeProjectImportFile').addEventListener('change',()=>{
+  importacionExtraordinaria=null;
+  importacionPrevisualizada=false;
+  $('financeProjectCommit').disabled=true;
+  $('financeProjectPreviewResult').textContent='';
+ });
+ $('financeProjectPreview').addEventListener('click',async()=>{
+  const file=$('financeProjectImportFile').files?.[0];
+  const output=$('financeProjectPreviewResult');
+  if(!file){output.textContent='Selecciona el archivo JSON privado con los aportes del cliente.';return;}
+  if(file.size>2000000){output.textContent='Archivo demasiado grande (máximo 2 MB).';return;}
+  const button=$('financeProjectPreview');
+  button.disabled=true;
+  importacionPrevisualizada=false;
+  $('financeProjectCommit').disabled=true;
+  output.textContent='Comparando pagos y las 231 direcciones del padrón actual...';
+  try{
+   const json=JSON.parse(await file.text());
+   const {data:preview}=await request('/proyectos-extraordinarios/previsualizar',json);
+   importacionExtraordinaria=json;
+   importacionPrevisualizada=Boolean(preview.reconciliado);
+   output.innerHTML=preview.proyectos.map(p=>
+    '<div class="finance-project-preview-card"><strong>'+esc(p.nombre)+'</strong>'+
+    '<p>Viviendas: '+p.resumen.viviendas+' · Cuotas especiales: '+p.cuotasEspeciales+
+    ' · Con aportación: '+p.resumen.abonaron+' · Total esperado: '+esc(fmt(p.resumen.totalEsperado))+
+    ' · Total recibido: '+esc(fmt(p.resumen.recaudado))+
+    ' · Saldo: '+esc(fmt(p.resumen.saldoPendiente))+'</p>'+
+    (p.advertencias||[]).map(w=>'<p class="finance-project-warning">'+esc(w)+'</p>').join('')+
+    (p.errores||[]).map(w=>'<p class="finance-project-error">'+esc(w)+'</p>').join('')+'</div>'
+   ).join('')+(preview.existentes?.length?'<p class="finance-project-error">Ya existe un proyecto con el mismo código o nombre. No se importará dos veces.</p>':'')+
+    (!preview.reconciliado?'<p class="finance-project-error">No se permite importar: resuelve las diferencias de vivienda o proyectos existentes.</p>':'');
+   $('financeProjectCommit').disabled=!importacionPrevisualizada;
+  }catch(error){
+   importacionExtraordinaria=null;
+   output.textContent='No se pudo previsualizar: '+error.message;
+  }finally{button.disabled=false;}
+ });
+ $('financeProjectCommit').addEventListener('click',async()=>{
+  if(!importacionPrevisualizada||!importacionExtraordinaria)return;
+  if(!$('financeProjectApproveExceptions').checked||!$('financeProjectApproveDifference').checked){
+   notice('Antes de importar, confirma las tres viviendas con tarifa especial y la diferencia de $1,000 del Excel.');return;
+  }
+  if(!confirm('Se crearán dos proyectos y sus cargos para 231 casas, con los abonos históricos verificados. ¿Confirmas IMPORTAR?'))return;
+  const button=$('financeProjectCommit');button.disabled=true;
+  try{
+   const response=await request('/proyectos-extraordinarios/importar',{
+    ...importacionExtraordinaria,confirmacion:'IMPORTAR',
+    confirmarTarifas:true,aceptarDiferencias:true
+   });
+   activeProyectoId=response.data?.proyectos?.[0]?.id||null;
+   importacionExtraordinaria=null;importacionPrevisualizada=false;
+   $('financeImportProjectsForm').hidden=true;
+   await load();
+   notice('Importación finalizada. Dos proyectos y sus abonos históricos guardados sin tocar ZKTeco.','success');
+  }catch(error){notice(error.message);}
+  finally{button.disabled=!importacionPrevisualizada;}
+ });
+
  await load();
 })();

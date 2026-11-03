@@ -2,7 +2,7 @@
 const sequelize=require('../config/database');
 const {Op}=require('sequelize');
 const {Casa,Cuota,ZkTarjeta,PagoReportado}=require('../models');
-const {CargoExtraordinario,PagoManualConcepto}=require('../models');
+const {CargoExtraordinario,PagoManualConcepto,AportacionExtraordinaria}=require('../models');
 const Reserva=require('../models/ReservaCasaClub');
 const {estadoCargos}=require('../services/cargos-extraordinarios.service');
 const {randomUUID}=require('crypto');
@@ -246,14 +246,26 @@ async function historialPagoVivienda(req,res){
    deudas=calcularAdeudoVivienda(cuotas,{anio:Number(hoy.slice(0,4)),mes:Number(hoy.slice(5,7)),hoy,tarifa:tarifaParaCasa(casa),exencionesRecargo:casa.exencionesRecargo||[],incluirDetalles:true}).detalles;
   }else{
    const [reportados,manuales]=await Promise.all([
-    PagoReportado.findAll({where:{...(tipo==='MANTENIMIENTO'?require('../services/pagos-reparto.service').condicionCasa(casaId):{casaId}),tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
-    PagoManualConcepto.findAll({where:{casaId,tipoPago:tipo},attributes:['id','tipoPago','monto','formaPago','referencia','creadoEn']})
+    PagoReportado.findAll({where:{...(tipo==='MANTENIMIENTO'?require('../services/pagos-reparto.service').condicionCasa(casaId):{casaId}),tipoPago:tipo,estatus:'VALIDADO'},attributes:['id','cargoExtraordinarioId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
+    PagoManualConcepto.findAll({where:{casaId,tipoPago:tipo},attributes:['id','cargoExtraordinarioId','tipoPago','monto','formaPago','referencia','creadoEn']})
    ]);
-   movimientos=historialConcepto(tipo,reportados,manuales);
    if(tipo==='EXTRAORDINARIO'){
-    const cargos=await estadoCargos(casaId);
+    const proyectoId=req.query.proyectoId?Number(req.query.proyectoId):null;
+    if(req.query.proyectoId&&(!Number.isSafeInteger(proyectoId)||proyectoId<1))throw fail(400,'Proyecto inválido');
+    const cargos=(await estadoCargos(casaId)).filter(c=>!proyectoId||Number(c.cuotaExtraordinariaId)===proyectoId);
+    const cargoIds=new Set(cargos.map(c=>String(c.id)));
+    movimientos=historialConcepto(tipo,reportados.filter(p=>cargoIds.has(String(p.cargoExtraordinarioId))),
+     manuales.filter(p=>cargoIds.has(String(p.cargoExtraordinarioId))));
+    const aportaciones=await AportacionExtraordinaria.findAll({where:{casaId},
+     attributes:['cargoExtraordinarioId','monto','fecha','referencia','formaPago']});
+    movimientos.push(...aportaciones.filter(a=>cargoIds.has(String(a.cargoExtraordinarioId))).map(a=>({
+     referencia:a.referencia,fecha:a.fecha,monto:Number(a.monto),recargo:0,meses:0,periodos:[],
+     formaPago:a.formaPago||'Aportación registrada',fuente:'APORTACION'
+    })));
+    movimientos.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
     deudas=cargos.filter(c=>c.estado!=='PAGADO').map(c=>({categoria:tipo,periodo:c.periodo,concepto:c.concepto,monto:c.monto,estado:c.estado}));
    }else{
+    movimientos=historialConcepto(tipo,reportados,manuales);
     const reservas=await Reserva.findAll({where:{casaId,estatus:'APROBADA',pagado:false},attributes:['fecha','cuotaRecuperacion','depositoGarantia','limpieza']});
     deudas=reservas.map(r=>({categoria:tipo,periodo:r.fecha,concepto:'Reserva de casa club',monto:Number(r.cuotaRecuperacion||0)+Number(r.depositoGarantia||0)+Number(r.limpieza||0)}));
    }
@@ -281,29 +293,55 @@ async function opcionesPagoConcepto(req,res){
 }
 async function registrarPagoConcepto(req,res){
  try{
-  const casaId=Number(req.body?.casaId),tipo=String(req.body?.tipoPago||''),id=Number(req.body?.conceptoId),formaPago=String(req.body?.formaPago||'EFECTIVO').toUpperCase();
-  if(!Number.isSafeInteger(casaId)||casaId<1||!Number.isSafeInteger(id)||id<1||!['EXTRAORDINARIO','CASA_CLUB'].includes(tipo)||!['EFECTIVO','TRANSFERENCIA','DEPOSITO','OTRO'].includes(formaPago))throw fail(400,'Concepto, vivienda o forma de pago inválidos');
+  const casaId=Number(req.body?.casaId),tipo=String(req.body?.tipoPago||''),
+   id=Number(req.body?.conceptoId),formaPago=String(req.body?.formaPago||'EFECTIVO').toUpperCase();
+  const cents=x=>Math.round(Number(x)*100);
+  if(!Number.isSafeInteger(casaId)||casaId<1||!Number.isSafeInteger(id)||id<1||
+   !['EXTRAORDINARIO','CASA_CLUB'].includes(tipo)||
+   !['EFECTIVO','TRANSFERENCIA','DEPOSITO','OTRO'].includes(formaPago))
+   throw fail(400,'Concepto, vivienda o forma de pago inválidos');
   const data=await sequelize.transaction(async transaction=>{
    const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
    if(!casa)throw fail(404,'Vivienda no encontrada');
    const cargo=tipo==='EXTRAORDINARIO'?await CargoExtraordinario.findOne({where:{id,casaId},transaction,lock:transaction.LOCK.UPDATE}):null;
    const reserva=tipo==='CASA_CLUB'?await Reserva.findOne({where:{id,casaId,estatus:'APROBADA',pagado:false},transaction,lock:transaction.LOCK.UPDATE}):null;
-   if(tipo==='EXTRAORDINARIO'&&!cargo||tipo==='CASA_CLUB'&&!reserva)throw fail(409,'Este concepto ya no está pendiente');
+   if(tipo==='EXTRAORDINARIO'&&!cargo||tipo==='CASA_CLUB'&&!reserva)
+    throw fail(409,'El cargo seleccionado ya no está pendiente');
    const where=tipo==='EXTRAORDINARIO'?{cargoExtraordinarioId:id}:{reservaCasaClubId:id};
    const [reportado,manual]=await Promise.all([
     PagoReportado.findOne({where:{...where,estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction}),
     PagoManualConcepto.findOne({where,transaction})
    ]);
-   if(reportado||manual)throw fail(409,'Ya existe un comprobante pendiente o pago confirmado para este concepto');
-   const monto=tipo==='EXTRAORDINARIO'?Number(cargo.monto):Number(reserva.cuotaRecuperacion)+Number(reserva.depositoGarantia)+Number(reserva.limpieza);
-   if(Math.round(Number(req.body.monto)*100)!==Math.round(monto*100))throw fail(409,'El importe debe coincidir con el cargo vigente: $'+monto.toFixed(2));
+   if(reportado||manual)throw fail(409,'Este cargo tiene un pago previo o comprobante pendiente; requiere conciliación.');
+   const monto=Number(req.body?.monto),importe=cents(monto);
+   if(!Number.isFinite(monto)||!Number.isSafeInteger(importe)||importe<1)
+    throw fail(400,'El abono debe ser mayor a cero y tener máximo dos decimales.');
    const referencia='MJ'+(tipo==='CASA_CLUB'?'CLUB':'EXTRA')+':'+randomUUID();
-   await PagoManualConcepto.create({casaId,tipoPago:tipo,cargoExtraordinarioId:cargo?.id||null,reservaCasaClubId:reserva?.id||null,
+   if(tipo==='EXTRAORDINARIO'){
+    const prev=await AportacionExtraordinaria.findAll({where:{cargoExtraordinarioId:id},transaction,lock:transaction.LOCK.UPDATE});
+    const abonado=prev.reduce((sum,a)=>sum+cents(a.monto),0);
+    const restante=Math.max(0,cents(cargo.monto)-abonado);
+    if(!restante)throw fail(409,'Esta cuota extraordinaria ya está completamente cubierta.');
+    if(importe>restante)throw fail(409,'El abono supera el saldo pendiente de $'+(restante/100).toFixed(2));
+    await AportacionExtraordinaria.create({
+     cuotaExtraordinariaId:cargo.cuotaExtraordinariaId,cargoExtraordinarioId:id,
+     casaId,monto:importe/100,fecha:fechaMexico(),formaPago,referencia,
+     origen:'ADMIN',registradoPor:req.usuario.usuarioId
+    },{transaction});
+    return {casaId,tipoPago:tipo,monto:importe/100,
+     saldoPendiente:(restante-importe)/100,referencia};
+   }
+   const total=Number(reserva.cuotaRecuperacion)+Number(reserva.depositoGarantia)+Number(reserva.limpieza);
+   if(importe!==cents(total))throw fail(409,'Para Casa Club el importe debe ser $'+total.toFixed(2));
+   await PagoManualConcepto.create({casaId,tipoPago:tipo,cargoExtraordinarioId:null,reservaCasaClubId:id,
     monto,formaPago,referencia,registradoPor:req.usuario.usuarioId},{transaction});
-   if(reserva)await reserva.update({pagado:true,fechaPago:new Date().toISOString().slice(0,10),folio:referencia,actualizadoEn:new Date()},{transaction});
+   await reserva.update({pagado:true,fechaPago:new Date().toISOString().slice(0,10),folio:referencia,actualizadoEn:new Date()},{transaction});
    return {casaId,tipoPago:tipo,monto,referencia};
   });
   return res.status(201).json({ok:true,data,message:'Pago registrado sin modificar vigencias de TAGs ni C3'});
- }catch(e){if(!e.status)console.error('[pago manual concepto]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible registrar el pago'});}
+ }catch(e){
+  if(!e.status)console.error('[pago manual concepto]',e);
+  return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible registrar el pago'});
+ }
 }
 module.exports={registrarPagoVivienda,estadoPagoVivienda,cotizarPagoVivienda,historialPagoVivienda,opcionesPagoConcepto,registrarPagoConcepto};

@@ -88,7 +88,7 @@ test('el formulario, filtro y gráfico admiten Proyecto con los mismos controles
 test('actualiza scripts y shell para evitar JS antiguo en caché',()=>{
  const html=root('docs/analisis-cuotas.html'),
   shell=root('docs/assets/js/app-shell.js'),app=root('docs/app.html');
- assert.match(html,/analisis-cuotas\.js\?v=20261103-egreso-proyecto/);
- assert.match(shell,/_mjVersion.*egreso-proyecto-20261103/);
- assert.match(app,/app-shell\.js\?v=20261103-egreso-proyecto/);
+ assert.match(html,/analisis-cuotas\.js\?v=20261103-proyectos-extraordinarios/);
+ assert.match(shell,/_mjVersion.*proyectos-extraordinarios-20261103/);
+ assert.match(app,/app-shell\.js\?v=20261103-proyectos-extraordinarios/);
 });

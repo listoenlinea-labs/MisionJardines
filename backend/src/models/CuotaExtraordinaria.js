@@ -9,6 +9,7 @@ const CuotaExtraordinaria = sequelize.define(
             primaryKey: true,
             autoIncrement: true
         },
+        codigo: { type: DataTypes.STRING(90), allowNull: true, unique: true },
         concepto: {
             type: DataTypes.STRING(300),
             allowNull: false
