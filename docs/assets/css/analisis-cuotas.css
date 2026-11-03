@@ -1023,3 +1023,28 @@ body.page-analisis.mj-shared-sidebar-enabled .houses-scroll #financeHouseRows>tr
  visibility:hidden!important;
  pointer-events:none!important;
 }
+
+/* Edición de totales históricos de egresos dentro del modal. */
+.finance-historical-table .finance-expense-month-cell{min-width:230px;vertical-align:middle}
+.finance-expense-month-display{display:flex;justify-content:flex-end;align-items:center;gap:10px}
+.finance-expense-month-display strong{font-variant-numeric:tabular-nums}
+.finance-expense-month-edit-button{padding:5px 9px!important;font-size:11px!important;white-space:nowrap}
+.finance-expense-month-form{display:flex;align-items:end;justify-content:flex-end;flex-wrap:wrap;gap:7px;margin:0}
+.finance-expense-month-form[hidden],.finance-expense-month-display[hidden]{display:none!important}
+.finance-expense-month-input-label{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:700;
+ color:#496075;text-align:left;min-width:108px;flex:1 1 120px}
+.finance-expense-month-input-label input{width:100%;height:37px;min-width:0;max-width:180px;padding:7px 9px;
+ border:1px solid #c9d6e7;border-radius:8px;background:white;color:#20334c;
+ font-size:13px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.finance-expense-month-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.finance-expense-month-actions button{min-height:34px;padding:6px 10px;font-size:11px}
+.finance-expense-month-feedback{display:block;font-size:11px;color:#b63e40;margin-top:4px;max-width:260px;
+ white-space:normal}
+.finance-expense-month-feedback:empty{display:none}
+.finance-historical-table tbody tr:has(.finance-expense-month-form:not([hidden])){background:#eff9f2}
+.finance-historical-table tbody tr:has(.finance-expense-month-form:not([hidden])) td{min-width:290px}
+@media(max-width:650px){
+ .finance-historical-table .finance-expense-month-cell{min-width:210px}
+ .finance-expense-month-form{justify-content:flex-start}
+ .finance-expense-month-actions button{min-height:34px}
+}

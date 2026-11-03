@@ -1,4 +1,4 @@
-const {Op,QueryTypes}=require('sequelize');
+const {Op,QueryTypes,Transaction}=require('sequelize');
 const sequelize=require('../config/database');
 const { compararDirecciones }=require('../services/direccion-sort.service');
 const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
@@ -9,6 +9,7 @@ const {tagsParaViviendas}=require('../services/analisis-tags.service');
 const {Casa,Cuota,PagoReportado,ZkTarjeta,CuotaExtraordinaria,CargoExtraordinario,PagoManualConcepto}=require('../models');
 const Egreso=require('../models/Egreso');
 const {referenciaEgreso}=require('../services/egreso-referencia.service');
+const {validarCambio,categoriasEquivalentes,prepararAjuste,esAjuste}=require('../services/ajuste-egresos-mensuales.service');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
 const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
@@ -157,7 +158,7 @@ async function analizar(req,res){
    ingresosParaBalance,ingresosAdicionales,totalManualConcepto,saldoInicial,ingresosManuales,
    ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
-   egresosCategorias:categoriasGasto,egresos:egresos.map(e=>({...e.toJSON(),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))})),
+   egresosCategorias:categoriasGasto,egresos:egresos.map(e=>({...e.toJSON(),esAjusteMensual:esAjuste(e),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))})),
    avisoConciliacion:'Los ingresos por calle se asignan a la mensualidad cubierta (con recargo efectivamente pagado). El saldo de caja se calcula por fecha del cobro, sin duplicar depósitos. Los movimientos sin período requieren conciliación.'
   }});
  }catch(e){return sendErr(res,e);}
@@ -194,6 +195,49 @@ async function activarCuotaExistente(req,res){
   return res.status(201).json({ok:true,id:saved.id,message:'Mensualidades generadas para el egreso histórico'});
  }catch(e){return sendErr(res,e);}
 }
+// Edición segura del total mensual: registrar un asiento compensatorio firmado
+// sin destruir los gastos individuales, los cargos extraordinarios ni su auditoría.
+// La ruta está limitada a SUPER_ADMIN y ADMINISTRADOR por finanzas.routes.
+async function ajustarTotalEgresoMensual(req,res){
+ try{
+  const cambio=validarCambio(req.body);
+  const actor=Number(req.usuario?.usuarioId);
+  if(!Number.isSafeInteger(actor)||actor<1)throw fail(403,'Administrador no identificado');
+  const resultado=await sequelize.transaction({
+   isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE
+  },async transaction=>{
+   // Se incluyen las categorías legadas (LUZ/CFE, AGUA/SIAPA,
+   // PROYECTOS/CUOTA_EXTRAORDINARIA) y también ajustes anteriores.
+   // El bloqueo evita sobrescribir un importe consultado antes de otro ajuste.
+   const rows=await Egreso.findAll({
+    where:{fecha:{[Op.between]:[cambio.inicio,cambio.fin]},
+     categoria:{[Op.in]:categoriasEquivalentes(cambio.categoria)}},
+    attributes:['id','monto'],order:[['id','ASC']],
+    transaction,lock:transaction.LOCK.UPDATE
+   });
+   const ajuste=prepararAjuste(cambio,rows);
+   if(!ajuste.diferencia)
+    return {sinCambio:true,periodo:cambio.periodo,categoria:cambio.categoria,
+     totalAnterior:ajuste.actual/100,totalPagado:ajuste.nuevo/100,ajuste:0};
+   // El monto DECIMAL de egresos admite un ajuste negativo para reducir
+   // el total, pero el saldo FINAL nunca puede quedar bajo cero.
+   const entry=await Egreso.create({
+    fecha:cambio.fin,categoria:cambio.categoria,concepto:ajuste.concepto,
+    monto:(ajuste.diferencia/100).toFixed(2),
+    registradoPor:actor,referencia:null
+   },{transaction});
+   const referencia=referenciaEgreso(cambio.fin,entry.id);
+   await entry.update({referencia},{transaction});
+   return {id:entry.id,referencia,periodo:cambio.periodo,
+    categoria:cambio.categoria,totalAnterior:ajuste.actual/100,
+    totalPagado:ajuste.nuevo/100,ajuste:ajuste.diferencia/100};
+  });
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,data:resultado,
+   message:resultado.sinCambio?'El total mensual ya coincide con el importe solicitado.':
+    'Total mensual actualizado en MySQL. El ajuste quedó registrado con folio y administrador responsable.'});
+ }catch(error){return sendErr(res,error);}
+}
 // Actualiza exclusivamente la tarifa futura por vivienda. No altera cobros ni TAGs.
 async function modificarCuotaPorCobrar(req,res){
  try{
@@ -217,4 +261,4 @@ async function modificarCuotaPorCobrar(req,res){
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
  }catch(error){return sendErr(res,error);}
 }
-module.exports={analizar,registrarEgreso,activarCuotaExistente,modificarCuotaPorCobrar};
+module.exports={analizar,registrarEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};

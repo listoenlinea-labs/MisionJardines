@@ -46,6 +46,7 @@
  let houseSort={key:"calle",direction:"asc"};
  let activeConcept='MANTENIMIENTO';
  let selectedExpenseCategory=null;
+ let expenseMonthlySaving=false;
  let selectedIncomeStreet=null;
  let historyPreviousFocus=null;
  let selectedReceiptHouseId=null;
@@ -106,10 +107,21 @@
   }
   const name=expenseLabel(selectedExpenseCategory);
   $('financeExpenseHistoryTitle').textContent='Historial de '+name;
-  $('financeExpenseHistoryDescription').textContent='Egresos desde enero hasta '+data.periodo+'; los meses sin gastos muestran $0.';
+  $('financeExpenseHistoryDescription').textContent=
+   'Edita el Total pagado de cualquier mes. El cambio se guarda en MySQL como un ajuste contable con folio; no borra los gastos originales.';
   $('financeExpenseHistoryRows').innerHTML=rows.map(r=>
-   '<tr><th scope="row">'+esc(r.concepto)+'</th><td>'+esc(r.mes+' '+r.anio)+
-   '</td><td>'+esc(fmt(r.totalPagado))+'</td></tr>'
+   '<tr data-expense-month="'+esc(r.periodo)+'"><th scope="row">'+esc(r.concepto)+'</th><td>'+esc(r.mes+' '+r.anio)+'</td>'+
+   '<td class="finance-expense-month-cell">'+
+    '<span class="finance-expense-month-display"><strong>'+esc(fmt(r.totalPagado))+'</strong>'+
+     '<button type="button" class="soft finance-expense-month-edit-button" data-edit-expense-month="'+esc(r.periodo)+'" aria-label="Editar total de '+esc(r.concepto+' '+r.mes+' '+r.anio)+'">Editar</button></span>'+
+    '<form class="finance-expense-month-form" data-save-expense-month="'+esc(r.periodo)+'" hidden>'+
+     '<label class="finance-expense-month-input-label">Importe MXN'+
+      '<input type="number" min="0" max="100000000" step="0.01" required inputmode="decimal" value="'+Number(r.totalPagado).toFixed(2)+'" aria-label="Nuevo total pagado de '+esc(r.mes+' '+r.anio)+'"></label>'+
+     '<div class="finance-expense-month-actions">'+
+      '<button type="submit" class="primary">Guardar</button>'+
+      '<button type="button" class="soft" data-cancel-expense-month>Cancelar</button></div>'+
+    '</form><small class="finance-expense-month-feedback" aria-live="polite"></small>'+
+   '</td></tr>'
   ).join('');
   const cents=rows.reduce((sum,r)=>sum+Math.round(Number(r.totalPagado||0)*100),0);
   $('financeExpenseHistoryTotal').innerHTML='<tr><th>Total '+esc(name)+'</th><td>Hasta '+esc(data.periodo)+
@@ -142,6 +154,7 @@
    setFinanceHistoryOverlay('financeIncomeHistoryModal',false);
    $('financeCashChart').querySelectorAll('button[data-income-street]').forEach(b=>b.setAttribute('aria-expanded','false'));
   }else{
+   if(expenseMonthlySaving)return;
    selectedExpenseCategory=null;
    setFinanceHistoryOverlay('financeExpenseHistory',false);
    $('financeExpenseChart').querySelectorAll('button[data-expense-concept]').forEach(b=>b.setAttribute('aria-expanded','false'));
@@ -242,7 +255,7 @@
   $('financeExpenseRows').innerHTML=result.length?result.map(e=>'<tr>'+
     expenseCell('Fecha',esc(e.fecha))+expenseCell('Categoría',esc(expenseLabel(e.categoria)))+
     expenseCell('Concepto',esc(e.concepto))+expenseCell('Referencia',esc(e.referencia||'—'))+
-    expenseCell('Monto',esc(fmt(e.monto)))+expenseCell('Cobro',e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS'?(e.tieneCuota?'<span class="status-paid">Programado</span>':'<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>'):'—')+'</tr>').join(''):
+    expenseCell('Monto',esc(fmt(e.monto)))+expenseCell('Cobro',!e.esAjusteMensual&&(e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS')?(e.tieneCuota?'<span class="status-paid">Programado</span>':'<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>'):'—')+'</tr>').join(''):
     '<tr><td colspan="6">'+(egresos.length?'No hay egresos que coincidan con los filtros.':'No hay egresos registrados para este mes.')+'</td></tr>';
  }
 
@@ -1516,6 +1529,87 @@ function renderHouses(){
  });
  $('financeIncomeHistoryClose').addEventListener('click',()=>closeFinanceHistory('income'));
  $('financeExpenseHistoryClose').addEventListener('click',()=>closeFinanceHistory('expense'));
+ // Edición por mes con validación del total previo para evitar cambios perdidos.
+ $('financeExpenseHistoryRows').addEventListener('click',event=>{
+  if(expenseMonthlySaving)return;
+  const edit=event.target.closest('[data-edit-expense-month]');
+  const cancel=event.target.closest('[data-cancel-expense-month]');
+  if(!edit&&!cancel)return;
+  const row=event.target.closest('tr[data-expense-month]');
+  if(!row)return;
+  if(edit){
+   $('financeExpenseHistoryRows').querySelectorAll('tr[data-expense-month]').forEach(other=>{
+    const form=other.querySelector('form[data-save-expense-month]');
+    const label=other.querySelector('.finance-expense-month-display');
+    form.hidden=true;label.hidden=false;
+   });
+   const form=row.querySelector('form[data-save-expense-month]');
+   row.querySelector('.finance-expense-month-display').hidden=true;
+   form.hidden=false;
+   row.querySelector('.finance-expense-month-feedback').textContent='';
+   form.querySelector('input').focus();
+   form.querySelector('input').select();
+  }else{
+   row.querySelector('form[data-save-expense-month]').hidden=true;
+   row.querySelector('.finance-expense-month-display').hidden=false;
+   row.querySelector('[data-edit-expense-month]')?.focus();
+  }
+ });
+ $('financeExpenseHistoryRows').addEventListener('submit',async event=>{
+  const form=event.target.closest('form[data-save-expense-month]');
+  if(!form)return;
+  event.preventDefault();
+  if(expenseMonthlySaving||!selectedExpenseCategory)return;
+  const periodo=form.dataset.saveExpenseMonth;
+  const current=data?.egresosPorConcepto?.historialMensual?.[selectedExpenseCategory]
+   ?.find(r=>r.periodo===periodo);
+  if(!current)return;
+  const input=form.querySelector('input');
+  if(!input.reportValidity())return;
+  const nuevo=Number(input.value),anterior=Number(current.totalPagado);
+  const feedback=form.closest('td').querySelector('.finance-expense-month-feedback');
+  if(!Number.isFinite(nuevo)||nuevo<0||nuevo>100000000||Math.round(nuevo*100)/100!==nuevo){
+   feedback.textContent='Escribe un monto válido, sin valores negativos y con máximo dos decimales.';
+   return;
+  }
+  if(Math.round(nuevo*100)===Math.round(anterior*100)){
+   form.hidden=true;
+   form.closest('td').querySelector('.finance-expense-month-display').hidden=false;
+   return;
+  }
+  if(!window.confirm('¿Actualizar '+expenseLabel(selectedExpenseCategory)+' de '+
+   current.mes+' '+current.anio+' de '+fmt(anterior)+' a '+fmt(nuevo)+
+   '? Se creará un ajuste contable auditable, conservando los gastos originales.'))return;
+  expenseMonthlySaving=true;
+  feedback.textContent='Guardando el ajuste en MySQL…';
+  form.querySelectorAll('input,button').forEach(el=>el.disabled=true);
+  const table=form.closest('.finance-historical-table');
+  const scrollTop=table?.scrollTop||0;
+  try{
+   const result=await request('/egresos/resumen-mensual',{
+    categoria:selectedExpenseCategory,periodo,
+    totalAnterior:anterior.toFixed(2),totalPagado:nuevo.toFixed(2)
+   },'PUT');
+   // La escritura ya se confirmó, aun si falla la recarga posterior.
+   feedback.textContent=result.message||'Ajuste registrado.';
+   const refreshed=await load();
+   if(refreshed){
+    $('financeExpenseHistory').querySelector('.finance-historical-table').scrollTop=scrollTop;
+    notice((result.message||'Total actualizado')+(result.data?.referencia
+     ?' Referencia: '+result.data.referencia:'')+'.','success');
+   }else{
+    notice('El ajuste se guardó en MySQL, pero la consulta no se pudo actualizar. No lo registres otra vez; actualiza la página.','success');
+   }
+  }catch(error){
+   feedback.textContent=error.message;
+   if(/cambió desde que abriste/.test(error.message))
+    notice('Los egresos cambiaron. Vuelve a consultar el análisis antes de editar de nuevo.','error');
+  }finally{
+   expenseMonthlySaving=false;
+   if(form.isConnected)form.querySelectorAll('input,button').forEach(el=>el.disabled=false);
+  }
+ });
+
  for(const [id,kind] of [['financeIncomeHistoryModal','income'],['financeExpenseHistory','expense']]){
   $(id).addEventListener('click',event=>{
    if(event.target===$(id))closeFinanceHistory(kind);
@@ -1528,12 +1622,19 @@ function renderHouses(){
   if(event.key==='Escape'){
    event.preventDefault();closeFinanceHistory(kind);
   }else if(event.key==='Tab'){
-   // El único botón accionable dentro de estos comparativos es Cerrar.
-   const modalId=kind==='income'?'financeIncomeHistoryModal':'financeExpenseHistory';
-   const closeId=kind==='income'?'financeIncomeHistoryClose':'financeExpenseHistoryClose';
-   const modal=$(modalId);
-   if(!modal.contains(document.activeElement)||event.shiftKey||document.activeElement===$(closeId)){
-    event.preventDefault();$(closeId).focus();
+   // Mantener la navegación por teclado de Guardar/Cancelar/Editar,
+   // y contener el foco dentro del diálogo cuando está abierto.
+   const modal=$(kind==='income'?'financeIncomeHistoryModal':'financeExpenseHistory');
+   const elements=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled])')]
+    .filter(el=>!el.closest('[hidden]')&&el.getClientRects().length>0);
+   if(!elements.length)return;
+   const first=elements[0],last=elements[elements.length-1];
+   if(!modal.contains(document.activeElement)){
+    event.preventDefault();first.focus();
+   }else if(event.shiftKey&&document.activeElement===first){
+    event.preventDefault();last.focus();
+   }else if(!event.shiftKey&&document.activeElement===last){
+    event.preventDefault();first.focus();
    }
   }
  });

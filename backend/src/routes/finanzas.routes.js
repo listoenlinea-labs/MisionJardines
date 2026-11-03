@@ -21,6 +21,7 @@ router.get('/pagos-vivienda/:casaId/anulacion',reversion.vista);
 router.post('/pagos-vivienda/:casaId/anulacion',reversion.anular);
 router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorCobrar);
 router.post('/egresos',controller.registrarEgreso);
+router.put('/egresos/resumen-mensual',controller.ajustarTotalEgresoMensual);
 router.post('/egresos/:id/activar-cuota',controller.activarCuotaExistente);
 router.post('/pagos-vivienda',pagosManuales.registrarPagoVivienda);
 router.get('/pagos-concepto/:casaId',pagosManuales.opcionesPagoConcepto);
