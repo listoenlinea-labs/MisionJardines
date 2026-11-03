@@ -46,7 +46,7 @@ async function consultarPago(casaId,proyectoId,referencia=null){
   .sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||a.referencia.localeCompare(b.referencia));
  const chosen=referencia==null?pagos.at(-1):pagos.find(x=>x.referencia.toLowerCase()===String(referencia).trim().toLowerCase());
  if(!chosen)throw fail(409,'No existe aportación confirmada para el movimiento seleccionado');
- const fecha=String(chosen.fecha||'').slice(0,10);
+ const fecha=chosen.fecha instanceof Date ? new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(chosen.fecha) : String(chosen.fecha||'').slice(0,10);
  if(!/^20\d{2}-(0[1-9]|1[0-2])-\d{2}$/.test(fecha))throw fail(409,'El abono no tiene fecha válida');
  const total=pagos.slice(0,pagos.indexOf(chosen)+1).reduce((n,p)=>n+Math.round(Number(p.monto)*100),0);
  const sello=total>=Math.round(Number(cargo.monto)*100)?'META ALCANZADA':'ABONO RECIBIDO';

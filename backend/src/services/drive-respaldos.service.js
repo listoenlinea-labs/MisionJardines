@@ -144,7 +144,7 @@ async function guardarPdf(token,folderId,item){
  }
  return 'actualizado';
 }
-async function subirRecibos({periodo,offset=0}){
+async function subirRecibos({periodo,offset=0,proyectoId=null}){
  recibos.parsePeriodo(periodo);
  const n=Number(offset);
  if(!Number.isSafeInteger(n)||n<0||n>50000)throw fail(400,'Posición de lote inválida');
@@ -154,8 +154,14 @@ async function subirRecibos({periodo,offset=0}){
  const token=await access();
  // IMPORTANTE: carpeta existente /02_Recibos_PDF/2026/ y archivos PDF individuales.
  const year=periodo.slice(0,4);
- const destino=await folder(token,year,r.folder_id);
- const lote=await recibos.lotePdf(periodo,n,10);
+ let parent=r.folder_id;
+ if(proyectoId!=null){
+  const {project}=await require('./recibo-extraordinario-analisis.service').movimientosProyecto(proyectoId);
+  parent=await folder(token,'Proyectos',parent);
+  parent=await folder(token,String(project.codigo||('Proyecto_'+project.id)).replace(/[^A-Za-z0-9_-]/g,'_'),parent);
+ }
+ const destino=await folder(token,year,parent);
+ const lote=await recibos.lotePdf(periodo,n,10,proyectoId);
  let creados=0,actualizados=0;
  for(const item of lote.files){
   const resultado=await guardarPdf(token,destino,item);
