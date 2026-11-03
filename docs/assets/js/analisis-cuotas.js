@@ -62,6 +62,9 @@
  let housePage=1;
  let houseSort={key:"calle",direction:"asc"};
  let activeConcept='MANTENIMIENTO';
+ let activeProyectoId=null;
+ let importacionExtraordinaria=null;
+ let importacionPrevisualizada=false;
  let selectedExpenseCategory=null;
  let expenseMonthlySaving=false;
  let selectedIncomeStreet=null;
@@ -468,7 +471,34 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     notice('El servidor todavía no ofrece el análisis de '+(concepto==='CASA_CLUB'?'Casa club':'Cuotas extraordinarias')+'. Despliega también el backend para consultar saldos reales.');
     return;
   }
-  const financial=new Map((registros||[]).map(h=>[String(h.casaId),h]));
+  const proyectos=data.proyectosExtraordinarios||[];
+  $('financeProjectPanel').hidden=concepto!=='EXTRAORDINARIO';
+  let seleccionado=null;
+  if(concepto==='EXTRAORDINARIO'){
+   seleccionado=proyectos.find(p=>Number(p.id)===Number(activeProyectoId))||proyectos[0]||null;
+   activeProyectoId=seleccionado?.id||null;
+   $('financeProjectSelect').innerHTML=proyectos.length
+    ?proyectos.map(p=>'<option value="'+Number(p.id)+'">'+esc(p.nombre)+'</option>').join('')
+    :'<option value="">Aún no hay proyectos configurados</option>';
+   $('financeProjectSelect').value=String(activeProyectoId||'');
+   $('financeProjectMetrics').innerHTML=seleccionado?[
+    ['Viviendas',String(seleccionado.viviendas)],
+    ['Meta',fmt(seleccionado.totalEsperado)],
+    ['Recaudado',fmt(seleccionado.recaudado)],
+    ['Saldo pendiente',fmt(seleccionado.saldoPendiente)],
+    ['Cumplidas',String(seleccionado.cumplidos)],
+    ['Abonos parciales',String(seleccionado.parciales)],
+    ['Pendientes',String(seleccionado.pendientes)],
+    ['Avance',String(seleccionado.porcentaje)+'%']
+   ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')
+    :'<p class="hint">Crea un proyecto o importa las aportaciones históricas de los dos Excel.</p>';
+   $('financeProjectInfo').textContent=seleccionado
+    ?'Proyecto: '+seleccionado.nombre+'. Los importes son independientes del mantenimiento y no bloquean TAGs.'+
+     (seleccionado.sinCargo?' Atención: '+seleccionado.sinCargo+' viviendas sin cargo.':'')
+    :'Los proyectos se cobrarán a las 231 casas al registrarlos. Revisa las reglas antes de importar.';
+  }
+  const registrosProyecto=seleccionado?.viviendasDetalle||null;
+  const financial=new Map((registrosProyecto||registros||[]).map(h=>[String(h.casaId),h]));
   if(concepto!=='MANTENIMIENTO'&&data.viviendasMantenimiento.some(h=>!financial.has(String(h.casaId)))){
     notice('Faltan movimientos por vivienda en la respuesta del servidor. No se mostrarán importes incompletos.');
     return;
@@ -477,7 +507,17 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   if(concepto!=='MANTENIMIENTO')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto!=='MANTENIMIENTO';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
-  data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId))});
+  data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
+   ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
+  $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
+  if(concepto==='EXTRAORDINARIO'){
+   $('financeLastPaidMonth').value='';
+   const periodFilter=document.querySelector('.paid-through-filter');
+   if(periodFilter)periodFilter.hidden=!!seleccionado;
+  }else{
+   const periodFilter=document.querySelector('.paid-through-filter');
+   if(periodFilter)periodFilter.hidden=false;
+  }
   document.querySelectorAll('[data-finance-concept]').forEach(tab=>{
     const selected=tab.dataset.financeConcept===concepto;
     tab.classList.toggle('active',selected);
@@ -493,7 +533,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    $('financeStatus').value='';
   $('financeConceptHint').textContent={
     MANTENIMIENTO:'Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.',
-    EXTRAORDINARIO:'Cuotas extraordinarias: solo proyectos con mensualidades configuradas. Los egresos sin repartir todavía no generan deuda.',
+    EXTRAORDINARIO:'Selecciona un proyecto para consultar sus aportaciones, cuotas especiales y saldos. El proyecto es independiente de mantenimiento y TAGs.',
     CASA_CLUB:'Casa club: solo reservas aprobadas. El saldo vence en la fecha límite de pago, no en la fecha del evento.'
   }[concepto];
   // Cambio explícito de pestaña: página 1. La recarga de datos tras
