@@ -483,6 +483,10 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     ?proyectos.map(p=>'<option value="'+Number(p.id)+'">'+esc(p.nombre)+'</option>').join('')
     :'<option value="">Aún no hay proyectos configurados</option>';
    $('financeProjectSelect').value=String(activeProyectoId||'');
+   $('financeProjectSelect').dataset.hasSelection=String(Boolean(seleccionado));
+   $('financeProjectSelect').title=seleccionado?'Proyecto seleccionado: '+seleccionado.nombre:'Selecciona un proyecto';
+   $('financeProjectRulesEdit').disabled=!seleccionado;
+   $('financeProjectRulesEdit').title=seleccionado?'Modificar las cuotas de '+seleccionado.nombre:'Selecciona un proyecto para editar sus importes';
    $('financeProjectMetrics').innerHTML=seleccionado?[
     ['Meta',fmt(seleccionado.totalEsperado)],
     ['Recaudado',fmt(seleccionado.recaudado)],
@@ -2032,5 +2036,200 @@ function renderHouses(){
   finally{projectSaving=false;renderProjectModal();}
  });
 
+
+ // Editor masivo original de cuotas por vivienda. Independiente del modal de presupuesto
+ // para nuevos proyectos y del editor individual en el Historial de pagos.
+ const bulkModal=$('financeProjectBulkModal');
+ let bulkProjectId=null,bulkProjectName='',bulkExceptions=new Map(),bulkPaid=new Map(),
+  bulkSaving=false,bulkPreviousFocus=null,bulkOpening=false;
+ const bulkHouses=()=>[...(data?.viviendasMantenimiento||[])].sort((a,b)=>
+  String(a.calle).localeCompare(String(b.calle),'es',{numeric:true})||
+  String(a.numero).localeCompare(String(b.numero),'es',{numeric:true}));
+ const bulkCents=value=>{
+  const raw=String(value??'').trim(),number=Number(raw),centavos=Math.round(number*100);
+  return raw!==''&&Number.isFinite(number)&&Number.isSafeInteger(centavos)&&
+   number>=0.01&&number<=10000000&&Math.abs(number*100-centavos)<0.001
+   ?centavos:null;
+ };
+ const bulkBase=()=>bulkCents($('financeBulkBase').value);
+ const bulkAmount=id=>bulkExceptions.has(Number(id))
+  ?bulkCents(bulkExceptions.get(Number(id))):bulkBase();
+ function bulkCompute(){
+  const houses=bulkHouses(),base=bulkBase();
+  if(houses.length!==231||base===null||bulkExceptions.size>231)return null;
+  const allowed=new Set(houses.map(h=>Number(h.casaId)));
+  let sum=0;
+  for(const [id,raw] of bulkExceptions){
+   if(!allowed.has(id)||bulkCents(raw)===null)return null;
+  }
+  for(const house of houses){
+   const amount=bulkAmount(house.casaId);
+   if(amount===null)return null;
+   sum+=amount;
+  }
+  return {total:sum,base};
+ }
+ function bulkSummary(){
+  const computed=bulkCompute(),houses=bulkHouses();
+  $('financeBulkTotal').textContent=computed
+   ?houses.length+' viviendas · '+bulkExceptions.size+' excepciones · Meta: '+fmt(computed.total/100)
+   :houses.length+' viviendas · Revisa la cuota general y las excepciones antes de guardar.';
+  $('financeBulkApply').disabled=bulkSaving||!computed;
+  return computed;
+ }
+ function bulkRender(){
+  const term=$('financeBulkSearch').value.trim().toLocaleLowerCase('es');
+  const houses=bulkHouses();
+  $('financeBulkRows').innerHTML=houses.filter(h=>
+   (h.calle+' '+h.numero+' '+(h.nombre||'')).toLocaleLowerCase('es').includes(term))
+   .map(h=>{
+    const id=Number(h.casaId),special=bulkExceptions.has(id),amount=bulkAmount(id),
+     paid=bulkPaid.get(id)||0;
+    return '<tr'+(special?' class="has-exception"':'')+'><td>'+esc(h.calle+' '+h.numero)+'</td>'+
+     '<td>'+(amount===null?'—':esc(fmt(amount/100)))+' <small>Abonado '+esc(fmt(paid/100))+'</small></td>'+
+     '<td>'+(special
+      ?'<input type="number" min="0.01" step="0.01" max="10000000" inputmode="decimal" data-bulk-amount="'+id+'" aria-label="Cuota excepcional de '+esc(h.calle+' '+h.numero)+'" value="'+esc(bulkExceptions.get(id))+'"> <button type="button" class="soft" data-bulk-remove="'+id+'">Quitar</button>'
+      :'<button type="button" class="soft" data-bulk-add="'+id+'"'+(bulkBase()===null?' disabled':'')+'>Generar excepción</button>')+
+     '</td></tr>';
+   }).join('')||'<tr><td colspan="3">No hay viviendas que coincidan con la búsqueda.</td></tr>';
+  bulkSummary();
+ }
+ function closeBulk(){
+  if(bulkSaving||bulkOpening)return;
+  bulkModal.hidden=true;
+  bulkProjectId=null;bulkPreviousFocus?.focus();bulkPreviousFocus=null;
+ }
+ async function openBulk(){
+  if(bulkOpening||bulkSaving)return;
+  if(activeConcept!=='EXTRAORDINARIO'||!activeProyectoId){notice('Selecciona un proyecto extraordinario.');return;}
+  bulkOpening=true;
+  const originalId=Number(activeProyectoId),button=$('financeProjectRulesEdit');
+  button.disabled=true;
+  try{
+   // La vista del historial individual y este editor parten de la MISMA lectura fresca.
+   const updated=await load();
+   if(!updated)throw Error('No se pudo consultar el estado actual de cuotas. Actualiza e inténtalo de nuevo.');
+   if(Number(activeProyectoId)!==originalId||activeConcept!=='EXTRAORDINARIO')
+    throw Error('El proyecto seleccionado cambió. Vuelve a abrir sus importes.');
+   const project=(data?.proyectosExtraordinarios||[]).find(p=>Number(p.id)===originalId);
+   const houses=bulkHouses(),cargos=project?.viviendasDetalle||[];
+   if(!project||houses.length!==231||cargos.length!==231||
+      new Set(cargos.map(c=>Number(c.casaId))).size!==231)
+    throw Error('El proyecto y el padrón deben contener los mismos 231 cargos. No se cambiarán importes.');
+   const amount=bulkCents(project.cuotaBase);
+   if(amount===null)throw Error('La cuota general del proyecto no es válida. Revisa su configuración.');
+   bulkExceptions=new Map();bulkPaid=new Map();
+   for(const row of cargos){
+    const id=Number(row.casaId),value=bulkCents(row.montoCuota),paid=Math.round(Number(row.montoPagado||0)*100);
+    if(value===null||!Number.isSafeInteger(paid)||paid<0)
+     throw Error('Los datos de cuota o aportaciones contienen un importe inválido.');
+    bulkPaid.set(id,paid);
+    if(value!==amount)bulkExceptions.set(id,(value/100).toFixed(2));
+   }
+   bulkProjectId=originalId;bulkProjectName=project.nombre;
+   bulkPreviousFocus=document.activeElement;
+   $('financeBulkBase').value=(amount/100).toFixed(2);
+   $('financeBulkSearch').value='';
+   $('financeBulkTitle').textContent='Modificar metas de '+project.nombre;
+   $('financeBulkStatus').textContent='';
+   bulkModal.hidden=false;bulkRender();$('financeBulkClose').focus();
+  }catch(e){notice(e.message);}
+  finally{
+   bulkOpening=false;
+   button.disabled=!(data?.proyectosExtraordinarios||[]).some(p=>Number(p.id)===Number(activeProyectoId));
+  }
+ }
+ $('financeProjectRulesEdit').addEventListener('click',()=>void openBulk());
+ $('financeBulkClose').addEventListener('click',closeBulk);
+ $('financeBulkCancel').addEventListener('click',closeBulk);
+ bulkModal.addEventListener('click',e=>{if(e.target===bulkModal)closeBulk();});
+ document.addEventListener('keydown',e=>{
+  if(bulkModal.hidden||bulkSaving||bulkOpening)return;
+  if(e.key==='Escape'){e.preventDefault();closeBulk();return;}
+  if(e.key!=='Tab')return;
+  const focusable=[...bulkModal.querySelectorAll('button:not([disabled]),input:not([disabled])')]
+   .filter(el=>el.getClientRects().length&&el.offsetParent!==null);
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(!first)return;
+  if(!bulkModal.contains(document.activeElement)||(e.shiftKey&&document.activeElement===first)){
+   e.preventDefault();(e.shiftKey?last:first).focus();
+  }else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+ });
+ $('financeBulkSearch').addEventListener('input',bulkRender);
+ $('financeBulkBase').addEventListener('input',bulkRender);
+ $('financeBulkRows').addEventListener('click',e=>{
+  if(bulkSaving)return;
+  const add=e.target.closest('[data-bulk-add]'),remove=e.target.closest('[data-bulk-remove]');
+  if(add){
+   const id=Number(add.dataset.bulkAdd),base=bulkBase();
+   if(base===null)return;
+   bulkExceptions.set(id,(base/100).toFixed(2));
+   bulkRender();
+   $('financeBulkRows').querySelector('[data-bulk-amount="'+id+'"]')?.focus();
+  }else if(remove){
+   bulkExceptions.delete(Number(remove.dataset.bulkRemove));bulkRender();
+  }
+ });
+ $('financeBulkRows').addEventListener('input',e=>{
+  const input=e.target.closest('[data-bulk-amount]');
+  if(!input||bulkSaving)return;
+  bulkExceptions.set(Number(input.dataset.bulkAmount),input.value);
+  const summary=bulkSummary(),id=Number(input.dataset.bulkAmount);
+  const row=input.closest('tr');
+  const amount=bulkAmount(id);
+  const quota=row?.querySelector('td:nth-child(2)');
+  if(quota)quota.innerHTML=(amount===null?'—':esc(fmt(amount/100)))+
+   ' <small>Abonado '+esc(fmt((bulkPaid.get(id)||0)/100))+'</small>';
+  if(summary)$('financeBulkStatus').textContent='';
+ });
+ $('financeBulkRows').addEventListener('change',e=>{
+  const input=e.target.closest('[data-bulk-amount]');
+  if(!input||bulkSaving)return;
+  const amount=bulkCents(input.value);
+  if(amount===null){
+   input.setCustomValidity('Ingresa un importe entre $0.01 y $10,000,000.00 con máximo dos decimales.');
+   input.reportValidity();
+   return;
+  }
+  input.setCustomValidity('');
+  const id=Number(input.dataset.bulkAmount),base=bulkBase();
+  if(amount===base)bulkExceptions.delete(id);
+  else bulkExceptions.set(id,(amount/100).toFixed(2));
+  bulkRender();
+ });
+ $('financeBulkApply').addEventListener('click',async()=>{
+  if(bulkSaving||!bulkProjectId)return;
+  const computed=bulkCompute();
+  if(!computed){
+   $('financeBulkStatus').textContent='Revisa la cuota general y los importes especiales.';
+   return;
+  }
+  const houses=bulkHouses();
+  for(const h of houses){
+   const amount=bulkAmount(h.casaId),paid=bulkPaid.get(Number(h.casaId))||0;
+   if(amount===null||amount<paid){
+    $('financeBulkStatus').textContent='La cuota de '+h.calle+' '+h.numero+
+     ' no puede ser menor a '+fmt(paid/100)+' ya aportados.';
+    return;
+   }
+  }
+  const projectId=bulkProjectId;
+  if(!confirm('¿Guardar las cuotas de las 231 viviendas de «'+bulkProjectName+'»? La nueva meta será '+
+   fmt(computed.total/100)+'. Los abonos anteriores y las modificaciones individuales se conservan con auditoría.'))return;
+  bulkSaving=true;bulkSummary();$('financeBulkStatus').textContent='Guardando cuotas y actualizando la meta del proyecto…';
+  try{
+   const result=await request('/proyectos-extraordinarios/'+projectId+'/cuotas',{
+    cuotaBase:computed.base/100,
+    excepciones:[...bulkExceptions].map(([casaId,value])=>({casaId,monto:bulkCents(value)/100}))
+   },'PATCH');
+   bulkSaving=false;closeBulk();
+   const refreshed=await load();
+   notice(refreshed?(result.message||'Cuotas del proyecto actualizadas')+' Meta: '+fmt(computed.total/100)+'.':
+    'Se guardaron las cuotas pero no se pudo actualizar la pantalla. Recarga antes de intentar guardar de nuevo.','success');
+  }catch(err){
+   $('financeBulkStatus').textContent=err.message;
+   notice(err.message);
+  }finally{bulkSaving=false;bulkSummary();}
+ });
  await load();
 })();
