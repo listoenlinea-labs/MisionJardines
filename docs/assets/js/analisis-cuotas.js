@@ -57,9 +57,17 @@
  document.querySelectorAll('.analysis-chart-toggle').forEach(button=>{
   const card=button.closest('.analysis-chart-card');
   const label=button.querySelector('.analysis-chart-toggle-label');
-  if(!card||!label)return;
+  const panel=document.getElementById(button.getAttribute('aria-controls'));
+  if(!card||!label||!panel)return;
+  // Cerrados al cargar en escritorio y móvil. El contenido se sigue
+  // actualizando en segundo plano, pero no ocupa espacio hasta abrir.
+  card.classList.remove('is-expanded');
+  panel.hidden=true;
+  button.setAttribute('aria-expanded','false');
+  label.textContent='Mostrar';
   button.addEventListener('click',()=>{
    const expanded=card.classList.toggle('is-expanded');
+   panel.hidden=!expanded;
    button.setAttribute('aria-expanded',String(expanded));
    label.textContent=expanded?'Ocultar':'Mostrar';
   });
