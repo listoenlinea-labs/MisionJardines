@@ -874,6 +874,114 @@ function renderHouses(){
    binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));
   return btoa(binary);
  }
+
+ function updateDriveFolderLink(url){
+  const link=$('financeDriveFolderLink');
+  if(typeof url==='string'&&/^https:\/\/drive\.google\.com\/drive\/folders\/[A-Za-z0-9_-]{12,150}$/.test(url)){
+   link.href=url;link.hidden=false;
+  }else{link.hidden=true;link.removeAttribute('href');}
+ }
+ async function refreshDriveFolder(){
+  const el=$('financeDriveFolderStatus');
+  el.textContent='Consultando cuenta y carpeta de Drive…';
+  updateDriveFolderLink(null);
+  try{
+   const state=(await request('/drive/status')).data;
+   if(backupAction!=='drive'||backupModal.hidden)return;
+   el.textContent=!state.connected
+    ?'Primero conecta tu cuenta Google con el botón Conectar con Google Drive.'
+    :state.folderConfigured
+     ?'Destino autorizado: Mision Jardines - Administración / 02_Recibos_PDF / 2026.'
+     :'Cuenta conectada. Ahora selecciona la carpeta 02_Recibos_PDF de tu Drive para autorizarla.';
+   updateDriveFolderLink(state.folderUrl);
+  }catch(error){el.textContent='No se pudo consultar el destino: '+error.message;}
+ }
+ function ensureGooglePicker(){
+  if(window.google?.picker?.PickerBuilder)return Promise.resolve();
+  if(drivePickerLoading)return drivePickerLoading;
+  drivePickerLoading=new Promise((resolve,reject)=>{
+   const load=()=>{
+    if(!window.gapi?.load){reject(Error('No se pudo cargar Google APIs'));return;}
+    window.gapi.load('picker',{callback:resolve,onerror:()=>reject(Error('Google Picker no pudo iniciar'))});
+   };
+   if(window.gapi){load();return;}
+   const script=document.createElement('script');
+   script.src='https://apis.google.com/js/api.js';
+   script.onload=load;
+   script.onerror=()=>reject(Error('No se pudo descargar Google Picker'));
+   document.head.appendChild(script);
+  }).catch(e=>{drivePickerLoading=null;throw e;});
+  return drivePickerLoading;
+ }
+ async function pickDriveFolder(){
+  const button=$('financeDriveChooseFolder');
+  if(backupBusy||button.disabled)return;
+  button.disabled=true;
+  $('financeDriveFolderStatus').textContent='Abriendo selector de carpetas de Google…';
+  try{
+   const {data:config}=await request('/drive/selector');
+   if(!config?.accessToken||!config.apiKey||!config.appId)throw Error('Faltan los datos del selector Google Picker');
+   await ensureGooglePicker();
+   const pickerApi=window.google?.picker;
+   if(!pickerApi?.PickerBuilder||!pickerApi?.DocsView)throw Error('No se cargó la biblioteca Google Picker');
+   const folderView=new pickerApi.DocsView(pickerApi.ViewId.FOLDERS)
+    .setIncludeFolders(true).setSelectFolderEnabled(true);
+   const picker=new pickerApi.PickerBuilder()
+    .addView(folderView)
+    .setOAuthToken(config.accessToken)
+    .setDeveloperKey(config.apiKey)
+    .setAppId(config.appId)
+    .setOrigin(window.location.origin)
+    .setTitle('Elige Mision Jardines - Administración / 02_Recibos_PDF')
+    .setCallback(async result=>{
+     if(result[pickerApi.Response.ACTION]!==pickerApi.Action.PICKED)return;
+     const doc=result[pickerApi.Response.DOCUMENTS]?.[0];
+     const folderId=doc?.[pickerApi.Document.ID]||doc?.id;
+     if(!folderId){
+      $('financeDriveFolderStatus').textContent='No se recibió una carpeta válida de Google.';return;
+     }
+     $('financeDriveFolderStatus').textContent='Verificando permisos para guardar recibos…';
+     try{
+      const response=await request('/drive/carpeta',{folderId});
+      $('financeDriveFolderStatus').textContent='Carpeta seleccionada: 02_Recibos_PDF. Los recibos se subirán a la subcarpeta 2026.';
+      updateDriveFolderLink(response.data?.url);
+      setBackupStatus('Carpeta configurada correctamente. Selecciona un mes y pulsa Generar respaldo.','success');
+     }catch(error){
+      $('financeDriveFolderStatus').textContent='No se configuró la carpeta: '+error.message;
+      setBackupStatus(error.message,'error');
+     }
+    }).build();
+   picker.setVisible(true);
+  }catch(error){
+   $('financeDriveFolderStatus').textContent='No se pudo abrir el selector: '+error.message;
+   setBackupStatus(error.message,'error');
+  }finally{button.disabled=false;}
+ }
+ $('financeDriveChooseFolder').addEventListener('click',()=>void pickDriveFolder());
+ async function respaldarPdfDrive(periodo,allMonths){
+  const months=allMonths?backupAvailablePeriods.slice().sort():[periodo];
+  if(!months.length)throw Error('No hay meses con mantenimiento pagado');
+  let pdfCount=0,created=0,updated=0,finalUrl=null;
+  for(const month of months){
+   let offset=0,rounds=0;
+   do{
+    if(rounds++>300)throw Error('Se detuvo el respaldo por demasiados lotes');
+    setBackupStatus('Subiendo recibos de '+month+' (procesados '+offset+')…');
+    const {data:page}=await request('/drive/recibos',{periodo:month,offset});
+    if(!Number.isSafeInteger(page?.nextOffset)||page.nextOffset<=offset)
+     throw Error('La API no avanzó al siguiente lote de '+month);
+    pdfCount+=Number(page.procesados||0);
+    created+=Number(page.creados||0);
+    updated+=Number(page.actualizados||0);
+    finalUrl=page.folderUrl||finalUrl;
+    offset=page.nextOffset;
+    if(page.terminado)break;
+   }while(true);
+  }
+  updateDriveFolderLink(finalUrl);
+  return {pdfCount,created,updated,months:months.length};
+ }
+
  $('financeDownloadAllReceipts').addEventListener('click',()=>openBackupModal('zip'));
  $('financeDriveConnect').addEventListener('click',()=>openBackupModal('connect'));
  $('financeDriveBackup').addEventListener('click',()=>openBackupModal('drive'));
