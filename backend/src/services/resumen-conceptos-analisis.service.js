@@ -13,8 +13,16 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
   const nuevo=()=>({montoPagadoCentavos:0,saldoCentavos:0,conCargos:false,ultimoPeriodo:null,parcial:false});
   const extra=new Map([...ids].map(k=>[k,nuevo()]));
   const club=new Map([...ids].map(k=>[k,nuevo()]));
-  const validosExtra=new Set(reportados.filter(p=>p.tipoPago==='EXTRAORDINARIO'&&p.estatus==='VALIDADO'&&p.cargoExtraordinarioId).map(p=>id(p.cargoExtraordinarioId)));
-  const manualesExtra=new Set(manuales.filter(p=>p.tipoPago==='EXTRAORDINARIO'&&p.cargoExtraordinarioId).map(p=>id(p.cargoExtraordinarioId)));
+  // Un depósito validado de $200 sobre una meta de $1,000 NO significa PAGADO.
+  // Acumular en centavos sin exigir periodicidad ni forma de pago fija.
+  const acumulados=new Map();
+  const agregar=(cargoId,monto)=>{
+    if(!cargoId)return;
+    const k=id(cargoId);
+    acumulados.set(k,(acumulados.get(k)||0)+centavos(monto));
+  };
+  for(const p of reportados)if(p.tipoPago==='EXTRAORDINARIO'&&p.estatus==='VALIDADO')agregar(p.cargoExtraordinarioId,p.monto);
+  for(const p of manuales)if(p.tipoPago==='EXTRAORDINARIO')agregar(p.cargoExtraordinarioId,p.monto);
   const validosClub=new Set(reportados.filter(p=>p.tipoPago==='CASA_CLUB'&&p.estatus==='VALIDADO'&&p.reservaCasaClubId).map(p=>id(p.reservaCasaClubId)));
   const manualesClub=new Set(manuales.filter(p=>p.tipoPago==='CASA_CLUB'&&p.reservaCasaClubId).map(p=>id(p.reservaCasaClubId)));
 
@@ -42,9 +50,8 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
   for(const cargo of cargos){
     const row=extra.get(id(cargo.casaId)),period=mesDe(cargo.periodo);
     if(!row||!/^\\d{4}-(0[1-9]|1[0-2])$/.test(period))continue;
-    const cargoCents=centavos(cargo.monto),abonos=aportadoPorCargo.get(id(cargo.id))||0;
-    const pagado=validosExtra.has(id(cargo.id))||manualesExtra.has(id(cargo.id))
-     ?cargoCents:Math.min(cargoCents,abonos);
+    const cargoCents=centavos(cargo.monto),abonos=(aportadoPorCargo.get(id(cargo.id))||0)+(acumulados.get(id(cargo.id))||0);
+    const pagado=Math.min(cargoCents,abonos);
     if(period===elegido)row.montoPagadoCentavos+=pagado;
     if(pagado>0&&(!row.ultimoPeriodo||period>row.ultimoPeriodo))row.ultimoPeriodo=period;
     if(period<=elegido){
