@@ -645,7 +645,27 @@ function renderHouses(){
  let currentHistoryHouseId=null;
  let historyMovements=[];
  const tariffPanel=$('houseTariffPanel');
+ const projectNoAplicaButton=$('houseProjectNoAplica');
+ const projectNoAplicaStatus=$('houseProjectNoAplicaStatus');
+ let projectNoAplicaSaving=false;
  let savedTariffSettings=null;
+ function syncProjectNoAplica(house){
+  const isProject=activeConcept==='EXTRAORDINARIO'&&Boolean(activeProyectoId);
+  const exempt=isProject&&isProjectNoAplica(house);
+  const hasPaid=isProject&&Number(house?.montoPagado||0)>0;
+  projectNoAplicaButton.hidden=!isProject;
+  projectNoAplicaButton.setAttribute('aria-pressed',String(Boolean(exempt)));
+  projectNoAplicaButton.disabled=!isProject||Boolean(exempt)||Boolean(hasPaid)||projectNoAplicaSaving;
+  projectNoAplicaButton.title=exempt
+   ?'Esta vivienda ya está exenta. Utiliza Modificar cuota del proyecto para asignar otro importe.'
+   :hasPaid?'La vivienda tiene aportaciones registradas. No se puede exentar sin conciliarlas.'
+   :'Dejar la cuota de esta vivienda en $0 para el proyecto seleccionado.';
+  projectNoAplicaStatus.hidden=!exempt&&!hasPaid;
+  projectNoAplicaStatus.textContent=exempt
+   ?'No aplica: esta vivienda no debe pagar este proyecto. Para volver a cobrar, usa Modificar cuota del proyecto.'
+   :hasPaid?'No es posible marcar No aplica: existen aportaciones registradas.':'';
+ }
+
  const houseHasNoFee=house=>{
   const mes=todayC3().slice(0,7);
   return Array.isArray(house?.exencionesRecargo)&&house.exencionesRecargo.some(r=>r?.desde<=mes&&(!r.hasta||r.hasta>=mes));
@@ -693,6 +713,7 @@ function renderHouses(){
  }
  function closeHouseHistory(){
   tariffPanel.hidden=true;
+  projectNoAplicaStatus.hidden=true;
   currentHistoryHouseId=null;
   historyMovements=[];
   ++historySequence;
@@ -709,6 +730,7 @@ function renderHouses(){
   tariffPanel.hidden=true;
   $('houseTariffOpen').hidden=activeConcept==='CASA_CLUB'||(activeConcept==='EXTRAORDINARIO'&&!activeProyectoId);
   $('houseTariffOpen').textContent=activeConcept==='EXTRAORDINARIO'?'Modificar cuota del proyecto':'Modificar cuotas';
+  syncProjectNoAplica(house);
   historyModal.hidden=false;
   $('houseHistoryTitle').textContent='Historial de '+conceptTitle(activeConcept).toLowerCase();
   $('houseHistoryAddress').textContent=house.calle+' '+house.numero+' · '+(house.nombre||'Sin residente');
@@ -751,6 +773,68 @@ function renderHouses(){
   }
  }
  $('houseHistoryClose').addEventListener('click',closeHouseHistory);
+ // Exención del proyecto: reutiliza el PATCH auditado de cuota individual.
+ // El backend no permite exentar si existen aportaciones o comprobantes en revisión.
+ projectNoAplicaButton.addEventListener('click',async()=>{
+  const id=Number(currentHistoryHouseId),pid=Number(activeProyectoId);
+  if(projectNoAplicaSaving||historyModal.hidden||activeConcept!=='EXTRAORDINARIO'||
+     !Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(pid)||pid<1)return;
+  if(!tariffPanel.hidden){
+   projectNoAplicaStatus.hidden=false;
+   projectNoAplicaStatus.textContent='Cierra la edición de cuota antes de seleccionar No aplica.';
+   return;
+  }
+  const house=data?.viviendas?.find(h=>Number(h.casaId)===id);
+  if(!house||isProjectNoAplica(house)||Number(house.montoPagado||0)>0)return;
+  const project=(data?.proyectosExtraordinarios||[]).find(x=>Number(x.id)===pid);
+  if(!project)return;
+  const question='¿Marcar '+house.calle+' '+house.numero+' como «No aplica» en «'+project.nombre+'»?\n\n'+
+   'Su cuota extraordinaria quedará en $0, no tendrá saldo pendiente y no aparecerá como pagada.'+
+   '\nLos pagos previos o en revisión impiden esta acción.'+
+   '\nNo se modifican mantenimiento, TAGs ni otros proyectos.'+
+   '\n\nPodrás asignarle una cuota nuevamente desde «Modificar cuota del proyecto».';
+  if(!window.confirm(question))return;
+  projectNoAplicaSaving=true;
+  projectNoAplicaButton.disabled=true;
+  projectNoAplicaStatus.hidden=false;
+  projectNoAplicaStatus.textContent='Guardando la exención del proyecto…';
+  let saved=false;
+  try{
+   await request('/proyectos-extraordinarios/'+pid+'/viviendas/'+id,{monto:0},'PATCH');
+   saved=true;
+   const refreshed=await load();
+   if(!refreshed){
+    projectNoAplicaStatus.textContent='La exención se guardó, pero no pudo verificarse al recargar. Actualiza la página antes de volver a intentar.';
+    notice(projectNoAplicaStatus.textContent,'success');
+    return;
+   }
+   if(historyModal.hidden||currentHistoryHouseId!==id||activeConcept!=='EXTRAORDINARIO'||
+      Number(activeProyectoId)!==pid){
+    notice('Se guardó No aplica para '+house.calle+' '+house.numero+'.','success');return;
+   }
+   const current=data?.viviendas?.find(h=>Number(h.casaId)===id);
+   if(!isProjectNoAplica(current)){
+    projectNoAplicaStatus.textContent='La API guardó el cambio pero no confirmó el estado No aplica. Vuelve a consultar el proyecto.';
+    return;
+   }
+   const focus=historyReturnFocus;
+   await openHouseHistory(id,focus);
+   if(!historyModal.hidden&&currentHistoryHouseId===id){
+    projectNoAplicaStatus.hidden=false;
+    projectNoAplicaStatus.textContent='No aplica guardado. Cuota $0; sin cobro ni deuda de este proyecto.';
+   }
+   notice('La vivienda '+house.calle+' '+house.numero+' quedó como No aplica para este proyecto.','success');
+  }catch(error){
+   projectNoAplicaStatus.hidden=false;
+   projectNoAplicaStatus.textContent='No se pudo marcar No aplica: '+error.message;
+   notice(error.message);
+  }finally{
+   projectNoAplicaSaving=false;
+   if(!saved&&currentHistoryHouseId===id&&activeConcept==='EXTRAORDINARIO'&&Number(activeProyectoId)===pid)
+    syncProjectNoAplica(data?.viviendas?.find(h=>Number(h.casaId)===id));
+   else if(saved)projectNoAplicaButton.disabled=true;
+  }
+ });
  $('houseTariffOpen').addEventListener('click',()=>{
   if(!currentHistoryHouseId||!['MANTENIMIENTO','EXTRAORDINARIO'].includes(activeConcept))return;
   const h=data?.viviendas?.find(x=>Number(x.casaId)===currentHistoryHouseId);
