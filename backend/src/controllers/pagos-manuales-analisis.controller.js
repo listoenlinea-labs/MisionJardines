@@ -258,9 +258,10 @@ async function historialPagoVivienda(req,res){
     movimientos=historialConcepto(tipo,reportados.filter(p=>cargoIds.has(String(p.cargoExtraordinarioId))),
      manuales.filter(p=>cargoIds.has(String(p.cargoExtraordinarioId))));
     const aportaciones=await AportacionExtraordinaria.findAll({where:{casaId},
-     attributes:['cargoExtraordinarioId','monto','fecha','referencia','formaPago']});
+     attributes:['id','cargoExtraordinarioId','monto','fecha','referencia','formaPago','origen']});
     movimientos.push(...aportaciones.filter(a=>cargoIds.has(String(a.cargoExtraordinarioId))).map(a=>({
-     referencia:a.referencia,fecha:a.fecha,monto:Number(a.monto),recargo:0,meses:0,periodos:[],
+     movimientoId:Number(a.id),origenTipo:'APORTACION',origenRegistro:a.origen,
+      referencia:a.referencia,fecha:a.fecha,monto:Number(a.monto),recargo:0,meses:0,periodos:[],
      formaPago:a.formaPago||'Aportación registrada',fuente:'APORTACION'
     })));
     movimientos.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));

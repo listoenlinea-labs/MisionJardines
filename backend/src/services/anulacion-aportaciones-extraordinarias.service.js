@@ -69,7 +69,8 @@ async function anular(params,body,usuarioId){
     x.proyectoId,x.charge.id,x.casaId,x.origen,x.pago.id,x.referencia,x.monto,actor,
     JSON.stringify(x.pago.get({plain:true}))
    ],transaction});
-  const deleted=await x.pago.destroy({transaction});
+  const model=x.origen==='APORTACION'?Aportacion:Manual;
+  const deleted=await model.destroy({where:{id:x.pago.id,casaId:x.casaId,cargoExtraordinarioId:x.charge.id,referencia:x.referencia},transaction});
   if(deleted!==1)throw fail(409,'La anulación no afectó exactamente un movimiento. Transacción cancelada.');
   return {...summary(x),anulado:true,sinCambiosEnMantenimiento:true,sinCambiosEnTags:true};
  });
