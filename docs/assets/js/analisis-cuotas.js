@@ -92,7 +92,7 @@
   const houses=data.casas||0;
   const financialCards=[
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento cobrado del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
+   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Mantenimiento acumulado',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.acumulado):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
    ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
@@ -111,20 +111,21 @@
   const padronNote=$('financePadronNote');
   if(padronNote){padronNote.textContent=data.avisoPadron||'';padronNote.hidden=!data.avisoPadron;}
   const ingresos=data.ingresosMantenimientoCalles;
-   if(ingresos){
-    const rows=ingresos.calles||[];
+   if(ingresos&&Array.isArray(ingresos.calles)){
+    const rows=ingresos.calles;
     const max=Math.max(1,...rows.map(c=>Number(c.acumulado||0)));
-    $('financeIncomeTotals').innerHTML=periodTotals(ingresos.mes,ingresos.acumulado);
-    $('financeCashChart').innerHTML=rows.map(c=>bar(c.calle,Number(c.acumulado),max,false,fmt(c.acumulado))).join('');
-    $('financeIncomeStreetRows').innerHTML=rows.map(c=>'<tr><th scope="row">'+esc(c.calle)+'</th><td>'+esc(fmt(c.mes))+'</td><td>'+esc(fmt(c.acumulado))+'</td></tr>').join('');
-    $('financeIncomeStreetTotal').innerHTML='<tr><th>Total mantenimiento</th><td>'+esc(fmt(ingresos.mes))+'</td><td>'+esc(fmt(ingresos.acumulado))+'</td></tr>';
-    $('financeWarning').textContent=data.avisoConciliacion+(ingresos.sinFecha?' '+ingresos.sinFecha+' movimiento(s) sin fecha verificable quedan fuera del total hasta conciliarlos.':'');
+    $('financeIncomeTotals').innerHTML='<span>Total acumulado de mantenimiento: <b>'+
+     esc(fmt(ingresos.acumulado))+'</b></span>';
+    $('financeCashChart').innerHTML=rows.map(c=>
+     bar(c.calle,Number(c.acumulado),max,false,fmt(c.acumulado))
+    ).join('');
+    $('financeWarning').textContent=ingresos.sinFecha
+     ?'Se incluyen '+ingresos.sinFecha+' pago(s) registrado(s) sin fecha original; no se les asignó un mes de cobro.'
+     :'Importes correspondientes a pagos registrados, sin duplicar los meses de una misma anualidad.';
    }else{
-    $('financeIncomeTotals').textContent='Actualiza el backend de Hostinger para consultar ingresos por calle.';
+    $('financeIncomeTotals').textContent='La API debe actualizarse para mostrar el mantenimiento acumulado por calle.';
     $('financeCashChart').textContent='';
-    $('financeIncomeStreetRows').innerHTML='';
-    $('financeIncomeStreetTotal').innerHTML='';
-    $('financeWarning').textContent='El servidor no entrega el resumen por calle.';
+    $('financeWarning').textContent='Despliega también el backend de Hostinger y actualiza la página.';
    }
    const egresos=data.egresosPorConcepto;
    if(egresos){

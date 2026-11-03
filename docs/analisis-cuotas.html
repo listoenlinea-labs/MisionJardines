@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-finanzas-calles-egresos">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261103-ingresos-ocho-calles">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -21,12 +21,11 @@
 <div id="financeReceiptToolbar" class="finance-receipt-toolbar"><span id="financeReceiptSelection" role="status" aria-live="polite">Selecciona una vivienda para emitir el recibo de su último pago.</span><button id="financeGenerateReceipt" type="button" class="primary" disabled>Generar recibo</button></div>
 <div id="financeHousePanel" role="tabpanel" aria-labelledby="financeTabMaintenance"><div class="table-scroll houses-scroll"><table><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="house-column-sort" data-house-sort="calle">Calle <span data-sort-indicator aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="numero">Casa <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="nombre">Residente registrado <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="estatus">Estado <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="pagado">Pagado <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="mes">Último mes pagado <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="saldo">Saldo pendiente <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="tags">TAGs <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="pago">Pago <span data-sort-indicator aria-hidden="true">↓</span></button></th></tr></thead><tbody id="financeHouseRows"></tbody></table></div><nav class="analysis-pagination" id="financeHousePagination" aria-label="Páginas de viviendas"><button type="button" id="financePrev">Anterior</button><span id="financePageInfo" role="status" aria-live="polite"></span><button type="button" id="financeNext">Siguiente</button></nav></div></section>
 <div class="analysis-columns finance-monthly-columns">
-<section class="analysis-card"><span class="eyebrow">INGRESOS</span><h2>Mantenimiento cobrado por calle</h2>
-<p class="hint">Dinero recibido de cada calle, incluyendo pagos manuales. El acumulado corresponde a la fecha del corte seleccionado.</p>
-<div id="financeIncomeTotals" class="finance-period-summary" role="status"></div>
-<div id="financeCashChart" class="money-bars"></div>
-<div class="table-scroll finance-monthly-table"><table><thead><tr><th>Calle</th><th>Mes seleccionado</th><th>Total acumulado</th></tr></thead>
-<tbody id="financeIncomeStreetRows"></tbody><tfoot id="financeIncomeStreetTotal"></tfoot></table></div>
+<section class="analysis-card" id="financeIncomeCard"><span class="eyebrow">MANTENIMIENTO</span><h2>Ingresos</h2>
+<p class="finance-card-subtitle">Ingresos por calle</p>
+<p class="hint">Acumulado de cuotas de mantenimiento con pago registrado en las viviendas del padrón.</p>
+<div id="financeIncomeTotals" class="finance-period-summary" role="status" aria-live="polite"></div>
+<div id="financeCashChart" class="money-bars" aria-label="Acumulado de mantenimiento por calle"></div>
 <p class="hint" id="financeWarning"></p></section>
 <section class="analysis-card"><span class="eyebrow">EGRESOS</span><h2>Gastos por concepto</h2>
 <p class="hint">CFE, SIAPA, Jardinería, Mantenimiento, Cuota extraordinaria, Internet, Servicios y Otros.</p>
@@ -147,4 +146,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-mantenimiento-calle" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-finanzas-calles-egresos" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261103-mantenimiento-calle" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/analisis-cuotas.js?v=20261103-ingresos-ocho-calles" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
