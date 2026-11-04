@@ -499,7 +499,15 @@
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!tagsModal.hidden)closeHouseTags();});
  $('houseTagsEdit').addEventListener('click',()=>{
    const h=openedTagsHouse;if(!h)return;
-   const params=new URLSearchParams({casaId:String(h.casaId),calle:h.calle,numero:String(h.numero)});
+   const params=new URLSearchParams({casaId:String(h.casaId),calle:h.calle,numero:String(h.numero),from:'analisis'});
+   try{sessionStorage.setItem('mj_analisis_return_v1',JSON.stringify({
+    at:Date.now(),concept:activeConcept,projectId:activeProyectoId,
+    year:$('financeYear').value,month:$('financeMonth').value,
+    search:$('financeSearch').value,street:$('financeStreet').value,
+    status:$('financeStatus').value,registration:$('financeRegistrationOrder').value,
+    paidMonth:$('financeLastPaidMonth').value,paidYear:$('financeLastPaidYear').value,
+    page:housePage,sort:houseSort,selectedHouse:Number(h.casaId)
+   }));}catch(_){}
    window.location.assign('zkteco.html?'+params.toString());
  });
 // Las mensualidades adelantadas se comparan por año y mes real, sin
@@ -2517,5 +2525,36 @@ function renderHouses(){
    notice(err.message);
   }finally{bulkSaving=false;bulkSummary();}
  });
+ let returnState=null;
+ try{
+  if(new URLSearchParams(location.search).get('from')==='zkteco'){
+   const value=JSON.parse(sessionStorage.getItem('mj_analisis_return_v1')||'null');
+   if(value&&Date.now()-Number(value.at)<30*60*1000)returnState=value;
+   sessionStorage.removeItem('mj_analisis_return_v1');
+  }
+ }catch(_){}
+ if(returnState){
+  $('financeYear').value=String(returnState.year||$('financeYear').value);
+  $('financeMonth').value=String(returnState.month||$('financeMonth').value);
+  if(['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(returnState.concept))
+   activeConcept=returnState.concept;
+  const pid=Number(returnState.projectId);
+  activeProyectoId=Number.isSafeInteger(pid)&&pid>0?pid:null;
+ }
  await load();
+ if(returnState&&data){
+  $('financeSearch').value=String(returnState.search||'').slice(0,160);
+  $('financeStreet').value=String(returnState.street||'');
+  $('financeStatus').value=String(returnState.status||'');
+  $('financeRegistrationOrder').value=String(returnState.registration||'');
+  $('financeLastPaidMonth').value=String(returnState.paidMonth||'');
+  $('financeLastPaidYear').value=String(returnState.paidYear||$('financeLastPaidYear').value);
+  if(returnState.sort&&['calle','numero','nombre','estatus','montoPagado','saldoPendiente','tags'].includes(returnState.sort.key))
+   houseSort={key:returnState.sort.key,direction:returnState.sort.direction==='desc'?'desc':'asc'};
+  selectedReceiptHouseId=Number(returnState.selectedHouse)||null;
+  housePage=Math.max(1,Number(returnState.page)||1);
+  renderHouses();
+  notice('Se restauraron los filtros de Análisis de cuotas.','success');
+ }
 })();
+
