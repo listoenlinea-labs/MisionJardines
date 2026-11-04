@@ -46,6 +46,13 @@ jobs:
           node --test --test-name-pattern='la tarifa especial .0 reduce meta' backend/test/proyectos-extraordinarios-reglas.test.js
       - name: Resaltado de fila seleccionada en mantenimiento y proyectos
         run: node --test backend/test/analisis-seleccion-proyectos.test.js
+      - name: Excel de proyectos, recibos por correo, retorno y sincronización
+        run: |
+          node --check docs/assets/js/analisis-excel-proyectos.js
+          node --check docs/assets/js/analisis-excel.js
+          node --check backend/src/services/recibos-correo-analisis.service.js
+          node --check backend/src/services/finanzas-live-signal.service.js
+          node --test backend/test/finanzas-proyectos-correo-live.test.js
       - name: Diagnóstico seguro de conexión C3-200
         run: |
           node --check backend/src/services/zkteco-diagnostico-conexion.service.js
