@@ -5,7 +5,7 @@ const mail=require('./email.service');
 const recibos=require('./recibo-mantenimiento-analisis.service');
 const extras=require('./recibo-extraordinario-analisis.service');
 const fail=(status,message)=>Object.assign(new Error(message),{status});
-const validEmail=v=>/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(String(v||'').trim());
+const validEmail=v=>{const email=String(v||'').trim();return email.length<=254&&email.length>=3&&/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email);};
 const recent=new Map();
 async function correoRegistrado(casa){
  const links=await UsuarioCasa.findAll({where:{casaId:casa.id,activo:true},attributes:['usuarioId']});
@@ -21,7 +21,7 @@ async function consultarCorreo(casaId){
  if(!casa)throw fail(404,'Vivienda no encontrada');
  return correoRegistrado(casa);
 }
-async function enviar({casaId,concepto,proyectoId,referencia,periodo,actor}){
+async function enviar({casaId,concepto,proyectoId,referencia,periodo,actor,correoDestino}){
  const cid=Number(casaId),admin=Number(actor),tipo=String(concepto||'MANTENIMIENTO').toUpperCase();
  if(!Number.isSafeInteger(cid)||cid<1||!Number.isSafeInteger(admin)||admin<1)
   throw fail(400,'Vivienda o administrador inválidos');
@@ -31,8 +31,14 @@ async function enviar({casaId,concepto,proyectoId,referencia,periodo,actor}){
  const registro=tipo==='EXTRAORDINARIO'
   ?await extras.consultarPago(cid,proyectoId,referencia||null)
   :await recibos.consultarPago(cid,periodo||null,referencia||null);
- const correo=await consultarCorreo(cid);
- if(!correo)throw fail(409,'La vivienda no tiene un correo registrado y válido para recibos.');
+ // El administrador puede sustituir el correo para este envío únicamente.
+ // El valor de correoDestino NO se guarda en direcciones ni usuarios.
+ // La ruta de Finanzas exige ADMINISTRADOR/SUPER_ADMIN.
+ const registrado=await consultarCorreo(cid);
+ const override=correoDestino==null?null:String(correoDestino).trim();
+ const correo=override===null?registrado:override;
+ if(!validEmail(correo))throw fail(400,'Ingresa un solo correo de destino válido (máximo 254 caracteres).');
+ const esAlternativo=!registrado||correo.toLowerCase()!==registrado.toLowerCase();
  const folio=registro.recibo.folio,key=admin+':'+cid+':'+tipo+':'+folio,now=Date.now();
  if(recent.has(key)&&now-recent.get(key)<60000)
   throw fail(429,'Este recibo ya se envió recientemente. Espera un minuto antes de repetirlo.');
@@ -46,7 +52,11 @@ async function enviar({casaId,concepto,proyectoId,referencia,periodo,actor}){
    proyecto:tipo==='EXTRAORDINARIO'?registro.resumen.concepto:null,
    casa:(registro.casa.calleCorrecta||registro.casa.calle)+' '+registro.casa.numero,
    monto:registro.resumen.monto});
-  return {enviado:true,correo,folio,messageId:result.messageId};
+  if(esAlternativo)console.info('[recibo correo] Envío administrativo a destinatario alternativo',{
+   casaId:cid,actor:admin,folio,concepto:tipo
+  });
+  return {enviado:true,correo,folio,messageId:result.messageId,
+   destinoAlternativo:esAlternativo};
  }catch(e){recent.delete(key);throw e;}
 }
 module.exports={correoRegistrado,consultarCorreo,enviar};

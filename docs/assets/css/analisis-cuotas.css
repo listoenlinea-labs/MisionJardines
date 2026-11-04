@@ -1552,3 +1552,13 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
 .finance-receipt-email-button{background:#167658;border-color:#167658}
 .finance-receipt-email-button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:720px){.finance-receipt-actions{flex-wrap:wrap}.finance-receipt-email-button{width:100%}}
+
+/* Proyectos: permitir nombres largos sin invadir otras tarjetas o columnas. */
+#financialSecondary .metric{min-width:0;overflow:hidden}
+#financialSecondary .metric.finance-project-name-card strong{display:block;max-width:100%;font-size:clamp(13px,1.05vw,16px);line-height:1.4;overflow-wrap:anywhere;white-space:normal;word-break:normal}
+#financialSecondary .metric.finance-project-name-card small{margin-bottom:8px}
+#financialSecondary .metric.finance-project-name-card{align-content:start}
+/* Correo de un solo envío: texto editable sin alterar dirección almacenada. */
+#houseReceiptEmailInput:not(:disabled){background:#fff;cursor:text}
+#houseReceiptEmailInput[aria-invalid="true"]{border-color:#ce6a71;box-shadow:0 0 0 2px #ce6a7124}
+#houseReceiptEmailInput:focus-visible{outline:2px solid #3f9c7e;outline-offset:2px}

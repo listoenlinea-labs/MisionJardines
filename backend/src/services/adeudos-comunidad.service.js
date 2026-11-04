@@ -7,6 +7,7 @@ const { estadoCargos } = require('./cargos-extraordinarios.service');
 const { fechaMexico } = require('./vigencia-calculo');
 const {Casa}=require('../models');
 const {tarifaParaCasa}=require('./tarifa-mantenimiento.service');
+const {pendientesReales}=require('./proyectos-saldos-pendientes.service');
 
 // C3 solamente consulta este resumen. No depende de proyectos, reservas ni
 // saldos de casa club; ninguna de esas deudas debe alterar los TAGs.
@@ -32,7 +33,7 @@ async function consultarAdeudos(casaId) {
   const submitted=new Set(proofs.map(p=>String(p.reservaCasaClubId)));
   // La fecha de alta del proyecto NO es un vencimiento. Se muestran todas las
    // metas activas y lo aportado hasta hoy, sin imponer períodos ni recargos.
-   const extras = cargos.map(x=>({
+   const extras = pendientesReales(cargos).map(x=>({
     categoria:'EXTRAORDINARIO',id:x.id,concepto:x.concepto,
     cuotaExtraordinariaId:x.cuotaExtraordinariaId,periodo:x.periodo.slice(0,7),
     monto:x.monto,montoOriginal:x.montoOriginal,montoPagado:x.montoPagado,

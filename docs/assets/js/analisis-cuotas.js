@@ -140,7 +140,11 @@
  function periodTotals(monthly,accumulated){
   return '<span>Este mes: <b>'+esc(fmt(monthly))+'</b></span><span>Acumulado: <b>'+esc(fmt(accumulated))+'</b></span>';
  }
- function financialCard(label,value){return '<div class="metric"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>';}
+ function financialCard(label,value){
+  const isProjectTitle=label==='Proyecto extraordinario';
+  return '<div class="metric'+(isProjectTitle?' finance-project-name-card':'')+
+   '"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>';
+ }
  // El icono es decorativo: toda la tarjeta sigue siendo el mismo botón de Excel.
  const financeDownloadIcon='<span class="finance-export-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg></span>';
  function downloadableFinancialCard(label,value,tipo){
@@ -1038,10 +1042,23 @@ function renderHouses(){
  let receiptReturnFocus=null;
  let receiptCurrentHouseId=null;
   let receiptEmailSending=false;
+ const validReceiptEmail=value=>{
+  const text=String(value||'').trim();
+  return text.length<=254&&text.length>=3&&/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(text);
+ };
+ function updateReceiptEmail(){
+  const input=$('houseReceiptEmailInput');
+  const valid=validReceiptEmail(input.value);
+  input.setAttribute('aria-invalid',String(Boolean(input.value.trim())&&!valid));
+  $('houseReceiptEmailHint').textContent=input.value.trim()&&!valid
+   ?'Escribe un solo correo electrónico válido, sin espacios ni destinatarios adicionales.'
+   :'Puedes editar el destinatario para este recibo. No se modificará el correo registrado de la vivienda.';
+  $('houseReceiptEmailSend').disabled=receiptEmailSending||!receiptBlob||!valid;
+ }
+ $('houseReceiptEmailInput').addEventListener('input',updateReceiptEmail);
  const receiptIsMobile=()=>Boolean(navigator.userAgentData?.mobile)||/Android.+Mobile|iPhone|iPod/i.test(navigator.userAgent||'');
  const receiptWhatsAppLabel=receiptIsMobile()?'Enviar recibo por WhatsApp':'Enviar recibo por WhatsApp Web';
  $('houseReceiptWhatsApp').textContent=receiptWhatsAppLabel;
- $('houseReceiptHelp').textContent='El PDF se descargará para que lo adjuntes y confirmes el envío en '+(receiptIsMobile()?'la aplicación de WhatsApp.':'WhatsApp Web.');
  function normalizeReceiptPhone(value){
   const digits=String(value||'').replace(/\D/g,'');
   if(/^\d{10}$/.test(digits))return '52'+digits;
@@ -1105,7 +1122,7 @@ function renderHouses(){
    receiptBlob=pdf;
    receiptDetails=detail;
    $('houseReceiptEmailInput').value=detail.correo||'';
-   $('houseReceiptEmailSend').disabled=!detail.correo||receiptEmailSending;
+   updateReceiptEmail();
    receiptObjectUrl=URL.createObjectURL(pdf);
    // Chrome descarga con UUID cuando el iframe recibe blob:. Esta URL
    // temporal devuelve Content-Disposition con el folio del recibo.
@@ -1201,20 +1218,27 @@ function renderHouses(){
   receiptStatus(!chat?'El PDF se descargó. Permite abrir '+destino+' y adjuntar el recibo.':'PDF descargado y chat abierto en '+destino+'. Adjunta el archivo y confirma el envío.');
  });
  $('houseReceiptEmailSend').addEventListener('click',async()=>{
-  if(receiptEmailSending||!receiptBlob||!receiptDetails||!receiptCurrentHouseId||
-     !$('houseReceiptEmailInput').value)return;
+  if(receiptEmailSending||!receiptBlob||!receiptDetails||!receiptCurrentHouseId)return;
+  const emailField=$('houseReceiptEmailInput');
+  const correoDestino=emailField.value.trim();
+  if(!validReceiptEmail(correoDestino)){
+   emailField.focus();
+   updateReceiptEmail();
+   receiptStatus('Escribe un correo de destino válido antes de enviar.','error');
+   return;
+  }
   const houseId=Number(receiptCurrentHouseId),folio=receiptDetails.folio;
   const concept=activeConcept,projectId=concept==='EXTRAORDINARIO'?Number(activeProyectoId):null;
   const referencia=String(receiptDetails.referencia||'').trim();
   if(!referencia){receiptStatus('No se identificó la referencia del recibo. Reabre el historial.','error');return;}
-  if(!window.confirm('¿Enviar el recibo '+folio+' al correo registrado '+
-   $('houseReceiptEmailInput').value+'?'))return;
+  if(!window.confirm('¿Enviar el recibo '+folio+' a '+correoDestino+
+   '?\n\nConfirma que esta dirección pertenece al destinatario correcto. El correo guardado de la vivienda no se modificará.'))return;
   receiptEmailSending=true;
   const button=$('houseReceiptEmailSend');button.disabled=true;
   receiptStatus('Enviando recibo oficial por correo…');
   try{
    const response=await request('/pagos-vivienda/'+houseId+'/recibo/enviar-correo',{
-    concepto:concept,proyectoId,referencia
+    concepto:concept,proyectoId,referencia,correoDestino
    });
    if(response.data?.enviado!==true)throw Error('El servidor no confirmó la entrega a SMTP.');
    if(!receiptModal.hidden&&receiptCurrentHouseId===houseId&&receiptDetails?.folio===folio){
@@ -1227,7 +1251,7 @@ function renderHouses(){
    notice('Error enviando recibo: '+err.message);
   }finally{
    receiptEmailSending=false;
-   button.disabled=!receiptBlob||!receiptDetails?.correo;
+   updateReceiptEmail();
   }
  });
 

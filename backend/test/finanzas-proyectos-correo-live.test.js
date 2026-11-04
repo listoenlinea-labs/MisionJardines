@@ -74,14 +74,16 @@ test('se reutilizan las gráficas nativas del libro original',()=>{
  assert.match(ui,/movimientos-exportacion/);
  assert.match(html,/analisis-excel-proyectos\.js/);
 });
-test('correo oficial registrado sin destinatarios elegidos desde el frontend',()=>{
+test('correo oficial editable solo para un envío administrativo',()=>{
  assert.match(email,/UsuarioCasa\.findAll/);
  assert.match(email,/cuentaAceptada:true,recibeCorreosPago:true/);
  assert.match(email,/mail\.enviarReciboAdjunto/);
  assert.match(email,/60000/);
- assert.doesNotMatch(email,/req\.body\.correo|body\.destinatario/);
+ assert.match(email,/const correo=override===null\?registrado:override/);
+ assert.match(email,/!validEmail\(correo\)/);
  assert.match(ui,/Recibo enviado correctamente/);
- assert.match(html,/id="houseReceiptEmailInput"[^>]*readonly/);
+ assert.match(ui,/correoDestino\n   \}/);
+ assert.doesNotMatch(html,/id="houseReceiptEmailInput"[^>]*readonly/);
  assert.match(html,/id="houseReceiptEmailSend"/);
 });
 test('sincronización con JWT de firma, sin consultas MySQL cada 20 segundos',()=>{

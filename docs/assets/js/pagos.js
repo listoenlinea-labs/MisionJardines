@@ -140,7 +140,10 @@
       const d=await api('/pagos/adeudos',{headers:headers()});debts=d.data;
       document.querySelectorAll('.tab').forEach(button=>{
         button.querySelector('.mj-tab-count')?.remove();
-        const count=debts.tipos?.[button.dataset.tab]?.length||0;
+        // En proyectos, solo una meta POSITIVA pendiente amerita una burbuja.
+         const items=debts.tipos?.[button.dataset.tab]||[];
+         const count=button.dataset.tab==='EXTRAORDINARIO'
+          ?items.filter(item=>Number(item.monto)>0.009).length:items.length;
         if(count){const badge=document.createElement('span');badge.className='mj-tab-count';badge.textContent=count;button.append(badge);}
       });
       renderClub();renderPaymentStatusCards();document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:debts}));
@@ -165,11 +168,17 @@
       $('clubPaymentList').innerHTML=items.length?items.map(c=>'<div class="extra'+(selectedClub?.id===c.id?' selected':'')+'" data-club="'+Number(c.id)+'"><div><strong>Reservación '+esc(c.periodo)+'</strong><small>Renta '+money(c.renta)+' · Depósito '+money(c.deposito)+' · Limpieza '+money(c.limpieza)+' · Pagar hasta '+esc(c.fechaLimitePago||'pendiente')+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</small></div><b>'+money(c.monto)+'</b></div>').join(''):'<div class="empty">No tienes reservaciones aprobadas pendientes de pago.</div>';
     }
     function showDebtModal(){
-      const items=debts?.tipos?.[paymentType]||[];if(!items.length)return;
+      const source=debts?.tipos?.[paymentType]||[];
+       const items=paymentType==='EXTRAORDINARIO'
+        ?source.filter(item=>Number(item.monto)>0.009):source;
+       if(!items.length){
+        if($('debtModal').open)$('debtModal').close();
+        return;
+       }
       const names={MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuota extraordinaria',CASA_CLUB:'Casa club'};
       $('debtTitle').textContent=paymentType==='EXTRAORDINARIO'?'Metas voluntarias de proyectos':'Adeudos de '+names[paymentType];
       $('debtDetails').innerHTML=items.map(c=>'<div class="mj-debt-item '+(paymentType==='EXTRAORDINARIO'?'extra':paymentType==='CASA_CLUB'?'club':'')+'"><strong>'+esc(c.concepto||names[paymentType])+(c.recargo?'<small>Incluye '+money(c.recargo)+' de recargo por corte del día 10 vencido</small>':'')+'</strong><span>'+esc(c.periodo||'')+(c.fechaLimitePago?' · Límite '+esc(c.fechaLimitePago):'')+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</span><b>'+money(c.monto)+'</b></div>').join('');
-      $('debtTotal').textContent=money(debts.totales?.[paymentType]||0);
+      $('debtTotal').textContent=money(items.reduce((total,item)=>total+Number(item.monto||0),0));
       if(!$('debtModal').open)$('debtModal').showModal();
     }
     $('closeDebtModal').addEventListener('click',()=>$('debtModal').close());

@@ -16,7 +16,8 @@ async function enviar(req,res){
  try{
   const data=await service.enviar({casaId:req.params.casaId,concepto:req.body?.concepto,
    proyectoId:req.body?.proyectoId,periodo:req.body?.periodo,
-   referencia:req.body?.referencia,actor:req.usuario.usuarioId});
+   referencia:req.body?.referencia,correoDestino:req.body?.correoDestino,
+   actor:req.usuario.usuarioId});
   res.setHeader('Cache-Control','private, no-store');
   return res.json({ok:true,data,message:'Recibo enviado correctamente'});
  }catch(e){return error(res,e);}
