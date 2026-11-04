@@ -18,6 +18,7 @@ const {fechaMexico}=require('../services/vigencia-calculo');
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const {conciliacionesTarifa,historialConTarifaConciliada}=require('../services/conciliacion-tarifa-individual.service');
 const fail=(status,message)=>Object.assign(new Error(message),{status});
+const {vinculosC3Bloqueantes}=require('../services/pagos-c3-vinculos-bloqueantes.service');
 
 function evaluarPeriodos(plan,cuotas){
   const mapa=new Map(cuotas.map(c=>[c.anio+':'+String(c.mes).toUpperCase(),c]));
@@ -49,8 +50,7 @@ async function comprobarReferenciasVinculadas(casaId,evaluadas,transaction){
     const refs=[cuota.referencia,cuota.folio].map(x=>String(x||'').trim()).filter(Boolean);
     const bank=bancos.filter(p=>refs.some(r=>String(p.folioOperacion||'').trim()===r||
      String(p.folioReporte||'').trim()===r));
-    const c3=eventos.filter(e=>(e.origen==='CUOTA'&&Number(e.origenId)===Number(cuota.id))||
-     refs.some(r=>String(e.referencia||'').trim()===r));
+    const c3=vinculosC3Bloqueantes(eventos,cuota,refs);
     if(!bank.length&&!c3.length)continue;
     const linked=[
      ...bank.map(p=>({tabla:'pagos_reportados',id:Number(p.id),estado:p.estatus,
