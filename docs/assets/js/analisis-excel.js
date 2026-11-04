@@ -164,7 +164,8 @@
 
  async function descargarReporte(data,tipo,ExcelJS,options={}){
   if(!ExcelJS?.Workbook)throw Error('No se cargó el generador de archivos Excel. Actualiza la página e inténtalo nuevamente.');
-  const reporte=prepararReporte(data,tipo);
+  const reporte=options.report||prepararReporte(data,tipo);
+  const projectReport=Boolean(reporte.dashboard?.esProyecto);
   const workbook=new ExcelJS.Workbook();
   workbook.creator='Administración Misión Jardines';
   workbook.title=reporte.titulo;
@@ -223,13 +224,13 @@
    resumenWs.getColumn(4).width=34;resumenWs.getColumn(5).width=17;
    resumenWs.getColumn(6).width=17;
    for(let i=7;i<=25;i++)resumenWs.getColumn(i).width=12;
-   resumenWs.getCell('A47').value='Importe del indicador de ingresos';
+   resumenWs.getCell('A47').value=projectReport?'Aportaciones del proyecto':'Importe del indicador de ingresos';
    resumenWs.getCell('B47').value=info.indicadores.totalIngresos;
-   resumenWs.getCell('A48').value='Egresos registrados';
+   resumenWs.getCell('A48').value=projectReport?'Por recaudar del proyecto':'Egresos registrados';
    resumenWs.getCell('B48').value=info.indicadores.totalEgresos;
-   resumenWs.getCell('A49').value='Saldo inicial (se presenta aparte)';
+   resumenWs.getCell('A49').value=projectReport?'Casas No aplica (informativo)':'Saldo inicial (se presenta aparte)';
    resumenWs.getCell('B49').value=info.indicadores.saldoInicial;
-   resumenWs.getCell('A50').value='Saldo reportado';
+   resumenWs.getCell('A50').value=projectReport?'Meta del proyecto':'Saldo reportado';
    resumenWs.getCell('B50').value=info.indicadores.saldoDisponible;
    for(let n=47;n<=50;n++)resumenWs.getCell('B'+n).numFmt='"$"#,##0.00';
    // Los valores visibles se mantienen fuera del XML de etiquetas ChartML:
@@ -282,17 +283,17 @@
    // inferior. Datos sin etiquetas sobre las series para evitar solapamiento.
    // Coordenadas 0-based de la zona de dibujo, separadas sin superponerse.
    chartSpecs=[
-    {title:'Cumplimiento de mantenimiento',kind:'doughnut',
+    {title:projectReport?'Cumplimiento de la meta del proyecto':'Cumplimiento de mantenimiento',kind:'doughnut',
      source:estadoEtiquetas,from:[7,2],to:[18,21],colors:['76B79B','E9B38D']},
-    {title:'Anualidades entre las viviendas pagadas',kind:'doughnut',
+    {title:projectReport?'Casas con aportaciones: completas y parciales':'Anualidades entre las viviendas pagadas',kind:'doughnut',
      source:anualEtiquetas,from:[19,2],to:[30,21],colors:['8CA9D7','76B79B']},
-    {title:'Ingresos por concepto (sin duplicar)',kind:'bar',
+    {title:projectReport?'Aportaciones por origen':'Ingresos por concepto (sin duplicar)',kind:'bar',
      source:ingresoEtiquetas,from:[7,24],to:[18,50],xTitle:'Monto (MXN)',yTitle:'Concepto',
      colors:['76B79B']},
-    {title:'Cumplimiento por calle',kind:'stacked',
+    {title:projectReport?'Cumplimiento del proyecto por calle':'Cumplimiento por calle',kind:'stacked',
      source:callesEtiquetas,from:[19,24],to:[30,50],xTitle:'Viviendas',yTitle:'Calle',
      colors:['76B79B','E9B38D']},
-    {title:'Egresos por categoría',kind:'bar',
+    {title:projectReport?'Meta, recaudación y saldos del proyecto':'Egresos por categoría',kind:'bar',
      source:egresosEtiquetas,from:[7,53],to:[20,81],xTitle:'Monto (MXN)',yTitle:'Categoría',
      colors:['AE9AC9']}
    ];
@@ -307,7 +308,7 @@
    const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download=`MJ_${reporte.nombre}_${data.anio}_${String(data.mes).padStart(2,'0')}.xlsx`;
+  a.href=url;a.download=(reporte.archivo||`MJ_${reporte.nombre}_${data.anio}_${String(data.mes).padStart(2,'0')}.xlsx`).replace(/[^a-zA-Z0-9._-]/g,'_');
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),20000);
   return reporte;
