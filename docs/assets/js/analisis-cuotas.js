@@ -288,9 +288,8 @@
   document.querySelector('#financeStreetPanel h2').textContent='Cumplimiento del proyecto por calle';
  }
 
- function render(){
-  if(!data)return;
-  renderMaintenanceDashboard();
+
+ function renderMaintenanceExtraCharts(){
   const ingresos=data.ingresosMantenimientoCalles;
   if(ingresos?.calles){
    const max=Math.max(1,...ingresos.calles.map(c=>Number(c.mes||0)));
@@ -323,6 +322,66 @@
    $('financeExpenseTotals').textContent='Actualiza el backend para consultar los egresos del mes.';
    $('financeExpenseChart').textContent='';
   }
+  const income=$('financeIncomeCard'),expense=$('financeExpenseCard');
+  income.querySelector('.eyebrow').textContent='MANTENIMIENTO';
+  income.querySelector('h2').textContent='Ingresos';
+  income.querySelector('.finance-card-subtitle').textContent='Ingresos por calle';
+  income.querySelector('.finance-chart-description').textContent=
+   'Cuotas de mantenimiento del período seleccionado, incluidos anticipos aplicados al mes cubierto.';
+  income.querySelector('.finance-graph-help').hidden=false;
+  expense.querySelector('.eyebrow').textContent='EGRESOS';
+  expense.querySelector('h2').textContent='Egresos';
+  expense.querySelector('.finance-card-subtitle').textContent='Gastos por concepto';
+  expense.querySelector('.finance-chart-description').textContent=
+   'Gastos del fraccionamiento por concepto en el período seleccionado.';
+  expense.querySelector('.finance-graph-help').hidden=false;
+ }
+ function renderProjectExtraCharts(project){
+  const houses=data.viviendasMantenimiento||[],byId=new Map(
+   (project.viviendasDetalle||[]).map(h=>[Number(h.casaId),h]));
+  const streets=new Map();
+  for(const h of houses){
+   const detail=byId.get(Number(h.casaId)),street=String(h.calle||'Sin calle');
+   if(!streets.has(street))streets.set(street,0);
+   streets.set(street,streets.get(street)+Number(detail?.montoPagado||0));
+  }
+  const sorted=[...streets].sort(([a],[b])=>a.localeCompare(b,'es-MX',{numeric:true}));
+  $('financeIncomeTotals').innerHTML='<span>Aportaciones de «'+esc(project.nombre)+
+   '»: <b>'+esc(fmt(project.recaudado))+'</b></span>';
+  const max=Math.max(1,...sorted.map(([,n])=>n));
+  $('financeCashChart').innerHTML=sorted.map(([street,amount])=>
+   '<div class="finance-project-street-bar">'+bar(street,amount,max,false,fmt(amount))+'</div>').join('');
+  $('financeWarning').textContent='Importes acumulados únicamente de este proyecto. No incluyen mensualidades de mantenimiento.';
+  const summary=[
+   ['Meta del proyecto',Number(project.totalEsperado||0)],
+   ['Aportado',Number(project.recaudado||0)],
+   ['Pendiente',Number(project.saldoPendiente||0)],
+   ['Saldo a favor',Number(project.saldoFavor||0)]
+  ];
+  $('financeExpenseTotals').innerHTML='<span>Meta: <b>'+esc(fmt(project.totalEsperado))+
+   '</b></span> <span>Pendiente: <b>'+esc(fmt(project.saldoPendiente))+'</b></span>';
+  const top=Math.max(1,...summary.map(x=>x[1]));
+  $('financeExpenseChart').innerHTML=summary.map(([label,value])=>
+   '<div class="finance-project-status-bar">'+bar(label,value,top,false,fmt(value))+'</div>').join('');
+  const income=$('financeIncomeCard'),expense=$('financeExpenseCard');
+  income.querySelector('.eyebrow').textContent='PROYECTO EXTRAORDINARIO';
+  income.querySelector('h2').textContent='Aportaciones';
+  income.querySelector('.finance-card-subtitle').textContent='Recaudado por calle';
+  income.querySelector('.finance-chart-description').textContent=
+   'Total acumulado de aportaciones de este proyecto, sin incluir mantenimiento.';
+  income.querySelector('.finance-graph-help').hidden=true;
+  expense.querySelector('.eyebrow').textContent='PROYECTO EXTRAORDINARIO';
+  expense.querySelector('h2').textContent='Meta y saldos';
+  expense.querySelector('.finance-card-subtitle').textContent='Resumen de la meta del proyecto';
+  expense.querySelector('.finance-chart-description').textContent=
+   'Meta, recaudación y saldo pendiente exclusivos del proyecto seleccionado. No son egresos del fraccionamiento.';
+  expense.querySelector('.finance-graph-help').hidden=true;
+ }
+
+ function render(){
+  if(!data)return;
+  renderMaintenanceDashboard();
+  renderMaintenanceExtraCharts();
   renderExpenseHistory();
   renderIncomeHistory();
   renderExpenses();
@@ -613,8 +672,13 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   $('financeHousePanel').classList.toggle('extraordinary-receipt-active',concepto==='EXTRAORDINARIO'&&!!seleccionado);
   data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
-  if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
-  else renderMaintenanceDashboard();
+  if(concepto==='EXTRAORDINARIO'&&seleccionado){
+   renderProjectDashboard(seleccionado);
+   renderProjectExtraCharts(seleccionado);
+  }else{
+   renderMaintenanceDashboard();
+   renderMaintenanceExtraCharts();
+  }
   $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
   if(concepto==='EXTRAORDINARIO'){
    $('financeLastPaidMonth').value='';
