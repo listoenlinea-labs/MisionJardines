@@ -53,6 +53,10 @@ jobs:
           node --check backend/src/services/recibos-correo-analisis.service.js
           node --check backend/src/services/finanzas-live-signal.service.js
           node --test backend/test/finanzas-proyectos-correo-live.test.js
+      - name: SMTP Gmail independiente sin afectar el correo de Listo en Línea
+        run: |
+          node --check backend/src/services/email.service.js
+          node --test backend/test/mj-gmail-smtp-aislado.test.js
       - name: Diagnóstico seguro de conexión C3-200
         run: |
           node --check backend/src/services/zkteco-diagnostico-conexion.service.js
