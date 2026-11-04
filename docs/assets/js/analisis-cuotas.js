@@ -72,7 +72,7 @@
    if(!Number.isSafeInteger(version))return;
    if(lastRevisionSeen===null){lastRevisionSeen=version;return;}
    const changed=version!==lastRevisionSeen;
-   if(changed||Date.now()-lastSuccessfulFinanceLoad>=5*60*1000){
+   if(changed||Date.now()-lastSuccessfulFinanceLoad>=10*60*1000){
     lastRevisionSeen=version;
     $('financeLiveStatus').textContent='Sincronizando cambios de otras sesiones…';
     const ok=await load();
@@ -2582,7 +2582,7 @@ function renderHouses(){
   notice('Se restauraron los filtros de Análisis de cuotas.','success');
  }
  // El contador consultado cada 20 s es memoria Node, NO una query SQL.
- // Respaldo cada 5 min si hay varias instancias en Hostinger.
+ // Respaldo cada 10 min si hay varias instancias en Hostinger.
  setInterval(()=>{void refreshWhenChanged();},20000);
  document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible')void refreshWhenChanged();

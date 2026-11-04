@@ -169,6 +169,20 @@ app.use('/api/pagos', pagosRoutes);
 app.use('/api/casa-club', require('./routes/casa-club.routes'));
 app.get('/api/recibo-vista/:permiso', require('./controllers/recibos-mantenimiento-analisis.controller').vistaPdfTemporal);
 app.get('/api/finanzas/drive/callback', require('./controllers/drive-respaldos.controller').callback);
+// Ruta de revisión sin consultas MySQL: jwt.verify valida firma y vencimiento.
+// El contador no devuelve datos personales. Las lecturas financieras completas
+// continúan pasando por autenticarToken/autorizarRoles y la base de datos.
+app.get('/api/finanzas/revision',(req,res)=>{
+ const header=String(req.headers.authorization||'');
+ if(!header.startsWith('Bearer '))return res.status(401).json({ok:false,message:'Token requerido'});
+ try{
+  const payload=require('jsonwebtoken').verify(header.slice(7),process.env.JWT_SECRET);
+  if(!Number.isSafeInteger(Number(payload.usuarioId))||Number(payload.usuarioId)<1)
+   return res.status(403).json({ok:false,message:'Token inválido'});
+  res.setHeader('Cache-Control','private, no-store');
+  return res.json({ok:true,data:require('./services/finanzas-live-signal.service').read()});
+ }catch(_){return res.status(401).json({ok:false,message:'Sesión inválida o expirada'});}
+});
 app.use('/api/finanzas', require('./routes/finanzas.routes'));
 app.use('/api/seguridad-cuotas',require('./routes/seguridad-cuotas.routes'));
 // Google Sheets remains disabled until the private source and database staging
