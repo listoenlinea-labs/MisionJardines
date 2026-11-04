@@ -1238,7 +1238,7 @@ function renderHouses(){
   receiptStatus('Enviando recibo oficial por correo…');
   try{
    const response=await request('/pagos-vivienda/'+houseId+'/recibo/enviar-correo',{
-    concepto:concept,proyectoId,referencia,correoDestino
+    concepto:concept,proyectoId:projectId,referencia,correoDestino
    });
    if(response.data?.enviado!==true)throw Error('El servidor no confirmó la entrega a SMTP.');
    if(!receiptModal.hidden&&receiptCurrentHouseId===houseId&&receiptDetails?.folio===folio){
