@@ -8,6 +8,9 @@ const fail=(status,message)=>Object.assign(new Error(message),{status});
 const validEmail=v=>{const email=String(v||'').trim();return email.length<=254&&email.length>=3&&/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email);};
 const recent=new Map();
 async function correoRegistrado(casa){
+ // Contacto de vivienda guardado por administración tiene prioridad en recibos.
+ // Si la vivienda no tiene correo, se buscan los usuarios vinculados vigentes.
+ if(validEmail(casa.correo))return String(casa.correo).trim();
  const links=await UsuarioCasa.findAll({where:{casaId:casa.id,activo:true},attributes:['usuarioId']});
  const ids=[...new Set(links.map(l=>Number(l.usuarioId)).filter(Number.isSafeInteger))];
  const users=ids.length?await Usuario.findAll({where:{id:{[Op.in]:ids},estatus:'ACTIVO',cuentaAceptada:true,recibeCorreosPago:true},
