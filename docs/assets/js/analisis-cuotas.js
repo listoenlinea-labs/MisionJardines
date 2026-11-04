@@ -193,8 +193,8 @@
   if(historyPreviousFocus?.isConnected)historyPreviousFocus.focus();
   historyPreviousFocus=null;
  }
- function render(){
-  if(!data)return;
+
+ function renderMaintenanceDashboard(){
   const houses=data.casas||0;
   const financialCards=[
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
@@ -216,6 +216,57 @@
   $('financeStreetChart').innerHTML=data.calles.length?data.calles.map(c=>bar(c.calle,c.porcentaje,100,false,c.pagadas+'/'+c.total)).join(''):'Sin datos';
   const padronNote=$('financePadronNote');
   if(padronNote){padronNote.textContent=data.avisoPadron||'';padronNote.hidden=!data.avisoPadron;}
+  document.querySelector('#financeCompliancePanel h2').textContent='Casas que pagaron';
+  document.querySelector('#financeStreetPanel h2').textContent='Porcentaje de viviendas pagadas';
+ }
+ function renderProjectDashboard(project){
+  const houses=data.viviendasMantenimiento||[],details=project.viviendasDetalle||[];
+  const byId=new Map(details.map(x=>[Number(x.casaId),x]));
+  const applied=houses.length-Number(project.noAplica||0),complete=Number(project.cumplidos||0);
+  const partial=Number(project.parciales||0),registered=complete+partial;
+  const incomplete=Number(project.pendientes||0)+partial;
+  const pct=applied?Math.round(registered/applied*10000)/100:0;
+  const cards=[['Casas en padrón',houses.length],
+   ['Con pago registrado',registered+' · '+pct+'%'],
+   ['Sin pago completo',incomplete+' · '+(applied?Math.round(incomplete/applied*100):0)+'%'],
+   ['Recaudado del proyecto',fmt(project.recaudado)]];
+  $('financialSummary').innerHTML=cards.map(([name,val],index)=>
+   downloadableFinancialCard(name,val,['padron','pagadas','pendientes','historicas'][index])).join('');
+  $('financialSecondary').innerHTML=[
+   ['Proyecto extraordinario',project.nombre],['Meta del proyecto',fmt(project.totalEsperado)],
+   ['Recaudado',fmt(project.recaudado)],['Por recaudar',fmt(project.saldoPendiente)],
+   ['Saldo a favor',fmt(project.saldoFavor)],['Meta alcanzada',complete],
+   ['Abonos parciales',partial],['Sin aportaciones',project.pendientes],
+   ['No aplica',Number(project.noAplica||0)],['Casas con cuota',applied]
+  ].map(([n,v])=>financialCard(n,v)).join('');
+  const completion=applied?Math.round(complete/applied*10000)/100:0;
+  $('financeDonut').style.setProperty('--percent',completion+'%');
+  $('financeDonutText').innerHTML=esc(completion)+'%<small>Meta alcanzada</small>';
+  $('financeLegend').innerHTML='<div>Meta alcanzada <b>'+complete+'</b></div>'+
+   '<div>Sin meta completa <b>'+incomplete+'</b></div>'+
+   '<div>No aplica <b>'+Number(project.noAplica||0)+'</b></div>'+
+   '<div>Total viviendas <b>'+houses.length+'</b></div>';
+  const grouped=new Map();
+  for(const h of houses){
+   const name=String(h.calle||'Sin calle'),detail=byId.get(Number(h.casaId));
+   if(!grouped.has(name))grouped.set(name,{total:0,eligible:0,completed:0});
+   const x=grouped.get(name);x.total++;
+   if(detail?.estatus==='NO_APLICA')continue;
+   x.eligible++;if(detail?.estatus==='PAGADO')x.completed++;
+  }
+  $('financeStreetChart').innerHTML=[...grouped].sort(([a],[b])=>a.localeCompare(b,'es-MX',{numeric:true}))
+   .map(([name,x])=>bar(name,x.eligible?x.completed/x.eligible*100:0,100,false,
+    x.completed+'/'+x.eligible+(x.total!==x.eligible?' · '+(x.total-x.eligible)+' exenta(s)':''))).join('');
+  $('financePadronNote').hidden=false;
+  $('financePadronNote').textContent='Datos exclusivos del proyecto «'+project.nombre+
+   '». Los porcentajes excluyen casas No aplica; las aportaciones no son cobros de mantenimiento.';
+  document.querySelector('#financeCompliancePanel h2').textContent='Viviendas con meta alcanzada';
+  document.querySelector('#financeStreetPanel h2').textContent='Cumplimiento del proyecto por calle';
+ }
+
+ function render(){
+  if(!data)return;
+  renderMaintenanceDashboard();
   const ingresos=data.ingresosMantenimientoCalles;
   if(ingresos?.calles){
    const max=Math.max(1,...ingresos.calles.map(c=>Number(c.mes||0)));
@@ -530,6 +581,8 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   $('financeHousePanel').classList.toggle('extraordinary-receipt-active',concepto==='EXTRAORDINARIO'&&!!seleccionado);
   data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
+  if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
+  else renderMaintenanceDashboard();
   $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
   if(concepto==='EXTRAORDINARIO'){
    $('financeLastPaidMonth').value='';
@@ -1112,8 +1165,21 @@ function renderHouses(){
   if(!card||!data)return;
   card.disabled=true;
   try{
-   await window.MJFinanceExport.descargarReporte(data,card.dataset.financeExport,window.ExcelJS);
-   notice('Excel completo generado para el período '+data.periodo+'.','success');
+   if(activeConcept==='EXTRAORDINARIO'){
+    const pid=Number(activeProyectoId),snapshot=data;
+    const project=snapshot.proyectosExtraordinarios?.find(x=>Number(x.id)===pid);
+    if(!project||!window.MJFinanceExcelProyectos?.prepararReporteProyecto)
+     throw Error('Selecciona un proyecto o vuelve a cargar el generador del Excel.');
+    const result=(await request('/proyectos-extraordinarios/'+pid+'/movimientos-exportacion')).data;
+    if(Number(result.proyectoId)!==pid)throw Error('El servidor devolvió otro proyecto.');
+    const report=window.MJFinanceExcelProyectos.prepararReporteProyecto(
+     snapshot,card.dataset.financeExport,pid,result.movimientos);
+    await window.MJFinanceExport.descargarReporte(snapshot,card.dataset.financeExport,window.ExcelJS,{report});
+    notice('Excel de «'+project.nombre+'» generado con todas sus viviendas, aportaciones y gráficas.','success');
+   }else{
+    await window.MJFinanceExport.descargarReporte(data,card.dataset.financeExport,window.ExcelJS);
+    notice('Excel completo generado para el período '+data.periodo+'.','success');
+   }
   }catch(error){notice('No se pudo descargar el Excel: '+error.message);}
   finally{card.disabled=false;}
  });
