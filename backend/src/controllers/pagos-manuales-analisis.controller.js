@@ -33,28 +33,40 @@ async function comprobarReferenciasVinculadas(casaId,evaluadas,transaction){
   const ids=evaluadas.map(({cuota})=>cuota?.id).filter(Boolean);
   const [bancos,eventos]=await Promise.all([
     refs.length?PagoReportado.findAll({
-      where:{casaId,[Op.or]:[{folioOperacion:{[Op.in]:refs}},{folioReporte:{[Op.in]:refs}}]},
-      attributes:['folioOperacion','folioReporte','estatus'],...(transaction?{transaction}:{})
+      where:{casaId,tipoPago:'MANTENIMIENTO',[Op.or]:[{folioOperacion:{[Op.in]:refs}},{folioReporte:{[Op.in]:refs}}]},
+      attributes:['id','folioOperacion','folioReporte','estatus','fechaOperacion'],...(transaction?{transaction}:{})
     }):[],
     refs.length||ids.length?PagoAcceso.findAll({
       where:{casaId,[Op.or]:[
         ...(refs.length?[{referencia:{[Op.in]:refs}}]:[]),
         ...(ids.length?[{origen:'CUOTA',origenId:{[Op.in]:ids}}]:[])
       ]},
-      attributes:['referencia','origen','origenId','estado'],...(transaction?{transaction}:{})
+      attributes:['id','referencia','origen','origenId','estado','fechaObjetivo'],...(transaction?{transaction}:{})
     }):[]
   ]);
-  const refsBanco=new Set(bancos.flatMap(p=>[String(p.folioOperacion),String(p.folioReporte)]));
-  const refsC3=new Set(eventos.map(e=>String(e.referencia||'')).filter(Boolean));
-  const idsC3=new Set(eventos.filter(e=>e.origen==='CUOTA').map(e=>String(e.origenId)));
-  for(const {cuota,revision} of evaluadas){
+  for(const {periodo,cuota,revision} of evaluadas){
     if(!cuota)continue;
-    if(idsC3.has(String(cuota.id))||
-      [cuota.referencia,cuota.folio].some(x=>refsBanco.has(String(x||''))||refsC3.has(String(x||'')))){
-      revision.registrable=false;
-      revision.requiereRevision=false;
-      revision.motivo='Existe un movimiento de pago asociado en pagos_reportados o pagos_acceso_c3. Revisa la conciliación; no se creará otro cobro ni otra orden al C3.';
-    }
+    const refs=[cuota.referencia,cuota.folio].map(x=>String(x||'').trim()).filter(Boolean);
+    const bank=bancos.filter(p=>refs.some(r=>String(p.folioOperacion||'').trim()===r||
+     String(p.folioReporte||'').trim()===r));
+    const c3=eventos.filter(e=>(e.origen==='CUOTA'&&Number(e.origenId)===Number(cuota.id))||
+     refs.some(r=>String(e.referencia||'').trim()===r));
+    if(!bank.length&&!c3.length)continue;
+    const linked=[
+     ...bank.map(p=>({tabla:'pagos_reportados',id:Number(p.id),estado:p.estatus,
+      referencia:p.folioOperacion||p.folioReporte,fecha:p.fechaOperacion||null})),
+     ...c3.map(e=>({tabla:'pagos_acceso_c3',id:Number(e.id),estado:e.estado,
+      origen:e.origen,origenId:Number(e.origenId),referencia:e.referencia||null,
+      fecha:e.fechaObjetivo||null}))
+    ];
+    revision.registrable=false;
+    revision.requiereRevision=false;
+    revision.vinculos=linked;
+    revision.motivo='No se puede cobrar '+periodo.mes+' '+periodo.anio+
+     ' porque hay un registro asociado: '+linked.map(x=>x.tabla+' #'+x.id+
+      ' ('+x.estado+(x.origen?' · '+x.origen+' #'+x.origenId:'')+
+      (x.referencia?' · referencia '+x.referencia:'')+')').join('; ')+
+     '. Verifica estos registros para conciliarlos. Un TAG vigente no acredita el pago. No se generará cobro ni orden duplicada al C3.';
   }
 }
 
@@ -71,7 +83,7 @@ function resumirCotizacion(plan, evaluadas, conciliaciones=[]){
     periodos:evaluadas.map(({periodo,revision})=>({
       anio:periodo.anio,mes:periodo.mes,
       registrable:revision.registrable,requiereRevision:Boolean(revision.requiereRevision),
-      advertencia:revision.advertencia||null,motivo:revision.motivo||null,
+      advertencia:revision.advertencia||null,motivo:revision.motivo||null,vinculos:revision.vinculos||[],
       tipoReferencia:revision.folioAnterior||revision.referenciaAnterior?.startsWith('HIST-')?'HIST':revision.referenciaAnterior?'OTRA':'NINGUNA'
     })),
     bloqueado:evaluadas.some(r=>!r.revision.registrable),
