@@ -158,8 +158,12 @@
       <input id="houseReceiptPhoneInput" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="13" autocomplete="off" placeholder="10 dígitos o 52 + 10 dígitos" aria-describedby="houseReceiptPhoneHint" aria-label="Número de celular para enviar el recibo">
       <small id="houseReceiptPhoneHint">Puedes editar el número para este envío; no se cambiará el teléfono registrado.</small>
       <small id="houseReceiptHelp">Se descargará el PDF. Adjunta el archivo y confirma el envío en WhatsApp.</small>
+      <label for="houseReceiptEmailInput" class="finance-receipt-email-label">Correo registrado de la vivienda</label>
+      <input id="houseReceiptEmailInput" type="email" autocomplete="off" readonly
+       placeholder="Sin correo registrado" aria-describedby="houseReceiptEmailHint">
+      <small id="houseReceiptEmailHint">El correo proviene de la cuenta vinculada a la vivienda y no se cambia desde este envío.</small>
     </div>
-    <div class="finance-receipt-actions"><button type="button" id="houseReceiptDownload" class="soft" disabled>Guardar recibo PDF</button><button type="button" id="houseReceiptWhatsApp" class="primary" disabled>Enviar recibo por WhatsApp Web</button></div>
+    <div class="finance-receipt-actions"><button type="button" id="houseReceiptDownload" class="soft" disabled>Guardar recibo PDF</button><button type="button" id="houseReceiptWhatsApp" class="primary" disabled>Enviar recibo por WhatsApp Web</button><button type="button" id="houseReceiptEmailSend" class="primary finance-receipt-email-button" disabled>Enviar recibo por correo</button></div>
   </div>
 </section>
 <section id="houseTagsModal" class="finance-pay-overlay" hidden aria-label="Estado de TAGs de vivienda">

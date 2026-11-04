@@ -1005,6 +1005,7 @@ function renderHouses(){
  let receiptSequence=0;
  let receiptReturnFocus=null;
  let receiptCurrentHouseId=null;
+  let receiptEmailSending=false;
  const receiptIsMobile=()=>Boolean(navigator.userAgentData?.mobile)||/Android.+Mobile|iPhone|iPod/i.test(navigator.userAgent||'');
  const receiptWhatsAppLabel=receiptIsMobile()?'Enviar recibo por WhatsApp':'Enviar recibo por WhatsApp Web';
  $('houseReceiptWhatsApp').textContent=receiptWhatsAppLabel;
@@ -1035,6 +1036,8 @@ function renderHouses(){
   $('houseReceiptPreview').hidden=true;
   if(receiptObjectUrl)URL.revokeObjectURL(receiptObjectUrl);
   receiptObjectUrl=null;receiptBlob=null;receiptDetails=null;
+  $('houseReceiptEmailSend').disabled=true;
+  $('houseReceiptEmailInput').value='';
   receiptCurrentHouseId=null;
   receiptReturnFocus?.focus();receiptReturnFocus=null;
  }
@@ -1053,6 +1056,7 @@ function renderHouses(){
   $('houseReceiptPreview').hidden=true;
   $('houseReceiptDownload').disabled=true;
   $('houseReceiptWhatsApp').disabled=true;
+  $('houseReceiptEmailSend').disabled=true;
   receiptStatus('Generando el recibo del mes seleccionado…');
   const qs=new URLSearchParams();if(activeConcept==='EXTRAORDINARIO'){qs.set('concepto','EXTRAORDINARIO');qs.set('proyectoId',activeProyectoId);}if(referencia)qs.set('referencia',referencia);else if(periodo&&activeConcept==='MANTENIMIENTO')qs.set('periodo',periodo);const query=qs.toString()?'?'+qs:'';
   try{
@@ -1068,6 +1072,8 @@ function renderHouses(){
    if(pdf.type!=='application/pdf'&&!pdf.type.includes('pdf'))throw Error('El servidor no devolvió un archivo PDF');
    receiptBlob=pdf;
    receiptDetails=detail;
+   $('houseReceiptEmailInput').value=detail.correo||'';
+   $('houseReceiptEmailSend').disabled=!detail.correo||receiptEmailSending;
    receiptObjectUrl=URL.createObjectURL(pdf);
    // Chrome descarga con UUID cuando el iframe recibe blob:. Esta URL
    // temporal devuelve Content-Disposition con el folio del recibo.
@@ -1103,6 +1109,8 @@ function renderHouses(){
   $('houseReceiptMonth').innerHTML='';
   $('houseReceiptSendSection').hidden=true;
   $('houseReceiptPhoneInput').value='';
+  $('houseReceiptEmailInput').value='';
+  $('houseReceiptEmailSend').disabled=true;
   updateReceiptPhone();
   $('houseReceiptDownload').disabled=true;
   $('houseReceiptWhatsApp').disabled=true;
@@ -1160,6 +1168,37 @@ function renderHouses(){
   const destino=receiptIsMobile()?'WhatsApp':'WhatsApp Web';
   receiptStatus(!chat?'El PDF se descargó. Permite abrir '+destino+' y adjuntar el recibo.':'PDF descargado y chat abierto en '+destino+'. Adjunta el archivo y confirma el envío.');
  });
+ $('houseReceiptEmailSend').addEventListener('click',async()=>{
+  if(receiptEmailSending||!receiptBlob||!receiptDetails||!receiptCurrentHouseId||
+     !$('houseReceiptEmailInput').value)return;
+  const houseId=Number(receiptCurrentHouseId),folio=receiptDetails.folio;
+  const concept=activeConcept,projectId=concept==='EXTRAORDINARIO'?Number(activeProyectoId):null;
+  const referencia=String(receiptDetails.referencia||'').trim();
+  if(!referencia){receiptStatus('No se identificó la referencia del recibo. Reabre el historial.','error');return;}
+  if(!window.confirm('¿Enviar el recibo '+folio+' al correo registrado '+
+   $('houseReceiptEmailInput').value+'?'))return;
+  receiptEmailSending=true;
+  const button=$('houseReceiptEmailSend');button.disabled=true;
+  receiptStatus('Enviando recibo oficial por correo…');
+  try{
+   const response=await request('/pagos-vivienda/'+houseId+'/recibo/enviar-correo',{
+    concepto:concept,proyectoId,referencia
+   });
+   if(response.data?.enviado!==true)throw Error('El servidor no confirmó la entrega a SMTP.');
+   if(!receiptModal.hidden&&receiptCurrentHouseId===houseId&&receiptDetails?.folio===folio){
+    receiptStatus('Recibo enviado correctamente a '+response.data.correo+'.','success');
+   }
+   notice('Recibo enviado correctamente','success');
+  }catch(err){
+   if(!receiptModal.hidden&&receiptCurrentHouseId===houseId)
+    receiptStatus('No se envió el recibo: '+err.message,'error');
+   notice('Error enviando recibo: '+err.message);
+  }finally{
+   receiptEmailSending=false;
+   button.disabled=!receiptBlob||!receiptDetails?.correo;
+  }
+ });
+
  $('financialSummary').addEventListener('click',async event=>{
   const card=event.target.closest('[data-finance-export]');
   if(!card||!data)return;
