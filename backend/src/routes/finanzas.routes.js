@@ -6,6 +6,10 @@ const pagosManuales=require('../controllers/pagos-manuales-analisis.controller')
 const recibosMantenimiento=require('../controllers/recibos-mantenimiento-analisis.controller');
 router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
 router.get('/analisis',controller.analizar);
+router.get('/revision',(_req,res)=>{
+ res.setHeader('Cache-Control','private, no-store');
+ res.json({ok:true,data:require('../services/finanzas-live-signal.service').read()});
+});
 const proyectos=require('../controllers/proyectos-extraordinarios.controller');
 router.post('/proyectos-extraordinarios/previsualizar',proyectos.previsualizar);
 router.post('/proyectos-extraordinarios/importar',proyectos.importar);

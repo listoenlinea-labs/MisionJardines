@@ -59,6 +59,30 @@
   syncExpenseDateDisplay(input);
  });
  let data=null;
+ let lastSuccessfulFinanceLoad=Date.now(),lastRevisionSeen=null,revisionBusy=false;
+ async function refreshWhenChanged(){
+  if(revisionBusy||document.visibilityState==='hidden'||!data||
+   document.querySelector('.finance-pay-overlay:not([hidden])')||
+   document.querySelector('#financeProjectRulesModal:not([hidden])')||
+   document.querySelector('#financeBulkModal:not([hidden])'))return;
+  revisionBusy=true;
+  try{
+   const response=await request('/revision');
+   const version=Number(response.data?.revision);
+   if(!Number.isSafeInteger(version))return;
+   if(lastRevisionSeen===null){lastRevisionSeen=version;return;}
+   const changed=version!==lastRevisionSeen;
+   if(changed||Date.now()-lastSuccessfulFinanceLoad>=5*60*1000){
+    lastRevisionSeen=version;
+    $('financeLiveStatus').textContent='Sincronizando cambios de otras sesiones…';
+    const ok=await load();
+    $('financeLiveStatus').textContent=ok
+     ?'Datos sincronizados automáticamente.':'No se pudo sincronizar. Usa Actualizar análisis.';
+   }
+  }catch(_){$('financeLiveStatus').textContent='Sin conexión. Se reintentará sin consultar repetidamente MySQL.';}
+  finally{revisionBusy=false;}
+ }
+
  let housePage=1;
  let houseSort={key:"calle",direction:"asc"};
  let activeConcept='MANTENIMIENTO';
@@ -1934,6 +1958,7 @@ function renderHouses(){
    if(activeConcept!=='MANTENIMIENTO'&&!Array.isArray(data.viviendasConceptos?.[activeConcept]))activeConcept='MANTENIMIENTO';
    render();
    elegirConcepto(activeConcept,{resetPage:false});
+   lastSuccessfulFinanceLoad=Date.now();
    return true;
   }catch(e){notice(e.message);return false;}
   finally{$('updateFinance').disabled=false;}
@@ -2556,5 +2581,11 @@ function renderHouses(){
   renderHouses();
   notice('Se restauraron los filtros de Análisis de cuotas.','success');
  }
+ // El contador consultado cada 20 s es memoria Node, NO una query SQL.
+ // Respaldo cada 5 min si hay varias instancias en Hostinger.
+ setInterval(()=>{void refreshWhenChanged();},20000);
+ document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')void refreshWhenChanged();
+ });
 })();
 
