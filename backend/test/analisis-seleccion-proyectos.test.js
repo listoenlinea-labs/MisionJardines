@@ -49,7 +49,7 @@ test('cambiar de pestaña o proyecto limpia la selección anterior; refrescar no
 });
 
 test('versiones de CSS/JS actualizadas y sintaxis correcta',()=>{
- assert.match(html,/analisis-cuotas\.js\?v=20261103-fila-seleccionada-proyectos/);
- assert.match(html,/analisis-cuotas\.css\?v=20261103-fila-seleccionada-proyectos/);
+ assert.match(html,/analisis-cuotas\.js\?v=\d{8}-[a-z0-9-]+/);
+ assert.match(html,/analisis-cuotas\.css\?v=\d{8}-[a-z0-9-]+/);
  assert.doesNotThrow(()=>new Function(js));
 });

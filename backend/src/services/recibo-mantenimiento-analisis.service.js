@@ -176,7 +176,7 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
 
 async function consultarPago(casaId, periodo = null, referencia = null) {
     const casa = await Casa.findByPk(casaId, {
-        attributes: ['id', 'calle', 'calleCorrecta', 'numero', 'nombre', 'telefono']
+        attributes: ['id', 'calle', 'calleCorrecta', 'numero', 'nombre', 'telefono', 'correo']
     });
     if (!casa) throw errorDeRecibo(404, 'Vivienda no encontrada');
 

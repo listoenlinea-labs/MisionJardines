@@ -1545,3 +1545,10 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
   display:inline-flex;align-items:center;justify-content:center;text-align:center;
  }
 }
+
+/* Recibo por correo: dirección vinculada, envío explícito y estados reales. */
+.finance-receipt-send .finance-receipt-email-label{margin-top:12px;display:block;font-weight:800}
+.finance-receipt-send #houseReceiptEmailInput{width:100%;min-height:42px;color:#334358;background:#f7fafc}
+.finance-receipt-email-button{background:#167658;border-color:#167658}
+.finance-receipt-email-button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:720px){.finance-receipt-actions{flex-wrap:wrap}.finance-receipt-email-button{width:100%}}

@@ -74,12 +74,17 @@
       .toolbar .field{grid-column:1/-1}
       .toolbar .btn{min-width:0;white-space:normal}
     }
-  </style>
+  .back-to-finance{display:inline-flex;align-items:center;justify-content:center;
+ margin:0 0 14px;text-decoration:none;font-weight:800;border-color:#d8e6de!important;
+ background:#eef8f2!important;color:#226c4a!important}
+.back-to-finance[hidden]{display:none!important}
+</style>
 <link rel="stylesheet" href="assets/css/zkteco-calles.css?v=20261009-buscador">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 <body>
 <main class="wrap">
+  <a id="backToFinance" class="btn clear back-to-finance" href="analisis-cuotas.html?from=zkteco" hidden>← Volver a Análisis de cuotas con mis filtros</a>
   <section class="hero">
     <div>
       <span class="eyebrow">CONTROL DE ACCESO · ZKTECO C3-200</span>
@@ -246,6 +251,12 @@ let currentPage=1;
 // Enlace preciso desde Análisis de cuotas; el ID prevalece sobre la búsqueda
 // por nombres de calles y se libera cuando se cambian manualmente los filtros.
 const linkParams=new URLSearchParams(window.location.search);
+const backButton=$('backToFinance');
+if(backButton&&linkParams.get('from')==='analisis'){
+ try{const state=JSON.parse(sessionStorage.getItem('mj_analisis_return_v1')||'null');
+  backButton.hidden=!(state&&Date.now()-Number(state.at)<30*60*1000);
+ }catch(_){backButton.hidden=true;}
+}
 const queryCasaId=Number(linkParams.get('casaId'));
 let linkedCasaId=Number.isSafeInteger(queryCasaId)&&queryCasaId>0?queryCasaId:null;
 if(linkedCasaId){

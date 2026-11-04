@@ -3,6 +3,7 @@
 const recibos = require('../services/recibo-mantenimiento-analisis.service');
 const extra = require('../services/recibo-extraordinario-analisis.service');
 const jwt = require('jsonwebtoken');
+const correoService=require('../services/recibos-correo-analisis.service');
 function contexto(req){
  const concepto=String(req.query?.concepto||'MANTENIMIENTO').toUpperCase();
  if(!['MANTENIMIENTO','EXTRAORDINARIO'].includes(concepto))
@@ -61,9 +62,9 @@ function responderError(res, error) {
 async function datosRecibo(req, res) {
     try {
         const { casa, resumen } = await consultar(req,casaIdSolicitada(req), periodoSolicitado(req), referenciaSolicitada(req));
-        const telefonos = await recibos.consultarTelefonos(casa);
+        const [telefonos,correo]=await Promise.all([recibos.consultarTelefonos(casa),correoService.correoRegistrado(casa)]);
         res.setHeader('Cache-Control', 'private, no-store');
-        return res.json({ ok: true, data: { ...resumen, telefonos } });
+        return res.json({ ok: true, data: { ...resumen, telefonos, correo } });
     } catch (error) {
         return responderError(res, error);
     }
