@@ -37,7 +37,7 @@ async function movimientosProyecto(value){
 async function consultarPago(casaId,proyectoId,referencia=null){
  const cid=Number(casaId);
  if(!Number.isSafeInteger(cid)||cid<1)throw fail(400,'Vivienda inválida');
- const casa=await Casa.findByPk(cid,{attributes:['id','calle','calleCorrecta','numero','nombre','telefono']});
+ const casa=await Casa.findByPk(cid,{attributes:['id','calle','calleCorrecta','numero','nombre','telefono','correo']});
  if(!casa)throw fail(404,'Vivienda no encontrada');
  const {project,cargos,items}=await movimientosProyecto(proyectoId);
  const cargo=cargos.find(c=>Number(c.casaId)===cid);

@@ -278,10 +278,38 @@ async function enviarInvitacionPreregistro({ destinatario, nombre, domicilio, en
     return info.messageId || 'SMTP_ACEPTADO';
 }
 
+async function enviarReciboAdjunto({destinatario,folio,buffer,nombreArchivo,concepto,proyecto,casa,monto}){
+ validarConfiguracionSmtp();
+ if(!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(String(destinatario||'')))
+  throw Error('No existe correo de destino válido.');
+ const importe=Number(monto||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+ const descripcion=concepto==='EXTRAORDINARIO'?'Cuotas extraordinarias: '+String(proyecto||'Proyecto'):'Mantenimiento';
+ // No reintentar ante respuesta SMTP ambigua para evitar duplicar envíos.
+ const info=await crearTransportador().sendMail({
+  from:{name:process.env.SMTP_FROM_NAME||'Administración Misión Jardines',
+   address:process.env.SMTP_FROM_EMAIL},
+  to:destinatario,
+  subject:'Recibo '+folio+' · Misión Jardines',
+  text:'Administración Misión Jardines\n\nAdjuntamos el recibo oficial.\n'+
+   'Concepto: '+descripcion+'\nVivienda: '+casa+'\nFolio: '+folio+
+   '\nMonto: '+importe+'\n\nConserva este PDF como comprobante.',
+  html:'<div style="font-family:Arial,sans-serif;color:#243244;max-width:600px">'+
+   '<h2>Recibo de pago · Misión Jardines</h2><p>Se adjunta el PDF oficial de <b>'+
+   escaparHtml(descripcion)+'</b>.</p><p>Vivienda: '+escaparHtml(casa)+
+   '<br>Folio: '+escaparHtml(folio)+'<br>Importe: '+escaparHtml(importe)+
+   '</p><p>Administración Misión Jardines</p></div>',
+  attachments:[{filename:String(nombreArchivo||folio+'.pdf').replace(/[^a-zA-Z0-9._-]/g,'_'),
+   content:buffer,contentType:'application/pdf'}]
+ });
+ if(!info.accepted?.some(x=>String(x).toLowerCase()===String(destinatario).toLowerCase()))
+  throw Error('SMTP no aceptó al destinatario. No se confirma el envío.');
+ return {messageId:info.messageId||null};
+}
 module.exports = {
     enviarInvitacionPreregistro,
     enviarInvitacionCasa,
     enviarReciboPorCorreo,
+    enviarReciboAdjunto,
     enviarCodigoVerificacion,
     validarConfiguracionSmtp
 };
