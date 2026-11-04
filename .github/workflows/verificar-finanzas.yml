@@ -65,6 +65,11 @@ jobs:
         run: node --test backend/test/recibos-correo-proyecto-id.test.js
       - name: Rosas 10: intento C3 anulado no bloquea cobro de noviembre
         run: node --test backend/test/pagos-c3-anulados-no-bloquean.test.js
+      - name: Contactos de recibos guardados y mensaje central de email
+        run: |
+          node --check backend/src/services/contacto-recibos-analisis.service.js
+          node --check backend/src/controllers/contacto-recibos-analisis.controller.js
+          node --test backend/test/recibos-contactos-guardados.test.js
       - name: Diagnóstico seguro de conexión C3-200
         run: |
           node --check backend/src/services/zkteco-diagnostico-conexion.service.js
