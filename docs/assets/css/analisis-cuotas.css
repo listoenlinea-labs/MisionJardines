@@ -1562,3 +1562,18 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
 #houseReceiptEmailInput:not(:disabled){background:#fff;cursor:text}
 #houseReceiptEmailInput[aria-invalid="true"]{border-color:#ce6a71;box-shadow:0 0 0 2px #ce6a7124}
 #houseReceiptEmailInput:focus-visible{outline:2px solid #3f9c7e;outline-offset:2px}
+
+/* Recibos: guardar contactos de la vivienda sin modificar usuarios vinculados. */
+.finance-receipt-contact-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;gap:9px}
+.finance-receipt-contact-row>input{min-width:0}
+.finance-receipt-contact-save{min-height:43px;padding:9px 13px!important;border:1px solid #d7c5e8!important;border-radius:10px!important;background:#f5eefb!important;color:#644782!important;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer}
+.finance-receipt-contact-save:hover:not(:disabled){background:#eadcf5!important}
+.finance-receipt-contact-save:disabled{opacity:.5;cursor:not-allowed}
+.finance-receipt-send small[data-saved="true"]{color:#167658;font-weight:700}
+@media(max-width:540px){.finance-receipt-contact-row{grid-template-columns:minmax(0,1fr)}.finance-receipt-contact-save{width:100%}}
+/* Confirmación de envío: siempre visible en el centro, por encima del modal. */
+.finance-receipt-email-success{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483000;display:flex;align-items:center;gap:14px;max-width:min(490px,calc(100vw - 28px));min-width:min(350px,calc(100vw - 28px));box-sizing:border-box;padding:19px 22px;background:#f2fcf5;border:2px solid #78bd91;border-radius:18px;box-shadow:0 24px 90px #102c224c;color:#175d39;pointer-events:none}
+.finance-receipt-email-success[hidden]{display:none!important}
+.finance-receipt-email-success-icon{width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;border-radius:50%;background:#217b4f;color:white;font-weight:900;font-size:25px}
+.finance-receipt-email-success strong{display:block;font-size:17px;line-height:1.4}
+.finance-receipt-email-success span[id]{display:block;margin-top:3px;font-size:12px;color:#397b58;overflow-wrap:anywhere}
