@@ -10,19 +10,27 @@
 6. **Sincronización entre equipos:** las mutaciones exitosas publican una revisión en memoria del proceso Node. La interfaz consulta la revisión cada 20 segundos con JWT firmado y sin consultas MySQL en ese endpoint. Si detecta un cambio, recarga el análisis; evita refrescar durante modales. Para varias instancias de Hostinger hay una revalidación de respaldo cada 10 minutos con pestaña visible. Se trata de actualización automática cercana al tiempo real, no entrega instantánea garantizada ni WebSocket. No aumenta el ritmo de conexiones MySQL cada 20 segundos.
 7. **Rosas 10:** el pago de noviembre queda protegido ante una referencia de pagos_reportados o un registro de pagos_acceso_c3 vinculado. La cotización ahora devuelve tabla, ID, referencia y estado del registro, restringe las referencias bancarias al concepto MANTENIMIENTO, y no crea cobros ni órdenes duplicadas.
 
-## Variables Hostinger — Gmail para enviar recibos
+## Variables Hostinger — Gmail independiente para recibos de Misión Jardines
 
-| Variable | Valor |
-| --- | --- |
-| SMTP_HOST | smtp.gmail.com |
-| SMTP_PORT | 465 |
-| SMTP_SECURE | true |
-| SMTP_USER | misionjardinesgdl@gmail.com |
-| SMTP_PASSWORD | Contraseña de aplicación de Google (NO la contraseña normal de Gmail) |
-| SMTP_FROM_EMAIL | misionjardinesgdl@gmail.com |
-| SMTP_FROM_NAME | Administración Misión Jardines |
+Estas siete variables son **nuevas**, exclusivas del botón **Enviar recibo por correo** de Mantenimiento y Cuotas extraordinarias. No sobrescribir ninguna variable de SMTP del producto Listo en Línea.
 
-El servicio SMTP ya existía; estos son sus nombres exactos de variables. Gmail requiere dos pasos habilitados y una contraseña de aplicación cuando sea elegible. Revisar que Hostinger permita salida SMTP al puerto 465. Configurar credenciales solo en Hostinger, no en el frontend ni en GitHub. Reiniciar/redeploy backend para aplicar variables.
+| Nueva variable | Valor |
+|---|---|
+| MJ_GMAIL_SMTP_HOST | smtp.gmail.com |
+| MJ_GMAIL_SMTP_PORT | 465 |
+| MJ_GMAIL_SMTP_SECURE | true |
+| MJ_GMAIL_SMTP_USER | misionjardinesgdl@gmail.com |
+| MJ_GMAIL_SMTP_PASSWORD | Contraseña de aplicación de Google |
+| MJ_GMAIL_SMTP_FROM_EMAIL | misionjardinesgdl@gmail.com |
+| MJ_GMAIL_SMTP_FROM_NAME | Administración Misión Jardines |
+
+**Configuración anterior conservada:** SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL y SMTP_FROM_NAME permanecen sin modificaciones y siguen atendiendo los demás procesos de correo que ya funcionaban con Listo en Línea.
+
+- Los recibos PDF generados desde Análisis de cuotas utilizan exclusivamente el nuevo transporte Gmail. No existe respaldo automático a SMTP_HOST ni otro servidor: si falta alguna variable MJ_GMAIL_SMTP_* se muestra un error y no se envía.
+- Las demás funciones de email.service.js (invitaciones, verificaciones y servicios previos) conservan el transporte original y las variables SMTP_*.
+- No subir la contraseña de aplicación a GitHub ni colocar credenciales en el frontend; definirla en el panel de Hostinger. Google requiere una contraseña de aplicación habilitada en una cuenta elegible con verificación en dos pasos.
+- Guardar variables y reiniciar/redeploy del backend para que Node las lea. No se necesitan cambios de base de datos.
+
 
 ## Diagnóstico SQL SOLO LECTURA — Rosas 10
 

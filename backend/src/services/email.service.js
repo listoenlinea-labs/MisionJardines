@@ -52,6 +52,58 @@ function crearTransportador() {
     return transportadorCompartido;
 }
 
+// Transporte SMTP INDEPENDIENTE para recibos manuales de Misión Jardines.
+// Las variables SMTP_* pertenecen a Listo en Línea y no se cambian aquí.
+let transportadorGmailRecibos = null;
+function validarConfiguracionGmailRecibos() {
+    const requeridas = [
+        'MJ_GMAIL_SMTP_HOST',
+        'MJ_GMAIL_SMTP_PORT',
+        'MJ_GMAIL_SMTP_SECURE',
+        'MJ_GMAIL_SMTP_USER',
+        'MJ_GMAIL_SMTP_PASSWORD',
+        'MJ_GMAIL_SMTP_FROM_EMAIL',
+        'MJ_GMAIL_SMTP_FROM_NAME'
+    ];
+    const faltantes = requeridas.filter(key => !String(process.env[key] || '').trim());
+    if (faltantes.length) {
+        const error = new Error('Faltan variables para enviar recibos desde Gmail de Misión Jardines: ' +
+            faltantes.join(', ') + '. Las variables SMTP_* de Listo en Línea no se usarán como respaldo.');
+        error.status = 503;
+        error.code = 'MJ_GMAIL_SMTP_CONFIG_INCOMPLETA';
+        throw error;
+    }
+    const port = Number(process.env.MJ_GMAIL_SMTP_PORT);
+    const secure = String(process.env.MJ_GMAIL_SMTP_SECURE).trim().toLowerCase();
+    if (!Number.isInteger(port) || port <= 0 || port > 65535 ||
+        !['true', 'false'].includes(secure)) {
+        const error = new Error('MJ_GMAIL_SMTP_PORT o MJ_GMAIL_SMTP_SECURE tienen valores inválidos.');
+        error.status = 503;
+        throw error;
+    }
+}
+
+function crearTransportadorGmailRecibos() {
+    validarConfiguracionGmailRecibos();
+    if (transportadorGmailRecibos) return transportadorGmailRecibos;
+    transportadorGmailRecibos = nodemailer.createTransport({
+        pool: true,
+        maxConnections: 2,
+        maxMessages: 50,
+        host: process.env.MJ_GMAIL_SMTP_HOST,
+        port: Number(process.env.MJ_GMAIL_SMTP_PORT),
+        secure: String(process.env.MJ_GMAIL_SMTP_SECURE).trim().toLowerCase() === 'true',
+        connectionTimeout: 15000,
+        greetingTimeout: 10000,
+        socketTimeout: 30000,
+        auth: {
+            user: process.env.MJ_GMAIL_SMTP_USER,
+            pass: process.env.MJ_GMAIL_SMTP_PASSWORD
+        }
+    });
+    return transportadorGmailRecibos;
+}
+
 function escaparHtml(valor) {
     return String(valor || '')
         .replace(/&/g, '&amp;')
@@ -279,15 +331,15 @@ async function enviarInvitacionPreregistro({ destinatario, nombre, domicilio, en
 }
 
 async function enviarReciboAdjunto({destinatario,folio,buffer,nombreArchivo,concepto,proyecto,casa,monto}){
- validarConfiguracionSmtp();
+ validarConfiguracionGmailRecibos();
  if(!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(String(destinatario||'')))
   throw Error('No existe correo de destino válido.');
  const importe=Number(monto||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
  const descripcion=concepto==='EXTRAORDINARIO'?'Cuotas extraordinarias: '+String(proyecto||'Proyecto'):'Mantenimiento';
  // No reintentar ante respuesta SMTP ambigua para evitar duplicar envíos.
- const info=await crearTransportador().sendMail({
-  from:{name:process.env.SMTP_FROM_NAME||'Administración Misión Jardines',
-   address:process.env.SMTP_FROM_EMAIL},
+ const info=await crearTransportadorGmailRecibos().sendMail({
+  from:{name:process.env.MJ_GMAIL_SMTP_FROM_NAME,
+   address:process.env.MJ_GMAIL_SMTP_FROM_EMAIL},
   to:destinatario,
   subject:'Recibo '+folio+' · Misión Jardines',
   text:'Administración Misión Jardines\n\nAdjuntamos el recibo oficial.\n'+
@@ -311,5 +363,6 @@ module.exports = {
     enviarReciboPorCorreo,
     enviarReciboAdjunto,
     enviarCodigoVerificacion,
-    validarConfiguracionSmtp
+    validarConfiguracionSmtp,
+    validarConfiguracionGmailRecibos
 };
