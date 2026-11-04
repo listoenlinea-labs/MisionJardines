@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261104-proyecto-texto-v1">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261104-guardar-contactos-y-confirmacion-v1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -155,16 +155,26 @@
     <iframe id="houseReceiptPreview" class="finance-receipt-preview" title="Vista previa del recibo PDF" hidden></iframe>
     <div id="houseReceiptSendSection" class="finance-receipt-send" hidden>
       <label id="houseReceiptPhoneLabel" for="houseReceiptPhoneInput">Teléfono celular de destino</label>
-      <input id="houseReceiptPhoneInput" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="13" autocomplete="off" placeholder="10 dígitos o 52 + 10 dígitos" aria-describedby="houseReceiptPhoneHint" aria-label="Número de celular para enviar el recibo">
-      <small id="houseReceiptPhoneHint">Puedes editar el número para este envío; no se cambiará el teléfono registrado.</small>
+      <div class="finance-receipt-contact-row">
+        <input id="houseReceiptPhoneInput" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="13" autocomplete="off" placeholder="10 dígitos o 52 + 10 dígitos" aria-describedby="houseReceiptPhoneHint" aria-label="Número de celular para enviar el recibo">
+        <button type="button" class="soft finance-receipt-contact-save" id="houseReceiptPhoneSave" disabled>Guardar teléfono</button>
+      </div>
+      <small id="houseReceiptPhoneHint" role="status" aria-live="polite">Pulsa Guardar teléfono para conservarlo en la vivienda y usarlo en futuros recibos.</small>
       <label for="houseReceiptEmailInput" class="finance-receipt-email-label">Correo de destino del recibo</label>
-      <input id="houseReceiptEmailInput" type="email" autocomplete="email" inputmode="email" maxlength="254"
-       placeholder="correo@ejemplo.com" aria-describedby="houseReceiptEmailHint" aria-required="true">
-      <small id="houseReceiptEmailHint">Puedes editar el destinatario para este recibo. No se modificará el correo registrado de la vivienda.</small>
+      <div class="finance-receipt-contact-row">
+        <input id="houseReceiptEmailInput" type="email" autocomplete="email" inputmode="email" maxlength="150"
+         placeholder="correo@ejemplo.com" aria-describedby="houseReceiptEmailHint" aria-required="true">
+        <button type="button" class="soft finance-receipt-contact-save" id="houseReceiptEmailSave" disabled>Guardar correo</button>
+      </div>
+      <small id="houseReceiptEmailHint" role="status" aria-live="polite">Puedes enviarlo una sola vez o pulsar Guardar correo para futuras ocasiones.</small>
     </div>
     <div class="finance-receipt-actions"><button type="button" id="houseReceiptDownload" class="soft" disabled>Guardar recibo PDF</button><button type="button" id="houseReceiptWhatsApp" class="primary" disabled>Enviar recibo por WhatsApp Web</button><button type="button" id="houseReceiptEmailSend" class="primary finance-receipt-email-button" disabled>Enviar recibo por correo</button></div>
   </div>
 </section>
+<div id="financeReceiptEmailSuccess" class="finance-receipt-email-success" hidden role="status" aria-live="polite" aria-atomic="true">
+  <span class="finance-receipt-email-success-icon" aria-hidden="true">✓</span>
+  <div><strong>Recibo enviado correctamente</strong><span id="financeReceiptEmailSuccessDestination"></span></div>
+</div>
 <section id="houseTagsModal" class="finance-pay-overlay" hidden aria-label="Estado de TAGs de vivienda">
   <div class="finance-pay-dialog tags-dialog" role="dialog" aria-modal="true" aria-labelledby="houseTagsTitle" tabindex="-1">
     <div class="finance-pay-heading"><div><span class="eyebrow">ZKTECO · CONSULTA DE ACCESOS</span>
@@ -253,4 +263,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261104-extra-proyectos-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261104-extra-proyectos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261104-correo-proyectoid-hotfix-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261104-extra-proyectos-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261104-extra-proyectos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261104-guardar-contactos-y-confirmacion-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

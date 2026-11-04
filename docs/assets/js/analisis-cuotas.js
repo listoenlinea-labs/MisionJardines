@@ -1041,18 +1041,35 @@ function renderHouses(){
  let receiptSequence=0;
  let receiptReturnFocus=null;
  let receiptCurrentHouseId=null;
-  let receiptEmailSending=false;
+ let receiptEmailSending=false;
+ let receiptPhoneSaving=false,receiptEmailSavingContact=false;
+ let receiptSavedPhone='',receiptSavedEmail='';
+ let receiptPhoneSavedHere=false,receiptEmailSavedHere=false;
+ let receiptEmailToastTimeout=null;
+ function showReceiptEmailCenterSuccess(destino){
+  const toast=$('financeReceiptEmailSuccess');
+  $('financeReceiptEmailSuccessDestination').textContent='Enviado a '+String(destino||'');
+  toast.hidden=false;
+  if(receiptEmailToastTimeout)clearTimeout(receiptEmailToastTimeout);
+  receiptEmailToastTimeout=setTimeout(()=>{toast.hidden=true;receiptEmailToastTimeout=null;},4200);
+ }
  const validReceiptEmail=value=>{
   const text=String(value||'').trim();
-  return text.length<=254&&text.length>=3&&/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(text);
+  return text.length<=150&&text.length>=3&&/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(text);
  };
  function updateReceiptEmail(){
   const input=$('houseReceiptEmailInput');
   const valid=validReceiptEmail(input.value);
   input.setAttribute('aria-invalid',String(Boolean(input.value.trim())&&!valid));
+  const dirty=valid&&input.value.trim()!==receiptSavedEmail;
+  $('houseReceiptEmailHint').dataset.saved=String(receiptEmailSavedHere&&!dirty);
   $('houseReceiptEmailHint').textContent=input.value.trim()&&!valid
-   ?'Escribe un solo correo electrónico válido, sin espacios ni destinatarios adicionales.'
-   :'Puedes editar el destinatario para este recibo. No se modificará el correo registrado de la vivienda.';
+   ?'Escribe un solo correo electrónico válido de máximo 150 caracteres.'
+   :dirty?'Correo listo. Pulsa Guardar correo para conservarlo o envía solo este recibo.'
+   :receiptEmailSavedHere?'Correo guardado en la vivienda para los próximos recibos.'
+   :'Puedes editar el correo para este envío o pulsar Guardar correo para conservarlo.';
+  $('houseReceiptEmailSave').disabled=!receiptBlob||!receiptCurrentHouseId||
+   receiptEmailSavingContact||!dirty;
   $('houseReceiptEmailSend').disabled=receiptEmailSending||!receiptBlob||!valid;
  }
  $('houseReceiptEmailInput').addEventListener('input',updateReceiptEmail);
@@ -1070,11 +1087,54 @@ function renderHouses(){
   const input=$('houseReceiptPhoneInput');
   const valid=Boolean(normalizeReceiptPhone(input.value));
   input.setAttribute('aria-invalid',String(input.value.length>0&&!valid));
+  const dirty=valid&&normalizeReceiptPhone(input.value)!==receiptSavedPhone;
+  $('houseReceiptPhoneHint').dataset.saved=String(receiptPhoneSavedHere&&!dirty);
   $('houseReceiptPhoneHint').textContent=input.value&&!valid
    ?'Escribe 10 dígitos de México, o 52 seguido de los 10 dígitos.'
-   :'Puedes editar el número para este envío; no se cambiará el teléfono registrado.';
+   :dirty?'Número listo. Pulsa Guardar teléfono para conservarlo en la vivienda.'
+   :receiptPhoneSavedHere?'Teléfono guardado en la vivienda para los próximos recibos.'
+   :'Puedes usarlo una vez o pulsar Guardar teléfono para conservarlo.';
+  $('houseReceiptPhoneSave').disabled=!receiptBlob||!receiptCurrentHouseId||
+   receiptPhoneSaving||!dirty;
   $('houseReceiptWhatsApp').disabled=!receiptBlob||!valid;
  }
+ async function guardarContactoDelRecibo(campo){
+  const isPhone=campo==='telefono';
+  const input=$(isPhone?'houseReceiptPhoneInput':'houseReceiptEmailInput');
+  const button=$(isPhone?'houseReceiptPhoneSave':'houseReceiptEmailSave');
+  const valor=input.value.trim(),houseId=Number(receiptCurrentHouseId),seq=receiptSequence;
+  const valido=isPhone?Boolean(normalizeReceiptPhone(valor)):validReceiptEmail(valor);
+  if(!receiptBlob||!Number.isSafeInteger(houseId)||houseId<1||!valido||
+    receiptPhoneSaving||receiptEmailSavingContact)return;
+  const label=button.textContent;
+  if(isPhone)receiptPhoneSaving=true;else receiptEmailSavingContact=true;
+  input.disabled=true;button.disabled=true;button.textContent='Guardando…';
+  try{
+   const response=await request('/viviendas/'+houseId+'/contacto-recibo/'+campo,
+    {valor},'PATCH');
+   if(response.data?.guardado!==true)throw Error('El servidor no confirmó el guardado.');
+   if(seq!==receiptSequence||receiptModal.hidden||receiptCurrentHouseId!==houseId)return;
+   input.value=response.data.valor;
+   if(isPhone){
+    receiptSavedPhone=response.data.valor;
+    receiptPhoneSavedHere=true;
+   }else{
+    receiptSavedEmail=response.data.valor;
+    receiptEmailSavedHere=true;
+    if(receiptDetails)receiptDetails.correo=response.data.valor;
+   }
+   receiptStatus((isPhone?'Teléfono':'Correo')+' guardado correctamente en esta vivienda.','success');
+  }catch(error){
+   if(seq===receiptSequence&&!receiptModal.hidden&&receiptCurrentHouseId===houseId)
+    receiptStatus('No se pudo guardar '+(isPhone?'el teléfono':'el correo')+': '+error.message,'error');
+  }finally{
+   if(isPhone)receiptPhoneSaving=false;else receiptEmailSavingContact=false;
+   input.disabled=false;button.textContent=label;
+   if(!receiptModal.hidden){updateReceiptPhone();updateReceiptEmail();}
+  }
+ }
+ $('houseReceiptPhoneSave').addEventListener('click',()=>void guardarContactoDelRecibo('telefono'));
+ $('houseReceiptEmailSave').addEventListener('click',()=>void guardarContactoDelRecibo('correo'));
  function receiptStatus(message,kind='info'){
   const el=$('houseReceiptStatus');el.textContent=message;el.dataset.kind=kind;
  }
@@ -1087,6 +1147,10 @@ function renderHouses(){
   receiptObjectUrl=null;receiptBlob=null;receiptDetails=null;
   $('houseReceiptEmailSend').disabled=true;
   $('houseReceiptEmailInput').value='';
+  receiptSavedPhone='';receiptSavedEmail='';
+  receiptPhoneSavedHere=false;receiptEmailSavedHere=false;
+  $('houseReceiptPhoneSave').disabled=true;
+  $('houseReceiptEmailSave').disabled=true;
   receiptCurrentHouseId=null;
   receiptReturnFocus?.focus();receiptReturnFocus=null;
  }
@@ -1106,6 +1170,8 @@ function renderHouses(){
   $('houseReceiptDownload').disabled=true;
   $('houseReceiptWhatsApp').disabled=true;
   $('houseReceiptEmailSend').disabled=true;
+  $('houseReceiptPhoneSave').disabled=true;
+  $('houseReceiptEmailSave').disabled=true;
   receiptStatus('Generando el recibo del mes seleccionado…');
   const qs=new URLSearchParams();if(activeConcept==='EXTRAORDINARIO'){qs.set('concepto','EXTRAORDINARIO');qs.set('proyectoId',activeProyectoId);}if(referencia)qs.set('referencia',referencia);else if(periodo&&activeConcept==='MANTENIMIENTO')qs.set('periodo',periodo);const query=qs.toString()?'?'+qs:'';
   try{
@@ -1121,7 +1187,8 @@ function renderHouses(){
    if(pdf.type!=='application/pdf'&&!pdf.type.includes('pdf'))throw Error('El servidor no devolvió un archivo PDF');
    receiptBlob=pdf;
    receiptDetails=detail;
-   $('houseReceiptEmailInput').value=detail.correo||'';
+   receiptSavedEmail=String(detail.correo||'').trim();
+   $('houseReceiptEmailInput').value=receiptSavedEmail;
    updateReceiptEmail();
    receiptObjectUrl=URL.createObjectURL(pdf);
    // Chrome descarga con UUID cuando el iframe recibe blob:. Esta URL
@@ -1137,6 +1204,7 @@ function renderHouses(){
    receiptStatus((detail.pagoAnual?'Pago ANUAL registrado: ':'Pago registrado: ')+fmt(detail.monto)+' · '+(detail.periodo||'')+' · '+(detail.sello||'PAGADO'));
    $('houseReceiptDownload').disabled=false;
    updateReceiptPhone();
+   updateReceiptEmail();
    if(!$('houseReceiptPhoneInput').value){
     receiptStatus('Recibo listo para guardar. Ingresa un número celular para enviarlo por WhatsApp.');
    }
@@ -1157,8 +1225,12 @@ function renderHouses(){
   $('houseReceiptPeriod').hidden=true;
   $('houseReceiptMonth').innerHTML='';
   $('houseReceiptSendSection').hidden=true;
+  receiptSavedPhone='';receiptSavedEmail='';
+  receiptPhoneSavedHere=false;receiptEmailSavedHere=false;
   $('houseReceiptPhoneInput').value='';
   $('houseReceiptEmailInput').value='';
+  $('houseReceiptPhoneSave').disabled=true;
+  $('houseReceiptEmailSave').disabled=true;
   $('houseReceiptEmailSend').disabled=true;
   updateReceiptPhone();
   $('houseReceiptDownload').disabled=true;
@@ -1175,7 +1247,8 @@ function renderHouses(){
     $('houseReceiptPeriod').hidden=false;
    }
    const phones=(detail.telefonos||[]).filter(p=>/^52\d{10}$/.test(String(p.numero)));
-   $('houseReceiptPhoneInput').value=phones[0]?.numero||'';
+   receiptSavedPhone=phones[0]?.numero||'';
+   $('houseReceiptPhoneInput').value=receiptSavedPhone;
    $('houseReceiptSendSection').hidden=false;
    updateReceiptPhone();
    await cargarPdfDelPeriodo(casaId,referencia?null:($('houseReceiptMonth').value||null),referencia);
@@ -1244,7 +1317,7 @@ function renderHouses(){
    if(!receiptModal.hidden&&receiptCurrentHouseId===houseId&&receiptDetails?.folio===folio){
     receiptStatus('Recibo enviado correctamente a '+response.data.correo+'.','success');
    }
-   notice('Recibo enviado correctamente','success');
+   showReceiptEmailCenterSuccess(response.data.correo);
   }catch(err){
    if(!receiptModal.hidden&&receiptCurrentHouseId===houseId)
     receiptStatus('No se envió el recibo: '+err.message,'error');

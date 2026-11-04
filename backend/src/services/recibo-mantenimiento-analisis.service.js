@@ -218,11 +218,13 @@ async function consultarTelefonos(casa) {
             attributes: ['nombre', 'apellidoPaterno', 'apellidoMaterno', 'telefono', 'esContactoPrincipal']
         }) : []
     ]);
+    // El teléfono guardado explícitamente en la vivienda se ofrece primero
+    // en el modal de recibos, sin modificar el de los usuarios vinculados.
+    agregarTelefonos(destinatarios, vistos, casa.telefono, casa.nombre, 'Vivienda');
     for (const u of usuarios.filter(item => item.esContactoPrincipal)) {
         agregarTelefonos(destinatarios, vistos, u.telefono,
             [u.nombre, u.apellidoPaterno, u.apellidoMaterno].filter(Boolean).join(' '), 'Contacto principal');
     }
-    agregarTelefonos(destinatarios, vistos, casa.telefono, casa.nombre, 'Vivienda');
     for (const c of condominos) {
         agregarTelefonos(destinatarios, vistos, c.telefono, c.nombreCompleto, 'Condómino vinculado');
     }

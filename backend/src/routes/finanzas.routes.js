@@ -39,6 +39,8 @@ router.post('/pagos-concepto',pagosManuales.registrarPagoConcepto);
 router.get('/pagos-vivienda/:casaId/cotizar',pagosManuales.cotizarPagoVivienda);
 router.get('/pagos-vivienda/:casaId/historial',pagosManuales.historialPagoVivienda);
 const recibosCorreo=require('../controllers/recibos-correo-analisis.controller');
+const contactoRecibo=require('../controllers/contacto-recibos-analisis.controller');
+router.patch('/viviendas/:casaId/contacto-recibo/:campo',contactoRecibo.guardar);
 router.post('/pagos-vivienda/:casaId/recibo/enviar-correo',recibosCorreo.enviar);
 router.get('/pagos-vivienda/:casaId/recibo/destino-correo',recibosCorreo.destino);
 router.get('/pagos-vivienda/:casaId/recibo/datos',recibosMantenimiento.datosRecibo);
