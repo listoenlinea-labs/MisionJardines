@@ -1,5 +1,6 @@
 'use strict';
 const svc=require('../services/proyectos-extraordinarios.service');
+const recibosExtraordinarios=require('../services/recibo-extraordinario-analisis.service');
 const error=(res,e)=>{if(!e.status)console.error('[proyectos extraordinarios]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No fue posible procesar proyectos y cuotas extraordinarias'});};
 async function previsualizar(req,res){
  try{
@@ -37,4 +38,19 @@ async function ajustarProyecto(req,res){
   return res.json({ok:true,data,message:'Metas y excepciones guardadas con auditoría para las 231 viviendas.'});
  }catch(e){return error(res,e);}
 }
-module.exports={previsualizar,importar,crear,ajustar,ajustarProyecto};
+// Exportación integral: una petición obtiene únicamente aportaciones confirmadas
+// del proyecto elegido. No consulta una vivienda a la vez ni modifica la BD.
+async function movimientosExportacion(req,res){
+ try{
+  const {project,items}=await recibosExtraordinarios.movimientosProyecto(req.params.id);
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,data:{
+   proyectoId:Number(project.id),codigo:project.codigo,nombre:project.concepto,
+   movimientos:items.map(x=>({
+    casaId:x.casaId,cargoId:x.cargoId,referencia:x.referencia,fecha:x.fecha,
+    monto:x.monto,formaPago:x.formaPago,origen:x.origen
+   }))
+  }});
+ }catch(e){return error(res,e);}
+}
+module.exports={previsualizar,importar,crear,ajustar,ajustarProyecto,movimientosExportacion};

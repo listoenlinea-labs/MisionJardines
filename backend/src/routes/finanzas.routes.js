@@ -10,6 +10,7 @@ const proyectos=require('../controllers/proyectos-extraordinarios.controller');
 router.post('/proyectos-extraordinarios/previsualizar',proyectos.previsualizar);
 router.post('/proyectos-extraordinarios/importar',proyectos.importar);
 router.post('/proyectos-extraordinarios',proyectos.crear);
+router.get('/proyectos-extraordinarios/:id/movimientos-exportacion',proyectos.movimientosExportacion);
 router.patch('/proyectos-extraordinarios/:id/viviendas/:casaId',proyectos.ajustar);
 router.patch('/proyectos-extraordinarios/:id/cuotas',proyectos.ajustarProyecto);
 const masivos=require('../controllers/recibos-masivos.controller');
