@@ -1,21 +1,66 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 3/nov/2026, 23:29, America/Mexico_City.
-**SHA de main consultado:** `d32916e68b0bf06ea242500c9e616dcec29ab3f4`.
+**Última revisión:** 4/nov/2026, 23:26, America/Mexico_City.
+**SHA de main consultado:** `9def48327b5a983dc769989530c91acfad4b0ebf`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `6cc8e7f4f9b6e7ad88830fe6ba3873481b8079ed`,
-PR #334–#347, sus workflows, jobs, logs y evidencia publicada en sus descripciones.
-Main avanzó 146 commits; se excluyó `a6ff758d3085edde66dcd4041f2df52f1c46b3e9`,
-que solo actualizó esta bitácora. Los catorce PR están fusionados, no hay PR abiertos y
-sus workflows concluyeron `success`; el run final ejecutó las suites incorporadas de
-cuotas extraordinarias en cero y selección de filas, pero otras suites nuevas continúan
-fuera del workflow. No se consultaron Hostinger, C3, MySQL ni contenido privado del
-buzón, y no se publican credenciales, comprobantes ni datos personales.
+comparación de main desde `d32916e68b0bf06ea242500c9e616dcec29ab3f4`,
+PR #348–#353, sus commits, workflows, jobs, logs y evidencia publicada.
+Main avanzó 30 commits; se excluyó `51b0ebf37f3bc27e9877fde3275eab07df4afd83`,
+que solo actualizó esta bitácora. Los seis PR están fusionados y no hay PR abiertos.
+Los heads #348–#350 tuvieron workflow `success`; GitHub no devolvió workflow runs ni
+estados combinados para #351–#353, aunque sus pruebas están presentes en main. No se
+consultaron Hostinger, C3 o MySQL directamente, no se enviaron correos y no se publican
+credenciales, direcciones de correo, teléfonos, comprobantes ni datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 4/nov/2026
+
+El PR #348 amplía Cuotas extraordinarias con tarjetas, dona, desglose por calle y cuatro
+exportaciones Excel acotadas al proyecto seleccionado; los libros incluyen padrón,
+estados, finanzas, aportaciones, No aplica y abonos parciales, con gráficas ChartML.
+También incorpora envío administrativo del PDF oficial por correo, retorno desde ZKTeco
+con filtros guardados y una señal de revisión en memoria para refrescar Finanzas entre
+sesiones sin consultar MySQL cada 20 segundos. En procesos múltiples el respaldo es más
+lento; no equivale a sincronización instantánea ni acredita Excel abierto, SMTP real,
+despliegue o cifras de producción.
+
+El PR #349 separa el transporte Gmail de recibos del SMTP existente de Listo en Línea:
+usa variables `MJ_GMAIL_SMTP_*`, sin respaldo automático al transporte anterior ni
+cambio de sus variables. El PR #350 oculta de los avisos solo proyectos con saldo cero,
+corrige nombres largos y permite cambiar el destinatario para un envío sin persistirlo.
+#351 corrige el `ReferenceError` de `proyectoId` en el navegador y conserva
+`null` para mantenimiento y el ID activo para extraordinarias. No se autenticó SMTP
+ni se confirmó entrega real.
+
+El PR #352 corrige la guardia que bloqueaba una cuota cuando existía cualquier evento
+C3 vinculado: únicamente los eventos con estado `ANULADO` dejan de bloquear cotización
+y confirmación; bancos y los demás estados C3 siguen bloqueantes. Los seis resultados de
+Workbench aportados por el administrador y resumidos en el PR acreditan para ese caso
+una cuota pendiente y un evento vinculado anulado. La revisión no consultó MySQL de
+nuevo, no registró un pago ni alteró el evento o la vigencia física; falta desplegar el
+backend y repetir el flujo controlado.
+
+El PR #353 añade guardado administrativo independiente de teléfono o correo en la
+vivienda desde el modal de recibo, sin modificar cuentas, condóminos, pagos ni el otro
+campo. Los contactos pueden seguir usándose solo para una operación sin guardarlos y
+la confirmación centrada aparece únicamente después de aceptación SMTP. Requiere
+desplegar backend y frontend coordinados; no se guardaron contactos ni se enviaron
+correos en producción.
+
+Los workflows de #348, #349 y #350
+([41844009015](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41844009015),
+[41845023807](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41845023807)
+y [41885015371](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41885015371))
+concluyeron `success`. En el último pasaron Excel/correo/retorno/sincronización **8/8**,
+SMTP aislado **3/3** y saldo cero/correo editable **7/7**; la suite de #348 volvió a
+pasar **8/8**. Persisten diagnósticos no bloqueantes UI **4/6** y bancaria **87/88**.
+#351–#353 añadieron pruebas específicas, pero sus heads devuelven cero runs y cero
+estados: no deben presentarse como ejecutadas por CI. Ningún check prueba Hostinger,
+MySQL, Gmail real, navegador, Microsoft Excel ni C3 físico.
 
 ## Implementado en main el 3/nov/2026
 
@@ -243,14 +288,14 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
-| Pagos de mantenimiento | Unificación, reparto desde dos viviendas y abonos positivos implementados en main; despliegue y regla base pendientes | #288–#290 unifican `cuotas`/casa y C3 posterior al commit. #303 implementa reparto conjunto y #305 baja el umbral a dos viviendas activas. #306 acepta desde $0.01, aplica recargos antiguos antes del principal y no avanza cobertura hasta completar la mensualidad. Continúa la discrepancia enero/septiembre y falta validar producción |
+| Pagos de mantenimiento | Unificación, reparto y guardas C3 implementados en main; despliegue y regla base pendientes | #288–#290 unifican `cuotas`/casa y C3 posterior al commit; #303/#305 reparten desde dos viviendas; #306 acepta desde $0.01 y aplica recargos antes del principal. #352 excluye solo eventos C3 ANULADO del bloqueo de cotización/registro, conservando bancos y demás estados. Continúa la discrepancia enero/septiembre y falta validar producción |
 | Confirmación de comprobantes | Conciliación y reintento en main; política de remitente falsificable y producción pendientes | #300 deja el concepto como informativo; #301–#302 reintentan el mismo comprobante con OCR nuevo antes de Titan; #304 corrige el 404 de IDs y compara candidatos multi-banco. Siguen obligatorios remitente/asunto configurados, identificador, importe, fecha, cuenta, coincidencia única y no reutilización. Sin prueba en Titan/Hostinger real |
 | Pagos y recibos del condómino | Refresco, reintento, reparto y formulario simplificado en main; navegador/producción pendientes | #295 actualiza historial/tarjetas/burbuja; #301–#302 muestran reintento OCR/Titan; #303/#305 generan reparto desde dos viviendas; #304 separa 404 de comprobante/ruta; #306 retira Calle/Número duplicados y admite abonos positivos de mantenimiento. La UI no valida depósitos por sí misma y falta aceptación en Safari/app.html |
 | OCR | Formatos flexibles, doble lectura y candidatos multi-banco en main | #298 agrega segunda lectura segura para columnas; #299 reconoce importes/fechas sin etiquetas y excluye comisión/saldo/cuentas; #304 compara candidatos sin etiqueta contra identificadores expresos del aviso. Se conserva OCR independiente del servidor y rechazo de ambigüedad. La prueba privada local no acredita despliegue ni recepción |
 | Escritura C3 por pago | Flujo general implementado en main; hardware no verificado | #288 entrega un objetivo absoluto SQL posterior al commit, conserva idempotencia y permite acreditar sin TAG; fallos C3 no revierten el abono. No se ejecutó la migración ni se comprobó Hostinger, MySQL o controlador físico |
 | Edición manual de TAGs | Implementada en main; búsqueda simplificada y validación física pendientes | PR #205 permite habilitar, crear, reasignar o agregar TAGs aun con adeudo. #321–#322 dejan búsqueda libre por calle/domicilio y conservan el selector de Editar TAG. `bloqueado=false` no prueba `userauthorize` en el C3; dos expectativas históricas de `editTag` siguen fallando en simulación |
-| Inventario C3 | Diagnóstico, lectura periódica y reintento acotado implementados; conexión física pendiente | #320 añade diagnóstico TCP/protocolo/inventario de solo lectura. #321 cierra sockets parciales, reintenta una vez fallos transitorios y evita sesiones TCP al buscar/paginar. El usuario reportó pérdida de conexión tras apagón/cambio de IP; no hay confirmación de recuperación, DDNS o despliegue |
-| Cuentas y viviendas | Relación múltiple implementada en main; migración final pendiente | PR #215 usa `condominos_viviendas` para padrón, búsqueda, cuotas, tablero y prerregistro de todos los domicilios; #216 retira `condominos.direccion_id` del modelo/código. El usuario aportó CSV con 188 relaciones originales, 188 copiadas y cero faltantes. Faltan despliegue ordenado y ejecutar/verificar los SQL 01/02 antes de retirar la columna física |
+| Inventario C3 | Diagnóstico, lectura periódica y retorno con contexto implementados; conexión física pendiente | #320–#321 añaden diagnóstico, cierre/reintento acotado y evitan TCP al buscar. #348 permite volver desde ZKTeco a Análisis con proyecto, fechas, filtros y página guardados por 30 minutos; no cambia la conexión. La pérdida tras apagón/IP continúa sin recuperación, DDNS o despliegue confirmados |
+| Cuentas y viviendas | Relación múltiple y contacto de recibo por vivienda implementados; migración/despliegue pendientes | #215 usa `condominos_viviendas`; #216 retira `condominos.direccion_id` del código. El CSV previo reporta 188 relaciones copiadas sin faltantes. #353 permite guardar por separado teléfono o correo en la vivienda sin modificar cuentas/condóminos. Falta despliegue coordinado, prueba de autorización y la migración final SQL 01/02 |
 | Conmutador | Integración futura | No se confirmó funcionamiento con hardware en esta revisión; consultar configuración antes de habilitar telefonía |
 | Automatización de pruebas PR #132 | Revertida | Reversión en main: `5828fca4d7e68e4a5d72141b9678aabba9482b36`; no usar sus comandos/workflow como si siguieran disponibles |
 | Seguridad HTTP | Corrección DoS en main; despliegue pendiente | #270 actualiza body-parser a 2.4.0, fija override mínimo y rechaza cuerpos JSON/form comprimidos antes de descomprimir. La prueba HTTP real reporta 7/7; `npm audit --omit=dev` conserva cinco dependencias ajenas a esa alerta |
@@ -259,16 +304,17 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 | Historial administrativo de pagos | Implementado en main; producción no verificada | PR #160–#162 conservan historial 11–10. PR #209 añade historial por vivienda/concepto, total del último movimiento y separación explícita entre vigencia C3 verificada y MySQL; #214 oculta solo el aviso naranja, no la diferencia. No corrige fechas automáticamente |
 | Pagos manuales desde Análisis | Registro y anulaciones auditadas en main; uso real pendiente | #171/#173–#176 registran mantenimiento y #193 amplía conceptos. #323–#324 anulan MJMAN con instantáneas; #336 admite históricos elegibles y prepara C3 REVERSA solo con fecha anterior verificable. #344 anula una aportación extraordinaria auditada. No se probó con MySQL/C3 real; bloqueos de seguridad y una cola no confirman restauración física |
 | Auto-users | Alta individual implementada; SMTP/producción pendientes | #296 añade mostrar/ocultar contraseñas. #297 crea prerregistro individual transaccional por vivienda, idempotente y sin enviar correo al crear; conserva cuentas/vínculos anteriores y separa la baja del inquilino saliente. La invitación individual anterior fue recibida por el usuario, pero este flujo nuevo no se probó con MySQL/SMTP reales |
+| Correo de recibos | Implementado en main; configuración y entrega real pendientes | #348 envía el PDF oficial con límite por folio/actor; #349 aísla `MJ_GMAIL_SMTP_*` del SMTP existente sin fallback; #350 admite destinatario de una operación; #351 corrige proyectoId; #353 permite guardar contacto y confirma solo tras aceptación SMTP. No se configuró Hostinger ni se envió correo en esta revisión |
 | Seguridad, pluma y cámaras | Parcialmente implementado; hardware no verificado | PR #159 reutiliza el endpoint de pluma y prepara proxy HLS; #163 añade diagnóstico; #164 retira el visor Dahua de Seguridad, conservando backend/documentación. PR #189 habilita Inicio operativo a Seguridad con visitas de hoy y accesos sin salida, sin finanzas. Falta gateway RTSP→HLS, despliegue y pruebas con cuentas/hardware reales |
 | Visibilidad del padrón | Filtros de lectura en main; objetivo 231 pendiente de producción | #177–#178 filtran Guadalajara 707 y Valle de México 3614. #318–#319 ocultan TEST-001/002 de módulos operativos y ZKTeco sin borrar historial, pagos o TAGs. Falta desplegar y confirmar 231 viviendas y ausencia de ambas pruebas en consultas reales |
-| Finanzas históricas y dashboard | Reportes, ajustes y categoría Proyecto en main; producción no verificada | #327–#330 muestran calles/categorías y comparativos; #332 separa cuotas por período del efectivo recibido; #333 ajusta totales mediante asientos auditados. #337 añade el gasto PROYECTO como novena categoría sin generar cuotas y puede ampliar el ENUM al arrancar. Falta cotejo MySQL, permiso ALTER, despliegue y prueba visual |
+| Finanzas históricas y dashboard | Reportes, ajustes y vista por proyecto en main; producción no verificada | #327–#333 cubren comparativos, criterio por período y ajustes auditados; #337 añade el gasto PROYECTO. #348 cambia tarjetas, dona y calle al proyecto extraordinario activo y exporta libros completos por proyecto. Falta cotejo MySQL, permiso ALTER, despliegue, apertura en Excel y prueba visual |
 | Cuotas para Seguridad | Cálculo compartido implementado en main; producción no verificada | #140 creó la vista sin PII. #294 sustituye su criterio independiente por el mismo cálculo/clasificador de Pagos y Análisis, considerando tarifa, exenciones, anticipos y abonos parciales. La regresión Atotonilco 752 está cubierta con fixtures; no se consultó la DB real ni se confirmó despliegue |
 | Respaldos Google Drive | Mantenimiento y proyectos implementados en main; OAuth y archivos reales pendientes | #323–#325 incorporan Picker, PDF de mantenimiento y Excel separado; #331 corrige Picker oculto. #341 añade recibos -P, ZIP y respaldo Drive por proyecto/año sin mezclar Excel de mantenimiento. Requiere configuración segura, permisos reales y validación de reintentos/nombres; no se conectó Drive en esta revisión |
 | Históricos Google Sheets | Backend/staging opcional conservado; controles retirados de Análisis | PR #140 añadió lectura OAuth y preparación idempotente, deshabilitadas por defecto. PR #187 retiró solo la tarjeta y el script de esa vista; no borró archivo, endpoint, tabla ni datos. Requiere decisión explícita, migración y validación antes de activar |
-| Análisis, historial y recibos | Mantenimiento y proyectos implementados; producción no verificada | #308 evita recargos duplicados; #316–#317 generan folio/nombre MJ; #323–#326 añaden ZIP/Drive y movimiento completo. #341 añade recibos estables -P, historial, ZIP y Drive por proyecto; #344 permite anular un movimiento extraordinario elegible y conservar auditoría. Falta validar PDF/ZIP, navegador, Drive, MySQL y conteo 231 |
+| Análisis, historial y recibos | Mantenimiento, proyectos y correo implementados; producción no verificada | #308/#316–#326 cubren importe, folio, ZIP/Drive y movimiento completo; #341 añade recibos -P; #344 anulación auditada. #348–#351 agregan correo del PDF, destinatario de una sola operación y corrigen proyectoId; #353 permite guardar contactos por vivienda y muestra confirmación solo tras SMTP. Falta validar PDF/ZIP, correo real, navegador, Drive y MySQL |
 | Navegación de Administración/Comunidad | Implementada en main; validación visual pendiente | PR #187 oculta Cuotas del menú y retira la tarjeta de conciliación; #188 oculta las pestañas de Análisis, conserva sus elementos/rutas y ordena Comunidad con Pagos primero. Son cambios de interfaz, no borrado de datos ni cambio de permisos |
 | Inicio por rol | Implementado en main; producción no verificada | PR #223 restaura Inicio dentro del portal persistente: administración ve finanzas, Seguridad visitas/accesos sin cobros y Condómino solo viviendas autorizadas por `usuarios_casas`. Fallos parciales muestran «No disponible» sin inventar ceros. Faltan cuentas reales y revisión de logs/despliegue |
-| Cobranza extraordinaria y casa club | Proyectos extraordinarios implementados en main; Casa Club y producción pendientes | #193/#210 añaden cargos y reservas; #315 permite aprobación directa administrativa de Casa Club sin registrar pago. #339–#346 implementan proyectos extraordinarios por vivienda, aportaciones positivas repetibles, saldos, cuota cero/No aplica, edición concurrente, recibos -P y anulación auditada sin efectos C3. Falta desplegar/migrar y probar MySQL; Casa Club todavía requiere adaptar abonos parciales |
+| Cobranza extraordinaria y casa club | Proyectos extraordinarios implementados en main; Casa Club y producción pendientes | #193/#210/#315 cubren cargos y reserva administrativa. #339–#346 implementan proyectos por vivienda, aportaciones repetibles, cuota cero/No aplica, edición, recibos y anulación. #348 añade tablero/Excel por proyecto y #350 evita que saldos cero aparezcan como adeudo sin borrar historia. Falta desplegar/migrar y probar MySQL; Casa Club aún requiere abonos parciales |
 | Noticias y tráfico | Implementado en main; despliegue/visual pendientes | #220/#225/#228/#238 conservan fotos, fallbacks e ilustración etiquetada. #263 corrige TomTom a `language=es-ES` y solicita los campos que consume la UI; faltan despliegue y prueba contra la API real con la llave configurada |
 | Monitor automático de adeudos C3 | Implementado en main; apagado por defecto | #204–#205 conservan piloto/dry-run y operaciones manuales. PR #210 limita el monitor exclusivamente a deuda de mantenimiento: extraordinarias y Casa club no bloquean TAGs ni cambian vigencias. No auto-reactiva al saldar. Sin prueba física ni escritura de producción |
 | Continuidad documental | Reglas de concepto, reparto y abonos actualizadas; discrepancia enero/septiembre pendiente | #307 fija cualquier importe positivo como abono y #305 corrige el reparto desde dos viviendas. #340 ya implementa esa regla para extraordinarias por proyecto; Casa Club sigue pendiente. Debe conciliarse AGENTS.md (septiembre sin cobertura) con #290/código (enero de 2026 sin pagos). El manual integral sigue siendo guion, no evidencia E2E |
@@ -276,12 +322,12 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 Un merge no acredita despliegue en Hostinger ni prueba física de una pluma.
 No se verificaron los valores efectivos de producción ni la versión PHP de Hostinger;
 el backend documentado continúa siendo Node.js.
-Desde el SHA consultado en la revisión anterior, main avanzó 146 commits. Se excluyó
-`a6ff758`, dedicado únicamente a esta bitácora; el trabajo de producto se agrupa en
-los PR #334–#347, todos fusionados y con workflow exitoso. No hay PR abiertos. Los
-checks acreditan las suites obligatorias del workflow —incluidas al final cuota cero y
-selección de proyectos—, pero no todas las suites nuevas ni despliegue, MySQL,
-OAuth/Drive, navegador o C3 físico.
+Desde el SHA consultado en la revisión anterior, main avanzó 30 commits. Se excluyó
+`51b0ebf`, dedicado únicamente a esta bitácora; el trabajo de producto se agrupa en
+los PR #348–#353, todos fusionados. No hay PR abiertos. #348–#350 tienen workflows
+exitosos; #351–#353 no tienen runs ni estados combinados recuperables. Los checks
+acreditan simulaciones y estructura, no despliegue, MySQL, SMTP/Gmail, Microsoft Excel,
+navegador ni C3 físico.
 El PR #132 continúa revertido.
 
 ## Pruebas físicas y de operación confirmadas por el usuario
@@ -309,6 +355,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | Diagnóstico del buzón IMAP | La documentación incorporada por #265 registra conexión/lectura real de 41 mensajes con el diagnóstico anterior | En ese momento hubo cero avisos autenticados y cero cuentas de cuatro dígitos reconocidas; no acredita conciliación, depósito, aprobación, MySQL ni TAGs. El contenido privado no fue consultado en esta revisión |
 | Prueba bancaria controlada y saldo de Análisis | Los PR #280–#285 conservan evidencia de un reporte controlado que llegó a VALIDADO mientras la cuota aún mostraba saldo | Confirma la discrepancia concreta documentada y motivó #285; no prueba que el flujo general ya actualice `cuotas` ni que C3 haya cambiado. Esta revisión no consultó MySQL ni el buzón |
 | Requisito de fuente única | El usuario pidió que Pagos deje de calcular desde ZKTeco y use la misma fuente contable que Análisis, actualizando después Análisis y sincronizando C3 cuando exista TAG | Es una decisión/solicitud accesible, no una prueba física ni una implementación. #285–#287 cubren solo TEST-001 |
+| Diagnóstico Workbench del bloqueo por C3 anulado | El PR #352 conserva seis resultados aportados por el administrador: la cuota del caso seguía pendiente y el movimiento C3 vinculado estaba ANULADO | Evidencia puntual de consulta accesible en el PR; esta revisión no leyó MySQL directamente. No demuestra despliegue de #352, pago recibido, nuevo evento ni cambio físico en C3 |
 
 ## Pruebas automatizadas con resultado conocido
 
@@ -399,6 +446,8 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | 2/nov/2026 | Validaciones declaradas por #324, #326, #328, #331–#333 | #324 simuló clics de Borrar/ZIP/Drive; #326 reportó **4/4** variantes con mismo folio y $600; #328 obtuvo $1,100 acumulado en memoria; #332 reportó **PASS** con $2,400 noviembre/$1,500 diciembre/$3,900 caja. Los demás declaran sintaxis/casos añadidos sin total ejecutado publicado | Evidencia local/de rama; no sustituye ejecutar `finanzas-botones-respaldos.test.js`, `drive-recibos-2026.test.js`, `recibo-mantenimiento-analisis.test.js`, `finanzas-ingresos-calles-egresos-conceptos.test.js`, `analisis-picker-paginacion.test.js` y `ajustes-egresos-mensuales.test.js` en main |
 | 3/nov/2026 | PR #334–#347; workflows [41664324384](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41664324384) a [41740068734](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41740068734) | **14/14 jobs success** | Cada head pasó el workflow disponible al momento; los previews de Hostinger pertenecen a ramas y no prueban despliegue de main ni funcionamiento |
 | 3/nov/2026 | Run #347: `node --test backend/test/proyectos-presupuesto.test.js backend/test/proyectos-cuotas-version.test.js backend/test/proyectos-cero-edicion.test.js`; patrón de tarifa cero; `node --test backend/test/analisis-seleccion-proyectos.test.js` | **20/20**, **1/1** y **5/5**. Diagnósticos no bloqueantes: UI **4/6**, bancaria **87/88**, esta última igual en main | Pruebas estructurales/servicios con entorno simulado; no ejecutan MySQL, navegador, Drive, Hostinger o C3 real. Varias suites añadidas por #334–#344 siguen fuera del workflow |
+| 4/nov/2026 | Heads #348–#350; workflows [41844009015](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41844009015), [41845023807](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41845023807) y [41885015371](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/41885015371) | **3/3 jobs success** | Los heads #351–#353 devuelven cero workflow runs y cero estados combinados; sus archivos de prueba no cuentan como ejecución CI |
+| 4/nov/2026 | Run #350: `node --test backend/test/finanzas-proyectos-correo-live.test.js`; `node --test backend/test/mj-gmail-smtp-aislado.test.js`; `node --test backend/test/proyectos-pendientes-correo-editable.test.js` y repetición de la primera suite | **8/8**, **3/3**, **7/7** y **8/8**. Diagnósticos no bloqueantes: UI **4/6**, bancaria **87/88**, igual en main | SMTP, DOM, libros y sincronización simulados; no prueban entrega Gmail, Excel real, Hostinger, MySQL o C3. `recibos-correo-proyecto-id.test.js`, `pagos-c3-anulados-no-bloquean.test.js` y `recibos-contactos-guardados.test.js` están en main pero sin run recuperable |
 
 Los dos fallos están en `backend/test/zkteco-vigencias.test.js`:
 
@@ -450,21 +499,24 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | Conectividad C3, IP pública y recuperación | Desplegar #320–#322 y ejecutar Diagnosticar C3 desde el servidor. Confirmar etapa/código sin publicar IP o secretos; revisar IP pública/DDNS, NAT/port-forwarding TCP y contraseña. El reintento de #321 no corrige una IP cambiada. No existe en main actualización automática basada en la IP del navegador del administrador; diseñarla solo con autenticación fuerte, verificación C3 inequívoca, auditoría y rollback |
 | Dos pruebas históricas fallidas de edición de TAG | PR #205 restauró la conducta manual solicitada, pero `zkteco-vigencias.test.js` sigue 7/9 por expectativas antiguas de `editTag`. Diagnosticar, acordar el comportamiento esperado y repetir sin ocultar SQL/C3 divergentes |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
-| CI y regresiones históricas | #334–#347 tienen catorce workflows exitosos. El run #347 ya ejecuta proyectos/presupuesto/cuota cero 20/20 + 1/1 y selección 5/5, pero conserva UI 4/6 y bancaria 87/88 como diagnósticos. Ejecutar explícitamente las suites nuevas de gráficas/UI compacta, reversión histórica, categoría Proyecto, aportaciones libres, recibos/Drive y anulación extraordinaria; no declarar todo verde por `continue-on-error` |
+| CI y regresiones históricas | #348–#350 tienen tres workflows exitosos; #351–#353 carecen de runs/estados. El run #350 pasa suites nuevas 8/8, 3/3, 7/7 y 8/8, pero conserva UI 4/6 y bancaria 87/88 como diagnósticos. Ejecutar las tres pruebas de proyectoId, C3 anulado y contactos guardados, además de suites anteriores aún omitidas; no declarar todo verde por `continue-on-error` |
 | Auto-users por SMTP | La prueba individual anterior recibió correo. #297 añade alta individual sin envío automático. Falta desplegar y probar con una vivienda controlada: creación idempotente, invitación separada, enlace en incógnito, aceptación completa, reintento SMTP, duplicados y conservación del residente anterior |
 | Migración de cobranza por concepto | Respaldar DB, revisar y ejecutar manualmente `backend/sql/2026-10-18-cuotas-extraordinarias-casa-club.sql` primero en prueba; después correr consultas diagnósticas. No desplegar backend/frontend nuevo antes del esquema |
 | Padrón y relaciones condómino-vivienda | El CSV reporta 188 pares copiados sin faltantes y #318–#319 dejan en código el objetivo operativo de 231 al ocultar TEST-001/002. Falta desplegar, revisar respaldos/bitácora, confirmar 231 en MySQL desde otra conexión y verificar que casas reales, relaciones e indicadores financieros no se ocultaron ni alteraron |
 | Casa club y tres conceptos | #315 permite reserva directa administrativa, pero falta probar con MySQL controlado roles, spoofing, colisión, cargos, plazo y que APROBADA siga impaga. #340 ya acepta aportaciones positivas repetibles para proyectos extraordinarios sin liquidar ni tocar C3; adaptar Casa Club con el mismo principio conservando saldo, reserva y verificación bancaria |
-| Proyectos extraordinarios por vivienda | Respaldar y probar en clon MySQL antes de desplegar #339–#346 juntos. Confirmar migración idempotente, 231 viviendas, metas/aportaciones por proyecto, abonos parciales y simultáneos, presupuesto/excepciones, 409 concurrente, cuota cero/No aplica, folios -P, ZIP/Drive y anulación auditada. No importar los archivos privados hasta resolver la diferencia agregada de $1,000 y confirmar las tres tarifas inferidas; no asumir que previews de ramas equivalen a main desplegado |
+| Proyectos extraordinarios por vivienda | Respaldar y probar en clon MySQL antes de desplegar #339–#350. Confirmar migración, 231 viviendas, aportaciones, presupuesto/excepciones, 409, cuota cero/No aplica, recibos/anulación y que saldo cero no genere aviso. Abrir los cuatro libros de #348 en Excel y cotejar tablero por proyecto. No importar archivos privados hasta resolver la diferencia agregada y confirmar tarifas inferidas; previews no equivalen a main desplegado |
 | Inicio por rol | Validar con cuentas reales de administrador, Seguridad y Condómino (una y varias viviendas): alcance de listas, ausencia de finanzas en no administradores y ausencia de datos de casas ajenas |
 | Adeudo acumulado, anticipos y advertencias TAG | Cotejar contra MySQL una casa al corriente, parcial, morosa y con anticipo 2027; confirmar que Último mes pagado muestra el período real sin sumar deuda futura. Abrir modal en casas con 0/1/varios TAGs y confirmar C3 bajo demanda sin escrituras |
 | Paridad Seguridad–Análisis | Desplegar #294 y cotejar en MySQL controlado Atotonilco 752 y otras viviendas con tarifa especial, exención, anticipo, abono parcial y pendientes antiguos. Confirmar mismo estado/adeudo en ambas vistas y ausencia de PII; no cambiar registros para forzar el resultado |
 | Portal móvil y navegación | El scroll fue confirmado y el primer refresco de #231 fue reportado sin efecto. Desplegar #239 y #309–#314; validar en Safari/iPhone/Android las cuadrículas 2×2, Pago anual, gráficas/desplegables de 46 px, KPI, caché, modales, navegación y descargas. Los checks estáticos no sustituyen revisión visual |
 | Anulación de pagos y reversión C3 | Antes de usar #323–#324/#336: respaldo, clon MySQL, MJMAN e histórico elegible, vista previa, doble confirmación, concurrencia y auditoría. Para #344 probar una aportación extraordinaria sin banco y el rechazo de una conciliada. Verificar COMPLETADO y lectura física de TAGs; no asumir que una orden en cola restauró C3 |
 | Respaldos Google Drive | Configurar OAuth/Picker sin publicar secretos, autorizar la carpeta existente y probar lotes, actualización, cancelación/errores, ZIP/Excel/PDF de mantenimiento. Añadir pruebas #341 de recibos -P, ZIP y carpetas por proyecto/año sin mezclar Excel ni duplicar reintentos. Confirmar #331 al frente; no borrar PDF antiguos con folios distintos sin revisión |
+| SMTP de recibos y contactos guardados | Configurar únicamente `MJ_GMAIL_SMTP_*` en Hostinger sin tocar `SMTP_*`; desplegar #348–#353 frontend/backend, probar una cuenta controlada, entrega/adjunto/remitente, errores 503, límite de 60 s y destinatario alternativo. Verificar que Guardar teléfono/correo exige ADMIN, actualiza solo una columna de la vivienda y nunca expone ni modifica cuentas vinculadas |
+| Cuota bloqueada por evento C3 anulado | Respaldar y desplegar #352. Repetir SELECT de solo lectura; confirmar que cuota siga pendiente y evento siga ANULADO. Cotizar sin bloqueo por ese evento y registrar únicamente si administración comprobó pago e importe. El movimiento nuevo debe ser independiente; no reactivar el anulado ni inferir que C3 físico cambió |
+| Sincronización de Finanzas entre sesiones | Desplegar #348 y probar dos sesiones/instancias: revisión en memoria sin consultas MySQL cada 20 s, recarga sin interrumpir modales y respaldo multi-proceso. Medir conexiones frente al límite del hosting; no describirla como tiempo real garantizado |
 | Reportes financieros por calle/concepto | Desplegar #327–#332/#337 y cotejar calles y las nueve categorías contra MySQL. Verificar Gardenias $2,400 como cuotas cubiertas y separar $3,900 de caja; revisar PROYECTO frente al legado PROYECTOS, permiso ALTER del ENUM, modales, mensual/anual, Excel y caché sin alterar filas |
 | Ajuste mensual de egresos | Ejecutar `ajustes-egresos-mensuales.test.js` y probar #333 en respaldo/clon: ajuste negativo/positivo, alias históricos, ediciones sucesivas, 409 por concurrencia, SERIALIZABLE/FOR UPDATE, folio/auditoría y actualización de reportes. No editar totales reales hasta confirmar rollback operativo |
-| Mis recibos, refresco y reintento | Desplegar #295, #301–#304, #308/#316/#317 y #341 en frontend/backend. Validar refresco OCR→Titan, que $650 no genere $700, folios MJ de mantenimiento y -P por cada aportación extraordinaria, descarga/visor/WhatsApp, rol, expiración, CSP y que movimientos parciales no se fusionen |
+| Mis recibos, refresco y reintento | Desplegar #295, #301–#304, #308/#316/#317, #341 y #348–#353 en frontend/backend. Validar refresco OCR→Titan, importes/folios MJ y -P, descarga/WhatsApp/correo, proyectoId, rol, límite de reenvío, CSP, contactos de una operación frente a persistidos y ausencia de confirmación falsa cuando SMTP falla |
 | TomTom | Desplegar #263 y probar incidencias reales en español con la llave del proyecto; distinguir un HTTP 400 anterior de una respuesta válida con los campos consumidos por la UI |
 | Body-parser y dependencias | Redesplegar backend desde el lock de #270, confirmar rechazo 415 de gzip/deflate/Brotli y ejecutar smoke de login/pagos. Revisar por separado los cinco avisos restantes de npm audit sin aplicar `audit fix --force` a ciegas |
 | Retiro operativo de TEST-001/002 | #318–#319 ya revierten la excepción temporal y ocultan ambas viviendas sintéticas en lecturas, sin borrar historial. Falta desplegar y verificar Análisis, Seguridad, Casas, Residentes, Auto-users y ZKTeco; no ejecutar DELETE ni tocar `zk_tarjetas` para forzar el conteo |
@@ -489,7 +541,7 @@ el índice ni publica datos personales o contenido adicional del padrón.
 | Conciliación bancaria por correo | Desplegar #299–#304 y validar Titan/Hostinger con reporte controlado, sin repetir depósitos. El concepto ya es informativo; deben mantenerse remitente/asunto configurados, identificador, monto, fecha, cuenta, coincidencia única y hash no reutilizable. La política #284 sigue confiando en From exacto/asunto sin DKIM/DMARC; #283 está cerrado sin merge |
 | Migración final de `direccion_id` | Respaldar; ejecutar SQL 01; desplegar todo el backend nuevo y retirar instancias/importadores antiguos; probar; después, sin escrituras, ejecutar SQL 02. DDL no revierte con ROLLBACK y código antiguo no puede volver tras retirar la columna |
 | Tarifa y exención por vivienda | AGENTS.md ya reconoce `direcciones.cuota_por_cobrar` con default $300 y #290 añade exenciones persistentes. Falta migrar/verificar esquema, probar cambios de tarifa/exención y confirmar que pagos históricos, referencias y C3 no se alteran |
-| Recibos, Excel y exportación de Análisis | Además de validar XLSX vigente, desplegar #323–#326/#341 y comprobar que historial, selector, ZIP y Drive conservan folio/importe/rango por movimiento; Gardenias 4 debe conservar $600 noviembre–diciembre y proyectos usar -P por aportación. Regenerar documentos solo tras revisar duplicados/folios antiguos |
+| Recibos, Excel y exportación de Análisis | Además de validar XLSX vigente, desplegar #323–#326/#341/#348 y comprobar folio/importe/rango, ZIP/Drive y cuatro libros por proyecto con hojas y cinco gráficas editables. Abrirlos en la misma versión de Microsoft Excel, cotejar 231 viviendas/estados y confirmar que mantenimiento no se mezcla. Regenerar documentos solo tras revisar duplicados/folios antiguos |
 | Orden por fecha, UI y pago anual en Análisis | Comprobar que #240 ya no aparece, que #244 conserva el filtro de orden, que #245 cobra solo meses faltantes y que #247 filtra Pago anual sin confundir diciembre ordinario. No registrar pagos reales hasta conciliar #243/#246 y validar con datos controlados |
 | Fechas DD-MON-YYYY | Revisar visualmente 24 páginas y selectores nativos en Safari iOS/Chrome Android; confirmar que valores ISO, zona México y folios permanecen intactos |
 | Base de deuda sin pagos: enero vs septiembre | Resolver la discrepancia antes de desplegar: #290/código limita cortes heredados a enero de 2026, mientras AGENTS.md indica septiembre de 2026 cuando no hay cobertura. Definir la regla, actualizar fuentes rectoras/código y probar casos sin historial sin inventar periodos |
@@ -516,6 +568,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-04
+
+- Main consultado a las 23:26, America/Mexico_City, en `9def48327b5a983dc769989530c91acfad4b0ebf`: 30 commits por delante del SHA guardado. Se excluyó `51b0ebf`, dedicado solo a esta bitácora.
+- PR #348–#351 fusionados: tablero y Excel por proyecto, correo de recibos con SMTP Gmail aislado, avisos solo por saldo pendiente, destinatario de una operación y corrección de proyectoId. No hubo Excel, SMTP, navegador o despliegue real.
+- PR #352 fusionado: los resultados Workbench aportados confirman el caso puntual de cuota pendiente bloqueada por un evento C3 ANULADO; main ahora excluye solo ese estado del bloqueo. No se registró pago ni se alteró MySQL/C3.
+- PR #353 fusionado: guardar teléfono/correo por vivienda y confirmación centrada solo tras SMTP. No se guardaron contactos ni se enviaron correos reales.
+- Los workflows de #348–#350 concluyeron **success**; el run final pasó **8/8**, **3/3**, **7/7** y **8/8**, con diagnósticos UI **4/6** y bancario **87/88**. #351–#353 no devolvieron runs ni estados combinados.
+- No hay PR abiertos. Se preservan reglas, pruebas históricas y pendientes; los merges no acreditan despliegue, Hostinger, Gmail, MySQL, Microsoft Excel ni C3 físico.
 
 ### 2026-11-03
 
