@@ -2,6 +2,7 @@
 <html lang="es">
 
 <head>
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico?v=20261005">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20261005">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png?v=20261005">
@@ -9,6 +10,7 @@
 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f97316">
     <title>Iniciar sesión | Misión Jardines</title>
     <style>
         [hidden] { display: none !important; }
@@ -635,6 +637,26 @@
             text-decoration: underline;
         }
 
+        .install-help {
+            margin-top: 12px;
+            font-size: .875rem;
+            color: var(--text);
+        }
+
+        .install-help summary {
+            padding: 12px 0;
+            cursor: pointer;
+        }
+
+        .install-help p {
+            margin: 0 0 8px;
+            line-height: 1.5;
+        }
+
+        @media (display-mode: standalone) {
+            .install-help { display: none; }
+        }
+
         .login-security span {
             color: var(--success)
         }
@@ -869,6 +891,11 @@
                 </form>
                 <div class="register-link">¿Aún no tienes acceso? <a href="registro.html">Crear cuenta</a>
                 </div>
+                <details class="install-help">
+                    <summary>Instalar Misión Jardines en tu celular</summary>
+                    <p><strong>Android:</strong> abre el menú de Chrome y elige «Instalar aplicación» o «Añadir a pantalla de inicio».</p>
+                    <p><strong>iPhone:</strong> abre esta página en Safari, toca «Compartir» y elige «Agregar a inicio». Activa «Abrir como app web» si aparece.</p>
+                </details>
                 <div class="login-security"><span>●</span>Conexión protegida con autenticación segura</div>
             </div>
         </section>
