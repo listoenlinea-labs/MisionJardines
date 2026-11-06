@@ -1,16 +1,15 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 4/nov/2026, 23:26, America/Mexico_City.
-**SHA de main consultado:** `9def48327b5a983dc769989530c91acfad4b0ebf`.
+**Última revisión:** 5/nov/2026, 23:27, America/Mexico_City.
+**SHA de main consultado:** `d64b8e6b897185617f87d18b49c2ccd49992771c`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `d32916e68b0bf06ea242500c9e616dcec29ab3f4`,
-PR #348–#353, sus commits, workflows, jobs, logs y evidencia publicada.
-Main avanzó 30 commits; se excluyó `51b0ebf37f3bc27e9877fde3275eab07df4afd83`,
-que solo actualizó esta bitácora. Los seis PR están fusionados y no hay PR abiertos.
-Los heads #348–#350 tuvieron workflow `success`; GitHub no devolvió workflow runs ni
-estados combinados para #351–#353, aunque sus pruebas están presentes en main. No se
-consultaron Hostinger, C3 o MySQL directamente, no se enviaron correos y no se publican
-credenciales, direcciones de correo, teléfonos, comprobantes ni datos privados del padrón.
+comparación de main desde `9def48327b5a983dc769989530c91acfad4b0ebf`,
+historial reciente de commits, PR abiertos y evidencia de checks en GitHub.
+Main avanzó un commit: `d64b8e6b897185617f87d18b49c2ccd49992771c`,
+dedicado exclusivamente a actualizar esta bitácora y excluido del trabajo de producto.
+No hay PR abiertos, cambios verificables de producto ni checks nuevos. No se consultaron
+Hostinger, C3 o MySQL directamente, no se enviaron correos y no se publican credenciales,
+direcciones de correo, teléfonos, comprobantes ni datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
@@ -568,6 +567,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-05
+
+- Main consultado a las 23:27, America/Mexico_City, en `d64b8e6b897185617f87d18b49c2ccd49992771c`: un commit por delante del SHA guardado.
+- El único commit nuevo fue `d64b8e6`, que modificó exclusivamente `docs/ESTADO_PROYECTO.md`; se excluyó del trabajo verificable de producto.
+- No hay PR abiertos, cambios de código, PR fusionados, workflows ni checks nuevos. Se conservan sin cambios los PR #348–#353 y los resultados ya documentados, sin contarlos otra vez.
+- No hubo confirmaciones nuevas accesibles de despliegue, Hostinger, Gmail, Microsoft Excel, MySQL o C3 físico. Se preservan las reglas, pruebas históricas, resumen operativo y todos los pendientes.
 
 ### 2026-11-04
 
