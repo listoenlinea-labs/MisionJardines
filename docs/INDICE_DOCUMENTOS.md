@@ -123,3 +123,5 @@ cuando se esperaba 20261110. Son fallos existentes en el código/pruebas revisad
 esta entrega solo añade AGENTS.md y el índice, y no los corrige. No permiten
 concluir por sí solos que el controlador de producción tenga ese comportamiento.
 Pendiente diagnosticarlos antes de declarar esa parte de la suite aprobada.
+
+- [Piloto de comprobantes por WhatsApp](../backend/docs/WHATSAPP_COMPROBANTES.md)

@@ -13,6 +13,7 @@ const eventosRoutes = require('./routes/eventos.routes');
 const accesosRoutes = require('./routes/accesos.routes');
 const visitasRoutes = require('./routes/visitas.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const whatsappComprobantes = require('./routes/whatsapp-comprobantes.routes');
 const pagosRoutes = require('./routes/pagos.routes');
 const busquedaRoutes = require('./routes/busqueda.routes');
 const conexionRoutes = require('./routes/conexion.routes');
@@ -38,6 +39,9 @@ app.use(express.static(publicDir, {
 }));
 
 app.use(helmet());
+
+// Meta firma los bytes originales, antes de convertir el cuerpo a JSON.
+app.use('/api/webhooks/whatsapp-comprobantes', whatsappComprobantes.webhook);
 
 // El frontend envía JSON/formularios sin Content-Encoding. Rechazar cuerpos
 // HTTP comprimidos antes de abrir un descompresor (GHSA-27r3-jxmh-p828).
@@ -165,6 +169,7 @@ app.use('/api/eventos', eventosRoutes);
 app.use('/api/accesos', accesosRoutes);
 app.use('/api/visitas', visitasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/pagos/whatsapp-comprobantes', whatsappComprobantes.administracion);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/casa-club', require('./routes/casa-club.routes'));
 app.get('/api/recibo-vista/:permiso', require('./controllers/recibos-mantenimiento-analisis.controller').vistaPdfTemporal);
