@@ -1,20 +1,52 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 5/nov/2026, 23:27, America/Mexico_City.
-**SHA de main consultado:** `d64b8e6b897185617f87d18b49c2ccd49992771c`.
+**Última revisión:** 6/nov/2026, 23:30, America/Mexico_City.
+**SHA de main consultado:** `53d1eb9b36ffd5b1473e318fe18ca1109c9f1898`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `9def48327b5a983dc769989530c91acfad4b0ebf`,
-historial reciente de commits, PR abiertos y evidencia de checks en GitHub.
-Main avanzó un commit: `d64b8e6b897185617f87d18b49c2ccd49992771c`,
-dedicado exclusivamente a actualizar esta bitácora y excluido del trabajo de producto.
-No hay PR abiertos, cambios verificables de producto ni checks nuevos. No se consultaron
-Hostinger, C3 o MySQL directamente, no se enviaron correos y no se publican credenciales,
-direcciones de correo, teléfonos, comprobantes ni datos privados del padrón.
+comparación de main desde `d64b8e6b897185617f87d18b49c2ccd49992771c`,
+historial reciente de commits, PR #354–#356, PR abiertos y evidencia de checks en GitHub.
+Main avanzó doce commits: se excluyó `03eca3a95536fa2e2b33c0fab18c393c1ed8bf6e`,
+dedicado exclusivamente a esta bitácora, y se verificaron tres PR de producto fusionados.
+No hay PR abiertos. Los heads de #354–#356 y el merge actual devuelven cero workflows y
+cero estados; los resultados locales que constan en los PR no se presentan como CI.
+Las vistas previas efímeras de Hostinger registradas por el bot se eliminaron al cerrar
+los PR y no acreditan despliegue en producción. No se consultaron Hostinger, C3 o MySQL
+directamente, no se enviaron mensajes ni se publican credenciales, teléfonos,
+comprobantes o datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 6/nov/2026
+
+Los PR [#354](https://github.com/listoenlinea-labs/MisionJardines/pull/354) y
+[#355](https://github.com/listoenlinea-labs/MisionJardines/pull/355) incorporan una
+experiencia instalable del portal: manifiesto, iconos, apertura independiente desde
+`app.html`, instrucciones para Android/iPhone y un botón que usa
+`beforeinstallprompt` cuando Chrome Android lo ofrece. La aplicación sigue requiriendo
+conexión y el backend actual; no se agregó funcionamiento offline. Las vistas previas
+de Hostinger fueron efímeras y no prueban publicación del portal principal. Quedan
+pendientes Chrome Android, Safari/iPhone, inicio de sesión, navegación y selección de
+un comprobante en teléfonos físicos sobre la URL desplegada.
+
+El PR [#356](https://github.com/listoenlinea-labs/MisionJardines/pull/356) agrega,
+desactivado por defecto, un piloto de recepción de comprobantes por WhatsApp Cloud API:
+verificación y firma del webhook, descarga limitada a JPEG/PNG/WebP/PDF de hasta 2 MiB,
+deduplicación por ID de mensaje, tabla SQL y buzón privado de listado/descarga para
+ADMINISTRADOR y SUPER_ADMIN. La recepción no acredita dinero, no asigna viviendas, no
+actualiza TAGs y no sustituye las guardas de validación bancaria. Falta ejecutar el SQL
+en una base de prueba, configurar Meta, probar webhook y adjuntos, definir retención,
+vincular número-vivienda, conectar OCR/registro de pagos, agregar acuse e interfaz y
+desplegar. No se recibió ningún comprobante real ni se consultó MySQL en esta revisión.
+
+Los PR reportan validaciones locales, pero no publican sus comandos: #354 registró
+**49 aprobadas y 12 fallidas preexistentes** y no pudo iniciar Chromium; #355 registró
+**18 aprobadas y 2 fallidas preexistentes** con eventos simulados; #356 registró
+**54 de 58 aprobadas**, con cuatro fallos en pagos y vigencias. GitHub devuelve cero
+runs y cero estados para los tres heads y para `53d1eb9`; por tanto no hay CI nuevo.
+Ningún resultado acredita producción, Meta real, MySQL, navegador o teléfono físico.
 
 ## Implementado en main el 4/nov/2026
 
@@ -287,6 +319,8 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Portal instalable / Android | Implementado en main; despliegue y teléfonos físicos pendientes | #354 agrega manifiesto, iconos e instrucciones Android/iPhone; #355 muestra el botón nativo solo cuando Chrome Android ofrece `beforeinstallprompt`. Requiere conexión, no añade modo offline y las vistas previas efímeras no prueban producción |
+| Comprobantes por WhatsApp | Piloto desactivado implementado en main; integración y prueba real pendientes | #356 valida firma, formatos/tamaño, deduplica y reserva el buzón a administración. No acredita pagos, asigna viviendas ni toca TAGs. Faltan SQL/configuración Meta en prueba, retención, vínculo vivienda, OCR, acuse, interfaz y despliegue |
 | Pagos de mantenimiento | Unificación, reparto y guardas C3 implementados en main; despliegue y regla base pendientes | #288–#290 unifican `cuotas`/casa y C3 posterior al commit; #303/#305 reparten desde dos viviendas; #306 acepta desde $0.01 y aplica recargos antes del principal. #352 excluye solo eventos C3 ANULADO del bloqueo de cotización/registro, conservando bancos y demás estados. Continúa la discrepancia enero/septiembre y falta validar producción |
 | Confirmación de comprobantes | Conciliación y reintento en main; política de remitente falsificable y producción pendientes | #300 deja el concepto como informativo; #301–#302 reintentan el mismo comprobante con OCR nuevo antes de Titan; #304 corrige el 404 de IDs y compara candidatos multi-banco. Siguen obligatorios remitente/asunto configurados, identificador, importe, fecha, cuenta, coincidencia única y no reutilización. Sin prueba en Titan/Hostinger real |
 | Pagos y recibos del condómino | Refresco, reintento, reparto y formulario simplificado en main; navegador/producción pendientes | #295 actualiza historial/tarjetas/burbuja; #301–#302 muestran reintento OCR/Titan; #303/#305 generan reparto desde dos viviendas; #304 separa 404 de comprobante/ruta; #306 retira Calle/Número duplicados y admite abonos positivos de mantenimiento. La UI no valida depósitos por sí misma y falta aceptación en Safari/app.html |
@@ -360,6 +394,10 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 6/nov/2026 | PR #354, comando no publicado; validación local y arranque de Chromium | **49 aprobadas, 12 fallidas preexistentes**; Chromium no inició | Evidencia declarada en el PR, no CI. Falta navegador y teléfono físico; no acredita Hostinger principal |
+| 6/nov/2026 | PR #355, comando no publicado; eventos simulados de Android, instalación, error, iPhone y standalone | **18 aprobadas, 2 fallidas preexistentes** | Simulación local, no confirmación nativa en Chrome Android ni despliegue |
+| 6/nov/2026 | PR #356, comando no publicado; suite existente | **54 de 58 aprobadas**; cuatro fallos en pagos/vigencias | Evidencia local del PR; no prueba Meta, webhook HTTPS, MySQL ni recepción real |
+| 6/nov/2026 | GitHub: heads `88d73a9`, `7e6f26d`, `e10da90` y merge `53d1eb9` | **0 workflows y 0 estados** | No hay CI nuevo que permita declarar estas entregas verdes |
 | 10/oct/2026 | Rama del PR #132, `DB_PORT=3306 npm run test:flujos` | 80 aprobadas, 0 fallidas | **Histórico:** ese PR fue revertido. Incluía un ajuste de simulación de OCR; no implica que main actual tenga 80 pruebas verdes |
 | 10/oct/2026 | main `5828fca`, `DB_PORT=3306 node --test backend/test/pagos-acceso-c3.test.js backend/test/recargos-mantenimiento.test.js backend/test/zkteco-vigencias.test.js backend/test/zkteco-autosync.test.js` | **35 aprobadas, 2 fallidas** | SQL/TCP simulados; no se escribió al C3 ni a MySQL de producción |
 | 10/oct/2026, 00:15–00:16, America/Mexico_City | PR #132, head `e9b85ad`; desde backend, `DB_PORT=3306 npm run test:flujos`; [Actions 38030320492](https://github.com/listoenlinea-labs/MisionJardines/actions/runs/38030320492) | **80 aprobadas, 0 fallidas**; job `flujos` success; `cuentas-servidor` skipped | Logs recuperados en esta revisión; resultado histórico de código revertido, no prueba de main actual ni del servidor |
@@ -495,6 +533,8 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Portal instalable y botón Android | Publicar frontend por HTTPS y probar en Chrome Android y Safari/iPhone físicos: instalación, icono, apertura standalone, login, navegación por rol y selección de comprobante. Confirmar que el botón aparece solo con `beforeinstallprompt`; la vista previa cerrada no acredita producción |
+| Piloto de comprobantes por WhatsApp | En base y número de prueba: ejecutar `backend/sql/whatsapp_comprobantes.sql`, configurar variables `WHATSAPP_*` sin publicar secretos, registrar callback HTTPS y validar firma, formatos, límite, deduplicación, roles y descarga. Antes de producción definir retención, vínculo número-vivienda, OCR/registro bancario, acuse e interfaz; mantenerlo desactivado hasta cerrar estas pruebas |
 | Conectividad C3, IP pública y recuperación | Desplegar #320–#322 y ejecutar Diagnosticar C3 desde el servidor. Confirmar etapa/código sin publicar IP o secretos; revisar IP pública/DDNS, NAT/port-forwarding TCP y contraseña. El reintento de #321 no corrige una IP cambiada. No existe en main actualización automática basada en la IP del navegador del administrador; diseñarla solo con autenticación fuerte, verificación C3 inequívoca, auditoría y rollback |
 | Dos pruebas históricas fallidas de edición de TAG | PR #205 restauró la conducta manual solicitada, pero `zkteco-vigencias.test.js` sigue 7/9 por expectativas antiguas de `editTag`. Diagnosticar, acordar el comportamiento esperado y repetir sin ocultar SQL/C3 divergentes |
 | Tres regresiones estructurales posteriores a los PR #138–#141 | Repetir la suite actual y confirmar si las expectativas antiguas de assets siguen fallando o ya fueron sustituidas; no declarar main verde sin ejecución nueva |
@@ -567,6 +607,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-06
+
+- Main consultado a las 23:30, America/Mexico_City, en `53d1eb9b36ffd5b1473e318fe18ca1109c9f1898`, doce commits por delante del SHA guardado.
+- Se excluyó `03eca3a`, que solo actualizó esta bitácora. Como trabajo de producto se verificaron #354 (portal instalable), #355 (botón de instalación Android) y #356 (piloto desactivado de comprobantes por WhatsApp), todos fusionados en main; no hay PR abiertos ni revertidos nuevos.
+- #354 reportó 49/61, #355 18/20 y #356 54/58 en validaciones locales con comandos no publicados. Los heads y el merge actual tienen cero workflows y cero estados; los fallos declarados y la falta de Chromium/pruebas físicas se conservan como pendientes.
+- Los comentarios del bot muestran vistas previas efímeras de Hostinger para los tres PR, eliminadas al cerrarlos; no acreditan despliegue del portal principal. No hubo acceso directo a Hostinger, Meta, MySQL o C3 ni confirmación física nueva del usuario.
+- Se actualizan resumen operativo y pendientes sin cambiar reglas de pagos/C3: WhatsApp no acredita dinero, no asigna viviendas ni modifica TAGs, y el portal instalable requiere conexión.
 
 ### 2026-11-05
 
