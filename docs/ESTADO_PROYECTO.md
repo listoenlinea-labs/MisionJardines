@@ -1,17 +1,16 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 6/nov/2026, 23:30, America/Mexico_City.
-**SHA de main consultado:** `53d1eb9b36ffd5b1473e318fe18ca1109c9f1898`.
+**Última revisión:** 7/nov/2026, 23:30, America/Mexico_City.
+**SHA de main consultado:** `ea33562f79e4fb91e8c3e3f230885764cfd21596`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `d64b8e6b897185617f87d18b49c2ccd49992771c`,
-historial reciente de commits, PR #354–#356, PR abiertos y evidencia de checks en GitHub.
-Main avanzó doce commits: se excluyó `03eca3a95536fa2e2b33c0fab18c393c1ed8bf6e`,
-dedicado exclusivamente a esta bitácora, y se verificaron tres PR de producto fusionados.
-No hay PR abiertos. Los heads de #354–#356 y el merge actual devuelven cero workflows y
-cero estados; los resultados locales que constan en los PR no se presentan como CI.
-Las vistas previas efímeras de Hostinger registradas por el bot se eliminaron al cerrar
-los PR y no acreditan despliegue en producción. No se consultaron Hostinger, C3 o MySQL
-directamente, no se enviaron mensajes ni se publican credenciales, teléfonos,
+comparación de main desde `53d1eb9b36ffd5b1473e318fe18ca1109c9f1898`,
+historial reciente de commits, PR abiertos y evidencia de checks en GitHub.
+Main avanzó un commit: `ea33562f79e4fb91e8c3e3f230885764cfd21596`,
+dedicado exclusivamente a actualizar esta bitácora y excluido del trabajo de producto.
+No hay PR abiertos, cambios verificables de producto, workflows ni checks nuevos.
+No hay confirmaciones nuevas accesibles de despliegue, Meta, MySQL, Hostinger o C3 físico;
+se conservan sin cambios el resumen operativo, las reglas, las pruebas históricas y los
+pendientes. No se enviaron mensajes ni se publican credenciales, teléfonos,
 comprobantes o datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
@@ -607,6 +606,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-07
+
+- Main consultado a las 23:30, America/Mexico_City, en `ea33562f79e4fb91e8c3e3f230885764cfd21596`, un commit por delante del SHA guardado.
+- El único commit nuevo fue `ea33562`, que modificó exclusivamente `docs/ESTADO_PROYECTO.md`; se excluyó del trabajo verificable de producto.
+- No hay PR abiertos, cambios de código, PR fusionados, revertidos, workflows ni checks nuevos. Se conservan #354–#356 y sus resultados ya documentados, sin contarlos otra vez.
+- No hubo confirmaciones nuevas accesibles de despliegue, Hostinger, Meta, MySQL, teléfonos físicos o C3. Se preservan las reglas vigentes, el historial de pruebas, el resumen operativo y todos los pendientes.
 
 ### 2026-11-06
 
