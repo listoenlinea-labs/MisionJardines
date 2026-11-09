@@ -16,7 +16,7 @@
       error.code = d.code; error.camposFaltantes = d.camposFaltantes; error.camposCorreo = d.camposCorreo;
       throw error;
     } return d }
-    const money = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+    const money = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
     // Solo visual: tarjetas de resumen y recibos sin centavos; no redondea los datos guardados ni los importes bancarios.
     const moneyCard = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
     const configText = (value, fallback) => {
