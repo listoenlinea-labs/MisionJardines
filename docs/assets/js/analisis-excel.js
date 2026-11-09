@@ -205,6 +205,15 @@
     cell.alignment={vertical:'middle',wrapText:true};});
    filas.forEach((values,index)=>{
     const row=ws.addRow(values);
+    // Resumen y Finanzas contienen importes de moneda junto a cantidades.
+    // Excel conserva valores numéricos y fórmulas precisos, solo los muestra
+    // sin centavos (incluye proyectos extraordinarios y recibos históricos).
+    if(nombre==='Resumen'&&typeof values[1]==='number'&&
+      /(MXN|saldo|ingreso|egreso|monto|recaud|aportaci[oó]n|costo|diferencia)/i.test(String(values[0]||'')))
+      row.getCell(2).numFmt='"$"#,##0';
+    if(nombre==='Finanzas'&&cabeceras.includes('Monto / viviendas')&&
+      typeof values[2]==='number'&&String(values[1]||'')!=='No aplica')
+      row.getCell(3).numFmt='"$"#,##0';
     if(nombre==='Todas las viviendas'&&reporte.nombre==='Casas_en_padron'){
      const referenceIndex=cabeceras.indexOf('Referencia');
      const houseIndex=cabeceras.indexOf('ID vivienda');
@@ -251,7 +260,7 @@
     const longest=Math.max(String(cabeceras[index]||'').length,
      ...filas.map(row=>String(row[index]??'').length));
     column.width=Math.min(43,Math.max(14,longest+2));
-    if(/\(MXN\)|^Monto/.test(cabeceras[index]))column.numFmt='"$"#,##0.00;[Red]("$"#,##0.00)';
+    if(/\(MXN\)|^Monto/.test(cabeceras[index]))column.numFmt='"$"#,##0;[Red]("$"#,##0)';
    });
    ws.pageSetup={fitToPage:true,fitToWidth:1,fitToHeight:0,orientation:'landscape'};
    ws.getColumn(4).width=Math.max(ws.getColumn(4).width||14,Math.min(36,ws.getColumn(4).width||14));
@@ -272,7 +281,7 @@
     values.forEach((entry,i)=>entry.forEach((value,j)=>{
      const cell=resumenWs.getCell(row+2+i,col+j);
      cell.value=value;
-     if(typeof value==='number')cell.numFmt=j===1&&/INGRESOS|EGRESOS/.test(title)?'"$"#,##0.00':'#,##0.##';
+     if(typeof value==='number')cell.numFmt=j===1&&/INGRESOS|EGRESOS/.test(title)?'"$"#,##0':'#,##0';
     }));
     const letter=n=>{let out='';while(n){n--;out=String.fromCharCode(65+n%26)+out;n=Math.floor(n/26)}return out;};
     const ref=(c)=>"'Resumen'!$"+letter(c)+"$"+(row+2)+":$"+letter(c)+"$"+(row+1+values.length);
@@ -305,12 +314,12 @@
    resumenWs.getCell('B49').value=info.indicadores.saldoInicial;
    resumenWs.getCell('A50').value=projectReport?'Meta del proyecto':'Saldo reportado';
    resumenWs.getCell('B50').value=info.indicadores.saldoDisponible;
-   for(let n=47;n<=50;n++)resumenWs.getCell('B'+n).numFmt='"$"#,##0.00';
+   for(let n=47;n<=50;n++)resumenWs.getCell('B'+n).numFmt='"$"#,##0';
    // Los valores visibles se mantienen fuera del XML de etiquetas ChartML:
    // la leyenda (donas) y el eje de categorías (barras) leen fórmulas de
    // Excel, de modo que editar importes/contadores refresca el texto.
    const formatMoney=n=>new Intl.NumberFormat('es-MX',
-    {style:'currency',currency:'MXN',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0);
+    {style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0}).format(Number(n)||0);
    const letter=n=>{let value=n,result='';while(value>0){
     value--;result=String.fromCharCode(65+value%26)+result;
     value=Math.floor(value/26);
@@ -345,16 +354,16 @@
      '/SUM($E$17:$E$18),0),"0.0%")'));
    const incomeLabels=info.ingresos.map(row=>row[0]+' · '+formatMoney(row[1]));
    const ingresoEtiquetas=prepararEtiquetas(ingresos,34,24,incomeLabels,
-    info.ingresos.map((_,i)=>'A'+(24+i)+'&" · "&TEXT(B'+(24+i)+',"$#,##0.00")'));
+    info.ingresos.map((_,i)=>'A'+(24+i)+'&" · "&TEXT(B'+(24+i)+',"$#,##0")'));
    const streetLabels=info.calles.map(etiquetaCumplimientoCalle);
    const callesEtiquetas=prepararEtiquetas(calles,35,24,streetLabels,
     info.calles.map((_,i)=>'D'+(24+i)+'&" ("&E'+(24+i)+'&"/"&SUM(E'+(24+i)+':F'+(24+i)+')&")"'));
    const balanceLabels=balanceRows?.map(row=>row[0]+' · '+formatMoney(row[1]));
    const balanceEtiquetas=balanceTable?prepararEtiquetas(balanceTable,37,55,balanceLabels,
-    balanceRows.map((_,i)=>'A'+(55+i)+'&" · "&TEXT(B'+(55+i)+',"$#,##0.00")')):null;
+    balanceRows.map((_,i)=>'A'+(55+i)+'&" · "&TEXT(B'+(55+i)+',"$#,##0")')):null;
    const expenseLabels=egresosOrdenados.map(row=>row[0]+' · '+formatMoney(row[1]));
    const egresosEtiquetas=prepararEtiquetas(egresos,36,39,expenseLabels,
-    egresosOrdenados.map((_,i)=>'A'+(39+i)+'&" · "&TEXT(B'+(39+i)+',"$#,##0.00")'));
+    egresosOrdenados.map((_,i)=>'A'+(39+i)+'&" · "&TEXT(B'+(39+i)+',"$#,##0")'));
    // Gráficas nativas editables con espacio para título, ejes y leyenda
    // inferior. Datos sin etiquetas sobre las series para evitar solapamiento.
    // Coordenadas 0-based de la zona de dibujo, separadas sin superponerse.

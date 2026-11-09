@@ -11,7 +11,7 @@ function money(value) {
         style: 'currency',
         currency: 'MXN',
         minimumFractionDigits: 0,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 0
     });
 }
 

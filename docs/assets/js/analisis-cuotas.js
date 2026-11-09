@@ -253,7 +253,7 @@
      '<button type="button" class="soft finance-expense-month-edit-button" data-edit-expense-month="'+esc(r.periodo)+'" aria-label="Editar total de '+esc(r.concepto+' '+r.mes+' '+r.anio)+'">Editar</button></span>'+
     '<form class="finance-expense-month-form" data-save-expense-month="'+esc(r.periodo)+'" hidden>'+
      '<label class="finance-expense-month-input-label">Importe MXN'+
-      '<input type="number" min="0" max="100000000" step="0.01" required inputmode="decimal" value="'+Number(r.totalPagado).toFixed(2)+'" aria-label="Nuevo total pagado de '+esc(r.mes+' '+r.anio)+'"></label>'+
+      '<input type="number" min="0" max="100000000" step="1" required inputmode="numeric" value="'+Math.round(Number(r.totalPagado))+'" aria-label="Nuevo total pagado de '+esc(r.mes+' '+r.anio)+'"></label>'+
      '<div class="finance-expense-month-actions">'+
       '<button type="submit" class="primary">Guardar</button>'+
       '<button type="button" class="soft" data-cancel-expense-month>Cancelar</button></div>'+
@@ -1895,7 +1895,7 @@ function renderHouses(){
   const type=$('housePaymentType').value;
   const item=(otherConcepts[type]||[]).find(c=>String(c.id)===$('houseConceptSelect').value);
   if(resetAmount)$('housePaymentAmount').value=item?Number(type==='EXTRAORDINARIO'
-    ?item.montoDisponible??item.monto:item.monto).toFixed(2):'';
+    ?item.montoDisponible??item.monto:item.monto).toFixed(0):'';
   $('housePaymentAmount').readOnly=type!=='EXTRAORDINARIO';
   const amount=Number($('housePaymentAmount').value);
   const valid=Boolean(item)&&Number.isFinite(amount)&&amount>0&&
@@ -2259,8 +2259,8 @@ function renderHouses(){
   if(!input.reportValidity())return;
   const nuevo=Number(input.value),anterior=Number(current.totalPagado);
   const feedback=form.closest('td').querySelector('.finance-expense-month-feedback');
-  if(!Number.isFinite(nuevo)||nuevo<0||nuevo>100000000||Math.round(nuevo*100)/100!==nuevo){
-   feedback.textContent='Escribe un monto válido, sin valores negativos y con máximo dos decimales.';
+  if(!Number.isFinite(nuevo)||nuevo<0||nuevo>100000000||!Number.isInteger(nuevo)){
+   feedback.textContent='Escribe un monto válido en pesos enteros, sin valores negativos.';
    return;
   }
   if(Math.round(nuevo*100)===Math.round(anterior*100)){
@@ -2411,7 +2411,7 @@ function renderHouses(){
  });
 
  const projectModal=$('financeProjectRulesModal');
- const projectMoney=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2,maximumFractionDigits:2});
+ const projectMoney=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const projectMoneyText=value=>projectMoney.format(Number(value||0));
  const projectHouses=()=>[...(data?.viviendasMantenimiento||[])].sort((a,b)=>
   String(a.calle).localeCompare(String(b.calle),'es',{numeric:true})||
@@ -2419,15 +2419,17 @@ function renderHouses(){
  let projectExceptions=new Map(),projectPreview=null,projectSaving=false,projectPreviousFocus=null;
  const projectBudgetValid=value=>{
   const n=Number(value);
-  return String(value??'').trim()!==''&&Number.isFinite(n)&&n>=2.31&&n<=10000000&&
+  return String(value??'').trim()!==''&&Number.isFinite(n)&&Number.isInteger(n)&&n>=3&&n<=10000000&&
    Math.abs(n*100-Math.round(n*100))<0.001;
  };
  function computeProjectPreview(){
   if(!projectBudgetValid($('financeRulesBudget').value))return null;
   if(!window.MJProjectBudget?.distribuir)throw Error('El cálculo de presupuesto no está disponible. Actualiza la página.');
+  const exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto}));
+  if(exceptions.some(({monto})=>!Number.isInteger(Number(monto))))
+   throw Error('Las cuotas excepcionales deben expresarse en pesos enteros.');
   return window.MJProjectBudget.distribuir(
-   projectHouses(),Number($('financeRulesBudget').value),
-   [...projectExceptions].map(([casaId,monto])=>({casaId,monto}))
+   projectHouses(),Number($('financeRulesBudget').value),exceptions
   );
  }
  function renderProjectModal(){
@@ -2441,7 +2443,7 @@ function renderHouses(){
    :projectBudgetValid($('financeRulesBudget').value)?'Revisar importe':'Pendiente';
   $('financeRulesHouses').textContent=String(houses.length);
   $('financeRulesSpecialCount').textContent=String(projectExceptions.size);
-  $('financeRulesDiff').textContent=projectPreview?'$0.00':'Pendiente';
+  $('financeRulesDiff').textContent=projectPreview?fmt(0):'Pendiente';
   $('financeRulesRows').innerHTML=houses.filter(h=>
    (h.calle+' '+h.numero+' '+(h.nombre||'')).toLocaleLowerCase('es').includes(term))
    .map(h=>{
@@ -2450,7 +2452,7 @@ function renderHouses(){
      (h.nombre?' <span class="finance-rules-resident">'+esc(h.nombre)+'</span>':'')+'</td>'+
      '<td>'+esc(current?projectMoneyText(current.montoCentavos/100):'—')+'</td>'+
      '<td>'+(isException?
-       '<label class="finance-project-exception-label">Importe fijo <input type="number" min="0" max="10000000" step="0.01" inputmode="decimal" aria-label="Cuota excepcional de '+esc(h.calle+' '+h.numero)+'" data-exception-amount="'+id+'" value="'+esc(projectExceptions.get(id))+'"></label>'+
+       '<label class="finance-project-exception-label">Importe fijo <input type="number" min="0" max="10000000" step="1" inputmode="numeric" aria-label="Cuota excepcional de '+esc(h.calle+' '+h.numero)+'" data-exception-amount="'+id+'" value="'+esc(projectExceptions.get(id))+'"></label>'+
        ' <button type="button" class="soft" data-exception-remove="'+id+'">Quitar</button>':
        '<button type="button" class="soft" data-exception-add="'+id+'"'+(!projectPreview||projectExceptions.size>=230?' disabled':'')+'>Generar excepción</button>')+
      '</td></tr>';
@@ -2506,7 +2508,7 @@ function renderHouses(){
    if(projectExceptions.size>=230)return;
    const amount=projectPreview.rows.find(row=>row.casaId===casaId)?.montoCentavos;
    if(!amount)return;
-   projectExceptions.set(casaId,(amount/100).toFixed(2));
+   projectExceptions.set(casaId,(amount/100).toFixed(0));
    renderProjectModal();
    $('financeRulesRows').querySelector('[data-exception-amount="'+casaId+'"]')?.focus();
   }else if(remove){
@@ -2525,7 +2527,7 @@ function renderHouses(){
   catch(err){$('financeRulesStatus').textContent=err.message;}
   projectPreview=preview;
   $('financeRulesSpecialCount').textContent=String(projectExceptions.size);
-  $('financeRulesDiff').textContent=preview?'$0.00':'Pendiente';
+  $('financeRulesDiff').textContent=preview?fmt(0):'Pendiente';
   $('financeRulesBudgetDisplay').textContent=preview
    ?projectMoneyText(preview.totalCentavos/100):'Revisar importe';
   // Mostrar en vivo el nuevo reparto de las demás viviendas sin reemplazar
@@ -2623,7 +2625,7 @@ function renderHouses(){
     return '<tr'+(special?' class="has-exception"':'')+'><td>'+esc(h.calle+' '+h.numero)+'</td>'+
      '<td>'+(amount===null?'—':esc(fmt(amount/100)))+' <small>Abonado '+esc(fmt(paid/100))+'</small></td>'+
      '<td>'+(special
-      ?'<input type="number" min="0" step="0.01" max="10000000" inputmode="decimal" data-bulk-amount="'+id+'" aria-label="Cuota excepcional de '+esc(h.calle+' '+h.numero)+'" value="'+esc(bulkExceptions.get(id))+'"> <button type="button" class="soft" data-bulk-remove="'+id+'">Quitar</button>'
+      ?'<input type="number" min="0" step="1" max="10000000" inputmode="numeric" data-bulk-amount="'+id+'" aria-label="Cuota excepcional de '+esc(h.calle+' '+h.numero)+'" value="'+esc(bulkExceptions.get(id))+'"> <button type="button" class="soft" data-bulk-remove="'+id+'">Quitar</button>'
       :'<button type="button" class="soft" data-bulk-add="'+id+'"'+(bulkBase()===null?' disabled':'')+'>Generar excepción</button>')+
      '</td></tr>';
    }).join('')||'<tr><td colspan="3">No hay viviendas que coincidan con la búsqueda.</td></tr>';
@@ -2660,12 +2662,12 @@ function renderHouses(){
     if(value===null||!Number.isSafeInteger(paid)||paid<0)
      throw Error('Los datos de cuota o aportaciones contienen un importe inválido.');
     bulkPaid.set(id,paid);
-    if(value!==amount)bulkExceptions.set(id,(value/100).toFixed(2));
+    if(value!==amount)bulkExceptions.set(id,(value/100).toFixed(0));
    }
    bulkProjectId=originalId;bulkProjectName=project.nombre;
    bulkOriginalSnapshot={cuotaBase:amount/100,
     cargos:cargos.map(c=>({casaId:Number(c.casaId),monto:Number(c.montoCuota)}))};
-   $('financeBulkBase').value=(amount/100).toFixed(2);
+   $('financeBulkBase').value=(amount/100).toFixed(0);
    $('financeBulkSearch').value='';
    $('financeBulkTitle').textContent='Modificar metas de '+project.nombre;
    $('financeBulkStatus').textContent='';
@@ -2700,7 +2702,7 @@ function renderHouses(){
   if(add){
    const id=Number(add.dataset.bulkAdd),base=bulkBase();
    if(base===null)return;
-   bulkExceptions.set(id,(base/100).toFixed(2));
+   bulkExceptions.set(id,(base/100).toFixed(0));
    bulkRender();
    $('financeBulkRows').querySelector('[data-bulk-amount="'+id+'"]')?.focus();
   }else if(remove){
@@ -2723,15 +2725,15 @@ function renderHouses(){
   const input=e.target.closest('[data-bulk-amount]');
   if(!input||bulkSaving)return;
   const amount=bulkCents(input.value);
-  if(amount===null){
-   input.setCustomValidity('Ingresa un importe entre $0.00 y $10,000,000.00 con máximo dos decimales.');
+  if(amount===null||!Number.isInteger(Number(input.value))){
+   input.setCustomValidity('Ingresa un importe entre $0 y $10,000,000 en pesos enteros.');
    input.reportValidity();
    return;
   }
   input.setCustomValidity('');
   const id=Number(input.dataset.bulkAmount),base=bulkBase();
   if(amount===base)bulkExceptions.delete(id);
-  else bulkExceptions.set(id,(amount/100).toFixed(2));
+  else bulkExceptions.set(id,(amount/100).toFixed(0));
   bulkRender();
  });
  $('financeBulkApply').addEventListener('click',async()=>{

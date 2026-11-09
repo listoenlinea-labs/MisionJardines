@@ -9,7 +9,7 @@
   if (!section || !['SUPER_ADMIN', 'ADMINISTRADOR'].includes(role)) return;
   section.hidden = false;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const money = value => Number(value || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  const money = value => Number(value || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const stamp = value => {
     if (!value) return 'No registrada';
     const date = new Date(value);

@@ -112,10 +112,10 @@
   <div class="finance-pay-heading"><h2 id="financeBulkTitle">Modificar metas de proyecto</h2>
    <button type="button" id="financeBulkClose" class="soft" aria-label="Cerrar edición de importes">Cerrar ×</button></div>
   <div class="finance-rules-controls">
-   <label>Cuota general (MXN)<input id="financeBulkBase" type="number" min="0" max="10000000" step="0.01" inputmode="decimal" required></label>
+   <label>Cuota general (MXN)<input id="financeBulkBase" type="number" min="0" max="10000000" step="1" inputmode="numeric" required></label>
    <label>Buscar vivienda<input id="financeBulkSearch" type="search" placeholder="Ej. Gardenias 5"></label>
   </div>
-  <p class="hint">Todas las viviendas reciben la cuota general. «Generar excepción» permite ajustar cada casa, incluso a $0.00 cuando no haya pagos acreditados.</p>
+  <p class="hint">Todas las viviendas reciben la cuota general. «Generar excepción» permite ajustar cada casa, incluso a $0 cuando no haya pagos acreditados.</p>
   <p id="financeBulkTotal" class="finance-bulk-total" role="status" aria-live="polite"></p>
   <div class="finance-rules-scroll"><table aria-label="Importes del proyecto por vivienda"><thead>
    <tr><th scope="col">Vivienda</th><th scope="col">Cuota</th><th scope="col">Excepción</th></tr></thead>
@@ -135,7 +135,7 @@
   </div>
   <div class="finance-rules-controls">
    <label>Nombre del proyecto<input id="financeNewProjectName" type="text" maxlength="300" placeholder="Ej. Rehabilitación de áreas comunes" required></label>
-   <label>Costo total del proyecto (MXN)<input id="financeRulesBudget" type="number" min="2.31" max="10000000" step="0.01" inputmode="decimal" placeholder="231000.00" required></label>
+   <label>Costo total del proyecto (MXN)<input id="financeRulesBudget" type="number" min="3" max="10000000" step="1" inputmode="numeric" placeholder="231000" required></label>
    <label>Mes de inicio<input id="financeNewProjectMonth" type="month" required></label>
   </div>
   <div class="finance-rules-overview">
@@ -145,7 +145,7 @@
    <div><span>Reparto exacto</span><strong id="financeRulesDiff">Sin diferencia</strong></div>
   </div>
   <div class="finance-rules-list-heading">
-   <div><strong>Importe por vivienda</strong><p class="hint">Una excepción fija el importe de esa casa. Puedes poner $0.00 para exentar a una vivienda; el saldo se redistribuye entre las demás para conservar el costo total exacto.</p></div>
+   <div><strong>Importe por vivienda</strong><p class="hint">Una excepción fija el importe de esa casa. Puedes poner $0 para exentar a una vivienda; el saldo se redistribuye entre las demás para conservar el costo total exacto.</p></div>
    <label>Buscar vivienda<input id="financeRulesSearch" type="search" placeholder="Calle, número o residente"></label>
   </div>
   <div class="finance-rules-scroll"><table aria-label="Distribución de cuotas del nuevo proyecto"><thead><tr><th>Vivienda</th><th>Cuota calculada</th><th>Regla especial</th></tr></thead><tbody id="financeRulesRows"></tbody></table></div>
@@ -222,7 +222,7 @@
         <p id="houseAnnualHint">Selecciona diciembre del año actual. Se cobrarán únicamente las mensualidades pendientes, sin duplicar meses ya pagados. Al confirmar, todos los TAGs recibirán la vigencia del 10 de enero siguiente, incluso si actualmente tienen una fecha posterior.</p>
       </div>
       <label data-maintenance-only>Meses pendientes calculados<input type="number" id="housePaymentCount" readonly aria-readonly="true" value="0"></label>
-      <label>Monto total recibido (MXN)<input type="number" id="housePaymentAmount" required min="0" step="0.01" inputmode="decimal" placeholder="Ej. 600.00"></label>
+      <label>Monto total recibido (MXN)<input type="number" id="housePaymentAmount" required min="0" step="1" inputmode="numeric" placeholder="Ej. 600"></label>
       <label>Forma de pago<select id="housePaymentMethod"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="DEPOSITO">Depósito</option><option value="OTRO">Otro</option></select></label>
       <div id="housePaymentPreview" class="house-payment-preview" role="status" aria-live="polite">Calculando mensualidades pendientes…</div>
       <div id="housePaymentTariffReconcileWrap" class="house-payment-review tariff-reconciliation" data-maintenance-only hidden>
@@ -263,10 +263,10 @@
         <input id="houseTariffNoFee" type="checkbox">
         <span>Exentar recargo de $50 por mora desde el mes actual y en meses futuros</span>
       </label>
-      <p id="houseProjectTariffInfo" class="hint" hidden>La meta individual de este proyecto es independiente de mantenimiento y no modifica los TAGs. No puedes establecer una cuota de $0.00 si esa vivienda tiene abonos recibidos o en validación.</p><p id="houseTariffStatus" class="hint" role="status" aria-live="polite"></p>
+      <p id="houseProjectTariffInfo" class="hint" hidden>La meta individual de este proyecto es independiente de mantenimiento y no modifica los TAGs. No puedes establecer una cuota de $0 si esa vivienda tiene abonos recibidos o en validación.</p><p id="houseTariffStatus" class="hint" role="status" aria-live="polite"></p>
       <button class="primary" id="houseTariffSave" type="submit">Guardar cuota mensual</button>
     </form>
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261109-folio-solo-pagados-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-mobile-3-snap-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-pesos-enteros-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-pesos-enteros-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

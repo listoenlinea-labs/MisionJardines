@@ -9,7 +9,7 @@
   const entries=()=>catalog.viviendas.map(h=>({casaId:h.casaId,monto:values.get(h.casaId)||'0'}));
   function valid(){return !active()||!!(ready&&plan&&!loading&&!error);}
   function paintStatus(message){status.textContent=message;status.classList.toggle('invalid',!valid());changed();}
-  function reset(){values=new Map();plan=null;revision++;if(catalog)for(const input of list.querySelectorAll('input'))input.value='0.00';}
+  function reset(){values=new Map();plan=null;revision++;if(catalog)for(const input of list.querySelectorAll('input'))input.value='0';}
   async function actualizar(type,proofReady,ocrTotal,fecha,horaOperacion){
    mode=type;total=ocrTotal;date=fecha;hour=horaOperacion||hour;ready=proofReady;plan=null;error='';loading=false;
    const current=++revision;
@@ -47,7 +47,7 @@
     const title=document.createElement('strong');title.textContent=h.calle+' · Casa '+h.numero;
     const debt=document.createElement('span');debt.textContent='Adeudo al '+catalog.fecha+': '+money(h.adeudo)+(h.pendiente?' · Tiene un reporte en revisión':'');
     label.append(title,debt);
-    const input=document.createElement('input');input.id=label.htmlFor;input.type='number';input.min='0';input.step='0.01';input.inputMode='decimal';input.value='0.00';input.disabled=h.pendiente;
+    const input=document.createElement('input');input.id=label.htmlFor;input.type='number';input.min='0';input.step='0.01';input.inputMode='decimal';input.value='0';input.disabled=h.pendiente;
     input.setAttribute('aria-label','Importe para '+h.calle+' casa '+h.numero);values.set(h.casaId,'0');
     input.addEventListener('input',()=>{values.set(h.casaId,input.value);return actualizar(mode,ready,total,date);});
     const info=document.createElement('small');info.id='allocationPlan'+h.casaId;info.className='allocation-plan';

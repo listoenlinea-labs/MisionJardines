@@ -1234,7 +1234,7 @@
         <article class="card pad" id="extraCard" hidden>
           <span class="eyebrow">CUOTAS EXTRAORDINARIAS</span>
           <h2>Conceptos disponibles</h2>
-          <p>Las aportaciones a cada proyecto son voluntarias y flexibles: puedes abonar cuando quieras (semanalmente, mensualmente o sin periodicidad), por cualquier importe desde $0.01 hasta completar la meta de tu vivienda. No hay fechas de vencimiento, recargos ni bloqueo de TAGs por estas aportaciones.</p>
+          <p>Las aportaciones a cada proyecto son voluntarias y flexibles: puedes abonar cuando quieras (semanalmente, mensualmente o sin periodicidad), por cualquier importe desde $1 hasta completar la meta de tu vivienda. No hay fechas de vencimiento, recargos ni bloqueo de TAGs por estas aportaciones.</p>
           <div id="extraList" class="extra-list">
             <div class="empty">Cargando cuotas…</div>
           </div>
@@ -1245,7 +1245,7 @@
             <div class="admin-grid">
               <div><label>Concepto</label><input id="extraConcept" maxlength="300"
                   placeholder="Ej. Impermeabilización de casa club"></div>
-              <div><label>Monto</label><input id="extraAmount" type="number" min="1" step="0.01" placeholder="500.00">
+              <div><label>Monto</label><input id="extraAmount" type="number" min="1" step="1" placeholder="500">
               </div>
             </div>
             <div class="actions"><button id="createExtra" class="btn btn-primary" type="button">Crear cuota
@@ -1322,7 +1322,7 @@
               <div><label>Clave de rastreo / referencia / folio *</label><input id="operationFolio" maxlength="180" required readonly
                   placeholder="Dato bancario leído del comprobante"></div>
               <div><label>Monto depositado *</label><input id="amount" type="number" min="0.01" step="0.01" required readonly
-                  placeholder="300.00"></div>
+                  placeholder="300"></div>
             </div>
             <div class="form-row">
               <div><label>Fecha del depósito *</label><input id="operationDate" type="date" required readonly></div>
@@ -1342,9 +1342,9 @@
             <p id="allocationStatus" role="status" aria-live="polite"></p>
           </section>
           <div class="summary">
-            <div class="summary-row"><span>Cuota base / concepto</span><b id="summaryBase">$300.00</b></div>
-            <div class="summary-row" id="lateRow"><span>Recargo por fecha</span><b id="summaryLate">$0.00</b></div>
-            <div class="summary-row total"><span>Mínimo para avanzar un mes</span><b id="summaryTotal">$300.00</b></div>
+            <div class="summary-row"><span>Cuota base / concepto</span><b id="summaryBase">$300</b></div>
+            <div class="summary-row" id="lateRow"><span>Recargo por fecha</span><b id="summaryLate">$0</b></div>
+            <div class="summary-row total"><span>Mínimo para avanzar un mes</span><b id="summaryTotal">$300</b></div>
           </div>
 
           <p id="paymentPreview" class="hint" aria-live="polite"></p>
@@ -1379,7 +1379,7 @@
 </dialog>
 <dialog id="debtModal" class="mj-debt-modal" aria-labelledby="debtTitle">
  <div class="mj-debt-heading"><div><span class="eyebrow">ESTADO DE TU VIVIENDA</span><h2 id="debtTitle">Pagos pendientes</h2><p>Consulta cada concepto y regulariza los importes pendientes.</p></div><button type="button" id="closeDebtModal" aria-label="Cerrar aviso" title="Cerrar aviso"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"></path></svg></button></div>
- <div id="debtDetails" class="mj-debt-details"></div><div class="mj-debt-total"><span>Total pendiente</span><strong id="debtTotal">$0.00</strong></div>
+ <div id="debtDetails" class="mj-debt-details"></div><div class="mj-debt-total"><span>Total pendiente</span><strong id="debtTotal">$0</strong></div>
 </dialog>
 <style>
 /* Modal accesible y centrado para comprobantes que no se pueden cotejar. */
@@ -1432,9 +1432,9 @@
   <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
   <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles"></script>
   <script src="assets/js/pagos-reparto-calculo.js?v=20261026-reparto"></script>
-  <script src="assets/js/pagos-reparto-ui.js?v=20261027-abonos-recargos"></script>
-  <script src="assets/js/pagos.js?v=20261104-adeudos-positivos-v1"></script>
-  <script src="assets/js/pagos-historial.js?v=20261026-reparto"></script>
+  <script src="assets/js/pagos-reparto-ui.js?v=20261109-pesos-enteros-v1"></script>
+  <script src="assets/js/pagos.js?v=20261109-pesos-enteros-v1"></script>
+  <script src="assets/js/pagos-historial.js?v=20261109-pesos-enteros-v1"></script>
 
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>

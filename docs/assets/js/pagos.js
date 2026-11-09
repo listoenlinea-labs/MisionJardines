@@ -16,7 +16,7 @@
       error.code = d.code; error.camposFaltantes = d.camposFaltantes; error.camposCorreo = d.camposCorreo;
       throw error;
     } return d }
-    const money = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+    const money = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
     // Solo visual: tarjetas de resumen y recibos sin centavos; no redondea los datos guardados ni los importes bancarios.
     const moneyCard = v => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
     const configText = (value, fallback) => {
@@ -782,7 +782,7 @@
     $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if(reportBusy)return; if(repartoUI.activo(paymentType)&&!repartoUI.valido())return toast('La suma debe coincidir con el depósito y el reparto debe estar cotizado.'); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='PAGADO'||Number(selectedExtra.montoDisponible??selectedExtra.monto)<=0))
        return toast('Selecciona un proyecto que todavía permita nuevas aportaciones.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reservación aprobada sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'CASA_CLUB' && Math.abs(amount - required) > .009) ||
        (paymentType === 'EXTRAORDINARIO' && Math.round(amount*100)>Math.round(required*100))) return toast(paymentType==='EXTRAORDINARIO'
-        ?'Puedes aportar cualquier cantidad desde $0.01 hasta '+money(required)+' en este momento.'
+        ?'Puedes aportar cualquier cantidad desde $1 hasta '+money(required)+' en este momento.'
         :paymentType==='MANTENIMIENTO'?'Ingresa un monto mayor que cero.':
          'El comprobante debe corresponder exactamente a '+money(required)+'.');
     if(paymentType==='MANTENIMIENTO' && !repartoUI.activo(paymentType)){
@@ -793,9 +793,9 @@
       if (!quote || quote.fechaOperacion !== date)
         return toast('Espera la cotización del comprobante o vuelve a leer la fecha bancaria.');
       if (quote.modoPrueba && Math.round(amount * 100) !== 1000)
-        return toast('Para esta cuenta de prueba el comprobante debe ser de $10.00 exactos.');
+        return toast('Para esta cuenta de prueba el comprobante debe ser de $10 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
-        return toast('El abono debe ser de al menos $0.01.');
+        return toast('El abono debe ser de al menos $1.');
     } const payload = { ...(repartoUI.activo(paymentType)?{reparto:repartoUI.datos()}:{}), tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); reportBusy=true; btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras(),...(repartoUI.activo(paymentType)?[repartoUI.cargar().catch(e=>toast(e.message))]:[])]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) {
       if (err.code === 'COMPROBANTE_INCOMPLETO' || err.code === 'COMPROBANTE_NO_CONCILIABLE'
         || err.code === 'FOLIO_NO_PRESENTE_EN_CORREO' || err.code === 'BUZON_NO_VERIFICABLE'
