@@ -10,7 +10,8 @@ const { fechaMexico } = require('../services/vigencia-calculo');
 const { calcularAdeudoVivienda } = require('../services/adeudo-vivienda-analisis.service');
 const { tarifaParaCasa } = require('../services/tarifa-mantenimiento.service');
 const { exentoEn } = require('../services/recargos-exenciones.service');
-const { RECARGO, MESES } = require('../services/mensualidades-mantenimiento');
+const { RECARGO } = require('../services/mensualidades-mantenimiento');
+const { MESES } = require('../services/cuotas-mantenimiento-calculo');
 const error = (status,message)=>Object.assign(new Error(message),{status});
 
 function reglas(hoy, casa, cuotas) {
