@@ -29,6 +29,7 @@ router.get('/proyectos-extraordinarios/:proyectoId/viviendas/:casaId/aportacione
 router.post('/proyectos-extraordinarios/:proyectoId/viviendas/:casaId/aportaciones/:origen/:movimientoId/anulacion',anulacionExtra.anular);
 router.get('/pagos-vivienda/:casaId/anulacion',reversion.vista);
 router.post('/pagos-vivienda/:casaId/anulacion',reversion.anular);
+router.post('/viviendas/:id/registrar-residente',require('../controllers/residentes.controller').registrarRapido);
 router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorCobrar);
 router.post('/egresos',controller.registrarEgreso);
 router.put('/egresos/resumen-mensual',controller.ajustarTotalEgresoMensual);

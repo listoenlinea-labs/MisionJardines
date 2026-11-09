@@ -109,7 +109,7 @@ async function analizar(req,res){
    // folio en Excel. No reutilizar el último recibo de octubre para deudores.
    const reciboPeriodo=reciboDelPeriodo({casa:h,cuotas:cuotasDeCasa,
      comprobantes:bancosDeCasa,estado:status,saldoPendiente:adeudo.saldoPendiente,anio,mes});
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,abonoConAdeudo:Boolean(ultimoAbono),ultimoAbonoConAdeudo:ultimoAbono,montoPagado:num(q?.montoPagado),ultimoPago,reciboPeriodo,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',residenteRegistrado:Boolean(String(h.nombre||'').trim()),tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,abonoConAdeudo:Boolean(ultimoAbono),ultimoAbonoConAdeudo:ultimoAbono,montoPagado:num(q?.montoPagado),ultimoPago,reciboPeriodo,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
     tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));

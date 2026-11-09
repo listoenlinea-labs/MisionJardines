@@ -796,6 +796,94 @@ function orderHouses(key){
  houseSort=window.MJHouseSort.nextSort(houseSort,key);
  housePage=1;renderHouses();
 }
+
+ // Alta rápida en el padrón: usa el ID estable de vivienda, no su nombre visible.
+ const residentModal=$('financeResidentModal');
+ let openedResidentHouseId=null;
+ let residentPreviousFocus=null;
+ let residentSaving=false;
+ const hasResident=h=>h?.residenteRegistrado===false?false:Boolean(String(h?.nombre||'').trim());
+ function residentCell(h){
+   if(hasResident(h))return esc(h.nombre);
+   return '<button type="button" class="finance-resident-register" data-resident-register="'+Number(h.casaId)+'"'
+     +' aria-label="Registrar residente en '+esc(h.calle+' '+h.numero)+'">+ Registrar residente</button>';
+ }
+ function openResidentRegistration(houseId,trigger){
+   const id=Number(houseId);
+   if(!Number.isSafeInteger(id)||id<1||residentSaving)return;
+   const house=data?.viviendas?.find(h=>Number(h.casaId)===id);
+   if(!house)return;
+   if(hasResident(house)){
+     notice('La vivienda '+house.calle+' '+house.numero+' ya tiene un residente registrado. Actualiza el análisis para consultarlo.');
+     return;
+   }
+   openedResidentHouseId=id;
+   residentPreviousFocus=trigger||document.activeElement;
+   $('financeResidentForm').reset();
+   $('financeResidentHouse').textContent='Vivienda: '+house.calle+' '+house.numero;
+   $('financeResidentStatus').textContent='';
+   $('financeResidentSubmit').disabled=false;
+   residentModal.hidden=false;
+   $('financeResidentName').focus();
+ }
+ function closeResidentRegistration(){
+   if(residentSaving)return;
+   residentModal.hidden=true;
+   openedResidentHouseId=null;
+   $('financeResidentForm').reset();
+   $('financeResidentStatus').textContent='';
+   if(residentPreviousFocus?.isConnected)residentPreviousFocus.focus();
+   residentPreviousFocus=null;
+ }
+ $('financeResidentClose').addEventListener('click',closeResidentRegistration);
+ $('financeResidentCancel').addEventListener('click',closeResidentRegistration);
+ residentModal.addEventListener('click',event=>{
+   if(event.target===residentModal)closeResidentRegistration();
+ });
+ document.addEventListener('keydown',event=>{
+   if(residentModal.hidden)return;
+   if(event.key==='Escape'){event.preventDefault();closeResidentRegistration();return;}
+   if(event.key!=='Tab')return;
+   const enabled=[...residentModal.querySelectorAll('button:not([disabled]),input:not([disabled])')]
+     .filter(element=>!element.closest('[hidden]'));
+   const first=enabled[0],last=enabled.at(-1);
+   if(!first||!last)return;
+   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ });
+ $('financeResidentForm').addEventListener('submit',async event=>{
+   event.preventDefault();
+   if(residentSaving||!openedResidentHouseId)return;
+   const casaId=openedResidentHouseId;
+   const nombreCompleto=$('financeResidentName').value.trim().replace(/\s+/g,' ');
+   if(nombreCompleto.length<2||nombreCompleto.length>150){
+     $('financeResidentStatus').textContent='Escribe el nombre completo del residente (de 2 a 150 caracteres).';
+     return;
+   }
+   residentSaving=true;
+   $('financeResidentSubmit').disabled=true;
+   $('financeResidentStatus').textContent='Guardando residente…';
+   try{
+     const response=await request('/viviendas/'+casaId+'/registrar-residente',{nombreCompleto});
+     const saved=response.data;
+     // No repetir jamás la escritura si falla solo la posterior actualización.
+     if(data?.viviendas){
+       const house=data.viviendas.find(h=>Number(h.casaId)===casaId);
+       if(house){house.nombre=saved.nombre;house.residenteRegistrado=true;}
+     }
+     residentSaving=false;
+     closeResidentRegistration();
+     const refreshed=await load();
+     if(!refreshed)renderHouses();
+     notice('Residente "'+saved.nombre+'" registrado en '+(data?.viviendas?.find(h=>Number(h.casaId)===casaId)?.calle||'la vivienda')+
+       '. Nombre guardado en MySQL.'+(refreshed?'':' No se pudo recargar el análisis; no repitas el registro.'),'success');
+   }catch(error){
+     $('financeResidentStatus').textContent=error.message;
+     residentSaving=false;
+     $('financeResidentSubmit').disabled=false;
+   }
+ });
+
 function renderHouses(){
   if(!data)return;
   const query=$('financeSearch').value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),
@@ -828,7 +916,7 @@ function renderHouses(){
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
-    houseCell('Residente',esc(h.nombre))+
+    houseCell('Residente',residentCell(h))+
     houseCell('Estado','<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
       ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
       :h.estatus)+'</span>'+(activeConcept==='MANTENIMIENTO'&&h.abonoConAdeudo&&Number(h.saldoPendiente)>0
@@ -2219,6 +2307,8 @@ function renderHouses(){
    }finally{btn.disabled=true;}
  }
  $('financeHouseRows').addEventListener('click',async event=>{
+  const registerButton=event.target.closest('[data-resident-register]');
+  if(registerButton){openResidentRegistration(registerButton.dataset.residentRegister,registerButton);return;}
   const historyButton=event.target.closest('[data-paid-history]');
   if(historyButton){void openHouseHistory(historyButton.dataset.paidHistory,historyButton);return;}
   const tagButton=event.target.closest('[data-tags-house]');
