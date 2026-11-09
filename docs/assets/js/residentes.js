@@ -27,7 +27,8 @@ function matchesResidentSearch(resident, query) {
   const email = normalizeSearch(resident.email);
   const street = normalizeSearch(resident.street);
   const number = normalizeSearch(resident.number);
-  return [name, phone, email, street, number, street + ' ' + number, number + ' ' + street]
+  return [name, phone, email, name + ' ' + phone + ' ' + email, street, number,
+    street + ' ' + number, number + ' ' + street]
     .some(value => value.trim().includes(q));
 }
 function applyFilters(reset = true) {
