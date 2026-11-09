@@ -57,7 +57,9 @@
   const calles=[...agrupadas].sort(([a],[b])=>a.localeCompare(b,'es-MX',{numeric:true}))
    .map(([calle,conteo])=>[calle,conteo.pagadas,conteo.pendientes]);
   if(!calles.length)calles.push(['Sin viviendas',0,0]);
+  const balanceMensual=root.MJFinanceBalance?.mensual(data)||null;
   return {
+   balanceMensual,
    status:[['Pagado completo',completas.length],['Sin pago completo',pendientes.length]],
    anual:[['Pago anual',anuales.length],['Pago mensual',completas.length-anuales.length]],
    ingresos,egresos,calles,
@@ -90,6 +92,11 @@
     ['Total','Egresos registrados',dashboard.indicadores.totalEgresos,'Suma del período seleccionado'],
     ['Saldo','Saldo inicial',dashboard.indicadores.saldoInicial,'Saldo anterior, NO es ingreso recaudado en el período'],
     ['Saldo','Saldo disponible',dashboard.indicadores.saldoDisponible,'Indicador financiero reportado por el servidor'],
+    ...(dashboard.balanceMensual?[
+     ['Balance informativo','Ingresos por mensualidad cubierta',dashboard.balanceMensual.ingresos,'No equivale necesariamente a lo depositado este mes'],
+     ['Balance informativo','Egresos del período',dashboard.balanceMensual.egresos,'Gastos del mes seleccionado'],
+     ['Balance informativo',dashboard.balanceMensual.estado==='SALDO_EN_CONTRA'?'Saldo en contra':dashboard.balanceMensual.estado==='SALDO_A_FAVOR'?'Saldo a favor':'En equilibrio',dashboard.balanceMensual.diferencia,dashboard.balanceMensual.criterio]
+    ]:[]),
     ...(data.esCargaHistorica?[
      ['Informativo','Mantenimiento · banco validado',dinero(data.ingresosReportados?.mantenimiento),'No sumar automáticamente; puede estar incluido en cuotas históricas'],
      ['Informativo','Extraordinarias · banco validado',dinero(data.ingresosReportados?.extraordinarios),'No sumar automáticamente; consultar conciliación'],
@@ -111,7 +118,13 @@
      ['Pago anual confirmado (subconjunto pagadas)',dashboard.indicadores.anuales],
      ['Nota de corte','El último mes pagado muestra todo el historial; el estado pagado corresponde al período seleccionado.'],
      ['Criterio de ingresos',dashboard.origenIngresos],
-     ['Nota contable','Los ingresos por cuotas históricas y depósitos pueden representar el mismo dinero. No se suman dos veces.']]};
+     ['Nota contable','Los ingresos por cuotas históricas y depósitos pueden representar el mismo dinero. No se suman dos veces.'],
+     ...(dashboard.balanceMensual?[
+      ['Ingresos informativos del período (MXN)',dashboard.balanceMensual.ingresos],
+      ['Egresos informativos del período (MXN)',dashboard.balanceMensual.egresos],
+      ['Diferencia del período (MXN)',dashboard.balanceMensual.diferencia],
+      ['Estado del balance',dashboard.balanceMensual.estado==='SALDO_EN_CONTRA'?'Saldo en contra':dashboard.balanceMensual.estado==='SALDO_A_FAVOR'?'Saldo a favor':'En equilibrio']
+     ]:[])]};
   }
   if(tipo==='pagadas')return {nombre:'Con_pago_registrado',titulo:'Viviendas con pago registrado',
    hojas:[hojaViviendas('Con pago',todas.filter(h=>h.pagada))],resumen};
@@ -179,6 +192,38 @@
     cell.alignment={vertical:'middle',wrapText:true};});
    filas.forEach((values,index)=>{
     const row=ws.addRow(values);
+    if(nombre==='Todas las viviendas'&&reporte.nombre==='Casas_en_padron'){
+     const referenceIndex=cabeceras.indexOf('Referencia');
+     const houseIndex=cabeceras.indexOf('ID vivienda');
+     const ref=String(values[referenceIndex]||'').trim();
+     const casaId=Number(values[houseIndex]);
+     if(referenceIndex>=0&&houseIndex>=0&&ref&&Number.isSafeInteger(casaId)&&casaId>0&&
+      !ref.startsWith("'")){
+      const params=new URLSearchParams({casaId:String(casaId),referencia:ref,concepto:'MANTENIMIENTO'});
+      const url=new URL('recibo-excel.html',root.location?.href||'https://listoenlinea-labs.github.io/MisionJardines/analisis-cuotas.html');
+      url.search=params.toString();
+      const cell=row.getCell(referenceIndex+1);
+      cell.value={text:ref,hyperlink:url.href,tooltip:'Abrir recibo PDF (requiere sesión de administrador)'};
+      cell.font={color:{argb:'FF176CBE'},underline:true};
+     }
+    }
+    if(nombre==='Todas las viviendas'&&reporte.dashboard?.esProyecto){
+     const referenceIndex=cabeceras.indexOf('Referencia último abono');
+     const houseIndex=cabeceras.indexOf('ID vivienda');
+     const ref=String(values[referenceIndex]||'').trim();
+     const casaId=Number(values[houseIndex]);
+     const proyectoId=Number(reporte.dashboard.proyectoId);
+     if(referenceIndex>=0&&houseIndex>=0&&ref&&!ref.startsWith("'")&&
+      Number.isSafeInteger(casaId)&&casaId>0&&Number.isSafeInteger(proyectoId)&&proyectoId>0){
+      const params=new URLSearchParams({casaId:String(casaId),referencia:ref,
+       concepto:'EXTRAORDINARIO',proyectoId:String(proyectoId)});
+      const url=new URL('recibo-excel.html',root.location?.href||'https://listoenlinea-labs.github.io/MisionJardines/analisis-cuotas.html');
+      url.search=params.toString();
+      const cell=row.getCell(referenceIndex+1);
+      cell.value={text:ref,hyperlink:url.href,tooltip:'Abrir recibo PDF (requiere sesión de administrador)'};
+      cell.font={color:{argb:'FF176CBE'},underline:true};
+     }
+    }
     if(index%2===1)row.eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF7FAF8'}};});
    });
    ws.autoFilter={from:{row:1,column:1},to:{row:1,column:cabeceras.length}};
@@ -220,6 +265,14 @@
    const calles=table(22,4,'CUMPLIMIENTO POR CALLE',['Calle','Pagadas','Pendientes'],info.calles);
    const egresosOrdenados=[...info.egresos].sort((a,b)=>b[1]-a[1]);
    const egresos=table(37,1,'EGRESOS POR CATEGORÍA',['Categoría','Monto (MXN)'],egresosOrdenados);
+   const balance=info.balanceMensual;
+   const balanceRows=balance?[
+    ['Ingresos del período',balance.ingresos],
+    [projectReport?'Meta del proyecto':'Egresos del período',balance.egresos],
+    [balance.estado==='SALDO_EN_CONTRA'?(projectReport?'Por recaudar':'Saldo en contra'):
+     balance.estado==='SALDO_A_FAVOR'?(projectReport?'Sobre la meta':'Saldo a favor'):'En equilibrio',Math.abs(balance.diferencia)]
+   ]:null;
+   const balanceTable=balanceRows?table(53,1,projectReport?'DIFERENCIA CONTRA META':'BALANCE INFORMATIVO',['Indicador','Monto (MXN)'],balanceRows):null;
    resumenWs.getColumn(1).width=38;resumenWs.getColumn(2).width=25;
    resumenWs.getColumn(4).width=34;resumenWs.getColumn(5).width=17;
    resumenWs.getColumn(6).width=17;
@@ -276,6 +329,9 @@
    const streetLabels=info.calles.map(etiquetaCumplimientoCalle);
    const callesEtiquetas=prepararEtiquetas(calles,35,24,streetLabels,
     info.calles.map((_,i)=>'D'+(24+i)+'&" ("&E'+(24+i)+'&"/"&SUM(E'+(24+i)+':F'+(24+i)+')&")"'));
+   const balanceLabels=balanceRows?.map(row=>row[0]+' · '+formatMoney(row[1]));
+   const balanceEtiquetas=balanceTable?prepararEtiquetas(balanceTable,37,55,balanceLabels,
+    balanceRows.map((_,i)=>'A'+(55+i)+'&" · "&TEXT(B'+(55+i)+',"$#,##0.00")')):null;
    const expenseLabels=egresosOrdenados.map(row=>row[0]+' · '+formatMoney(row[1]));
    const egresosEtiquetas=prepararEtiquetas(egresos,36,39,expenseLabels,
     egresosOrdenados.map((_,i)=>'A'+(39+i)+'&" · "&TEXT(B'+(39+i)+',"$#,##0.00")'));
@@ -297,6 +353,9 @@
      source:egresosEtiquetas,from:[7,53],to:[20,81],xTitle:'Monto (MXN)',yTitle:'Categoría',
      colors:['AE9AC9']}
    ];
+   if(balanceEtiquetas)chartSpecs.push({title:projectReport?'Aportaciones contra meta':'Balance informativo: saldo a favor o en contra',kind:'bar',
+    source:balanceEtiquetas,from:[21,53],to:[34,81],xTitle:'Monto (MXN)',yTitle:'Concepto',
+    colors:['76B79B']});
   }
   let buffer=await workbook.xlsx.writeBuffer();
   if(chartSpecs.length){
