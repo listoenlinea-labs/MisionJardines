@@ -29,6 +29,9 @@ test('Excel de padrón y de proyectos sin formatos decimales',()=>{
  assert.match(excel,/nombre==='Finanzas'&&cabeceras\.includes\('Monto \/ viviendas'\)/);
  assert.match(excel,/TEXT\(B/);
  assert.match(excel,/maximumFractionDigits:0/);
+ const charts=read('docs/assets/js/analisis-excel-charts.js');
+ assert.match(charts,/formatCode=\"#,##0\"/);
+ assert.doesNotMatch(charts,/formatCode=\"#,##0\\.##\"/);
  assert.match(cuotas,/minimumFractionDigits: 0/);
  assert.match(cuotas,/maximumFractionDigits: 0/);
 });
