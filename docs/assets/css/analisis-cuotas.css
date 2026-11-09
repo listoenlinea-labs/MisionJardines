@@ -1577,3 +1577,49 @@ body.page-analisis .finance-actions-row #financeGenerateReceipt:disabled{
 .finance-receipt-email-success-icon{width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;border-radius:50%;background:#217b4f;color:white;font-weight:900;font-size:25px}
 .finance-receipt-email-success strong{display:block;font-size:17px;line-height:1.4}
 .finance-receipt-email-success span[id]{display:block;margin-top:3px;font-size:12px;color:#397b58;overflow-wrap:anywhere}
+
+
+/* Balance informativo: tres gráficas horizontales en monitores amplios. */
+body.page-analisis .finance-monthly-columns{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch;
+}
+body.page-analisis .finance-monthly-columns > .finance-chart-card{
+ box-sizing:border-box;min-width:0;margin:0;height:100%;
+}
+.finance-monthly-columns .finance-chart-card .bar-row{
+ grid-template-columns:minmax(72px,96px) minmax(25px,1fr) minmax(60px,80px);
+ gap:7px;
+}
+.finance-balance-card{display:flex;flex-direction:column}
+.finance-balance-visual{display:flex;flex-direction:column;gap:18px;padding:16px 4px;margin:2px 0 8px}
+.finance-balance-rows{display:grid;gap:12px}
+.finance-balance-rows>div:not(.finance-balance-track){display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#4b5c70}
+.finance-balance-rows strong{font-size:15px;color:#183b2b}
+.finance-balance-track{width:100%;height:16px;background:#f2eaf0;border-radius:9px;overflow:hidden}
+.finance-balance-fill{display:block;height:100%;width:0;transition:width .25s ease;border-radius:9px;background:#7bbd99}
+.finance-balance-fill.expense{background:#e9947b}
+.finance-balance-result{margin-top:10px;border-top:1px solid #e5eaf0;padding:18px 8px;display:grid;gap:8px;text-align:center}
+.finance-balance-result small{color:#6b788a;font-size:12px}
+.finance-balance-result strong{font-size:clamp(24px,2.4vw,35px);color:#276f4c;overflow-wrap:anywhere}
+.finance-balance-result span{font-size:12px;font-weight:800;color:#29734d}
+.finance-balance-card[data-balance-state="SALDO_EN_CONTRA"] .finance-balance-result strong,
+.finance-balance-card[data-balance-state="SALDO_EN_CONTRA"] .finance-balance-result span{color:#b54b3f}
+.finance-balance-card[data-balance-state="EN_EQUILIBRIO"] .finance-balance-result strong,
+.finance-balance-card[data-balance-state="EN_EQUILIBRIO"] .finance-balance-result span{color:#66768a}
+@media(max-width:1260px){
+ body.page-analisis .finance-monthly-columns{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.page-analisis #financeBalanceCard{grid-column:1/-1}
+}
+@media(max-width:800px){
+ body.page-analisis .finance-monthly-columns{grid-template-columns:minmax(0,1fr)}
+ body.page-analisis #financeBalanceCard{grid-column:auto}
+ .finance-monthly-columns .finance-chart-card .bar-row{
+  grid-template-columns:minmax(80px,120px) minmax(24px,1fr) minmax(65px,94px);
+ }
+}
+@media(min-width:1600px){
+ .finance-monthly-columns .finance-chart-card .bar-row{
+  grid-template-columns:minmax(105px,145px) minmax(24px,1fr) minmax(75px,110px);
+ }
+}
+@media(prefers-reduced-motion:reduce){.finance-balance-fill{transition:none}}

@@ -292,6 +292,47 @@
   document.querySelector('#financeStreetPanel h2').textContent='Cumplimiento del proyecto por calle';
  }
 
+ function renderBalanceCard(){
+  const card=$('financeBalanceCard');
+  const project=activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+   ?data?.proyectosExtraordinarios?.find(p=>Number(p.id)===Number(activeProyectoId)):null;
+  const balance=project?window.MJFinanceBalance?.proyecto(project):
+   window.MJFinanceBalance?.mensual(data);
+  const isProject=Boolean(project);
+  $('financeBalanceSubtitle').textContent=isProject?'Aportaciones contra meta':'Ingresos menos egresos';
+  $('financeBalanceExpenseLabel').textContent=isProject?'Meta del proyecto':'Egresos';
+  $('financeBalanceDescription').textContent=isProject?
+   'Aportaciones acumuladas comparadas con el presupuesto; no se trata de gastos pagados.':
+   'Balance informativo de cuotas cubiertas en el mes y gastos registrados del mismo período.';
+  if(!balance){
+   card.dataset.balanceState='';
+   $('financeBalanceTotals').textContent='Sin datos suficientes para calcular el balance.';
+   $('financeBalanceWarning').textContent='Actualiza el análisis para consultar importes del período.';
+   $('financeBalanceIncome').textContent='—';$('financeBalanceExpense').textContent='—';
+   $('financeBalanceDifference').textContent='—';$('financeBalanceStatus').textContent='Sin información';
+   $('financeBalanceIncomeBar').style.width='0%';$('financeBalanceExpenseBar').style.width='0%';
+   return;
+  }
+  const abs=Math.abs(balance.diferencia);
+  const label=balance.estado==='SALDO_A_FAVOR'?'Saldo a favor':
+   balance.estado==='SALDO_EN_CONTRA'?'Saldo en contra':'En equilibrio';
+  card.dataset.balanceState=balance.estado;
+  $('financeBalanceTotals').textContent=isProject?'Proyecto: '+project.nombre:'Período: '+data.periodo;
+  $('financeBalanceIncome').textContent=fmt(balance.ingresos);
+  $('financeBalanceExpense').textContent=fmt(balance.egresos);
+  $('financeBalanceDifference').textContent=fmt(abs);
+  $('financeBalanceStatus').textContent=isProject?
+   (balance.estado==='SALDO_EN_CONTRA'?'Saldo en contra · por recaudar':balance.estado==='SALDO_A_FAVOR'?'Saldo a favor · sobre la meta':'Meta cubierta · en equilibrio'):label;
+  const max=Math.max(1,balance.ingresos,balance.egresos);
+  $('financeBalanceIncomeBar').style.width=Math.max(0,100*balance.ingresos/max)+'%';
+  $('financeBalanceExpenseBar').style.width=Math.max(0,100*balance.egresos/max)+'%';
+  $('financeBalanceWarning').textContent=balance.criterio;
+  $('financeBalanceVisual').setAttribute('aria-label',
+   (isProject?'Aportaciones '+fmt(balance.ingresos)+'; meta '+fmt(balance.egresos):
+   'Ingresos '+fmt(balance.ingresos)+'; egresos '+fmt(balance.egresos))+
+   '; '+label+' '+fmt(abs));
+ }
+ 
  function render(){
   if(!data)return;
   renderMaintenanceDashboard();
@@ -327,6 +368,7 @@
    $('financeExpenseTotals').textContent='Actualiza el backend para consultar los egresos del mes.';
    $('financeExpenseChart').textContent='';
   }
+  renderBalanceCard();
   renderExpenseHistory();
   renderIncomeHistory();
   renderExpenses();
@@ -619,6 +661,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
   if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
   else renderMaintenanceDashboard();
+  renderBalanceCard();
   $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
   if(concepto==='EXTRAORDINARIO'){
    $('financeLastPaidMonth').value='';

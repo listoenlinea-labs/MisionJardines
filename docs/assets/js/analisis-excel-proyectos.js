@@ -85,11 +85,17 @@
    ['Proyecto','Saldo por recaudar',money(pendiente),'Suma de saldos de las viviendas'],
    ['Proyecto','Saldo a favor',money(saldoFavor),'No descontar de otras viviendas'],
    ['Proyecto','No aplica',exentas.length,'Casas sin cargo; no cuentan como pagadas'],
+   ['Balance contra meta','Diferencia de aportaciones contra meta',money(recaudado-total),
+    'Un valor negativo significa pendiente por recaudar; la meta es presupuesto, no gasto realizado'],
    ...incomes.map(([label,value])=>['Origen',safe(label),money(value),
     'Clasificación de movimientos registrados; no duplicar con depósitos bancarios'])
   ];
+  const balanceProyecto=root.MJFinanceBalance?.proyecto(project)||{
+   tipo:'META_PROYECTO',ingresos:money(recaudado),egresos:money(total),
+   diferencia:money(recaudado-total),estado:recaudado>total?'SALDO_A_FAVOR':recaudado<total?'SALDO_EN_CONTRA':'EN_EQUILIBRIO',
+   criterio:'Aportaciones acumuladas menos meta presupuestada; la meta no es un egreso pagado.'};
   const dashboard={
-   esProyecto:true,
+   esProyecto:true,proyectoId:id,balanceMensual:balanceProyecto,
    status:[['Meta alcanzada',completas.length],['Sin meta completa',pendientes.length]],
    anual:[['Meta alcanzada',completas.length],['Abonando',parciales.length]],
    ingresos:incomes,egresos:[
@@ -115,6 +121,8 @@
    ['Aportaciones registradas (MXN)',money(recaudado)],
    ['Pendiente por recaudar (MXN)',money(pendiente)],
    ['Saldo a favor (MXN)',money(saldoFavor)],
+   ['Diferencia contra meta (MXN)',money(recaudado-total)],
+   ['Estado de diferencia',recaudado>total?'Saldo a favor · sobre la meta':recaudado<total?'Saldo en contra · por recaudar':'Meta cubierta'],
    ['Alcance','Solo proyecto seleccionado; incluye las 231 viviendas sin depender de filtros ni paginación.'],
    ['Criterio financiero','El historial de aportaciones puede incluir importaciones bancarias y registros manuales. No duplicar depósitos en caja.']
   ];
