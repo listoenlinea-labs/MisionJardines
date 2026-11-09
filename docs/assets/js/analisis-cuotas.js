@@ -2419,15 +2419,17 @@ function renderHouses(){
  let projectExceptions=new Map(),projectPreview=null,projectSaving=false,projectPreviousFocus=null;
  const projectBudgetValid=value=>{
   const n=Number(value);
-  return String(value??'').trim()!==''&&Number.isFinite(n)&&n>=2.31&&n<=10000000&&
+  return String(value??'').trim()!==''&&Number.isFinite(n)&&Number.isInteger(n)&&n>=3&&n<=10000000&&
    Math.abs(n*100-Math.round(n*100))<0.001;
  };
  function computeProjectPreview(){
   if(!projectBudgetValid($('financeRulesBudget').value))return null;
   if(!window.MJProjectBudget?.distribuir)throw Error('El cálculo de presupuesto no está disponible. Actualiza la página.');
+  const exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto}));
+  if(exceptions.some(({monto})=>!Number.isInteger(Number(monto))))
+   throw Error('Las cuotas excepcionales deben expresarse en pesos enteros.');
   return window.MJProjectBudget.distribuir(
-   projectHouses(),Number($('financeRulesBudget').value),
-   [...projectExceptions].map(([casaId,monto])=>({casaId,monto}))
+   projectHouses(),Number($('financeRulesBudget').value),exceptions
   );
  }
  function renderProjectModal(){
@@ -2723,7 +2725,7 @@ function renderHouses(){
   const input=e.target.closest('[data-bulk-amount]');
   if(!input||bulkSaving)return;
   const amount=bulkCents(input.value);
-  if(amount===null){
+  if(amount===null||!Number.isInteger(Number(input.value))){
    input.setCustomValidity('Ingresa un importe entre $0 y $10,000,000 en pesos enteros.');
    input.reportValidity();
    return;
