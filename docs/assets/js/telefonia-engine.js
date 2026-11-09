@@ -69,8 +69,7 @@
           : 'Selecciona una calle y una casa para llamar al residente por WhatsApp.';
       });
       document.querySelectorAll('[data-whatsapp-only]').forEach(element => { element.hidden = enabled; });
-      this.status(enabled ? 'Telefonía seleccionada. Conecta tus audífonos para llamar.'
-        : 'Conmutador listo. Al seleccionar una casa se abrirá WhatsApp Desktop.', 'ok');
+      this.status('');
       return config;
     }
 
