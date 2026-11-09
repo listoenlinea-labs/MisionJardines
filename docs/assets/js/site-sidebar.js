@@ -88,13 +88,17 @@
       { label: 'Comunidad', items: community },
       { label: 'Seguridad', items: security }
     ];
-    // Inicio está disponible para Seguridad y residentes, pero sin mostrar
-    // enlaces de otros roles ni siquiera durante la carga inicial del menú.
-    const visible = role() === 'SEGURIDAD'
-      ? navigation.filter(group => group.label === '' || group.label === 'Seguridad')
-      : navigation;
-    return visible.map(group => ({ ...group, items: group.items.filter(item => MJPermissions.canAccess(role(), item.page)) }))
-      .filter(group => group.items.length);
+    // Vista operativa temporal de caseta: ocultar Inicio, Mapa y Reportes
+    // exclusivamente del menú de Seguridad. No revocar APIs necesarias
+    // para las tres secciones ni el acceso a "Mi cuenta" del pie de menú.
+    const guard = role() === 'SEGURIDAD';
+    const guardPages = new Set(['conmutador.html', 'visitas.html', 'seguridad.html']);
+    const visible = guard ? navigation.filter(group => group.label === 'Seguridad') : navigation;
+    return visible.map(group => ({
+      ...group,
+      items: group.items.filter(item =>
+        MJPermissions.canAccess(role(), item.page) && (!guard || guardPages.has(item.page)))
+    })).filter(group => group.items.length);
   }
 
   const page = () => typeof window !== 'undefined' && window.MJ_SHELL_MODE
