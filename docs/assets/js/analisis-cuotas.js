@@ -97,7 +97,19 @@
  let selectedReceiptHouseId=null;
  // La selección corresponde al concepto y al proyecto, nunca a otra pestaña.
  let receiptSelectionScope=null;
- const HOUSE_PAGE_SIZE=12;
+ // Tres viviendas por página únicamente en celular; 12 en otras pantallas.
+ const phoneLayout=window.matchMedia('(max-width: 700px)');
+ const HOUSE_PAGE_SIZE_DESKTOP=12,HOUSE_PAGE_SIZE_PHONE=3;
+ const housePageSize=()=>phoneLayout.matches?HOUSE_PAGE_SIZE_PHONE:HOUSE_PAGE_SIZE_DESKTOP;
+ let previousHousePageSize=housePageSize();
+ const updateHousePageSize=()=>{
+  const firstVisibleIndex=(housePage-1)*previousHousePageSize;
+  previousHousePageSize=housePageSize();
+  housePage=Math.floor(firstVisibleIndex/previousHousePageSize)+1;
+  renderHouses();
+ };
+ if(phoneLayout.addEventListener)phoneLayout.addEventListener('change',updateHousePageSize);
+ else phoneLayout.addListener(updateHousePageSize);
 
  // Cada gráfica tiene su propio control; en escritorio el CSS deja ambos
  // paneles visibles y oculta estos botones, sin alterar el render financiero.
@@ -119,6 +131,72 @@
    label.textContent=expanded?'Ocultar':'Mostrar';
   });
  });
+
+ // En celular las tres tarjetas se navegan con scroll-snap horizontal.
+ // Ajustar la altura a la tarjeta activa evita espacio vacío innecesario.
+ function setupFinancialCarousel(){
+  const slider=$('financeMonthlyColumns');
+  if(!slider)return;
+  const slides=[...slider.querySelectorAll('.finance-chart-card')];
+  const buttons=[...document.querySelectorAll('.finance-monthly-jump')];
+  if(slides.length!==3||buttons.length!==3)return;
+  let activeSlide=0,scrollScheduled=false;
+  const clamp=index=>Math.max(0,Math.min(slides.length-1,index));
+  const updateHeight=()=>{
+   if(!phoneLayout.matches){slider.style.height='';return;}
+   const height=Math.ceil(slides[activeSlide].getBoundingClientRect().height);
+   if(height>0)slider.style.height=height+'px';
+  };
+  const updateButtons=()=>{
+   buttons.forEach((button,index)=>{
+    const current=phoneLayout.matches&&index===activeSlide;
+    button.classList.toggle('is-active',current);
+    if(current)button.setAttribute('aria-current','true');
+    else button.removeAttribute('aria-current');
+   });
+   updateHeight();
+  };
+  const syncSlide=()=>{
+   if(!phoneLayout.matches)return;
+   const index=clamp(Math.round(slider.scrollLeft/Math.max(1,slider.clientWidth)));
+   if(index!==activeSlide){activeSlide=index;updateButtons();}
+  };
+  const goToSlide=index=>{
+   if(!phoneLayout.matches)return;
+   activeSlide=clamp(index);
+   updateButtons();
+   slider.scrollTo({left:activeSlide*slider.clientWidth,
+    behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  };
+  buttons.forEach((button,index)=>button.addEventListener('click',()=>goToSlide(index)));
+  slider.addEventListener('scroll',()=>{
+   if(scrollScheduled)return;
+   scrollScheduled=true;
+   requestAnimationFrame(()=>{scrollScheduled=false;syncSlide();});
+  },{passive:true});
+  slider.addEventListener('keydown',event=>{
+   if(!phoneLayout.matches||!['ArrowLeft','ArrowRight'].includes(event.key))return;
+   event.preventDefault();
+   goToSlide(activeSlide+(event.key==='ArrowRight'?1:-1));
+  });
+  const layoutChanged=()=>{
+   if(!phoneLayout.matches){slider.style.height='';slider.scrollLeft=0;activeSlide=0;}
+   else slider.scrollLeft=activeSlide*slider.clientWidth;
+   updateButtons();
+  };
+  if(phoneLayout.addEventListener)phoneLayout.addEventListener('change',layoutChanged);
+  else phoneLayout.addListener(layoutChanged);
+  window.addEventListener('resize',()=>{
+   if(phoneLayout.matches)slider.scrollLeft=activeSlide*slider.clientWidth;
+   updateHeight();
+  },{passive:true});
+  if(typeof ResizeObserver!=='undefined'){
+   const observer=new ResizeObserver(updateHeight);
+   slides.forEach(slide=>observer.observe(slide));
+  }
+  updateButtons();
+ }
+ setupFinancialCarousel();
 
  const notice=(msg,kind='error')=>{const el=$('financeNotice');el.textContent=msg;el.hidden=false;el.dataset.kind=kind;};
  async function request(path,body,method=body?'POST':'GET'){
@@ -729,9 +807,10 @@ function renderHouses(){
      houseMatchesStatus(h,status)&&cumpleUltimoPago(h,ultimoMes,ultimoAnio);
   }).sort((a,b)=>window.MJHouseSort.compareHouses(a,b,houseSort));
   syncHouseSort();
-  const totalPages=Math.max(1,Math.ceil(filtered.length/HOUSE_PAGE_SIZE));
+  const pageSize=housePageSize();
+  const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));
   housePage=Math.min(Math.max(housePage,1),totalPages);
-  const visible=filtered.slice((housePage-1)*HOUSE_PAGE_SIZE,housePage*HOUSE_PAGE_SIZE);
+  const visible=filtered.slice((housePage-1)*pageSize,housePage*pageSize);
   const selectionAvailable=activeConcept==='MANTENIMIENTO'||(activeConcept==='EXTRAORDINARIO'&&!!activeProyectoId);
   if(!selectionAvailable||!visible.some(h=>Number(h.casaId)===selectedReceiptHouseId))selectedReceiptHouseId=null;
   const selected=visible.find(h=>Number(h.casaId)===selectedReceiptHouseId);
