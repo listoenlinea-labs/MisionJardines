@@ -94,13 +94,14 @@ async function analizar(req,res){
      })};
     }catch(_){ultimoAbono={...abono,folio:null};}
    }
-   const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0) ||
+   const cuotaCompleta=status==='PAGADO';
+   const pagada=cuotaCompleta || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0) ||
     (Boolean(ultimoAbono)&&q?.origenImportacion==='MANUAL_ABONO_ADEUDO'&&num(q?.montoPagado)>0);
    // Pago parcial cuenta como vivienda con algún pago, pero se conserva su estatus.
    const calle=String(h.calleCorrecta||h.calle||'Sin calle');
    if(!streets.has(calle))streets.set(calle,{calle,total:0,pagadas:0,pendientes:0,abonos:0});
    const st=streets.get(calle);
-   st.total++;if(pagada)st.pagadas++;else st.pendientes++;
+   st.total++;if(cuotaCompleta)st.pagadas++;else st.pendientes++;
    st.abonos+=num(q?.montoPagado);
    const bancosDeCasa=bancosMantenimiento.get(String(h.id))||[];
    const ultimoPago=historialMantenimiento(cuotasDeCasa,bancosDeCasa)[0]||null;
@@ -155,7 +156,7 @@ async function analizar(req,res){
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
   for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
-  const pagadas=residences.filter(h=>h.pagada).length;
+  const pagadas=residences.filter(h=>String(h.estatus)==='PAGADO').length; // Cumplimiento, no simples ingresos.
   // Desglose sin paginación ni filtros del navegador para los cuatro Excel del tablero.
   // Estos movimientos se consultaron ya para construir los mismos indicadores.
   const viviendasPorId=new Map(residences.map(h=>[String(h.casaId),h]));
