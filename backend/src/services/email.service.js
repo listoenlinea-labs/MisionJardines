@@ -334,7 +334,7 @@ async function enviarReciboAdjunto({destinatario,folio,buffer,nombreArchivo,conc
  validarConfiguracionGmailRecibos();
  if(!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(String(destinatario||'')))
   throw Error('No existe correo de destino válido.');
- const importe=Number(monto||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+ const importe=Number(monto||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const descripcion=concepto==='EXTRAORDINARIO'?'Cuotas extraordinarias: '+String(proyecto||'Proyecto'):'Mantenimiento';
  // No reintentar ante respuesta SMTP ambigua para evitar duplicar envíos.
  const info=await crearTransportadorGmailRecibos().sendMail({
