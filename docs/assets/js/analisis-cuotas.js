@@ -2623,7 +2623,7 @@ function renderHouses(){
     return '<tr'+(special?' class="has-exception"':'')+'><td>'+esc(h.calle+' '+h.numero)+'</td>'+
      '<td>'+(amount===null?'—':esc(fmt(amount/100)))+' <small>Abonado '+esc(fmt(paid/100))+'</small></td>'+
      '<td>'+(special
-      ?'<input type="number" min="0" step="0.01" max="10000000" inputmode="decimal" data-bulk-amount="'+id+'" aria-label="Cuota excepcional de '+esc(h.calle+' '+h.numero)+'" value="'+esc(bulkExceptions.get(id))+'"> <button type="button" class="soft" data-bulk-remove="'+id+'">Quitar</button>'
+      ?'<input type="number" min="0" step="1" max="10000000" inputmode="numeric" data-bulk-amount="'+id+'" aria-label="Cuota excepcional de '+esc(h.calle+' '+h.numero)+'" value="'+esc(bulkExceptions.get(id))+'"> <button type="button" class="soft" data-bulk-remove="'+id+'">Quitar</button>'
       :'<button type="button" class="soft" data-bulk-add="'+id+'"'+(bulkBase()===null?' disabled':'')+'>Generar excepción</button>')+
      '</td></tr>';
    }).join('')||'<tr><td colspan="3">No hay viviendas que coincidan con la búsqueda.</td></tr>';
