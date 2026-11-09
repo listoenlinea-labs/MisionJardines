@@ -92,7 +92,7 @@ function publico(row){
   anioCubierto:Number(row.anio_cubierto),mesTexto:MESES[Number(row.mes_cubierto)-1],
   conceptoDetalle:row.concepto_detalle,monto:Number(row.monto),
   formaPago:row.forma_pago,sello:row.sello,
-  fechaEmision:String(row.fecha_emision).slice(0,10),
+  fechaEmision:row.fecha_emision instanceof Date?row.fecha_emision.toISOString().slice(0,10):String(row.fecha_emision).slice(0,10),
   creadoEn:row.creado_en
  };
 }
