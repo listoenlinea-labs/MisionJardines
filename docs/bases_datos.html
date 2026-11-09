@@ -625,7 +625,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="assets/css/residentes-gestion.css?v=20261009-simple">
+  <link rel="stylesheet" href="assets/css/residentes-gestion.css?v=20261109-checkbox-hover-v1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 
@@ -696,10 +696,10 @@
           </svg>Exportar CSV</button>
       </div>
       <div class="filters">
-        <div class="search"><label for="filterText">Buscar residente o contacto</label><svg viewBox="0 0 24 24">
+        <div class="search"><label for="filterText">Buscar residente, contacto o vivienda</label><svg viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="6"></circle>
             <path d="m16 16 5 5"></path>
-          </svg><input id="filterText" placeholder="Nombre, teléfono o correo"></div>
+          </svg><input id="filterText" placeholder="Nombre, teléfono, correo, calle o número"></div>
         <div><label for="filterStreet">Calle</label><select id="filterStreet">
             <option value="">Todas las calles</option>
           </select></div>
@@ -754,15 +754,15 @@
         <label>Correo<input id="residentEmail" type="email" maxlength="150" autocomplete="email"></label>
         <label class="resident-full">Observaciones de la vivienda<textarea id="residentNotes" maxlength="3000" rows="3"></textarea></label>
       </div>
-      <label class="resident-check"><input id="residentRental" type="checkbox">La vivienda está en renta</label>
-      <label class="resident-check"><input id="residentContact" type="checkbox">Usar estos datos como contacto principal de la vivienda</label>
+      <label class="resident-check" for="residentRental"><input id="residentRental" type="checkbox"><span>La vivienda está en renta</span></label>
+      <label class="resident-check" for="residentContact"><input id="residentContact" type="checkbox"><span>Usar estos datos como contacto principal de la vivienda</span></label>
       <p class="resident-note">Los pagos, adeudos y vigencia de mantenimiento permanecen asociados a esta vivienda. Los TAGs no se reasignan ni se bloquean con este formulario; revisa su entrega al cambiar de inquilino.</p>
       <p id="residentFormError" class="resident-form-error" role="alert" hidden></p>
       <div class="resident-dialog-actions"><button type="button" id="cancelResidentDialog" class="btn">Cancelar</button><button id="saveResident" class="btn btn-primary" type="submit">Guardar cambios</button></div>
     </form>
   </dialog>
   <div id="toast" class="toast"></div>
-  <script src="assets/js/residentes.js?v=20261019-multivivienda"></script>
+  <script src="assets/js/residentes.js?v=20261109-busqueda-direccion-v1"></script>
   <script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll"></script>
 </body>
 
