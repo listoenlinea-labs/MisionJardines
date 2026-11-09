@@ -122,7 +122,7 @@
    ['Pendiente por recaudar (MXN)',money(pendiente)],
    ['Saldo a favor (MXN)',money(saldoFavor)],
    ['Diferencia contra meta (MXN)',money(recaudado-total)],
-   ['Estado de diferencia',recaudado>total?'Sobre la meta':recaudado<total?'Por recaudar':'Meta cubierta'],
+   ['Estado de diferencia',recaudado>total?'Saldo a favor · sobre la meta':recaudado<total?'Saldo en contra · por recaudar':'Meta cubierta'],
    ['Alcance','Solo proyecto seleccionado; incluye las 231 viviendas sin depender de filtros ni paginación.'],
    ['Criterio financiero','El historial de aportaciones puede incluir importaciones bancarias y registros manuales. No duplicar depósitos en caja.']
   ];
