@@ -35,6 +35,7 @@ function historialMantenimiento(cuotas=[],comprobantes=[]){
     const mm=MONTHS.indexOf(String(c.mes||'').toUpperCase());
     if(mm>=0)item.periodos.push({mes:MONTHS[mm],anio:Number(c.anio),monto:paid/100});
     if(String(c.origenImportacion||'').startsWith('MANUAL_ANALISIS'))item.fuente='REGISTRO_MANUAL';
+    if(c.origenImportacion==='MANUAL_ABONO_ADEUDO')item.fuente='ABONO_CON_ADEUDO';
     if(c.origenImportacion==='MANUAL_ANALISIS_ANUAL')item.pagoAnual=true;
   }
   for(const p of comprobantes){
