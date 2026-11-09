@@ -96,7 +96,8 @@
       function setStatus(message, kind) {
         const status = byId('callStatus');
         status.className = 'statusbar' + (kind ? ' ' + kind : '');
-        status.textContent = message;
+        status.textContent = message || '';
+        status.hidden = !message;
       }
 
       async function api(path) {
@@ -289,7 +290,7 @@
       renderHouses();
       document.querySelectorAll('.house-btn').forEach(item => { item.disabled = true; });
       (isIPhone ? Promise.resolve().then(() => {
-        setStatus('Conmutador Telcel listo. Elige una vivienda.','ok');
+        setStatus('');
         document.querySelectorAll('[data-call-description]').forEach(el=>el.textContent='Elige una vivienda para llamar desde el iPhone sin WhatsApp.');
         document.querySelectorAll('[data-whatsapp-only]').forEach(el=>el.hidden=true);
       }) : caller.init()).then(() => {
