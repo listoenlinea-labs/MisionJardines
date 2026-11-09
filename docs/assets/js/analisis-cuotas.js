@@ -322,7 +322,7 @@
   $('financeBalanceExpense').textContent=fmt(balance.egresos);
   $('financeBalanceDifference').textContent=fmt(abs);
   $('financeBalanceStatus').textContent=isProject?
-   (balance.estado==='SALDO_EN_CONTRA'?'Por recaudar':balance.estado==='SALDO_A_FAVOR'?'Sobre la meta':'Meta cubierta'):label;
+   (balance.estado==='SALDO_EN_CONTRA'?'Saldo en contra · por recaudar':balance.estado==='SALDO_A_FAVOR'?'Saldo a favor · sobre la meta':'Meta cubierta · en equilibrio'):label;
   const max=Math.max(1,balance.ingresos,balance.egresos);
   $('financeBalanceIncomeBar').style.width=Math.max(0,100*balance.ingresos/max)+'%';
   $('financeBalanceExpenseBar').style.width=Math.max(0,100*balance.egresos/max)+'%';
