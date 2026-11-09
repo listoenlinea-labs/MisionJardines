@@ -2411,7 +2411,7 @@ function renderHouses(){
  });
 
  const projectModal=$('financeProjectRulesModal');
- const projectMoney=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2,maximumFractionDigits:2});
+ const projectMoney=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const projectMoneyText=value=>projectMoney.format(Number(value||0));
  const projectHouses=()=>[...(data?.viviendasMantenimiento||[])].sort((a,b)=>
   String(a.calle).localeCompare(String(b.calle),'es',{numeric:true})||
@@ -2525,7 +2525,7 @@ function renderHouses(){
   catch(err){$('financeRulesStatus').textContent=err.message;}
   projectPreview=preview;
   $('financeRulesSpecialCount').textContent=String(projectExceptions.size);
-  $('financeRulesDiff').textContent=preview?'$0.00':'Pendiente';
+  $('financeRulesDiff').textContent=preview?fmt(0):'Pendiente';
   $('financeRulesBudgetDisplay').textContent=preview
    ?projectMoneyText(preview.totalCentavos/100):'Revisar importe';
   // Mostrar en vivo el nuevo reparto de las demás viviendas sin reemplazar
