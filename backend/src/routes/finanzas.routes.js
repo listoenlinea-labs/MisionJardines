@@ -6,6 +6,11 @@ const pagosManuales=require('../controllers/pagos-manuales-analisis.controller')
 const recibosMantenimiento=require('../controllers/recibos-mantenimiento-analisis.controller');
 router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
 router.get('/analisis',controller.analizar);
+const recibosManuales=require('../controllers/recibos-manuales.controller');
+router.get('/recibos-manuales',recibosManuales.listar);
+router.post('/recibos-manuales',recibosManuales.crear);
+router.get('/recibos-manuales/:id',recibosManuales.detalle);
+router.get('/recibos-manuales/:id/pdf',recibosManuales.pdf);
 const proyectos=require('../controllers/proyectos-extraordinarios.controller');
 router.post('/proyectos-extraordinarios/previsualizar',proyectos.previsualizar);
 router.post('/proyectos-extraordinarios/importar',proyectos.importar);
