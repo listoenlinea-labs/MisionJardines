@@ -855,7 +855,7 @@ function orderHouses(key){
    event.preventDefault();
    if(residentSaving||!openedResidentHouseId)return;
    const casaId=openedResidentHouseId;
-   const nombreCompleto=$('financeResidentName').value.trim().replace(/\\s+/g,' ');
+   const nombreCompleto=$('financeResidentName').value.trim().replace(/\s+/g,' ');
    if(nombreCompleto.length<2||nombreCompleto.length>150){
      $('financeResidentStatus').textContent='Escribe el nombre completo del residente (de 2 a 150 caracteres).';
      return;
