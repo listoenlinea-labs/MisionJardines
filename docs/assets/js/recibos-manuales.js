@@ -67,8 +67,37 @@
   $('manualReceiptFolioPreview').textContent='MJ-'+(abrev[mm-1]||'___')+'-'+
    (year||'____')+'-XXXXXXXXXX-'+init+number+'-M';
  }
+ function renderDraft(){
+  const val=id=>$(id).value.trim();
+  const set=(id,value)=>{$(id).textContent=value||'—'};
+  set('manualDraftFolio',$('manualReceiptFolioPreview').textContent);
+  set('manualDraftDate',val('manualReceiptDate'));
+  set('manualDraftName',val('manualReceiptName'));
+  set('manualDraftStreet',val('manualReceiptStreet'));
+  set('manualDraftNumber',val('manualReceiptNumber'));
+  set('manualDraftConcept',val('manualReceiptConceptTitle'));
+  set('manualDraftPeriod',(meses[Number(val('manualReceiptCoveredMonth'))-1]||'—')+' '+val('manualReceiptCoveredYear'));
+  set('manualDraftDetail',val('manualReceiptConceptDetail'));
+  const amount=Number(val('manualReceiptAmount'));
+  set('manualDraftAmount',Number.isSafeInteger(amount)&&amount>0?'$'+amount.toLocaleString('es-MX')+' MXN':'—');
+  set('manualDraftMethod',val('manualReceiptMethod'));
+  set('manualDraftSeal',val('manualReceiptSeal').toUpperCase());
+ }
+ $('manualReceiptReview').addEventListener('click',()=>{
+  const expanded=$('manualReceiptReview').getAttribute('aria-expanded')==='true';
+  $('manualReceiptDraft').hidden=expanded;
+  $('manualReceiptReview').setAttribute('aria-expanded',String(!expanded));
+  $('manualReceiptReview').textContent=expanded?'Ver borrador':'Ocultar borrador';
+  if(!expanded){renderDraft();$('manualReceiptDraft').scrollIntoView({block:'nearest',behavior:'smooth'});}
+ });
+ $('manualReceiptForm').addEventListener('input',()=>{if(!$('manualReceiptDraft').hidden)renderDraft();});
+ $('manualReceiptForm').addEventListener('change',()=>{if(!$('manualReceiptDraft').hidden)renderDraft();});
+
  function reset(){
   $('manualReceiptForm').reset();
+  $('manualReceiptDraft').hidden=true;
+  $('manualReceiptReview').setAttribute('aria-expanded','false');
+  $('manualReceiptReview').textContent='Ver borrador';
   const t=today();
   field('manualReceiptFolioMonth',t.month);
   field('manualReceiptCoveredMonth',t.month);
