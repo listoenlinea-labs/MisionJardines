@@ -15,6 +15,8 @@ const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
 const {reciboDelPeriodo}=require('../services/recibo-periodo-excel.service');
+const {ultimoAbonoConAdeudo}=require('../services/abono-con-adeudo-resumen.service');
+const {folioRecibo}=require('../services/recibo-mantenimiento-analisis.service');
 const {ultimosRegistrosPago}=require('../services/ultimo-registro-pago.service');
 const {agrupacionMantenimiento}=require('../services/resumen-cobranza-calles.service');
 const {categorias,canonica,resumenEgresos}=require('../services/categorias-egresos.service');
@@ -76,23 +78,38 @@ async function analizar(req,res){
   const streets=new Map();
   const residences=padron.casas.map(h=>{
    const q=byHouse.get(String(h.id));
-   const adeudo=calcularAdeudoVivienda(historiales.get(String(h.id))||[],{anio,mes,tarifa:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[]});
+   const cuotasDeCasa=historiales.get(String(h.id))||[];
+   const adeudo=calcularAdeudoVivienda(cuotasDeCasa,{anio,mes,tarifa:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[]});
    const status=estadoPeriodoMantenimiento(q,adeudo,anio,mes);
-   const pagada=status==='PAGADO' || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0);
+   const abono=ultimoAbonoConAdeudo(cuotasDeCasa,anio,mes,adeudo.saldoPendiente);
+   let ultimoAbono=null;
+   if(abono){
+    // Folio idéntico al PDF generado por historial; la referencia técnica
+    // no se muestra en ninguna celda visible de Excel.
+    try{
+     ultimoAbono={...abono,folio:folioRecibo({
+      calle:h.calleCorrecta||h.calle,numero:h.numero,
+      periodo:abono.anio+'-'+String(mesNombres.indexOf(abono.mes)+1).padStart(2,'0'),
+      referencia:abono.referencia
+     })};
+    }catch(_){ultimoAbono={...abono,folio:null};}
+   }
+   const cuotaCompleta=status==='PAGADO';
+   const pagada=cuotaCompleta || (status==='PAGO_PARCIAL' && num(q?.montoPagado)>0) ||
+    (Boolean(ultimoAbono)&&q?.origenImportacion==='MANUAL_ABONO_ADEUDO'&&num(q?.montoPagado)>0);
    // Pago parcial cuenta como vivienda con algún pago, pero se conserva su estatus.
    const calle=String(h.calleCorrecta||h.calle||'Sin calle');
    if(!streets.has(calle))streets.set(calle,{calle,total:0,pagadas:0,pendientes:0,abonos:0});
    const st=streets.get(calle);
-   st.total++;if(pagada)st.pagadas++;else st.pendientes++;
+   st.total++;if(cuotaCompleta)st.pagadas++;else st.pendientes++;
    st.abonos+=num(q?.montoPagado);
-   const cuotasDeCasa=historiales.get(String(h.id))||[];
    const bancosDeCasa=bancosMantenimiento.get(String(h.id))||[];
    const ultimoPago=historialMantenimiento(cuotasDeCasa,bancosDeCasa)[0]||null;
    // Sólo el movimiento que acredita el período consultado puede generar
    // folio en Excel. No reutilizar el último recibo de octubre para deudores.
    const reciboPeriodo=reciboDelPeriodo({casa:h,cuotas:cuotasDeCasa,
      comprobantes:bancosDeCasa,estado:status,saldoPendiente:adeudo.saldoPendiente,anio,mes});
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,reciboPeriodo,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,abonoConAdeudo:Boolean(ultimoAbono),ultimoAbonoConAdeudo:ultimoAbono,montoPagado:num(q?.montoPagado),ultimoPago,reciboPeriodo,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
     tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
@@ -139,7 +156,7 @@ async function analizar(req,res){
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
   for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
-  const pagadas=residences.filter(h=>h.pagada).length;
+  const pagadas=residences.filter(h=>String(h.estatus)==='PAGADO').length; // Cumplimiento, no simples ingresos.
   // Desglose sin paginación ni filtros del navegador para los cuatro Excel del tablero.
   // Estos movimientos se consultaron ya para construir los mismos indicadores.
   const viviendasPorId=new Map(residences.map(h=>[String(h.casaId),h]));

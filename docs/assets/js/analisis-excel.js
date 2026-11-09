@@ -8,7 +8,10 @@
   // No interpretar datos externos (nombre/referencia) como fórmulas de Excel.
   return /^[\s]*[=+@-]/.test(value)?"'"+value:value;
  };
- const mesUltimo=h=>h.ultimoMesPagado?`${h.ultimoMesPagado.mes} ${h.ultimoMesPagado.anio}`:'Sin pago';
+ const abonoVigente=h=>Boolean(h.abonoConAdeudo&&Number(h.saldoPendiente)>0&&h.ultimoAbonoConAdeudo);
+  const abonoEtiqueta=h=>abonoVigente(h)?'Sí':'No';
+  const periodoAbono=h=>abonoVigente(h)?h.ultimoAbonoConAdeudo.mes+' '+h.ultimoAbonoConAdeudo.anio:'';
+  const mesUltimo=h=>h.ultimoMesPagado?`${h.ultimoMesPagado.mes} ${h.ultimoMesPagado.anio}`:'Sin pago';
  // No mostrar la referencia histórica del último pago como si acreditara
  // el mes seleccionado. La API entrega el folio REAL de ese período.
  const folioComprobante=h=>{
@@ -21,10 +24,13 @@
   dinero(h.saldoPendiente),h.ultimoPago?.fecha?fecha(h.ultimoPago.fecha):'',
   folioComprobante(h),Array.isArray(h.mesesPendientes)?h.mesesPendientes.length:Number(h.mesesPendientes||0),
   dinero(h.recargosPendientes),Number(h.tags?.detalle?.length||0),dinero(h.tarifaMensual||300),
-  h.ultimoMesPagado?.pagoAnual?'Pago anual':String(h.estatus||'').toUpperCase()==='PAGO_PARCIAL'?'Abono parcial':'Mensual'];
+  h.ultimoMesPagado?.pagoAnual?'Pago anual':abonoVigente(h)?'Abono con adeudo':String(h.estatus||'').toUpperCase()==='PAGO_PARCIAL'?'Abono parcial':'Mensual',
+   abonoEtiqueta(h),periodoAbono(h),abonoVigente(h)?dinero(h.ultimoAbonoConAdeudo.monto):0,
+   abonoVigente(h)?texto(h.ultimoAbonoConAdeudo.folio||''):''];
  const headersVivienda=['ID vivienda','Calle','Número','Residente','Estado del mes','Pagado en el mes (MXN)',
   'Último movimiento (MXN)','Último mes pagado','Saldo pendiente (MXN)',
-  'Fecha último movimiento','Referencia','Meses pendientes','Recargos pendientes (MXN)','TAGs','Cuota mensual por cobrar (MXN)','Modalidad'];
+  'Fecha último movimiento','Referencia','Meses pendientes','Recargos pendientes (MXN)','TAGs','Cuota mensual por cobrar (MXN)','Modalidad',
+   'Abono con adeudo','Mes reconocido (abono)','Importe del abono (MXN)','Folio abono con adeudo'];
 
 
  // La anualidad es un subconjunto de viviendas pagadas, NO una tercera clase
@@ -38,6 +44,7 @@
  function prepararDashboard(data,viviendas){
   const completas=viviendas.filter(pagoCompleto);
   const pendientes=viviendas.filter(h=>!pagoCompleto(h));
+   const abonos=viviendas.filter(abonoVigente);
   const anuales=completas.filter(anualConfirmado);
   const historico=Boolean(data.esCargaHistorica);
   const bank=data.ingresosReportados||{};
@@ -71,7 +78,7 @@
    anual:[['Pago anual',anuales.length],['Pago mensual',completas.length-anuales.length]],
    ingresos,egresos,calles,
    indicadores:{
-    completas:completas.length,pendientes:pendientes.length,anuales:anuales.length,
+    completas:completas.length,pendientes:pendientes.length,anuales:anuales.length,abonos:abonos.length,
     totalIngresos:monto(data.ingresosParaBalance),totalEgresos:monto(data.totalEgresos),
     saldoInicial:monto(data.saldoInicial),saldoDisponible:monto(data.balanceReportado)
    },
@@ -86,9 +93,16 @@
   const sheet=(nombre,columnas,filas)=>({nombre,columnas,filas});
   const hojaViviendas=(nombre,filas)=>sheet(nombre,headersVivienda,filas.map(datosVivienda));
   const conteoPagadas=todas.filter(h=>h.pagada).length;
+   const abonosAdeudo=todas.filter(abonoVigente);
+   const enlacesAbonos=Object.fromEntries(abonosAdeudo.filter(h=>
+    h.ultimoAbonoConAdeudo?.folio && h.ultimoAbonoConAdeudo?.referencia).map(h=>[
+      String(h.casaId),{folio:h.ultimoAbonoConAdeudo.folio,referencia:h.ultimoAbonoConAdeudo.referencia}
+   ]));
   const resumen=[['Período de análisis',periodo],['Viviendas en padrón',todas.length],
    ['Con pago registrado',conteoPagadas],['Sin pago registrado',todas.length-conteoPagadas],
-   ['Nota','La exportación incluye todas las viviendas; ignora búsqueda, filtros y paginación.']];
+   ['Viviendas con abono con adeudo (siguen pendientes)',abonosAdeudo.length],
+    ['Nota','Los abonos con adeudo registran ingresos, pero no liquidan la deuda anterior.'],
+    ['Alcance','La exportación incluye todas las viviendas; ignora búsqueda, filtros y paginación.']];
   if(tipo==='padron'){
    const completas=todas.filter(pagoCompleto),pendientes=todas.filter(h=>!pagoCompleto(h));
    const dashboard=prepararDashboard(data,todas);
@@ -112,13 +126,15 @@
    ];
    return {nombre:'Casas_en_padron',titulo:'Padrón y dashboard financiero',
     hojas:[hojaViviendas('Todas las viviendas',todas),
-     hojaViviendas('Pago registrado',completas),
+     hojaViviendas('Pago registrado',todas.filter(h=>h.pagada)),
      hojaViviendas('Sin Pagar',pendientes),
+      hojaViviendas('Abono con adeudo',abonosAdeudo),
      sheet('Finanzas',['Tipo','Concepto','Monto (MXN)','Procedencia / criterio'],finanzas),
      sheet('Desglose por calle',['Calle','Pagadas','Sin pago completo','Total','Porcentaje pagado'],
       dashboard.calles.map(([calle,pagadas,ped])=>[texto(calle),pagadas,ped,pagadas+ped,
        pagadas+ped?Math.round(pagadas/(pagadas+ped)*10000)/100:0]))],
     dashboard,
+     enlacesAbonos,
     // Referencia del movimiento reservada sólo para construir el hipervínculo;
     // el texto visible en Excel siempre es el folio de recibo.
     enlacesRecibos:Object.fromEntries(todas.filter(h=>folioComprobante(h)&&
@@ -127,7 +143,8 @@
       ])),
     resumen:[...resumen,
      ['Pagaron cuota completa',dashboard.indicadores.completas],
-     ['Sin pago completo (incluye abonos parciales)',dashboard.indicadores.pendientes],
+     ['Sin pago completo (incluye abonos y deudas previas)',dashboard.indicadores.pendientes],
+      ['Viviendas con abono con adeudo',dashboard.indicadores.abonos],
      ['Pago anual confirmado (subconjunto pagadas)',dashboard.indicadores.anuales],
      ['Nota de corte','El último mes pagado muestra todo el historial; el estado pagado corresponde al período seleccionado.'],
      ['Criterio de ingresos',dashboard.origenIngresos],
@@ -140,11 +157,14 @@
      ]:[])]};
   }
   if(tipo==='pagadas')return {nombre:'Con_pago_registrado',titulo:'Viviendas con pago registrado',
-   hojas:[hojaViviendas('Con pago',todas.filter(h=>h.pagada))],resumen};
-  if(tipo==='pendientes')return {nombre:'Sin_pago_completo',titulo:'Viviendas sin pago registrado',
-   hojas:[hojaViviendas('Sin pago',todas.filter(h=>!h.pagada)),
-    hojaViviendas('Abonos parciales',todas.filter(h=>String(h.estatus).toUpperCase()==='PAGO_PARCIAL'))],
-   resumen:[...resumen,['Nota de abonos','Los abonos parciales cuentan en la tarjeta «Con pago registrado», pero se detallan por separado.']]};
+   hojas:[hojaViviendas('Con pago',todas.filter(h=>h.pagada)),
+    hojaViviendas('Abono con adeudo',abonosAdeudo)],resumen,enlacesAbonos};
+  if(tipo==='pendientes')return {nombre:'Sin_pago_completo',titulo:'Viviendas con cuota pendiente',
+   hojas:[hojaViviendas('Sin Pagar',todas.filter(h=>!pagoCompleto(h))),
+    hojaViviendas('Abonos parciales',todas.filter(h=>String(h.estatus).toUpperCase()==='PAGO_PARCIAL')),
+    hojaViviendas('Abono con adeudo',abonosAdeudo)],
+   resumen:[...resumen,['Nota de abonos','Las viviendas con abono con adeudo siguen pendientes y no cuentan como cuota completa.']],
+   enlacesAbonos};
   if(tipo!=='historicas')throw Error('Tipo de reporte inválido');
   const cuotas=data.cuotasPeriodoDetalle||[];
   const pagos=data.pagosPeriodoDetalle||[];
@@ -155,7 +175,7 @@
     'Pagado (MXN)','Recargo (MXN)','Saldo (MXN)','Fecha pago','Forma de pago','Referencia','Folio','Origen'],
    cuotas.map(q=>[q.id,q.casaId,texto(q.calle),texto(q.numero),texto(q.nombre),q.anio,texto(q.mes),
     texto(q.estatus),dinero(q.montoCuota),dinero(q.montoPagado),dinero(q.recargo),
-    dinero(q.saldoPendiente),fecha(q.fechaPago),texto(q.formaPago),texto(q.referencia),texto(q.folio),texto(q.origen)])),
+    dinero(q.saldoPendiente),fecha(q.fechaPago),texto(q.formaPago),texto(q.referencia),texto(q.folio),texto(q.origen==='MANUAL_ABONO_ADEUDO'?'Abono con adeudo':q.origen)])),
    sheet('Bancos validados',
     ['ID operación','ID vivienda','Calle','Número','Residente','Concepto','Monto (MXN)',
      'Recargo (MXN)','Fecha de operación','Referencia'],
@@ -167,7 +187,8 @@
     ['ID movimiento','ID vivienda','Calle','Número','Concepto','Monto (MXN)','Forma de pago','Fecha','Referencia'],
     manuales.map(p=>[p.id,p.casaId,texto(p.calle),texto(p.numero),texto(p.tipo),
      dinero(p.monto),texto(p.formaPago),fecha(p.fecha),texto(p.referencia)]))];
-  const cobrado=data.ingresosMantenimientoCalles;
+  hojas.push(hojaViviendas('Abono con adeudo',abonosAdeudo));
+   const cobrado=data.ingresosMantenimientoCalles;
   if(cobrado){
    hojas.unshift(sheet('Mantenimiento por calle',
     ['Calle','Cuotas pagadas del mes (MXN)','Total acumulado (MXN)','Movimientos'],
@@ -185,7 +206,7 @@
    ['Advertencia','Los abonos históricos y depósitos bancarios pueden ser el mismo dinero; no sumarlos si el período está importado.']];
   return {nombre:cobrado?'Mantenimiento_por_calle':data.esCargaHistorica?'Cuotas_historicas':'Ingresos_validados',
    titulo:cobrado?'Mantenimiento pagado por mes y calle':data.esCargaHistorica?'Cuotas históricas e ingresos':'Ingresos validados y conciliación',
-   hojas,resumen:[...resumen,...detalles]};
+   hojas,resumen:[...resumen,...detalles],enlacesAbonos};
  }
 
  async function descargarReporte(data,tipo,ExcelJS,options={}){
@@ -254,6 +275,30 @@
      }
     }
     if(index%2===1)row.eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF7FAF8'}};});
+
+     // Se recibió un abono aislado, pero la vivienda continúa con deuda.
+     const abonoIndex=cabeceras.indexOf('Abono con adeudo');
+     const abonoFolioIndex=cabeceras.indexOf('Folio abono con adeudo');
+     const saldoIndex=cabeceras.indexOf('Saldo pendiente (MXN)');
+     const esAbono=abonoIndex>=0&&values[abonoIndex]==='Sí'&&saldoIndex>=0&&Number(values[saldoIndex])>0;
+     if(esAbono){
+      row.eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFE9EB'}};});
+      const estadoIndex=cabeceras.indexOf('Estado del mes');
+      if(estadoIndex>=0)row.getCell(estadoIndex+1).font={bold:true,color:{argb:'FFAA3346'}};
+      if(abonoFolioIndex>=0){
+       const folio=String(values[abonoFolioIndex]||'');
+       const casa=String(values[cabeceras.indexOf('ID vivienda')]||'');
+       const link=reporte.enlacesAbonos?.[casa];
+       if(link?.folio===folio&&/^MJ-(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)-\d{4}-[A-F0-9]{10}-[A-Z][A-Z0-9]+-M$/.test(folio)){
+        const url=new URL('recibo-excel.html',root.location?.href||
+         'https://listoenlinea-labs.github.io/MisionJardines/analisis-cuotas.html');
+        url.search=new URLSearchParams({casaId:casa,referencia:link.referencia,concepto:'MANTENIMIENTO'}).toString();
+        const cell=row.getCell(abonoFolioIndex+1);
+        cell.value={text:folio,hyperlink:url.href,tooltip:'Abrir el recibo del abono con adeudo (requiere sesión)'};
+        cell.font={underline:true,color:{argb:'FF176CBE'}};
+       }
+      }
+     }
    });
    ws.autoFilter={from:{row:1,column:1},to:{row:1,column:cabeceras.length}};
    ws.columns.forEach((column,index)=>{

@@ -1687,3 +1687,13 @@ body.page-analisis .finance-monthly-columns > .finance-chart-card{
  body.page-analisis .finance-monthly-columns{transition:none}
  body.page-analisis .finance-monthly-jump{transition:none}
 }
+
+/* Mantener el rojo del adeudo aun después de recibir una mensualidad aislada. */
+.houses-scroll #financeHouseRows .house-abono-debt-tag{
+ display:inline-flex;align-items:center;margin:5px 0 0;padding:4px 8px;
+ border-radius:8px;border:1px solid #f4bf83;background:#fff3e2;
+ color:#93510b;font-size:11px;font-weight:800;white-space:nowrap;
+}
+.houses-scroll #financeHouseRows>tr.house-row-overdue .house-abono-debt-tag{
+ border-color:#efb7a3;background:#ffe8d8;color:#9b4b24;
+}

@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png?v=20261005">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20261005">
 
-  <script src="assets/js/permissions.js?v=20261012-seguridad"></script>
+  <script src="assets/js/permissions.js?v=20261109-conmutador-inicial"></script>
   <script src="assets/js/page-access.js?v=20261012-seguridad"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -874,12 +874,19 @@
     }
 
     async function validateSession() {
+      // Si Seguridad abre la raíz del sitio o un favorito antiguo de Inicio,
+      // validar la sesión y enviar al Conmutador dentro del portal.
       const cached = getCachedUser();
       if (cached) applyUser(cached);
       try {
         const response = await fetch(`${window.MJ_API_URL}/auth/perfil`, { headers: { Authorization: `Bearer ${token}` } });
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.message || 'Sesión inválida');
+        const role = result.usuario?.rol?.nombre || result.usuario?.rol;
+        if (role === 'SEGURIDAD') {
+          window.location.replace('app.html?page=conmutador.html');
+          return;
+        }
         applyUser(result.usuario);
       } catch (_) {
         ['misionJardinesToken', 'misionJardinesUsuario'].forEach((key) => { localStorage.removeItem(key); sessionStorage.removeItem(key); });

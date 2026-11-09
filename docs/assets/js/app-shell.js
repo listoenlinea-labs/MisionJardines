@@ -5,6 +5,8 @@
   // funciona en un documento aislado para evitar listeners y temporizadores
   // duplicados al pasar entre módulos heredados.
   const home = 'index.html';
+  const securityLanding = 'conmutador.html';
+  const resolveEntry = candidate => userRole === 'SEGURIDAD' && (!candidate || candidate === home) ? securityLanding : candidate;
   const frames = [document.getElementById('mjPageA'), document.getElementById('mjPageB')];
   const loading = document.getElementById('mjAppLoading');
   const errorBox = document.getElementById('mjAppError');
@@ -101,7 +103,7 @@
   function frameUrl(route) {
     const url = new URL(route.target, base);
     url.searchParams.set('_mjFrame', '1');
-    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','abono-adeudo-20261109');
+    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','abono-estados-20261109');
     if(route.page==='visitas.html')url.searchParams.set('_mjVersion','tablero-visitas-20261109');
     if(route.page==='pagos.html')url.searchParams.set('_mjVersion','aportaciones-libres-20261103');
      if(route.page==='zkteco.html')url.searchParams.set('_mjVersion','tag-ios-sin-autofill-20261103');
@@ -287,17 +289,17 @@
     navigate(event.data.target);
   });
   window.addEventListener('popstate', () => {
-    const target = new URLSearchParams(location.search).get('page') || home;
-    navigate(allowed(target)?.target || home, { fromHistory: true });
+    const target = resolveEntry(new URLSearchParams(location.search).get('page') || window.MJPermissions.landing(userRole));
+    navigate(allowed(target)?.target || window.MJPermissions.landing(userRole), { fromHistory: true });
   });
   document.getElementById('mjAppRetry').addEventListener('click', () => {
-    if (userRole) navigate(requested || home, { fromHistory: true, reload: true });
+    if (userRole) navigate(resolveEntry(requested || window.MJPermissions.landing(userRole)), { fromHistory: true, reload: true });
     else location.reload();
   });
 
   window.MJAccessReady.then(ok => {
     if (!ok) return;
-    const raw = new URLSearchParams(location.search).get('page') || window.MJPermissions.landing(userRole);
+    const raw = resolveEntry(new URLSearchParams(location.search).get('page') || window.MJPermissions.landing(userRole));
     navigate(allowed(raw)?.target || window.MJPermissions.landing(userRole), { replace: true });
   });
 })();
