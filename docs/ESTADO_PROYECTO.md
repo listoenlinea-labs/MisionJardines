@@ -1,11 +1,11 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 7/nov/2026, 23:30, America/Mexico_City.
-**SHA de main consultado:** `ea33562f79e4fb91e8c3e3f230885764cfd21596`.
+**Última revisión:** 8/nov/2026, 23:25, America/Mexico_City.
+**SHA de main consultado:** `389c9ed435f61a2b031d37cd24cb0f0c72336b84`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `53d1eb9b36ffd5b1473e318fe18ca1109c9f1898`,
+comparación de main desde `ea33562f79e4fb91e8c3e3f230885764cfd21596`,
 historial reciente de commits, PR abiertos y evidencia de checks en GitHub.
-Main avanzó un commit: `ea33562f79e4fb91e8c3e3f230885764cfd21596`,
+Main avanzó un commit: `389c9ed435f61a2b031d37cd24cb0f0c72336b84`,
 dedicado exclusivamente a actualizar esta bitácora y excluido del trabajo de producto.
 No hay PR abiertos, cambios verificables de producto, workflows ni checks nuevos.
 No hay confirmaciones nuevas accesibles de despliegue, Meta, MySQL, Hostinger o C3 físico;
@@ -606,6 +606,13 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-08
+
+- Main consultado a las 23:25, America/Mexico_City, en `389c9ed435f61a2b031d37cd24cb0f0c72336b84`, un commit por delante del SHA guardado.
+- El único commit nuevo fue `389c9ed`, que modificó exclusivamente `docs/ESTADO_PROYECTO.md`; se excluyó del trabajo verificable de producto.
+- No hay PR abiertos, cambios de código, PR fusionados, revertidos, workflows ni checks nuevos. Se conservan #354–#356 y sus resultados ya documentados, sin contarlos otra vez.
+- No hubo confirmaciones nuevas accesibles de despliegue, Hostinger, Meta, MySQL, teléfonos físicos o C3. Se preservan las reglas vigentes, el historial de pruebas, el resumen operativo y todos los pendientes.
 
 ### 2026-11-07
 
