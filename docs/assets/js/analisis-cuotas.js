@@ -97,6 +97,16 @@
  let selectedReceiptHouseId=null;
  // La selección corresponde al concepto y al proyecto, nunca a otra pestaña.
  let receiptSelectionScope=null;
+ // Puente de lectura para el módulo DOCUMENTAL aislado. No escribe en pagos,
+ // filtros, gráficos ni estados; solo ofrece la vivienda elegida para prellenar.
+ window.MJManualReceiptContext=()=>({
+  selectedHouseId:selectedReceiptHouseId,
+  viviendas:(data?.viviendas||[]).map(h=>({
+   casaId:Number(h.casaId),calle:String(h.calle||''),
+   numero:String(h.numero||''),nombre:String(h.nombre||'')
+  }))
+ });
+
  // Tres viviendas por página únicamente en celular; 12 en otras pantallas.
  const phoneLayout=window.matchMedia('(max-width: 700px)');
  const HOUSE_PAGE_SIZE_DESKTOP=12,HOUSE_PAGE_SIZE_PHONE=3;
