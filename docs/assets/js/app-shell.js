@@ -289,8 +289,8 @@
     navigate(event.data.target);
   });
   window.addEventListener('popstate', () => {
-    const target = new URLSearchParams(location.search).get('page') || home;
-    navigate(allowed(target)?.target || home, { fromHistory: true });
+    const target = resolveEntry(new URLSearchParams(location.search).get('page') || window.MJPermissions.landing(userRole));
+    navigate(allowed(target)?.target || window.MJPermissions.landing(userRole), { fromHistory: true });
   });
   document.getElementById('mjAppRetry').addEventListener('click', () => {
     if (userRole) navigate(resolveEntry(requested || window.MJPermissions.landing(userRole)), { fromHistory: true, reload: true });
@@ -299,7 +299,7 @@
 
   window.MJAccessReady.then(ok => {
     if (!ok) return;
-    const raw = new URLSearchParams(location.search).get('page') || window.MJPermissions.landing(userRole);
+    const raw = resolveEntry(new URLSearchParams(location.search).get('page') || window.MJPermissions.landing(userRole));
     navigate(allowed(raw)?.target || window.MJPermissions.landing(userRole), { replace: true });
   });
 })();
