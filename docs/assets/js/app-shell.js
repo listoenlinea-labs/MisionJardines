@@ -103,7 +103,7 @@
   function frameUrl(route) {
     const url = new URL(route.target, base);
     url.searchParams.set('_mjFrame', '1');
-    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','abono-estados-20261109');
+    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','residente-rapido-20261109');
     if(route.page==='visitas.html')url.searchParams.set('_mjVersion','tablero-visitas-20261109');
     if(route.page==='pagos.html')url.searchParams.set('_mjVersion','aportaciones-libres-20261103');
      if(route.page==='zkteco.html')url.searchParams.set('_mjVersion','tag-ios-sin-autofill-20261103');
