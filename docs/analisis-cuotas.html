@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261109-balance-recibos-v1">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261109-mobile-3-snap-v1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -41,10 +41,10 @@
   </div>
 </div>
 <div id="financeHousePanel" role="tabpanel" aria-labelledby="financeTabMaintenance"><div class="table-scroll houses-scroll"><table><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="house-column-sort" data-house-sort="calle">Calle <span data-sort-indicator aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="numero">Casa <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="nombre">Residente registrado <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="estatus">Estado <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="pagado">Pagado <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="mes"><span id="financeLastPeriodTitle">Último mes pagado</span> <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="saldo">Saldo pendiente <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="tags">TAGs <span data-sort-indicator aria-hidden="true">↓</span></button></th><th scope="col" aria-sort="none"><button type="button" class="house-column-sort" data-house-sort="pago">Pago <span data-sort-indicator aria-hidden="true">↓</span></button></th></tr></thead><tbody id="financeHouseRows"></tbody></table></div><nav class="analysis-pagination" id="financeHousePagination" aria-label="Páginas de viviendas"><button type="button" id="financePrev">Anterior</button><span id="financePageInfo" role="status" aria-live="polite"></span><button type="button" id="financeNext">Siguiente</button></nav></div></section>
-<div class="analysis-columns finance-monthly-columns">
+<div class="analysis-columns finance-monthly-columns" id="financeMonthlyColumns" role="region" aria-label="Gráficas financieras, desliza horizontalmente para cambiar de gráfica" tabindex="0">
 <section class="analysis-card finance-chart-card" id="financeIncomeCard"><span class="eyebrow">MANTENIMIENTO</span><h2>Ingresos</h2>
 <p class="finance-card-subtitle">Ingresos por calle</p>
-<p class="hint finance-chart-description">Cuotas de mantenimiento que corresponden al mes y año seleccionados. Los pagos anticipados se distribuyen por cada mensualidad cubierta, con su recargo real.</p>
+<p class="hint finance-chart-description">Los pagos anticipados se distribuyen por cada mensualidad cubierta, con su recargo real.</p>
 <div id="financeIncomeTotals" class="finance-period-summary" role="status" aria-live="polite"></div>
 <p class="hint finance-history-hint finance-graph-help">Haz clic en una calle para comparar las cuotas pagadas de enero al mes seleccionado.</p>
 <div id="financeCashChart" class="money-bars" aria-label="Cuotas de mantenimiento pagadas por calle en el mes cubierto"></div>
@@ -58,6 +58,11 @@
 <div id="financeExpenseChart" class="money-bars" aria-label="Gastos del mes por concepto"></div>
 
 </section></div>
+<nav id="financeMonthlyPagination" class="finance-monthly-pagination" aria-label="Seleccionar gráfica financiera">
+ <button type="button" class="finance-monthly-jump is-active" data-finance-slide="0" aria-current="true" aria-label="Ir a gráfica 1 de 3: Ingresos">Ingresos</button>
+ <button type="button" class="finance-monthly-jump" data-finance-slide="1" aria-label="Ir a gráfica 2 de 3: Diferencia">Diferencia</button>
+ <button type="button" class="finance-monthly-jump" data-finance-slide="2" aria-label="Ir a gráfica 3 de 3: Egresos">Egresos</button>
+</nav>
 <!-- Los comparativos se abren fuera de los paneles: no aumentan su altura. -->
 <section id="financeIncomeHistoryModal" class="finance-pay-overlay finance-history-overlay" hidden
  aria-label="Historial mensual de ingresos por calle" aria-hidden="true">
@@ -264,4 +269,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas" defer></script><script src="assets/js/analisis-excel.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-mobile-3-snap-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
