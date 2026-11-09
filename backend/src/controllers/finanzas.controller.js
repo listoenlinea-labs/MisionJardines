@@ -14,6 +14,7 @@ const ReservaCasaClub=require('../models/ReservaCasaClub');
 const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
+const {reciboDelPeriodo}=require('../services/recibo-periodo-excel.service');
 const {ultimosRegistrosPago}=require('../services/ultimo-registro-pago.service');
 const {agrupacionMantenimiento}=require('../services/resumen-cobranza-calles.service');
 const {categorias,canonica,resumenEgresos}=require('../services/categorias-egresos.service');
@@ -84,8 +85,14 @@ async function analizar(req,res){
    const st=streets.get(calle);
    st.total++;if(pagada)st.pagadas++;else st.pendientes++;
    st.abonos+=num(q?.montoPagado);
-   const ultimoPago=historialMantenimiento(historiales.get(String(h.id))||[],bancosMantenimiento.get(String(h.id))||[])[0]||null;
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+   const cuotasDeCasa=historiales.get(String(h.id))||[];
+   const bancosDeCasa=bancosMantenimiento.get(String(h.id))||[];
+   const ultimoPago=historialMantenimiento(cuotasDeCasa,bancosDeCasa)[0]||null;
+   // Sólo el movimiento que acredita el período consultado puede generar
+   // folio en Excel. No reutilizar el último recibo de octubre para deudores.
+   const reciboPeriodo=reciboDelPeriodo({casa:h,cuotas:cuotasDeCasa,
+     comprobantes:bancosDeCasa,estado:status,saldoPendiente:adeudo.saldoPendiente,anio,mes});
+   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,montoPagado:num(q?.montoPagado),ultimoPago,reciboPeriodo,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
     tags:tagsPorCasa.get(String(h.id))};
   });
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
