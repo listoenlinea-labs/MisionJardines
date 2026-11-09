@@ -69,7 +69,7 @@
    '<c:spPr><a:ln w="6350"><a:solidFill><a:srgbClr val="E6EDF2"/></a:solidFill></a:ln></c:spPr>'+
    '</c:majorGridlines>'+
    axisTitle(horizontal?xTitle:yTitle)+
-   '<c:numFmt formatCode="#,##0.##" sourceLinked="0"/>'+
+   '<c:numFmt formatCode="#,##0" sourceLinked="0"/>'+
    '<c:tickLblPos val="nextTo"/><c:crossAx val="'+x+'"/>'+
    '<c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>';
  }
