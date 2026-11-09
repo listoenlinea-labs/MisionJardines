@@ -12,7 +12,7 @@
 <div id="financialSummary" class="metric-grid" aria-label="Indicadores principales"></div><p id="financeLiveStatus" class="hint" aria-live="polite">Actualización automática entre sesiones.</p><details class="analysis-more"><summary>Otros indicadores financieros</summary><div id="financialSecondary" class="metric-grid" aria-label="Indicadores adicionales"></div></details>
 <div class="analysis-columns"><section class="analysis-card analysis-chart-card"><button type="button" class="analysis-chart-toggle" aria-expanded="false" aria-controls="financeCompliancePanel"><span>Cumplimiento general</span><span class="analysis-chart-toggle-action"><span class="analysis-chart-toggle-label">Mostrar</span><span class="analysis-chart-toggle-arrow" aria-hidden="true"></span></span></button><div id="financeCompliancePanel" class="analysis-chart-panel" hidden><span class="eyebrow">CUMPLIMIENTO GENERAL</span><h2>Casas que pagaron</h2><div class="donut-wrapper"><div id="financeDonut" class="donut"><div id="financeDonutText"></div></div><div id="financeLegend" class="legend-block"></div></div><p class="hint">El porcentaje corresponde al período seleccionado y al estado de las cuotas del padrón.</p></div></section>
 <section class="analysis-card analysis-chart-card"><button type="button" class="analysis-chart-toggle" aria-expanded="false" aria-controls="financeStreetPanel"><span>Desglose por calle</span><span class="analysis-chart-toggle-action"><span class="analysis-chart-toggle-label">Mostrar</span><span class="analysis-chart-toggle-arrow" aria-hidden="true"></span></span></button><div id="financeStreetPanel" class="analysis-chart-panel" hidden><span class="eyebrow">DESGLOSE POR CALLE</span><h2>Porcentaje de viviendas pagadas</h2><div id="financeStreetChart" class="bars"></div><p id="financePadronNote" class="hint" role="status" hidden></p></div></section></div>
-<section class="analysis-card"><div class="heading"><div><span class="eyebrow">CONSULTA DE VIVIENDAS</span><h2>Quién pagó y quién está pendiente</h2></div></div>
+<section class="analysis-card"><div class="heading finance-manual-heading"><div><span class="eyebrow">CONSULTA DE VIVIENDAS</span><h2>Quién pagó y quién está pendiente</h2></div><button type="button" id="financeManualReceiptOpen" class="primary finance-manual-trigger">Generar recibo manualmente</button></div>
 <div class="finance-concept-tabs" role="tablist" aria-label="Concepto de cobro para la consulta de viviendas"><button type="button" role="tab" id="financeTabMaintenance" data-finance-concept="MANTENIMIENTO" aria-selected="true" aria-controls="financeHousePanel" class="active">Mantenimiento</button><button type="button" role="tab" id="financeTabExtra" data-finance-concept="EXTRAORDINARIO" aria-selected="false" aria-controls="financeHousePanel">Cuotas extraordinarias</button><button type="button" role="tab" id="financeTabClub" data-finance-concept="CASA_CLUB" aria-selected="false" aria-controls="financeHousePanel">Casa club</button></div>
 <section id="financeProjectPanel" class="finance-project-panel finance-project-panel-compact" aria-label="Proyectos extraordinarios" hidden>
  <div class="finance-project-top">
@@ -232,8 +232,130 @@
     .finance-resident-register{white-space:normal;text-align:center}
   }
 
+
+  /* Generador independiente. Botón siempre visible en la cabecera de Viviendas. */
+  .finance-manual-heading{align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .finance-manual-trigger{margin-left:auto;min-height:45px;white-space:nowrap}
+  #manualReceiptsModal .manual-receipt-dialog{width:min(940px,100%);max-height:min(94dvh,900px);overflow:auto;padding:23px}
+  #manualReceiptsModal .manual-receipt-subtitle{font-size:12px;line-height:1.5;color:#63748e;margin:5px 0 0}
+  #manualReceiptsModal .manual-receipt-tabs{display:flex;gap:8px;margin:18px 0;border-bottom:1px solid #e1e6ef;padding-bottom:10px}
+  #manualReceiptsModal .manual-receipt-tabs button{border:1px solid #dce3ec;background:#fff;border-radius:10px;padding:10px 15px;font-weight:800;font-size:12px;color:#596984}
+  #manualReceiptsModal .manual-receipt-tabs button.active{color:#a65a07;background:#fff3e7;border-color:#edb984}
+  #manualReceiptsModal .manual-receipt-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 16px;border:1px solid #e2e7ee;background:#fcfdff;padding:16px;border-radius:15px;margin-bottom:14px}
+  #manualReceiptsModal .manual-receipt-section h3{grid-column:1/-1;margin:0 0 2px;color:#253651;font-size:15px}
+  #manualReceiptsModal label{display:grid;gap:6px;font-weight:750;font-size:12px;color:#384b66;min-width:0}
+  #manualReceiptsModal .wide{grid-column:1/-1}
+  #manualReceiptsModal input,#manualReceiptsModal select{width:100%;min-height:45px;border-radius:10px;border:1px solid #d9e1ec;padding:10px 12px;background:#fff;color:#24364d;font-size:15px;min-width:0}
+  #manualReceiptsModal input:focus-visible,#manualReceiptsModal select:focus-visible{outline:2px solid #df8e34;outline-offset:1px}
+  #manualReceiptsModal input[readonly]{background:#f4f7fc}
+  #manualReceiptsModal .manual-receipt-preview-code{padding:12px 14px;border-radius:10px;border:1px dashed #e8ba81;background:#fff8ed;display:grid;gap:4px;overflow-wrap:anywhere}
+  #manualReceiptsModal .manual-receipt-preview-code strong{font-size:15px;color:#8b4e09}
+  #manualReceiptsModal .manual-receipt-preview-code small,#manualReceiptsModal .manual-receipt-hint{color:#67758c;font-size:11px;line-height:1.5}
+  #manualReceiptsModal #manualReceiptStatus{font-size:12px;color:#a9393b;margin:0;min-height:0}
+  #manualReceiptsModal .manual-receipt-actions{display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:-23px;background:#fff;padding:14px 0;z-index:2;border-top:1px solid #e0e5ee}
+  #manualReceiptsModal button:disabled{opacity:.48;cursor:not-allowed}
+  #manualReceiptsModal [hidden]{display:none!important}
+  #manualReceiptsModal .manual-receipt-history-search{margin-bottom:12px}
+  #manualReceiptsModal .manual-receipt-history-list{display:grid;gap:9px;margin:16px 0}
+  #manualReceiptsModal .manual-receipt-history-item{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #e0e7ef;border-radius:12px;padding:12px 14px}
+  #manualReceiptsModal .manual-receipt-history-item strong{font-size:13px}
+  #manualReceiptsModal .manual-receipt-history-item p{margin:3px 0;color:#68768c;font-size:12px}
+  #manualReceiptsModal .manual-receipt-view-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+  #manualReceiptsModal .manual-receipt-view-heading strong{font-size:13px;overflow-wrap:anywhere}
+  #manualReceiptsModal .manual-receipt-view-heading p{font-size:12px;color:#67758c;margin:5px 0}
+  #manualReceiptsModal .manual-receipt-view-buttons{display:flex;gap:8px;flex-wrap:wrap}
+  #manualReceiptsModal #manualReceiptPdfPreview{width:100%;height:min(63dvh,680px);border:1px solid #dce3ef;border-radius:10px;background:white}
+  @media(max-width:670px){
+    .finance-manual-trigger{width:100%;margin:0}
+    #manualReceiptsModal{padding:0;align-items:stretch;place-items:stretch}
+    #manualReceiptsModal .manual-receipt-dialog{width:100%;max-height:100dvh;height:100dvh;border-radius:0;padding:14px 13px}
+    #manualReceiptsModal .manual-receipt-section{grid-template-columns:minmax(0,1fr);padding:12px;gap:11px}
+    #manualReceiptsModal .manual-receipt-actions{bottom:-14px;display:grid;grid-template-columns:1fr 1fr}
+    #manualReceiptsModal .manual-receipt-actions button{padding:11px 7px;min-height:49px}
+    #manualReceiptsModal .manual-receipt-history-item{align-items:flex-start}
+    #manualReceiptsModal .manual-receipt-view-buttons{width:100%}
+    #manualReceiptsModal .manual-receipt-view-buttons button{flex:1}
+  }
+
 </style>
 
+
+
+<section id="manualReceiptsModal" class="finance-pay-overlay" hidden aria-label="Generar e historial de recibos manuales">
+ <div class="finance-pay-dialog manual-receipt-dialog" role="dialog" aria-modal="true"
+      aria-labelledby="manualReceiptTitle" tabindex="-1">
+  <div class="finance-pay-heading">
+   <div><span class="eyebrow">DOCUMENTOS INDEPENDIENTES</span>
+    <h2 id="manualReceiptTitle">Recibos manuales</h2>
+    <p class="manual-receipt-subtitle">Estos documentos no modifican saldos, pagos, gráficas, Excel ni TAGs.</p>
+   </div>
+   <button type="button" class="soft" id="manualReceiptsClose" aria-label="Cerrar generador de recibos">Cerrar ×</button>
+  </div>
+  <div class="manual-receipt-tabs" role="tablist" aria-label="Secciones de recibos manuales">
+   <button type="button" id="manualReceiptTabNew" class="active" role="tab" aria-selected="true" aria-controls="manualReceiptNew">Nuevo recibo</button>
+   <button type="button" id="manualReceiptTabHistory" role="tab" aria-selected="false" aria-controls="manualReceiptHistory">Historial de recibos</button>
+  </div>
+  <section id="manualReceiptNew" role="tabpanel" aria-labelledby="manualReceiptTabNew">
+   <form id="manualReceiptForm">
+    <div class="manual-receipt-section">
+     <h3>1. Vivienda y destinatario</h3>
+     <label class="wide">Seleccionar vivienda para autollenar (opcional)
+      <select id="manualReceiptHouse"><option value="">Captura manual / sin vivienda seleccionada</option></select>
+     </label>
+     <label class="wide">Nombre en el recibo *<input id="manualReceiptName" type="text" required maxlength="150" autocomplete="off" placeholder="Nombre completo"></label>
+     <label>Calle *<input id="manualReceiptStreet" type="text" required maxlength="100" placeholder="Ej. Rosas"></label>
+     <label>Número de casa *<input id="manualReceiptNumber" type="text" required maxlength="20" placeholder="Ej. 18"></label>
+    </div>
+    <div class="manual-receipt-section">
+     <h3>2. Folio y fecha de emisión</h3>
+     <label>Mes del folio *<select id="manualReceiptFolioMonth"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label>
+     <label>Año del folio *<input id="manualReceiptFolioYear" type="number" min="2000" max="2100" step="1" required></label>
+     <label>Inicial de la calle para el folio *<input id="manualReceiptInitial" type="text" maxlength="1" required placeholder="R" autocapitalize="characters"></label>
+     <label>Fecha de emisión (automática)<input id="manualReceiptDate" type="text" readonly></label>
+     <div class="wide manual-receipt-preview-code"><span>Folio que se generará</span><strong id="manualReceiptFolioPreview">MJ-NOV-2026-XXXXXXXXXX-R18-M</strong>
+       <small>Los diez caracteres aleatorios y la referencia se asignan al guardar.</small></div>
+    </div>
+    <div class="manual-receipt-section">
+     <h3>3. Concepto e importe</h3>
+     <label class="wide">Concepto del pago *<input id="manualReceiptConceptTitle" type="text" required maxlength="150" value="Pago de mantenimiento" list="manualReceiptConceptOptions">
+      <datalist id="manualReceiptConceptOptions"><option value="Pago de mantenimiento"></option><option value="APORTACIÓN"></option><option value="Pago de cuota extraordinaria"></option></datalist>
+     </label>
+     <label>Mes cubierto *<select id="manualReceiptCoveredMonth"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label>
+     <label>Año cubierto *<input id="manualReceiptCoveredYear" type="number" min="2000" max="2100" step="1" required></label>
+     <label class="wide">Concepto en el detalle del pago *<input id="manualReceiptConceptDetail" type="text" required maxlength="120" value="Mantenimiento" placeholder="Ej. Aportación parque"></label>
+     <label>Monto recibido (MXN, sin centavos) *<input id="manualReceiptAmount" type="number" step="1" min="1" max="999999999" required inputmode="numeric" placeholder="300"></label>
+     <label>Forma de pago *<select id="manualReceiptMethod"><option value="EFECTIVO">EFECTIVO</option><option value="TRANSFERENCIA">TRANSFERENCIA</option></select></label>
+    </div>
+    <div class="manual-receipt-section">
+     <h3>4. Sello y emisión</h3>
+     <label class="wide">Sello editable (debe empezar con PAGADO) *<input id="manualReceiptSeal" type="text" maxlength="100" required value="PAGADO" placeholder="PAGADO CON ADEUDO"></label>
+     <p class="wide manual-receipt-hint">Este recibo será independiente de la contabilidad. No equivale a registrar un pago en Análisis de cuotas.</p>
+     <p id="manualReceiptStatus" class="wide" role="status" aria-live="polite"></p>
+    </div>
+    <div class="manual-receipt-actions">
+     <button type="button" class="soft" id="manualReceiptClear">Limpiar datos</button>
+     <button type="submit" class="primary" id="manualReceiptSave">Guardar y generar PDF</button>
+    </div>
+   </form>
+  </section>
+  <section id="manualReceiptHistory" role="tabpanel" aria-labelledby="manualReceiptTabHistory" hidden>
+   <label class="manual-receipt-history-search">Buscar por folio, vivienda o nombre<input id="manualReceiptSearch" type="search" placeholder="Ej. Rosas 18, Julissa, MJ-NOV…"></label>
+   <p id="manualReceiptHistoryStatus" role="status" aria-live="polite">Selecciona Historial para consultar tus recibos.</p>
+   <div id="manualReceiptHistoryList" class="manual-receipt-history-list"></div>
+   <button type="button" class="soft" id="manualReceiptHistoryMore" hidden>Cargar recibos anteriores</button>
+  </section>
+  <section id="manualReceiptView" role="tabpanel" aria-label="Vista del recibo manual" hidden>
+   <div class="manual-receipt-view-heading">
+    <div><strong id="manualReceiptViewFolio"></strong><p id="manualReceiptViewStatus" role="status"></p></div>
+    <div class="manual-receipt-view-buttons">
+     <button type="button" class="soft" id="manualReceiptViewBack">Volver al historial</button>
+     <button type="button" class="primary" id="manualReceiptDownload" disabled>Guardar PDF</button>
+    </div>
+   </div>
+   <iframe id="manualReceiptPdfPreview" title="Vista previa del recibo manual" referrerpolicy="no-referrer"></iframe>
+  </section>
+ </div>
+</section>
 
 <section id="financeResidentModal" class="finance-pay-overlay" hidden aria-label="Registrar residente">
   <div class="finance-pay-dialog finance-resident-dialog" role="dialog" aria-modal="true"
@@ -351,4 +473,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-etiqueta-unica-abono-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-etiqueta-unica-abono-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261109-independientes-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
