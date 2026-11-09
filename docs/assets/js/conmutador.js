@@ -168,7 +168,8 @@
         });
       }
 
-      function openPhoneChoice(phones) {
+      function openPhoneChoice(phones, house) {
+        selectedHouse = house;
         pendingPhones = phones.slice(0, 2);
         byId('phoneChoiceModal').classList.add('show');
         document.querySelector('[data-phone-choice="0"]').focus();
@@ -246,7 +247,7 @@
           if (phones.length > 1) {
             try { if (preparedWindow && !preparedWindow.closed) preparedWindow.close(); } catch (_) {}
             setStatus('Este domicilio tiene dos teléfonos. Elige A o B para llamar.');
-            openPhoneChoice(phones);
+            openPhoneChoice(phones, { lookup: house.lookup || activeSection.key, number: house.number });
             return;
           }
 
@@ -270,7 +271,10 @@
           closePhoneChoice();
           selectedHouse=null;
           if(selected && isIPhone && house)callFromIPhone(selected,house);
-          else if(selected) await caller.call(selected, caller.prepareWindow(), openWhatsApp);
+          else if(selected) {
+            if(house) void attempt(house);
+            await caller.call(selected, caller.prepareWindow(), openWhatsApp);
+          }
         });
       });
       byId('closePhoneChoice').addEventListener('click', closePhoneChoice);
