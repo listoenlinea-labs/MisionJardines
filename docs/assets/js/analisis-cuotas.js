@@ -917,10 +917,11 @@ function renderHouses(){
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',residentCell(h))+
-    houseCell('Estado','<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
-      ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
-      :h.estatus)+'</span>'+(activeConcept==='MANTENIMIENTO'&&h.abonoConAdeudo&&Number(h.saldoPendiente)>0
-       ?'<span class="house-abono-debt-tag" title="Tiene un pago registrado y todavía conserva adeudos pendientes">Abono con adeudo</span>':'') )+
+    houseCell('Estado',activeConcept==='MANTENIMIENTO'&&h.abonoConAdeudo&&Number(h.saldoPendiente)>0
+      ?'<span class="house-abono-debt-tag" title="Tiene un pago registrado y todavía conserva adeudos pendientes">Abono con adeudo</span>'
+      :'<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+       ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
+       :h.estatus)+'</span>')+
     houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)?' is-no-aplica':h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?(isProjectNoAplica(h)?'No aplica':Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
        :(Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos'))+'</strong></button>')+
