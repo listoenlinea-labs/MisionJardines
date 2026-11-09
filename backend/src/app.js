@@ -202,6 +202,7 @@ if (process.env.GOOGLE_SHEETS_ENABLED === 'true') {
 }
 app.use('/api/busqueda', busquedaRoutes);
 app.use('/api/telefonia', require('./routes/telefonia.routes'));
+app.use('/api/conmutador/historial', require('./routes/conmutador-historial.routes'));
 app.use('/api/conexion', conexionRoutes);
 app.use('/api/entorno', entornoRoutes);
 app.use('/api/zkteco', zktecoRoutes);
