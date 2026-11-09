@@ -850,8 +850,8 @@ body.page-cuotas .cuotas-shell{
 
     function money(value) {
       return Number(value || 0).toLocaleString('es-MX', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
       });
     }
 
@@ -2228,8 +2228,8 @@ body.page-cuotas .cuotas-shell{
         const kpis = [
           { tituloRango: 'A5:B5', valorRango: 'A6:B7', titulo: 'CUOTAS INCLUIDAS', formula: '=ROWS(TablaCuotas[Casa])', resultado: metricas.total, fondo: '#EAF6FD', formato: '#,##0' },
           { tituloRango: 'D5:E5', valorRango: 'D6:E7', titulo: 'CUMPLIMIENTO', formula: '=IFERROR(COUNTIF(TablaCuotas[Estatus],"Pagado")/(ROWS(TablaCuotas[Casa])-COUNTIF(TablaCuotas[Estatus],"Condonado")-COUNTIF(TablaCuotas[Estatus],"Cancelado")),0)', resultado: metricas.cumplimiento, fondo: '#EAF8EF', formato: '0.0%' },
-          { tituloRango: 'G5:H5', valorRango: 'G6:H7', titulo: 'TOTAL RECAUDADO', formula: '=SUM(TablaCuotas[Monto Pagado])', resultado: metricas.recaudado, fondo: '#FFF5E9', formato: '"$"#,##0.00' },
-          { tituloRango: 'J5:K5', valorRango: 'J6:K7', titulo: 'SALDO PENDIENTE', formula: '=SUM(TablaCuotas[Saldo Pendiente])', resultado: metricas.saldo, fondo: '#F4EEFB', formato: '"$"#,##0.00' }
+          { tituloRango: 'G5:H5', valorRango: 'G6:H7', titulo: 'TOTAL RECAUDADO', formula: '=SUM(TablaCuotas[Monto Pagado])', resultado: metricas.recaudado, fondo: '#FFF5E9', formato: '"$"#,##0' },
+          { tituloRango: 'J5:K5', valorRango: 'J6:K7', titulo: 'SALDO PENDIENTE', formula: '=SUM(TablaCuotas[Saldo Pendiente])', resultado: metricas.saldo, fondo: '#F4EEFB', formato: '"$"#,##0' }
         ];
         kpis.forEach(kpi => {
           resumen.mergeCells(kpi.tituloRango);
@@ -2267,8 +2267,8 @@ body.page-cuotas .cuotas-shell{
             filasEstado.reduce((suma, fila) => suma + fila.saldoPendiente, 0)
           ];
           resumen.getCell(`C${row}`).numFmt = '0.0%';
-          resumen.getCell(`D${row}`).numFmt = '"$"#,##0.00';
-          resumen.getCell(`E${row}`).numFmt = '"$"#,##0.00';
+          resumen.getCell(`D${row}`).numFmt = '"$"#,##0';
+          resumen.getCell(`E${row}`).numFmt = '"$"#,##0';
         });
         resumen.getCell('A17').value = 'Definición: cumplimiento = cuotas PAGADAS ÷ cuotas exigibles. Las canceladas y condonadas no forman parte del denominador.';
         resumen.mergeCells('A17:K17');
@@ -2305,8 +2305,8 @@ body.page-cuotas .cuotas-shell{
           const row = 5 + index;
           calleSheet.getRow(row).values = [item.calle, item.total, item.pagadas, item.parciales, item.pendientes, item.cumplimiento, item.recaudado, item.saldo];
           calleSheet.getCell(`F${row}`).numFmt = '0.0%';
-          calleSheet.getCell(`G${row}`).numFmt = '"$"#,##0.00';
-          calleSheet.getCell(`H${row}`).numFmt = '"$"#,##0.00';
+          calleSheet.getCell(`G${row}`).numFmt = '"$"#,##0';
+          calleSheet.getCell(`H${row}`).numFmt = '"$"#,##0';
         });
         calleSheet.columns = [{ width: 30 }, { width: 12 }, { width: 12 }, { width: 16 }, { width: 14 }, { width: 16 }, { width: 18 }, { width: 18 }];
         calleSheet.autoFilter = { from: 'A4', to: `H${4 + analisisCalles.length}` };
@@ -2343,7 +2343,7 @@ body.page-cuotas .cuotas-shell{
           columnasSeguimiento.forEach((columna, index) => { sheet.getColumn(index + 1).width = columna.width; });
           estilizarEncabezadoTabla(sheet.getRow(4));
           const ultima = 4 + Math.max(registros.length, 1);
-          ['E', 'F', 'G'].forEach(letra => { sheet.getColumn(letra).numFmt = '"$"#,##0.00'; });
+          ['E', 'F', 'G'].forEach(letra => { sheet.getColumn(letra).numFmt = '"$"#,##0'; });
           sheet.getColumn('I').numFmt = 'dd/mm/yyyy';
           sheet.getRows(5, Math.max(registros.length, 1)).forEach(row => { row.height = 21; row.alignment = { vertical: 'middle' }; });
           if (registros.length) {
@@ -2370,7 +2370,7 @@ body.page-cuotas .cuotas-shell{
         formasPago.forEach((item, index) => {
           const row = 5 + index;
           formasSheet.getRow(row).values = [item.forma, item.operaciones, item.monto, metricas.recaudado ? item.monto / metricas.recaudado : 0];
-          formasSheet.getCell(`C${row}`).numFmt = '"$"#,##0.00';
+          formasSheet.getCell(`C${row}`).numFmt = '"$"#,##0';
           formasSheet.getCell(`D${row}`).numFmt = '0.0%';
         });
         formasSheet.columns = [{ width: 24 }, { width: 16 }, { width: 22 }, { width: 18 }];
@@ -2392,7 +2392,7 @@ body.page-cuotas .cuotas-shell{
         estilizarEncabezadoTabla(datosSheet.getRow(1));
         [10, 14, 12, 28, 36, 16, 16, 18, 18, 20, 17, 16, 18, 42, 16, 34, 18, 42]
           .forEach((width, index) => { datosSheet.getColumn(index + 1).width = width; });
-        ['F', 'G', 'H'].forEach(letra => { datosSheet.getColumn(letra).numFmt = '"$"#,##0.00'; });
+        ['F', 'G', 'H'].forEach(letra => { datosSheet.getColumn(letra).numFmt = '"$"#,##0'; });
         datosSheet.getColumn('K').numFmt = 'dd/mm/yyyy';
         datosSheet.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
         if (filas.length) {
