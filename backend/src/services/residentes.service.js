@@ -76,4 +76,60 @@ async function guardar(actor, casaId, body) {
         return { residente, casaId };
     });
 }
-module.exports = { detalle, guardar, validar };
+
+/**
+ * Alta rápida desde Análisis de cuotas.
+ * Solo cambia el nombre principal de la vivienda y registra su vínculo de
+ * condómino; teléfonos, correo, renta, cuotas, TAGs y cuentas quedan intactos.
+ */
+async function registrarRapido(actor, casaId, body) {
+    if (!admin(actor.rol)) throw fallo(403, 'Solo Administración puede registrar residentes');
+    casaId = identificador(casaId);
+    const nombreCompleto = texto(body.nombreCompleto, 150, 'el nombre del residente', true)
+        .replace(/\s+/g, ' ').trim();
+    if (nombreCompleto.length < 2 || /[\x00-\x1f\x7f]/.test(nombreCompleto))
+        throw fallo(400, 'Escribe un nombre válido de al menos dos caracteres');
+    return db.transaction({ isolationLevel: 'READ COMMITTED' }, async transaction => {
+        // Bloquea la vivienda para evitar dobles altas simultáneas.
+        const options = { transaction, lock: transaction.LOCK.UPDATE };
+        const casa = await Casa.findByPk(casaId, options);
+        if (!casa || !esViviendaVisible(casa)) throw fallo(404, 'Vivienda no encontrada');
+        if (String(casa.nombre || '').trim())
+            throw fallo(409, 'Esta vivienda ya tiene un residente registrado. Actualiza la tabla y usa Residentes para editarlo.');
+
+        const links = await CondominoVivienda.findAll({
+            where: { viviendaId: casaId, activo: true }, ...options
+        });
+        if (links.length) {
+            // Un residente puede existir vinculado aun si nombre en direcciones
+            // quedó vacío: no crear una ficha duplicada.
+            const residentes = await Condomino.findAll({
+                where: { id: { [Op.in]: links.map(l => l.condominoId) }, activo: true },
+                ...options
+            });
+            if (residentes.length) {
+                const existente = residentes.find(r =>
+                    String(r.nombreCompleto || '').trim().toLocaleLowerCase('es-MX') ===
+                    nombreCompleto.toLocaleLowerCase('es-MX'));
+                if (!existente) throw fallo(409,
+                    'Esta vivienda ya tiene un condómino vinculado. Revisa el nombre en el módulo Residentes antes de registrar otro.');
+                await casa.update({ nombre: existente.nombreCompleto }, { transaction });
+                return { casaId, nombre: existente.nombreCompleto, residenteId: existente.id, vinculoExistente: true };
+            }
+            // Un vínculo activo a un registro desactivado requiere revisión.
+            throw fallo(409, 'La vivienda tiene un vínculo anterior que requiere revisión desde Residentes.');
+        }
+        const now = new Date();
+        const residente = await Condomino.create({
+            nombreCompleto, activo: true, fechaRegistro: now, creadoEn: now, actualizadoEn: now
+        }, { transaction });
+        await CondominoVivienda.create({
+            condominoId: residente.id, viviendaId: casaId,
+            activo: true, creadoEn: now, actualizadoEn: now
+        }, { transaction });
+        await casa.update({ nombre: nombreCompleto }, { transaction });
+        return { casaId, nombre: nombreCompleto, residenteId: residente.id, vinculoExistente: false };
+    });
+}
+
+module.exports = { detalle, guardar, validar, registrarRapido };
