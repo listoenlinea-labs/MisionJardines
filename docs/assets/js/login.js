@@ -3,6 +3,17 @@
                 ? 'http://localhost:3000/api'
                 : 'https://api-misionjardines.listoenlinea.host/api';
         const portal = role => 'app.html?page=' + encodeURIComponent(MJPermissions.landing(role));
+        // Excel contiene enlaces estables al visor, pero nunca credenciales.
+        // Regresar sólo a la página local autorizada, jamás a un destino externo.
+        const regresarRecibo=()=>{
+            const input=new URLSearchParams(location.search).get('regresar');
+            if(!input)return null;
+            try{
+                const url=new URL(input,location.href);
+                return url.origin===location.origin&&url.pathname.endsWith('/recibo-excel.html')
+                    ?url.href:null;
+            }catch(_){return null;}
+        };
         const loginForm = document.getElementById("loginForm"), correoInput = document.getElementById("correo"), contrasenaInput = document.getElementById("contrasena"), passwordToggle = document.getElementById("passwordToggle"), loginButton = document.getElementById("loginButton"), buttonText = document.getElementById("buttonText"), loginMessage = document.getElementById("loginMessage"), messageIcon = document.getElementById("messageIcon"), messageTitle = document.getElementById("messageTitle"), messageText = document.getElementById("messageText");
         const iconoOjoCerrado = `
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -73,7 +84,7 @@
                 storage.setItem('misionJardinesToken', result.token); storage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));
                 mostrarMensaje('success', 'Inicio de sesión correcto', 'Acceso autorizado. Preparando tu portal…');
                 const role = result.usuario?.rol?.nombre || result.usuario?.rol;
-                window.location.href = role !== 'SEGURIDAD' && sessionStorage.getItem('mjInvitacion') ? 'invitacion.html' : portal(role);
+                window.location.href = regresarRecibo() || (role !== 'SEGURIDAD' && sessionStorage.getItem('mjInvitacion') ? 'invitacion.html' : portal(role));
             } catch (error) { mostrarMensaje('error', 'No se pudo continuar', error.name === 'TimeoutError' ? 'El servidor tardó en responder. Intenta nuevamente.' : error.message); }
             finally { busy = false; loginButton.disabled = false; correoInput.disabled = false; buttonText.textContent = 'Ingresar al portal'; }
         });
@@ -99,6 +110,6 @@
                 const user = data.usuario;
                 const storage = localStorage.getItem('misionJardinesToken') === saved ? localStorage : sessionStorage;
                 storage.setItem('misionJardinesUsuario', JSON.stringify(user));
-                window.location.replace(portal(user?.rol?.nombre || user?.rol));
+                window.location.replace(regresarRecibo() || portal(user?.rol?.nombre || user?.rol));
             } catch (_) { /* Preserve session on a temporary network failure. */ }
         })();
