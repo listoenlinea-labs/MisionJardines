@@ -97,7 +97,17 @@
  function open(){
   fromFocus=document.activeElement;
   reset();
-  const selectedId=context();
+  let selectedId=context();
+  // Facilitar el caso de una única casa encontrada por la búsqueda (Rosas 18),
+  // incluso si aún no hicieron clic en la fila para seleccionarla.
+  if(selectedId==null){
+   const search=String($('financeSearch')?.value||'').trim().toLocaleLowerCase('es-MX');
+   if(search){
+    const matched=houses.filter(h=>
+     [h.calle+' '+h.numero,h.nombre].some(value=>String(value||'').toLocaleLowerCase('es-MX').includes(search)));
+    if(matched.length===1)selectedId=matched[0].casaId;
+   }
+  }
   if(selectedId!=null){
    const house=houses.find(h=>h.casaId===Number(selectedId));
    if(house){$('manualReceiptHouse').value=String(house.casaId);prefill(house);}
