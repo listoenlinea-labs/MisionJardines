@@ -661,6 +661,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
   if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
   else renderMaintenanceDashboard();
+  renderBalanceCard();
   $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
   if(concepto==='EXTRAORDINARIO'){
    $('financeLastPaidMonth').value='';
