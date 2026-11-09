@@ -10,4 +10,4 @@ const ejecutar = operation => async (req, res) => {
             message: error.status ? error.message : 'No fue posible guardar los datos. No se completó la operación.' });
     }
 };
-module.exports = { obtenerDetalle: ejecutar(service.detalle), guardarResidente: ejecutar(service.guardar) };
+module.exports = { obtenerDetalle: ejecutar(service.detalle), guardarResidente: ejecutar(service.guardar), registrarRapido: ejecutar(service.registrarRapido) };
