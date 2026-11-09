@@ -859,6 +859,73 @@ function renderHouses(){
  let confirmedPaymentTarget=null;
  let quoteSequence=0;
  const paymentModal=$('housePaymentModal');
+ let currentAbonoAdeudo=null;
+ let abonoSequence=0;
+ async function checkAbonoAdeudo(){
+   const seq=++abonoSequence;
+   currentAbonoAdeudo=null;
+   $('houseAbonoAdeudoOpen').hidden=true;
+   if(!activePaymentHouse || $('housePaymentType').value!=='MANTENIMIENTO')return;
+   try{
+     const response=await request('/pagos-vivienda/'+Number(activePaymentHouse.casaId)+'/abono-con-adeudo');
+     if(seq!==abonoSequence || !activePaymentHouse)return;
+     currentAbonoAdeudo=response.data;
+     $('houseAbonoAdeudoOpen').hidden=!response.data?.disponible;
+     $('houseAbonoAdeudoOpen').title=response.data?.motivo||'';
+   }catch(_){ $('houseAbonoAdeudoOpen').hidden=true; }
+ }
+ function showAbonoAdeudo(){
+   if(!currentAbonoAdeudo?.disponible || !activePaymentHouse)return;
+   $('housePaymentForm').hidden=true;
+   $('houseAbonoAdeudoPanel').hidden=false;
+   $('houseAbonoAdeudoPeriod').value=currentAbonoAdeudo.nombreMes+' '+currentAbonoAdeudo.anio;
+   $('houseAbonoAdeudoAmount').value=String(currentAbonoAdeudo.importe);
+   $('houseAbonoAdeudoMethod').value=$('housePaymentMethod').value;
+   $('houseAbonoAdeudoConfirm').checked=false;
+   $('houseAbonoAdeudoStatus').textContent='';
+   $('houseAbonoAdeudoConfirm').focus();
+ }
+ function backFromAbonoAdeudo(){
+   $('houseAbonoAdeudoPanel').hidden=true;
+   $('housePaymentForm').hidden=false;
+   $('houseAbonoAdeudoStatus').textContent='';
+ }
+ async function saveAbonoAdeudo(event){
+   event.preventDefault();
+   const house=activePaymentHouse;
+   const quote=currentAbonoAdeudo;
+   if(!house || !quote?.disponible || !$('houseAbonoAdeudoConfirm').checked)return;
+   const confirmText='¿Confirmas que recibiste '+fmt(quote.importe)+' de '+house.calle+' '+house.numero+
+     ' correspondiente a '+quote.nombreMes+' '+quote.anio+'?'+
+     '\nLos adeudos anteriores continuarán pendientes y NO se actualizarán los TAGs.';
+   if(!window.confirm(confirmText))return;
+   const button=$('houseAbonoAdeudoSave');
+   button.disabled=true;
+   $('houseAbonoAdeudoStatus').textContent='Registrando el abono…';
+   try{
+     const response=await request('/pagos-vivienda/abono-con-adeudo',{
+       casaId:Number(house.casaId),anio:quote.anio,mes:quote.mes,monto:quote.importe,
+       formaPago:$('houseAbonoAdeudoMethod').value,confirmarAdeudo:true
+     });
+     const result=response.data;
+     const casaId=Number(house.casaId);
+     closeHousePayment();
+     const refreshed=await load();
+     notice('Abono con adeudo registrado para '+result.nombreMes+' '+result.anio+
+       '. Los meses anteriores siguen pendientes. Sin cambios en TAGs.'+
+       (refreshed?'':' No se pudo actualizar la tabla; no repitas el pago.'),'success');
+     try{await openHouseReceipt(casaId,result.referencia);}
+     catch(_){notice('El abono se registró. Abre el historial para generar el recibo con su referencia.','success');}
+   }catch(error){
+     $('houseAbonoAdeudoStatus').textContent=error.message;
+     button.disabled=false;
+     void checkAbonoAdeudo();
+   }
+ }
+ $('houseAbonoAdeudoOpen').addEventListener('click',showAbonoAdeudo);
+ $('houseAbonoAdeudoBack').addEventListener('click',backFromAbonoAdeudo);
+ $('houseAbonoAdeudoPanel').addEventListener('submit',saveAbonoAdeudo);
+
  const historyModal=$('houseHistoryModal');
  let historySequence=0;
  let historyReturnFocus=null;
@@ -1921,7 +1988,8 @@ function renderHouses(){
   $('houseConceptWrap').hidden=!other;
   $('housePaymentTitle').textContent=other?'Registrar '+( $('housePaymentType').value==='CASA_CLUB'?'Casa club':'cuota extraordinaria'):'Registrar mensualidades pagadas';
   $('housePaymentYear').required=!other;
-  if(!other){$('housePaymentAmount').readOnly=false;void quoteHousePayment();return;}
+  if(!other){$('housePaymentAmount').readOnly=false;void quoteHousePayment();void checkAbonoAdeudo();return;}
+  $('houseAbonoAdeudoOpen').hidden=true;
   $('housePaymentSubmit').disabled=true;
   $('housePaymentPreview').textContent='Consultando cargos de la vivienda…';
   try{otherConcepts=(await request('/pagos-concepto/'+Number(activePaymentHouse.casaId))).data;renderOtherConcept();}
@@ -2020,6 +2088,8 @@ function renderHouses(){
    $('housePaymentAmount').value='';
    $('housePaymentMethod').value='EFECTIVO';
    $('housePaymentType').value=activeConcept;
+   backFromAbonoAdeudo();
+   $('houseAbonoAdeudoOpen').hidden=true;
    selectAnnualPayment(false);
    $('housePaymentStatus').textContent='';
    paymentModal.hidden=false;
@@ -2029,6 +2099,10 @@ function renderHouses(){
  }
  function closeHousePayment(){
    ++quoteSequence;
+   ++abonoSequence;
+   currentAbonoAdeudo=null;
+   backFromAbonoAdeudo();
+   $('houseAbonoAdeudoOpen').hidden=true;
    confirmedPaymentTarget=null;
    paymentModal.hidden=true;
    activePaymentHouse=null;
