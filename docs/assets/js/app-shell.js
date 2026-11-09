@@ -6,7 +6,7 @@
   // duplicados al pasar entre módulos heredados.
   const home = 'index.html';
   const securityLanding = 'conmutador.html';
-  const resolveEntry = candidate => userRole === 'SEGURIDAD' && (!candidate || candidate === home || candidate === 'seguridad.html') ? securityLanding : candidate;
+  const resolveEntry = candidate => userRole === 'SEGURIDAD' && (!candidate || candidate === home) ? securityLanding : candidate;
   const frames = [document.getElementById('mjPageA'), document.getElementById('mjPageB')];
   const loading = document.getElementById('mjAppLoading');
   const errorBox = document.getElementById('mjAppError');
@@ -103,7 +103,7 @@
   function frameUrl(route) {
     const url = new URL(route.target, base);
     url.searchParams.set('_mjFrame', '1');
-    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','abono-adeudo-20261109');
+    if(route.page==='analisis-cuotas.html')url.searchParams.set('_mjVersion','abono-estados-20261109');
     if(route.page==='visitas.html')url.searchParams.set('_mjVersion','tablero-visitas-20261109');
     if(route.page==='pagos.html')url.searchParams.set('_mjVersion','aportaciones-libres-20261103');
      if(route.page==='zkteco.html')url.searchParams.set('_mjVersion','tag-ios-sin-autofill-20261103');
