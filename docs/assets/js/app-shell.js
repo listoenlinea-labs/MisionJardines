@@ -5,6 +5,8 @@
   // funciona en un documento aislado para evitar listeners y temporizadores
   // duplicados al pasar entre módulos heredados.
   const home = 'index.html';
+  const securityLanding = 'conmutador.html';
+  const resolveEntry = candidate => userRole === 'SEGURIDAD' && (!candidate || candidate === home || candidate === 'seguridad.html') ? securityLanding : candidate;
   const frames = [document.getElementById('mjPageA'), document.getElementById('mjPageB')];
   const loading = document.getElementById('mjAppLoading');
   const errorBox = document.getElementById('mjAppError');
@@ -291,7 +293,7 @@
     navigate(allowed(target)?.target || home, { fromHistory: true });
   });
   document.getElementById('mjAppRetry').addEventListener('click', () => {
-    if (userRole) navigate(requested || home, { fromHistory: true, reload: true });
+    if (userRole) navigate(resolveEntry(requested || window.MJPermissions.landing(userRole)), { fromHistory: true, reload: true });
     else location.reload();
   });
 
