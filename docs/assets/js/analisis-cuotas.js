@@ -533,6 +533,7 @@
    if(!status)return true;
    if(status==='NO_APLICA')return isProjectNoAplica(h);
    if(status==='ADVERTENCIAS')return Boolean(tagMismatch(h,tagsView(h)));
+   if(status==='ABONO_CON_ADEUDO')return activeConcept==='MANTENIMIENTO' && Boolean(h.abonoConAdeudo) && Number(h.saldoPendiente)>0;
    if(status==='PAGO_ANUAL')return Boolean(h.ultimoMesPagado?.pagoAnual)&&
      String(h.estatus||'').toUpperCase()==='PAGADO';
    const pagadoCompleto=String(h.estatus||'').toUpperCase()==='PAGADO';
@@ -761,12 +762,12 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    noAplicaOption.hidden=concepto!=='EXTRAORDINARIO';
    noAplicaOption.disabled=concepto!=='EXTRAORDINARIO';
   }
-  for(const choice of ['ADVERTENCIAS','PAGO_ANUAL']){
+  for(const choice of ['ADVERTENCIAS','PAGO_ANUAL','ABONO_CON_ADEUDO']){
    const option=$('financeStatus').querySelector('option[value="'+choice+'"]');
    if(option)option.disabled=concepto!=='MANTENIMIENTO';
   }
   if(concepto!=='EXTRAORDINARIO'&&$('financeStatus').value==='NO_APLICA')$('financeStatus').value='';
-  if(concepto!=='MANTENIMIENTO'&&['ADVERTENCIAS','PAGO_ANUAL'].includes($('financeStatus').value))
+  if(concepto!=='MANTENIMIENTO'&&['ADVERTENCIAS','PAGO_ANUAL','ABONO_CON_ADEUDO'].includes($('financeStatus').value))
    $('financeStatus').value='';
   $('financeConceptHint').textContent={
     MANTENIMIENTO:'Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.',
@@ -825,12 +826,13 @@ function renderHouses(){
        : 'Vivienda seleccionada: '+selected.calle+' '+selected.numero+' · '+(selected.nombre||'Sin residente'))
     : 'Selecciona una sola vivienda para generar el recibo de su último pago registrado.';
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
-  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&String(h.estatus||'').toUpperCase()==='PENDIENTE'&&Number(h.saldoPendiente)>0?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
+  $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',esc(h.nombre))+
     houseCell('Estado','<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
       ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
-      :h.estatus)+'</span>')+
+      :h.estatus)+'</span>'+(activeConcept==='MANTENIMIENTO'&&h.abonoConAdeudo&&Number(h.saldoPendiente)>0
+       ?'<span class="house-abono-debt-tag" title="Tiene un pago registrado y todavía conserva adeudos pendientes">Abono con adeudo</span>':'') )+
     houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)?' is-no-aplica':h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?(isProjectNoAplica(h)?'No aplica':Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
        :(Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos'))+'</strong></button>')+
@@ -874,6 +876,9 @@ function renderHouses(){
      $('houseAbonoAdeudoOpen').title=response.data?.motivo||'';
    }catch(_){ $('houseAbonoAdeudoOpen').hidden=true; }
  }
+ function syncAbonoAdeudoConfirm(){
+   $('houseAbonoAdeudoSave').disabled = !Boolean(activePaymentHouse && currentAbonoAdeudo?.disponible && $('houseAbonoAdeudoConfirm').checked);
+ }
  function showAbonoAdeudo(){
    if(!currentAbonoAdeudo?.disponible || !activePaymentHouse)return;
    $('housePaymentForm').hidden=true;
@@ -882,10 +887,13 @@ function renderHouses(){
    $('houseAbonoAdeudoAmount').value=String(currentAbonoAdeudo.importe);
    $('houseAbonoAdeudoMethod').value=$('housePaymentMethod').value;
    $('houseAbonoAdeudoConfirm').checked=false;
+   syncAbonoAdeudoConfirm();
    $('houseAbonoAdeudoStatus').textContent='';
    $('houseAbonoAdeudoConfirm').focus();
  }
  function backFromAbonoAdeudo(){
+   $('houseAbonoAdeudoSave').disabled=true;
+   $('houseAbonoAdeudoConfirm').checked=false;
    $('houseAbonoAdeudoPanel').hidden=true;
    $('housePaymentForm').hidden=false;
    $('houseAbonoAdeudoStatus').textContent='';
@@ -894,7 +902,7 @@ function renderHouses(){
    event.preventDefault();
    const house=activePaymentHouse;
    const quote=currentAbonoAdeudo;
-   if(!house || !quote?.disponible || !$('houseAbonoAdeudoConfirm').checked)return;
+   if(!house || !quote?.disponible || !$('houseAbonoAdeudoConfirm').checked || $('houseAbonoAdeudoSave').disabled)return;
    const confirmText='¿Confirmas que recibiste '+fmt(quote.importe)+' de '+house.calle+' '+house.numero+
      ' correspondiente a '+quote.nombreMes+' '+quote.anio+'?'+
      '\nLos adeudos anteriores continuarán pendientes y NO se actualizarán los TAGs.';
@@ -911,20 +919,30 @@ function renderHouses(){
      const casaId=Number(house.casaId);
      closeHousePayment();
      const refreshed=await load();
+     let verificado=false;
+     try{
+       const historial=(await request('/pagos-vivienda/'+casaId+'/historial?concepto=MANTENIMIENTO')).data;
+       verificado=(historial.movimientos||[]).some(p=>p.referencia===result.referencia &&
+         p.fuente==='ABONO_CON_ADEUDO' &&
+         Math.round(Number(p.monto)*100)===Math.round(Number(result.monto)*100));
+     }catch(_){/* El movimiento exitoso no debe registrarse otra vez si falla la consulta. */}
      notice('Abono con adeudo registrado para '+result.nombreMes+' '+result.anio+
        '. Los meses anteriores siguen pendientes. Sin cambios en TAGs.'+
-       (refreshed?'':' No se pudo actualizar la tabla; no repitas el pago.'),'success');
+       (refreshed?'':' No se pudo actualizar la tabla; no repitas el pago.')+
+       (verificado?' El movimiento aparece en el historial de mantenimiento.':
+       ' No se pudo comprobar el historial; revísalo antes de intentar otro cobro.'),'success');
      try{await openHouseReceipt(casaId,result.referencia);}
      catch(_){notice('El abono se registró. Abre el historial para generar el recibo con su referencia.','success');}
    }catch(error){
      $('houseAbonoAdeudoStatus').textContent=error.message;
-     button.disabled=false;
+     syncAbonoAdeudoConfirm();
      void checkAbonoAdeudo();
    }
  }
  $('houseAbonoAdeudoOpen').addEventListener('click',showAbonoAdeudo);
  $('houseAbonoAdeudoBack').addEventListener('click',backFromAbonoAdeudo);
  $('houseAbonoAdeudoPanel').addEventListener('submit',saveAbonoAdeudo);
+ $('houseAbonoAdeudoConfirm').addEventListener('change',syncAbonoAdeudoConfirm);
 
  const historyModal=$('houseHistoryModal');
  let historySequence=0;
