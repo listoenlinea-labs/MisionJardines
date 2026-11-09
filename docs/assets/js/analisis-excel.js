@@ -209,7 +209,7 @@
     // Excel conserva valores numéricos y fórmulas precisos, solo los muestra
     // sin centavos (incluye proyectos extraordinarios y recibos históricos).
     if(nombre==='Resumen'&&typeof values[1]==='number'&&
-      /(\\(MXN\\)|saldo|ingreso|egreso|monto|recaud|aportaci[oó]n|costo|diferencia)/i.test(String(values[0]||'')))
+      /(MXN|saldo|ingreso|egreso|monto|recaud|aportaci[oó]n|costo|diferencia)/i.test(String(values[0]||'')))
       row.getCell(2).numFmt='"$"#,##0';
     if(nombre==='Finanzas'&&cabeceras.includes('Monto / viviendas')&&
       typeof values[2]==='number'&&String(values[1]||'')!=='No aplica')
