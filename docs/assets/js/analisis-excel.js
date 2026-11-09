@@ -9,10 +9,17 @@
   return /^[\s]*[=+@-]/.test(value)?"'"+value:value;
  };
  const mesUltimo=h=>h.ultimoMesPagado?`${h.ultimoMesPagado.mes} ${h.ultimoMesPagado.anio}`:'Sin pago';
+ // No mostrar la referencia histórica del último pago como si acreditara
+ // el mes seleccionado. La API entrega el folio REAL de ese período.
+ const folioComprobante=h=>{
+  if(String(h.estatus||'').toUpperCase()!=='PAGADO'||Number(h.saldoPendiente||0)>0)return '';
+  const folio=String(h.reciboPeriodo?.folio||'').trim();
+  return /^MJ-(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)-\d{4}-[A-F0-9]{10}-[A-Z][A-Z0-9]+-M$/.test(folio)?folio:'';
+ };
  const datosVivienda=h=>[h.casaId,texto(h.calle),texto(h.numero),texto(h.nombre),texto(h.estatus),
   dinero(h.montoPagado),dinero(h.ultimoPago?.monto),mesUltimo(h),
   dinero(h.saldoPendiente),h.ultimoPago?.fecha?fecha(h.ultimoPago.fecha):'',
-  texto(h.ultimoPago?.referencia),Array.isArray(h.mesesPendientes)?h.mesesPendientes.length:Number(h.mesesPendientes||0),
+  folioComprobante(h),Array.isArray(h.mesesPendientes)?h.mesesPendientes.length:Number(h.mesesPendientes||0),
   dinero(h.recargosPendientes),Number(h.tags?.detalle?.length||0),dinero(h.tarifaMensual||300),
   h.ultimoMesPagado?.pagoAnual?'Pago anual':String(h.estatus||'').toUpperCase()==='PAGO_PARCIAL'?'Abono parcial':'Mensual'];
  const headersVivienda=['ID vivienda','Calle','Número','Residente','Estado del mes','Pagado en el mes (MXN)',
@@ -112,6 +119,12 @@
       dashboard.calles.map(([calle,pagadas,ped])=>[texto(calle),pagadas,ped,pagadas+ped,
        pagadas+ped?Math.round(pagadas/(pagadas+ped)*10000)/100:0]))],
     dashboard,
+    // Referencia del movimiento reservada sólo para construir el hipervínculo;
+    // el texto visible en Excel siempre es el folio de recibo.
+    enlacesRecibos:Object.fromEntries(todas.filter(h=>folioComprobante(h)&&
+      String(h.reciboPeriodo?.referencia||'').trim()).map(h=>[
+       String(h.casaId),{folio:folioComprobante(h),referencia:h.reciboPeriodo.referencia}
+      ])),
     resumen:[...resumen,
      ['Pagaron cuota completa',dashboard.indicadores.completas],
      ['Sin pago completo (incluye abonos parciales)',dashboard.indicadores.pendientes],
@@ -195,15 +208,22 @@
     if(nombre==='Todas las viviendas'&&reporte.nombre==='Casas_en_padron'){
      const referenceIndex=cabeceras.indexOf('Referencia');
      const houseIndex=cabeceras.indexOf('ID vivienda');
-     const ref=String(values[referenceIndex]||'').trim();
+     const folio=String(values[referenceIndex]||'').trim();
      const casaId=Number(values[houseIndex]);
-     if(referenceIndex>=0&&houseIndex>=0&&ref&&Number.isSafeInteger(casaId)&&casaId>0&&
-      !ref.startsWith("'")){
-      const params=new URLSearchParams({casaId:String(casaId),referencia:ref,concepto:'MANTENIMIENTO'});
-      const url=new URL('recibo-excel.html',root.location?.href||'https://listoenlinea-labs.github.io/MisionJardines/analisis-cuotas.html');
+     const recibo=Number.isSafeInteger(casaId)&&casaId>0?
+      reporte.enlacesRecibos?.[String(casaId)]:null;
+     // En deudores, pagos parciales o movimientos de otro mes no se crea
+     // enlace ni se recupera el último recibo histórico.
+     if(referenceIndex>=0&&houseIndex>=0&&folio&&recibo?.folio===folio&&
+       String(recibo.referencia||'').trim()){
+      const params=new URLSearchParams({casaId:String(casaId),
+       referencia:String(recibo.referencia),concepto:'MANTENIMIENTO'});
+      const url=new URL('recibo-excel.html',root.location?.href||
+       'https://listoenlinea-labs.github.io/MisionJardines/analisis-cuotas.html');
       url.search=params.toString();
       const cell=row.getCell(referenceIndex+1);
-      cell.value={text:ref,hyperlink:url.href,tooltip:'Abrir recibo PDF (requiere sesión de administrador)'};
+      cell.value={text:folio,hyperlink:url.href,
+       tooltip:'Abrir comprobante del período seleccionado (requiere sesión de administrador)'};
       cell.font={color:{argb:'FF176CBE'},underline:true};
      }
     }
