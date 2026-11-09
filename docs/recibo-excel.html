@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="referrer" content="no-referrer">
+ <title>Recibo de pago · Misión Jardines</title>
+ <link rel="icon" href="assets/images/favicon.ico">
+ <style>
+  body{font:15px system-ui,-apple-system,Segoe UI,sans-serif;background:#f5f8f6;color:#1c4431;margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;box-sizing:border-box}
+  main{max-width:490px;background:white;border:1px solid #d8e7dc;border-radius:18px;padding:30px;box-shadow:0 12px 38px #17372612}
+  a{color:#14764c}h1{font-size:21px}p{line-height:1.65}
+ </style>
+</head>
+<body>
+ <main>
+  <h1>Recibo de pago · Misión Jardines</h1>
+  <p id="estado" role="status" aria-live="polite">Verificando tu acceso y preparando el PDF…</p>
+  <p><a href="analisis-cuotas.html">Volver al análisis de cuotas</a></p>
+ </main>
+ <script>
+ (async()=>{
+  const estado=document.getElementById('estado');
+  const params=new URLSearchParams(location.search);
+  const casaId=Number(params.get('casaId'));
+  const referencia=params.get('referencia');
+  const concepto=params.get('concepto')||'MANTENIMIENTO';
+  const proyectoId=Number(params.get('proyectoId'));
+  if(!Number.isSafeInteger(casaId)||casaId<1||
+   !referencia||referencia.length>255||
+   !['MANTENIMIENTO','EXTRAORDINARIO'].includes(concepto)||
+   (concepto==='EXTRAORDINARIO'&&(!Number.isSafeInteger(proyectoId)||proyectoId<1))){
+   estado.textContent='El vínculo del comprobante no contiene datos válidos.';
+   return;
+  }
+  const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+  const login=()=>location.replace('login.html?regresar='+encodeURIComponent(location.href));
+  if(!token){login();return;}
+  const api=window.MJ_API_URL||(['localhost','127.0.0.1'].includes(location.hostname)?
+   'http://localhost:3000/api':'https://api-misionjardines.listoenlinea.host/api');
+  const query=new URLSearchParams({referencia,concepto});
+  if(concepto==='EXTRAORDINARIO')query.set('proyectoId',String(proyectoId));
+  try{
+   // Se solicita un pase nuevo de 5 minutos al abrir el enlace: el Excel
+   // conserva un hipervínculo estable, nunca un JWT ni un PDF público.
+   const response=await fetch(api+'/finanzas/pagos-vivienda/'+casaId+
+    '/recibo/vista?'+query,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+   if(response.status===401){login();return;}
+   const result=await response.json().catch(()=>({}));
+   if(!response.ok||!result.ok||!result.data?.url)
+    throw Error(result.message||'No se pudo generar el recibo. Comprueba que tengas permisos de administración y que el pago siga registrado.');
+   const destino=new URL(result.data.url,api);
+   if(destino.origin!==new URL(api).origin||!destino.pathname.startsWith('/api/recibo-vista/'))
+    throw Error('La API devolvió un enlace de recibo no válido.');
+   location.replace(destino.href);
+  }catch(error){
+   estado.textContent=error.message||'No se pudo abrir el PDF. Inténtalo de nuevo desde Excel.';
+  }
+ })();
+ </script>
+</body>
+</html>
