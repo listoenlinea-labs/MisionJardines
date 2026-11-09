@@ -1623,3 +1623,67 @@ body.page-analisis .finance-monthly-columns > .finance-chart-card{
  }
 }
 @media(prefers-reduced-motion:reduce){.finance-balance-fill{transition:none}}
+
+
+/* PR: únicamente celular, carrusel horizontal que encaja una gráfica entera. */
+.finance-monthly-pagination{display:none}
+@media(max-width:700px){
+ body.page-analisis .finance-monthly-columns{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:flex-start!important;
+  gap:0!important;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  padding:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  scroll-padding-inline:0;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  border-radius:16px;
+  transition:height .2s ease;
+ }
+ body.page-analisis .finance-monthly-columns::-webkit-scrollbar{display:none}
+ body.page-analisis .finance-monthly-columns > .finance-chart-card{
+  flex:0 0 100%!important;
+  width:100%!important;
+  min-width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  min-height:0;
+  align-self:flex-start!important;
+  scroll-snap-align:center;
+  scroll-snap-stop:always;
+  box-sizing:border-box;
+  margin:0!important;
+ }
+ body.page-analisis .finance-monthly-columns:focus-visible{
+  outline:2px solid #eb963e;outline-offset:2px;
+ }
+ body.page-analisis .finance-monthly-pagination{
+  display:flex;justify-content:center;align-items:center;
+  gap:6px;margin:10px 0 18px;padding:0 3px;
+ }
+ body.page-analisis .finance-monthly-jump{
+  min-width:0;flex:1 1 0;max-width:130px;
+  padding:9px 6px;border:1px solid #e3e7ed;
+  border-radius:999px;background:#fff;color:#66748a;
+  font-size:11px;font-weight:750;line-height:1.25;
+  cursor:pointer;transition:background .15s,border-color .15s;
+ }
+ body.page-analisis .finance-monthly-jump.is-active{
+  border-color:#e9bc87;background:#fff2e0;color:#9a5213;
+ }
+ body.page-analisis .finance-monthly-jump:focus-visible{
+  outline:2px solid #df8a34;outline-offset:2px;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ body.page-analisis .finance-monthly-columns{transition:none}
+ body.page-analisis .finance-monthly-jump{transition:none}
+}
