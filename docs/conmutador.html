@@ -47,6 +47,18 @@
     .statusbar.ok:before{background:#35a867;box-shadow:0 0 0 4px rgba(53,168,103,.12)}
     .statusbar.error{border-color:#efd1cd;background:#fff8f7;color:#ad3f37}
     .statusbar.error:before{background:#cf5b50;box-shadow:0 0 0 4px rgba(207,91,80,.12)}
+    .board-switch{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+    .board-switch button{padding:11px 17px;border-radius:11px;border:1px solid #dfe5ec;background:#fff;color:#5c6b80;font-size:12px;font-weight:850;cursor:pointer}
+    .board-switch button.active{background:#fff3e7;border-color:#e8ab73;color:#a94f04}
+    .history-panel{padding:20px 24px}
+    .history-head{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:15px}
+    .history-head h2{font-size:18px;margin:0}
+    .history-list{display:grid;gap:8px}
+    .history-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid #e4e8ee;border-radius:12px}
+    .history-item strong{font-size:14px}
+    .history-item span{color:#69788d;font-size:12px;text-align:right}
+    .history-empty{font-size:13px;color:#69788d}
+    [hidden]{display:none!important}
     .privacy-note{margin:12px 3px 0;color:#8490a1;font-size:11px;line-height:1.5}
     .modal-backdrop{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(23,34,50,.42);backdrop-filter:blur(3px)}
     .modal-backdrop.show{display:flex}
@@ -85,12 +97,21 @@
       <div>
         <span class="eyebrow">Control de acceso · Conmutador de caseta</span>
         <h1>Conmutador</h1>
-        <p data-call-description>Selecciona la calle y después la casa. No se muestran nombres ni teléfonos en el conmutador; al elegir el domicilio se abre WhatsApp con el residente correcto.</p>
+        <p data-call-description>Selecciona la calle y después la casa. No se muestran nombres ni teléfonos en el conmutador; en iPhone se abrirá el marcador telefónico de Telcel para confirmar la llamada.</p>
       </div>
       <div class="heading-icon" aria-hidden="true">☎</div>
     </div>
 
-    <section class="panel switchboard" aria-label="Conmutador por calles">
+    <div class="board-switch" role="group" aria-label="Secciones del conmutador">
+      <button type="button" id="showHomes" class="active" aria-pressed="true">Viviendas</button>
+      <button type="button" id="showHistory" aria-pressed="false">Historial de llamadas</button>
+    </div>
+    <section class="panel history-panel" id="historyPanel" aria-label="Historial de intentos de llamadas" hidden>
+      <div class="history-head"><h2>Historial de intentos</h2><button type="button" id="refreshHistory" class="modal-close" style="width:auto;margin:0;padding:0 14px">Actualizar</button></div>
+      <p class="privacy-note">Solo se muestra la vivienda, fecha y hora del intento. El iPhone no informa si se completó la llamada.</p>
+      <div class="history-list" id="historyList" aria-live="polite"><p class="history-empty">Cargando historial…</p></div>
+    </section>
+    <section class="panel switchboard" id="homesPanel" aria-label="Conmutador por calles">
       <div id="streetTabs" class="street-tabs" role="tablist" aria-label="Calles"></div>
       <div class="board-head">
         <h2 id="streetTitle">Gardenias</h2>
@@ -105,9 +126,9 @@
 
   <div id="phoneChoiceModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="phoneChoiceTitle">
     <div class="choice-modal">
-      <span class="eyebrow">DOS TELÉFONOS REGISTRADOS</span>
+      <span class="eyebrow">LLAMADA A VIVIENDA</span>
       <h3 id="phoneChoiceTitle">¿A cuál deseas llamar?</h3>
-      <p>Este domicilio tiene dos números separados por “/” en el padrón. Elige A o B.</p>
+      <p id="phoneChoiceDescription">Elige A o B para llamar al número registrado.</p>
       <div class="choice-buttons">
         <button class="choice" type="button" data-phone-choice="0">A</button>
         <button class="choice" type="button" data-phone-choice="1">B</button>
@@ -117,7 +138,7 @@
   </div>
 
   <script src="assets/js/telefonia-engine.js?v=20261006"></script>
-  <script src="assets/js/conmutador.js?v=20261006"></script>
+  <script src="assets/js/conmutador.js?v=20261109-iphone-historial"></script>
   <script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll"></script>
 </body>
 </html>

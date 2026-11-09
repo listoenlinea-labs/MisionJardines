@@ -31,6 +31,67 @@
       let activeSection = sections[0];
       let pendingPhones = [];
       let requestNumber = 0;
+      const isIPhone = /iPhone|iPod/i.test(navigator.userAgent);
+      let selectedHouse = null;
+      function attempt(house) {
+        return fetch(API + '/conmutador/historial', {
+          method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+          body:JSON.stringify({grupo:house.lookup,numero:house.number}),
+          keepalive:true,cache:'no-store'
+        }).catch(()=>{});
+      }
+      function callFromIPhone(number, house) {
+        const raw=String(number||'').trim();
+        const digits=raw.replace(/\D/g,'');
+        if(!/^\+?[\d\s()\-]{10,22}$/.test(raw)||!/^\d{10,13}$/.test(digits)){
+          setStatus('Teléfono no válido para llamada normal.','error');return;
+        }
+        void attempt(house);
+        setStatus('Confirma la llamada desde el marcador del iPhone.','ok');
+        window.location.href='tel:'+(raw.startsWith('+')?'+':'')+digits;
+      }
+      function phoneOnIPhone(phones,house){
+        selectedHouse=house;
+        pendingPhones=phones.slice(0,2);
+        byId('phoneChoiceTitle').textContent=phones.length>1?'¿A cuál deseas llamar?':'¿Llamar a esta vivienda?';
+        byId('phoneChoiceDescription').textContent='Se abrirá el marcador del iPhone sin WhatsApp. No mostramos números.';
+        const first=document.querySelector('[data-phone-choice="0"]');
+        first.textContent=phones.length>1?'A':'Llamar';
+        document.querySelector('[data-phone-choice="1"]').hidden=phones.length<2;
+        byId('phoneChoiceModal').classList.add('show');
+      }
+      async function loadHistory(){
+        const list=byId('historyList');
+        list.textContent='Cargando historial…';
+        try {
+          const data=await api('/conmutador/historial');
+          list.replaceChildren();
+          if(!data.registros.length){list.textContent='Sin intentos registrados.';return;}
+          data.registros.forEach(entry=>{
+            const row=document.createElement('div');row.className='history-item';
+            const home=document.createElement('strong');
+            home.textContent=entry.grupo+' '+entry.numero;
+            const timestamp=document.createElement('span');
+            const [date,time]=String(entry.fecha_hora||'').split(' ');
+            timestamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
+            row.append(home,timestamp);list.appendChild(row);
+          });
+        }catch(_){list.textContent='No se pudo consultar el historial.';}
+      }
+      function showHistory(history){
+        byId('homesPanel').hidden=history;
+        byId('historyPanel').hidden=!history;
+        byId('callStatus').hidden=history;
+        byId('showHistory').classList.toggle('active',history);
+        byId('showHomes').classList.toggle('active',!history);
+        byId('showHistory').setAttribute('aria-pressed',String(history));
+        byId('showHomes').setAttribute('aria-pressed',String(!history));
+        if(history)void loadHistory();
+      }
+      byId('showHistory').addEventListener('click',()=>showHistory(true));
+      byId('showHomes').addEventListener('click',()=>showHistory(false));
+      byId('refreshHistory').addEventListener('click',loadHistory);
+
 
       function setStatus(message, kind) {
         const status = byId('callStatus');
@@ -107,7 +168,8 @@
         });
       }
 
-      function openPhoneChoice(phones) {
+      function openPhoneChoice(phones, house) {
+        selectedHouse = house;
         pendingPhones = phones.slice(0, 2);
         byId('phoneChoiceModal').classList.add('show');
         document.querySelector('[data-phone-choice="0"]').focus();
@@ -153,7 +215,7 @@
 
       async function selectHouse(button, house) {
         const currentRequest = ++requestNumber;
-        const preparedWindow = caller.prepareWindow();
+        const preparedWindow = isIPhone ? null : caller.prepareWindow();
         if (preparedWindow) {
           try {
             preparedWindow.document.title = 'Misión Jardines · WhatsApp';
@@ -178,13 +240,18 @@
             return;
           }
 
+          if (isIPhone) {
+            phoneOnIPhone(phones,{lookup:house.lookup||activeSection.key,number:house.number});
+            return;
+          }
           if (phones.length > 1) {
             try { if (preparedWindow && !preparedWindow.closed) preparedWindow.close(); } catch (_) {}
             setStatus('Este domicilio tiene dos teléfonos. Elige A o B para llamar.');
-            openPhoneChoice(phones);
+            openPhoneChoice(phones, { lookup: house.lookup || activeSection.key, number: house.number });
             return;
           }
 
+          void attempt({lookup:house.lookup||activeSection.key,number:house.number});
           await caller.call(phones[0], preparedWindow, openWhatsApp);
         } catch (error) {
           try { if (preparedWindow && !preparedWindow.closed) preparedWindow.close(); } catch (_) {}
@@ -200,8 +267,14 @@
       document.querySelectorAll('[data-phone-choice]').forEach(button => {
         button.addEventListener('click', async () => {
           const selected = pendingPhones[Number(button.dataset.phoneChoice)];
+          const house=selectedHouse;
           closePhoneChoice();
-          if (selected) await caller.call(selected, caller.prepareWindow(), openWhatsApp);
+          selectedHouse=null;
+          if(selected && isIPhone && house)callFromIPhone(selected,house);
+          else if(selected) {
+            if(house) void attempt(house);
+            await caller.call(selected, caller.prepareWindow(), openWhatsApp);
+          }
         });
       });
       byId('closePhoneChoice').addEventListener('click', closePhoneChoice);
@@ -215,7 +288,11 @@
       renderTabs();
       renderHouses();
       document.querySelectorAll('.house-btn').forEach(item => { item.disabled = true; });
-      caller.init().then(() => {
+      (isIPhone ? Promise.resolve().then(() => {
+        setStatus('Conmutador Telcel listo. Elige una vivienda.','ok');
+        document.querySelectorAll('[data-call-description]').forEach(el=>el.textContent='Elige una vivienda para llamar desde el iPhone sin WhatsApp.');
+        document.querySelectorAll('[data-whatsapp-only]').forEach(el=>el.hidden=true);
+      }) : caller.init()).then(() => {
         document.querySelectorAll('.house-btn').forEach(item => { item.disabled = false; });
       }).catch(error => setStatus(error.message, 'error'));
     })();
