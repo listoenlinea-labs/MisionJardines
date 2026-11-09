@@ -269,8 +269,8 @@
    const balanceRows=balance?[
     ['Ingresos del período',balance.ingresos],
     [projectReport?'Meta del proyecto':'Egresos del período',balance.egresos],
-    [balance.estado==='SALDO_EN_CONTRA'?(projectReport?'Por recaudar':'Saldo en contra'):
-     balance.estado==='SALDO_A_FAVOR'?(projectReport?'Sobre la meta':'Saldo a favor'):'En equilibrio',Math.abs(balance.diferencia)]
+    [balance.estado==='SALDO_EN_CONTRA'?(projectReport?'Saldo en contra · por recaudar':'Saldo en contra'):
+     balance.estado==='SALDO_A_FAVOR'?(projectReport?'Saldo a favor · sobre la meta':'Saldo a favor'):'En equilibrio',Math.abs(balance.diferencia)]
    ]:null;
    const balanceTable=balanceRows?table(53,1,projectReport?'DIFERENCIA CONTRA META':'BALANCE INFORMATIVO',['Indicador','Monto (MXN)'],balanceRows):null;
    resumenWs.getColumn(1).width=38;resumenWs.getColumn(2).width=25;
