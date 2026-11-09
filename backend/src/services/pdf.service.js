@@ -305,7 +305,7 @@ function generarReciboPdf(cuota, opciones = {}) {
         // Un concepto uniforme en TODAS las salidas PDF (visor, descarga,
         // historial, ZIP y Google Drive). Pago anual es el tipo de operación:
         // puede cubrir únicamente los meses que restaban del año.
-        const conceptoMantenimiento = cuota.tipo === 'EXTRAORDINARIO'
+        const conceptoMantenimiento = cuota.abonoConAdeudo ? 'CUOTA DE MANTENIMIENTO · ABONO CON ADEUDO' : cuota.tipo === 'EXTRAORDINARIO'
             ? 'APORTACIÓN · ' + String(cuota.conceptoProyecto || 'Proyecto extraordinario')
             : cuota.pagoAnual
             ? 'PAGO ANUAL DE MANTENIMIENTO'
@@ -413,6 +413,12 @@ function generarReciboPdf(cuota, opciones = {}) {
                     lineGap: 2
                 }
             );
+
+        if (cuota.abonoConAdeudo) {
+            document.font('Helvetica-Bold').fontSize(9).fillColor('#a85a10')
+                .text('Deudas pendientes por aclarar', 32, 619, { width: 548, align: 'center' })
+                .fillColor('#000000');
+        }
 
         dibujarLinea(
             document,

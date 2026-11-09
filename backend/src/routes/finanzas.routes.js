@@ -33,6 +33,9 @@ router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorC
 router.post('/egresos',controller.registrarEgreso);
 router.put('/egresos/resumen-mensual',controller.ajustarTotalEgresoMensual);
 router.post('/egresos/:id/activar-cuota',controller.activarCuotaExistente);
+const abonoAdeudo=require('../controllers/abono-con-adeudo.controller');
+router.get('/pagos-vivienda/:casaId/abono-con-adeudo',abonoAdeudo.consultar);
+router.post('/pagos-vivienda/abono-con-adeudo',abonoAdeudo.registrar);
 router.post('/pagos-vivienda',pagosManuales.registrarPagoVivienda);
 router.get('/pagos-concepto/:casaId',pagosManuales.opcionesPagoConcepto);
 router.post('/pagos-concepto',pagosManuales.registrarPagoConcepto);

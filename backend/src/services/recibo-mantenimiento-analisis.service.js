@@ -120,9 +120,10 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
         ? `${primero.mes} ${primero.anio} A ${ultimo.mes} ${ultimo.anio}`
         : primero ? `${primero.mes} ${primero.anio}` : 'PAGO REGISTRADO';
 
+    const abonoConAdeudo = cuotasDelPago.some(c => c.origenImportacion === 'MANUAL_ABONO_ADEUDO');
     // Si una de las cuotas del movimiento aún es parcial, el recibo debe
     // decir ABONO, nunca PAGADO (aunque el mes elegido sí esté liquidado).
-    const sello = cuotasDelPago.some(c => c.estatusPago === 'PAGO_PARCIAL')
+    const sello = abonoConAdeudo ? 'ABONO CON ADEUDO' : cuotasDelPago.some(c => c.estatusPago === 'PAGO_PARCIAL')
         ? 'ABONO RECIBIDO' : 'PAGADO';
 
     // Historial ya calcula el importe del MOVIMIENTO, incluyendo el recargo,
@@ -145,6 +146,7 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
         mes: nombrePeriodo,
         periodosVarios: periodos.length > 1,
         pagoAnual,
+        abonoConAdeudo,
         montoPagado: monto,
         formaPago: cuotaPrincipal?.formaPago || (comprobante ? 'TRANSFERENCIA' : 'No especificada'),
         referencia: movimiento.referencia,
@@ -166,6 +168,7 @@ function datosDeMovimiento(casa, cuotas, comprobantes, ahora = new Date(), perio
             formaPago: recibo.formaPago,
             periodo: nombrePeriodo,
             pagoAnual,
+            abonoConAdeudo,
             mesesCubiertos: periodos.length,
             sello,
             periodosDisponibles: disponibles,

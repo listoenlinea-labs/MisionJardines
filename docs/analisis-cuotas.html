@@ -198,6 +198,19 @@
     </div>
   </div>
 </section>
+<style>
+  .house-payment-type-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:13px;align-items:end}
+  .house-payment-type-row>label{min-width:0}
+  .house-abono-open{align-self:center;white-space:nowrap;background:#fff6e9!important;border-color:#ecbc85!important;color:#ad600c!important}
+  .house-abono-heading{padding:14px;border-radius:12px;background:#fff6ec;border:1px solid #f1d7ba}
+  .house-abono-heading h3{margin:0 0 4px;color:#ab5a0b}
+  .house-abono-heading p{margin:0;line-height:1.5}
+  .house-abono-confirm{display:flex!important;align-items:flex-start;gap:10px;line-height:1.5}
+  .house-abono-confirm input{width:18px!important;min-width:18px;height:18px;flex:0 0 18px;margin-top:3px}
+  .house-abono-panel[hidden],.house-payment-form[hidden],.house-abono-open[hidden]{display:none!important}
+  @media(max-width:650px){.house-payment-type-row{grid-template-columns:minmax(0,1fr)}.house-abono-open{justify-self:start;margin-bottom:7px}.house-abono-panel{padding:0 2px}}
+</style>
+
 <section id="housePaymentModal" class="finance-pay-overlay" hidden aria-label="Registrar pago por vivienda">
   <div class="finance-pay-dialog" role="dialog" aria-modal="true" aria-labelledby="housePaymentTitle">
     <div class="finance-pay-heading">
@@ -205,7 +218,7 @@
       <button type="button" id="housePaymentClose" class="soft" aria-label="Cerrar formulario">Cerrar</button>
     </div>
     <form id="housePaymentForm" class="house-payment-form">
-      <label>Concepto de pago<select id="housePaymentType"><option value="MANTENIMIENTO">Cuota de mantenimiento</option><option value="EXTRAORDINARIO">Cuota extraordinaria</option><option value="CASA_CLUB">Casa club</option></select></label>
+      <div class="house-payment-type-row"><label>Concepto de pago<select id="housePaymentType"><option value="MANTENIMIENTO">Cuota de mantenimiento</option><option value="EXTRAORDINARIO">Cuota extraordinaria</option><option value="CASA_CLUB">Casa club</option></select></label><button type="button" id="houseAbonoAdeudoOpen" class="soft house-abono-open" hidden>Abono con adeudo</button></div>
       <label id="houseConceptWrap" hidden>Proyecto o reservación pendiente<select id="houseConceptSelect"></select></label>
       <div class="house-last-payment" id="houseLastPayment" data-maintenance-only role="status">Consultando último mes pagado…</div>
       <label data-maintenance-only>¿Hasta qué mes está pagando?
@@ -236,6 +249,24 @@
       <p class="hint house-payment-notice" id="housePaymentNotice" data-maintenance-only>Se calcula desde el último mes completamente pagado en MySQL hasta el mes seleccionado. El monto sugerido depende de la cuota de esta vivienda y puede editarse, con un máximo de $50 de recargo por mes. No se puede marcar como pagado un período con abonos, comprobantes o cobros previos. La sincronización con el C3 se confirma por separado. La fecha de los TAGs se ajustará al corte seleccionado aunque actualmente sea posterior.</p>
       <div class="house-payment-actions"><button type="button" class="soft" id="housePaymentRefreshC3" data-maintenance-only>Verificar vigencias de TAGs</button><button type="submit" class="primary" id="housePaymentSubmit" disabled>Confirmar pago</button></div>
     </form>
+
+    <form id="houseAbonoAdeudoPanel" class="house-payment-form house-abono-panel" hidden>
+      <div class="house-abono-heading"><h3>Abono con adeudo</h3>
+        <p>Pago del mes actual, sin condonar los meses anteriores ni actualizar los TAGs.</p>
+      </div>
+      <label>Mes que se reconoce<input id="houseAbonoAdeudoPeriod" type="text" readonly></label>
+      <label>Monto recibido (MXN)<input id="houseAbonoAdeudoAmount" type="number" min="1" step="1" inputmode="numeric" readonly required></label>
+      <label>Forma de pago<select id="houseAbonoAdeudoMethod">
+        <option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option>
+        <option value="DEPOSITO">Depósito</option><option value="OTRO">Otro</option>
+      </select></label>
+      <label class="house-abono-confirm"><input id="houseAbonoAdeudoConfirm" type="checkbox" required>
+        Confirmo haber recibido esta cantidad. Los adeudos anteriores siguen pendientes y el recibo incluirá “Deudas pendientes por aclarar”.</label>
+      <p id="houseAbonoAdeudoStatus" role="status" aria-live="polite" class="house-payment-status"></p>
+      <div class="house-payment-actions"><button id="houseAbonoAdeudoBack" class="soft" type="button">Volver</button>
+        <button id="houseAbonoAdeudoSave" class="primary" type="submit">Registrar y generar recibo</button></div>
+    </form>
+
     <p id="housePaymentStatus" role="status" aria-live="polite" class="house-payment-status"></p>
   </div>
 </section>
@@ -269,4 +300,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-pesos-enteros-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-pesos-enteros-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261109-saldo" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-pesos-enteros-v1" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/analisis-cuotas.js?v=20261109-abono-adeudo-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

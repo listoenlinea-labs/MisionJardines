@@ -38,7 +38,11 @@ function recargoAbonado(c,tarifa){
 function estadoPeriodo(c,n,fecha,tarifa=BASE,exento=false){
  const pagado=cents(c?.montoPagado),abonadoRecargo=recargoAbonado(c,tarifa);
  const prueba=tarifa===10&&n===2026*12+9&&c?.origenImportacion==='PRUEBA_10_PESOS'&&cents(c.montoCuota)===1000&&cents(c.recargo)===0;
- const multa=!prueba&&!exento&&fecha>periodo(n)+'-10'?RECARGO*100:0;
+ // Un abono con adeudo registrado oportunamente cubre la cuota del mes
+ // sin crear un recargo artificial cuando el reloj pasa del día 10.
+ const abonoEnTiempo=c?.origenImportacion==='MANUAL_ABONO_ADEUDO' &&
+  cents(c?.montoPagado)>=tarifa*100 && cents(c?.recargo)===0;
+ const multa=!prueba&&!exento&&!abonoEnTiempo&&fecha>periodo(n)+'-10'?RECARGO*100:0;
  const recargoTotal=Math.max(multa,abonadoRecargo),total=tarifa*100+recargoTotal;
  const faltante=cubierta(c)?0:Math.max(0,total-pagado);
  return {total,pagado,faltante,recargoTotal,recargoPendiente:cubierta(c)?0:Math.max(0,multa-abonadoRecargo)};

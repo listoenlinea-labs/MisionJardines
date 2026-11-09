@@ -7,6 +7,8 @@ function estadoPeriodoMantenimiento(cuotaPeriodo, adeudo, anio, mes) {
   const corte = new Date(Date.UTC(Number(anio), Number(mes), 10)).toISOString().slice(0, 10);
   const cubiertoPorCorte = Boolean(adeudo?.fechaUltimoCortePagado &&
     adeudo.fechaUltimoCortePagado >= corte);
+  if (cuotaPeriodo?.origenImportacion === 'MANUAL_ABONO_ADEUDO' && Number(adeudo?.saldoPendiente)>0)
+    return 'PENDIENTE'; // Ingreso registrado, pero la vivienda sigue morosa.
   return cubiertoPorCorte ? 'PAGADO' : cuotaPeriodo?.estatusPago || 'PENDIENTE';
 }
 
