@@ -78,6 +78,38 @@
  margin:0 0 14px;text-decoration:none;font-weight:800;border-color:#d8e6de!important;
  background:#eef8f2!important;color:#226c4a!important}
 .back-to-finance[hidden]{display:none!important}
+
+    /* TAGs: filtros en la primera fila y sus cinco botones uniformes en
+       una segunda fila. El resto del sitio conserva sus estilos existentes. */
+    #accessTagsPanel .toolbar{grid-template-columns:minmax(220px,1.6fr) minmax(145px,.8fr) minmax(180px,1fr)}
+    #accessTagsPanel .toolbar .field:first-child,
+    #accessTagsPanel .toolbar .zk-order-field{grid-column:auto}
+    #accessTagsPanel .zk-tag-toolbar-actions{
+      display:grid;grid-column:1/-1;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      gap:9px;min-width:0;
+    }
+    #accessTagsPanel .zk-tag-toolbar-actions .btn{
+      display:flex;align-items:center;justify-content:center;
+      width:100%;min-width:0;height:42px;min-height:42px;
+      padding:7px 9px;white-space:nowrap;
+    }
+    @media(max-width:820px){
+      #accessTagsPanel .toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+      #accessTagsPanel .toolbar .field:first-child,
+      #accessTagsPanel .toolbar .zk-order-field{grid-column:1/-1}
+      #accessTagsPanel .zk-tag-toolbar-actions{
+        grid-template-columns:repeat(5,minmax(128px,1fr));
+        overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;
+      }
+    }
+    @media(max-width:560px){
+      #accessTagsPanel .toolbar{grid-template-columns:1fr}
+      #accessTagsPanel .toolbar .field,
+      #accessTagsPanel .toolbar .field:first-child,
+      #accessTagsPanel .toolbar .zk-order-field{grid-column:1}
+      #accessTagsPanel .zk-tag-toolbar-actions{grid-column:1;grid-template-columns:repeat(5,128px)}
+    }
 </style>
 <link rel="stylesheet" href="assets/css/zkteco-calles.css?v=20261009-buscador">
   <script src="assets/js/date-display.js?v=20261019"></script>
@@ -164,11 +196,13 @@
           <div class="field"><label for="street">CALLE Y NÚMERO</label><input id="street" type="text" placeholder="Ej. Gardenias 5 o solo Gardenias" autocomplete="off" spellcheck="false" aria-label="Buscar por calle y número de casa"></div>
           <div class="field"><label>NÚMERO DE TAG</label><input id="tagNumber" name="zk_access_tag_lookup" type="search" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" data-1p-ignore="true" data-lpignore="true" placeholder="Ej. 5112343" aria-label="Buscar número de TAG"></div>
           <div class="field zk-order-field"><label for="zkTagOrder">ORDENAR TAGs</label><select id="zkTagOrder" aria-label="Ordenar por incorporación de TAGs a la base de datos"><option value="alta_desc">TAGs agregados más recientemente</option><option value="alta_asc">TAGs agregados más antiguos</option></select></div>
-          <button id="applyFilters" class="btn">Buscar</button>
-          <button id="clearFilters" class="btn clear">Limpiar filtros</button>
-          <button id="diagnoseConnection" class="btn clear" type="button">Diagnosticar C3</button>
-          <button id="openLogs" class="btn clear">Logs</button>
-          <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
+          <div class="zk-tag-toolbar-actions" role="group" aria-label="Acciones de administración de TAGs">
+            <button id="applyFilters" class="btn">Buscar</button>
+            <button id="clearFilters" class="btn clear">Limpiar filtros</button>
+            <button id="diagnoseConnection" class="btn clear" type="button">Diagnosticar C3</button>
+            <button id="openLogs" class="btn clear">Logs</button>
+            <button id="sync" class="btn primary">Sincronizar ZKTeco</button>
+          </div>
         </div>
         <div class="house-list-shell">
           <div class="house-list-header" aria-hidden="true"><span>Vivienda</span><span>Estado</span><span>Última lectura</span><span>Acciones</span></div>
