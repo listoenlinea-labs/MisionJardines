@@ -13,6 +13,10 @@
   const refreshHint = document.getElementById('mjAppRefresh');
   const refreshDocuments = new WeakSet();
   const token = window.MJ_TOKEN;
+  const publicClubEntry = new URLSearchParams(location.search).get('page') === 'casa-club.html';
+  // El enlace compartido sale del marco privado hacia el formulario público.
+  const openPublicClub = () => location.replace('casa-club.html');
+  const openWithoutSession = () => publicClubEntry ? openPublicClub() : location.replace('login.html');
   const base = new URL('.', location.href);
   let userRole = '';
   let activeIndex = -1;
@@ -246,7 +250,7 @@
   }));
 
   window.MJAccessReady = (async () => {
-    if (!token) { location.replace('login.html'); return false; }
+    if (!token) { openWithoutSession(); return false; }
     try {
       const response = await window.MJFetchWithTimeout(`${window.MJ_API_URL}/auth/perfil`, {
         headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
@@ -255,7 +259,7 @@
         ['misionJardinesToken', 'misionJardinesUsuario'].forEach(key => {
           localStorage.removeItem(key); sessionStorage.removeItem(key);
         });
-        location.replace('login.html');
+        openWithoutSession();
         return false;
       }
       if (!response.ok) throw Error('No fue posible validar la sesión.');
@@ -271,7 +275,8 @@
       if (userRole === 'SEGURIDAD') sessionStorage.removeItem('mjCasaSeleccionada');
       return true;
     } catch (cause) {
-      error(cause.message || 'No fue posible verificar tu sesión.');
+      if (publicClubEntry) openPublicClub();
+      else error(cause.message || 'No fue posible verificar tu sesión.');
       return false;
     }
   })();
@@ -302,6 +307,7 @@
 
   window.MJAccessReady.then(ok => {
     if (!ok) return;
+    if (publicClubEntry && !allowed('casa-club.html')) { openPublicClub(); return; }
     const raw = resolveEntry(new URLSearchParams(location.search).get('page') || window.MJPermissions.landing(userRole));
     navigate(allowed(raw)?.target || window.MJPermissions.landing(userRole), { replace: true });
   });
