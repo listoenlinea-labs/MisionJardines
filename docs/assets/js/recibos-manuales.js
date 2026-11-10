@@ -178,7 +178,7 @@
   set('manualDraftFolio',$('manualReceiptFolioPreview').textContent);
   set('manualDraftDate',val('manualReceiptDate'));
   set('manualDraftName',val('manualReceiptName'));
-  set('manualDraftStreet',val('manualReceiptStreet'));
+  set('manualDraftStreet',streetValue());
   set('manualDraftNumber',val('manualReceiptNumber'));
   set('manualDraftConcept',val('manualReceiptConceptTitle'));
   set('manualDraftPeriod',(meses[Number(val('manualReceiptCoveredMonth'))-1]||'—')+' '+val('manualReceiptCoveredYear'));
