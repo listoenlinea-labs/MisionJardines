@@ -186,7 +186,7 @@
   const amount=Number(val('manualReceiptAmount'));
   set('manualDraftAmount',Number.isSafeInteger(amount)&&amount>0?'$'+amount.toLocaleString('es-MX')+' MXN':'—');
   set('manualDraftMethod',val('manualReceiptMethod'));
-  set('manualDraftSeal',val('manualReceiptSeal').toUpperCase());
+  set('manualDraftSeal',val('manualReceiptSeal'));
  }
  $('manualReceiptReview').addEventListener('click',()=>{
   const expanded=$('manualReceiptReview').getAttribute('aria-expanded')==='true';
@@ -336,8 +336,8 @@
  $('manualReceiptViewBack').addEventListener('click',()=>{releasePdf();mode('history')});
  function payload(){
   // El servidor calcula fecha, folio aleatorio y referencia, nunca el navegador.
-  const sello=$('manualReceiptSeal').value.trim().toUpperCase();
-  if(!/^PAGADO(?:\b|$)/.test(sello))throw Error('El sello debe empezar con PAGADO.');
+  // El sello es totalmente editable; el servidor valida solo que no esté vacío.
+  const sello=$('manualReceiptSeal').value.trim();
   const amount=$('manualReceiptAmount').value;
   if(!/^[1-9]\d*$/.test(amount))throw Error('El monto debe ser un número entero positivo, sin centavos.');
   return {
@@ -405,6 +405,34 @@
   const link=document.createElement('a');link.href=pdfUrl;link.download=activeReceipt.folio+'.pdf';
   document.body.appendChild(link);link.click();link.remove();
  });
+
+ async function deleteReceipt(row,button){
+  if(saving||button.disabled)return;
+  if(!window.confirm(
+    '¿Eliminar permanentemente el recibo manual '+row.folio+' de '+row.calle+' '+row.numeroCasa+
+    '? No se podrá recuperar desde este historial. Esta acción no modifica cuotas, saldos, gráficas ni TAGs.'
+  ))return;
+  button.disabled=true;
+  button.textContent='Eliminando…';
+  writeStatus('manualReceiptHistoryStatus','Eliminando el recibo '+row.folio+'…');
+  try{
+   // El servidor exige ambos: ID y folio. No se ejecuta ninguna operación sobre cuotas.
+   const response=await read('/'+row.id,{
+    method:'DELETE',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({folio:row.folio})
+   });
+   const data=await response.json();
+   if(!data.ok)throw Error(data.message||'No se pudo eliminar el recibo.');
+   if(activeReceipt?.id===row.id)releasePdf();
+   // La recarga corrige también paginación e historial si había más de 30.
+   await loadHistory(true);
+   if(historyLoaded)writeStatus('manualReceiptHistoryStatus','Recibo '+row.folio+' eliminado del historial manual.');
+  }catch(err){
+   writeStatus('manualReceiptHistoryStatus','No se eliminó el recibo: '+err.message);
+   if(button.isConnected){button.disabled=false;button.textContent='Eliminar';}
+  }
+ }
+
  function renderHistory(){
   const root=$('manualReceiptHistoryList'),search=$('manualReceiptSearch').value.trim().toLowerCase();
   root.replaceChildren();
@@ -423,10 +451,18 @@
    text.textContent=row.calle+' '+row.numeroCasa+' · '+row.nombre+' · '+
      Number(row.monto).toLocaleString('es-MX')+' MXN · '+row.fechaEmision;
    info.append(name,text);
-   const button=document.createElement('button');button.type='button';button.className='soft';
-   button.textContent='Ver PDF';button.setAttribute('aria-label','Ver recibo '+row.folio);
-   button.addEventListener('click',()=>void showPdf(row));
-   item.append(info,button);root.appendChild(item);
+   const controls=document.createElement('div');
+   controls.className='manual-receipt-history-actions';
+   const view=document.createElement('button');view.type='button';view.className='soft';
+   view.textContent='Ver PDF';view.setAttribute('aria-label','Ver recibo '+row.folio);
+   view.addEventListener('click',()=>void showPdf(row));
+   const remove=document.createElement('button');
+   remove.type='button';remove.className='manual-receipt-delete';
+   remove.textContent='Eliminar';
+   remove.setAttribute('aria-label','Eliminar recibo manual '+row.folio);
+   remove.addEventListener('click',()=>void deleteReceipt(row,remove));
+   controls.append(view,remove);
+   item.append(info,controls);root.appendChild(item);
   });
   $('manualReceiptHistoryMore').hidden=!historyMore;
  }

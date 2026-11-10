@@ -39,4 +39,11 @@ async function pdf(req,res){
   return res.send(content);
  }catch(e){return fallar(res,e,'PDF de recibo manual:');}
 }
-module.exports={crear,listar,detalle,pdf};
+async function eliminar(req,res){
+ res.set('Cache-Control','no-store');
+ try{
+  const deleted=await store.eliminar(req.params.id,req.body?.folio);
+  return res.json({ok:true,data:deleted,message:'Recibo manual eliminado de su historial.'});
+ }catch(e){return fallar(res,e,'Eliminar recibo manual:');}
+}
+module.exports={crear,listar,detalle,pdf,eliminar};

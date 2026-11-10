@@ -28,6 +28,12 @@ function fixture(){
     });
     return [1,1];
    }
+   if(sql.startsWith('DELETE FROM recibos_manuales')){
+    const index=records.findIndex(r=>r.id===replacements.id&&r.folio===replacements.folio);
+    if(index<0)return [{affectedRows:0},{affectedRows:0}];
+    records.splice(index,1);
+    return [{affectedRows:1},{affectedRows:1}];
+   }
    if(sql.includes('WHERE folio'))return records.filter(r=>r.folio===replacements.folio);
    if(sql.includes('WHERE id'))return records.filter(r=>r.id===replacements.id);
    if(sql.includes('ORDER BY'))return records.slice();
@@ -69,13 +75,16 @@ test('La persistencia y el historial consultan EXCLUSIVAMENTE recibos_manuales',
   assert.doesNotMatch(sql,/\b(?:UPDATE|DELETE|DROP|TRUNCATE)\b/i);
  }
 });
-test('Rechaza importes decimales, sello sin PAGADO y folios inválidos',()=>{
+test('Rechaza datos inválidos, permite sellos de texto libre y conserva importes enteros',()=>{
  const {service}=fixture();
- for(const [key,value] of [['monto',300.50],['monto',0],['sello','ABONO CON ADEUDO'],
+ for(const [key,value] of [['monto',300.50],['monto',0],['sello',''],
    ['mesFolio',13],['anioCubierto',1999],['numeroCasa','18 / ?'],['formaPago','TARJETA']]){
   assert.throws(()=>service.validar({...sample,[key]:value}),e=>e.status===400);
  }
  assert.equal(service.validar({...sample,formaPago:'TRANSFERENCIA'}).formaPago,'TRANSFERENCIA');
+ assert.equal(service.validar({...sample,sello:'ABONO CON ADEUDO'}).sello,'ABONO CON ADEUDO');
+ assert.equal(service.validar({...sample,sello:'Se recibió efectivo'}).sello,'Se recibió efectivo');
+
 });
 test('El botón está siempre visible; modal tiene los campos editables y su historial',()=>{
  const html=read('docs/analisis-cuotas.html');
@@ -100,6 +109,7 @@ test('El acceso de recibos manuales está bajo el router de administradores',()=
  assert.match(routes,/router\.get\('\/recibos-manuales'/);
  assert.match(routes,/router\.post\('\/recibos-manuales'/);
  assert.match(routes,/router\.get\('\/recibos-manuales\/:id\/pdf'/);
+ assert.match(routes,/router\.delete\('\/recibos-manuales\/:id',recibosManuales\.eliminar\)/);
  assert.match(read('backend/src/services/recibos-manuales-pdf.service.js'),
   /Sin movimiento contable automático/);
 });
@@ -127,4 +137,33 @@ test('El generador ofrece calle LOV y número editable con lista filtrada, sin e
  assert.match(js,/selection=house/);
  assert.match(js,/nameEdited=true/);
  assert.match(js,/calle:streetValue\(\)\.trim\(\)/);
+});
+
+test('La eliminación sólo afecta la tabla documental y exige ID y folio',async()=>{
+ const {service,queries}=fixture();
+ const row=await service.crear(sample,9);
+ await assert.rejects(service.eliminar(row.id,'MJ-OTRO-2026'),e=>e.status===404);
+ assert.equal((await service.listar()).length,1);
+ const removed=await service.eliminar(row.id,row.folio);
+ assert.equal((await service.listar()).length,0);
+ await assert.rejects(service.buscar(row.id),e=>e.status===404);
+ assert.equal(removed.id,row.id);
+ assert.equal(removed.folio,row.folio);
+ const deleteQueries=queries.filter(q=>q.trim().startsWith('DELETE'));
+ assert.equal(deleteQueries.length,2);
+ assert.match(deleteQueries[0],/^DELETE FROM recibos_manuales WHERE id=:id AND folio=:folio LIMIT 1$/);
+ assert.doesNotMatch(deleteQueries[0],/\bcuotas\b|\bpagos_reportados\b|\bzkteco\b/i);
+});
+test('La interfaz ofrece Eliminar con confirmación y ya no exige que el sello diga PAGADO',()=>{
+ const html=read('docs/analisis-cuotas.html');
+ const js=read('docs/assets/js/recibos-manuales.js');
+ assert.match(html,/Sello del recibo \(texto libre\)/);
+ assert.doesNotMatch(html,/debe empezar con PAGADO/i);
+ assert.doesNotMatch(html,/Escribe o selecciona una vivienda de las sugerencias/);
+ assert.doesNotMatch(js,/El sello debe empezar con PAGADO/);
+ assert.match(js,/className='manual-receipt-delete'/);
+ assert.match(js,/window\.confirm\(/);
+ assert.match(js,/method:'DELETE'/);
+ assert.match(js,/JSON\.stringify\(\{folio:row\.folio\}\)/);
+ assert.match(html,/@media\(max-width:640px\)/);
 });
