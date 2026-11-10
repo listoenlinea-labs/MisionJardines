@@ -161,6 +161,10 @@
     activeIndex = next;
     watchChildModals(frame);
     currentPage = route.page;
+    // Sincronizar el encabezado exterior con la sección mostrada en el iframe.
+    // El pseudo-elemento blanco de product-ui.css (z-index 89) cubre el
+    // estado de conexión, el medidor y la campana de Inicio si no se elimina.
+    document.body.classList.toggle('mj-shell-home-header', currentPage === home);
     requested = route.target;
     loading.hidden = true;
     errorBox.hidden = true;
