@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const db = require('../config/database');
 const ReservaCasaClub = db.define('ReservaCasaClub', {
  id:{type:DataTypes.BIGINT.UNSIGNED,primaryKey:true,autoIncrement:true},
- usuarioId:{type:DataTypes.BIGINT.UNSIGNED,allowNull:false,field:'usuario_id'},
+ usuarioId:{type:DataTypes.BIGINT.UNSIGNED,allowNull:true,field:'usuario_id'},
  casaId:{type:DataTypes.INTEGER.UNSIGNED,allowNull:false,field:'casa_id'},
  fecha:{type:DataTypes.DATEONLY,allowNull:false},
  fechaBloqueada:{type:DataTypes.DATEONLY,allowNull:true,unique:true,field:'fecha_bloqueada'},

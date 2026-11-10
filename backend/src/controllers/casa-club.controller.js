@@ -1,11 +1,12 @@
 const {Op}=require('sequelize');
 const Reserva=require('../models/ReservaCasaClub');
-const {Casa,Usuario,UsuarioCasa}=require('../models');
+const {Casa,UsuarioCasa}=require('../models');
 const db=require('../config/database');
 const PagoReportado=require('../models/PagoReportado');
 const PagoManualConcepto=require('../models/PagoManualConcepto');
 const {randomUUID}=require('crypto');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
+const avisos=require('../services/casa-club-avisos.service');
 const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
 // Mismos importes que propone la aprobación administrativa del formulario.
@@ -27,12 +28,13 @@ async function revisarElegibilidad(casaId){
   ' entre mantenimiento y cuotas extraordinarias. Regulariza esos conceptos en Pagos.',
   {codigo:'ADEUDOS_RESERVA',adeudos:saldo});
 }
-async function expirarReservas(){
- const vencidas=await Reserva.findAll({where:{estatus:'APROBADA',pagado:false,fechaLimitePago:{[Op.lt]:hoy()}},attributes:['id']});
+async function expirarReservas(rango){
+ const vencidas=await Reserva.findAll({where:{estatus:{[Op.in]:['PENDIENTE','APROBADA']},pagado:false,
+  fechaLimitePago:{[Op.lt]:hoy()},...(rango?{fechaBloqueada:{[Op.between]:rango}}:{})},attributes:['id']});
  for(const item of vencidas){
   await db.transaction(async transaction=>{
    const row=await Reserva.findByPk(item.id,{transaction,lock:transaction.LOCK.UPDATE});
-   if(!row||row.estatus!=='APROBADA'||row.pagado||!row.fechaLimitePago||row.fechaLimitePago>=hoy())return;
+   if(!row||!['PENDIENTE','APROBADA'].includes(row.estatus)||row.pagado||!row.fechaLimitePago||row.fechaLimitePago>=hoy())return;
    // Un comprobante presentado a tiempo espera revisión bancaria; no se
    // elimina la reserva por tardanza de Administración en validarlo.
    const proof=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']},fechaOperacion:{[Op.lte]:row.fechaLimitePago}},transaction});
@@ -43,10 +45,10 @@ async function expirarReservas(){
 }
 async function fechas(req,res){
  try{
-  await expirarReservas();
   const desde=fechaValida(req.query.desde)?req.query.desde:hoy();
   const hasta=fechaValida(req.query.hasta)?req.query.hasta:new Date(Date.parse(desde+'T12:00:00Z')+92*86400000).toISOString().slice(0,10);
   if(hasta<desde||Date.parse(hasta)-Date.parse(desde)>370*86400000)throw error(400,'Rango máximo de 370 días');
+  await expirarReservas([desde,hasta]);
   const rows=await Reserva.findAll({where:{fechaBloqueada:{[Op.between]:[desde,hasta]}},attributes:['fecha','estatus']});
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,ocupadas:rows.map(x=>({fecha:x.fecha,estatus:x.estatus}))});
@@ -93,6 +95,55 @@ async function crear(req,res){
     'Solicitud enviada. Administración debe aprobarla; la fecha queda apartada provisionalmente.'});
  }catch(e){if(e.name==='SequelizeUniqueConstraintError')return res.status(409).json({ok:false,message:'Esta fecha ya está ocupada o pendiente de aprobación'});return manejar(res,e);}
 }
+// La ruta pública no acepta identidad, estado, importe ni plazo del cliente.
+async function solicitar(req,res){
+ const body=req.body||{},usuario=req.usuario;
+ const fecha=body.fecha,solicitante=texto(body.solicitante,180),correo=texto(body.correo,150);
+ const telefono=avisos.whatsappMexico(texto(body.telefono,25)),motivo=texto(body.motivo,200);
+ const calle=texto(body.calle,100),numero=texto(body.numero,20);
+ const hoySolicitud=hoy();
+ if(typeof fecha!=='string'||!fechaValida(fecha)||fecha<=hoySolicitud||
+    Date.parse(fecha)-Date.parse(hoySolicitud)>365*86400000)
+  return manejar(res,error(400,'Elige una fecha entre mañana y los próximos 365 días.'));
+ if(!solicitante||!telefono||!avisos.emailValido(correo)||!motivo||body.aceptaWhatsApp!==true)
+  return manejar(res,error(400,'Completa nombre, WhatsApp, correo, motivo y autorización de aviso.'));
+ if(!usuario&&(!calle||!numero))return manejar(res,error(400,'Indica la calle y el número de tu vivienda.'));
+ try{
+  const config=avisos.configuracion();
+  const noElegible=()=>error(409,'No se pudo solicitar la reserva para esa vivienda. Verifica tus datos o contacta a Administración.');
+  let casaId;
+  if(usuario){
+   casaId=Number(usuario.casaId);
+   if(!Number.isSafeInteger(casaId)||casaId<=0||
+      !await UsuarioCasa.findOne({where:{usuarioId:usuario.usuarioId,casaId,activo:true}}))
+    throw error(403,'Selecciona una vivienda vinculada a tu cuenta.');
+  }else{
+   const casas=await Casa.findAll({where:{numero,[Op.or]:[{calle},{calleCorrecta:calle}]},attributes:['id'],limit:2});
+   if(casas.length!==1)throw noElegible();
+   casaId=casas[0].id;
+  }
+  try{await revisarElegibilidad(casaId);}
+  catch(e){if(!usuario&&(e.codigo==='ADEUDOS_RESERVA'||e.status===404))throw noElegible();throw e;}
+  await expirarReservas([fecha,fecha]);
+  const row=await db.transaction(async transaction=>{
+   const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!casa)throw noElegible();
+   const anterior=await Reserva.findOne({where:{casaId,estatus:'PENDIENTE',
+    fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
+   if(anterior)throw error(409,usuario?'Ya tienes una solicitud de Casa Club en revisión.':noElegible().message);
+   return Reserva.create({usuarioId:usuario?.usuarioId??null,casaId,fecha,fechaBloqueada:fecha,solicitante,telefono,correo,motivo,
+    propietario:body.propietario===true,estatus:'PENDIENTE',...IMPORTES_RESERVA,
+    fechaLimitePago:avisos.limitePago(hoySolicitud,fecha,config.dias)},{transaction});
+  });
+  const pago=avisos.instrucciones(row,config);
+  const notificaciones=await avisos.notificar(row,pago,config);
+  res.setHeader('Cache-Control','no-store');
+  return res.status(201).json({ok:true,data:{fecha,estatus:'PENDIENTE',pago,notificaciones}});
+ }catch(e){
+  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Esta fecha ya está apartada. Elige otra.'));
+  return manejar(res,e);
+ }
+}
 async function cancelar(req,res){
  try{
   const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<=0)throw error(400,'Reserva no válida');
@@ -121,7 +172,8 @@ async function listar(req,res){
 }
 async function pendientesResumen(req,res){
  if(!admin(req.usuario.rol))return res.status(403).json({ok:false,message:'Acceso exclusivo de Administración'});
- try{return res.json({ok:true,cantidad:await Reserva.count({where:{estatus:'PENDIENTE'}})});}
+ try{return res.json({ok:true,cantidad:await Reserva.count({where:{estatus:'PENDIENTE',
+  [Op.or]:[{fechaLimitePago:null},{fechaLimitePago:{[Op.gte]:hoy()}}]}})});}
  catch(e){return manejar(res,e);}
 }
 async function revisar(req,res){
@@ -135,6 +187,25 @@ async function revisar(req,res){
    if(['APROBAR','RECHAZAR'].includes(action)){
     if(row.estatus!=='PENDIENTE')throw error(409,'La solicitud ya no está pendiente');
     const approved=action==='APROBAR';
+    if(row.fechaLimitePago){
+     if(row.fechaLimitePago<hoy())throw error(409,'El apartado venció. Actualiza la lista de solicitudes.');
+     if(!approved){
+      await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:texto(req.body.notas,600),
+       revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+      return;
+     }
+     const folio=texto(req.body.folio,60);
+     if(req.body.pagoVerificado!==true||!/^[a-z0-9-]{3,60}$/i.test(folio))
+      throw error(400,'Confirma el depósito completo en el banco e indica su folio para aprobar.');
+     await revisarElegibilidad(row.casaId);
+     await PagoManualConcepto.create({casaId:row.casaId,tipoPago:'CASA_CLUB',reservaCasaClubId:row.id,
+      monto:avisos.importe(row),formaPago:'TRANSFERENCIA',referencia:'MJCLUB:BANCO:'+folio.toUpperCase(),
+      registradoPor:req.usuario.usuarioId},{transaction});
+     await row.update({estatus:'APROBADA',pagado:true,fechaPago:hoy(),folio,
+      notas:texto(req.body.notas,600),revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+     return;
+    }
+
     const rec=dinero(req.body?.cuotaRecuperacion??0),dep=dinero(req.body?.depositoGarantia??0),clean=dinero(req.body?.limpieza??0);
     if(approved&&(![rec,dep,clean].every(v=>Number.isFinite(v)&&v>=0&&v<=1000000)))throw error(400,'Importes inválidos');
     const fechaLimitePago=texto(req.body.fechaLimitePago,10);
@@ -164,6 +235,9 @@ async function revisar(req,res){
    }
   });
   return res.json({ok:true,message:'Cambios guardados correctamente'});
- }catch(e){return manejar(res,e);}
+ }catch(e){
+  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Ese depósito o reserva ya tiene un pago registrado.'));
+  return manejar(res,e);
+ }
 }
-module.exports={fechas,mias,crear,cancelar,listar,revisar,pendientesResumen};
+module.exports={fechas,mias,crear,solicitar,cancelar,listar,revisar,pendientesResumen};
