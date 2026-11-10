@@ -141,6 +141,24 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Estado preventivo de MySQL: autorizar mediante JWT firmado, sin consultar
+// la base que podría haber alcanzado su límite. Solo administración.
+app.get('/api/monitor/mysql', (req, res) => {
+    const authorization = String(req.headers.authorization || '');
+    if (!authorization.startsWith('Bearer ')) return res.status(401).json({ ok: false, message: 'Token requerido' });
+    try {
+        const claims = require('jsonwebtoken').verify(authorization.slice(7), process.env.JWT_SECRET);
+        if (!Number.isSafeInteger(Number(claims.usuarioId)) || Number(claims.usuarioId) < 1)
+            return res.status(403).json({ ok: false, message: 'Token inválido' });
+        if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(claims.rol))
+            return res.status(403).json({ ok: false, message: 'Solo administración' });
+        res.set('Cache-Control', 'private, no-store');
+        return res.json(require('./services/db-capacity.service').read(sequelize));
+    } catch (_) {
+        return res.status(401).json({ ok: false, message: 'Sesión inválida o expirada' });
+    }
+});
+
 app.get('/api/health/database', async (req, res) => {
     try {
         await sequelize.authenticate();
