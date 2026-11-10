@@ -81,6 +81,28 @@
 </style>
 <link rel="stylesheet" href="assets/css/zkteco-calles.css?v=20261009-buscador">
   <script src="assets/js/date-display.js?v=20261019"></script>
+  <style id="remoteControlTabsStyles">
+    .access-tabs{display:flex;gap:10px;align-items:center;margin:0 0 16px;padding:6px;border:1px solid #e6eaf1;border-radius:15px;background:#f3f6fa}
+    .access-tab{flex:1;min-height:43px;border:1px solid transparent;border-radius:11px;background:transparent;color:#59677e;font-size:12px;font-weight:850;cursor:pointer}
+    .access-tab[aria-selected="true"]{background:#fff;color:#ca6810;border-color:#f3d7bb;box-shadow:0 4px 15px #21334810}
+    .access-panel[hidden]{display:none!important}
+    .remote-toolbar{display:grid;grid-template-columns:minmax(220px,2fr) minmax(130px,1fr) minmax(150px,1fr) auto auto;gap:9px;align-items:end;margin-bottom:15px}
+    .remote-house-state,.remote-house-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    .remote-house-actions{justify-content:flex-end}
+    .remote-note{margin-bottom:14px;border:1px solid #f3cf9d;background:#fff8ed;color:#8a5316;padding:13px 15px;border-radius:12px;font-size:11px;line-height:1.6}
+    .remote-control-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+    .remote-control-buttons label{display:block;font-size:10px;font-weight:800;color:#556176}
+    .remote-control-buttons select{width:100%;height:40px;padding:6px;border:1px solid #dce3eb;border-radius:9px;background:white;font-size:10px}
+    .remote-code{font-size:11px;font-weight:900;overflow-wrap:anywhere}
+    .remote-detail{display:grid;grid-template-columns:minmax(135px,1.3fr) minmax(100px,.75fr) minmax(180px,1.25fr) minmax(95px,.65fr) minmax(135px,1fr);gap:10px;align-items:center;padding:12px;border:1px solid #e4e9ef;border-radius:11px;background:#fff;font-size:10px}
+    .remote-detail .remote-buttons-text{line-height:1.55;color:#536174;overflow-wrap:anywhere}
+    .remote-detail-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+    .remote-modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+    .remote-warning{color:#a6540a;font-weight:800}
+    @media(max-width:1100px){.remote-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.remote-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.remote-detail-actions{grid-column:1/-1;justify-content:flex-start}}
+    @media(max-width:600px){.access-tabs{gap:5px}.access-tab{font-size:11px}.remote-toolbar{grid-template-columns:1fr}.remote-detail,.remote-control-buttons{grid-template-columns:1fr 1fr}.remote-house-actions{justify-content:flex-start}}
+    @media(max-width:390px){.remote-control-buttons{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 <main class="wrap">
@@ -125,6 +147,11 @@
       </div>
     </details>
 
+    <div class="access-tabs" role="tablist" aria-label="Administración de accesos">
+      <button id="accessTabTags" class="access-tab" type="button" role="tab" aria-selected="true" aria-controls="accessTagsPanel">TAGs</button>
+      <button id="accessTabRemotes" class="access-tab" type="button" role="tab" aria-selected="false" aria-controls="accessRemotesPanel">Controles</button>
+    </div>
+    <div id="accessTagsPanel" class="access-panel" role="tabpanel" aria-labelledby="accessTabTags">
     <section class="card">
       <div class="card-head"><span class="eyebrow">VIVIENDAS Y CONTROLES</span><h2>Administración de TAGs</h2><p>Busca por calle, número de casa o número de TAG; agrega controles, bloquea temporalmente o elimina definitivamente un TAG del C3-200.</p></div>
       <div class="card-body">
@@ -153,8 +180,85 @@
         </div>
       </div>
     </section>
+    </div>
+    <div id="accessRemotesPanel" class="access-panel" role="tabpanel" aria-labelledby="accessTabRemotes" hidden>
+      <section class="card">
+        <div class="card-head"><span class="eyebrow">VIVIENDAS Y CONTROLES</span>
+          <h2>Administración de controles remotos</h2>
+          <p>Busca por calle, número de casa o código del control; asigna botones A–D, bloquea, activa, edita vigencias o elimina controles del inventario.</p>
+        </div>
+        <div class="card-body">
+          <div class="remote-note"><strong>Inventario administrativo · Sin conexión física PO1000.</strong>
+            Los controles empiezan en 0 por vivienda. Guardar, bloquear, activar, editar y eliminar se reflejan exclusivamente en MySQL.
+            <strong>Un control bloqueado aquí todavía podría abrir físicamente el portón.</strong> La integración por receptor y la aplicación física de permisos se harán después de validar el hardware.</div>
+          <div class="metrics">
+            <div class="metric"><small>Viviendas visibles</small><strong id="remoteHouses">0</strong></div>
+            <div class="metric good"><small>Controles habilitados (registro)</small><strong id="remoteEnabled">0</strong></div>
+            <div class="metric bad"><small>Controles bloqueados (registro)</small><strong id="remoteBlocked">0</strong></div>
+          </div>
+          <div class="remote-toolbar">
+            <div class="field"><label for="remoteStreet">CALLE Y NÚMERO</label><input id="remoteStreet" type="search" autocomplete="off" placeholder="Ej. Gardenias 5 o solo Gardenias"></div>
+            <div class="field"><label for="remoteCodeSearch">CÓDIGO DEL CONTROL</label><input id="remoteCodeSearch" type="search" autocomplete="off" placeholder="Ej. CT-001"></div>
+            <div class="field"><label for="remoteOrder">ORDENAR CONTROLES</label><select id="remoteOrder"><option value="alta_desc">Más recientes</option><option value="alta_asc">Más antiguos</option><option value="vivienda">Por vivienda</option></select></div>
+            <button id="remoteSearch" class="btn" type="button">Buscar</button>
+            <button id="remoteClear" class="btn clear" type="button">Limpiar filtros</button>
+          </div>
+          <div class="remote-toolbar" style="grid-template-columns:auto auto 1fr">
+            <button id="remoteRefresh" class="btn primary" type="button">Actualizar controles</button>
+            <button id="remoteLogs" class="btn clear" type="button">Historial</button>
+            <div id="remotePhysicalStatus" class="status-pill" style="justify-self:end"><i></i><span>PO1000: pendiente de integración</span></div>
+          </div>
+          <div class="house-list-shell">
+            <div class="house-list-header" aria-hidden="true"><span>Vivienda</span><span>Estado</span><span>Última modificación</span><span>Acciones</span></div>
+            <div id="remoteRows" class="house-list"><div class="empty">Abre la pestaña Controles para cargar viviendas…</div></div>
+          </div>
+          <div class="pagination-bar">
+            <div class="pagination-meta"><span id="remotePageInfo">Página 1</span><span id="remotePageStatus"></span></div>
+            <div id="remotePages" class="pagination-buttons" aria-label="Paginación de controles"></div>
+          </div>
+        </div>
+      </section>
+    </div>
   </section>
 </main>
+<div id="remoteEditModal" class="modal-shell" hidden>
+  <section class="modal-box wide" role="dialog" aria-modal="true" aria-labelledby="remoteModalTitle">
+    <div class="modal-head"><div><span class="eyebrow">CONTROLES · REGISTRO ADMINISTRATIVO</span><h3 id="remoteModalTitle">Agregar control</h3><p class="sub">No sincroniza ni modifica el receptor PO1000.</p></div><button id="remoteClose" type="button" class="close" aria-label="Cerrar">×</button></div>
+    <div class="modal-body">
+      <div id="remoteModalError" class="modal-error" role="alert"></div>
+      <div class="modal-grid">
+        <div class="field"><label for="remoteHouseModal">VIVIENDA</label><select id="remoteHouseModal"></select></div>
+        <div class="field"><label for="remoteControlCode">CÓDIGO ÚNICO DEL CONTROL</label><input id="remoteControlCode" type="text" maxlength="80" placeholder="Ej. CT-001"></div>
+        <div class="field"><label for="remoteDescription">DESCRIPCIÓN / IDENTIFICACIÓN</label><input id="remoteDescription" type="text" maxlength="160" placeholder="Control PO de cuatro botones"></div>
+        <div class="field"><label for="remoteEndDate">FECHA FINAL DE VIGENCIA</label><input id="remoteEndDate" type="date"></div>
+        <div class="field wide"><label>ASIGNACIÓN DE BOTONES A, B, C Y D</label>
+          <div class="remote-control-buttons">
+            <label>A<select id="remoteButtonA"></select></label><label>B<select id="remoteButtonB"></select></label>
+            <label>C<select id="remoteButtonC"></select></label><label>D<select id="remoteButtonD"></select></label>
+          </div>
+        </div>
+      </div>
+      <div class="notice">Los botones se asignan en el inventario. Su programación física depende de verificar la compatibilidad del receptor PO1000.</div>
+    </div>
+    <div class="modal-foot"><button id="remoteCancel" type="button" class="btn">Cancelar</button><button id="remoteSave" type="button" class="btn primary">Guardar control</button></div>
+  </section>
+</div>
+<div id="remoteValidityModal" class="modal-shell" hidden>
+  <section class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-head"><div><span class="eyebrow">CONTROLES · VIGENCIA POR VIVIENDA</span><h3 id="remoteValidityTitle">Editar vigencia</h3></div><button id="remoteValidityClose" class="close" type="button">×</button></div>
+    <div class="modal-body"><div id="remoteValidityError" class="modal-error" role="alert"></div>
+      <div class="field"><label for="remoteValidityEnd">NUEVA FECHA FINAL</label><input id="remoteValidityEnd" type="date"></div>
+      <div class="notice">Aplica a todos los controles de esta vivienda, solo en el registro administrativo. No modifica vigencias de TAGs.</div>
+    </div>
+    <div class="modal-foot"><button id="remoteValidityCancel" class="btn" type="button">Cancelar</button><button id="remoteValiditySave" class="btn primary" type="button">Guardar vigencia</button></div>
+  </section>
+</div>
+<div id="remoteLogsModal" class="modal-shell" hidden>
+  <section class="modal-box wide" role="dialog" aria-modal="true">
+    <div class="modal-head"><div><span class="eyebrow">CONTROLES · AUDITORÍA</span><h3>Historial de controles remotos</h3></div><button id="remoteLogsClose" class="close" type="button">×</button></div>
+    <div class="modal-body"><div id="remoteLogsList" class="logs-list"></div></div>
+  </section>
+</div>
 <div id="tagModal" class="modal-shell" hidden>
   <section class="modal-box">
     <div class="modal-head"><div><span class="eyebrow">ZKTECO · CONTROL</span><h3>Agregar TAG a <span id="tagHouseLabel"></span></h3><p class="sub">Puedes vincular un TAG ya sincronizado o crear uno nuevo directamente en el C3-200.</p></div><button id="closeTagModal" class="close" type="button">×</button></div>
@@ -976,6 +1080,7 @@ setInterval(async()=>{
 // la etiqueta de conexión; el autosync del servidor ya hace lectura periódica.
 setInterval(()=>{if(!pageRefreshInFlight)void loadStatus()},120000);
 </script>
+<script src="assets/js/zkteco-controles.js?v=20261110-v1"></script>
 <script src="assets/js/zkteco-calles.js?v=20261009-buscador"></script>
 <script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll"></script>
 </body>
