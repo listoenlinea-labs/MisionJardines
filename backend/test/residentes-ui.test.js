@@ -97,3 +97,43 @@ test('security sees the registry without administrative controls or edit actions
     await u.elements.manageHouse.emit('click');
     assert.notEqual(u.elements.residentDialog.open, true);
 });
+
+test('single resident search supports street, number and combined address without losing contact search', async () => {
+    const { elements: e } = await ui('ADMINISTRADOR');
+    const queries = [
+        'Gardenias', '5', 'Gardenias 5', '5 Gardenias',
+        'gArDeNiAs, 5', 'Anterior Persona', 'old@example.com'
+    ];
+    for (const query of queries) {
+        e.filterText.value = query;
+        e.filterText.emit('input');
+        assert.match(e.residentsTable.innerHTML, /Anterior Persona/, 'Search failed for ' + query);
+        assert.match(e.paginationInfo.textContent, /de 1 residentes/);
+    }
+    e.filterText.value = 'Rosas 18';
+    e.filterText.emit('input');
+    assert.match(e.residentsTable.innerHTML, /No se encontraron residentes/);
+    assert.match(e.paginationInfo.textContent, /de 0 residentes/);
+    e.filterText.value = 'Gardenias 5';
+    e.filterStreet.value = 'Rosas';
+    e.filterStreet.emit('change');
+    assert.match(e.residentsTable.innerHTML, /No se encontraron residentes/);
+});
+
+test('rental and principal-contact checkboxes keep label and square aligned', () => {
+    const html = fs.readFileSync(path.join(root, 'bases_datos.html'), 'utf8');
+    const css = fs.readFileSync(path.join(root, 'assets/css/residentes-gestion.css'), 'utf8');
+    assert.match(html, /<label class="resident-check" for="residentRental"><input id="residentRental" type="checkbox"><span>La vivienda está en renta<\/span><\/label>/);
+    assert.match(html, /<label class="resident-check" for="residentContact"><input id="residentContact" type="checkbox"><span>Usar estos datos como contacto principal de la vivienda<\/span><\/label>/);
+    assert.match(css, /\.residents-page \.resident-dialog label\.resident-check\s*\{[^}]*display:flex/);
+    assert.match(css, /\.residents-page \.resident-dialog label\.resident-check input\[type="checkbox"\]\s*\{[^}]*width:18px!important/);
+    assert.match(css, /\.residents-page \.resident-dialog label\.resident-check span\s*\{[^}]*min-width:0/);
+});
+
+test('save changes stays orange with readable white text on hover/focus', () => {
+    const css = fs.readFileSync(path.join(root, 'assets/css/residentes-gestion.css'), 'utf8');
+    assert.match(css, /#saveResident\.btn-primary:hover/);
+    assert.match(css, /#saveResident\.btn-primary:focus-visible/);
+    assert.match(css, /#saveResident\.btn-primary:hover:not\(:disabled\)\s*\{[^}]*background:linear-gradient/);
+    assert.match(css, /#saveResident\.btn-primary:hover,[\s\S]*?color:#fff/);
+});

@@ -10,6 +10,7 @@
  const abrev=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
  let houses=[],selection=null,fromFocus=null,saving=false,history=[],offset=0,historyMore=false;
  let activeReceipt=null,pdfUrl=null,pdfBlob=null,historyLoaded=false;
+ let nameEdited=false,numberChoices=[],numberChoiceIndex=-1;
 
  function today(){
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{
@@ -39,26 +40,130 @@
   return data;
  }
  function field(id,value){$(id).value=String(value??'');}
+ // Los recibos siguen permitiendo datos libres; seleccionar una casa solo
+ // llena los campos sin registrar pagos ni actualizar el padrón.
+ function streetKey(value){
+  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+   .trim().replace(/\s+/g,' ').toLocaleLowerCase('es-MX');
+ }
+ function houseNumberKey(value){
+  return String(value||'').trim().toLocaleLowerCase('es-MX');
+ }
+ function streetValue(){
+  return $('manualReceiptStreet').value==='__OTHER__'
+   ?$('manualReceiptOtherStreet').value.trim():$('manualReceiptStreet').value;
+ }
+ function refreshStreetInitial(){
+  const calle=streetValue().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  field('manualReceiptInitial',calle.charAt(0).toUpperCase());
+  updatePreview();
+ }
+ function closeNumberChoices(){
+  numberChoices=[];numberChoiceIndex=-1;
+  $('manualReceiptNumberOptions').hidden=true;
+  $('manualReceiptNumber').setAttribute('aria-expanded','false');
+  $('manualReceiptNumber').removeAttribute('aria-activedescendant');
+ }
  function prefill(house){
   selection=house||null;
   if(!house)return;
   field('manualReceiptStreet',house.calle);
+  $('manualReceiptOtherStreetWrap').hidden=true;
+  $('manualReceiptOtherStreet').required=false;
+  field('manualReceiptOtherStreet','');
   field('manualReceiptNumber',house.numero);
   field('manualReceiptName',house.nombre||'');
-  field('manualReceiptInitial',
-    String(house.calle||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().charAt(0).toUpperCase());
-  updatePreview();
+  nameEdited=false;
+  closeNumberChoices();
+  refreshStreetInitial();
  }
  function context(){
   const current=typeof window.MJManualReceiptContext==='function'
    ?window.MJManualReceiptContext():{viviendas:[],selectedHouseId:null};
-  houses=(current.viviendas||[]).filter(h=>Number.isSafeInteger(h.casaId)&&h.casaId>0)
+  houses=(current.viviendas||[]).filter(h=>
+    Number.isSafeInteger(h.casaId)&&h.casaId>0&&h.calle&&h.numero)
    .sort((a,b)=>(a.calle+' '+a.numero).localeCompare(b.calle+' '+b.numero,'es-MX',{numeric:true}));
-  const chooser=$('manualReceiptHouse');
-  chooser.replaceChildren();
-  chooser.add(new Option('Captura manual / sin vivienda seleccionada',''));
-  houses.forEach(h=>chooser.add(new Option(h.calle+' '+h.numero+(h.nombre?' · '+h.nombre:''),String(h.casaId))));
+  const streetSelect=$('manualReceiptStreet');
+  streetSelect.replaceChildren();
+  streetSelect.add(new Option('Selecciona una calle',''));
+  const unique=new Map();
+  for(const house of houses){
+   const key=streetKey(house.calle);
+   if(key&&!unique.has(key))unique.set(key,String(house.calle).trim());
+  }
+  [...unique.values()].sort((a,b)=>a.localeCompare(b,'es-MX',{numeric:true,sensitivity:'base'}))
+   .forEach(street=>streetSelect.add(new Option(street,street)));
+  streetSelect.add(new Option('Otra calle / captura manual','__OTHER__'));
   return current.selectedHouseId;
+ }
+ function exactHouse(){
+  const street=streetKey(streetValue());
+  const number=houseNumberKey($('manualReceiptNumber').value);
+  if(!street||!number||$('manualReceiptStreet').value==='__OTHER__')return null;
+  const matches=houses.filter(h=>streetKey(h.calle)===street&&houseNumberKey(h.numero)===number);
+  return matches.length===1?matches[0]:null;
+ }
+ function updateHouseMatch(force=false){
+  const house=exactHouse();
+  selection=house;
+  if(force||!nameEdited){
+   field('manualReceiptName',house?.nombre||'');
+   nameEdited=false;
+  }
+  updatePreview();
+ }
+ function useNumberChoice(house){
+  field('manualReceiptNumber',house.numero);
+  selection=house;
+  field('manualReceiptName',house.nombre||'');
+  nameEdited=false;
+  closeNumberChoices();
+  updatePreview();
+  $('manualReceiptNumber').focus();
+ }
+ function moveNumberChoice(next){
+  if(!numberChoices.length)return;
+  numberChoiceIndex=(next+numberChoices.length)%numberChoices.length;
+  const buttons=$('manualReceiptNumberOptions').querySelectorAll('[role="option"]');
+  buttons.forEach((button,index)=>button.setAttribute('aria-selected',String(index===numberChoiceIndex)));
+  const selected=buttons[numberChoiceIndex];
+  if(selected){
+   $('manualReceiptNumber').setAttribute('aria-activedescendant',selected.id);
+   selected.scrollIntoView({block:'nearest'});
+  }
+ }
+ function showNumberChoices(){
+  const container=$('manualReceiptNumberOptions');
+  closeNumberChoices();container.replaceChildren();
+  const street=streetKey(streetValue());
+  if(!street||$('manualReceiptStreet').value==='__OTHER__')return;
+  const query=houseNumberKey($('manualReceiptNumber').value);
+  const candidates=houses.filter(h=>streetKey(h.calle)===street &&
+    houseNumberKey(h.numero).includes(query));
+  candidates.sort((a,b)=>
+    Number(houseNumberKey(b.numero)===query)-Number(houseNumberKey(a.numero)===query)||
+    String(a.numero).localeCompare(String(b.numero),'es-MX',{numeric:true}));
+  numberChoices=candidates.slice(0,20);
+  if(!numberChoices.length){
+   const info=document.createElement('p');
+   info.className='manual-receipt-number-empty';
+   info.textContent='Sin coincidencias. Puedes escribir un número manualmente.';
+   container.appendChild(info);
+  }else{
+   numberChoices.forEach((house,index)=>{
+    const option=document.createElement('button');
+    option.type='button';option.id='manualReceiptNumberOption'+index;
+    option.setAttribute('role','option');option.setAttribute('aria-selected','false');
+    const number=document.createElement('strong');number.textContent=house.numero;
+    const resident=document.createElement('small');resident.textContent=house.nombre||'Sin residente registrado';
+    option.append(number,resident);
+    option.addEventListener('mousedown',event=>event.preventDefault());
+    option.addEventListener('click',()=>useNumberChoice(house));
+    container.appendChild(option);
+   });
+  }
+  container.hidden=false;
+  $('manualReceiptNumber').setAttribute('aria-expanded','true');
  }
  function updatePreview(){
   const mm=Number($('manualReceiptFolioMonth').value),year=$('manualReceiptFolioYear').value;
@@ -73,7 +178,7 @@
   set('manualDraftFolio',$('manualReceiptFolioPreview').textContent);
   set('manualDraftDate',val('manualReceiptDate'));
   set('manualDraftName',val('manualReceiptName'));
-  set('manualDraftStreet',val('manualReceiptStreet'));
+  set('manualDraftStreet',streetValue());
   set('manualDraftNumber',val('manualReceiptNumber'));
   set('manualDraftConcept',val('manualReceiptConceptTitle'));
   set('manualDraftPeriod',(meses[Number(val('manualReceiptCoveredMonth'))-1]||'—')+' '+val('manualReceiptCoveredYear'));
@@ -108,8 +213,14 @@
   field('manualReceiptConceptDetail','Mantenimiento');
   field('manualReceiptSeal','PAGADO');
   field('manualReceiptMethod','EFECTIVO');
-  field('manualReceiptHouse','');
-  selection=null;
+  field('manualReceiptStreet','');
+  field('manualReceiptNumber','');
+  field('manualReceiptName','');
+  field('manualReceiptOtherStreet','');
+  $('manualReceiptOtherStreetWrap').hidden=true;
+  $('manualReceiptOtherStreet').required=false;
+  selection=null;nameEdited=false;
+  closeNumberChoices();
   writeStatus('manualReceiptStatus','');
   updatePreview();
  }
@@ -139,7 +250,7 @@
   }
   if(selectedId!=null){
    const house=houses.find(h=>h.casaId===Number(selectedId));
-   if(house){$('manualReceiptHouse').value=String(house.casaId);prefill(house);}
+   if(house)prefill(house);
   }
   modal.hidden=false;
   mode('new');
@@ -172,21 +283,49 @@
   if(e.shiftKey&&document.activeElement===enabled[0]){e.preventDefault();enabled.at(-1).focus();}
   else if(!e.shiftKey&&document.activeElement===enabled.at(-1)){e.preventDefault();enabled[0].focus();}
  });
- $('manualReceiptHouse').addEventListener('change',()=>{
-  const house=houses.find(h=>String(h.casaId)===$('manualReceiptHouse').value);
-  if(house)prefill(house);
-  else selection=null;
+ $('manualReceiptStreet').addEventListener('change',()=>{
+  const other=$('manualReceiptStreet').value==='__OTHER__';
+  $('manualReceiptOtherStreetWrap').hidden=!other;
+  $('manualReceiptOtherStreet').required=other;
+  field('manualReceiptOtherStreet','');
+  field('manualReceiptNumber','');
+  field('manualReceiptName','');
+  nameEdited=false;selection=null;
+  closeNumberChoices();refreshStreetInitial();
+  if(other)$('manualReceiptOtherStreet').focus();
+  else if($('manualReceiptStreet').value)$('manualReceiptNumber').focus();
  });
- for(const id of ['manualReceiptStreet','manualReceiptNumber']){
-  $(id).addEventListener('input',()=>{
-   selection=null;$('manualReceiptHouse').value='';
-   if(id==='manualReceiptStreet'){
-    const street=$('manualReceiptStreet').value;
-    field('manualReceiptInitial',street.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().charAt(0).toUpperCase());
-   }
-   updatePreview();
-  });
- }
+ $('manualReceiptOtherStreet').addEventListener('input',()=>{
+  selection=null;refreshStreetInitial();
+ });
+ $('manualReceiptNumber').addEventListener('input',()=>{
+  updateHouseMatch();
+  showNumberChoices();
+ });
+ $('manualReceiptNumber').addEventListener('focus',showNumberChoices);
+ $('manualReceiptNumber').addEventListener('keydown',event=>{
+  if(event.key==='Escape'){if(!$('manualReceiptNumberOptions').hidden){
+    event.preventDefault();closeNumberChoices();
+   }return;}
+  if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+   event.preventDefault();
+   if($('manualReceiptNumberOptions').hidden)showNumberChoices();
+   moveNumberChoice(numberChoiceIndex+(event.key==='ArrowDown'?1:-1));
+  }else if(event.key==='Enter'&&!$('manualReceiptNumberOptions').hidden&&numberChoiceIndex>=0){
+   event.preventDefault();useNumberChoice(numberChoices[numberChoiceIndex]);
+  }
+ });
+ $('manualReceiptNumber').addEventListener('blur',()=>{
+  // En pantallas táctiles el blur puede ocurrir antes del click de una
+  // sugerencia. Cerramos después para permitir elegirla en iPhone/Android.
+  setTimeout(()=>{
+   if(document.activeElement!==$('manualReceiptNumber'))closeNumberChoices();
+  },180);
+ });
+ $('manualReceiptName').addEventListener('input',()=>{nameEdited=true;});
+ document.addEventListener('click',event=>{
+  if(!event.target.closest('.manual-receipt-number-combo'))closeNumberChoices();
+ });
  for(const id of ['manualReceiptInitial','manualReceiptFolioMonth','manualReceiptFolioYear'])
   $(id).addEventListener('input',updatePreview);
  $('manualReceiptClear').addEventListener('click',()=>{
@@ -203,7 +342,7 @@
   if(!/^[1-9]\d*$/.test(amount))throw Error('El monto debe ser un número entero positivo, sin centavos.');
   return {
    casaId:selection?.casaId??null,
-   calle:$('manualReceiptStreet').value.trim(),
+   calle:streetValue().trim(),
    inicialCalle:$('manualReceiptInitial').value.trim().toUpperCase(),
    numeroCasa:$('manualReceiptNumber').value.trim(),
    nombre:$('manualReceiptName').value.trim(),
