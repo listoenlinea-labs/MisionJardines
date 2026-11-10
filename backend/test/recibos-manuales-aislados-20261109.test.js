@@ -80,9 +80,9 @@ test('Rechaza importes decimales, sello sin PAGADO y folios inválidos',()=>{
 test('El botón está siempre visible; modal tiene los campos editables y su historial',()=>{
  const html=read('docs/analisis-cuotas.html');
  const js=read('docs/assets/js/recibos-manuales.js');
- for(const id of ['financeManualReceiptOpen','manualReceiptsModal','manualReceiptHouse',
+ for(const id of ['financeManualReceiptOpen','manualReceiptsModal','manualReceiptNumberOptions',
   'manualReceiptName','manualReceiptFolioMonth','manualReceiptFolioYear','manualReceiptInitial',
-  'manualReceiptDate','manualReceiptStreet','manualReceiptNumber',
+  'manualReceiptDate','manualReceiptStreet','manualReceiptNumber','manualReceiptOtherStreet',
   'manualReceiptConceptTitle','manualReceiptCoveredMonth','manualReceiptCoveredYear',
   'manualReceiptConceptDetail','manualReceiptAmount','manualReceiptMethod','manualReceiptSeal',
   'manualReceiptSave','manualReceiptTabHistory','manualReceiptHistoryList','manualReceiptPdfPreview'])
@@ -109,4 +109,22 @@ test('La consulta de Rosas 18 exige referencia, origen y monto exactos y termina
  assert.match(sql,/origen_importacion = 'MANUAL_ABONO_ADEUDO'/);
  assert.match(sql,/monto_pagado = 300/);
  assert.match(sql,/ROLLBACK;\s*$/);
+});
+
+test('El generador ofrece calle LOV y número editable con lista filtrada, sin el selector masivo previo',()=>{
+ const html=read('docs/analisis-cuotas.html');
+ const js=read('docs/assets/js/recibos-manuales.js');
+ assert.doesNotMatch(html,/id="manualReceiptHouse"/);
+ assert.match(html,/<select id="manualReceiptStreet" required>/);
+ assert.match(html,/id="manualReceiptNumber"[^>]*role="combobox"/);
+ assert.match(html,/id="manualReceiptNumberOptions"[^>]*role="listbox"/);
+ assert.match(html,/id="manualReceiptOtherStreetWrap"[^>]*hidden/);
+ assert.match(js,/function showNumberChoices\(\)/);
+ assert.match(js,/function exactHouse\(\)/);
+ assert.match(js,/houseNumberKey\(h\.numero\)\.includes\(query\)/);
+ assert.match(js,/if\(house\)prefill\(house\)/);
+ assert.match(js,/streetSelect\.add\(new Option\('Otra calle \/ captura manual','__OTHER__'\)\)/);
+ assert.match(js,/selection=house/);
+ assert.match(js,/nameEdited=true/);
+ assert.match(js,/calle:streetValue\(\)\.trim\(\)/);
 });
