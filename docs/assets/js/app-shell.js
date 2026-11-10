@@ -244,10 +244,9 @@
   window.MJAccessReady = (async () => {
     if (!token) { location.replace('login.html'); return false; }
     try {
-      const response = await fetch(`${window.MJ_API_URL}/auth/perfil`, {
-        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
-        signal: AbortSignal.timeout(20000)
-      });
+      const response = await window.MJFetchWithTimeout(`${window.MJ_API_URL}/auth/perfil`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
+      }, 20000);
       if (response.status === 401 || response.status === 403) {
         ['misionJardinesToken', 'misionJardinesUsuario'].forEach(key => {
           localStorage.removeItem(key); sessionStorage.removeItem(key);

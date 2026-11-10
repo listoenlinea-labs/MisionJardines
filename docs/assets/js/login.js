@@ -63,7 +63,7 @@
         function mostrarMensaje(tipo, titulo, texto) { loginMessage.className = `login-message visible ${tipo}`; messageIcon.textContent = tipo === 'success' ? '✓' : '!'; messageTitle.textContent = titulo; messageText.textContent = texto; }
         function limpiarMensaje() { loginMessage.className = 'login-message'; }
         async function request(path, body) {
-            const response = await fetch(API_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+            const response = await window.MJFetchWithTimeout(API_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 30000);
             const result = await response.json().catch(() => ({}));
             if (!response.ok || !result.ok) throw Error(result.message || 'No fue posible completar la consulta. Intenta nuevamente.');
             return result;
@@ -96,7 +96,7 @@
             if (!saved) return;
             const currentToken = () => localStorage.getItem('misionJardinesToken') || sessionStorage.getItem('misionJardinesToken');
             try {
-                const response = await fetch(`${API_URL}/auth/perfil`, { headers: { Authorization: `Bearer ${saved}` }, cache: 'no-store', signal: AbortSignal.timeout(30000) });
+                const response = await window.MJFetchWithTimeout(`${API_URL}/auth/perfil`, { headers: { Authorization: `Bearer ${saved}` }, cache: 'no-store' }, 30000);
                 // An older profile request must not redirect or erase a newly signed-in account.
                 if (currentToken() !== saved) return;
                 if (!response.ok) {
