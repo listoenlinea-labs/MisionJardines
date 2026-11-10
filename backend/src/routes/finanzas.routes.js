@@ -11,6 +11,7 @@ router.get('/recibos-manuales',recibosManuales.listar);
 router.post('/recibos-manuales',recibosManuales.crear);
 router.get('/recibos-manuales/:id',recibosManuales.detalle);
 router.get('/recibos-manuales/:id/pdf',recibosManuales.pdf);
+router.delete('/recibos-manuales/:id',recibosManuales.eliminar);
 const proyectos=require('../controllers/proyectos-extraordinarios.controller');
 router.post('/proyectos-extraordinarios/previsualizar',proyectos.previsualizar);
 router.post('/proyectos-extraordinarios/importar',proyectos.importar);
