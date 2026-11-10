@@ -5,5 +5,6 @@ async function asegurarCasaClub(){
  const {DataTypes}=require('sequelize');
  const qi=db.getQueryInterface(),cols=await qi.describeTable('reservas_casa_club');
  if(!cols.fecha_limite_pago)await qi.addColumn('reservas_casa_club','fecha_limite_pago',{type:DataTypes.DATEONLY,allowNull:true});
+ if(cols.usuario_id?.allowNull===false)await qi.changeColumn('reservas_casa_club','usuario_id',{type:DataTypes.BIGINT.UNSIGNED,allowNull:true});
 }
 module.exports={asegurarCasaClub};

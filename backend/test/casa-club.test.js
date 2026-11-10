@@ -1,7 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 Object.assign(process.env,{DB_HOST:'localhost',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'test',JWT_SECRET:'test-secret'});
-const {Casa,UsuarioCasa,Cuota,CargoExtraordinario}=require('../src/models');
+const {Casa,UsuarioCasa,Cuota,CargoExtraordinario,AportacionExtraordinaria}=require('../src/models');
 const Reserva=require('../src/models/ReservaCasaClub');
 const PagoReportado=require('../src/models/PagoReportado');
 const PagoManualConcepto=require('../src/models/PagoManualConcepto');
@@ -85,6 +85,7 @@ test('impide reservar si hay un cargo extraordinario exigible y muestra el monto
  }]);
  t.mock.method(PagoReportado,'findAll',async()=>[]);
  t.mock.method(PagoManualConcepto,'findAll',async()=>[]);
+ t.mock.method(AportacionExtraordinaria,'findAll',async()=>[]);
  t.mock.method(Reserva,'findAll',async()=>[]);
  t.mock.method(Casa,'findByPk',async()=>({id:5}));
  t.mock.method(UsuarioCasa,'findOne',async()=>({casaId:5,activo:true}));
@@ -105,7 +106,7 @@ test('la colisión de fecha única produce respuesta 409 para evitar dobles rese
  assert.equal(response.code,409);
 });
 test('fechas ocupadas muestran únicamente la fecha y su estado',async t=>{
- t.mock.method(Reserva,'findAll',async options=>options.where.fechaBloqueada?[{fecha:day,estatus:'APROBADA',usuarioId:34,telefono:'privado'}]:[]);
+ t.mock.method(Reserva,'findAll',async options=>options.attributes.includes('fecha')?[{fecha:day,estatus:'APROBADA',usuarioId:34,telefono:'privado'}]:[]);
  const response=res();await club.fechas({query:{}},response);
  assert.equal(response.code,200);
  assert.deepEqual(response.body.ocupadas,[{fecha:day,estatus:'APROBADA'}]);
@@ -205,5 +206,5 @@ test('Casa club muestra Reservar a admin y informa la confirmación usando el es
  assert.match(ui,/notify\(result\.data\?\.estatus==='APROBADA'/);
  assert.match(html,/id="clubCalendarHint"/);
  assert.match(html,/id="clubFormHint"/);
- assert.match(html,/casa-club\.js\?v=20261029-reserva-directa-admin/);
+ assert.match(html,/casa-club\.js\?v=[^"]+/);
 });
