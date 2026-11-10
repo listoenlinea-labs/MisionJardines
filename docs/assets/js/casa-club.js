@@ -257,6 +257,7 @@
   $('clubStreet').required=$('clubNumber').required=false;
   fillProfile();
  }
+ if(!profile)window.MJClubAddress?.(api);
  if(admin){
   document.querySelectorAll('[data-admin]').forEach(x=>x.hidden=false);
   $('clubWhatsAppConsent').hidden=true;$('clubOptIn').required=false;

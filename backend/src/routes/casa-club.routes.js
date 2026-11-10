@@ -6,6 +6,8 @@ const {rateLimit}=require('express-rate-limit');
 const limiteSolicitudes=rateLimit({windowMs:15*60*1000,limit:5,standardHeaders:true,legacyHeaders:false,
  message:{ok:false,message:'Demasiados intentos. Vuelve a intentarlo en unos minutos.'}});
 router.get('/publico/fechas',club.fechas);
+router.get('/publico/domicilios',rateLimit({windowMs:15*60*1000,limit:60,standardHeaders:true,legacyHeaders:false,
+ message:{ok:false,message:'Las sugerencias no están disponibles temporalmente.'}}),club.domicilios);
 router.post('/publico/solicitudes',limiteSolicitudes,club.solicitar);
 router.use(autenticarToken);
 router.use(autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','CONDOMINO'));
