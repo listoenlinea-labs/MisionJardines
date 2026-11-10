@@ -836,6 +836,7 @@
     </div>
   </div>
 
+  <script src="assets/js/db-capacity-meter.js?v=20261110-v1"></script>
   <script>
     const token = window.MJ_TOKEN;
     const body = document.body;
@@ -912,11 +913,24 @@
       // Si Seguridad abre la raíz del sitio o un favorito antiguo de Inicio,
       // validar la sesión y enviar al Conmutador dentro del portal.
       const cached = getCachedUser();
-      if (cached) applyUser(cached);
+      if (cached) {
+        applyUser(cached);
+        // El endpoint del medidor valida el rol firmado sin tocar MySQL,
+        // incluso si la conexión con la base de datos está temporalmente agotada.
+        window.MJDbCapacityMeter?.start(cached?.rol?.nombre || cached?.rol);
+      }
       try {
         const response = await fetch(`${window.MJ_API_URL}/auth/perfil`, { headers: { Authorization: `Bearer ${token}` } });
+        if (response.status === 401 || response.status === 403) {
+          ['misionJardinesToken', 'misionJardinesUsuario'].forEach((key) => {
+            localStorage.removeItem(key); sessionStorage.removeItem(key);
+          });
+          window.location.replace('login.html');
+          return;
+        }
+        if (!response.ok) throw new Error('MySQL no está disponible temporalmente.');
         const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.message || 'Sesión inválida');
+        if (!result.ok) throw new Error(result.message || 'Sesión no disponible');
         const role = result.usuario?.rol?.nombre || result.usuario?.rol;
         if (role === 'SEGURIDAD') {
           window.location.replace('app.html?page=conmutador.html');
@@ -925,14 +939,18 @@
         applyUser(result.usuario);
         window.MJDbCapacityMeter?.start(role);
       } catch (_) {
-        ['misionJardinesToken', 'misionJardinesUsuario'].forEach((key) => { localStorage.removeItem(key); sessionStorage.removeItem(key); });
-        window.location.replace('login.html');
+        // Una desconexión MySQL, 503 o fallo de red no implica credenciales
+        // inválidas: mantener el token para poder reintentar sin cerrar sesión.
+        const status = document.querySelector('.operation-status');
+        if (status) {
+          status.textContent = 'MySQL temporalmente no disponible';
+          status.style.color = '#b42318';
+        }
       }
     }
 
     validateSession();
   </script>
-  <script src="assets/js/db-capacity-meter.js?v=20261110-v1"></script>
   <script src="assets/js/site-sidebar.js?v=20261023-solo-pagos"></script>
 </body>
 </html>
