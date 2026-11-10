@@ -63,11 +63,10 @@ function pdfManual(r){
   label('Forma de pago',r.formaPago,32,541);
   label('Referencia',r.referencia,32,559);
   line(590);
-  doc.font('Helvetica').fontSize(8.1).text(
-   'El presente comprobante se expide para fines administrativos internos del Fraccionamiento Misión Jardines. No constituye un CFDI. Su emisión manual no modifica saldos, cuotas, pagos bancarios, vigencias de TAGs ni el estado contable de la vivienda.',
+  // Leyenda administrativa solicitada: no incluir la marca de "documento manual".
+  doc.font('Helvetica').fontSize(8.1).fillColor('#111').text(
+   'El presente comprobante de pago se expide exclusivamente para fines administrativos internos del Fraccionamiento Misión Jardines, de conformidad con el Código Civil del Estado de Jalisco. No constituye un comprobante fiscal ni sustituye a un Comprobante Fiscal Digital por Internet (CFDI), ni implica la liberación de adeudos anteriores o pendientes.',
    32,605,{width:548,align:'justify',lineGap:2});
-  doc.font('Helvetica-Bold').fontSize(8.7).fillColor('#9b5a0b')
-   .text('DOCUMENTO MANUAL · Sin movimiento contable automático',32,652,{width:548,align:'center'});
   line(670);
   doc.font('Helvetica-Bold').fontSize(10).fillColor('#111')
    .text('Atentamente:',32,682,{width:548,align:'center'});
