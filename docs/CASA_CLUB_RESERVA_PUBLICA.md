@@ -1,6 +1,8 @@
 # Reserva pública de Casa Club
 
-Comparte la página directa `casa-club.html`. La disponibilidad muestra solo
+Comparte [el enlace de Casa Club](https://listoenlinea-labs.github.io/MisionJardines/app.html?page=casa-club.html).
+Sin una sesión válida, este enlace abre el formulario público en `casa-club.html`.
+La disponibilidad muestra solo
 fecha y estado; no devuelve viviendas, nombres ni contactos. La persona
 selecciona un día, indica su vivienda, nombre, correo, WhatsApp y motivo, y
 acepta el aviso por WhatsApp. El formulario público no pide iniciar sesión.
