@@ -70,8 +70,9 @@ function validar(input){
  const monto=entero(input.monto,'importe recibido (pesos completos)',1,999999999);
  const formaPago=campo(input.formaPago,'forma de pago',20).toUpperCase();
  if(!['EFECTIVO','TRANSFERENCIA'].includes(formaPago))throw error(400,'Forma de pago inválida');
- const sello=campo(input.sello,'sello',100).toUpperCase();
- if(!/^PAGADO(?:\b|$)/.test(sello))throw error(400,'El sello debe comenzar con PAGADO');
+ // Sello libre (máximo 100 caracteres). No obligar a iniciar con PAGADO.
+ // El texto se conserva exactamente como lo escribió el administrador.
+ const sello=campo(input.sello,'sello',100);
  let casaId=null;
  if(input.casaId!==null&&input.casaId!==undefined&&input.casaId!=='')
   casaId=entero(input.casaId,'ID de vivienda',1,2147483647);
@@ -142,4 +143,25 @@ async function buscar(id){
  if(!rows.length)throw error(404,'No se encontró el recibo manual');
  return publico(rows[0]);
 }
-module.exports={MESES,ABREV,folioDe,validar,crear,listar,buscar,publico,tablaLista};
+
+/**
+ * Eliminación restringida al documento manual seleccionado. No consulta ni
+ * modifica cuotas, saldos, ingresos, egresos o TAGs. Exige folio coincidente
+ * además del ID para impedir borrar accidentalmente otra fila.
+ */
+async function eliminar(id,folio){
+ const receiptId=entero(id,'ID del recibo',1,999999999);
+ const verifiedFolio=campo(folio,'folio del recibo',70);
+ await tablaLista();
+ const [result,metadata]=await sequelize.query(
+  'DELETE FROM recibos_manuales WHERE id=:id AND folio=:folio LIMIT 1',
+  {replacements:{id:receiptId,folio:verifiedFolio}}
+ );
+ // El dialecto mysql de Sequelize devuelve affectedRows en la metadata,
+ // que también puede devolverse directamente en el primer resultado.
+ const affected=Number(metadata?.affectedRows??result?.affectedRows??metadata??0);
+ if(affected!==1)throw error(404,'El recibo ya no existe o su folio no coincide');
+ return {id:receiptId,folio:verifiedFolio};
+}
+
+module.exports={MESES,ABREV,folioDe,validar,crear,listar,buscar,eliminar,publico,tablaLista};
