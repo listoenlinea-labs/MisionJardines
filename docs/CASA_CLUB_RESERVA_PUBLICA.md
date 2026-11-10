@@ -5,7 +5,10 @@ Sin una sesión válida, este enlace abre el formulario público en `casa-club.h
 La disponibilidad muestra solo
 fecha y estado; no devuelve viviendas, nombres ni contactos. La persona
 selecciona un día, indica su vivienda, nombre, correo, WhatsApp y motivo, y
-acepta el aviso por WhatsApp. El formulario público no pide iniciar sesión.
+acepta el aviso por WhatsApp. Al escribir la calle, se sugieren nombres del
+padrón; al elegirla, se sugieren solo los números de esa calle. El
+catálogo de sugerencias devuelve únicamente esas opciones, sin datos de
+residentes. Si el catálogo no carga, se puede capturar el domicilio manualmente. El formulario público no pide iniciar sesión.
 Se conserva el requisito de elegibilidad por adeudos; en público no se
 muestran importes ni detalles de una vivienda. La sesión válida de condómino
 permite vincular el apartado a Mis reservas. Administración conserva su

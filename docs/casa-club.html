@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261110-reserva-publica">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261110-domicilios">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -25,8 +25,13 @@
 <form id="clubForm">
 <div class="form-grid"><label>Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha del calendario"></label>
 <label id="clubLinkedHouse" hidden>Vivienda<input id="clubHouse" readonly placeholder="Vivienda seleccionada"></label>
-<label id="clubStreetField">Calle de tu vivienda<input id="clubStreet" maxlength="100" required></label>
-<label id="clubNumberField">Número de casa<input id="clubNumber" maxlength="20" required></label>
+<div class="club-address-field" id="clubStreetField"><label for="clubStreet">Calle de tu vivienda</label>
+<input id="clubStreet" maxlength="100" required placeholder="Escribe tu calle" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clubStreetOptions" aria-expanded="false">
+<div id="clubStreetOptions" class="club-address-options" role="listbox" aria-label="Calles sugeridas" hidden></div></div>
+<div class="club-address-field" id="clubNumberField"><label for="clubNumber">Número de casa</label>
+<input id="clubNumber" maxlength="20" required placeholder="Elige primero tu calle" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clubNumberOptions" aria-expanded="false">
+<div id="clubNumberOptions" class="club-address-options" role="listbox" aria-label="Números sugeridos" hidden></div></div>
+<p class="club-address-hint wide" id="clubAddressHint" role="status" hidden></p>
 <label>Nombre del solicitante<input id="clubName" name="solicitante" maxlength="180" required></label>
 <label>WhatsApp<input id="clubPhone" name="telefono" type="tel" autocomplete="tel" maxlength="25" required></label>
 <label class="wide">Correo de contacto<input id="clubEmail" name="correo" type="email" maxlength="150" required></label>
@@ -54,5 +59,6 @@
 <label class="club-opt-in">Folio bancario <input id="clubBankFolio" maxlength="60" autocomplete="off"></label>
 </div>
 <div class="dialog-actions"><button type="button" class="danger" id="clubReject">Rechazar</button><button class="primary" type="submit" id="clubApprove">Aprobar reservación</button></div></form></dialog>
-<script src="assets/js/casa-club.js?v=20261110-reserva-publica" defer></script>
+<script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
+<script src="assets/js/casa-club.js?v=20261110-domicilios" defer></script>
 </body></html>

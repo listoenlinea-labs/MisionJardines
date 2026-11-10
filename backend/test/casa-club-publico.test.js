@@ -97,3 +97,25 @@ test('solo el administrador puede confirmar el pago y aprobar el monto ya comuni
  assert.equal((await run(admin,{pagoVerificado:true,folio:'REF-123',cuotaRecuperacion:1})).code,200);
  assert.equal(pago.monto,1400);assert.equal(cambio.estatus,'APROBADA');assert.equal(cambio.pagado,true);
 });
+
+test('el catálogo público devuelve solo calles o números de la calle solicitada',async t=>{
+ const registros=[
+  {calle:'Magnolias',calleCorrecta:'Misión Magnolias',numero:'10',correo:'privado'},
+  {calle:'Magnolias',calleCorrecta:'Misión Magnolias',numero:'2'},
+  {calle:'Magnolias',calleCorrecta:'Misión Magnolias',numero:'2'},
+  {calle:'Rosas',numero:'5'},{calle:'Prueba',numero:'TEST-001'}
+ ];
+ const read=t.mock.method(Casa,'findAll',async options=>{
+  assert.deepEqual(options.attributes,['calle','calleCorrecta','numero']);
+  if(!options.where)return registros;
+  assert.deepEqual(options.where[Op.or],[{calle:'Misión Magnolias'},{calleCorrecta:'Misión Magnolias'}]);
+  return registros.slice(0,3);
+ });
+ const calles=res();await club.domicilios({query:{}},calles);
+ assert.deepEqual(calles.body,{ok:true,opciones:['Misión Magnolias','Rosas']});
+ const numeros=res();await club.domicilios({query:{calle:'Misión Magnolias'}},numeros);
+ assert.deepEqual(numeros.body,{ok:true,opciones:['2','10']});
+ const invalida=res();await club.domicilios({query:{calle:['Rosas','Magnolias']}},invalida);
+ assert.equal(invalida.code,400);
+ assert.equal(read.mock.callCount(),2);
+});

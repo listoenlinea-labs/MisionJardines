@@ -7,6 +7,7 @@ const PagoManualConcepto=require('../models/PagoManualConcepto');
 const {randomUUID}=require('crypto');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
 const avisos=require('../services/casa-club-avisos.service');
+const {ordenarCalles}=require('../services/direccion-sort.service');
 const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
 // Mismos importes que propone la aprobación administrativa del formulario.
@@ -52,6 +53,27 @@ async function fechas(req,res){
   const rows=await Reserva.findAll({where:{fechaBloqueada:{[Op.between]:[desde,hasta]}},attributes:['fecha','estatus']});
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,ocupadas:rows.map(x=>({fecha:x.fecha,estatus:x.estatus}))});
+ }catch(e){return manejar(res,e);}
+}
+// Solo opciones del formulario público: no enviar filas completas del padrón.
+async function domicilios(req,res){
+ const calle=req.query.calle;
+ if(calle!==undefined&&(typeof calle!=='string'||!calle.trim()||calle.length>100))
+  return manejar(res,error(400,'Indica una calle válida.'));
+ try{
+  const seleccion=calle?.trim();
+  const rows=await Casa.findAll({
+   attributes:['calle','calleCorrecta','numero'],raw:true,
+   ...(seleccion?{where:{[Op.or]:[{calle:seleccion},{calleCorrecta:seleccion}]}}:{})
+  });
+  const opciones=new Set();
+  for(const row of rows){
+   const nombre=texto(row.calleCorrecta||row.calle,100),numero=texto(row.numero,20);
+   if(!nombre||!numero||/^prueba(?:\s|$)/i.test(nombre)||/^test(?:-|$)/i.test(numero))continue;
+   opciones.add(seleccion?numero:nombre);
+  }
+  res.setHeader('Cache-Control','public, max-age=300');
+  return res.json({ok:true,opciones:ordenarCalles([...opciones])});
  }catch(e){return manejar(res,e);}
 }
 async function mias(req,res){
@@ -240,4 +262,4 @@ async function revisar(req,res){
   return manejar(res,e);
  }
 }
-module.exports={fechas,mias,crear,solicitar,cancelar,listar,revisar,pendientesResumen};
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,revisar,pendientesResumen};
