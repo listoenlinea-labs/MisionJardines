@@ -28,6 +28,12 @@ function fixture(){
     });
     return [1,1];
    }
+   if(sql.startsWith('DELETE FROM recibos_manuales')){
+    const index=records.findIndex(r=>r.id===replacements.id&&r.folio===replacements.folio);
+    if(index<0)return [{affectedRows:0},{affectedRows:0}];
+    records.splice(index,1);
+    return [{affectedRows:1},{affectedRows:1}];
+   }
    if(sql.includes('WHERE folio'))return records.filter(r=>r.folio===replacements.folio);
    if(sql.includes('WHERE id'))return records.filter(r=>r.id===replacements.id);
    if(sql.includes('ORDER BY'))return records.slice();
@@ -136,11 +142,15 @@ test('El generador ofrece calle LOV y número editable con lista filtrada, sin e
 test('La eliminación sólo afecta la tabla documental y exige ID y folio',async()=>{
  const {service,queries}=fixture();
  const row=await service.crear(sample,9);
+ await assert.rejects(service.eliminar(row.id,'MJ-OTRO-2026'),e=>e.status===404);
+ assert.equal((await service.listar()).length,1);
  const removed=await service.eliminar(row.id,row.folio);
+ assert.equal((await service.listar()).length,0);
+ await assert.rejects(service.buscar(row.id),e=>e.status===404);
  assert.equal(removed.id,row.id);
  assert.equal(removed.folio,row.folio);
  const deleteQueries=queries.filter(q=>q.trim().startsWith('DELETE'));
- assert.equal(deleteQueries.length,1);
+ assert.equal(deleteQueries.length,2);
  assert.match(deleteQueries[0],/^DELETE FROM recibos_manuales WHERE id=:id AND folio=:folio LIMIT 1$/);
  assert.doesNotMatch(deleteQueries[0],/\bcuotas\b|\bpagos_reportados\b|\bzkteco\b/i);
 });
