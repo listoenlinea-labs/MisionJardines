@@ -20,6 +20,7 @@ function setup(selectedHouseId=null){
    emit(type,props={}){return this.listeners[type]?.({type,target:this,
     preventDefault(){},...props});},
    setAttribute(key,value){this.attributes[key]=String(value);},
+   getAttribute(key){return this.attributes[key]??null;},
    removeAttribute(key){delete this.attributes[key];},
    replaceChildren(){this.children=[];},
    add(child){this.children.push(child);},
