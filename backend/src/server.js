@@ -20,6 +20,14 @@ const PORT =
 async function iniciarServidor() {
     try {
         await sequelize.authenticate();
+        // Descubrir cuotas declaradas de la cuenta, si Hostinger las expone.
+        // Se ejecuta una sola vez al iniciar, nunca por actualización del medidor.
+        try {
+            const [grants] = await sequelize.query('SHOW GRANTS');
+            require('./services/db-capacity.service').discoverLimits(grants);
+        } catch (error) {
+            console.warn('No fue posible leer cuotas MySQL; medidor sin cifra oficial:', error.message);
+        }
 
         console.log(
             'Conexión con MySQL correcta'
