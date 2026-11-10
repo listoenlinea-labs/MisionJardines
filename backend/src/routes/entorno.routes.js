@@ -2,6 +2,7 @@ const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { VENTANA_DIAS, prepararNoticiasLocales } = require('../services/noticias-locales.service');
+const { fetchGoogleRss } = require('../services/noticias-google-rss.service');
 const {randomUUID}=require('node:crypto');
 const {esImagenZmg,descargarHtmlZmg,descargarImagenWordPressZmg}=require('../services/noticias-imagenes-zmg.service');
 const {fotoDelArticuloOriginal}=require('../services/noticias-imagenes-medios.service');
@@ -56,9 +57,9 @@ function setCached(key, value) {
   return value;
 }
 
-async function fetchJson(url, timeoutMs = 8000) {
+async function fetchJson(url, timeoutMs = 8000, extraHeaders = {}) {
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'MisionJardines/1.0' },
+    headers: { 'User-Agent': 'MisionJardines/1.0', ...extraHeaders },
     signal: AbortSignal.timeout(timeoutMs)
   });
   if (!response.ok) {
@@ -94,7 +95,7 @@ router.get('/config', autenticarToken, (req, res) => {
       googleMapsKey: process.env.GOOGLE_MAPS_BROWSER_API_KEY || '',
       trafficIncidentsConfigured: Boolean(process.env.TOMTOM_API_KEY),
       trafficFlowConfigured: Boolean(process.env.TOMTOM_API_KEY),
-      newsProvider: 'FreeNewsApi'
+      newsProvider: (process.env.FREENEWSAPI_KEY || process.env.FNA_KEY) ? 'FreeNewsApi / Google Noticias RSS' : 'Google Noticias RSS'
     }
   });
 });
@@ -289,34 +290,48 @@ router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
     const cached = getCached(cacheKey, 15 * 60 * 1000);
     if (cached) return res.json(cached);
 
-    // GDELT devuelve 429 de forma recurrente desde IPs de servidores compartidos.
-    // FreeNewsApi permite búsquedas gratuitas y uso comercial sin credenciales,
-    // y filtra sobre la fecha real de publicación de cada nota.
-    // Los seis términos de calle permiten encontrar notas que no dicen
-    // "Zapopan" en el titular. La clasificación exige el nombre de la vialidad.
-    const terminos = query ? [query] : [
-      'Zapopan', 'Guadalajara', 'choque Zapopan', 'choque Guadalajara',
-      'marcha Zapopan', 'marcha Guadalajara',
-      'Atotonilco', 'Valle de México', 'Avenida Guadalajara',
-      'Acueducto', 'Base Aérea', 'Aviación'
-    ];
-    const consultas = terminos.map(termino => {
-      const url = new URL('https://freenewsapi.ai/v1/search');
-      url.searchParams.set('q', termino);
-      url.searchParams.set('country', 'MX');
-      url.searchParams.set('lang', 'es');
-      url.searchParams.set('date', '7d');
-      url.searchParams.set('sort', 'date');
-      url.searchParams.set('size', query ? '70' : termino.startsWith('choque') ? '30' : '45');
-      return fetchJson(url, 8000);
-    });
-    const respuestas = await Promise.allSettled(consultas);
-    const correctas = respuestas.filter(r => r.status === 'fulfilled');
-    if (!correctas.length) {
-      const detalle = respuestas[0]?.reason?.message || 'Todas las fuentes rechazaron la consulta';
-      throw new Error('No fue posible obtener noticias de la fuente: ' + detalle);
+    // FreeNewsApi exige clave desde noviembre de 2026. Nunca solicitarla
+    // sin credenciales (401); mantener noticias locales vía RSS gratuito.
+    const apiKey = process.env.FREENEWSAPI_KEY || process.env.FNA_KEY;
+    let articles = [];
+    let provider = 'Google Noticias RSS';
+    if (apiKey) {
+      const terminos = query ? [query] : [
+        'Zapopan', 'Guadalajara', 'choque Zapopan', 'choque Guadalajara',
+        'marcha Zapopan', 'marcha Guadalajara',
+        'Atotonilco', 'Valle de México', 'Avenida Guadalajara',
+        'Acueducto', 'Base Aérea', 'Aviación'
+      ];
+      const consultas = terminos.map(termino => {
+        const url = new URL('https://freenewsapi.ai/v1/search');
+        url.searchParams.set('q', termino);
+        url.searchParams.set('country', 'MX');
+        url.searchParams.set('lang', 'es');
+        url.searchParams.set('date', '7d');
+        url.searchParams.set('sort', 'date');
+        url.searchParams.set('size', query ? '70' : termino.startsWith('choque') ? '30' : '45');
+        return fetchJson(url, 8000, { Authorization: 'Bearer ' + apiKey });
+      });
+      const respuestas = await Promise.allSettled(consultas);
+      articles = respuestas.filter(r => r.status === 'fulfilled').flatMap(r => r.value.results || []);
+      if (articles.length) provider = 'FreeNewsApi';
     }
-    const articles = correctas.flatMap(r => r.value.results || []);
+    // Sin clave, ante 401 o ante la caída del proveedor, utilizar Google
+    // Noticias RSS con filtros MX y fecha editorial; no depende de MySQL.
+    if (!articles.length) {
+      const terms = query ? [query + ' when:7d'] : [
+        'Zapopan when:7d',
+        'Guadalajara choque OR accidente when:7d',
+        'Zapopan Aviación OR Atotonilco OR Acueducto when:7d'
+      ];
+      const respuestas = await Promise.allSettled(terms.map(termino => fetchGoogleRss(termino)));
+      const validas = respuestas.filter(r => r.status === 'fulfilled');
+      if (!validas.length) {
+        const reason = respuestas[0]?.reason?.message || 'Sin fuente disponible';
+        throw new Error('No fue posible obtener noticias de las fuentes RSS: ' + reason);
+      }
+      articles = validas.flatMap(r => r.value);
+    }
     const data = prepararNoticiasLocales(articles, new Date());
     // Preferir la miniatura oficial asociada al artículo mediante WordPress.
     // Si su API no responde, intentar el og:image de esa MISMA nota.
@@ -333,7 +348,8 @@ router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
     // noticia en dominios editoriales previamente permitidos. No se buscan
     // imágenes por título ni se reutilizan fotos de otras publicaciones.
     // Máximo 12 artículos, en tandas de seis y con timeout corto.
-    const sinFoto=data.filter(n=>!n.imageUrl && !n.isTraficoZmg).slice(0,12);
+    const sinFoto=data.filter(n=>!n.imageUrl && !n.isTraficoZmg &&
+      !/^news\.google\.com$/i.test(new URL(n.url).hostname)).slice(0,12);
     for(let i=0;i<sinFoto.length;i+=6){
       await Promise.all(sinFoto.slice(i,i+6).map(async nota=>{
         const imagen=await fotoDelArticuloOriginal(nota.url,{timeoutMs:2200});
@@ -343,7 +359,7 @@ router.get('/noticias', autenticarToken, newsLimiter, async (req, res) => {
 
     const result = {
       ok: true,
-      provider: 'FreeNewsApi',
+      provider,
       searchQuery: query,
       queryWindow: `${VENTANA_DIAS}d`,
       data,
