@@ -11,7 +11,13 @@
  let calendarRequest=0,submitting=false,calendarReady=false;
  const tomorrow=()=>new Date(Date.parse(today()+'T12:00:00Z')+86400000).toISOString().slice(0,10);
  const lastDay=()=>new Date(Date.parse(today()+'T12:00:00Z')+365*86400000).toISOString().slice(0,10);
- const syncSubmit=()=>{$('clubSubmit').disabled=submitting||!calendarReady||!selectedDate||Boolean(profile&&!profile.casa);};
+ const whatsappValido=value=>/^(?:52)?[0-9]{10}$/.test(value.replace(/[\s()+-]/g,''));
+ const canSubmit=()=>!submitting&&calendarReady&&Boolean(selectedDate)&&!(profile&&!profile.casa)
+  &&(admin||(whatsappValido($('clubPhone').value)&&$('clubOptIn').checked));
+ const syncSubmit=()=>{$('clubSubmit').disabled=!canSubmit();};
+ $('clubPhone').addEventListener('input',syncSubmit);
+ $('clubPhone').addEventListener('change',syncSubmit);
+ $('clubOptIn').addEventListener('change',syncSubmit);
  const headers=(json=false)=>({Authorization:'Bearer '+token,...(sessionStorage.getItem('mjCasaSeleccionada')?{'X-Casa-Id':sessionStorage.getItem('mjCasaSeleccionada')}:{}) ,...(json?{'Content-Type':'application/json'}:{})});
  async function api(path,method='GET',body){
   const publico=path.startsWith('/publico/');
@@ -120,7 +126,7 @@
   host.hidden=false;
  }
  $('clubForm').addEventListener('submit',async e=>{
-  e.preventDefault();if(!selectedDate||!calendarReady||submitting)return;
+  e.preventDefault();if(!canSubmit())return;
   submitting=true;syncSubmit();
   const values={fecha:selectedDate,calle:$('clubStreet').value.trim(),numero:$('clubNumber').value.trim(),
    solicitante:$('clubName').value.trim(),telefono:$('clubPhone').value.trim(),correo:$('clubEmail').value.trim(),
@@ -149,36 +155,66 @@
   const btn=e.target.closest('[data-cancel]');if(!btn||!confirm('¿Cancelar esta reserva? Si ya se pagó, Administración deberá revisar cualquier devolución.'))return;
   btn.disabled=true;try{await api('/reservas/'+Number(btn.dataset.cancel)+'/cancelar','PATCH');notify('Reserva cancelada.');await Promise.all([mine(),calendar()]);}catch(err){notify(err.message,true);btn.disabled=false;}
  });
- function editReview(r){
-  activeReview=r;$('clubReviewTitle').textContent='Revisión · '+fmt(r.fecha);
-  $('clubReviewDetails').textContent=r.solicitante+' · '+homeText(r)+' · '+r.telefono+' · '+r.motivo;
-  $('clubRecovery').value='700';$('clubGuarantee').value='700';$('clubCleaning').value='0';$('clubNotes').value='';
-  $('clubDueDate').min=today();$('clubDueDate').max=new Date(Date.parse(r.fecha+'T12:00:00Z')-86400000).toISOString().slice(0,10);
-  $('clubDueDate').value=$('clubDueDate').max>=today()?$('clubDueDate').max:'';
-  const apartado=Boolean(r.fechaLimitePago);
-  $('clubVerifyPayment').hidden=!apartado;
-  $('clubPaymentVerified').required=apartado;
-  $('clubPaymentVerified').checked=false;
-  $('clubBankFolio').required=apartado;
-  $('clubBankFolio').value='';
-  for(const [id,key] of [['clubRecovery','cuotaRecuperacion'],['clubGuarantee','depositoGarantia'],['clubCleaning','limpieza'],['clubDueDate','fechaLimitePago']]){
-   $(id).disabled=apartado;
-   if(apartado)$(id).value=r[key];
-  }
-  if(apartado)$('clubReviewDetails').textContent+=' · CC-'+r.id+' · '+r.correo+' · Depósito: '+money(Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza));
-  $('clubReviewModal').showModal();
+ const reviewModal=$('clubReviewModal');
+ const paymentStatus=r=>r.pagado?'Pagado':(['PENDIENTE','APROBADA'].includes(r.estatus)?'Pendiente de pago':'Sin pago');
+ const folioValido=()=>/^[a-z0-9-]{3,60}$/i.test($('clubBankFolio').value.trim());
+ let reviewing=false;
+ const syncReview=()=>{
+  $('clubApprove').disabled=reviewing||!$('clubPaymentVerified').checked||!folioValido();
+  $('clubReject').disabled=reviewing;
+ };
+ async function loadReviewWhatsApp(r){
+  const link=$('clubReviewWhatsApp'),status=$('clubReviewWhatsAppStatus');
+  link.hidden=true;link.removeAttribute('href');status.hidden=true;
+  if(!['PENDIENTE','APROBADA'].includes(r.estatus))return;
+  status.textContent='Preparando mensaje de WhatsApp…';status.hidden=false;
+  try{
+   const d=await api('/administracion/'+Number(r.id)+'/whatsapp');
+   if(!reviewModal.open||activeReview!==r)return;
+   link.href='https://wa.me/'+d.telefono+'?text='+encodeURIComponent(d.mensaje);
+   link.textContent=d.tipo==='CONFIRMACION'?'Enviar confirmación por WhatsApp':'Enviar instrucciones por WhatsApp';
+   link.hidden=false;status.hidden=true;
+  }catch(e){if(reviewModal.open&&activeReview===r)status.textContent=e.message;}
  }
- $('closeClubReview').addEventListener('click',()=>$('clubReviewModal').close());
+ function editReview(r){
+  activeReview=r;$('clubReviewTitle').textContent='Reservación CC-'+r.id+' · '+fmt(r.fecha);
+  const detalles=[
+   ['Nombre',r.solicitante],['Vivienda',homeText(r)],['WhatsApp',r.telefono],['Correo',r.correo],
+   ['Propietario',r.propietario?'Sí':'No'],['Motivo del evento',r.motivo],
+   ['Estado de la reserva',({PENDIENTE:'Solicitud pendiente',APROBADA:'Confirmada',CANCELADA:'Cancelada',RECHAZADA:'Rechazada'})[r.estatus]],
+   ['Estado del pago',paymentStatus(r)],['Renta',money(r.cuotaRecuperacion)],['Garantía',money(r.depositoGarantia)],
+   ['Limpieza',money(r.limpieza)],['Total del depósito',money(Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza))],
+   ['Fecha límite de pago',r.fechaLimitePago&&fmt(r.fechaLimitePago)],['Fecha de pago',r.fechaPago&&fmt(r.fechaPago)],
+   ['Folio de pago',r.folio],['Observaciones',r.notas]
+  ];
+  $('clubReviewDetails').innerHTML=detalles.map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value||'—')+'</dd></div>').join('');
+  $('clubReviewActions').hidden=r.estatus!=='PENDIENTE';
+  $('clubNotes').value=r.notas||'';$('clubPaymentVerified').checked=false;$('clubBankFolio').value='';
+  $('clubReviewError').hidden=true;syncReview();
+  if(!reviewModal.open)reviewModal.showModal();
+  void loadReviewWhatsApp(r);
+ }
+ $('closeClubReview').addEventListener('click',()=>reviewModal.close());
+ reviewModal.addEventListener('close',()=>{if(!reviewModal.open)activeReview=null;});
+ $('clubPaymentVerified').addEventListener('change',syncReview);
+ $('clubBankFolio').addEventListener('input',syncReview);
  $('clubReviewForm').addEventListener('submit',e=>{e.preventDefault();void review('APROBAR');});
  $('clubReject').addEventListener('click',()=>void review('RECHAZAR'));
  async function review(action){
-  if(!activeReview)return;
-  if(!confirm((action==='APROBAR'?'Aprobar':'Rechazar')+' reservación de '+activeReview.solicitante+' para '+fmt(activeReview.fecha)+'?'))return;
-  const info={accion:action,cuotaRecuperacion:Number($('clubRecovery').value),depositoGarantia:Number($('clubGuarantee').value),limpieza:Number($('clubCleaning').value),fechaLimitePago:$('clubDueDate').value,notas:$('clubNotes').value,pagoVerificado:$('clubPaymentVerified').checked,folio:$('clubBankFolio').value.trim()};
-  $('clubApprove').disabled=$('clubReject').disabled=true;
-  try{await api('/administracion/'+Number(activeReview.id),'PATCH',info);$('clubReviewModal').close();notify('Reserva revisada correctamente.');await Promise.all([adminList(),calendar()]);}
-  catch(err){if(!showDebtAlert(err))notify(err.message,true);}
-  finally{if(!$('clubReviewModal').open)activeReview=null;$('clubApprove').disabled=$('clubReject').disabled=false;}
+  const r=activeReview,approve=action==='APROBAR';
+  if(!r||r.estatus!=='PENDIENTE'||reviewing||(approve&&$('clubApprove').disabled))return;
+  if(!confirm((approve?'Confirmar':'Rechazar')+' reservación de '+r.solicitante+' para '+fmt(r.fecha)+'?'))return;
+  const info={accion:action,notas:$('clubNotes').value,pagoVerificado:$('clubPaymentVerified').checked,folio:$('clubBankFolio').value.trim()};
+  const error=$('clubReviewError');error.hidden=true;
+  reviewing=true;syncReview();
+  try{
+   await api('/administracion/'+Number(r.id),'PATCH',info);
+   if(reviewModal.open&&activeReview===r)editReview({...r,estatus:approve?'APROBADA':'RECHAZADA',
+    pagado:approve,fechaPago:approve?today():null,folio:approve?info.folio:r.folio,notas:info.notas});
+   notify(approve?'Pago verificado y reservación confirmada.':'Solicitud rechazada. La fecha se liberó.');
+   await Promise.all([adminList(),calendar().catch(e=>notify(e.message,true))]);
+  }catch(err){if(reviewModal.open&&activeReview===r){error.textContent=err.message;error.hidden=false;}}
+  finally{reviewing=false;syncReview();}
  }
  const mon=d=>new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
  async function adminList(){
@@ -190,10 +226,10 @@
        guarantee=paid.reduce((a,r)=>a+Number(r.depositoGarantia),0),
        cleaning=paid.reduce((a,r)=>a+Number(r.limpieza),0);
    $('clubTotals').innerHTML=[['Total de reservas',adminRows.length],['Reservas aprobadas',adminRows.filter(r=>r.estatus==='APROBADA').length],['Recuperación cobrada',money(income)],['Garantías recibidas',money(guarantee)],['Limpieza cobrada',money(cleaning)]].map(([name,value])=>'<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
-   const tableRows=adminRows.filter(r=>r.estatus==='APROBADA' && (r.pagado || $('includeUnpaid').checked));
-   $('clubAdminRows').innerHTML=tableRows.map(r=>'<tr>'+
-    [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',r.pagado?'PAGADO':'PENDIENTE',r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
-    '<td>'+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="15">Aún no hay reservas registradas.</td></tr>';
+   const tableRows=[...adminRows].sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE'));
+   $('clubAdminRows').innerHTML=tableRows.map(r=>'<tr data-reserva="'+Number(r.id)+'">'+
+    [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',paymentStatus(r),r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
+    '<td><button type="button" class="soft">Ver detalles</button> '+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="15">Aún no hay reservas registradas.</td></tr>';
    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
     '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
     '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
@@ -213,7 +249,12 @@
     finally{refund.disabled=false;}
     return;
   }
-  const b=e.target.closest('[data-paid]');if(!b)return;
+  const b=e.target.closest('[data-paid]');
+  if(!b){
+   const row=e.target.closest('[data-reserva]'),r=adminRows.find(x=>Number(x.id)===Number(row?.dataset.reserva));
+   if(r)editReview(r);
+   return;
+  }
   const r=adminRows.find(x=>Number(x.id)===Number(b.dataset.paid));if(!r)return;
   const folio=prompt('Folio de pago verificado (puede quedar vacío):',r.folio||'');if(folio===null)return;
   const ok=confirm('¿Confirmas que verificaste este pago en la cuenta bancaria? Se guardará como pago manual conciliado.');
@@ -223,7 +264,6 @@
   catch(err){notify(err.message,true);}
   finally{b.disabled=false;}
  });
- $('includeUnpaid').addEventListener('change',adminList);
  $('refreshMine').addEventListener('click',mine);
  $('refreshAdmin').addEventListener('click',adminList);$('refreshReview').addEventListener('click',adminList);
  function fillProfile(){

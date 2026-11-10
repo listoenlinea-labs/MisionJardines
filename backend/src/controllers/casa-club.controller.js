@@ -19,7 +19,6 @@ const limitePagoReserva=fecha=>{
 const error=(status,message,extra={})=>Object.assign(new Error(message),{status,...extra});
 const hoy=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const texto=(v,n=160)=>String(v||'').trim().slice(0,n);
-const dinero=v=>Number(v);
 const fechaValida=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!Number.isNaN(Date.parse(String(v)+'T12:00:00Z'))&&new Date(String(v)+'T12:00:00Z').toISOString().slice(0,10)===v;
 function manejar(res,e){if(!e.status)console.error('[casa-club]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No se pudo completar la operación',
  ...(e.codigo==='ADEUDOS_RESERVA'?{codigo:e.codigo,adeudos:e.adeudos}:{})});}
@@ -88,9 +87,11 @@ async function mias(req,res){
 async function crear(req,res){
  const body=req.body||{};
  const fecha=texto(body.fecha,10),solicitante=texto(body.solicitante,180),telefono=texto(body.telefono,25),correo=texto(body.correo,150),motivo=texto(body.motivo,200);
- const casaId=Number(body.casaId||req.usuario.casaId);
+ const casaId=Number(body.casaId||req.usuario.casaId),reservaDirecta=admin(req.usuario.rol);
  if(!fechaValida(fecha)||fecha<hoy())return res.status(400).json({ok:false,message:'Selecciona una fecha válida, desde hoy en adelante'});
  if(!solicitante||!telefono||!/^\S+@\S+\.\S+$/.test(correo)||!motivo)return res.status(400).json({ok:false,message:'Completa solicitante, teléfono, correo y motivo'});
+ if(!reservaDirecta&&(!avisos.whatsappMexico(telefono)||body.aceptaWhatsApp!==true))
+  return res.status(400).json({ok:false,message:'Indica un número de WhatsApp válido y acepta recibir las instrucciones de pago.'});
  if(!Number.isSafeInteger(casaId)||casaId<=0)return res.status(400).json({ok:false,message:'Selecciona tu vivienda antes de reservar'});
  try{
   await expirarReservas();
@@ -101,7 +102,6 @@ async function crear(req,res){
   await revisarElegibilidad(casaId);
   // Solo el rol validado por el servidor puede reservar sin revisión humana.
   // La fecha única sigue protegida por fecha_bloqueada, aun con concurrencia.
-  const reservaDirecta=admin(req.usuario.rol);
   const estatus=reservaDirecta?'APROBADA':'PENDIENTE';
   const row=await Reserva.create({
    usuarioId:req.usuario.usuarioId,casaId,fecha,fechaBloqueada:fecha,
@@ -186,10 +186,10 @@ async function listar(req,res){
   const estado=texto(req.query.estatus,15);
   if(estado&&!['PENDIENTE','APROBADA','RECHAZADA','CANCELADA'].includes(estado))throw error(400,'Estado inválido');
   const rows=await Reserva.findAll({where:estado?{estatus:estado}:{},order:[['fecha','DESC']],limit:1000});
-  const ids=[...new Set(rows.map(x=>x.casaId))],casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','numero']}):[];
+  const ids=[...new Set(rows.map(x=>x.casaId))],casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','calleCorrecta','numero']}):[];
   const mapa=new Map(casas.map(x=>[Number(x.id),x]));
   res.setHeader('Cache-Control','no-store');
-  return res.json({ok:true,data:rows.map(x=>({...x.toJSON(),casa:mapa.get(Number(x.casaId))||null}))});
+  return res.json({ok:true,data:rows.map(x=>({...x.toJSON(),...cargosSolicitud(x),casa:mapa.get(Number(x.casaId))||null}))});
  }catch(e){return manejar(res,e);}
 }
 async function pendientesResumen(req,res){
@@ -197,6 +197,28 @@ async function pendientesResumen(req,res){
  try{return res.json({ok:true,cantidad:await Reserva.count({where:{estatus:'PENDIENTE',
   [Op.or]:[{fechaLimitePago:null},{fechaLimitePago:{[Op.gte]:hoy()}}]}})});}
  catch(e){return manejar(res,e);}
+}
+// Prepara un borrador; el administrador decide si lo envía desde WhatsApp.
+const cargosSolicitud=row=>row.estatus==='PENDIENTE'&&!row.fechaLimitePago
+ ?IMPORTES_RESERVA:{cuotaRecuperacion:row.cuotaRecuperacion,depositoGarantia:row.depositoGarantia,limpieza:row.limpieza};
+async function mensajeWhatsApp(req,res){
+ if(!admin(req.usuario.rol))return manejar(res,error(403,'Acceso exclusivo de Administración'));
+ const id=Number(req.params.id);
+ if(!Number.isSafeInteger(id)||id<=0)return manejar(res,error(400,'Reserva no válida'));
+ try{
+  const row=await Reserva.findByPk(id,{attributes:['id','estatus','pagado','telefono','fecha','fechaLimitePago','cuotaRecuperacion','depositoGarantia','limpieza']});
+  if(!row)throw error(404,'Reserva no encontrada');
+  if(!['PENDIENTE','APROBADA'].includes(row.estatus)||(!row.pagado&&row.fechaLimitePago&&row.fechaLimitePago<hoy()))
+   throw error(409,'La solicitud ya no está activa.');
+  const telefono=avisos.whatsappMexico(row.telefono||'');
+  if(!telefono)throw error(400,'La reserva no tiene un WhatsApp válido.');
+  const confirmada=row.estatus==='APROBADA'&&row.pagado;
+  const mensaje=confirmada
+   ?'Hola. Confirmamos tu reservación de Casa Club para el '+row.fecha+'. El pago fue verificado y la fecha ya quedó apartada. Folio CC-'+row.id+'.'
+   :avisos.textoPago(avisos.instrucciones({id:row.id,fecha:row.fecha,fechaLimitePago:row.fechaLimitePago,...cargosSolicitud(row)},avisos.datosBancarios()));
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,telefono,mensaje,tipo:confirmada?'CONFIRMACION':'PAGO'});
+ }catch(e){return manejar(res,e);}
 }
 async function revisar(req,res){
  if(!admin(req.usuario.rol))return res.status(403).json({ok:false,message:'Acceso exclusivo de administración'});
@@ -208,39 +230,21 @@ async function revisar(req,res){
    if(!row)throw error(404,'Reserva no encontrada');
    if(['APROBAR','RECHAZAR'].includes(action)){
     if(row.estatus!=='PENDIENTE')throw error(409,'La solicitud ya no está pendiente');
-    const approved=action==='APROBAR';
-    if(row.fechaLimitePago){
-     if(row.fechaLimitePago<hoy())throw error(409,'El apartado venció. Actualiza la lista de solicitudes.');
-     if(!approved){
-      await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:texto(req.body.notas,600),
-       revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
-      return;
-     }
-     const folio=texto(req.body.folio,60);
-     if(req.body.pagoVerificado!==true||!/^[a-z0-9-]{3,60}$/i.test(folio))
-      throw error(400,'Confirma el depósito completo en el banco e indica su folio para aprobar.');
-     await revisarElegibilidad(row.casaId);
-     await PagoManualConcepto.create({casaId:row.casaId,tipoPago:'CASA_CLUB',reservaCasaClubId:row.id,
-      monto:avisos.importe(row),formaPago:'TRANSFERENCIA',referencia:'MJCLUB:BANCO:'+folio.toUpperCase(),
-      registradoPor:req.usuario.usuarioId},{transaction});
-     await row.update({estatus:'APROBADA',pagado:true,fechaPago:hoy(),folio,
-      notas:texto(req.body.notas,600),revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+    if(action==='RECHAZAR'){
+     await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:texto(req.body.notas,600),
+      revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
      return;
     }
-
-    const rec=dinero(req.body?.cuotaRecuperacion??0),dep=dinero(req.body?.depositoGarantia??0),clean=dinero(req.body?.limpieza??0);
-    if(approved&&(![rec,dep,clean].every(v=>Number.isFinite(v)&&v>=0&&v<=1000000)))throw error(400,'Importes inválidos');
-    const fechaLimitePago=texto(req.body.fechaLimitePago,10);
-    if(approved&&(!fechaValida(fechaLimitePago)||fechaLimitePago<hoy()||fechaLimitePago>=row.fecha))throw error(400,'La fecha límite de pago debe ser desde hoy y anterior al evento');
-    if(approved){
-     await revisarElegibilidad(row.casaId);
-    }
-    const sinCosto=approved&&(Math.round((rec+dep+clean)*100)===0);
-    await row.update({estatus:approved?'APROBADA':'RECHAZADA',
-      fechaBloqueada:approved?row.fecha:null,cuotaRecuperacion:approved?rec:0,
-      depositoGarantia:approved?dep:0,limpieza:approved?clean:0,pagado:sinCosto,fechaLimitePago:approved?fechaLimitePago:null,
-      fechaPago:sinCosto?hoy():null,
-      notas:texto(req.body.notas,600),revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+    if(row.fechaLimitePago&&row.fechaLimitePago<hoy())throw error(409,'El apartado venció. Actualiza la lista de solicitudes.');
+    const folio=texto(req.body.folio,60),cargos=cargosSolicitud(row);
+    if(req.body.pagoVerificado!==true||!/^[a-z0-9-]{3,60}$/i.test(folio))
+     throw error(400,'Confirma el depósito completo en el banco e indica su folio para aprobar.');
+    await revisarElegibilidad(row.casaId);
+    await PagoManualConcepto.create({casaId:row.casaId,tipoPago:'CASA_CLUB',reservaCasaClubId:row.id,
+     monto:avisos.importe(cargos),formaPago:'TRANSFERENCIA',referencia:'MJCLUB:BANCO:'+folio.toUpperCase(),
+     registradoPor:req.usuario.usuarioId},{transaction});
+    await row.update({estatus:'APROBADA',fechaBloqueada:row.fecha,pagado:true,fechaPago:hoy(),folio,...cargos,
+     notas:texto(req.body.notas,600),revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
    } else {
     if(row.estatus!=='APROBADA')throw error(409,'Solo se registran movimientos de reservas aprobadas');
     if(action==='PAGO'){
@@ -262,4 +266,4 @@ async function revisar(req,res){
   return manejar(res,e);
  }
 }
-module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,revisar,pendientesResumen};
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen};
