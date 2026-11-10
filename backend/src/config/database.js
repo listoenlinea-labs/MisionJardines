@@ -1,5 +1,6 @@
 const { Sequelize } = require('sequelize');
 const { MYSQL_TIME_ZONE } = require('./timezone');
+const dbCapacity = require('../services/db-capacity.service');
 
 const requiredEnvironmentVariables = [
     'DB_HOST',
@@ -38,10 +39,12 @@ const sequelize = new Sequelize(
         },
 
         pool: {
-            max: 10,
-            min: 0,
+            // Reutilizar las conexiones: el cierre a los 10 s disparaba
+            // conexiones nuevas durante el uso continuo del portal.
+            max: 6,
+            min: 1,
             acquire: 30000,
-            idle: 10000
+            idle: 120000
         },
 
         dialectOptions: {
@@ -49,5 +52,9 @@ const sequelize = new Sequelize(
         }
     }
 );
+
+// Solo métricas en memoria: consultar el medidor no hace queries MySQL.
+sequelize.addHook('beforeConnect', () => dbCapacity.mark('connections'));
+sequelize.addHook('beforeQuery', () => dbCapacity.mark('queries'));
 
 module.exports = sequelize;

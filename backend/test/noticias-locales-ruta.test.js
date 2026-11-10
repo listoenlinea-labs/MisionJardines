@@ -2,6 +2,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 Object.assign(process.env, { DB_HOST: 'localhost', DB_NAME: 'test', DB_USER: 'test', DB_PASSWORD: 'test', JWT_SECRET: 'test-secret' });
+// Estas pruebas ejercitan explícitamente el proveedor con credenciales simuladas.
+process.env.FREENEWSAPI_KEY = 'test-key';
 const router = require('../src/routes/entorno.routes');
 
 test('endpoint de noticias usa búsquedas locales y devuelve publicaciones recientes aun si falla una consulta', async t => {
