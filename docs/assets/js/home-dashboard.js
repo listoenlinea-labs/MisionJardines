@@ -1122,6 +1122,9 @@
   function updateTopbar(data, healthy = true) {
     const status = document.querySelector('.operation-status');
     if (status) {
+      // Distinguir el estado real: los estilos de alto contraste deben
+      // mantener el rojo en fallos, no forzar verde siempre.
+      status.dataset.health = healthy ? 'ok' : 'error';
       status.innerHTML = `<i></i>${healthy ? 'Datos actualizados' : 'Sin conexión con datos'}`;
       status.style.color = healthy ? '#14763f' : '#b42318';
       status.style.background = healthy ? '#f1faf5' : '#fff4f3';
