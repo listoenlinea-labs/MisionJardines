@@ -316,9 +316,11 @@
   }
  });
  $('manualReceiptNumber').addEventListener('blur',()=>{
-  // Un breve cambio de foco permite seleccionar opciones con el mouse.
-  // Los botones previenen el blur mediante mousedown.
-  closeNumberChoices();
+  // En pantallas táctiles el blur puede ocurrir antes del click de una
+  // sugerencia. Cerramos después para permitir elegirla en iPhone/Android.
+  setTimeout(()=>{
+   if(document.activeElement!==$('manualReceiptNumber'))closeNumberChoices();
+  },180);
  });
  $('manualReceiptName').addEventListener('input',()=>{nameEdited=true;});
  document.addEventListener('click',event=>{
