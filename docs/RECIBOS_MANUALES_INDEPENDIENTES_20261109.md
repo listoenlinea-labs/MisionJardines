@@ -8,7 +8,7 @@ El botón «Generar recibo manualmente» está siempre visible en la cabecera de
 - La referencia se genera en el servidor como \`MJMANUAL:<UUID>\`, estable.
 - El sello es texto libre de hasta 100 caracteres (por defecto \`PAGADO\`), sin prefijos obligatorios.
 - El importe usa pesos enteros, sin decimales.
-- El PDF muestra una marca de documento manual y aviso de que no implica un registro contable.
+- El PDF conserva su formato de recibo y utiliza la leyenda administrativa sobre el Código Civil del Estado de Jalisco, CFDI y adeudos pendientes; no muestra la antigua marca de «DOCUMENTO MANUAL». La emisión sigue sin registrar movimientos contables.
 
 ## Separación total de la contabilidad
 Los documentos se guardan **únicamente** en \`recibos_manuales\` y se recuperan desde su propio historial. El servicio no inserta ni actualiza \`cuotas\`, \`pagos_reportados\`, \`pago_manual_concepto\`, \`ingresos\`, \`egresos\`, reportes, Excel, respaldos normales, tags o ZKTeco. No se emiten eventos de sincronización financiera. La referencia, folio y PDF no se mezclan con historial de mantenimiento. No hay claves foráneas a tablas financieras; \`casa_id\` es solo un identificador de origen para autollenado.
