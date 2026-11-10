@@ -1,12 +1,12 @@
 # Recibos manuales independientes · Misión Jardines
 
 ## Qué hace
-El botón «Generar recibo manualmente» está siempre visible en la cabecera de Consulta de viviendas de Análisis de cuotas. Abre un modal con **Nuevo recibo** e **Historial de recibos**. Puede autollenar una vivienda seleccionada o elegir cualquier casa del padrón; todos los campos de nombre, domicilio, folio (mes y año), concepto, periodo cubierto, detalle, importe, forma de pago y sello siguen editables.
+El botón «Generar recibo manualmente» está siempre visible en la cabecera de Consulta de viviendas de Análisis de cuotas. Abre un modal con **Nuevo recibo** e **Historial de recibos**. La calle se elige de una lista y el número se escribe con sugerencias. También admite viviendas no registradas; todos los campos de nombre, domicilio, folio (mes y año), concepto, periodo cubierto, detalle, importe, forma de pago y sello siguen editables.
 
 - El folio tiene el formato \`MJ-MES-AÑO-ALEATORIO10-INICIAL+CASA-M\`, por ejemplo \`MJ-NOV-2026-20E07DA986-A752-M\`.
 - Fecha de emisión = fecha actual de México, calculada en el **servidor**.
 - La referencia se genera en el servidor como \`MJMANUAL:<UUID>\`, estable.
-- El sello siempre debe empezar con \`PAGADO\` y puede continuar con otras palabras.
+- El sello es texto libre de hasta 100 caracteres (por defecto \`PAGADO\`), sin prefijos obligatorios.
 - El importe usa pesos enteros, sin decimales.
 - El PDF muestra una marca de documento manual y aviso de que no implica un registro contable.
 
@@ -26,8 +26,10 @@ Los documentos se guardan **únicamente** en \`recibos_manuales\` y se recuperan
 4. Revisar fecha de México, folio aleatorio de 10 hexadecimales, referencia automática y descarga con nombre \`MJ-...pdf\`.
 5. Abrir historial, consultar el recibo persistido, volver a descargar idéntico PDF sin alterar folio.
 6. Confirmar que consultas financieras, cuotas, saldo, TAGs, gráficas y Excel son idénticos antes y después (excepto cualquier cambio ajeno simultáneo).
-7. Probar rechazos: importe cero, decimal, sello sin prefijo PAGADO, mes/año inválidos, usuario Seguridad.
+7. Probar rechazos: importe cero, decimal, sello vacío, mes/año inválidos, usuario Seguridad. Comprobar que los sellos libres (p. ej. \`APORTACIÓN RECIBIDA\`) sí se aceptan.
 8. Probar que el historial sigue disponible tras cerrar sesión/reingresar, y que nadie puede acceder sin autenticación.
+9. En Historial, elegir **Eliminar** en un recibo de prueba: cancelar no cambia nada; confirmar elimina exactamente ese recibo manual, impide volver a abrir su PDF y actualiza la lista. Confirmar que cuotas, saldos, gráficas, Excel y TAGs permanecen intactos.
+10. Verificar alineación y ausencia de desbordes a 375px, 720px, 768px, 1024px y monitor ancho. El texto de instrucciones del número ya no aparece.
 
 ## Revertir abono de Rosas 18 del 9 de noviembre de 2026
 La referencia \`MJABONO:7fb22c0b-71a8-4632-b4dd-b08215b5e146\` pertenece al **movimiento de cuotas**, no a un recibo manual. Para eliminar el documento generado por ese movimiento es necesario revertir el propio abono o implementar una revocación de recibos ordinarios; borrar el movimiento reducirá lo pagado y recalculará la deuda. Si fue dinero real, no debe eliminarse.
