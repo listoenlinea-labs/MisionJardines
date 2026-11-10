@@ -5,6 +5,14 @@ function whatsappMexico(value){
  const numero=value.replace(/[\s()+-]/g,'');
  return /^\d{10}$/.test(numero)?'52'+numero:/^52\d{10}$/.test(numero)?numero:null;
 }
+function datosBancarios(env=process.env){
+ const banco=env.CASA_CLUB_BANCO?.trim(),titular=env.CASA_CLUB_TITULAR?.trim();
+ const cuenta=env.CASA_CLUB_CUENTA?.trim();
+ if(!banco||!titular||!/^\d{10,18}$/.test(cuenta||''))
+  throw Object.assign(Error('Configura los datos bancarios de Casa Club para preparar las instrucciones.'),{status:503});
+ const correo=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
+ return {banco,titular,cuenta,administracion:emailValido(correo)?correo:null};
+}
 function configuracion(env=process.env){
  const dias=Number(env.CASA_CLUB_PLAZO_DIAS||3);
  const banco=env.CASA_CLUB_BANCO?.trim(),titular=env.CASA_CLUB_TITULAR?.trim();
@@ -32,11 +40,13 @@ function instrucciones(row,config){
   banco:config.banco,titular:config.titular,cuenta:config.cuenta,correoAdministracion:config.administracion};
 }
 function textoPago(datos){
- return 'Solicitud '+datos.folio+' para el '+datos.fecha+'. La fecha está apartada provisionalmente.\n\n'+
+ const plazo=datos.fechaLimitePago?', a más tardar el '+datos.fechaLimitePago+' (hora de Guadalajara)':'';
+ const destino=datos.correoAdministracion?' a '+datos.correoAdministracion:' a Administración';
+ return 'Solicitud '+datos.folio+' para el '+datos.fecha+'. La reserva queda confirmada al verificar el pago.\n\n'+
   'Deposita '+moneda(datos.monto)+' en '+datos.banco+', cuenta/CLABE '+datos.cuenta+
-  ', a nombre de '+datos.titular+', a más tardar el '+datos.fechaLimitePago+' (hora de Guadalajara).\n'+
-  'Envía tu comprobante a '+datos.correoAdministracion+' con el folio '+datos.folio+
-  '. Administración verifica el pago y aprueba la solicitud manualmente. Si no confirma el pago antes del vencimiento, se libera la fecha.';
+  ', a nombre de '+datos.titular+plazo+'.\n'+
+  'Envía tu comprobante'+destino+' con el folio '+datos.folio+'.'+
+  (plazo?' Si no se confirma el pago antes del vencimiento, se libera la fecha.':'');
 }
 async function whatsapp(row,datos,config){
  const response=await fetch('https://graph.facebook.com/'+config.version+'/'+config.telefonoId+'/messages',{
@@ -65,4 +75,4 @@ async function notificar(row,datos,config){
  });
  return estados;
 }
-module.exports={configuracion,emailValido,whatsappMexico,limitePago,importe,instrucciones,notificar};
+module.exports={configuracion,datosBancarios,textoPago,emailValido,whatsappMexico,limitePago,importe,instrucciones,notificar};

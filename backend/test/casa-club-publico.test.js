@@ -119,3 +119,25 @@ test('el catálogo público devuelve solo calles o números de la calle solicita
  assert.equal(invalida.code,400);
  assert.equal(read.mock.callCount(),2);
 });
+
+test('el borrador administrativo cambia de instrucciones bancarias a confirmación después del pago',async t=>{
+ const row={id:23,estatus:'PENDIENTE',pagado:false,telefono:'+52 (33) 1234-5678',fecha:body.fecha,
+  fechaLimitePago:offset(3),cuotaRecuperacion:700,depositoGarantia:700,limpieza:0};
+ const buscar=t.mock.method(Reserva,'findByPk',async()=>row);
+ const bancaria=t.mock.method(avisos,'datosBancarios',()=>config);
+ const borrador=async(usuario=admin)=>{const r=res();await club.mensajeWhatsApp({usuario,params:{id:23}},r);return r;};
+ assert.equal((await borrador({rol:'CONDOMINO'})).code,403);
+ assert.equal(buscar.mock.callCount(),0);
+ const previo=await borrador();
+ assert.equal(previo.body.tipo,'PAGO');
+ assert.equal(previo.body.telefono,'523312345678');
+ for(const texto of ['1,400',config.cuenta,config.titular,offset(3)])assert.ok(previo.body.mensaje.includes(texto));
+ row.estatus='APROBADA';row.pagado=true;
+ const posterior=await borrador();
+ assert.equal(posterior.body.tipo,'CONFIRMACION');
+ assert.match(posterior.body.mensaje,/ya quedó apartada/);
+ assert.ok(!posterior.body.mensaje.includes(config.cuenta));
+ assert.equal(bancaria.mock.callCount(),1);
+ row.estatus='CANCELADA';
+ assert.equal((await borrador()).code,409);
+});

@@ -1,6 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-Object.assign(process.env,{DB_HOST:'localhost',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'test',JWT_SECRET:'test-secret'});
+Object.assign(process.env,{DB_HOST:'localhost',DB_PORT:'3306',DB_NAME:'test',DB_USER:'test',DB_PASSWORD:'test',JWT_SECRET:'test-secret'});
 const {Casa,UsuarioCasa,Cuota,CargoExtraordinario,AportacionExtraordinaria}=require('../src/models');
 const Reserva=require('../src/models/ReservaCasaClub');
 const PagoReportado=require('../src/models/PagoReportado');
@@ -8,7 +8,7 @@ const PagoManualConcepto=require('../src/models/PagoManualConcepto');
 const club=require('../src/controllers/casa-club.controller');
 function res(){return{code:200,body:null,headers:{},status(n){this.code=n;return this;},setHeader(k,v){this.headers[k]=v;},json(v){this.body=v;return this;}};}
 const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const req=overrides=>({usuario:{usuarioId:19,rol:'CONDOMINO',casaId:5},body:{fecha:day,solicitante:'Prueba Usuario',telefono:'3331234567',correo:'persona@example.com',motivo:'Cumpleaños',casaId:5,propietario:true},...overrides});
+const req=overrides=>({usuario:{usuarioId:19,rol:'CONDOMINO',casaId:5},body:{fecha:day,solicitante:'Prueba Usuario',telefono:'3331234567',correo:'persona@example.com',motivo:'Cumpleaños',casaId:5,propietario:true,aceptaWhatsApp:true},...overrides});
 function sinAdeudos(t){
  t.mock.method(Reserva,'findAll',async()=>[]); // no reservas aprobadas por expirar ni cobros de club
  t.mock.method(CargoExtraordinario,'findAll',async()=>[]);
@@ -207,4 +207,13 @@ test('Casa club muestra Reservar a admin y informa la confirmación usando el es
  assert.match(html,/id="clubCalendarHint"/);
  assert.match(html,/id="clubFormHint"/);
  assert.match(html,/casa-club\.js\?v=[^"]+/);
+});
+
+
+test('una solicitud de condómino autenticado requiere WhatsApp válido y consentimiento',async()=>{
+ for(const datos of [{telefono:'3312'},{aceptaWhatsApp:false}]){
+  const response=res();await club.crear(req({body:{...req().body,...datos}}),response);
+  assert.equal(response.code,400);
+  assert.match(response.body.message,/WhatsApp/);
+ }
 });

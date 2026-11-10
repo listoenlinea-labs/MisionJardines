@@ -18,5 +18,6 @@ router.post('/reservas',limiteSolicitudes,(req,res)=>
 router.patch('/reservas/:id/cancelar',club.cancelar);
 router.get('/administracion',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.listar);
 router.get('/solicitudes-pendientes',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.pendientesResumen);
+router.get('/administracion/:id/whatsapp',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.mensajeWhatsApp);
 router.patch('/administracion/:id',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.revisar);
 module.exports=router;
