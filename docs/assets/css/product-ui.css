@@ -28,6 +28,16 @@ body.mj-shared-sidebar-enabled:not(.mj-home)::before {
   pointer-events:none;
 }
 body.mj-shared-sidebar-enabled.mj-shared-sidebar-collapsed:not(.mj-home)::before{left:0}
+/* En app.html, Inicio se muestra en un iframe y su encabezado incluye
+   estado MySQL, medidor y notificaciones. La capa blanca ::before de este
+   documento EXTERIOR (z-index 89) se dibuja ENCIMA del iframe (z-index 2):
+   lo vuelve casi invisible, incluso cuando el texto tiene alto contraste.
+   Suprimirla solo mientras Inicio sea la sección activa del shell.
+   En las demás secciones permanece el fondo de la barra flotante. */
+body.mj-app-shell.mj-shared-sidebar-enabled.mj-shell-home-header::before {
+  content:none!important;
+  display:none!important;
+}
 /* app.html ya dibuja el encabezado en el documento exterior. No repetir el
    pseudo-elemento dentro del iframe: es una capa fija por encima de diálogos. */
 body.mj-embedded.mj-shared-sidebar-enabled:not(.mj-home)::before {
