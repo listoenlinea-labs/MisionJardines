@@ -1,22 +1,74 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 8/nov/2026, 23:25, America/Mexico_City.
-**SHA de main consultado:** `389c9ed435f61a2b031d37cd24cb0f0c72336b84`.
+**Última revisión:** 9/nov/2026, 23:33, America/Mexico_City.
+**SHA de main consultado:** `870b6f934bfc5f38b568c09e351b0b996572e875`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `ea33562f79e4fb91e8c3e3f230885764cfd21596`,
-historial reciente de commits, PR abiertos y evidencia de checks en GitHub.
-Main avanzó un commit: `389c9ed435f61a2b031d37cd24cb0f0c72336b84`,
-dedicado exclusivamente a actualizar esta bitácora y excluido del trabajo de producto.
-No hay PR abiertos, cambios verificables de producto, workflows ni checks nuevos.
-No hay confirmaciones nuevas accesibles de despliegue, Meta, MySQL, Hostinger o C3 físico;
-se conservan sin cambios el resumen operativo, las reglas, las pruebas históricas y los
-pendientes. No se enviaron mensajes ni se publican credenciales, teléfonos,
-comprobantes o datos privados del padrón.
+comparación de main desde `389c9ed435f61a2b031d37cd24cb0f0c72336b84`,
+historial de 185 commits, PR #357–#372, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `9eddc6505127eabe1baef92a74d5f46baf3157a6`, dedicado exclusivamente
+a la bitácora anterior. Los 16 PR de producto están fusionados y no hay PR abiertos ni
+revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las validaciones
+declaradas en los PR son locales o simuladas y no se presentan como CI.
+Las vistas previas efímeras de Hostinger se eliminaron al cerrar los PR y no acreditan
+despliegue del portal principal. No se consultaron Hostinger, MySQL o C3 directamente,
+no se hicieron llamadas, pagos o pruebas físicas y no se publican credenciales,
+teléfonos, comprobantes o datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 9/nov/2026
+
+Los PR [#357](https://github.com/listoenlinea-labs/MisionJardines/pull/357)–[#360](https://github.com/listoenlinea-labs/MisionJardines/pull/360)
+amplían Análisis y sus exportaciones: diferencia informativa del período, enlaces
+protegidos a PDF, tres viviendas por página y carrusel financiero en móvil, folio del
+recibo del período solo para viviendas al corriente y presentación de pesos sin
+centavos. La precisión histórica y bancaria permanece en datos; no se redondeó MySQL.
+El balance por período no equivale al saldo de caja y la meta extraordinaria no es gasto
+realizado. Falta validar cifras, enlaces, ChartML/XLSX/PDF en Microsoft Excel y el
+carrusel en Android/iOS.
+
+Los PR [#361](https://github.com/listoenlinea-labs/MisionJardines/pull/361)–[#363](https://github.com/listoenlinea-labs/MisionJardines/pull/363)
+agregan marcado `tel:` desde iPhone, historial privado por vivienda de intentos de
+marcado, ocultan el aviso inicial del Conmutador y dejan a SEGURIDAD solo Conmutador,
+Seguridad y Visitas, con Nueva visita y controles para mostrar contraseñas. El historial
+registra un intento, no una llamada conectada; el número sigue visible en el marcador y
+Recientes del iPhone. Requiere ejecutar la migración del conmutador en prueba, publicar
+frontend/backend y validar permisos, huso horario, privacidad, registro de visita y un
+iPhone 7 real.
+
+Los PR [#364](https://github.com/listoenlinea-labs/MisionJardines/pull/364)–[#367](https://github.com/listoenlinea-labs/MisionJardines/pull/367)
+incorporan tablero móvil de Visitas, el flujo administrativo «Abono con adeudo», filtros,
+Excel, historial y folio asociados, alta rápida de un residente faltante y una sola
+etiqueta visual. El abono conserva estado financiero pendiente, descuenta saldo, no
+adelanta el corte, no regulariza ni escribe TAGs/C3 y no se cuenta como mensualidad
+completa. El alta rápida escribe condómino, vínculo y nombre en una transacción, sin
+tocar pagos o contactos. No se ejecutaron contra MySQL real; falta integración con base
+de prueba y despliegue coordinado.
+
+Los PR [#368](https://github.com/listoenlinea-labs/MisionJardines/pull/368)–[#371](https://github.com/listoenlinea-labs/MisionJardines/pull/371)
+crean recibos manuales administrativos con tabla, PDF e historial independientes,
+captura por calle/número, diseño responsivo, sello libre, borrado permanente limitado a
+ID y folio coincidentes y nueva leyenda legal. No escriben cuotas, pagos, ingresos,
+egresos, Excel, TAGs o ZKTeco; quitar la marca visual anterior no convierte el documento
+en movimiento contable. Requiere migración en MySQL de prueba, revisión visual del PDF,
+permisos y borrado controlado. El SQL auxiliar de revisión de un abono termina en
+`ROLLBACK` y no fue ejecutado.
+
+El PR [#372](https://github.com/listoenlinea-labs/MisionJardines/pull/372) sustituye
+`AbortSignal.timeout` por un helper con `AbortController` para Safari 15 en login,
+restauración de sesión y shell. Conserva los límites de 30/20 segundos y no cambia
+contraseñas, backend, permisos, MySQL, pagos o ZKTeco. Falta publicar GitHub Pages,
+descartar caché y confirmar físicamente en el iPhone 7 que el guardia inicia sesión y
+entra al Conmutador.
+
+GitHub devuelve cero runs y cero estados para los 16 heads. Los PR documentan parseo de
+JavaScript, evaluaciones unitarias o simulaciones, pero no publican comandos completos
+ni una suite Node/CI verde. Las vistas previas de Hostinger fueron efímeras y ya no
+existen; ningún merge acredita producción, Excel real, MySQL, llamada Telcel, iPhone o
+C3 físico.
 
 ## Implementado en main el 6/nov/2026
 
@@ -318,6 +370,11 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Análisis financiero y Excel | Balance, folios, móvil y pesos enteros implementados en main; aceptación real pendiente | #357–#360 agregan diferencia del período, enlace protegido a PDF, carrusel móvil, folio del período y formato sin centavos. No cambian precisión contable; faltan Microsoft Excel, PDF, enlaces y Android/iOS |
+| Conmutador, Seguridad y Visitas | Flujos implementados en main; migración, despliegue y operación real pendientes | #361–#365 incorporan marcado `tel:`, historial de intentos, menú/visitas de SEGURIDAD, tablero móvil y entrada al Conmutador. Un intento no prueba llamada; faltan SQL de prueba, permisos, privacidad, MySQL e iPhone 7 |
+| Abono con adeudo y alta rápida | Implementados en main; MySQL de prueba y conciliación pendientes | #364–#367 conservan morosidad, descuentan saldo sin adelantar corte ni TAGs/C3 y permiten registrar residente faltante. No se hicieron cargos ni escrituras reales |
+| Recibos manuales | Módulo independiente implementado en main; migración y PDF real pendientes | #368–#371 aíslan tabla/historial/PDF de la contabilidad, permiten sello libre y borrado exacto. No acreditan pagos ni alteran cuotas/TAGs; falta probar migración, permisos, PDF y borrado |
+| Login Safari 15 | Corrección compatible implementada en main; iPhone físico pendiente | #372 reemplaza `AbortSignal.timeout` en login/shell. Falta publicar, limpiar caché y confirmar en Safari iOS 15 |
 | Portal instalable / Android | Implementado en main; despliegue y teléfonos físicos pendientes | #354 agrega manifiesto, iconos e instrucciones Android/iPhone; #355 muestra el botón nativo solo cuando Chrome Android ofrece `beforeinstallprompt`. Requiere conexión, no añade modo offline y las vistas previas efímeras no prueban producción |
 | Comprobantes por WhatsApp | Piloto desactivado implementado en main; integración y prueba real pendientes | #356 valida firma, formatos/tamaño, deduplica y reserva el buzón a administración. No acredita pagos, asigna viviendas ni toca TAGs. Faltan SQL/configuración Meta en prueba, retención, vínculo vivienda, OCR, acuse, interfaz y despliegue |
 | Pagos de mantenimiento | Unificación, reparto y guardas C3 implementados en main; despliegue y regla base pendientes | #288–#290 unifican `cuotas`/casa y C3 posterior al commit; #303/#305 reparten desde dos viviendas; #306 acepta desde $0.01 y aplica recargos antes del principal. #352 excluye solo eventos C3 ANULADO del bloqueo de cotización/registro, conservando bancos y demás estados. Continúa la discrepancia enero/septiembre y falta validar producción |
@@ -393,6 +450,11 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 9/nov/2026 | PR #357–#372, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 16 heads | No hay CI nuevo; fusionar no equivale a suite verde ni a despliegue |
+| 9/nov/2026 | #358, comando no publicado; parseo JS y simulación de paginación/carrusel | **231 viviendas: 77 páginas móvil y 20 escritorio; navegación simulada correcta** | Evidencia local declarada en el PR; falta navegador Android/iOS |
+| 9/nov/2026 | #363, #365–#367, comandos no publicados; parseo y casos simulados de rol, abono, alta y etiqueta | Casos declarados correctos; #367 evaluó **4/4** variantes visuales | No se ejecutó suite Node/CI ni integración MySQL/Hostinger |
+| 9/nov/2026 | #368–#370, comandos no publicados; servicios MySQL/DOM simulados | Crear/listar/PDF, búsqueda, sello libre y borrado exacto declarados correctos; entradas inválidas rechazadas | Simulación, no migración ni documentos de producción; no se borraron recibos reales |
+| 9/nov/2026 | #371–#372, pruebas nuevas declaradas pero sin comando completo | Sintaxis y referencias verificadas; **tests Node no ejecutados** | Falta PDF con `pdfkit`, suite completa y Safari iOS 15 físico |
 | 6/nov/2026 | PR #354, comando no publicado; validación local y arranque de Chromium | **49 aprobadas, 12 fallidas preexistentes**; Chromium no inició | Evidencia declarada en el PR, no CI. Falta navegador y teléfono físico; no acredita Hostinger principal |
 | 6/nov/2026 | PR #355, comando no publicado; eventos simulados de Android, instalación, error, iPhone y standalone | **18 aprobadas, 2 fallidas preexistentes** | Simulación local, no confirmación nativa en Chrome Android ni despliegue |
 | 6/nov/2026 | PR #356, comando no publicado; suite existente | **54 de 58 aprobadas**; cuatro fallos en pagos/vigencias | Evidencia local del PR; no prueba Meta, webhook HTTPS, MySQL ni recepción real |
@@ -532,6 +594,11 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Análisis, Excel y móvil de #357–#360 | Publicar coordinadamente y cotejar cifras del período, folios/enlaces con y sin sesión, anticipos y filas deudoras; abrir XLSX/ChartML y PDF reales en Microsoft Excel, y probar paginación/carrusel en Android/iOS sin confundir balance informativo con caja |
+| Conmutador y caseta #361–#365 | Ejecutar `backend/sql/2026-11-09-conmutador-intentos.sql` en MySQL de prueba, validar roles, privacidad y huso horario; probar marcado/cancelación/historial en iPhone 7 y registro de visita con SEGURIDAD. No declarar llamada conectada por registrar un intento |
+| Abono con adeudo y residente rápido #364–#367 | En clon MySQL, probar una vivienda controlada, duplicados, saldo, historial, folio, filtro/Excel, 403/409 y que corte/TAGs/C3 no cambien. No usar movimientos reales ni ejecutar reversión fuera de una conciliación explícita |
+| Recibos manuales #368–#371 | Ejecutar la migración de `recibos_manuales` en prueba, validar permisos, captura libre/padrón, folio, PDF/leyenda, historial y borrado exacto. Confirmar ausencia de escrituras contables; el SQL auxiliar permanece en ROLLBACK hasta revisión humana |
+| Safari 15 / iPhone 7 #372 | Publicar GitHub Pages, recargar sin caché y probar login, sesión recordada, timeout/error de red y entrada automática de SEGURIDAD al Conmutador en el dispositivo físico |
 | Portal instalable y botón Android | Publicar frontend por HTTPS y probar en Chrome Android y Safari/iPhone físicos: instalación, icono, apertura standalone, login, navegación por rol y selección de comprobante. Confirmar que el botón aparece solo con `beforeinstallprompt`; la vista previa cerrada no acredita producción |
 | Piloto de comprobantes por WhatsApp | En base y número de prueba: ejecutar `backend/sql/whatsapp_comprobantes.sql`, configurar variables `WHATSAPP_*` sin publicar secretos, registrar callback HTTPS y validar firma, formatos, límite, deduplicación, roles y descarga. Antes de producción definir retención, vínculo número-vivienda, OCR/registro bancario, acuse e interfaz; mantenerlo desactivado hasta cerrar estas pruebas |
 | Conectividad C3, IP pública y recuperación | Desplegar #320–#322 y ejecutar Diagnosticar C3 desde el servidor. Confirmar etapa/código sin publicar IP o secretos; revisar IP pública/DDNS, NAT/port-forwarding TCP y contraseña. El reintento de #321 no corrige una IP cambiada. No existe en main actualización automática basada en la IP del navegador del administrador; diseñarla solo con autenticación fuerte, verificación C3 inequívoca, auditoría y rollback |
@@ -606,6 +673,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-09
+
+- Main consultado a las 23:33, America/Mexico_City, en `870b6f934bfc5f38b568c09e351b0b996572e875`, 185 commits por delante del SHA guardado.
+- Se excluyó `9eddc65`, que solo actualizó esta bitácora. Como producto se verificaron 16 PR fusionados: #357–#360 (Análisis/Excel/móvil/formato), #361–#363 (Conmutador y caseta), #364–#367 (Visitas, abono con adeudo y residentes), #368–#371 (recibos manuales) y #372 (Safari 15). No hay PR abiertos ni revertidos nuevos.
+- Los 16 heads devuelven cero workflows y cero estados. Se conservaron como evidencia limitada los parseos y simulaciones descritos en los PR; no hay comando completo ni suite Node/CI verde para estas entregas.
+- Las vistas previas del bot de Hostinger fueron efímeras y se eliminaron al cerrar los PR. No hubo acceso directo a Hostinger, MySQL o C3, llamadas reales, pagos, borrado de recibos ni pruebas físicas de iPhone.
+- Se actualizaron resumen, pruebas y pendientes. Permanecen obligatorios el aislamiento contable de recibos manuales y abonos, la precisión bancaria, las guardas C3/TAG y las migraciones/pruebas controladas antes de producción.
 
 ### 2026-11-08
 
