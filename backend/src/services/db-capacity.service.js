@@ -3,7 +3,7 @@
 // Medidor preventivo LOCAL del proceso Node. MySQL/Hostinger no expone un
 // contador oficial de cuota restante por cuenta; jamás se presenta como exacto.
 const WINDOW_MS = 60 * 60 * 1000;
-const samples = { connections: [], queries: [] };
+const samples = { connections: new Map(), queries: new Map() };
 const startedAt = Date.now();
 const envLimit = key => {
   const value = Number(process.env[key]);
@@ -19,15 +19,20 @@ const source = {
 };
 
 function prune(at = Date.now()) {
-  const threshold = at - WINDOW_MS;
+  const threshold = Math.floor((at - WINDOW_MS) / 60000);
   for (const events of Object.values(samples)) {
-    while (events.length && events[0] <= threshold) events.shift();
+    for (const minute of events.keys()) {
+      if (minute <= threshold) events.delete(minute);
+    }
   }
 }
 function mark(kind, at = Date.now()) {
   if (!samples[kind]) return;
-  samples[kind].push(at);
-  prune(at);
+  const minute = Math.floor(at / 60000);
+  const events = samples[kind];
+  events.set(minute, (events.get(minute) || 0) + 1);
+  // Mantener máximo 60 contadores por tipo, sin un arreglo por consulta.
+  if (events.size > 60) prune(at);
 }
 function discoverLimits(rows) {
   const grants = (Array.isArray(rows) ? rows : []).flatMap(row => Object.values(row || {}))
@@ -45,7 +50,7 @@ function discoverLimits(rows) {
   }
 }
 function measure(kind) {
-  const used = samples[kind].length;
+  const used = [...samples[kind].values()].reduce((sum, n) => sum + n, 0);
   const limit = limits[kind];
   return {
     observedLastHour: used,
