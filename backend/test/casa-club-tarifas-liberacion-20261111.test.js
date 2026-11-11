@@ -9,6 +9,7 @@ const Reserva=require('../src/models/ReservaCasaClub');
 const db=require('../src/config/database');
 const email=require('../src/services/email.service');
 const club=require('../src/controllers/casa-club.controller');
+const avisos=require('../src/services/casa-club-avisos.service');
 const respuesta=()=>({code:200,body:null,status(n){this.code=n;return this;},json(data){this.body=data;return this;}});
 test('distribución libre con total estricto $2,000, sin decimales ni negativos',()=>{
  assert.deepEqual(tarifas.validar({cuotaRecuperacion:'500',depositoGarantia:1200,limpieza:300}),
@@ -81,4 +82,15 @@ test('la conciliación de mantenimiento conserva actualización durable de TAGs 
  assert.match(pagos,/estatus: 'VALIDADO'/);
  assert.match(pagos,/cuotasMantenimiento\.confirmar\(pago, transaction\)/);
  assert.match(cuotas,/afterCommit\(\(\)=>require\('\.\/zkteco-vigencias\.service'\)\.solicitar\(pago\.casaId\)\)/);
+});
+
+test('Casa Club comparte la cuenta oficial de Pagos y no usa una cuenta distinta',()=>{
+ const info=avisos.datosBancarios({
+  PAGOS_BANCO:'Banco de pagos',PAGOS_TITULAR:'Titular de pagos',PAGOS_CUENTA:'12345678901234',
+  CASA_CLUB_BANCO:'Otro banco',CASA_CLUB_TITULAR:'Otro titular',CASA_CLUB_CUENTA:'99999999999999',
+  CASA_CLUB_ADMIN_CORREO:'admin@example.com'
+ });
+ assert.equal(info.banco,'Banco de pagos');
+ assert.equal(info.titular,'Titular de pagos');
+ assert.equal(info.cuenta,'12345678901234');
 });
