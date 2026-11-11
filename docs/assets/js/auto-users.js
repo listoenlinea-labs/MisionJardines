@@ -160,7 +160,8 @@
     return '<button type="button" data-edit="' + esc(u.id) + '">Editar</button><button type="button" data-invite="' + esc(u.id) + '">Enviar</button>';
   }
   function deleteButton(u) {
-    return u.estatus === 'PENDIENTE' && u.cuentaAceptada === false && !u.esPrueba
+    // La lista puede recibir el TINYINT de MySQL como 0 en lugar de false.
+    return u.estatus === 'PENDIENTE' && [false, 0, '0'].includes(u.cuentaAceptada) && !u.esPrueba
       ? '<button type="button" class="secondary" data-delete-preregistration="' + esc(u.id) + '">Borrar prerregistro</button>'
       : '';
   }
@@ -198,7 +199,7 @@
     $('usersPrevious').disabled = busy || page <= 1; $('usersNext').disabled = busy || page * 50 >= total;
     $('reportsPage').textContent = 'Reportes: ' + reportTotal + ' · Página ' + reportPage + ' de ' + Math.max(1, Math.ceil(reportTotal / 50));
     $('reportsPrevious').disabled = busy || reportPage <= 1; $('reportsNext').disabled = busy || reportPage * 50 >= reportTotal;
-    $('autoUserRows').innerHTML = rows.length ? rows.map(u => '<tr><td>' + esc(name(u)) + '<small>Condómino #' + esc(u.condominoId) + '</small></td><td>' + (u.viviendas || []).map(c => esc(c.calleCorrecta || c.calle) + ' ' + esc(c.numero)).join('<br>') + '</td><td>' + esc(u.nombreUsuario || u.correo) + '<small>' + esc(u.correo || 'Sin e-mail') + '</small></td><td>' + esc(u.telefono || 'Sin teléfono') + '</td><td>' + (u.cuentaAceptada ? 'Sí' : 'No') + '</td><td>' + esc(labels[u.invitacion?.envioEstado] || 'Sin invitación') + '<small>' + esc(u.invitacion?.ultimoError || '') + '</small></td><td>' + buttons(u) + deleteButton(u) + '</td></tr>').join('') : '<tr><td colspan="7">Aún no hay cuentas asociadas. Presiona Crear usuarios.</td></tr>';
+    $('autoUserRows').innerHTML = rows.length ? rows.map(u => '<tr><td>' + esc(name(u)) + '<small>Condómino #' + esc(u.condominoId) + '</small></td><td>' + (u.viviendas || []).map(c => esc(c.calleCorrecta || c.calle) + ' ' + esc(c.numero)).join('<br>') + '</td><td>' + esc(u.nombreUsuario || u.correo) + '<small>' + esc(u.correo || 'Sin e-mail') + '</small></td><td>' + esc(u.telefono || 'Sin teléfono') + '</td><td>' + ([true, 1, '1'].includes(u.cuentaAceptada) ? 'Sí' : 'No') + '</td><td>' + esc(labels[u.invitacion?.envioEstado] || 'Sin invitación') + '<small>' + esc(u.invitacion?.ultimoError || '') + '</small></td><td>' + buttons(u) + deleteButton(u) + '</td></tr>').join('') : '<tr><td colspan="7">Aún no hay cuentas asociadas. Presiona Crear usuarios.</td></tr>';
     $('errorReports').innerHTML = reports.length ? reports.map(r => '<article class="report-card"><strong>' + esc(name(r.usuario || {})) + ' · Usuario #' + esc(r.usuarioId) + '</strong><p>Datos reportados: ' + (r.datosReportados?.viviendas || [{ calle: r.datosReportados?.calle, numero: r.datosReportados?.numero }]).map(c => esc(c.calle) + ' ' + esc(c.numero)).join('<br>') + '<br>' + esc(r.datosReportados?.nombreUsuario) + ' · ' + esc(r.datosReportados?.correo || 'Sin e-mail') + '</p><p class="report-comment">' + esc(r.comentario) + '</p><small>' + esc(labels[r.estatus] || r.estatus) + ' · ' + esc(new Date(r.creadoEn).toLocaleString('es-MX')) + '</small><div class="actions">' + buttons(r.usuario || { id: r.usuarioId }) + '</div></article>').join('') : '<p>No hay reportes de errores.</p>';
     for (const button of document.querySelectorAll('[data-delete-preregistration]')) button.addEventListener('click', () => deletePreregistration(button.dataset.deletePreregistration));
     for (const button of document.querySelectorAll('[data-edit]')) button.addEventListener('click', () => edit(button.dataset.edit));
