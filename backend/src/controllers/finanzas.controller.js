@@ -2,6 +2,7 @@ const {Op,QueryTypes,Transaction}=require('sequelize');
 const sequelize=require('../config/database');
 const { compararDirecciones }=require('../services/direccion-sort.service');
 const { seleccionarPadronAnalisis }=require('../services/padron-finanzas.service');
+const {esViviendaTest001}=require('../services/viviendas-visibles.service');
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
 const { calcularAdeudoVivienda }=require('../services/adeudo-vivienda-analisis.service');
 const {estadoPeriodoMantenimiento}=require('../services/estado-mantenimiento-tablas.service');
@@ -59,7 +60,10 @@ async function analizar(req,res){
   });
   const registros=ultimosRegistrosPago({reportados:require('../services/pagos-reparto-datos').desglosar(foliosRegistrados),cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
+  // La vivienda de prueba se muestra solamente en Análisis. El padrón y las
+  // gráficas de cobranza permanecen calculados con las casas oficiales.
   const padron=seleccionarPadronAnalisis(casas,cuotas);
+  const padronVista=seleccionarPadronAnalisis(casas,cuotas,{incluirTest001:true});
   const historiales=new Map();
   for(const cuota of historialCuotas){
    const id=String(cuota.casaId);
@@ -74,9 +78,9 @@ async function analizar(req,res){
   const bancosMantenimiento=porCasa(require('../services/pagos-reparto-datos').desglosar(comprobantesMantenimiento));
   const bancosConceptos=porCasa(pagosConceptoHistoricos);
   const manualesConceptos=porCasa(manualesConceptoHistoricos);
-  const tagsPorCasa=tagsParaViviendas(padron.casas,tarjetas);
+  const tagsPorCasa=tagsParaViviendas(padronVista.casas,tarjetas);
   const streets=new Map();
-  const residences=padron.casas.map(h=>{
+  const residences=padronVista.casas.map(h=>{
    const q=byHouse.get(String(h.id));
    const cuotasDeCasa=historiales.get(String(h.id))||[];
    const adeudo=calcularAdeudoVivienda(cuotasDeCasa,{anio,mes,tarifa:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[]});
@@ -99,25 +103,29 @@ async function analizar(req,res){
     (Boolean(ultimoAbono)&&q?.origenImportacion==='MANUAL_ABONO_ADEUDO'&&num(q?.montoPagado)>0);
    // Pago parcial cuenta como vivienda con algún pago, pero se conserva su estatus.
    const calle=String(h.calleCorrecta||h.calle||'Sin calle');
-   if(!streets.has(calle))streets.set(calle,{calle,total:0,pagadas:0,pendientes:0,abonos:0});
-   const st=streets.get(calle);
-   st.total++;if(cuotaCompleta)st.pagadas++;else st.pendientes++;
-   st.abonos+=num(q?.montoPagado);
+   const esPrueba=esViviendaTest001(h);
+   if(!esPrueba){
+    if(!streets.has(calle))streets.set(calle,{calle,total:0,pagadas:0,pendientes:0,abonos:0});
+    const st=streets.get(calle);
+    st.total++;if(cuotaCompleta)st.pagadas++;else st.pendientes++;
+    st.abonos+=num(q?.montoPagado);
+   }
    const bancosDeCasa=bancosMantenimiento.get(String(h.id))||[];
    const ultimoPago=historialMantenimiento(cuotasDeCasa,bancosDeCasa)[0]||null;
    // Sólo el movimiento que acredita el período consultado puede generar
    // folio en Excel. No reutilizar el último recibo de octubre para deudores.
    const reciboPeriodo=reciboDelPeriodo({casa:h,cuotas:cuotasDeCasa,
      comprobantes:bancosDeCasa,estado:status,saldoPendiente:adeudo.saldoPendiente,anio,mes});
-   return {casaId:h.id,calle,numero:h.numero,nombre:h.nombre||q?.nombrePagador||'',residenteRegistrado:Boolean(String(h.nombre||'').trim()),tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,abonoConAdeudo:Boolean(ultimoAbono),ultimoAbonoConAdeudo:ultimoAbono,montoPagado:num(q?.montoPagado),ultimoPago,reciboPeriodo,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
+   return {casaId:h.id,calle,numero:h.numero,esPrueba,nombre:h.nombre||q?.nombrePagador||'',residenteRegistrado:Boolean(String(h.nombre||'').trim()),tarifaMensual:tarifaParaCasa(h),exencionesRecargo:h.exencionesRecargo||[],saldoFavor:adeudo.saldoFavor||0,ultimoRegistroPago:registros.get(String(h.id)+':MANTENIMIENTO')||null,estatus:status,pagada,abonoConAdeudo:Boolean(ultimoAbono),ultimoAbonoConAdeudo:ultimoAbono,montoPagado:num(q?.montoPagado),ultimoPago,reciboPeriodo,saldoPendiente:adeudo.saldoPendiente,ultimoMesPagado:adeudo.ultimoMesPagado,mesesPendientes:adeudo.mesesPendientes,recargosPendientes:adeudo.recargosPendientes,
     tags:tagsPorCasa.get(String(h.id))};
   });
+  const residencesOficiales=residences.filter(h=>!h.esPrueba);
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
-  const viviendasConceptos=resumenConceptos({viviendas:residences,cargos:cargosExtraordinarios,reportados:pagosConceptoHistoricos,
+  const viviendasConceptos=resumenConceptos({viviendas:residencesOficiales,cargos:cargosExtraordinarios,reportados:pagosConceptoHistoricos,
    manuales:manualesConceptoHistoricos,aportaciones:aportacionesExtraordinarias,reservas:reservasAprobadas,anio,mes});
   const proyectosExtraordinarios=require('../services/proyectos-extraordinarios.service').juntar(
    cuotasExtras.filter(p=>p.activo),cargosExtraordinarios,aportacionesExtraordinarias,
-   manualesConceptoHistoricos,pagosConceptoHistoricos,residences);
+   manualesConceptoHistoricos,pagosConceptoHistoricos,residencesOficiales);
   for(const tipo of ['EXTRAORDINARIO','CASA_CLUB']){
    for(const row of viviendasConceptos[tipo]){
     const casaId=String(row.casaId);
@@ -156,7 +164,7 @@ async function analizar(req,res){
   const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
   for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
-  const pagadas=residences.filter(h=>String(h.estatus)==='PAGADO').length; // Cumplimiento, no simples ingresos.
+  const pagadas=residencesOficiales.filter(h=>String(h.estatus)==='PAGADO').length; // Cumplimiento, no simples ingresos.
   // Desglose sin paginación ni filtros del navegador para los cuatro Excel del tablero.
   // Estos movimientos se consultaron ya para construir los mismos indicadores.
   const viviendasPorId=new Map(residences.map(h=>[String(h.casaId),h]));
@@ -181,12 +189,13 @@ async function analizar(req,res){
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,data:{
    anio,mes,periodo:mesName+' '+anio,
-   casas:residences.length,pagadas,pendientes:residences.length-pagadas,
-   porcentaje:residences.length?Math.round(pagadas/residences.length*10000)/100:0,
+   casas:residencesOficiales.length,pagadas,pendientes:residencesOficiales.length-pagadas,
+   porcentaje:residencesOficiales.length?Math.round(pagadas/residencesOficiales.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,proyectosExtraordinarios,
    cuotasPeriodoDetalle,pagosPeriodoDetalle,manualesConceptoPeriodoDetalle,
    padronExcluidos:padron.excluidas,padronDuplicados:padron.duplicadas,
-   avisoPadron:padron.excluidas ? 'El porcentaje de cumplimiento excluye '+padron.excluidas+' registros auxiliares, fuera del padrón o de prueba. Los registros, cuotas y pagos originales permanecen en la base de datos.' : '',
+   viviendaPruebaVisible:residences.some(h=>h.esPrueba),
+   avisoPadron:padron.excluidas ? 'El porcentaje de cumplimiento excluye '+padron.excluidas+' registros auxiliares y de prueba. TEST-001 puede verse en esta tabla para pruebas, pero no modifica los indicadores oficiales ni los datos originales.' : '',
    cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,
    ingresosParaBalance,ingresosAdicionales,totalManualConcepto,ingresosAportacionesExtraordinarias,saldoInicial,ingresosManuales,
    ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,

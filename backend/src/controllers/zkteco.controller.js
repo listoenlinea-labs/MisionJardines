@@ -1,6 +1,6 @@
 const ZkTarjeta=require('../models/ZkTarjeta');
 const {Op}=require('sequelize');
-const {esViviendaVisible,esDepartamentoVisible}=require('../services/viviendas-visibles.service');
+const {esViviendaVisible,esDepartamentoVisible,esViviendaTest001,normalizarCalle}=require('../services/viviendas-visibles.service');
 const Casa=require('../models/Casa');
 const {
   testDirectConnection,
@@ -86,10 +86,10 @@ async function inventario(req,res){
   const map=new Map(casas.map(c=>[Number(c.id),c]));
   const data=rows.filter(r=>{
     const casa=map.get(Number(r.casaId));
-    if(casa)return esViviendaVisible(casa);
+    if(casa)return esViviendaVisible(casa)||(['SUPER_ADMIN','ADMINISTRADOR'].includes(req.usuario?.rol)&&esViviendaTest001(casa));
     // Cuando C3 aún no tiene casa asignada, aplicar la misma regla
     // de visibilidad a DEPTNAME, sin cambiar la tarjeta del controlador.
-    return esDepartamentoVisible(r.departamento);
+    return esDepartamentoVisible(r.departamento)||(['SUPER_ADMIN','ADMINISTRADOR'].includes(req.usuario?.rol)&&normalizarCalle(r.departamento)==='prueba test 001');
   });
   res.json({ok:true,total:data.length,data});
 }
@@ -334,7 +334,7 @@ async function pluma(req,res){
   catch(error){res.status(502).json({ok:false,message:'No fue posible operar la pluma',error:error.message});}
 }
 async function viviendas(req,res){
-  try{res.json({ok:true,data:await dashboard(req.query)});}
+  try{res.json({ok:true,data:await dashboard({...req.query,incluirTest001:['SUPER_ADMIN','ADMINISTRADOR'].includes(req.usuario?.rol)})});}
   catch(error){res.status(500).json({ok:false,message:'No fue posible consultar viviendas y controles',error:error.message});}
 }
 async function simular(req,res){res.json({ok:true,data:await simularCorte(new Date())});}
