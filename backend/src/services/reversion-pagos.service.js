@@ -81,9 +81,11 @@ async function preparar(casaId,referencia,transaction){
  const eventos=await Evento.findAll({where:{casaId,referencia},transaction,
   ...(transaction?{lock:transaction.LOCK.UPDATE}:{})});
  if(pruebaBancariaHuerfana){
-  // No debe existir ningún posible efecto físico sobre tarjetas ni una orden
-  // de acceso: sólo es seguro restaurar la CONTABILIDAD del TEST-001.
-  if(tags.length)throw fail(409,'TEST-001 tiene TAGs asociados: requiere conciliación para evitar modificar accesos físicos.');
+  // La cuenta ficticia puede tener TAGs asignados como datos de prueba.
+  // Su existencia no impide corregir la cuota huérfana: sólo se requiere
+  // asegurar que ESTE depósito nunca escribió acciones físicas en el C3.
+  // La ruta de anulación de laboratorio NO calcula ni envía vigencias,
+  // NO altera ZkTarjeta y NO crea órdenes de acceso.
   if(eventos.length>1||eventos.some(e=>e.estado==='ANULADO'||e.origen!=='PAGO_CUOTAS'))
    throw fail(409,'TEST-001 conserva eventos C3 incompatibles con una reversión contable segura.');
   if(eventos.length){
@@ -123,7 +125,7 @@ async function preparar(casaId,referencia,transaction){
     decisiones.filter(d=>d.estadoPendiente).map(d=>({...d.cuota.get({plain:true}),...d.estadoPendiente})),
     extras.map(d=>d.original));
  const fechaObjetivo=fechaDesdeCuotas(restauradas);
- if(tags.length&&!/^\d{4}-\d\d-\d\d$/.test(String(fechaObjetivo||'')))
+ if(tags.length&&!pruebaBancariaHuerfana&&!/^\d{4}-\d\d-\d\d$/.test(String(fechaObjetivo||'')))
   throw fail(409,'No se pudo calcular la vigencia previa de los TAGs a partir de cuotas confirmadas');
  return {casa,cuotas:decisiones,extras,evento,fechaObjetivo,tags,tipo:pruebaBancariaHuerfana?'PRUEBA_BANCARIA_HUERFANA':manual?'MANUAL':'HISTORICO'};
 }
@@ -132,7 +134,7 @@ async function vistaPrevia(casaId,referencia){
  return {casaId:Number(casaId),referencia,periodos:x.cuotas.map(d=>d.cuota.mes+' '+d.cuota.anio),
   importe:x.cuotas.reduce((s,d)=>s+Number(d.cuota.montoPagado),0),fechaObjetivo:x.fechaObjetivo,
   tags:x.tags.length,estadoC3:x.evento?.estado||'SIN_EVENTO_ANTERIOR',tipo:x.tipo,
-  advertencia:x.tipo==='PRUEBA_BANCARIA_HUERFANA'?'TEST-001: el reporte bancario ya no existe; se quitará únicamente su acreditación contable, se conservará auditoría y NO se enviarán órdenes al C3.':'El ajuste contable es inmediato; el C3 se restaura de forma asíncrona y exige verificación física.'};
+  advertencia:x.tipo==='PRUEBA_BANCARIA_HUERFANA'?'TEST-001: se anulará únicamente la cuota bancaria huérfana. Se conservan los TAGs asignados, su vigencia y su estado físico. NO se generarán ni enviarán órdenes al C3. La operación quedará auditada.':'El ajuste contable es inmediato; el C3 se restaura de forma asíncrona y exige verificación física.'};
 }
 async function anular(casaId,referencia,usuarioId){
  const resultado=await sequelize.transaction(async transaction=>{
@@ -154,7 +156,7 @@ async function anular(casaId,referencia,usuarioId){
   }
   for(const d of x.extras){const original={...d.original};delete original.id;delete original.casaId;await d.cuota.update(original,{transaction});}
   let reparacion=null;
-  if(x.tags.length){
+  if(x.tags.length&&x.tipo!=='PRUEBA_BANCARIA_HUERFANA'){
    const estado='PENDIENTE';
    const evento=await Evento.create({casaId,claveMovimiento:'REVERSA:'+randomUUID(),
     origen:'REVERSA',origenId:x.evento?.id||x.cuotas[0].cuota.id,referencia:'REVERSA:'+referencia,
@@ -167,7 +169,7 @@ async function anular(casaId,referencia,usuarioId){
    transaction.afterCommit(()=>solicitar(Number(casaId)));
   }
   return {casaId,referencia,tipo:x.tipo,periodosRestaurados:x.cuotas.length,conciliacionesRestauradas:x.extras.length,fechaObjetivo:x.fechaObjetivo,
-   restauracionC3:reparacion||{estado:'SIN_TAGS'}};
+   restauracionC3:reparacion||{estado:x.tipo==='PRUEBA_BANCARIA_HUERFANA'?'SIN_CAMBIOS_C3':'SIN_TAGS',tagsConservados:x.tipo==='PRUEBA_BANCARIA_HUERFANA'?x.tags.length:0}};
  });
  return resultado;
 }

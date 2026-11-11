@@ -247,14 +247,36 @@ test('TEST-001: un pago bancario todavía VALIDADO en el reporte no se puede bor
   rows:[quota(7,'NOVIEMBRE',ref,350,{origenImportacion:'PAGO_BANCARIO_CUOTAS'})]});
  await assert.rejects(()=>h.service.vistaPrevia(4,ref),e=>e.status===409&&/Pago bancario validado/.test(e.message));
 });
-test('TEST-001: TAGs o acciones físicas registradas bloquean la excepción',async()=>{
+test('TEST-001: TAGs asociados NO impiden revertir la cuota sin escribir ni agendar C3',async()=>{
  const ref='MBAN01002611110093123121';
- const q=()=>quota(7,'NOVIEMBRE',ref,350,{origenImportacion:'PAGO_BANCARIO_CUOTAS'});
+ const nov=quota(7,'NOVIEMBRE',ref,350,{origenImportacion:'PAGO_BANCARIO_CUOTAS'});
+ const oct=quota(6,'OCTUBRE','TEST-OCT26-ABONO-340',340);
  const casa={id:4,calle:'Prueba',numero:'TEST-001'};
- const withTags=harness({casa,rows:[q()],tags:[{id:99,numeroTarjeta:'92399'}]});
- await assert.rejects(()=>withTags.service.vistaPrevia(4,ref),e=>e.status===409&&/TAGs/.test(e.message));
- const withEvents=harness({casa,rows:[q()],
+ const tag={id:99,numeroTarjeta:'92399',casaId:4,fechaVigencia:'2026-12-10'};
+ const withTags=harness({casa,rows:[oct,nov],tags:[tag]});
+ const previo=await withTags.service.vistaPrevia(4,ref);
+ assert.equal(previo.tipo,'PRUEBA_BANCARIA_HUERFANA');
+ assert.equal(previo.tags,1);
+ assert.match(previo.advertencia,/Se conservan los TAGs/);
+ const result=await withTags.service.anular(4,ref,88);
+ assert.equal(nov.montoPagado,0);
+ assert.equal(nov.estatusPago,'PENDIENTE');
+ assert.equal(oct.montoPagado,340);
+ assert.equal(result.restauracionC3.estado,'SIN_CAMBIOS_C3');
+ assert.equal(result.restauracionC3.tagsConservados,1);
+ assert.equal(tag.fechaVigencia,'2026-12-10');
+ assert.equal(withTags.calls.events.length,0);
+ assert.equal(withTags.calls.tags.length,0);
+ assert.equal(withTags.calls.requested.length,0);
+ assert.equal(withTags.calls.audit.length,1);
+});
+test('TEST-001: acciones físicas C3 existentes sí impiden borrar la cuota bancaria',async()=>{
+ const ref='MBAN01002611110093123121';
+ const q=quota(7,'NOVIEMBRE',ref,350,{origenImportacion:'PAGO_BANCARIO_CUOTAS'});
+ const casa={id:4,calle:'Prueba',numero:'TEST-001'};
+ const withEvents=harness({casa,rows:[q()],tags:[{id:99,numeroTarjeta:'92399'}],
   events:[{id:7,referencia:ref,origen:'PAGO_CUOTAS',estado:'PENDIENTE'}],
   eventTagActions:[{id:42,pagoAccesoId:7}]});
  await assert.rejects(()=>withEvents.service.vistaPrevia(4,ref),e=>e.status===409&&/acciones C3/.test(e.message));
+ assert.equal(q.montoPagado,350);
 });
