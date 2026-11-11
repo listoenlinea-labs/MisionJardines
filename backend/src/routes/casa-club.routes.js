@@ -18,6 +18,7 @@ router.post('/reservas',limiteSolicitudes,(req,res)=>
  ['SUPER_ADMIN','ADMINISTRADOR'].includes(req.usuario.rol)?club.crear(req,res):club.solicitar(req,res));
 router.patch('/reservas/:id/cancelar',club.cancelar);
 router.get('/administracion',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.listar);
+router.get('/administracion/:id/comprobantes',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.comprobantes);
 router.get('/administracion/tarifas',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.obtenerTarifas);
 router.patch('/administracion/tarifas',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.guardarTarifas);
 router.patch('/administracion/:id/liberar',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.liberar);
