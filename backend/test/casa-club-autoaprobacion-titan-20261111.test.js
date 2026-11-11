@@ -109,6 +109,30 @@ test('No se cancela una fecha con comprobante todavía en revisión',async t=>{
  assert.equal(r.code,409);
  assert.equal(cancelada,false);
 });
+test('Administración consulta comprobantes de la reserva sin exponer sus datos brutos',async t=>{
+ const club=require('../src/controllers/casa-club.controller');
+ const PagoReportado=require('../src/models/PagoReportado');
+ const Manual=require('../src/models/PagoManualConcepto');
+ const makeRes=()=>({code:200,body:null,status(n){this.code=n;return this;},json(d){this.body=d;return this;},setHeader(){}});
+ let consultados=0;
+ t.mock.method(Reserva,'findByPk',async()=>({id:81}));
+ t.mock.method(PagoReportado,'findAll',async()=>{consultados++;return [{
+   id:97,folioReporte:'MJ-2026-0097',monto:'2000.00',estatus:'VALIDADO',fechaOperacion:hoy(),
+   fechaValidacion:new Date(),comprobanteNombre:'comp.jpg',reciboPdfNombre:'recibo.pdf',creadoEn:new Date(),
+   comprobanteData:'SECRETO_QUE_NO_DEBE_SALIR'
+ }];});
+ t.mock.method(Manual,'findAll',async()=>[]);
+ const denied=makeRes();
+ await club.comprobantes({usuario:{rol:'CONDOMINO'},params:{id:81}},denied);
+ assert.equal(denied.code,403);
+ assert.equal(consultados,0);
+ const allowed=makeRes();
+ await club.comprobantes({usuario:{rol:'ADMINISTRADOR'},params:{id:81}},allowed);
+ assert.equal(allowed.code,200);
+ assert.equal(allowed.body.data.automaticos[0].estatus,'VALIDADO');
+ assert.equal(allowed.body.data.automaticos[0].monto,2000);
+ assert.equal(JSON.stringify(allowed.body).includes('SECRETO_QUE_NO_DEBE_SALIR'),false);
+});
 test('La API de comprobantes pertenece exclusivamente a Administración',()=>{
  const routes=fs.readFileSync(path.resolve(__dirname,'../src/routes/casa-club.routes.js'),'utf8');
  assert.match(routes,/administracion\/:id\/comprobantes',autorizarRoles\('SUPER_ADMIN','ADMINISTRADOR'\)/);
