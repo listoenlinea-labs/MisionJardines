@@ -308,7 +308,7 @@
     for(const storage of [localStorage,sessionStorage])
      if(storage.getItem('misionJardinesToken')===token)storage.setItem('misionJardinesUsuario',JSON.stringify(profile));
     const script=document.createElement('script');
-    script.src='assets/js/site-sidebar.js?v=20261021-refresco-scroll';
+    script.src='assets/js/site-sidebar.js?v=20261111-condomino-pagos';
     document.head.append(script);
    }
   }catch(_){/* Un visitante puede reservar aunque una sesión previa haya caducado. */}
