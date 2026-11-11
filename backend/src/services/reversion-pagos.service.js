@@ -9,7 +9,8 @@ const Evento=require('../models/PagoAccesoC3');
 const EventoTag=require('../models/PagoAccesoTagC3');
 const {fechaDesdeCuotas}=require('./cuotas-mantenimiento-calculo');
 const {solicitar}=require('./zkteco-vigencias.service');
-const {referenciaHistoricaValida,estadoPendienteHistorico}=require('./reversion-historicos.helper');
+const {referenciaHistoricaValida,estadoPendienteHistorico,esOrigenBancario}=require('./reversion-historicos.helper');
+const {esViviendaTest001}=require('./viviendas-visibles.service');
 const {condicionCasa}=require('./pagos-reparto.service');
 const {planParaCasa}=require('./pagos-reparto-datos');
 const meses=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
@@ -53,6 +54,11 @@ async function preparar(casaId,referencia,transaction){
   throw fail(409,'La referencia manual ya no coincide con las cuotas confirmadas; requiere conciliación.');
  if(!manual&&elegidas.some(c=>String(c.origenImportacion||'').startsWith('MANUAL_ANALISIS')))
   throw fail(409,'El pago manual tiene una referencia que no permite su reversión segura.');
+ // El único caso de conciliación excepcional es la vivienda de LABORATORIO:
+ // el reporte se borró por SQL, pero quedó su acreditación en cuotas. Nunca
+ // generalizar esto a pagos bancarios ni a otros domicilios.
+ const pruebaBancariaHuerfana=esViviendaTest001(casa)&&!manual&&
+  elegidas.every(c=>esOrigenBancario(c.origenImportacion));
  if(cuotas.some(c=>!elegidas.includes(c)&&Number(c.montoPagado)>0&&indice(c)>Math.max(...elegidas.map(indice))))
   throw fail(409,'Existen períodos posteriores pagados; anula primero el movimiento más reciente.');
  if(!manual){
@@ -71,9 +77,21 @@ async function preparar(casaId,referencia,transaction){
     periodos.has(a.anio+':'+String(a.mes).toUpperCase()));
   }))throw fail(409,'La cuota está vinculada a un depósito bancario conciliado, aunque tenga otra referencia. Requiere una reversión bancaria completa.');
  }
+ const tags=await ZkTarjeta.findAll({where:{casaId},transaction});
  const eventos=await Evento.findAll({where:{casaId,referencia},transaction,
   ...(transaction?{lock:transaction.LOCK.UPDATE}:{})});
- if((manual&&eventos.length!==1)||eventos.length>1||
+ if(pruebaBancariaHuerfana){
+  // No debe existir ningún posible efecto físico sobre tarjetas ni una orden
+  // de acceso: sólo es seguro restaurar la CONTABILIDAD del TEST-001.
+  if(tags.length)throw fail(409,'TEST-001 tiene TAGs asociados: requiere conciliación para evitar modificar accesos físicos.');
+  if(eventos.length>1||eventos.some(e=>e.estado==='ANULADO'||e.origen!=='PAGO_CUOTAS'))
+   throw fail(409,'TEST-001 conserva eventos C3 incompatibles con una reversión contable segura.');
+  if(eventos.length){
+   const acciones=await EventoTag.findAll({where:{pagoAccesoId:eventos[0].id},transaction,
+    ...(transaction?{lock:transaction.LOCK.UPDATE}:{})});
+   if(acciones.length)throw fail(409,'TEST-001 tiene acciones C3 registradas: no se permite una reversión de laboratorio sin conciliación.');
+  }
+ }else if((manual&&eventos.length!==1)||eventos.length>1||
   eventos.some(e=>e.estado==='ANULADO'||e.origen!=='CUOTA'))
   throw fail(409,'No existe un evento C3 único y vigente para este pago; requiere conciliación.');
  const evento=eventos[0]||null;
@@ -88,7 +106,7 @@ async function preparar(casaId,referencia,transaction){
  if(!manual&&antes.size)
   throw fail(409,'El pago histórico tiene una restauración anterior incompleta; requiere conciliación.');
  const decisiones=elegidas.map(c=>{
-  if(!manual)return {cuota:c,original:null,estadoPendiente:estadoPendienteHistorico(c,referencia)};
+  if(!manual)return {cuota:c,original:null,estadoPendiente:estadoPendienteHistorico(c,referencia,{permitirBancarioTest001:pruebaBancariaHuerfana})};
   if(antes.has(String(c.id)))return {cuota:c,original:typeof antes.get(String(c.id))==='string'?JSON.parse(antes.get(String(c.id))):antes.get(String(c.id))};
   const fechaAlta=new Date(c.creadoEn).getTime(),fechaPago=new Date(c.fechaConfirmacion).getTime();
   const nueva=Number.isFinite(fechaAlta)&&Number.isFinite(fechaPago)&&Math.abs(fechaAlta-fechaPago)<60000 &&
@@ -105,17 +123,16 @@ async function preparar(casaId,referencia,transaction){
     decisiones.filter(d=>d.estadoPendiente).map(d=>({...d.cuota.get({plain:true}),...d.estadoPendiente})),
     extras.map(d=>d.original));
  const fechaObjetivo=fechaDesdeCuotas(restauradas);
- const tags=await ZkTarjeta.findAll({where:{casaId},transaction});
  if(tags.length&&!/^\d{4}-\d\d-\d\d$/.test(String(fechaObjetivo||'')))
   throw fail(409,'No se pudo calcular la vigencia previa de los TAGs a partir de cuotas confirmadas');
- return {casa,cuotas:decisiones,extras,evento,fechaObjetivo,tags,tipo:manual?'MANUAL':'HISTORICO'};
+ return {casa,cuotas:decisiones,extras,evento,fechaObjetivo,tags,tipo:pruebaBancariaHuerfana?'PRUEBA_BANCARIA_HUERFANA':manual?'MANUAL':'HISTORICO'};
 }
 async function vistaPrevia(casaId,referencia){
  const x=await preparar(Number(casaId),referencia);
  return {casaId:Number(casaId),referencia,periodos:x.cuotas.map(d=>d.cuota.mes+' '+d.cuota.anio),
   importe:x.cuotas.reduce((s,d)=>s+Number(d.cuota.montoPagado),0),fechaObjetivo:x.fechaObjetivo,
   tags:x.tags.length,estadoC3:x.evento?.estado||'SIN_EVENTO_ANTERIOR',tipo:x.tipo,
-  advertencia:'El ajuste contable es inmediato; el C3 se restaura de forma asíncrona y exige verificación física.'};
+  advertencia:x.tipo==='PRUEBA_BANCARIA_HUERFANA'?'TEST-001: el reporte bancario ya no existe; se quitará únicamente su acreditación contable, se conservará auditoría y NO se enviarán órdenes al C3.':'El ajuste contable es inmediato; el C3 se restaura de forma asíncrona y exige verificación física.'};
 }
 async function anular(casaId,referencia,usuarioId){
  const resultado=await sequelize.transaction(async transaction=>{

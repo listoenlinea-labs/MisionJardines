@@ -5,9 +5,9 @@ const referenciaHistoricaValida=ref=>
  typeof ref==='string'&&/^[A-Za-z0-9][A-Za-z0-9:_./-]{0,149}$/.test(ref);
 const esOrigenBancario=origen=>/BANCO|BANCARIO|TRANSFERENCIA|IMAP|REPARTO|PAGO_REPORTADO/i.test(String(origen||''));
 const fail=(message)=>Object.assign(new Error(message),{status:409});
-function estadoPendienteHistorico(cuota,referencia){
+function estadoPendienteHistorico(cuota,referencia,{permitirBancarioTest001=false}={}){
  const origen=String(cuota?.origenImportacion||'');
- if(esOrigenBancario(origen))throw fail('El pago está ligado a un depósito bancario. No puede anularse sin revertir también su conciliación.');
+ if(esOrigenBancario(origen)&&!permitirBancarioTest001)throw fail('El pago está ligado a un depósito bancario. No puede anularse sin revertir también su conciliación.');
  if(String(cuota?.estatusPago).toUpperCase()!=='PAGADO'||!Number.isFinite(Number(cuota?.montoPagado))||Number(cuota.montoPagado)<=0)
   throw fail('El pago ya no está confirmado o contiene abonos parciales; requiere conciliación antes de anular.');
  const montoCuota=Number(cuota?.montoCuota);
@@ -19,7 +19,7 @@ function estadoPendienteHistorico(cuota,referencia){
   saldoPendiente:montoCuota,formaPago:null,referencia:null,folio:null,
   reciboPdfUrl:null,fechaPago:null,fechaConfirmacion:null,
   confirmadoPorUsuarioId:null,correoEnviado:false,fechaEnvioCorreo:null,
-  correoDestino:null,origenImportacion:'REVERSA_HISTORICO',
+  correoDestino:null,origenImportacion:permitirBancarioTest001?'REVERSA_PRUEBA_HUERFANA':'REVERSA_HISTORICO',
   observaciones:[cuota?.observaciones,nota].filter(Boolean).join('\n')
  };
 }
