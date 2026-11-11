@@ -1,23 +1,65 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 9/nov/2026, 23:33, America/Mexico_City.
-**SHA de main consultado:** `870b6f934bfc5f38b568c09e351b0b996572e875`.
+**Última revisión:** 10/nov/2026, 23:31, America/Mexico_City.
+**SHA de main consultado:** `5be37dc0f0e77657b698f4c8eea0bb6b56d88e87`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `389c9ed435f61a2b031d37cd24cb0f0c72336b84`,
-historial de 185 commits, PR #357–#372, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `9eddc6505127eabe1baef92a74d5f46baf3157a6`, dedicado exclusivamente
-a la bitácora anterior. Los 16 PR de producto están fusionados y no hay PR abiertos ni
-revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las validaciones
-declaradas en los PR son locales o simuladas y no se presentan como CI.
+comparación de main desde `870b6f934bfc5f38b568c09e351b0b996572e875`,
+historial de 45 commits, PR #373–#381, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `3709fd2b70ac67b8564360067b0057c8d3029918`, dedicado exclusivamente
+a la bitácora anterior. Los nueve PR de producto están fusionados y no hay PR abiertos
+ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
+descritas en los PR son dirigidas, simuladas o estáticas y no se presentan como CI.
 Las vistas previas efímeras de Hostinger se eliminaron al cerrar los PR y no acreditan
 despliegue del portal principal. No se consultaron Hostinger, MySQL o C3 directamente,
-no se hicieron llamadas, pagos o pruebas físicas y no se publican credenciales,
-teléfonos, comprobantes o datos privados del padrón.
+no se hicieron reservas, confirmaciones de pago, envíos, controles físicos o pruebas
+en sitio y no se publican credenciales, teléfonos o datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 10/nov/2026
+
+Los PR [#373](https://github.com/listoenlinea-labs/MisionJardines/pull/373)–[#375](https://github.com/listoenlinea-labs/MisionJardines/pull/375)
+agregan un medidor preventivo de conexiones/consultas MySQL visible solo para
+administración, conservan la sesión ante fallos temporales y sustituyen noticias sin
+clave por RSS con respaldo opcional. #374–#375 corrigen contraste y la capa del shell
+que ocultaba el medidor, estado y campana. El medidor estima únicamente la actividad
+del proceso actual: no incluye otros procesos, phpMyAdmin ni actividad previa al
+reinicio y no representa una cuota autoritativa de Hostinger. Falta desplegar
+frontend/backend, configurar límites conocidos y validar visualmente y contra el entorno
+real; el RSS externo también puede fallar.
+
+Los PR [#376](https://github.com/listoenlinea-labs/MisionJardines/pull/376)–[#378](https://github.com/listoenlinea-labs/MisionJardines/pull/378)
+y [#380](https://github.com/listoenlinea-labs/MisionJardines/pull/380) incorporan
+solicitudes públicas de Casa Club sin sesión, enlace público, sugerencias de domicilio y
+revisión administrativa del pago. Una solicitud aparta temporalmente la fecha; solo la
+confirmación administrativa del depósito con folio la aprueba. Se mantienen separados
+el formulario público y la reserva directa administrativa. Requiere migración controlada,
+frontend/backend coordinados, usuario nulo permitido, configuración bancaria, SMTP y
+plantilla aprobada de WhatsApp. No se envió ningún mensaje, no se confirmó ningún
+depósito ni se creó una reserva real en esta revisión.
+
+El PR [#379](https://github.com/listoenlinea-labs/MisionJardines/pull/379) agrega a
+ZKTeco una pestaña administrativa paralela para inventariar controles remotos por
+vivienda, con tablas y auditoría propias; no importa asignaciones heredadas ni modifica
+TAGs, pagos, C3, ZKAccess o el motor físico. Sus estados de activar/bloquear/vigencia y
+botones A–D existen solo en MySQL: un control marcado como bloqueado puede seguir
+abriendo el portón. Requiere migración de prueba, despliegue y confirmar receptor,
+protocolo e identificación RF en sitio antes de atribuirle protección física.
+
+El PR [#381](https://github.com/listoenlinea-labs/MisionJardines/pull/381) alinea en una
+fila las cinco acciones del panel TAGs, con desplazamiento horizontal en móvil. El bloque
+JavaScript original de TAGs se declaró idéntico y no cambian endpoints, sincronización,
+credenciales, pagos o C3. Falta revisión visual tras publicar GitHub Pages.
+
+GitHub devuelve cero runs y cero estados para los nueve heads. #376 reporta 28 pruebas y
+Chromium simulado en 320/390/768 px; #377 reporta 8 pruebas y `git diff --check`; #378
+reporta 33 pruebas y Chromium a 390 px; #380 reporta 35 pruebas dirigidas y conserva 36
+fallos de pagos reproducidos en la base. Los demás PR documentan sintaxis, verificaciones
+aisladas o estáticas sin suite Node completa. Ningún resultado acredita Hostinger,
+MySQL real, correo/WhatsApp, pago, navegador de producción o receptor físico.
 
 ## Implementado en main el 9/nov/2026
 
@@ -370,6 +412,10 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Monitor MySQL y noticias | Estimación y fallback RSS implementados en main; exactitud y despliegue pendientes | #373–#375 miden solo el proceso actual, conservan sesión ante fallos temporales y corrigen visualización. No es cuota autoritativa de Hostinger ni incluye otros procesos; falta entorno real y navegador |
+| Casa Club pública | Solicitud, enlace, domicilio y revisión administrativa implementados; migración y operación real pendientes | #376–#378/#380 permiten apartar sin sesión y aprobar solo tras confirmar depósito. Faltan SQL, banco, SMTP, WhatsApp, permisos, caducidad y prueba controlada; no hubo reservas ni pagos reales |
+| Controles remotos | Inventario administrativo aislado implementado; control físico no demostrado | #379 registra controles y auditoría en MySQL sin tocar TAGs/C3/pagos. Bloquear en UI no impide abrir portones; faltan migración, receptor/protocolo RF y prueba en sitio |
+| Barra TAGs | Ajuste visual implementado en main; navegador pendiente | #381 alinea cinco acciones sin cambiar lógica o endpoints ZKTeco; falta publicar y revisar responsive |
 | Análisis financiero y Excel | Balance, folios, móvil y pesos enteros implementados en main; aceptación real pendiente | #357–#360 agregan diferencia del período, enlace protegido a PDF, carrusel móvil, folio del período y formato sin centavos. No cambian precisión contable; faltan Microsoft Excel, PDF, enlaces y Android/iOS |
 | Conmutador, Seguridad y Visitas | Flujos implementados en main; migración, despliegue y operación real pendientes | #361–#365 incorporan marcado `tel:`, historial de intentos, menú/visitas de SEGURIDAD, tablero móvil y entrada al Conmutador. Un intento no prueba llamada; faltan SQL de prueba, permisos, privacidad, MySQL e iPhone 7 |
 | Abono con adeudo y alta rápida | Implementados en main; MySQL de prueba y conciliación pendientes | #364–#367 conservan morosidad, descuentan saldo sin adelantar corte ni TAGs/C3 y permiten registrar residente faltante. No se hicieron cargos ni escrituras reales |
@@ -450,6 +496,12 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 10/nov/2026 | PR #373–#381, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 9 heads | No hay CI nuevo; merge y vista previa no prueban despliegue |
+| 10/nov/2026 | #373–#375, comandos no publicados; parser/contador y verificaciones estáticas de Inicio | Casos aislados declarados correctos; suite Node completa no ejecutada | No prueba cuota real de Hostinger, RSS externo ni apariencia en producción |
+| 10/nov/2026 | #376, comando no publicado; suites Casa Club y Chromium simulado | **28 pruebas**; flujo público simulado en 320, 390 y 768 px | Sin envíos, depósitos ni transacciones reales |
+| 10/nov/2026 | #377–#378, comandos no publicados | #377: **8 pruebas** y `git diff --check` sin errores; #378: **33 pruebas** y Chromium a 390 px | Evidencia dirigida; falta despliegue y MySQL real |
+| 10/nov/2026 | #380, comando no publicado; Casa Club y navegador/API simulada | **35 pruebas**; **36 fallos** de la suite ampliada de pagos también reproducidos en la base | No declarar suite global verde; falta operación real |
+| 10/nov/2026 | #379/#381, comandos no publicados; sintaxis, equivalencia y regresión estática | Bloque TAGs declarado idéntico; tests Node/BD y visuales no ejecutados | No prueba receptor PO1000, bloqueo físico ni C3 |
 | 9/nov/2026 | PR #357–#372, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 16 heads | No hay CI nuevo; fusionar no equivale a suite verde ni a despliegue |
 | 9/nov/2026 | #358, comando no publicado; parseo JS y simulación de paginación/carrusel | **231 viviendas: 77 páginas móvil y 20 escritorio; navegación simulada correcta** | Evidencia local declarada en el PR; falta navegador Android/iOS |
 | 9/nov/2026 | #363, #365–#367, comandos no publicados; parseo y casos simulados de rol, abono, alta y etiqueta | Casos declarados correctos; #367 evaluó **4/4** variantes visuales | No se ejecutó suite Node/CI ni integración MySQL/Hostinger |
@@ -594,6 +646,10 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Medidor MySQL y noticias #373–#375 | Desplegar backend/frontend, configurar límites conocidos, comparar la estimación con métricas de Hostinger y otros procesos, probar 403 por rol, conservación de sesión y RSS/fallback; validar visualmente Inicio tras recarga sin caché |
+| Casa Club pública #376–#378/#380 | Ejecutar `backend/sql/2026-11-10-casa-club-reserva-publica.sql` en prueba, permitir usuario nulo de forma controlada, configurar banco/SMTP/WhatsApp y probar apartar, caducar, confirmar folio, colisiones, consentimiento, enlace público y administración sin usar pagos reales |
+| Controles remotos #379 | Ejecutar `backend/sql/2026-11-10-controles-remotos-mj.sql` en prueba, validar roles/CRUD/auditoría y confirmar con instalador el receptor, protocolo e identificación por botón. No presentar activar/bloquear MySQL como bloqueo físico |
+| ZKTeco visual #381 | Publicar GitHub Pages y comprobar en escritorio/móvil la fila de cinco botones, desplazamiento horizontal y que búsqueda, diagnóstico, logs y sincronización conserven comportamiento; no ejecutar acciones físicas como prueba documental |
 | Análisis, Excel y móvil de #357–#360 | Publicar coordinadamente y cotejar cifras del período, folios/enlaces con y sin sesión, anticipos y filas deudoras; abrir XLSX/ChartML y PDF reales en Microsoft Excel, y probar paginación/carrusel en Android/iOS sin confundir balance informativo con caja |
 | Conmutador y caseta #361–#365 | Ejecutar `backend/sql/2026-11-09-conmutador-intentos.sql` en MySQL de prueba, validar roles, privacidad y huso horario; probar marcado/cancelación/historial en iPhone 7 y registro de visita con SEGURIDAD. No declarar llamada conectada por registrar un intento |
 | Abono con adeudo y residente rápido #364–#367 | En clon MySQL, probar una vivienda controlada, duplicados, saldo, historial, folio, filtro/Excel, 403/409 y que corte/TAGs/C3 no cambien. No usar movimientos reales ni ejecutar reversión fuera de una conciliación explícita |
@@ -673,6 +729,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-10
+
+- Main consultado a las 23:31, America/Mexico_City, en `5be37dc0f0e77657b698f4c8eea0bb6b56d88e87`, 45 commits por delante del SHA guardado.
+- Se excluyó `3709fd2`, que solo actualizó esta bitácora. Como producto se verificaron nueve PR fusionados: #373–#375 (monitor MySQL/noticias e Inicio), #376–#378/#380 (Casa Club pública), #379 (controles remotos administrativos) y #381 (barra TAGs). No hay PR abiertos ni revertidos nuevos.
+- Los nueve heads devuelven cero workflows y cero estados. Se documentaron pruebas dirigidas: 28, 8, 33 y 35 en Casa Club, junto con 36 fallos de pagos reproducidos en la base; el resto son verificaciones aisladas/estáticas, sin suite Node completa.
+- Las vistas previas del bot de Hostinger fueron efímeras y se eliminaron al cerrar los PR. No hubo acceso directo a Hostinger, MySQL o C3, reservas, confirmaciones de depósito, mensajes ni pruebas físicas de receptores o portones.
+- Se actualizaron resumen, pruebas y pendientes conservando las reglas: el medidor no es cuota autoritativa, una solicitud no equivale a pago confirmado y el inventario de controles no controla físicamente el receptor.
 
 ### 2026-11-09
 
