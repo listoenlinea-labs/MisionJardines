@@ -186,8 +186,8 @@ async function anular(casaId,referencia,usuarioId){
   // Archivo de auditoría: un movimiento no se borra sin dejar constancia.
   const detalle=[...x.cuotas,...x.extras].map(d=>({cuota:d.cuota.get({plain:true}),anterior:d.original}));
   await sequelize.query('INSERT INTO pagos_anulaciones (casa_id,referencia,usuario_id,fecha_objetivo,detalle) VALUES (?,?,?,?,?)',
-   {replacements:[casaId,referencia,usuarioId,x.fechaObjetivo||null,JSON.stringify({cuotas:detalle,evento:x.evento?.get({plain:true})||null,
-    eventosC3:x.tipo==='PRUEBA_FORZADA'?(x.eventos||[]).map(e=>e.get({plain:true})):undefined,
+   {replacements:[casaId,referencia,usuarioId,x.fechaObjetivo||null,JSON.stringify({cuotas:detalle,evento:x.evento?(x.evento.get?.({plain:true})||{id:x.evento.id,estado:x.evento.estado,origen:x.evento.origen}):null,
+    eventosC3:x.tipo==='PRUEBA_FORZADA'?(x.eventos||[]).map(e=>e.get?.({plain:true})||{id:e.id,estado:e.estado,origen:e.origen}):undefined,
     reportes:x.tipo==='PRUEBA_FORZADA'?(x.reportes||[]).map(p=>({
      id:p.id,folioReporte:p.folioReporte,estatus:p.estatus,
      correoBancarioHash:p.correoBancarioHash
