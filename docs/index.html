@@ -1057,6 +1057,7 @@
           window.location.replace('app.html?page=conmutador.html');
           return;
         }
+        if (role === 'CONDOMINO') { window.location.replace('app.html?page=pagos.html'); return; }
         applyUser(result.usuario);
         window.MJDbCapacityMeter?.start(role);
       } catch (_) {

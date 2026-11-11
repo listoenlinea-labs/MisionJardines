@@ -34,7 +34,13 @@ async function autenticarToken(req, res, next) {
             return res.status(401).json({ok:false,message:'Esta sesión fue revocada. Inicia sesión nuevamente.'});
         }
         req.usuario = { ...payload, usuarioId:user.id, casaId:user.casaId, rolId:user.rolId, rol:user.rol.nombre };
-        const section = modules[req.baseUrl.split('/').pop()];
+        const endpoint = req.baseUrl.split('/').pop();
+        // Condómino: solamente pagos y reservaciones; auth/viviendas son
+        // auxiliares necesarios para sesión y selección de vivienda propia.
+        if (req.usuario.rol === 'CONDOMINO' && !['auth', 'viviendas', 'pagos', 'casa-club'].includes(endpoint)) {
+            return res.status(403).json({ok:false,message:'Tu cuenta solo tiene acceso a Pagos y Casa Club'});
+        }
+        const section = modules[endpoint];
         if (section && !canAccess(req.usuario.rol, section)) {
             return res.status(403).json({ok:false,message:'No tienes acceso a esta sección'});
         }

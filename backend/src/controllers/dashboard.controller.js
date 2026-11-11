@@ -1,6 +1,8 @@
 const { QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const { obtenerDashboardOperativo } = require('./dashboard-operativo.controller');
+const { resumenResidentesVisibles } = require('../services/dashboard-residentes.service');
+const { esViviendaVisible } = require('../services/viviendas-visibles.service');
 
 const MESES = [
     'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
@@ -178,10 +180,11 @@ async function obtenerDashboard(req, res) {
         ),
         consultaSegura(
             'condominos',
-            `SELECT
-                (SELECT COUNT(*) FROM condominos WHERE activo = 1) AS residentes_activos,
-                (SELECT COUNT(DISTINCT cv.vivienda_id) FROM condominos_viviendas cv INNER JOIN condominos c ON c.id = cv.condomino_id WHERE cv.activo = 1 AND c.activo = 1) AS viviendas_ocupadas,
-                (SELECT COUNT(*) FROM direcciones) AS viviendas_totales`,
+            `SELECT d.id, d.calle, d.calle_correcta AS calleCorrecta, d.numero,
+                    c.id AS condominoId
+             FROM direcciones d
+             LEFT JOIN condominos_viviendas cv ON cv.vivienda_id = d.id AND cv.activo = 1
+             LEFT JOIN condominos c ON c.id = cv.condomino_id AND c.activo = 1`,
             {},
             errores
         ),
@@ -260,7 +263,7 @@ async function obtenerDashboard(req, res) {
     const cuotaAnterior = cuotaAnteriorRows[0] || {};
     const visitas = visitasRows[0] || {};
     const accesos = accesosRows[0] || {};
-    const residentes = residentesRows[0] || {};
+    const residentes = resumenResidentesVisibles(residentesRows); // Padrón operativo visible, sin viviendas de prueba.
 
     const cuotaTotalActual = numero(cuotaActual.total_consideradas);
     const cuotaCorrienteActual = numero(cuotaActual.al_corriente);
@@ -335,7 +338,7 @@ async function obtenerDashboard(req, res) {
             numero: row.numero || ''
         }))
     ]
-        .filter(item => item.fecha)
+        .filter(item => item.fecha && esViviendaVisible({calle:item.calle, numero:item.numero}))
         .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
         .slice(0, 6);
 

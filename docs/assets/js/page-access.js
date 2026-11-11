@@ -25,13 +25,16 @@
     try {
       const response = await fetch((window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api') + '/auth/perfil', {headers:{Authorization:'Bearer '+token}});
       if (response.status === 403 && sessionStorage.getItem('mjCasaSeleccionada') && !['cuenta.html','viviendas.html','verificacion-cuentas.html'].includes(page)) {
-        sessionStorage.removeItem('mjCasaSeleccionada'); location.replace('viviendas.html'); return false;
+        sessionStorage.removeItem('mjCasaSeleccionada');
+        let roleAnterior = '';
+        try { const almacenado = localStorage.getItem('misionJardinesUsuario') || sessionStorage.getItem('misionJardinesUsuario'); const previo = JSON.parse(almacenado || 'null'); roleAnterior = previo?.rol?.nombre || previo?.rol || ''; } catch (_) {}
+        location.replace(roleAnterior === 'CONDOMINO' ? 'pagos.html' : 'viviendas.html'); return false;
       }
       if (!response.ok) throw new Error('No fue posible verificar tu sesión.');
       const data = await response.json();
       const user = data.usuario;
       const role = user?.rol?.nombre || user?.rol;
-      if (!data.ok || !role || !MJPermissions.canAccess(role,'cuenta.html')) throw new Error('Sesión inválida.');
+      if (!data.ok || !role || !MJPermissions.canAccess(role,MJPermissions.landing(role))) throw new Error('Sesión inválida.');
       for (const storage of [localStorage, sessionStorage]) {
         if (storage.getItem('misionJardinesToken') === token) storage.setItem('misionJardinesUsuario',JSON.stringify(user));
       }
