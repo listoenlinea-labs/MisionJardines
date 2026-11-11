@@ -19,7 +19,8 @@ function validar(datos){
 async function obtener(options={}){
  const row=await Modelo.findByPk(1,options);
  if(!row)throw fallo(503,'La configuración de Casa Club no está disponible. Comprueba la migración SQL.');
- return validar(row);
+ // Sequelize devuelve DECIMAL como cadena (p. ej. '700.00').
+ return validar(Object.fromEntries(claves.map(clave=>[clave,Number(row[clave])])));
 }
 async function guardar(datos,usuarioId){
  const nuevos=validar(datos),db=require('../config/database');
