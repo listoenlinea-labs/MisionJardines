@@ -212,7 +212,50 @@
   $('clubReviewError').hidden=true;syncReview();
   if(!reviewModal.open)reviewModal.showModal();
   void loadReviewWhatsApp(r);
+  void loadReviewProofs(r);
  }
+ async function loadReviewProofs(r){
+  const host=$('clubReviewProofs');
+  host.innerHTML='<h3>Comprobantes y movimientos bancarios</h3><p>Consultando expediente…</p>';
+  try{
+   const result=await api('/administracion/'+Number(r.id)+'/comprobantes');
+   if(activeReview!==r||!reviewModal.open)return;
+   const lista=result.data?.automaticos||[],manuales=result.data?.manuales||[];
+   const autom=lista.map(p=>'<article class="club-bank-record"><div><strong>'+esc(p.folio||'Comprobante '+p.id)+'</strong>'+
+    '<small>'+esc(money(p.monto))+' · '+esc(p.estatus)+' · Depósito '+esc(p.fechaOperacion||'—')+
+    (p.fechaValidacion?' · Validado '+esc(fechaSolicitud(p.fechaValidacion)):'')+'</small></div>'+
+    '<div class="club-bank-actions"><button type="button" class="soft" data-club-comprobante="'+Number(p.id)+'">Descargar comprobante</button>'+
+    '<button type="button" class="soft" data-club-recibo="'+Number(p.id)+'">Ver recibo PDF</button></div></article>').join('');
+   const manual=manuales.map(p=>'<article class="club-bank-record"><div><strong>Pago registrado por Administración</strong><small>'+
+    esc(money(p.monto))+' · '+esc(p.formaPago)+' · '+esc(p.referencia)+' · '+esc(fechaSolicitud(p.creadoEn))+
+    '</small></div></article>').join('');
+   host.innerHTML='<h3>Comprobantes y movimientos bancarios</h3>'+
+    (autom+manual||'<p>No hay pagos registrados para esta reserva.</p>');
+  }catch(e){if(activeReview===r&&reviewModal.open)host.innerHTML='<h3>Comprobantes y movimientos bancarios</h3><p>'+esc(e.message)+'</p>';}
+ }
+ $('clubReviewProofs').addEventListener('click',async e=>{
+  const button=e.target.closest('[data-club-comprobante],[data-club-recibo]');
+  if(!button||!admin)return;
+  const id=Number(button.dataset.clubComprobante||button.dataset.clubRecibo);
+  if(!Number.isSafeInteger(id)||id<=0)return;
+  button.disabled=true;
+  try{
+   const isProof=Boolean(button.dataset.clubComprobante);
+   const response=await fetch(API+'/pagos/'+id+(isProof?'/comprobante':'/recibo'),{headers:headers()});
+   if(!response.ok)throw Error('No fue posible descargar el comprobante o recibo bancario.');
+   let href;
+   if(isProof){
+    const json=await response.json();
+    href=String(json?.data?.comprobanteData||'');
+    if(!/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(href))throw Error('Formato de comprobante no disponible.');
+   }else href=URL.createObjectURL(await response.blob());
+   const a=document.createElement('a');
+   a.href=href;
+   a.download=(isProof?'Comprobante_':'Recibo_')+id+(isProof?'.jpg':'.pdf');
+   document.body.append(a);a.click();a.remove();
+   if(!isProof)setTimeout(()=>URL.revokeObjectURL(href),60000);
+  }catch(err){notify(err.message,true);}finally{button.disabled=false;}
+ });
  $('closeClubReview').addEventListener('click',()=>reviewModal.close());
  reviewModal.addEventListener('close',()=>{if(!reviewModal.open)activeReview=null;});
  $('clubPaymentVerified').addEventListener('change',syncReview);
