@@ -82,7 +82,12 @@ async function mias(req,res){
   const rows=await Reserva.findAll({where:{usuarioId:req.usuario.usuarioId},order:[['fecha','DESC'],['id','DESC']],limit:250});
   const ids=[...new Set(rows.map(x=>x.casaId))],casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','numero']}):[];
   const mapa=new Map(casas.map(x=>[Number(x.id),x]));
-  return res.json({ok:true,data:rows.map(x=>({...x.toJSON(),casa:mapa.get(Number(x.casaId))||null}))});
+  const reservaciones=rows.map(x=>Number(x.id));
+  const comprobantes=reservaciones.length?await PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaciones},tipoPago:'CASA_CLUB'},
+   attributes:['reservaCasaClubId','estatus'],raw:true}):[];
+  const enRevision=new Set(comprobantes.filter(x=>x.estatus==='PENDIENTE_VALIDACION').map(x=>Number(x.reservaCasaClubId)));
+  return res.json({ok:true,data:rows.map(x=>({...x.toJSON(),casa:mapa.get(Number(x.casaId))||null,
+   comprobanteEnRevision:enRevision.has(Number(x.id))}))});
  }catch(e){return manejar(res,e);}
 }
 async function crear(req,res){
