@@ -1142,6 +1142,16 @@
  padding:10px 12px;background:white;color:#24344c;font-size:14px}
 .extra-project-picker p{font-size:12px;line-height:1.5;color:#52647d;margin:9px 0 0}
 @media(max-width:600px){.extra-project-picker{padding:12px}}
+    .extra-project-picker select{position:relative;z-index:2;pointer-events:auto;cursor:pointer;appearance:auto;font-size:14px}
+    #extraList .extra-project-option{display:grid;width:100%;text-align:left;font:inherit;
+      cursor:pointer;min-height:60px;appearance:none;outline-offset:3px}
+    #extraList .extra-project-option span{min-width:0;display:block}
+    #extraList .extra-project-option small{display:block;color:#64748b;line-height:1.45;margin-top:5px}
+    #extraList .extra-project-option:focus-visible{outline:3px solid #f2aa62}
+    #extraList .extra-project-option.selected{border-color:#e98a24;background:#fff6eb}
+    #extraList .extra-project-option b{font-weight:800;white-space:nowrap}
+    #extraProjectPicker[hidden]{display:none!important}
+    #extraList[hidden]{display:none!important}
 </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
   <link rel="stylesheet" href="assets/css/pagos-reparto.css?v=20261026-reparto">
@@ -1449,7 +1459,7 @@
   <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles"></script>
   <script src="assets/js/pagos-reparto-calculo.js?v=20261026-reparto"></script>
   <script src="assets/js/pagos-reparto-ui.js?v=20261109-pesos-enteros-v1"></script>
-  <script src="assets/js/pagos.js?v=20261111-proyectos-todos-estados"></script>
+  <script src="assets/js/pagos.js?v=20261111-selector-proyecto-clic"></script>
   <script src="assets/js/pagos-historial.js?v=20261109-pesos-enteros-v1"></script>
 
   <script src="assets/js/site-sidebar.js?v=20261111-condomino-pagos"></script>
