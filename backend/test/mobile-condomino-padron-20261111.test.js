@@ -10,6 +10,10 @@ test('condómino solamente Pagos y Casa Club en frontend y backend',()=>{
     assert.equal(policy.landing('CONDOMINO'),'pagos.html');
     assert.deepEqual(policy.pages.filter(page=>policy.canAccess('CONDOMINO',page)).sort(),['casa-club.html','pagos.html']);
     assert.equal(policy.canAccess('ADMINISTRADOR','index.html'),true);
+    for(const page of ['cuotas.html','anuncios.html','calendario.html','directorio.html']) {
+      assert.equal(policy.canAccess('CONDOMINO',page),false,page);
+      assert.equal(policy.canAccess('ADMINISTRADOR',page),true,page);
+    }
     assert.equal(policy.canAccess('SEGURIDAD','conmutador.html'),true);
   }
 });
