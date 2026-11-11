@@ -1,5 +1,16 @@
 'use strict';
-const {Imap}=require('./correo-imap.transport');
+const {Imap,MAX_IMAP_LITERAL_BYTES}=require('./correo-imap.transport');
+const MAX_MENSAJES=80;
+// UID FETCH (UID RFC822.SIZE) se consulta antes de descargar el mensaje.
+// Evita que un adjunto de gran tamaño impida revisar otros movimientos.
+function tamanoUid(line){
+ if(!/^\*\s+\d+\s+FETCH\s+\(/i.test(String(line||'')))return null;
+ const uid=String(line).match(/\bUID\s+([1-9]\d*)\b/i);
+ const size=String(line).match(/\bRFC822\.SIZE\s+(\d+)\b/i);
+ if(!uid||!size)return null;
+ const id=Number(uid[1]),bytes=Number(size[1]);
+ return Number.isSafeInteger(id)&&Number.isSafeInteger(bytes)?{uid:id,bytes}:null;
+}
 function unfold(raw){
  const headers={};let key='';
  for(const line of raw.replace(/\r\n/g,'\n').split('\n')){
@@ -86,14 +97,38 @@ async function leerBuzon({mailbox,password,dias=7}){
    const found=line.match(/^\*\s+SEARCH(?:\s+(.*))?$/);
    if(found)ids=(found[1]||'').trim().split(/\s+/).map(Number).filter(n=>Number.isSafeInteger(n)&&n>0);
   });
+  const recientes=ids.slice(-MAX_MENSAJES).reverse();
+  const tamaños=new Map();
+  if(recientes.length){
+   // Una sola consulta para la lista completa. No recupera cuerpos ni adjuntos.
+   await client.cmd('UID FETCH '+recientes.join(',')+' (UID RFC822.SIZE)',line=>{
+    const info=tamanoUid(line);
+    if(info&&recientes.includes(info.uid))tamaños.set(info.uid,info.bytes);
+   });
+  }
   const results=[];
-  for(const uid of ids.slice(-80).reverse()){
+  let omitidosGrandes=0,omitidosSinTamano=0;
+  for(const uid of recientes){
+   const bytes=tamaños.get(uid);
+   if(!Number.isSafeInteger(bytes)||bytes<=0){omitidosSinTamano++;continue;}
+   if(bytes>MAX_IMAP_LITERAL_BYTES){omitidosGrandes++;continue;}
+   // Si IMAP, TLS o LOGIN fallan, propagar el error: nunca acreditar pagos
+   // por la mera ausencia de mensajes. El worker los deja PENDIENTES.
    const bodies=await client.cmd('UID FETCH '+uid+' (BODY.PEEK[])');
    if(bodies.length!==1)continue;
-   const parsed=parseMessage({uid,source:bodies[0]});
-   if(parsed)results.push(parsed);
+   try{
+    const parsed=parseMessage({uid,source:bodies[0]});
+    if(parsed)results.push(parsed);
+   }catch(_){
+    // Un MIME malformado no detiene la consulta de los demás correos.
+    console.warn('[Bancos] IMAP: se omitió un mensaje con formato MIME inválido (sin datos personales).');
+   }
   }
+  if(omitidosGrandes)
+   console.warn('[Bancos] IMAP: '+omitidosGrandes+' mensaje(s) exceden '+Math.floor(MAX_IMAP_LITERAL_BYTES/1048576)+' MiB; se omitieron sin descargar adjuntos. Otros avisos sí fueron revisados.');
+  if(omitidosSinTamano)
+   console.warn('[Bancos] IMAP: '+omitidosSinTamano+' mensaje(s) sin RFC822.SIZE válido; no se usaron para acreditar depósitos.');
   return results;
  }finally{client.close()}
 }
-module.exports={parseMessage,unfold,mimeText,leerBuzon,decodeHeader};
+module.exports={parseMessage,unfold,mimeText,leerBuzon,decodeHeader,tamanoUid};

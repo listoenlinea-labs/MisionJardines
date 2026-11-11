@@ -2,6 +2,10 @@
 // Buzón de pagos configurado; las credenciales nunca se registran.
 // El lector usa exclusivamente IMAP sobre TLS y comandos de solo lectura.
 const tls=require('node:tls');
+// IMAP notificaciones Titan con HTML extenso. Tope defensivo, sin admitir
+// descargas ilimitadas ni adjuntos gigantes en memoria.
+const MAX_IMAP_LITERAL_BYTES=8*1024*1024;
+const MAX_IMAP_BUFFER_BYTES=MAX_IMAP_LITERAL_BYTES+512*1024;
 class Imap {
  constructor(){this.buffer=Buffer.alloc(0);this.queue=[];this.error=null;this.tag=0;this.socket=null;}
  signal(error){if(error)this.error=error;this.queue.splice(0).forEach(w=>w());}
@@ -16,7 +20,7 @@ class Imap {
  const port=Number(process.env.PAGOS_IMAP_PORT||993);
  if(!/^[a-z0-9][a-z0-9.-]{2,252}$/.test(host)||!Number.isInteger(port)||port!==993)throw Error('Host IMAP o puerto TLS no válido');
  this.socket=tls.connect({host,port,servername:host,rejectUnauthorized:true,timeout:20000});
-  this.socket.on('data',c=>{this.buffer=Buffer.concat([this.buffer,c]);if(this.buffer.length>9000000)this.socket.destroy(Error('Respuesta extensa'));this.signal()});
+  this.socket.on('data',c=>{this.buffer=Buffer.concat([this.buffer,c]);if(this.buffer.length>MAX_IMAP_BUFFER_BYTES)this.socket.destroy(Error('Respuesta IMAP excede el límite de seguridad'));this.signal()});
   this.socket.on('error',e=>this.signal(e));this.socket.on('close',()=>this.signal(Error('IMAP desconectado')));this.socket.on('timeout',()=>this.socket.destroy(Error('el buzón IMAP excedió el tiempo de conexión')));
   await new Promise((resolve,reject)=>{this.socket.once('secureConnect',()=>this.socket.authorized?resolve():reject(Error('TLS inválido')));
     this.socket.once('error',reject)});
@@ -24,8 +28,8 @@ class Imap {
  }
  async cmd(cmd,onLine){const tag='B'+(++this.tag).toString().padStart(4,'0');this.socket.write(tag+' '+cmd+'\r\n');
   const result=[];for(;;){const l=await this.line();if(l.startsWith(tag+' ')){if(!l.startsWith(tag+' OK'))throw Error('IMAP no autorizó la petición');return result}
-   onLine?.(l);const m=l.match(/\{(\d+)\}$/);if(m){const n=Number(m[1]);if(n>400000)throw Error('Correo demasiado grande');result.push(await this.take(n))}}
+   onLine?.(l);const m=l.match(/\{(\d+)\}$/);if(m){const n=Number(m[1]);if(n>MAX_IMAP_LITERAL_BYTES)throw Error('Literal IMAP excede el límite de seguridad');result.push(await this.take(n))}}
  }
  close(){this.socket?.end()}
 }
-module.exports={Imap};
+module.exports={Imap,MAX_IMAP_LITERAL_BYTES};
