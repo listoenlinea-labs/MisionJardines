@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=p=>fs.readFileSync(path.resolve(__dirname,'../../',p),'utf8');
 const helper=require('../src/services/reversion-historicos.helper');
+const {esViviendaTest001}=require('../src/services/viviendas-visibles.service');
 
 function quota(id,month,reference,amount=300,override={}){
  const q={id,casaId:4,anio:2026,mes:month,montoPagado:amount,montoCuota:300,
@@ -19,10 +20,11 @@ function quota(id,month,reference,amount=300,override={}){
 }
 
 function harness({rows=[quota(3,'OCTUBRE','MJ-2026-0418')],
+ casa={id:4,calle:'Gardenias',numero:'2'},eventTagActions=[],
  bank=null,bankApplied=null,tags=[],events=[],snapshots=[],afterCommit=true}={}){
  const calls={sql:[],events:[],tags:[],requested:[],audit:[]};
  const rowsInDatabase=rows;
- const model={Casa:{async findByPk(id){return id===4?{id,calle:'Gardenias',numero:'2'}:null;}},
+ const model={Casa:{async findByPk(id){return id===4?casa:null;}},
   Cuota:{async findAll({where}){return rowsInDatabase.filter(x=>x.casaId===Number(where.casaId));}},
   ZkTarjeta:{async findAll(){return tags;}},
   PagoReportado:{async findOne(){return bank;},async findAll(){return bankApplied||[];}}
@@ -34,7 +36,7 @@ function harness({rows=[quota(3,'OCTUBRE','MJ-2026-0418')],
   },
   async create(entry){const e={...entry,id:505};calls.events.push(e);return e;}
  };
- const EventoTag={async create(entry){calls.tags.push(entry);}};
+ const EventoTag={async create(entry){calls.tags.push(entry);},async findAll(){return eventTagActions;}};
  const transaction={LOCK:{UPDATE:'UPDATE'},afterCommit(fn){if(afterCommit)fn();}};
  const sequelize={
   async query(sql,options){
@@ -67,6 +69,7 @@ function harness({rows=[quota(3,'OCTUBRE','MJ-2026-0418')],
   './cuotas-mantenimiento-calculo':{fechaDesdeCuotas},
   './zkteco-vigencias.service':{solicitar:casaId=>calls.requested.push(casaId)},
   './reversion-historicos.helper':helper,
+  './viviendas-visibles.service':{esViviendaTest001},
   './pagos-reparto.service':{condicionCasa:casaId=>({casaId})},
   './pagos-reparto-datos':{planParaCasa:p=>p.aplicacionCuotas||null}
  };
@@ -192,4 +195,66 @@ test('el backend conserva autenticación y doble confirmación por ANULAR',()=>{
  assert.match(ui,/if\(!movimiento\.referencia\)/);
  assert.match(ui,/window\.prompt\('Escribe ANULAR/);
  assert.match(ui,/await openHouseHistory\(casaId,null\)/);
+});
+
+
+// Caso de recuperación: se eliminó por SQL el reporte del depósito, pero la
+// cuota quedó pagada en TEST-001. No dar permisos globales a otras viviendas.
+test('TEST-001: anular desde UI la cuota bancaria huérfana sin tocar C3 ni otros pagos',async()=>{
+ const referencia='MBAN01002611110093123121';
+ const nov=quota(12,'NOVIEMBRE',referencia,350,{
+  montoCuota:300,recargo:50,recargoPagado:50,
+  origenImportacion:'PAGO_BANCARIO_CUOTAS',fechaConfirmacion:new Date('2026-11-11T17:30:00Z')
+ });
+ const oct=quota(11,'OCTUBRE','TEST-OCT26-ABONO-340',340,{
+  montoCuota:300,recargo:50,origenImportacion:'HISTORICO'
+ });
+ const e={id:490,casaId:4,referencia,origen:'PAGO_CUOTAS',estado:'PENDIENTE',
+  async update(changes){Object.assign(this,changes);}};
+ const h=harness({casa:{id:4,calle:'Prueba',numero:'TEST-001'},
+  rows:[oct,nov],events:[e],eventTagActions:[]});
+ const previa=await h.service.vistaPrevia(4,referencia);
+ assert.equal(previa.tipo,'PRUEBA_BANCARIA_HUERFANA');
+ assert.equal(previa.tags,0);
+ assert.match(previa.advertencia,/NO se enviarán órdenes al C3/);
+ const result=await h.service.anular(4,referencia,88);
+ assert.equal(result.periodosRestaurados,1);
+ assert.equal(result.restauracionC3.estado,'SIN_TAGS');
+ assert.equal(nov.montoPagado,0);
+ assert.equal(nov.estatusPago,'PENDIENTE');
+ assert.equal(nov.referencia,null);
+ assert.equal(nov.recargoPagado,0);
+ assert.equal(nov.origenImportacion,'REVERSA_PRUEBA_HUERFANA');
+ assert.equal(oct.montoPagado,340,'No modifica el depósito anterior');
+ assert.equal(e.estado,'ANULADO','La orden de acceso obsoleta queda desactivada');
+ assert.equal(h.calls.events.length,0,'No se generan órdenes de acceso al C3');
+ assert.equal(h.calls.tags.length,0);
+ assert.equal(h.calls.requested.length,0);
+ assert.equal(h.calls.audit.length,1,'Se conserva auditoría de la eliminación');
+ await assert.rejects(()=>h.service.vistaPrevia(4,referencia),{status:409});
+});
+test('la excepción bancaria NO se concede a Gardenias ni otras casas reales',async()=>{
+ const referencia='MBAN01002611110093123121';
+ const h=harness({rows:[quota(13,'NOVIEMBRE',referencia,350,
+  {montoCuota:300,origenImportacion:'PAGO_BANCARIO_CUOTAS'})],
+  events:[{id:11,casaId:4,referencia,origen:'PAGO_CUOTAS',estado:'PENDIENTE'}]});
+ await assert.rejects(()=>h.service.vistaPrevia(4,referencia),e=>e.status===409);
+ assert.equal(h.rows[0].montoPagado,350);
+});
+test('TEST-001: un pago bancario todavía VALIDADO en el reporte no se puede borrar por historial',async()=>{
+ const ref='MBAN01002611110093123121';
+ const h=harness({casa:{id:4,calle:'Prueba',numero:'TEST-001'},bank:{id:37,estatus:'VALIDADO'},
+  rows:[quota(7,'NOVIEMBRE',ref,350,{origenImportacion:'PAGO_BANCARIO_CUOTAS'})]});
+ await assert.rejects(()=>h.service.vistaPrevia(4,ref),e=>e.status===409&&/Pago bancario validado/.test(e.message));
+});
+test('TEST-001: TAGs o acciones físicas registradas bloquean la excepción',async()=>{
+ const ref='MBAN01002611110093123121';
+ const q=()=>quota(7,'NOVIEMBRE',ref,350,{origenImportacion:'PAGO_BANCARIO_CUOTAS'});
+ const casa={id:4,calle:'Prueba',numero:'TEST-001'};
+ const withTags=harness({casa,rows:[q()],tags:[{id:99,numeroTarjeta:'92399'}]});
+ await assert.rejects(()=>withTags.service.vistaPrevia(4,ref),e=>e.status===409&&/TAGs/.test(e.message));
+ const withEvents=harness({casa,rows:[q()],
+  events:[{id:7,referencia:ref,origen:'PAGO_CUOTAS',estado:'PENDIENTE'}],
+  eventTagActions:[{id:42,pagoAccesoId:7}]});
+ await assert.rejects(()=>withEvents.service.vistaPrevia(4,ref),e=>e.status===409&&/acciones C3/.test(e.message));
 });
