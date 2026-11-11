@@ -21,6 +21,7 @@ router.get('/administracion',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.
 router.get('/administracion/:id/comprobantes',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.comprobantes);
 router.get('/administracion/tarifas',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.obtenerTarifas);
 router.patch('/administracion/tarifas',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.guardarTarifas);
+router.delete('/administracion/:id',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.eliminarRegistro);
 router.patch('/administracion/:id/liberar',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.liberar);
 router.get('/solicitudes-pendientes',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.pendientesResumen);
 router.get('/administracion/:id/whatsapp',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.mensajeWhatsApp);

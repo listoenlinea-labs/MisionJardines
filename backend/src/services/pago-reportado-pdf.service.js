@@ -75,6 +75,9 @@ function field(doc, label, value, x, y, width = 500) {
 }
 
 function paymentConcept(pago) {
+    if (pago.tipoPago === 'CASA_CLUB') {
+        return pago.concepto || 'Reservación de Casa Club';
+    }
     if (pago.tipoPago === 'EXTRAORDINARIO') {
         const concept =
             pago.cuotaExtraordinaria?.concepto ||
@@ -108,6 +111,7 @@ function drawLogoFallback(doc) {
 function drawReceipt(doc, pago, logo) {
     const folio = pago.reciboFolio || pago.folioReporte;
     const isExtra = pago.tipoPago === 'EXTRAORDINARIO';
+    const isClub = pago.tipoPago === 'CASA_CLUB';
     const pendiente = pago.estatus !== 'VALIDADO';
 
     // Marco exterior y cuerpo como el template de referencia.
@@ -150,6 +154,7 @@ function drawReceipt(doc, pago, logo) {
         .text(
             pendiente ? 'Acuse de reporte - EN REVISIÓN'
                 : isExtra ? 'Recibo de pago extraordinario'
+                : isClub ? 'Recibo de reservación de Casa Club'
                 : 'Recibo de pago de mantenimiento',
             54,
             142,
@@ -209,7 +214,7 @@ function drawReceipt(doc, pago, logo) {
         .text('Concepto', 62, 476)
         .text('Monto', 182, 476);
 
-    const detailLabel = isExtra ? 'Extraordinario' : 'Mantenimiento';
+    const detailLabel = isExtra ? 'Proyecto extraordinario' : isClub ? 'Casa Club' : 'Mantenimiento';
 
     doc.font('Helvetica')
         .fontSize(10)
@@ -273,7 +278,9 @@ async function generarReciboPagoReportado(pago) {
                 Author: 'Administración Misión Jardines',
                 Subject: pago.tipoPago === 'EXTRAORDINARIO'
                     ? 'Recibo de pago extraordinario'
-                    : 'Recibo de pago de mantenimiento'
+                    : pago.tipoPago === 'CASA_CLUB'
+                        ? 'Recibo de Casa Club'
+                        : 'Recibo de pago de mantenimiento'
             }
         });
 

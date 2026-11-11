@@ -295,6 +295,31 @@
  }
  $('clubRelease').addEventListener('click',()=>{if(activeReview)void liberarReserva(activeReview);});
  const mon=d=>new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
+ const filterStreet=$('clubFilterStreet'),filterNumber=$('clubFilterNumber');
+ function actualizarOpcionesCalle(){
+  const previo=filterStreet.value;
+  const calles=[...new Set(adminRows.map(r=>String(r.casa?.calleCorrecta||r.casa?.calle||'').trim()).filter(Boolean))]
+   .sort((a,b)=>a.localeCompare(b,'es-MX',{sensitivity:'base'}));
+  filterStreet.innerHTML='<option value="">Todas las calles</option>'+
+   calles.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');
+  filterStreet.value=calles.includes(previo)?previo:'';
+ }
+ function aplicarFiltroReservas(){
+  const calle=filterStreet.value.trim().toLocaleLowerCase('es-MX');
+  const numero=filterNumber.value.trim().toLocaleLowerCase('es-MX');
+  let visibles=0;
+  $('clubAdminRows').querySelectorAll('[data-reserva]').forEach(tr=>{
+   const row=adminRows.find(r=>Number(r.id)===Number(tr.dataset.reserva));
+   const coincide=!!row&&(!calle||String(row.casa?.calleCorrecta||row.casa?.calle||'').toLocaleLowerCase('es-MX')===calle)
+    &&(!numero||String(row.casa?.numero||'').toLocaleLowerCase('es-MX').includes(numero));
+   tr.hidden=!coincide;
+   if(coincide)visibles++;
+  });
+  $('clubFilterCount').textContent=visibles+' de '+adminRows.length+' reservaciones';
+ }
+ filterStreet.addEventListener('change',aplicarFiltroReservas);
+ filterNumber.addEventListener('input',aplicarFiltroReservas);
+ $('clubClearFilters').addEventListener('click',()=>{filterStreet.value='';filterNumber.value='';aplicarFiltroReservas();});
  async function adminList(){
   if(!admin)return;
   try{
@@ -308,15 +333,28 @@
    const tableRows=[...adminRows].sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE'));
    $('clubAdminRows').innerHTML=tableRows.map(r=>'<tr data-reserva="'+Number(r.id)+'">'+
     [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),fechaSolicitud(r.creadoEn),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',paymentStatus(r),r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
-    '<td><button type="button" class="soft">Ver detalles</button> '+(r.estatus==='APROBADA'?' <button type="button" class="danger" data-release="'+Number(r.id)+'">Cancelar / liberar día</button> ':'')+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="16">Aún no hay reservas registradas.</td></tr>';
+    '<td><button type="button" class="soft">Ver detalles</button> '+(!r.pagado?' <button type="button" class="danger" data-delete="'+Number(r.id)+'">Eliminar registro</button> ':'')+(r.estatus==='APROBADA'?' <button type="button" class="danger" data-release="'+Number(r.id)+'">Cancelar / liberar día</button> ':'')+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="16">Aún no hay reservas registradas.</td></tr>';
    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
     '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
     '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
     '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>').join('')||'<div class="reserve-card">No hay solicitudes pendientes de aprobación.</div>';
+   actualizarOpcionesCalle();aplicarFiltroReservas();
   }catch(e){notify(e.message,true);}
  }
  $('clubRequests').addEventListener('click',e=>{const btn=e.target.closest('[data-review]');if(btn){const r=adminRows.find(x=>Number(x.id)===Number(btn.dataset.review));if(r)editReview(r);}});
  $('clubAdminRows').addEventListener('click',async e=>{
+  const eliminar=e.target.closest('[data-delete]');
+  if(eliminar){
+   const id=Number(eliminar.dataset.delete);
+   if(!Number.isSafeInteger(id)||id<1||!confirm('¿Eliminar el registro SIN pago y liberar su fecha? Si existe un depósito o comprobante, el sistema impedirá eliminarlo.'))return;
+   eliminar.disabled=true;
+   try{
+    const result=await api('/administracion/'+id,'DELETE');
+    notify(result.message);
+    await Promise.all([adminList(),calendar()]);
+   }catch(err){notify(err.message,true);eliminar.disabled=false;}
+   return;
+  }
   const release=e.target.closest('[data-release]');
   if(release){const r=adminRows.find(x=>Number(x.id)===Number(release.dataset.release));if(r)void liberarReserva(r);return;}
   const refund=e.target.closest('[data-return]');

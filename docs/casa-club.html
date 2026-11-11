@@ -54,7 +54,18 @@
     <button class="primary" id="clubTariffSave" type="submit">Guardar distribución</button>
   </form>
   <p id="clubTariffStatus" role="status" aria-live="polite"></p>
-</section><div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Solicitud registrada</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
+</section>
+<div class="club-admin-filters" role="search" aria-label="Buscar reservaciones por vivienda">
+ <label for="clubFilterStreet">Calle
+  <select id="clubFilterStreet"><option value="">Todas las calles</option></select>
+ </label>
+ <label for="clubFilterNumber">Número de casa
+  <input id="clubFilterNumber" inputmode="text" autocomplete="off" placeholder="Ej. 18" maxlength="30">
+ </label>
+ <button type="button" class="soft" id="clubClearFilters">Limpiar filtros</button>
+ <span id="clubFilterCount" role="status" aria-live="polite"></span>
+</div>
+<div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Solicitud registrada</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
 <section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Puedes aprobar únicamente la fecha, o registrar manualmente un pago que hayas verificado. Los comprobantes enviados en Pagos se verifican automáticamente con Titan.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
 </main>
 <dialog id="clubDebtModal" class="club-dialog club-debt-dialog" aria-labelledby="clubDebtTitle" aria-describedby="clubDebtExplanation">
@@ -80,5 +91,5 @@
 <p id="clubReviewError" role="alert" hidden></p>
 </form></dialog>
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
-<script src="assets/js/casa-club.js?v=20261111-autoaprobacion" defer></script>
+<script src="assets/js/casa-club.js?v=20261111-filtros-registros" defer></script>
 </body></html>

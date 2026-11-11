@@ -365,7 +365,28 @@ async function enviarAvisoCasaClub({destinatario,asunto,texto}){
     if(!info.accepted?.some(x=>String(x).toLowerCase()===destinatario.toLowerCase()))
         throw Error('SMTP no aceptó al destinatario');
 }
+// Solicitud de restablecimiento: un enlace temporal de uso único.
+// No enviar contraseñas ni incluir el token en consultas, logs o URLs HTTP.
+async function enviarRecuperacionContrasena({destinatario,token}){
+ if(!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(String(destinatario||'')))
+  throw Error('Destinatario no válido para recuperación.');
+ const origen=String(process.env.FRONTEND_APP_URL||'https://listoenlinea-labs.github.io/MisionJardines').replace(/\/$/,'');
+ if(!/^https:\/\//i.test(origen))throw Error('La URL pública de recuperación debe utilizar HTTPS.');
+ const url=origen+'/recuperar-contrasena.html#token='+encodeURIComponent(token);
+ const info=await crearTransportador().sendMail({
+  from:{name:process.env.SMTP_FROM_NAME||'Misión Jardines',address:process.env.SMTP_FROM_EMAIL},
+  to:destinatario,
+  subject:'Restablecer contraseña · Misión Jardines',
+  text:'Se solicitó recuperar la contraseña de tu cuenta de Misión Jardines.\n\n'+
+   'Abre este enlace para elegir una contraseña nueva:\n'+url+
+   '\n\nEl enlace vence en 20 minutos y sólo se utiliza una vez. Si no hiciste la solicitud, ignora este mensaje.'
+ });
+ if(!info.accepted?.some(x=>String(x).toLowerCase()===destinatario.toLowerCase()))
+  throw Error('SMTP no aceptó al destinatario.');
+ return info.messageId||'SMTP_ACEPTADO';
+}
 module.exports = {
+    enviarRecuperacionContrasena,
     enviarAvisoCasaClub,
     enviarInvitacionPreregistro,
     enviarInvitacionCasa,
