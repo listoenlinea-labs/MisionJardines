@@ -327,8 +327,12 @@ async function findPanelUserByCard(client,card){
 }
 
 function getWriteMode(){
-  const mode=String(process.env.ZKTECO_WRITE_MODE||'AUTO').trim().toUpperCase();
-  return ['AUTO','DIRECT','PULLSDK'].includes(mode)?mode:'AUTO';
+  const mode=String(process.env.ZKTECO_WRITE_MODE||'DIRECT').trim().toUpperCase();
+  // El C3-200 opera por TCP; una URL de túnel antigua NO debe activar un
+  // fallback silencioso. Solo permitir PullSDK si se pidió expresamente.
+  if(mode==='PULLSDK')return 'PULLSDK';
+  if(mode==='AUTO'&&process.env.ZKTECO_ALLOW_PULLSDK_FALLBACK==='true')return 'AUTO';
+  return 'DIRECT';
 }
 
 async function readControllerWithRetry(callback,{attempts=5,delayMs=700}={}){
@@ -1426,4 +1430,4 @@ async function altaTagConVigencia(casaId, datos = {}, usuarioId = null) {
 }
 
 // Inventory operations preserve their explicit C3 dates and do not queue payment increments.
-module.exports={diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse:altaTagConVigencia,addExistingTagToController,editTag,removeTag,operateGate,dashboard,writeUserValidity,readUserValidity};
+module.exports={getWriteMode,diagnosticarVivienda,testDirectConnection,syncUsers,setCardBlocked,setHouseBlocked,setCardHouse,createTagForHouse:altaTagConVigencia,addExistingTagToController,editTag,removeTag,operateGate,dashboard,writeUserValidity,readUserValidity};
