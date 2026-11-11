@@ -1135,6 +1135,13 @@
    para una hora reconocida por OCR basta mostrar HH:MM:SS en un campo de texto readonly. */
 #paymentForm #operationTime{display:block!important;box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;font-size:16px!important;font-variant-numeric:tabular-nums;text-align:left}
 #paymentForm .form-row>div:has(#operationTime){min-width:0;overflow:hidden}
+.extra-project-picker{margin:12px 0;padding:13px 15px;background:#f7f9fd;
+ border:1px solid #dfe6ef;border-radius:13px}
+.extra-project-picker label{display:block;font-weight:800;font-size:12px;color:#31415b;margin-bottom:8px}
+.extra-project-picker select{width:100%;min-height:46px;border-radius:11px;border:1px solid #cfd9e7;
+ padding:10px 12px;background:white;color:#24344c;font-size:14px}
+.extra-project-picker p{font-size:12px;line-height:1.5;color:#52647d;margin:9px 0 0}
+@media(max-width:600px){.extra-project-picker{padding:12px}}
 </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
   <link rel="stylesheet" href="assets/css/pagos-reparto.css?v=20261026-reparto">
@@ -1235,6 +1242,15 @@
           <span class="eyebrow">CUOTAS EXTRAORDINARIAS</span>
           <h2>Conceptos disponibles</h2>
           <p>Las aportaciones a cada proyecto son voluntarias y flexibles: puedes abonar cuando quieras (semanalmente, mensualmente o sin periodicidad), por cualquier importe desde $1 hasta completar la meta de tu vivienda. No hay fechas de vencimiento, recargos ni bloqueo de TAGs por estas aportaciones.</p>
+          <div id="extraProjectPicker" class="extra-project-picker" hidden>
+            <label for="extraProjectSelect">Selecciona el proyecto extraordinario</label>
+            <select id="extraProjectSelect">
+              <option value="">Elige un proyecto activo</option>
+            </select>
+            <p id="extraProjectSummary" role="status" aria-live="polite">
+              Selecciona un proyecto para consultar tu meta y abonar cuando quieras.
+            </p>
+          </div>
           <div id="extraList" class="extra-list">
             <div class="empty">Cargando cuotas…</div>
           </div>
@@ -1433,7 +1449,7 @@
   <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles"></script>
   <script src="assets/js/pagos-reparto-calculo.js?v=20261026-reparto"></script>
   <script src="assets/js/pagos-reparto-ui.js?v=20261109-pesos-enteros-v1"></script>
-  <script src="assets/js/pagos.js?v=20261111-casa-club-titan"></script>
+  <script src="assets/js/pagos.js?v=20261111-extra-selector-folios"></script>
   <script src="assets/js/pagos-historial.js?v=20261109-pesos-enteros-v1"></script>
 
   <script src="assets/js/site-sidebar.js?v=20261111-condomino-pagos"></script>

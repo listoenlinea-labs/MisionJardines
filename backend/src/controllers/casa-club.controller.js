@@ -349,4 +349,26 @@ async function comprobantes(req,res){
   }});
  }catch(e){return manejar(res,e);}
 }
-module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar,comprobantes};
+// Eliminación limitada a registros sin movimientos. Ningún pago real se borra.
+// Los registros pagados requieren cancelación/liberación con auditoría.
+async function eliminarRegistro(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Acceso exclusivo de Administración'));
+ const id=Number(req.params.id);
+ if(!Number.isSafeInteger(id)||id<1)return manejar(res,error(400,'Reserva no válida'));
+ try{
+  await db.transaction(async transaction=>{
+   const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row)throw error(404,'Registro no encontrado');
+   const [bancarios,manuales]=await Promise.all([
+    PagoReportado.count({where:{reservaCasaClubId:id},transaction}),
+    PagoManualConcepto.count({where:{reservaCasaClubId:id},transaction})
+   ]);
+   if(row.pagado||bancarios||manuales)throw error(409,
+    'No se puede eliminar un registro con comprobantes o pagos. Cancela/libera la fecha y conserva su historial para auditoría.');
+   await row.destroy({transaction});
+  });
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,message:'Registro sin pagos eliminado y fecha liberada.'});
+ }catch(e){return manejar(res,e);}
+}
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar,comprobantes,eliminarRegistro};

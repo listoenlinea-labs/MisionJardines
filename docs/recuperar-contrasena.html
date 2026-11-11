@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es"><head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="referrer" content="no-referrer">
+ <meta http-equiv="Cache-Control" content="no-store">
+ <title>Recuperar contraseña · Misión Jardines</title>
+ <style>
+ :root{color-scheme:light;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+ *{box-sizing:border-box}
+ body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;
+  background:radial-gradient(circle at 8% 20%,#eef8f2,transparent 37%),linear-gradient(130deg,#f4f7fb,#fff6eb)}
+ .panel{width:min(100%,520px);background:#fff;border:1px solid #e2e8ef;border-radius:24px;
+  padding:clamp(23px,5vw,44px);box-shadow:0 20px 50px #233f6220}
+ .eyebrow{font-weight:850;color:#c77421;letter-spacing:.09em;font-size:12px}
+ h1{color:#1b2940;font-size:clamp(25px,4vw,34px);letter-spacing:-.04em;margin:13px 0}
+ p{color:#69788d;font-size:14px;line-height:1.65}
+ label{display:block;color:#3d4c65;font-weight:750;font-size:13px;margin-top:20px}
+ input{display:block;margin-top:8px;width:100%;border:1px solid #d5dfeb;background:#fff;
+  padding:15px 14px;border-radius:12px;font-size:16px;color:#26364d;min-height:50px}
+ input:focus{outline:3px solid #f3d5af;border-color:#e9953e}
+ button{width:100%;border:0;border-radius:12px;margin-top:22px;min-height:50px;padding:13px 17px;
+  background:linear-gradient(110deg,#f1932d,#e7790d);color:white;font-weight:800;cursor:pointer;font-size:15px}
+ button:disabled{opacity:.6;cursor:wait}
+ .msg{padding:13px 14px;border-radius:12px;margin-top:16px;font-size:13px;line-height:1.55}
+ .msg.error{color:#982e37;background:#fff1f1;border:1px solid #f3cdd2}
+ .msg.success{color:#236f4f;background:#eff9f3;border:1px solid #cce5d6}
+ .back{display:block;text-align:center;color:#a05c27;font-weight:750;text-decoration:none;margin-top:24px;font-size:14px}
+ [hidden]{display:none!important}
+ </style>
+</head><body>
+ <main class="panel">
+  <div class="eyebrow">MISIÓN JARDINES · ACCESO SEGURO</div>
+  <section id="requestPanel">
+   <h1>Recuperar contraseña</h1>
+   <p>Escribe tu usuario o correo registrado. Si tienes una cuenta activa con un correo válido, recibirás un enlace para crear una contraseña nueva.</p>
+   <form id="requestForm">
+    <label for="identifier">Usuario o correo electrónico</label>
+    <input id="identifier" name="identifier" autocomplete="username" maxlength="190" required placeholder="Tu usuario o correo">
+    <button type="submit" id="requestButton">Enviar enlace de recuperación</button>
+   </form>
+  </section>
+  <section id="resetPanel" hidden>
+   <h1>Establecer nueva contraseña</h1>
+   <p>Tu enlace es personal y temporal. Usa una contraseña con al menos 8 caracteres, mayúscula, minúscula y número.</p>
+   <form id="resetForm">
+    <label for="newPassword">Nueva contraseña</label>
+    <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+    <label for="repeatPassword">Confirma la contraseña</label>
+    <input id="repeatPassword" type="password" autocomplete="new-password" minlength="8" required>
+    <button type="submit" id="resetButton">Cambiar contraseña</button>
+   </form>
+  </section>
+  <p id="status" role="status" aria-live="polite" hidden></p>
+  <a class="back" href="login.html">Volver a iniciar sesión</a>
+ </main>
+ <script>
+ (()=>{
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const API=['localhost','127.0.0.1'].includes(location.hostname)
+   ?'http://localhost:3000/api':'https://api-misionjardines.listoenlinea.host/api';
+  const token=new URLSearchParams(location.hash.slice(1)).get('token')||'';
+  // El secreto se consume en memoria y se limpia de la barra del navegador.
+  if(location.hash)history.replaceState(null,'',location.pathname+location.search);
+  const reset=/^[a-f0-9]{64}$/.test(token);
+  $('requestPanel').hidden=reset;$('resetPanel').hidden=!reset;
+  const mostrar=(text,bad=false)=>{
+   const el=$('status');el.hidden=false;el.className='msg '+(bad?'error':'success');
+   el.textContent=text;
+  };
+  async function enviar(ruta,body){
+   const r=await fetch(API+'/auth/contrasena/'+ruta,{
+    method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(body)
+   });
+   const d=await r.json().catch(()=>({}));
+   if(!r.ok||!d.ok)throw Error(d.message||'No se pudo completar la operación.');
+   return d;
+  }
+  $('requestForm').addEventListener('submit',async e=>{
+   e.preventDefault();const boton=$('requestButton');boton.disabled=true;
+   try{const d=await enviar('solicitar',{identificador:$('identifier').value.trim()});
+    mostrar(d.message);}
+   catch(err){mostrar(err.message,true);}
+   finally{boton.disabled=false;}
+  });
+  $('resetForm').addEventListener('submit',async e=>{
+   e.preventDefault();const nueva=$('newPassword').value;
+   if(nueva!==$('repeatPassword').value)return mostrar('Las contraseñas no coinciden.',true);
+   const boton=$('resetButton');boton.disabled=true;
+   try{
+    const d=await enviar('restablecer',{token,contrasenaNueva:nueva});
+    $('resetForm').reset();$('resetForm').hidden=true;
+    mostrar(d.message+' Ya puedes iniciar sesión.');
+   }catch(err){mostrar(err.message,true);}
+   finally{boton.disabled=false;}
+  });
+ })();
+ </script>
+</body></html>

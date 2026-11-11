@@ -33,6 +33,11 @@ const codigoLimiter = rateLimit({
 });
 
 router.post('/login', iniciarSesion);
+const reset=require('../controllers/recuperacion-contrasena.controller');
+const resetLimiter=rateLimit({windowMs:15*60*1000,limit:5,standardHeaders:true,legacyHeaders:false,
+ message:{ok:false,message:'Demasiadas solicitudes. Intenta nuevamente más tarde.'}});
+router.post('/contrasena/solicitar',resetLimiter,reset.solicitar);
+router.post('/contrasena/restablecer',resetLimiter,reset.confirmar);
 router.get('/registro/viviendas', listarViviendasRegistro);
 router.post('/registro/solicitar', codigoLimiter, solicitarRegistro);
 router.post('/registro/verificar', codigoLimiter, verificarRegistro);

@@ -190,6 +190,24 @@
     $('debtModal').addEventListener('click',event=>{if(event.target===$('debtModal'))$('debtModal').close()});
 
     function renderExtras() {
+      const esCondomino=role()==='CONDOMINO';
+      $('extraProjectPicker').hidden=!esCondomino;
+      $('extraList').hidden=esCondomino;
+      if(esCondomino){
+        const selector=$('extraProjectSelect');
+        const actual=Number(selectedExtra?.id||selector.value||0);
+        selector.innerHTML='<option value="">Elige un proyecto activo</option>'+
+         extras.map(x=>'<option value="'+Number(x.id)+'">'+esc(x.concepto)+' · Saldo '+money(x.monto)+'</option>').join('');
+        selector.value=extras.some(x=>Number(x.id)===actual)?String(actual):'';
+        const p=extras.find(x=>String(x.id)===selector.value)||null;
+        $('extraProjectSummary').textContent=p
+         ?'Meta individual: '+money(p.montoOriginal)+' · Aportado: '+money(p.montoPagado)+
+          ' · En revisión: '+money(p.pendienteValidacion)+
+          ' · Restante: '+money(p.monto)+
+          ' · Puedes depositar ahora: '+money(p.montoDisponible)+
+          '. Aporta parcialidades cuando quieras, sin recargos ni afectar tus TAGs.'
+         :'Selecciona un proyecto para consultar tu meta y aportar en parcialidades.';
+      }
       $('extraList').innerHTML = extras.length ? extras.map(x =>
         '<div class="extra'+(selectedExtra&&Number(selectedExtra.id)===Number(x.id)?' selected':'')+
         '" data-extra="'+Number(x.id)+'"><div><strong>'+esc(x.concepto)+'</strong>'+
@@ -779,6 +797,10 @@
     $('operationDate').addEventListener('change', updatePaymentSummary);
     $('amount').addEventListener('input', updatePaymentSummary);
     document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+    $('extraProjectSelect').addEventListener('change',e=>{
+      selectedExtra=extras.find(x=>String(x.id)===e.target.value)||null;
+      renderExtras();updatePaymentSummary();
+    });
     $('extraList').addEventListener('click', e => { const row = e.target.closest('[data-extra]'); if (!row) return; selectedExtra = extras.find(x => Number(x.id) === Number(row.dataset.extra)) || null; renderExtras(); updatePaymentSummary() });
     $('clubPaymentList').addEventListener('click',e=>{const row=e.target.closest('[data-club]');if(!row)return;selectedClub=(debts?.tipos?.CASA_CLUB||[]).find(c=>Number(c.id)===Number(row.dataset.club))||null;renderClub();updatePaymentSummary();});
 

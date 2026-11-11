@@ -438,6 +438,12 @@ async function reportarPago(req, res) {
 
         const year = new Date().getFullYear();
         const folio = await generarSiguienteFolio(year, transaction);
+        // Identificador oficial del recibo según el concepto. No modificar
+        // el folio de acuse interno ni el identificador de la transferencia.
+        const folioRecibo=require('../services/folio-recibo-mj.service').componer({
+            fechaOperacion,calle:casa.calleCorrecta||casa.calle,
+            numero:casa.numero,tipoPago
+        });
         const now = new Date();
 
         const pago = await PagoReportado.create({
@@ -469,7 +475,7 @@ async function reportarPago(req, res) {
             identificadoresVerificados,
             estatus: 'PENDIENTE_VALIDACION',
             verificacionBancaria: {version:1,etapa:'RECIBIDO',detalle:'Comprobante recibido. Se extrajeron los datos bancarios y se programó su conciliación con Titan.',fechaRevision:null,avisosConsultados:0,avisosAutenticados:0,coincidencias:0},
-            reciboFolio: folio,
+            reciboFolio: folioRecibo,
             fechaEmisionRecibo: now
         }, { transaction });
 
