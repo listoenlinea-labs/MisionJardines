@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261111-tarifas">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261111-autoaprobacion">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -20,7 +20,7 @@
 <div class="calendar-nav"><button id="prevMonth" type="button" aria-label="Mes anterior">‹</button><strong id="calendarLabel"></strong><button id="nextMonth" type="button" aria-label="Mes siguiente">›</button></div>
 <div class="weekdays"><b>L</b><b>M</b><b>M</b><b>J</b><b>V</b><b>S</b><b>D</b></div>
 <div id="calendarDays" class="calendar-days" role="group" aria-label="Calendario de disponibilidad"></div>
-<p class="club-hint" id="clubCalendarHint">La fecha se bloquea provisionalmente al solicitarla. La reserva solo se confirma cuando Administración la aprueba.</p></article>
+<p class="club-hint" id="clubCalendarHint">La fecha se bloquea provisionalmente al solicitarla. La fecha se aparta al solicitarla. Se confirma automáticamente cuando Titan valida el comprobante bancario, o mediante aprobación de Administración.</p></article>
 <article class="club-card"><span class="eyebrow" id="clubRequestEyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
 <form id="clubForm">
 <div class="form-grid"><label>Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha"></label>
@@ -55,7 +55,7 @@
   </form>
   <p id="clubTariffStatus" role="status" aria-live="polite"></p>
 </section><div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Solicitud registrada</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
-<section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Confirma disponibilidad, residente y condiciones de pago antes de aprobar.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
+<section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Puedes aprobar únicamente la fecha, o registrar manualmente un pago que hayas verificado. Los comprobantes enviados en Pagos se verifican automáticamente con Titan.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
 </main>
 <dialog id="clubDebtModal" class="club-dialog club-debt-dialog" aria-labelledby="clubDebtTitle" aria-describedby="clubDebtExplanation">
  <div class="dialog-head"><div><span class="eyebrow">PAGOS PENDIENTES</span><h2 id="clubDebtTitle">Antes de reservar Casa club</h2></div><button type="button" id="closeClubDebt" class="xbtn" aria-label="Cerrar alerta de adeudos">×</button></div>
@@ -68,16 +68,17 @@
 <form id="clubReviewForm" method="dialog">
 <div class="dialog-head"><div><span class="eyebrow">REVISIÓN ADMINISTRATIVA</span><h2 id="clubReviewTitle">Detalles de la reservación</h2></div><button type="button" id="closeClubReview" class="xbtn" aria-label="Cerrar">×</button></div>
 <dl id="clubReviewDetails" class="review-details"></dl>
+<section id="clubReviewProofs" class="club-bank-records" aria-live="polite"><h3>Comprobantes y movimientos bancarios</h3><p>Consultando expediente…</p></section>
 <div class="club-review-whatsapp"><a id="clubReviewWhatsApp" class="soft" target="_blank" rel="noopener noreferrer" hidden></a><p id="clubReviewWhatsAppStatus" role="status" hidden></p></div>
 <div id="clubReviewActions" hidden>
 <div class="form-grid"><label class="wide">Observaciones<textarea id="clubNotes" maxlength="600" rows="2"></textarea></label></div>
-<label class="check club-opt-in"><input type="checkbox" id="clubPaymentVerified"> Verifiqué en el banco el pago completo.</label>
+<label class="check club-opt-in"><input type="checkbox" id="clubPaymentVerified"> Además verifiqué personalmente un depósito completo (opcional).</label>
 <label class="club-opt-in">Folio bancario <input id="clubBankFolio" maxlength="60" autocomplete="off"></label>
-<div class="dialog-actions"><button type="button" class="danger" id="clubReject">Rechazar</button><button class="primary" type="submit" id="clubApprove" disabled>Aprobar y confirmar reservación</button></div>
+<div class="dialog-actions"><button type="button" class="danger" id="clubReject">Rechazar</button><button class="primary" type="submit" id="clubApprove" disabled>Aprobar fecha sin registrar pago</button></div>
 </div>
 <button type="button" class="danger club-release-button" id="clubRelease" hidden>Cancelar reserva aprobada y liberar fecha</button>
 <p id="clubReviewError" role="alert" hidden></p>
 </form></dialog>
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
-<script src="assets/js/casa-club.js?v=20261111-tarifas" defer></script>
+<script src="assets/js/casa-club.js?v=20261111-autoaprobacion" defer></script>
 </body></html>
