@@ -182,6 +182,8 @@ async function cancelar(req,res){
    const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
    if(!row||(!admin(req.usuario.rol)&&String(row.usuarioId)!==String(req.usuario.usuarioId)))throw error(404,'Reserva no encontrada');
    if(!['PENDIENTE','APROBADA'].includes(row.estatus))throw error(409,'No se puede cancelar esta reserva');
+   const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:'PENDIENTE_VALIDACION'},transaction});
+   if(enRevision)throw error(409,'El comprobante está en revisión bancaria. Espera el resultado antes de cancelar o consulta a Administración.');
    if(row.fecha<hoy()&&!admin(req.usuario.rol))throw error(409,'Consulta a Administración para cancelar una fecha pasada');
    await row.update({estatus:'CANCELADA',fechaBloqueada:null,actualizadoEn:new Date(),notas:row.pagado?(texto(row.notas||'',480)+' | Cancelación: revisar devolución con administración').trim():row.notas},{transaction});
   });
@@ -306,6 +308,8 @@ async function liberar(req,res){
    const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
    if(!row)throw error(404,'Reserva no encontrada');
    if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
+   const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:'PENDIENTE_VALIDACION'},transaction});
+   if(enRevision)throw error(409,'Hay un comprobante pendiente de validación bancaria. Resuélvelo antes de liberar esta fecha.');
    const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
    await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
     revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
