@@ -18,6 +18,8 @@ test('Búsqueda solo por calle y calle con números dentro del nombre',()=>{
   assert.deepEqual(separarDireccionZkteco('5 de Mayo'),{calle:'5 de Mayo',numero:''});
   assert.deepEqual(separarDireccionZkteco('  Rosas   27  '),{calle:'Rosas',numero:'27'});
   assert.deepEqual(separarDireccionZkteco(''),{calle:'',numero:''});
+  assert.deepEqual(separarDireccionZkteco('Prueba TEST-001'),{calle:'Prueba',numero:'TEST-001'});
+  assert.deepEqual(separarDireccionZkteco('Prueba TEST-002'),{calle:'Prueba TEST-002',numero:''});
 });
 
 test('El formulario envía calle y número al API y no muestra el filtro antiguo',()=>{
