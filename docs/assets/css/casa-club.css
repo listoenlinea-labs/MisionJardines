@@ -167,3 +167,26 @@
 #clubReviewError{color:#a22330}
 #clubReviewModal .dialog-actions{flex-wrap:wrap;margin-top:12px}
 #clubReviewModal .dialog-actions .primary{margin:0}
+
+
+/* Confirmación automática Titan: botón para continuar a Pagos y expediente del administrador. */
+.club-upload-link{display:inline-flex!important;align-items:center;justify-content:center;
+ gap:7px;margin:12px 0 5px;padding:11px 16px;border-radius:12px;text-decoration:none!important;
+ min-height:44px;font-weight:750;text-align:center}
+.club-bank-records{margin:14px 0 16px;padding:15px;border:1px solid #dce5ef;
+ border-radius:14px;background:#f8fafc}
+.club-bank-records h3{font-size:14px;font-weight:800;color:#273853;margin:0 0 12px}
+.club-bank-record{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;
+ gap:12px;padding:11px 0;border-top:1px solid #e1e7ed}
+.club-bank-record:first-of-type{border-top:0}
+.club-bank-record div{min-width:0;max-width:100%}
+.club-bank-record strong,.club-bank-record small{display:block;overflow-wrap:anywhere}
+.club-bank-record small{color:#566780;font-size:12px;line-height:1.5;margin-top:4px}
+.club-bank-actions{display:flex;gap:7px;flex-wrap:wrap}
+.club-bank-actions .soft{min-height:40px}
+@media(max-width:600px){
+ .club-upload-link{display:flex!important;width:100%;box-sizing:border-box}
+ .club-bank-records{padding:12px}
+ .club-bank-actions{width:100%}
+ .club-bank-actions .soft{flex:1 1 145px;white-space:normal}
+}
