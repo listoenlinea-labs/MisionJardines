@@ -315,6 +315,11 @@
    tr.hidden=!coincide;
    if(coincide)visibles++;
   });
+  $('clubRequests').querySelectorAll('[data-pendiente-id]').forEach(card=>{
+   const row=adminRows.find(r=>Number(r.id)===Number(card.dataset.pendienteId));
+   card.hidden=!(row&&(!calle||String(row.casa?.calleCorrecta||row.casa?.calle||'').toLocaleLowerCase('es-MX')===calle)
+    &&(!numero||String(row.casa?.numero||'').toLocaleLowerCase('es-MX').includes(numero)));
+  });
   $('clubFilterCount').textContent=visibles+' de '+adminRows.length+' reservaciones';
  }
  filterStreet.addEventListener('change',aplicarFiltroReservas);
@@ -335,7 +340,7 @@
     [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),fechaSolicitud(r.creadoEn),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',paymentStatus(r),r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
     '<td><button type="button" class="soft">Ver detalles</button> '+(!r.pagado?' <button type="button" class="danger" data-delete="'+Number(r.id)+'">Eliminar registro</button> ':'')+(r.estatus==='APROBADA'?' <button type="button" class="danger" data-release="'+Number(r.id)+'">Cancelar / liberar día</button> ':'')+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="16">Aún no hay reservas registradas.</td></tr>';
    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
-    '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
+    '<article class="reserve-card" data-pendiente-id="'+Number(r.id)+'"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
     '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
     '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>').join('')||'<div class="reserve-card">No hay solicitudes pendientes de aprobación.</div>';
    actualizarOpcionesCalle();aplicarFiltroReservas();
