@@ -35,6 +35,14 @@ jobs:
       - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
         working-directory: backend
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Banco: relación parcial no bloquea coincidencia completa; ZKTeco TCP
+        run: |
+          node --check backend/src/services/banco-diagnostico.service.js
+          node --check backend/src/services/banco-correo-worker.service.js
+          node --check backend/src/services/zkteco-direct.service.js
+          node --check backend/src/controllers/zkteco.controller.js
+          node --test backend/test/banco-coincidencia-unica-tcp-20261111.test.js backend/tests/banco-diagnostico-timeline.test.js backend/tests/diagnostico-cotejo-por-campo.test.js backend/test/correo-solo-remitente.test.js
+
       - name: Titan IMAP mensajes largos sin bloquear la conciliación bancaria
         run: |
           node --check backend/src/services/correo-imap.transport.js
