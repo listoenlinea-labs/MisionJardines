@@ -15,7 +15,7 @@
     const allowed = role === 'SEGURIDAD' ? security : legacy[role];
     return !!allowed && (page === 'cuenta.html' || (page === 'viviendas.html' && role !== 'SEGURIDAD') || allowed.includes(page));
   }
-  const policy = { admins, pages, canAccess, landing: role => role === 'SEGURIDAD' ? 'seguridad.html' : role === 'CONDOMINO' ? 'pagos.html' : 'index.html' };
+  const policy = { admins, pages, canAccess, landing: role => role === 'SEGURIDAD' ? 'conmutador.html' : role === 'CONDOMINO' ? 'pagos.html' : 'index.html' };
   if (typeof module !== 'undefined' && module.exports) module.exports = policy;
   else root.MJPermissions = policy;
 })(typeof window !== 'undefined' ? window : globalThis);
