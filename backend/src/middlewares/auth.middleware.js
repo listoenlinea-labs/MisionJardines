@@ -40,6 +40,9 @@ async function autenticarToken(req, res, next) {
         if (req.usuario.rol === 'CONDOMINO' && !['auth', 'viviendas', 'pagos', 'casa-club'].includes(endpoint)) {
             return res.status(403).json({ok:false,message:'Tu cuenta solo tiene acceso a Pagos y Casa Club'});
         }
+        if (req.usuario.rol === 'CONDOMINO' && endpoint === 'viviendas' && req.path !== '/mias') {
+            return res.status(403).json({ok:false,message:'Solo puedes consultar tu vivienda vinculada desde Pagos y Casa Club'});
+        }
         const section = modules[endpoint];
         if (section && !canAccess(req.usuario.rol, section)) {
             return res.status(403).json({ok:false,message:'No tienes acceso a esta sección'});
