@@ -56,7 +56,7 @@ function textoPago(datos){
   ', garantía '+moneda(datos.depositoGarantia)+', limpieza '+moneda(datos.limpieza)+').\n'+
   'Deposita '+moneda(datos.monto)+' en '+datos.banco+', cuenta/CLABE '+datos.cuenta+
   ', a nombre de '+datos.titular+plazo+'.\n'+
-  'Envía tu comprobante'+destino+' con el folio '+datos.folio+'.'+
+  'Para verificar tu depósito, inicia sesión en Misión Jardines → Pagos → Casa Club y sube tu comprobante usando la reserva '+datos.folio+'. Si no tienes cuenta, solicítala a Administración.'+
   (plazo?' Si no se confirma el pago antes del vencimiento, se libera la fecha.':'');
 }
 async function whatsapp(row,datos,config){
@@ -94,4 +94,25 @@ async function notificar(row,datos,config){
  });
  return estados;
 }
-module.exports={configuracion,datosBancarios,textoPago,emailValido,whatsappMexico,limitePago,importe,instrucciones,notificar};
+// Notificar sólo DESPUÉS del COMMIT bancario. No enviar ni comunicar una
+// reservación aprobada mientras el comprobante esté En revisión.
+async function notificarConfirmacionBancaria(data){
+ const fecha=String(data.fecha||''),folio=String(data.folioReporte||'');
+ const resumen='Reserva CC-'+data.id+' para el '+fecha+' confirmada automáticamente tras verificar el depósito con el banco.\n'+
+  'Vivienda ID: '+data.casaId+'\nMonto confirmado: '+moneda(Number(data.monto))+
+  '\nComprobante: '+folio+'\nFecha del depósito: '+data.fechaPago+
+  '\nEl comprobante y el recibo están disponibles en Misión Jardines → Pagos; Administración puede consultarlos desde Casa Club.';
+ const correos=[
+  {destinatario:data.correo,asunto:'Casa Club · Tu reserva del '+fecha+' está confirmada',
+   texto:'Hola '+String(data.solicitante||'')+'.\n'+resumen},
+  {destinatario:process.env.CASA_CLUB_ADMIN_CORREO,
+   asunto:'Casa Club · Pago validado automáticamente · CC-'+data.id,
+   texto:resumen}
+ ].filter(x=>emailValido(String(x.destinatario||'')));
+ const resultados=await Promise.allSettled(correos.map(x=>correo.enviarAvisoCasaClub(x)));
+ resultados.forEach((r,i)=>{
+  if(r.status==='rejected')console.warn('[Casa Club] Aviso de confirmación SMTP no aceptado (destino '+(i===0?'residente':'Administración')+').');
+ });
+ return {intentos:correos.length,aceptados:resultados.filter(x=>x.status==='fulfilled').length};
+}
+module.exports={configuracion,datosBancarios,textoPago,emailValido,whatsappMexico,limitePago,importe,instrucciones,notificar,notificarConfirmacionBancaria};

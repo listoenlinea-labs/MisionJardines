@@ -114,3 +114,68 @@ destino antes de ejecutar una prueba real con depósito, correo bancario,
 MySQL y C3. **No se realizó una prueba extremo a extremo en Hostinger/C3** en
 este PR. El criterio de remitente es el encabezado From, no DKIM/DMARC: no
 se debe presentar como autenticación criptográfica del banco.
+
+## PR Casa Club · conciliación automática Titan (11-nov-2026)
+
+**Dos caminos para obtener una fecha:**
+
+- **Solo solicitud:** el sistema aparta provisionalmente el día, envía las
+  instrucciones y avisa a Administración. El administrador puede aprobar o
+  rechazar; si aprueba SIN depósito, `pagado=false` y el cobro no aparece
+  como confirmado. El plazo comunicado sigue vigente.
+- **Solicitud + comprobante desde Pagos:** la persona entra a su cuenta
+  vinculada a la vivienda, abre **Casa Club → Mis reservas → Subir comprobante**
+  (o usa el botón mostrado tras solicitar la fecha), y el módulo **Pagos**
+  preselecciona la reserva. Usa exactamente el OCR y la conciliación bancarios
+  que mantenimiento: remitente autorizado, identificador, importe, fecha,
+  cuenta destino, huella única del aviso y comprobante original.
+
+**Aprobación automática:** el archivo por sí solo NO acredita dinero. El
+comprobante se guarda como `PENDIENTE_VALIDACION` y se revisa con Titan. Solo
+cuando existe **una coincidencia bancaria íntegra** y la reserva sigue viva,
+vinculada a esa vivienda y con total exactamente igual al cobro originalmente
+comunicado (por defecto $2,000), una única transacción MySQL establece
+`PagoReportado=VALIDADO` y
+`ReservaCasaClub={estatus:APROBADA,pagado:true,fechaBloqueada:fecha}`.
+Después del commit se intenta correo al residente y al administrador; un
+fallo del proveedor SMTP no revierte una confirmación bancaria legítima.
+Administración ve todos los movimientos y puede descargar imagen y recibo PDF
+desde el detalle de la reserva.
+
+**Seguridad:** nunca se puede usar otra vivienda o fecha, una reserva ya
+cancelada/rechazada, monto incompleto, evento ya vencido o un comprobante ya
+registrado. Dos avisos bancarios completamente compatibles siguen requiriendo
+revisión: no se relaja ninguna condición de Titan. Los pagos de Casa Club
+**no adelantan cuotas de mantenimiento ni TAGs de ZKTeco**. En el panel
+administrativo, confirmar pago manual requiere folio bancario y prohíbe
+duplicarlo si existe ya una captura en revisión. Rechazar con comprobante en
+revisión queda bloqueado, porque podría existir un depósito real.
+
+**Solicitudes públicas:** se mantienen accesibles sin cuenta, pero para subir
+un comprobante y consultar el estado en Pagos la persona debe iniciar sesión
+en una cuenta vinculada a la vivienda; nunca se concede acceso a pagos
+de viviendas ajenas mediante un enlace público.
+
+### Pruebas de aceptación (Hostinger/Titan)
+
+1. Crear una solicitud de vivienda elegible para un día libre. Comprobar
+   `PENDIENTE`, `pagado=false`, día bloqueado y aviso a Administración.
+2. Sin pagar, aprobar una fecha desde Administración: debe permanecer
+   `pagado=false`, sin inventar depósito ni crear movimiento de dinero.
+3. Crear otra reserva, subir captura real de **$2,000** en Pagos → Casa Club:
+   debe quedar En revisión y no ocupar un segundo día ni generar pago duplicado.
+4. Confirmar que Titan recibió una notificación válida. Después de la
+   conciliación, deben cambiar **juntos** estado del pago y estado de reserva;
+   el calendario pasa de Apartada a Reservada y Administración puede descargar
+   imagen original y PDF. Verificar recepción real de correos.
+5. Probar comprobante sin coincidencia o con datos incorrectos: no se
+   autoriza el día automáticamente. Repetir prueba de envío: el sistema no
+   debe aceptar otro reporte mientras existe el primero en revisión.
+6. Comprobar que mantenimiento, proyectos extraordinarios, cuotas y C3 no
+   cambiaron por el pago Casa Club. Probar cancelación y liberación de día
+   conservando el pago histórico para eventual devolución.
+
+Para solicitudes antiguas se respeta el precio almacenado en cada reserva;
+la tarifa vigente de $2,000 se aplica a las nuevas. El código NO fue probado
+con correo ni MySQL reales al abrir el PR; el despliegue requiere frontend
+GitHub Pages y backend Hostinger, pero **no requiere migración SQL nueva**.

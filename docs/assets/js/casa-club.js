@@ -120,13 +120,25 @@
    ['Banco y cuenta/CLABE',p.banco+' · '+p.cuenta],
    ['Titular',p.titular],
    ['Fecha límite de pago',fmt(p.fechaLimitePago)+' (hora de Guadalajara)'],
-   ['Comprobante','Envíalo a '+p.correoAdministracion+' con el folio '+p.folio+'. La fecha se libera si el pago no queda confirmado a tiempo.']
+   ['Comprobante','Sube tu comprobante en Pagos → Casa Club con la reserva '+p.folio+'. Titan aprobará automáticamente la fecha tras confirmar el depósito.']
   ];
   const h=document.createElement('strong');h.textContent='Instrucciones de depósito';host.append(h);
   for(const [nombre,valor] of rows){const line=document.createElement('p');line.textContent=nombre+': '+valor;host.append(line);}
   const noEnviados=[['correo','correo'],['whatsapp','WhatsApp'],['administracion','correo a Administración']]
    .filter(([k])=>!result.notificaciones[k]).map(([,label])=>label);
   if(noEnviados.length){const warning=document.createElement('p');warning.textContent='No se pudo confirmar el envío por: '+noEnviados.join(', ')+'. Guarda estas instrucciones.';host.append(warning);}
+  if(Number.isSafeInteger(Number(result.id))&&Number(result.id)>0){
+   const action=document.createElement('a');
+   action.className='primary club-upload-link';
+   action.href='pagos.html?tab=CASA_CLUB&reserva='+Number(result.id);
+   action.textContent=profile?'Subir comprobante y confirmar fecha':'Inicia sesión para subir tu comprobante';
+   host.append(action);
+   if(!profile){
+    const note=document.createElement('p');
+    note.textContent='Para usar la validación automática necesitas una cuenta vinculada a esta vivienda. Solicita acceso a Administración si no lo tienes.';
+    host.append(note);
+   }
+  }
   host.hidden=false;
  }
  $('clubForm').addEventListener('submit',async e=>{
@@ -139,7 +151,7 @@
    const result=await api(profile?'/reservas':'/publico/solicitudes','POST',values);
    if(result.data?.pago)showPayment(result.data);
    notify(result.data?.estatus==='APROBADA'?'Reserva confirmada. El pago se registra por separado.':
-    'Fecha apartada. Consulta las instrucciones de depósito. Administración aprobará la reserva al verificar tu pago.');
+    'Fecha apartada. Sube el comprobante en Pagos para aprobación automática por Titan; sin pago, Administración podrá revisar la solicitud.');
    $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();
    if(admin)tab('mis-reservas');
   }catch(err){if(!showDebtAlert(err))notify(err.message,true);}
@@ -148,10 +160,10 @@
  async function mine(){
   try{const d=await api('/mias');const host=$('myReservations');host.innerHTML=d.data.length?d.data.map(r=>
    '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
-   '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>'+esc(r.motivo)+' · '+(r.pagado?'Pago confirmado':r.estatus==='PENDIENTE'?'Esperando aprobación':'Pago sin confirmar')+'</p>'+
+   '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>'+esc(r.motivo)+' · '+(r.pagado?'Pago bancario confirmado':r.comprobanteEnRevision?'Comprobante en revisión por Titan':r.estatus==='PENDIENTE'?'Pendiente de pago o de aprobación administrativa':'Pago sin confirmar')+'</p>'+
    ((r.estatus==='APROBADA'||(r.estatus==='PENDIENTE'&&r.fechaLimitePago))?'<div class="club-bill"><strong>'+(r.pagado?'Importes confirmados':'Paga a más tardar el '+esc(r.fechaLimitePago||'plazo indicado'))+'</strong>'+
     '<p>Renta: '+money(r.cuotaRecuperacion)+'</p><p>Depósito de garantía: '+money(r.depositoGarantia)+'</p><p>Limpieza: '+money(r.limpieza)+'</p><strong>Total: '+money(Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza))+'</strong>'+
-    (!r.pagado&&r.estatus==='APROBADA'?'<p><a href="pagos.html?tab=CASA_CLUB" class="primary" style="display:inline-block;padding:10px 16px;text-decoration:none">Subir comprobante en Pagos</a></p>':'')+'</div>':'')+
+    (!r.pagado&&!r.comprobanteEnRevision?'<p><a href="pagos.html?tab=CASA_CLUB&reserva='+Number(r.id)+'" class="primary club-upload-link">Subir comprobante y confirmar fecha</a></p>':r.comprobanteEnRevision?'<p>Tu comprobante está en revisión bancaria. No lo subas de nuevo.</p>':'')+'</div>':'')+
    '<footer><small>Reserva #'+Number(r.id)+'</small>'+(['PENDIENTE','APROBADA'].includes(r.estatus)?'<button type="button" class="danger" data-cancel="'+Number(r.id)+'">Cancelar</button>':'')+'</footer></article>').join(''):'<div class="reserve-card">Todavía no tienes reservas registradas.</div>';
   }catch(e){notify(e.message,true);}
  }
@@ -164,7 +176,8 @@
  const folioValido=()=>/^[a-z0-9-]{3,60}$/i.test($('clubBankFolio').value.trim());
  let reviewing=false;
  const syncReview=()=>{
-  $('clubApprove').disabled=reviewing||!$('clubPaymentVerified').checked||!folioValido();
+  $('clubApprove').disabled=reviewing||($('clubPaymentVerified').checked&&!folioValido());
+  $('clubApprove').textContent=$('clubPaymentVerified').checked?'Confirmar pago manual y aprobar':'Aprobar fecha sin registrar pago';
   $('clubReject').disabled=reviewing;
  };
  async function loadReviewWhatsApp(r){
@@ -199,7 +212,50 @@
   $('clubReviewError').hidden=true;syncReview();
   if(!reviewModal.open)reviewModal.showModal();
   void loadReviewWhatsApp(r);
+  void loadReviewProofs(r);
  }
+ async function loadReviewProofs(r){
+  const host=$('clubReviewProofs');
+  host.innerHTML='<h3>Comprobantes y movimientos bancarios</h3><p>Consultando expediente…</p>';
+  try{
+   const result=await api('/administracion/'+Number(r.id)+'/comprobantes');
+   if(activeReview!==r||!reviewModal.open)return;
+   const lista=result.data?.automaticos||[],manuales=result.data?.manuales||[];
+   const autom=lista.map(p=>'<article class="club-bank-record"><div><strong>'+esc(p.folio||'Comprobante '+p.id)+'</strong>'+
+    '<small>'+esc(money(p.monto))+' · '+esc(p.estatus)+' · Depósito '+esc(p.fechaOperacion||'—')+
+    (p.fechaValidacion?' · Validado '+esc(fechaSolicitud(p.fechaValidacion)):'')+'</small></div>'+
+    '<div class="club-bank-actions"><button type="button" class="soft" data-club-comprobante="'+Number(p.id)+'">Descargar comprobante</button>'+
+    '<button type="button" class="soft" data-club-recibo="'+Number(p.id)+'">Ver recibo PDF</button></div></article>').join('');
+   const manual=manuales.map(p=>'<article class="club-bank-record"><div><strong>Pago registrado por Administración</strong><small>'+
+    esc(money(p.monto))+' · '+esc(p.formaPago)+' · '+esc(p.referencia)+' · '+esc(fechaSolicitud(p.creadoEn))+
+    '</small></div></article>').join('');
+   host.innerHTML='<h3>Comprobantes y movimientos bancarios</h3>'+
+    (autom+manual||'<p>No hay pagos registrados para esta reserva.</p>');
+  }catch(e){if(activeReview===r&&reviewModal.open)host.innerHTML='<h3>Comprobantes y movimientos bancarios</h3><p>'+esc(e.message)+'</p>';}
+ }
+ $('clubReviewProofs').addEventListener('click',async e=>{
+  const button=e.target.closest('[data-club-comprobante],[data-club-recibo]');
+  if(!button||!admin)return;
+  const id=Number(button.dataset.clubComprobante||button.dataset.clubRecibo);
+  if(!Number.isSafeInteger(id)||id<=0)return;
+  button.disabled=true;
+  try{
+   const isProof=Boolean(button.dataset.clubComprobante);
+   const response=await fetch(API+'/pagos/'+id+(isProof?'/comprobante':'/recibo'),{headers:headers()});
+   if(!response.ok)throw Error('No fue posible descargar el comprobante o recibo bancario.');
+   let href;
+   if(isProof){
+    const json=await response.json();
+    href=String(json?.data?.comprobanteData||'');
+    if(!/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(href))throw Error('Formato de comprobante no disponible.');
+   }else href=URL.createObjectURL(await response.blob());
+   const a=document.createElement('a');
+   a.href=href;
+   a.download=(isProof?'Comprobante_':'Recibo_')+id+(isProof?'.jpg':'.pdf');
+   document.body.append(a);a.click();a.remove();
+   if(!isProof)setTimeout(()=>URL.revokeObjectURL(href),60000);
+  }catch(err){notify(err.message,true);}finally{button.disabled=false;}
+ });
  $('closeClubReview').addEventListener('click',()=>reviewModal.close());
  reviewModal.addEventListener('close',()=>{if(!reviewModal.open)activeReview=null;});
  $('clubPaymentVerified').addEventListener('change',syncReview);
@@ -216,8 +272,8 @@
   try{
    await api('/administracion/'+Number(r.id),'PATCH',info);
    if(reviewModal.open&&activeReview===r)editReview({...r,estatus:approve?'APROBADA':'RECHAZADA',
-    pagado:approve,fechaPago:approve?today():null,folio:approve?info.folio:r.folio,notas:info.notas});
-   notify(approve?'Pago verificado y reservación confirmada.':'Solicitud rechazada. La fecha se liberó.');
+    pagado:approve&&info.pagoVerificado,fechaPago:approve&&info.pagoVerificado?today():null,folio:approve&&info.pagoVerificado?info.folio:null,notas:info.notas});
+   notify(approve?(info.pagoVerificado?'Pago manual registrado y reservación confirmada.':'Fecha aprobada sin pago. El residente podrá pagar desde Pagos.'):'Solicitud rechazada. La fecha se liberó.');
    await Promise.all([adminList(),calendar().catch(e=>notify(e.message,true))]);
   }catch(err){if(reviewModal.open&&activeReview===r){error.textContent=err.message;error.hidden=false;}}
   finally{reviewing=false;syncReview();}

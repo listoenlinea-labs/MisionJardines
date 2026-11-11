@@ -26,7 +26,7 @@ async function consultarAdeudos(casaId) {
   const [soloMantenimiento,cargos,reservas] = await Promise.all([
     consultarSoloMantenimiento(casaId),
     estadoCargos(casaId),
-    Reserva.findAll({where:{casaId,estatus:'APROBADA',pagado:false},attributes:['id','fecha','fechaLimitePago','cuotaRecuperacion','depositoGarantia','limpieza']})
+    Reserva.findAll({where:{casaId,estatus:{[Op.in]:['PENDIENTE','APROBADA']},pagado:false,fechaBloqueada:{[Op.ne]:null},fechaLimitePago:{[Op.gte]:hoy}},attributes:['id','fecha','estatus','fechaLimitePago','cuotaRecuperacion','depositoGarantia','limpieza']})
   ]);
   const reservaIds=reservas.map(r=>r.id);
   const proofs=reservaIds.length?await PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},estatus:'PENDIENTE_VALIDACION'},attributes:['reservaCasaClubId']}):[];
@@ -40,7 +40,7 @@ async function consultarAdeudos(casaId) {
     montoDisponible:x.montoDisponible,pendienteValidacion:x.pendienteValidacion,
     estado:x.estado,esAportacionVoluntaria:true
    }));
-  const club = reservas.map(r=>({categoria:'CASA_CLUB',id:r.id,concepto:'Casa club',periodo:r.fecha,monto:Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza),
+  const club = reservas.map(r=>({categoria:'CASA_CLUB',id:r.id,concepto:'Casa club',periodo:r.fecha,estatusReserva:r.estatus,monto:Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza),
     renta:Number(r.cuotaRecuperacion),deposito:Number(r.depositoGarantia),limpieza:Number(r.limpieza),fechaLimitePago:r.fechaLimitePago,estado:submitted.has(String(r.id))?'EN_REVISION':'PENDIENTE'}));
   const tipos = {
     MANTENIMIENTO:soloMantenimiento.tipos.MANTENIMIENTO,

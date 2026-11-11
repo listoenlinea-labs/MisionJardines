@@ -9,6 +9,9 @@
     let profile = null, config = null, proofData = '', ocrText = '', proofConfirmed = false, scanRevision = 0, proofMeta = { name: '', mime: '' }, paymentType = 'MANTENIMIENTO', extras = [], selectedExtra = null, selectedClub = null, debts = null;
 
     let ocrAmount='', reportBusy=false;
+    // Preselección segura: únicamente entre las reservas de la vivienda autenticada.
+    const reservaSolicitada=Number(new URLSearchParams(location.search).get('reserva'));
+
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
     async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) {
       const error = Error(d.message || 'No fue posible completar la solicitud');
@@ -138,6 +141,8 @@
     }
     async function loadDebts(){
       const d=await api('/pagos/adeudos',{headers:headers()});debts=d.data;
+      if(!selectedClub&&Number.isSafeInteger(reservaSolicitada)&&reservaSolicitada>0)
+        selectedClub=(debts?.tipos?.CASA_CLUB||[]).find(c=>Number(c.id)===reservaSolicitada)||null;
       document.querySelectorAll('.tab').forEach(button=>{
         button.querySelector('.mj-tab-count')?.remove();
         // En proyectos, solo una meta POSITIVA pendiente amerita una burbuja.
@@ -165,7 +170,7 @@
     }
     function renderClub(){
       const items=debts?.tipos?.CASA_CLUB||[];
-      $('clubPaymentList').innerHTML=items.length?items.map(c=>'<div class="extra'+(selectedClub?.id===c.id?' selected':'')+'" data-club="'+Number(c.id)+'"><div><strong>Reservación '+esc(c.periodo)+'</strong><small>Renta '+money(c.renta)+' · Depósito '+money(c.deposito)+' · Limpieza '+money(c.limpieza)+' · Pagar hasta '+esc(c.fechaLimitePago||'pendiente')+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</small></div><b>'+money(c.monto)+'</b></div>').join(''):'<div class="empty">No tienes reservaciones aprobadas pendientes de pago.</div>';
+      $('clubPaymentList').innerHTML=items.length?items.map(c=>'<div class="extra'+(selectedClub?.id===c.id?' selected':'')+'" data-club="'+Number(c.id)+'"><div><strong>Reservación '+esc(c.periodo)+'</strong><small>'+(c.estatusReserva==='PENDIENTE'?'Pendiente · Titan confirmará automáticamente · ':'')+'Renta '+money(c.renta)+' · Depósito '+money(c.deposito)+' · Limpieza '+money(c.limpieza)+' · Pagar hasta '+esc(c.fechaLimitePago||'pendiente')+(c.estado==='EN_REVISION'?' · Comprobante en revisión':'')+'</small></div><b>'+money(c.monto)+'</b></div>').join(''):'<div class="empty">No tienes reservas activas pendientes de pago. Solicita tu fecha desde Casa Club.</div>';
     }
     function showDebtModal(){
       const source=debts?.tipos?.[paymentType]||[];
@@ -510,7 +515,7 @@
       }
       if(paymentType==='CASA_CLUB'){
         const amount=Number(selectedClub?.monto||0);$('summaryBase').textContent=selectedClub?money(amount):'Selecciona reservación';$('lateRow').hidden=true;$('summaryTotal').textContent=money(amount);$('amount').min=amount||1;
-        $('officialConcept').value=selectedClub?'Casa club '+selectedClub.periodo+' · Renta '+money(selectedClub.renta)+' + depósito '+money(selectedClub.deposito)+' + limpieza '+money(selectedClub.limpieza):'Selecciona una reservación aprobada';return;
+        $('officialConcept').value=selectedClub?'Casa club '+selectedClub.periodo+' · Renta '+money(selectedClub.renta)+' + depósito '+money(selectedClub.deposito)+' + limpieza '+money(selectedClub.limpieza):'Selecciona una reservación pendiente o aprobada';return;
       }
       $('lateRow').hidden = false;
       $('amount').removeAttribute('max');
@@ -780,7 +785,7 @@
     $('adminExtraBox').hidden=true;
 
     $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if(reportBusy)return; if(repartoUI.activo(paymentType)&&!repartoUI.valido())return toast('La suma debe coincidir con el depósito y el reparto debe estar cotizado.'); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='PAGADO'||Number(selectedExtra.montoDisponible??selectedExtra.monto)<=0))
-       return toast('Selecciona un proyecto que todavía permita nuevas aportaciones.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reservación aprobada sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'CASA_CLUB' && Math.abs(amount - required) > .009) ||
+       return toast('Selecciona un proyecto que todavía permita nuevas aportaciones.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reserva activa y sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'CASA_CLUB' && Math.abs(amount - required) > .009) ||
        (paymentType === 'EXTRAORDINARIO' && Math.round(amount*100)>Math.round(required*100))) return toast(paymentType==='EXTRAORDINARIO'
         ?'Puedes aportar cualquier cantidad desde $1 hasta '+money(required)+' en este momento.'
         :paymentType==='MANTENIMIENTO'?'Ingresa un monto mayor que cero.':

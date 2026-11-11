@@ -92,10 +92,14 @@ test('solo el administrador puede confirmar el pago y aprobar el monto ya comuni
  t.mock.method(Reserva,'findByPk',async()=>({id:22,estatus:'PENDIENTE',fechaLimitePago:offset(3),fecha:body.fecha,
   casaId:5,cuotaRecuperacion:700,depositoGarantia:700,limpieza:0,update:async d=>{cambio=d;}}));
  t.mock.method(Manual,'create',async d=>{pago=d;});
+ t.mock.method(Manual,'count',async()=>0);
+ t.mock.method(PagoReportado,'count',async()=>0);
  const run=async(usuario,info)=>{const r=res();await club.revisar({usuario,params:{id:22},body:{accion:'APROBAR',...info}},r);return r;};
  assert.equal((await run({rol:'CONDOMINO'},{pagoVerificado:true,folio:'REF-123'})).code,403);
- assert.equal((await run(admin,{})).code,400);
- assert.equal(cambio,undefined);
+ assert.equal((await run(admin,{})).code,200);
+ assert.equal(cambio.pagado,false,'Autorizar fecha no crea un cobro inexistente');
+ assert.equal(pago,undefined);
+ assert.equal((await run(admin,{pagoVerificado:true})).code,400);
  assert.equal((await run(admin,{pagoVerificado:true,folio:'REF-123',cuotaRecuperacion:1})).code,200);
  assert.equal(pago.monto,1400);assert.equal(cambio.estatus,'APROBADA');assert.equal(cambio.pagado,true);
 });
