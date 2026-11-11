@@ -162,7 +162,21 @@ async function listarCuotasExtraordinarias(req, res) {
     try {
         if(!req.usuario.casaId)return res.status(400).json({ok:false,message:'Selecciona una vivienda'});
         const data=await estadoCargos(req.usuario.casaId);
-        return res.json({ ok: true, data:data.filter(c=>c.estado!=='PAGADO') });
+        // Consultar el catálogo completo sin generar cargos ni alterar saldos.
+        // Las viviendas de prueba fuera del padrón oficial pueden visualizar
+        // proyectos, pero no recibir cuotas ni reportar pagos sin cargo real.
+        const activos=await CuotaExtraordinaria.findAll({
+            where:{activo:true},attributes:['id','concepto','fechaInicio'],order:[['id','ASC']]
+        });
+        const presentes=new Set(data.map(c=>String(c.cuotaExtraordinariaId)));
+        const sinCargo=activos.filter(p=>!presentes.has(String(p.id))).map(p=>({
+            id:null,cuotaExtraordinariaId:p.id,concepto:p.concepto,
+            periodo:p.fechaInicio||'',monto:0,montoOriginal:0,montoPagado:0,
+            pendienteValidacion:0,montoDisponible:0,estado:'SIN_CARGO',
+            esAportacionVoluntaria:true
+        }));
+        res.setHeader('Cache-Control','private, no-store');
+        return res.json({ok:true,data:[...data,...sinCargo]});
     } catch (error) {
         console.error('Error al listar cuotas extraordinarias:', error);
         return res.status(500).json({
