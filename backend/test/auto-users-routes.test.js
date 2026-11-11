@@ -21,7 +21,7 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
       assert.equal((await send(path, forged)).status, 403);
     }
     assert.equal((await send('/crear', forged)).status, 403); assert.equal(queried, 0);
-    for (const [path, method] of [['/prueba/usuarios', 'GET'], ['/prueba/1', 'PATCH'], ['/prueba/1', 'DELETE']]) {
+    for (const [path, method] of [['/prueba/usuarios', 'GET'], ['/prueba/1', 'PATCH'], ['/prueba/1', 'DELETE'], ['/1', 'DELETE']]) {
       assert.equal((await send(path, undefined, method)).status, 401);
       assert.equal((await send(path, forged, method)).status, 403);
     }
@@ -34,6 +34,7 @@ test('HTTP routes refuse anonymous/resident/forged-admin requests and allow auth
     t.mock.method(require('../src/config/database'), 'transaction', async fn => fn({ LOCK: { UPDATE: 'UPDATE' } }));
     t.mock.method(models.Rol, 'findByPk', async () => { throw Object.assign(Error('SQL and private data must not leak'), { name: 'SequelizeDatabaseError', original: { code: 'ER_BAD_FIELD_ERROR' } }); });
     t.mock.method(console, 'error', () => {});
+    assert.equal((await send('/1', forged, 'DELETE')).status, 409);
     const failedDelete = await send('/prueba/1', forged, 'DELETE');
     assert.equal(failedDelete.status, 503);
     const diagnostic = await failedDelete.json();

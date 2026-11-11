@@ -202,6 +202,66 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
         }
         return { registros, total: count, pagina: page };
     }
+    async function protegerHistorial(id, transaction, condominoId = null) {
+        // Check only real tables/columns; selecting a complete model can fail
+        // on unrelated legacy fields before deletion is even attempted.
+        const models = Object.values(db.models || {}).filter(model => ![Usuario, Condomino, CondominoVivienda, UsuarioCasa, Invitacion, Reporte].includes(model));
+        const candidates = models.map(model => {
+            const references = [];
+            for (const [attribute, definition] of Object.entries(model.rawAttributes || {})) {
+                const reference = definition.references?.model;
+                const table = typeof reference === 'string' ? reference : reference?.tableName;
+                const target = table === 'usuarios' || /usuario.*Id$/i.test(attribute) ? id
+                    : table === 'condominos' || /condomino.*Id$/i.test(attribute) ? condominoId : null;
+                if (target !== null) references.push({ attribute, column: definition.field || attribute, target });
+            }
+            return { model, references };
+        }).filter(candidate => candidate.references.length);
+        if (candidates.length) {
+            const qi = db.getQueryInterface();
+            const existingTables = new Set((await qi.showAllTables({ transaction })).map(table => typeof table === 'string' ? table : table.tableName));
+            for (const { model, references } of candidates) {
+                const table = model.getTableName();
+                const tableName = typeof table === 'string' ? table : table.tableName;
+                if (!existingTables.has(tableName)) continue; // An absent optional module has no rows to protect.
+                try {
+                    const columns = await qi.describeTable(table, { transaction });
+                    const present = references.filter(reference => Object.hasOwn(columns, reference.column));
+                    if (!present.length) continue;
+                    const found = await model.findOne({ attributes: present.map(reference => reference.attribute),
+                        where: { [Op.or]: present.map(reference => ({ [reference.attribute]: reference.target })) },
+                        ...lock(transaction) });
+                    if (found) throw fail(409, 'Esta cuenta tiene historial en ' + tableName + '. Revisa esas referencias antes de borrarla.');
+                } catch (error) {
+                    if (error.status) throw error;
+                    const code = String(error.original?.code || error.parent?.code || error.name || 'ERROR_INTERNO');
+                    const safeCode = /^[A-Za-z0-9_]{1,80}$/.test(code) ? code : 'ERROR_INTERNO';
+                    throw fail(503, 'No se pudo revisar la tabla ' + tableName + ' (' + safeCode + ') antes de borrar. Revisa el esquema del backend o sus registros de error. No se eliminó ningún dato.');
+                }
+            }
+        }
+    }
+    async function eliminarDatosPrerregistro(id, transaction) {
+        await Reporte.destroy({ where: { usuarioId: id }, transaction });
+        await Invitacion.destroy({ where: { usuarioId: id }, transaction });
+        await UsuarioCasa.destroy({ where: { usuarioId: id }, transaction });
+        await Usuario.destroy({ where: { id }, transaction });
+    }
+    async function borrarPrerregistro(id) {
+        return db.transaction(async transaction => {
+            const user = await Usuario.findByPk(id, lock(transaction));
+            if (!user) throw fail(404, 'El prerregistro ya no existe.');
+            if (!pending(user)) throw fail(409, 'Solo se pueden borrar prerregistros pendientes y sin aceptar.');
+            if (trialUser(user)) throw fail(409, 'Borra esta cuenta desde Usuarios de prueba guardados.');
+            const role = await Rol.findByPk(user.rolId, { transaction });
+            if (role?.nombre !== 'CONDOMINO') throw fail(409, 'Esta cuenta tiene otro rol y requiere revisión.');
+            if (await UsuarioCasa.findOne({ where: { usuarioId: id, activo: true }, ...lock(transaction) }))
+                throw fail(409, 'La cuenta tiene acceso activo a una vivienda. Revisa el vínculo antes de borrarla.');
+            await protegerHistorial(id, transaction);
+            await eliminarDatosPrerregistro(id, transaction);
+            return { mensaje: 'Prerregistro borrado. El condómino y sus viviendas se conservan.' };
+        });
+    }
     async function borrarPrueba(id) {
         return db.transaction(async transaction => {
             const user = await Usuario.findByPk(id, lock(transaction));
@@ -211,47 +271,8 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
             const condo = await Condomino.findByPk(user.condominoId, lock(transaction));
             if (!condo) throw fail(409, 'El vínculo del condómino requiere revisión.');
             if (await Usuario.findOne({ where: { condominoId: condo.id, id: { [Op.ne]: id } }, transaction })) throw fail(409, 'El condómino tiene otra cuenta asociada.');
-            // Check only real tables/columns; selecting a complete model can fail
-            // on unrelated legacy fields before deletion is even attempted.
-            const models = Object.values(db.models || {}).filter(model => ![Usuario, Condomino, CondominoVivienda, UsuarioCasa, Invitacion, Reporte].includes(model));
-            const candidates = models.map(model => {
-                const references = [];
-                for (const [attribute, definition] of Object.entries(model.rawAttributes || {})) {
-                    const reference = definition.references?.model;
-                    const table = typeof reference === 'string' ? reference : reference?.tableName;
-                    const target = table === 'usuarios' || /usuario.*Id$/i.test(attribute) ? id
-                        : table === 'condominos' || /condomino.*Id$/i.test(attribute) ? condo.id : null;
-                    if (target !== null) references.push({ attribute, column: definition.field || attribute, target });
-                }
-                return { model, references };
-            }).filter(candidate => candidate.references.length);
-            if (candidates.length) {
-                const qi = db.getQueryInterface();
-                const existingTables = new Set((await qi.showAllTables({ transaction })).map(table => typeof table === 'string' ? table : table.tableName));
-                for (const { model, references } of candidates) {
-                    const table = model.getTableName();
-                    const tableName = typeof table === 'string' ? table : table.tableName;
-                    if (!existingTables.has(tableName)) continue; // An absent optional module has no rows to protect.
-                    try {
-                        const columns = await qi.describeTable(table, { transaction });
-                        const present = references.filter(reference => Object.hasOwn(columns, reference.column));
-                        if (!present.length) continue;
-                        const found = await model.findOne({ attributes: present.map(reference => reference.attribute),
-                            where: { [Op.or]: present.map(reference => ({ [reference.attribute]: reference.target })) },
-                            ...lock(transaction) });
-                        if (found) throw fail(409, 'Esta cuenta tiene historial en ' + tableName + '. Revisa esas referencias antes de borrarla.');
-                    } catch (error) {
-                        if (error.status) throw error;
-                        const code = String(error.original?.code || error.parent?.code || error.name || 'ERROR_INTERNO');
-                        const safeCode = /^[A-Za-z0-9_]{1,80}$/.test(code) ? code : 'ERROR_INTERNO';
-                        throw fail(503, 'No se pudo revisar la tabla ' + tableName + ' (' + safeCode + ') antes de borrar. Revisa el esquema del backend o sus registros de error. No se eliminó ningún dato.');
-                    }
-                }
-            }
-            await Reporte.destroy({ where: { usuarioId: id }, transaction });
-            await Invitacion.destroy({ where: { usuarioId: id }, transaction });
-            await UsuarioCasa.destroy({ where: { usuarioId: id }, transaction });
-            await Usuario.destroy({ where: { id }, transaction });
+            await protegerHistorial(id, transaction, condo.id);
+            await eliminarDatosPrerregistro(id, transaction);
             await CondominoVivienda.destroy({ where: { condominoId: condo.id }, transaction });
             await Condomino.destroy({ where: { id: condo.id }, transaction });
             return { mensaje: 'Cuenta de prueba, condómino ficticio, invitación y reportes eliminados. La vivienda se conserva.' };
@@ -446,7 +467,7 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
     }
     async function listar(page = 1, reportPage = 1) {
         const { count, rows } = await Usuario.findAndCountAll({ where: { condominoId: { [Op.ne]: null } },
-            attributes: ['id', 'condominoId', 'casaId', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'nombreUsuario', 'correo', 'telefono', 'cuentaAceptada', 'estatus'],
+            attributes: ['id', 'condominoId', 'casaId', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'nombreUsuario', 'correo', 'telefono', 'cuentaAceptada', 'estatus', 'observaciones'],
             order: [['id', 'ASC']], limit: 50, offset: (page - 1) * 50, raw: true });
         const ids = rows.map(r => r.id), houseIds = rows.map(r => r.casaId);
         const [casas, invitaciones, reportsResult] = await Promise.all([
@@ -459,11 +480,11 @@ function crearServicio({ db, Usuario, Condomino, CondominoVivienda, Casa, Rol, U
         const reportUsers = reportUserIds.length ? await Usuario.findAll({ where: { id: { [Op.in]: reportUserIds } },
             attributes: ['id', 'condominoId', 'casaId', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'nombreUsuario', 'correo', 'telefono', 'cuentaAceptada', 'estatus'], raw: true }) : [];
         for (const user of [...rows, ...reportUsers]) user.viviendas = await relaciones.viviendas(user.condominoId);
-        return { total: count, pagina: page, registros: rows.map(u => ({ ...u, casa: casas.find(c => String(c.id) === String(u.casaId)),
+        return { total: count, pagina: page, registros: rows.map(({ observaciones, ...u }) => ({ ...u, esPrueba: trialUser({ observaciones }), casa: casas.find(c => String(c.id) === String(u.casaId)),
             invitacion: invitaciones.find(i => String(i.usuarioId) === String(u.id)) })),
             totalReportes: reportsResult.count, paginaReportes: reportPage,
             reportes: reportes.map(r => ({ ...r, usuario: reportUsers.find(u => String(u.id) === String(r.usuarioId)) })) };
     }
-    return { crearIndividual, consultarTelefono, enviarPorTelefono, listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, validar, aceptar, reportar, editar, enviarLote, sendOne, listar };
+    return { borrarPrerregistro, crearIndividual, consultarTelefono, enviarPorTelefono, listarPruebas, borrarPrueba, editarPrueba: (id, body, actorId) => editar(id, body, actorId, true), viviendasPrueba, crearPrueba, enlacePrueba, crearLote, createOne, consultar, validar, aceptar, reportar, editar, enviarLote, sendOne, listar };
 }
 module.exports = { crearServicio, credentials, houseNumber, names };
