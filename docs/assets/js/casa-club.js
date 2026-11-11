@@ -243,7 +243,8 @@
   if(!admin)return;
   try{
    const d=await api('/administracion');adminRows=[...(d.data||[])].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true})||String(a.fecha||'').localeCompare(String(b.fecha||'')));
-   let paid=adminRows.filter(r=>r.pagado&&r.estatus==='APROBADA');
+   // Una reserva cancelada NO equivale a devolver el pago: conservarlo en lo recaudado.
+   let paid=adminRows.filter(r=>r.pagado);
    let income=paid.reduce((a,r)=>a+Number(r.cuotaRecuperacion),0),
        guarantee=paid.reduce((a,r)=>a+Number(r.depositoGarantia),0),
        cleaning=paid.reduce((a,r)=>a+Number(r.limpieza),0);
