@@ -371,9 +371,9 @@ async function reportarPago(req, res) {
             concepto = 'Aportación libre al proyecto: ' + cuotaExtraordinaria.concepto;
         } else if(tipoPago==='CASA_CLUB'){
             const reservaId=Number(req.body.reservaCasaClubId);
-            reservaCasaClub=await ReservaCasaClub.findOne({where:{id:reservaId,casaId,estatus:'APROBADA',pagado:false}});
-            if(!reservaCasaClub)return res.status(404).json({ok:false,message:'No existe una reserva aprobada y pendiente para esta vivienda'});
-            if(!reservaCasaClub.fechaLimitePago||fechaMexico()>reservaCasaClub.fechaLimitePago||fechaOperacion>reservaCasaClub.fechaLimitePago)
+            reservaCasaClub=await ReservaCasaClub.findOne({where:{id:reservaId,casaId,estatus:{[require('sequelize').Op.in]:['PENDIENTE','APROBADA']},pagado:false}});
+            if(!reservaCasaClub)return res.status(404).json({ok:false,message:'No existe una solicitud activa de Casa Club para esta vivienda'});
+            if(!reservaCasaClub.fechaBloqueada||reservaCasaClub.fechaBloqueada!==reservaCasaClub.fecha||!reservaCasaClub.fechaLimitePago||fechaMexico()>reservaCasaClub.fechaLimitePago||fechaOperacion>reservaCasaClub.fechaLimitePago)
                 return res.status(409).json({ok:false,message:'Venció el plazo para subir el comprobante de casa club'});
             requerido=Number(reservaCasaClub.cuotaRecuperacion)+Number(reservaCasaClub.depositoGarantia)+Number(reservaCasaClub.limpieza);
             concepto='Casa club · '+reservaCasaClub.fecha+' (renta $'+reservaCasaClub.cuotaRecuperacion+', depósito $'+reservaCasaClub.depositoGarantia+', limpieza $'+reservaCasaClub.limpieza+')';
@@ -427,7 +427,7 @@ async function reportarPago(req, res) {
           }
           if(reservaCasaClub){
             const locked=await ReservaCasaClub.findByPk(reservaCasaClub.id,{transaction,lock:transaction.LOCK.UPDATE});
-            if(!locked||locked.estatus!=='APROBADA'||locked.pagado||fechaMexico()>locked.fechaLimitePago){const e=new Error('La reservación ya no está vigente para pagar');e.status=409;throw e;}
+            if(!locked||!['PENDIENTE','APROBADA'].includes(locked.estatus)||locked.pagado||locked.fechaBloqueada!==locked.fecha||!locked.fechaLimitePago||fechaMexico()>locked.fechaLimitePago||fechaOperacion>locked.fechaLimitePago){const e=new Error('La reservación ya no está vigente para pagar');e.status=409;throw e;}
           }
           // El comprobante pendiente ya bloquea ese cargo; no duplicar folios.
           const where=cargoExtraordinario?{cargoExtraordinarioId:cargoExtraordinario.id}:{reservaCasaClubId:reservaCasaClub.id};
