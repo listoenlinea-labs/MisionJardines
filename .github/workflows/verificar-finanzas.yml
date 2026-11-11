@@ -35,6 +35,12 @@ jobs:
       - name: Instalar dependencias del backend sin ejecutar scripts de despliegue
         working-directory: backend
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Titan IMAP mensajes largos sin bloquear la conciliación bancaria
+        run: |
+          node --check backend/src/services/correo-imap.transport.js
+          node --check backend/src/services/correo-bancario-mail.service.js
+          node --test backend/test/imap-mensajes-grandes.test.js backend/test/diagnostico-buzon-pagos.test.js
+
       - name: Condóminos, tarifas Casa Club, cancelaciones, OCR, correo y C3
         run: |
           node --check docs/assets/js/casa-club.js
