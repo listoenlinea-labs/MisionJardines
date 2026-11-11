@@ -6,6 +6,7 @@ Object.assign(process.env,{DB_HOST:'localhost',DB_PORT:'3306',DB_NAME:'test',DB_
 const tarifas=require('../src/services/casa-club-tarifas.service');
 const Tarifa=require('../src/models/TarifaCasaClub');
 const Reserva=require('../src/models/ReservaCasaClub');
+const PagoReportado=require('../src/models/PagoReportado');
 const db=require('../src/config/database');
 const email=require('../src/services/email.service');
 const club=require('../src/controllers/casa-club.controller');
@@ -40,6 +41,7 @@ test('solo administración puede editar y el reparto queda persistido',async t=>
  assert.equal(admin.body.data.total,2000);
 });
 test('liberar reserva aprobada deja historial de pago y desbloquea la fecha',async t=>{
+ t.mock.method(PagoReportado,'count',async()=>0);
  let cambio=null,enviado=null;
  t.mock.method(db,'transaction',async fn=>fn({LOCK:{UPDATE:'UPDATE'}}));
  t.mock.method(Reserva,'findByPk',async()=>({
