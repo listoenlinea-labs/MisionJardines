@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../../docs/assets/js/auto-users.js'),'utf8');
-async function page(){
+async function page(registros=[]){
  const nodes=new Map(),requests=[];let requestNumber=0,createMode='success',sendMode='success';
  const element=()=>({value:'',textContent:'',hidden:false,innerHTML:'',listeners:{},children:[],
   addEventListener(t,f){this.listeners[t]=f;},append(c){this.children.push(c);},setAttribute(){},querySelectorAll(){return [];},reportValidity(){return true;}});
@@ -22,7 +22,7 @@ async function page(){
    else if(url.endsWith('/config'))data={correoDisponible:true};
    else if(url.includes('/prueba/usuarios'))data={registros:[],total:0};
    else if(url.includes('/auth/cuentas?'))data={solicitudes:[],total:0};
-   else data={registros:[],reportes:[],total:0,totalReportes:0};
+   else data={registros,reportes:[],total:registros.length,totalReportes:0};
    return {ok:true,json:async()=>({ok:true,...data})};
   }};
  await vm.runInNewContext(source,context);
@@ -59,4 +59,15 @@ test('Un fallo SMTP muestra el error y permite reintentar sin crear otra cuenta'
  p.sendMode('success');await p.$('sendSingleInvitation').listeners.click();
  assert.equal(p.requests.filter(r=>r.url.endsWith('/individual')).length,1);
  assert.equal(p.requests.filter(r=>r.url.endsWith('/8/invitacion')).length,2);
+});
+
+test('Borrar prerregistro aparece con aceptación false o cero, solo para pendientes reales', async () => {
+ const row = { estatus: 'PENDIENTE', nombre: 'Residente Ejemplo' };
+ const p = await page([
+  {...row,id:11,cuentaAceptada:false}, {...row,id:12,cuentaAceptada:0}, {...row,id:13,cuentaAceptada:'0'},
+  {...row,id:14,cuentaAceptada:1}, {...row,id:15,cuentaAceptada:false,esPrueba:true},
+  {...row,id:16,cuentaAceptada:false,estatus:'ACTIVO'}, {...row,id:17,cuentaAceptada:null}
+ ]);
+ const buttons = [...p.$('autoUserRows').innerHTML.matchAll(/data-delete-preregistration="(\d+)"/g)].map(m=>m[1]);
+ assert.deepEqual(buttons, ['11','12','13']);
 });
