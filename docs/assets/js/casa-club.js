@@ -5,6 +5,7 @@
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=v=>Number(v||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const fmt=d=>window.MJDateDisplay.format(d);
+ const fechaSolicitud=d=>d?new Date(d).toLocaleString('es-MX',{timeZone:'America/Mexico_City',dateStyle:'short',timeStyle:'short'}):'—';
  const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  let profile=null,admin=false;
  let currentMonth=today().slice(0,7),selectedDate='',occupied=new Map(),adminRows=[],activeReview=null;
@@ -112,7 +113,10 @@
   host.replaceChildren();
   const rows=[
    ['Fecha apartada',fmt(result.fecha)+' · '+p.folio],
-   ['Importe',money(p.monto)],
+   ['Pago de recuperación',money(p.cuotaRecuperacion)],
+   ['Depósito de garantía',money(p.depositoGarantia)],
+   ['Limpieza',money(p.limpieza)],
+   ['Total a depositar',money(p.monto)],
    ['Banco y cuenta/CLABE',p.banco+' · '+p.cuenta],
    ['Titular',p.titular],
    ['Fecha límite de pago',fmt(p.fechaLimitePago)+' (hora de Guadalajara)'],
@@ -181,6 +185,7 @@
   const detalles=[
    ['Nombre',r.solicitante],['Vivienda',homeText(r)],['WhatsApp',r.telefono],['Correo',r.correo],
    ['Propietario',r.propietario?'Sí':'No'],['Motivo del evento',r.motivo],
+   ['Solicitud recibida',fechaSolicitud(r.creadoEn)+' (Guadalajara)'],
    ['Estado de la reserva',({PENDIENTE:'Solicitud pendiente',APROBADA:'Confirmada',CANCELADA:'Cancelada',RECHAZADA:'Rechazada'})[r.estatus]],
    ['Estado del pago',paymentStatus(r)],['Renta',money(r.cuotaRecuperacion)],['Garantía',money(r.depositoGarantia)],
    ['Limpieza',money(r.limpieza)],['Total del depósito',money(Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza))],
@@ -189,6 +194,7 @@
   ];
   $('clubReviewDetails').innerHTML=detalles.map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value||'—')+'</dd></div>').join('');
   $('clubReviewActions').hidden=r.estatus!=='PENDIENTE';
+  $('clubRelease').hidden=!admin||r.estatus!=='APROBADA';
   $('clubNotes').value=r.notas||'';$('clubPaymentVerified').checked=false;$('clubBankFolio').value='';
   $('clubReviewError').hidden=true;syncReview();
   if(!reviewModal.open)reviewModal.showModal();
@@ -216,6 +222,22 @@
   }catch(err){if(reviewModal.open&&activeReview===r){error.textContent=err.message;error.hidden=false;}}
   finally{reviewing=false;syncReview();}
  }
+ async function liberarReserva(r){
+  if(!admin||r.estatus!=='APROBADA')return;
+  const motivo=prompt('Motivo de cancelación (mínimo 8 caracteres). Se conserva el historial de pagos:', '');
+  if(motivo===null)return;
+  if(motivo.trim().length<8){notify('Indica un motivo de al menos 8 caracteres.',true);return;}
+  if(!confirm('¿Cancelar CC-'+r.id+' del '+fmt(r.fecha)+' y liberar ese día?'+
+    (r.pagado?' El pago permanecerá registrado y su devolución requerirá conciliación.':'')))return;
+  try{
+   const d=await api('/administracion/'+Number(r.id)+'/liberar','PATCH',{motivo:motivo.trim()});
+   if(reviewModal.open)reviewModal.close();
+   notify(d.message+(d.pagoPendienteDeRevision?' Revisa la devolución del dinero.':'')+
+    (!d.avisoCorreo?' No se confirmó el correo de aviso.':''));
+   await Promise.all([adminList(),calendar()]);
+  }catch(e){notify(e.message,true);}
+ }
+ $('clubRelease').addEventListener('click',()=>{if(activeReview)void liberarReserva(activeReview);});
  const mon=d=>new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
  async function adminList(){
   if(!admin)return;
@@ -228,16 +250,18 @@
    $('clubTotals').innerHTML=[['Total de reservas',adminRows.length],['Reservas aprobadas',adminRows.filter(r=>r.estatus==='APROBADA').length],['Recuperación cobrada',money(income)],['Garantías recibidas',money(guarantee)],['Limpieza cobrada',money(cleaning)]].map(([name,value])=>'<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
    const tableRows=[...adminRows].sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE'));
    $('clubAdminRows').innerHTML=tableRows.map(r=>'<tr data-reserva="'+Number(r.id)+'">'+
-    [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',paymentStatus(r),r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
-    '<td><button type="button" class="soft">Ver detalles</button> '+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="15">Aún no hay reservas registradas.</td></tr>';
+    [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),fechaSolicitud(r.creadoEn),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',paymentStatus(r),r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
+    '<td><button type="button" class="soft">Ver detalles</button> '+(r.estatus==='APROBADA'?' <button type="button" class="danger" data-release="'+Number(r.id)+'">Cancelar / liberar día</button> ':'')+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="16">Aún no hay reservas registradas.</td></tr>';
    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
     '<article class="reserve-card"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
-    '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
+    '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
     '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>').join('')||'<div class="reserve-card">No hay solicitudes pendientes de aprobación.</div>';
   }catch(e){notify(e.message,true);}
  }
  $('clubRequests').addEventListener('click',e=>{const btn=e.target.closest('[data-review]');if(btn){const r=adminRows.find(x=>Number(x.id)===Number(btn.dataset.review));if(r)editReview(r);}});
  $('clubAdminRows').addEventListener('click',async e=>{
+  const release=e.target.closest('[data-release]');
+  if(release){const r=adminRows.find(x=>Number(x.id)===Number(release.dataset.release));if(r)void liberarReserva(r);return;}
   const refund=e.target.closest('[data-return]');
   if(refund){
     const r=adminRows.find(x=>Number(x.id)===Number(refund.dataset.return));
@@ -306,6 +330,41 @@
   $('clubCalendarHint').textContent='Al reservar como administrador, la fecha se confirma de inmediato. El pago se gestiona por separado.';
   $('clubFormHint').textContent='La reserva se confirma al presionar Reservar. Se mantienen las reglas de adeudos y disponibilidad.';
  }
+ const tarifaCampos={cuotaRecuperacion:'clubTariffRecovery',depositoGarantia:'clubTariffGuarantee',limpieza:'clubTariffCleaning'};
+ const leerTarifas=()=>Object.fromEntries(Object.entries(tarifaCampos).map(([clave,id])=>[clave,$(id).value]));
+ function sumarTarifas(){
+  const datos=leerTarifas(),total=Object.values(datos).reduce((a,v)=>a+Number(v||0),0);
+  $('clubTariffSum').textContent=money(total);
+  $('clubTariffSum').style.color=total===2000?'#19704a':'#ba4141';
+  $('clubTariffSave').disabled=total!==2000||Object.values(datos).some(v=>!/^\d+$/.test(v));
+ }
+ Object.values(tarifaCampos).forEach(id=>$(id).addEventListener('input',sumarTarifas));
+ async function cargarTarifas(){
+  const d=await api('/publico/tarifas');const p=d.data;
+  $('clubFeeSummary').textContent='Tarifa vigente: recuperación '+money(p.cuotaRecuperacion)+
+   ' + garantía '+money(p.depositoGarantia)+' + limpieza '+money(p.limpieza)+
+   ' = '+money(p.total)+'. Se confirma al verificar el pago.';
+  $('clubFeeSummary').hidden=false;
+  if(admin){
+   $('clubTariffEditor').hidden=false;
+   for(const [clave,id] of Object.entries(tarifaCampos))$(id).value=p[clave];
+   sumarTarifas();
+  }
+ }
+ $('clubTariffForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(!admin)return;
+  const valores=leerTarifas();
+  if(Object.values(valores).some(v=>!/^\d+$/.test(v))||Object.values(valores).reduce((a,v)=>a+Number(v),0)!==2000){
+   $('clubTariffStatus').textContent='Los tres conceptos deben sumar exactamente $2,000 MXN.';return;
+  }
+  $('clubTariffSave').disabled=true;
+  try{await api('/administracion/tarifas','PATCH',valores);
+   $('clubTariffStatus').textContent='Distribución guardada en MySQL para nuevas reservas.';
+   await cargarTarifas();
+  }catch(err){$('clubTariffStatus').textContent=err.message;}
+  finally{sumarTarifas();}
+ });
+ try{await cargarTarifas();}catch(e){console.warn('[casa-club] No se pudo consultar tarifa:',e.message);}
  try{await calendar();}catch(e){notify(e.message,true);}
  tab('reservar');
 })();
