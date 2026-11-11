@@ -678,10 +678,19 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
                 observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria de remitente autorizado.' }, { transaction });
             const vigencia = pago.tipoPago === 'MANTENIMIENTO'
                 ? (repartoService.esReparto(pago.aplicacionCuotas) ? await repartoService.confirmar(pago,transaction) : await cuotasMantenimiento.confirmar(pago, transaction)) : null;
-            if(pago.tipoPago==='CASA_CLUB' && pago.estatus==='VALIDADO'){
-                const reserva=await ReservaCasaClub.findByPk(pago.reservaCasaClubId,{transaction,lock:transaction.LOCK.UPDATE});
-                if(!reserva||reserva.estatus!=='APROBADA'||reserva.pagado)throw Object.assign(new Error('La reserva ya cambió de estado. Requiere conciliación.'),{status:409});
-                await reserva.update({pagado:true,fechaPago:pago.fechaOperacion,folio:pago.folioOperacion,actualizadoEn:new Date()},{transaction});
+            if(pago.tipoPago==='CASA_CLUB'){
+                // MISMA confirmación atómica de Titan que Mantenimiento: la captura
+                // solamente deja el reporte PENDIENTE; el aviso bancario completo
+                // permite aprobar la fecha automáticamente sin intervención humana.
+                const confirmada=await require('../services/casa-club-pago-automatico.service')
+                    .aplicarConfirmacion({pago,transaction});
+                transaction.afterCommit(()=>{
+                    setImmediate(()=>{
+                        void require('../services/casa-club-avisos.service')
+                            .notificarConfirmacionBancaria(confirmada)
+                            .catch(error=>console.warn('[Casa Club] Reserva conciliada; aviso SMTP pendiente:',error?.message));
+                    });
+                });
             }
             return { pago: pago, vigencia };
         });
