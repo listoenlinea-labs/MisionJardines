@@ -45,3 +45,12 @@ test('No modifica motor de TAGs, pruebas de pago, ni vistas generales',()=>{
  const changes=[...['viviendas-visibles.service.js']].map(f=>fs.readFileSync(path.resolve(__dirname,'../src/services',f),'utf8'));
  assert.match(changes[0],/if\(esViviendaTest001\(casa\)\|\|esViviendaTest002\(casa\)\)return false/);
 });
+
+test('Editor de extraordinarias y proyecto masivo usan solamente viviendas oficiales',()=>{
+ const src=fs.readFileSync(path.resolve(__dirname,'../../docs/assets/js/analisis-cuotas.js'),'utf8');
+ assert.match(src,/const houses=\(data\.viviendasMantenimiento\|\|\[\]\)\.filter\(h=>!h\.esPrueba\)/);
+ assert.match(src,/if\(concepto!=='MANTENIMIENTO'&&data\.viviendasMantenimiento\.some\(h=>!h\.esPrueba/);
+ assert.match(src,/data\.viviendas=data\.viviendasMantenimiento\.filter\(h=>concepto==='MANTENIMIENTO'\|\|!h\.esPrueba\)/);
+ assert.match(src,/const projectHouses=\(\)=>\[\.\.\.\(data\?\.viviendasMantenimiento\|\|\[\]\)\]\.filter\(h=>!h\.esPrueba\)/);
+ assert.match(src,/const bulkHouses=\(\)=>\[\.\.\.\(data\?\.viviendasMantenimiento\|\|\[\]\)\]\.filter\(h=>!h\.esPrueba\)/);
+});
