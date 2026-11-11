@@ -11,7 +11,7 @@
  * IMPORTANTE: esta selección es de SOLO LECTURA. No edita direcciones,
  * cuotas, pagos, TAGs ni fechas físicas del controlador C3.
  */
-const { esViviendaVisible } = require('./viviendas-visibles.service');
+const { esViviendaVisible, esViviendaTest001 } = require('./viviendas-visibles.service');
 
 const AVENIDAS_PADRON = Object.freeze({
   atotonilco: '752',
@@ -47,16 +47,21 @@ function compararPrioridad(a, b, cuotasPorCasa) {
   return Number(a.id || 0) - Number(b.id || 0);
 }
 
-function seleccionarPadronAnalisis(casas, cuotas) {
+function seleccionarPadronAnalisis(casas, cuotas, opciones = {}) {
   const cuotasPorCasa = new Map((cuotas || []).map(c => [String(c.casaId), c]));
   const seleccionadas = [];
   const candidatas = new Map();
+  const pruebas001 = [];
   let excluidas = 0;
   for (const casa of casas || []) {
     const calle = nombreCalle(casa);
-    // Sin excepciones para viviendas de laboratorio: TEST-001 queda fuera
-    // del padrón y los otros domicilios "Prueba" siguen excluidos.
-    // Es solo visibilidad, no se borran cuotas, pagos ni TAGs.
+    // Excepción exclusivamente visual para Análisis de cuotas: una sola fila
+    // de Prueba TEST-001, a petición de Administración. Nunca altera el
+    // padrón oficial, ni habilita TEST-002 u otros registros auxiliares.
+    if (opciones.incluirTest001 === true && esViviendaTest001(casa)) {
+      pruebas001.push(casa);
+      continue;
+    }
     if (!esViviendaVisible(casa) || calle === 'prueba' || calle.startsWith('prueba ')) {
       excluidas += 1;
       continue;
@@ -74,6 +79,11 @@ function seleccionarPadronAnalisis(casas, cuotas) {
   }
 
   let duplicadas = 0;
+  if (pruebas001.length) {
+    pruebas001.sort((a,b) => compararPrioridad(a,b,cuotasPorCasa));
+    seleccionadas.push(pruebas001[0]);
+    duplicadas += pruebas001.length-1;
+  }
   for (const grupo of candidatas.values()) {
     grupo.sort((a, b) => compararPrioridad(a, b, cuotasPorCasa));
     seleccionadas.push(grupo[0]);
