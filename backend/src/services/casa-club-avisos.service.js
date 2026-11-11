@@ -5,9 +5,16 @@ function whatsappMexico(value){
  const numero=value.replace(/[\s()+-]/g,'');
  return /^\d{10}$/.test(numero)?'52'+numero:/^52\d{10}$/.test(numero)?numero:null;
 }
+function cuentaOficial(env){
+ // Casa Club utiliza por defecto la MISMA cuenta oficial que el módulo Pagos.
+ // Si aún no se configuraron PAGOS_*, conserva la configuración anterior de Casa Club.
+ const banco=String(env.PAGOS_BANCO||env.CASA_CLUB_BANCO||'').trim();
+ const titular=String(env.PAGOS_TITULAR||env.CASA_CLUB_TITULAR||'').trim();
+ const cuenta=String(env.PAGOS_CUENTA||env.PAGOS_CLABE||env.CASA_CLUB_CUENTA||'').trim();
+ return {banco,titular,cuenta};
+}
 function datosBancarios(env=process.env){
- const banco=env.CASA_CLUB_BANCO?.trim(),titular=env.CASA_CLUB_TITULAR?.trim();
- const cuenta=env.CASA_CLUB_CUENTA?.trim();
+ const {banco,titular,cuenta}=cuentaOficial(env);
  if(!banco||!titular||!/^\d{10,18}$/.test(cuenta||''))
   throw Object.assign(Error('Configura los datos bancarios de Casa Club para preparar las instrucciones.'),{status:503});
  const correo=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
@@ -15,8 +22,8 @@ function datosBancarios(env=process.env){
 }
 function configuracion(env=process.env){
  const dias=Number(env.CASA_CLUB_PLAZO_DIAS||3);
- const banco=env.CASA_CLUB_BANCO?.trim(),titular=env.CASA_CLUB_TITULAR?.trim();
- const cuenta=env.CASA_CLUB_CUENTA?.trim(),administracion=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
+ const {banco,titular,cuenta}=cuentaOficial(env);
+ const administracion=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
  const nombrePlantilla=env.CASA_CLUB_WHATSAPP_TEMPLATE?.trim()||'';
  const idioma=env.CASA_CLUB_WHATSAPP_IDIOMA||'es_MX';
  const version=env.WHATSAPP_GRAPH_VERSION;
