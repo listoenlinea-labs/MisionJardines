@@ -4,6 +4,7 @@ const {esViviendaVisible,esDepartamentoVisible,esViviendaTest001,normalizarCalle
 const Casa=require('../models/Casa');
 const {
   testDirectConnection,
+  getWriteMode,
   syncUsers,
   diagnosticarVivienda,
   setCardBlocked,
@@ -44,13 +45,15 @@ async function callesEdicion(req,res){
 async function estado(req,res){
   try{
     const info=await testDirectConnection();
-    const bridge=isPullSdkBridgeConfigured()?await testBridge():{configured:false};
+    const modoEscritura=getWriteMode();
+    const bridge=modoEscritura!=='DIRECT'&&isPullSdkBridgeConfigured()
+      ?await testBridge():{configured:false,desactivadoPorTcp:true};
     res.json({ok:true,data:{
       ...info,
       modelo:'C3-200',
       modo:'DIRECT',
       conexionDirecta:true,
-      escrituraUsuarios:isPullSdkBridgeConfigured()?'PULLSDK':'NO_CONFIGURADA',
+      escrituraUsuarios:modoEscritura==='DIRECT'?'DIRECT_TCP':modoEscritura,
       bridge,
       tarjetas:await ZkTarjeta.count(),
       inventarioAuto:getZktecoAutoSyncStatus()

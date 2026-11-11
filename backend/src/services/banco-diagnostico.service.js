@@ -27,6 +27,11 @@ function resultado(etapa,detalle,extra={}){
  return {version:1,etapa,detalle,fechaRevision:new Date().toISOString(),
     avisosConsultados:0,avisosAutenticados:0,coincidencias:0, ...extra};
 }
+// Una relación por identificador NO basta para validar: se exige una sola
+// notificación que también cumpla importe, fecha y cuenta destino.
+function coincidenciasCompletas(pago,autenticados=[]){
+ return autenticados.filter(a=>banco.corresponde(pago,a));
+}
 function evaluar(pago,avisos,autenticados){
  const base={avisosConsultados:avisos.length,avisosAutenticados:autenticados.length};
  if(!avisos.length)return resultado('BUZON_SIN_AVISOS',
@@ -102,13 +107,20 @@ function evaluar(pago,avisos,autenticados){
   return resultado('SIN_COINCIDENCIA',diagnostico+
    ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
  }
+ const completas=coincidenciasCompletas(pago,autenticados);
+ // Otra notificación con mismo identificador y monto/fecha/cuenta diferentes
+ // no invalida la ÚNICA operación que sí pasó TODOS los filtros.
+ if(completas.length>1)return resultado('COINCIDENCIA_AMBIGUA',
+  'Existen varias notificaciones bancarias enteramente compatibles; se requiere distinguir operaciones para prevenir acreditaciones duplicadas.',
+  {...auditoria,coincidencias:completas.length});
+ if(completas.length===1)return resultado('COINCIDENCIA_VERIFICADA',
+  'Se encontró exactamente una notificación que coincide en identificador, importe, fecha y cuenta destino. Se descartaron las coincidencias parciales.',
+  {...auditoria,coincidencias:1,verificaciones:evidencia(pago,completas[0])});
  if(vinculados.length!==1)return resultado('COINCIDENCIA_AMBIGUA',
-  'Más de una notificación de remitente autorizado comparte el identificador. No se acreditará el pago hasta disponer de una correspondencia única.',{...auditoria,coincidencias:vinculados.length});
+  'Existen varios avisos con identificador relacionado, pero ninguno cumple todas las verificaciones. Continúa en revisión.',
+  {...auditoria,coincidencias:vinculados.length});
  const aviso=vinculados[0];
  const checks=evidencia(pago,aviso);
- const completos=Object.values(checks).every(Boolean);
- if(completos)return resultado('COINCIDENCIA_VERIFICADA',
-  'Se encontró una notificación bancaria de remitente autorizado con identificador, monto, fecha y cuenta destino coincidentes. Se está aplicando la confirmación.',{...auditoria,coincidencias:1,verificaciones:checks});
  const causas=[];
  if(!checks.importe)causas.push(Number.isFinite(aviso?.monto)
   ? 'El importe interpretado del aviso bancario no coincide con el importe reportado.'
@@ -121,4 +133,4 @@ function evaluar(pago,avisos,autenticados){
   'La notificación no contiene todos los datos necesarios para confirmar el pago.',
   {...auditoria,coincidencias:1,verificaciones:checks});
 }
-module.exports={evaluar,evidencia,resultado};
+module.exports={evaluar,evidencia,resultado,coincidenciasCompletas};

@@ -88,7 +88,8 @@ async function ejecutarRevision(){
      console.info('[Bancos] Pago '+pago.id+' '+revision.etapa);
      continue;
     }
-    const aviso=autenticados.find(a=>banco.corresponde(pago,a));
+    const completos=diagnostico.coincidenciasCompletas(pago,autenticados);
+    const aviso=completos.length===1?completos[0]:null;
     if(!aviso){
      await persistir(pago,diagnostico.resultado('SIN_COINCIDENCIA',
       'La comprobación final no encontró una coincidencia bancaria completa. Se mantiene en revisión.',
@@ -145,7 +146,8 @@ function iniciar(){
  }
  if(timer)return;
  programarRevision();
- const ms=Math.max(30000,Number(process.env.PAGOS_BANK_POLL_MS)||45000);
+ // Más rápido sin solapar consultas IMAP: ejecutarRevision ya cuenta con guard ocupado.
+ const ms=Math.max(15000,Number(process.env.PAGOS_BANK_POLL_MS)||15000);
  timer=setInterval(()=>void ejecutarRevision(),ms);
  timer.unref?.();
  console.info('[Bancos] Revisión de notificaciones buzón IMAP iniciada.');
