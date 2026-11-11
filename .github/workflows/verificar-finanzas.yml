@@ -45,6 +45,15 @@ jobs:
           node --test backend/test/permissions.test.js backend/test/auth-permissions.test.js backend/test/mobile-condomino-padron-20261111.test.js
           node --test backend/test/casa-club.test.js backend/test/casa-club-publico.test.js backend/test/casa-club-tarifas-liberacion-20261111.test.js
           node --test backend/test/validacion-pagos-correo.test.js backend/test/pagos-acceso-c3.test.js backend/test/zkteco-vigencias.test.js
+      - name: TEST-001 visible únicamente para pruebas sin alterar indicadores ni proyectos
+        run: |
+          node --check backend/src/controllers/finanzas.controller.js
+          node --check backend/src/controllers/zkteco.controller.js
+          node --check backend/src/services/zkteco-direct.service.js
+          node --check docs/assets/js/analisis-cuotas.js
+          node --check docs/assets/js/zkteco-address-filter.js
+          node --test backend/test/test001-solo-analisis-zkteco-20261111.test.js backend/test/padron-finanzas.test.js backend/test/viviendas-visibles.test.js backend/test/zkteco-address-filter.test.js backend/test/analisis-seleccion-proyectos.test.js
+
       - name: Cuotas extraordinarias de $0 y distribución exacta del presupuesto
         run: |
           node --check docs/assets/js/proyectos-presupuesto.js

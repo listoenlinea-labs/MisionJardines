@@ -336,7 +336,7 @@
   document.querySelector('#financeStreetPanel h2').textContent='Porcentaje de viviendas pagadas';
  }
  function renderProjectDashboard(project){
-  const houses=data.viviendasMantenimiento||[],details=project.viviendasDetalle||[];
+  const houses=(data.viviendasMantenimiento||[]).filter(h=>!h.esPrueba),details=project.viviendasDetalle||[];
   const byId=new Map(details.map(x=>[Number(x.casaId),x]));
   const applied=houses.length-Number(project.noAplica||0),complete=Number(project.cumplidos||0);
   const partial=Number(project.parciales||0),registered=complete+partial;
@@ -731,7 +731,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   }
   const registrosProyecto=seleccionado?.viviendasDetalle||null;
   const financial=new Map((registrosProyecto||registros||[]).map(h=>[String(h.casaId),h]));
-  if(concepto!=='MANTENIMIENTO'&&data.viviendasMantenimiento.some(h=>!financial.has(String(h.casaId)))){
+  if(concepto!=='MANTENIMIENTO'&&data.viviendasMantenimiento.some(h=>!h.esPrueba&&!financial.has(String(h.casaId)))){
     notice('Faltan movimientos por vivienda en la respuesta del servidor. No se mostrarán importes incompletos.');
     return;
   }
@@ -746,7 +746,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
   $('financeHousePanel').classList.toggle('extraordinary-receipt-active',concepto==='EXTRAORDINARIO'&&!!seleccionado);
-  data.viviendas=data.viviendasMantenimiento.map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
+  data.viviendas=data.viviendasMantenimiento.filter(h=>concepto==='MANTENIMIENTO'||!h.esPrueba).map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
   if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
   else renderMaintenanceDashboard();
@@ -2606,7 +2606,7 @@ function renderHouses(){
  const projectModal=$('financeProjectRulesModal');
  const projectMoney=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const projectMoneyText=value=>projectMoney.format(Number(value||0));
- const projectHouses=()=>[...(data?.viviendasMantenimiento||[])].sort((a,b)=>
+ const projectHouses=()=>[...(data?.viviendasMantenimiento||[])].filter(h=>!h.esPrueba).sort((a,b)=>
   String(a.calle).localeCompare(String(b.calle),'es',{numeric:true})||
   String(a.numero).localeCompare(String(b.numero),'es',{numeric:true}));
  let projectExceptions=new Map(),projectPreview=null,projectSaving=false,projectPreviousFocus=null;
@@ -2772,7 +2772,7 @@ function renderHouses(){
  const bulkModal=$('financeProjectBulkModal');
  let bulkProjectId=null,bulkProjectName='',bulkExceptions=new Map(),bulkPaid=new Map(),
   bulkSaving=false,bulkPreviousFocus=null,bulkOpening=false,bulkOriginalSnapshot=null;
- const bulkHouses=()=>[...(data?.viviendasMantenimiento||[])].sort((a,b)=>
+ const bulkHouses=()=>[...(data?.viviendasMantenimiento||[])].filter(h=>!h.esPrueba).sort((a,b)=>
   String(a.calle).localeCompare(String(b.calle),'es',{numeric:true})||
   String(a.numero).localeCompare(String(b.numero),'es',{numeric:true}));
  const bulkCents=value=>{
