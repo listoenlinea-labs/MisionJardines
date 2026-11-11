@@ -217,7 +217,11 @@ async function mensajeWhatsApp(req,res){
   if(!telefono)throw error(400,'La reserva no tiene un WhatsApp válido.');
   const confirmada=row.estatus==='APROBADA'&&row.pagado;
   const mensaje=confirmada
-   ?'Hola. Confirmamos tu reservación de Casa Club para el '+row.fecha+'. El pago fue verificado y la fecha ya quedó apartada. Folio CC-'+row.id+'.'
+   ?'Hola. Confirmamos tu reservación de Casa Club para el '+row.fecha+
+     '. Pago verificado: '+avisos.importe(cargosSolicitud(row)).toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
+     ' (recuperación '+Number(row.cuotaRecuperacion).toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
+     ', garantía '+Number(row.depositoGarantia).toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
+     ', limpieza '+Number(row.limpieza).toLocaleString('es-MX',{style:'currency',currency:'MXN'})+'). Folio CC-'+row.id+'.'
    :avisos.textoPago(avisos.instrucciones({id:row.id,fecha:row.fecha,fechaLimitePago:row.fechaLimitePago,...cargosSolicitud(row)},avisos.datosBancarios()));
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,telefono,mensaje,tipo:confirmada?'CONFIRMACION':'PAGO'});
@@ -227,6 +231,7 @@ async function revisar(req,res){
  if(!admin(req.usuario.rol))return res.status(403).json({ok:false,message:'Acceso exclusivo de administración'});
  const id=Number(req.params.id),action=texto(req.body?.accion,16).toUpperCase();
  if(!Number.isSafeInteger(id)||id<=0||!['APROBAR','RECHAZAR','PAGO','GARANTIA'].includes(action))return res.status(400).json({ok:false,message:'Acción inválida'});
+ let avisoDecision=null;
  try{
   await db.transaction(async transaction=>{
    const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
@@ -236,6 +241,7 @@ async function revisar(req,res){
     if(action==='RECHAZAR'){
      await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:texto(req.body.notas,600),
       revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+     avisoDecision={correo:row.correo,fecha:row.fecha,accion:'RECHAZADA',id:row.id,solicitante:row.solicitante,notas:texto(req.body.notas,600)};
      return;
     }
     if(row.fechaLimitePago&&row.fechaLimitePago<hoy())throw error(409,'El apartado venció. Actualiza la lista de solicitudes.');
@@ -248,6 +254,7 @@ async function revisar(req,res){
      registradoPor:req.usuario.usuarioId},{transaction});
     await row.update({estatus:'APROBADA',fechaBloqueada:row.fecha,pagado:true,fechaPago:hoy(),folio,...cargos,
      notas:texto(req.body.notas,600),revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+    avisoDecision={correo:row.correo,fecha:row.fecha,accion:'APROBADA',id:row.id,solicitante:row.solicitante,cargos};
    } else {
     if(row.estatus!=='APROBADA')throw error(409,'Solo se registran movimientos de reservas aprobadas');
     if(action==='PAGO'){
@@ -263,7 +270,190 @@ async function revisar(req,res){
     else await row.update({garantiaDevuelta:req.body.garantiaDevuelta===true,actualizadoEn:new Date()},{transaction});
    }
   });
-  return res.json({ok:true,message:'Cambios guardados correctamente'});
+  let avisoCorreo=null;
+  if(avisoDecision&&avisos.emailValido(String(avisoDecision.correo||''))){
+   try{
+    const confirmada=avisoDecision.accion==='APROBADA',cargos=avisoDecision.cargos;
+    const detalle=confirmada?'\nRecuperación: 
+ }catch(e){
+  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Ese depósito o reserva ya tiene un pago registrado.'));
+  return manejar(res,e);
+ }
+}
+async function obtenerTarifas(req,res){
+ try{return res.json({ok:true,data:{...(await tarifas.obtener()),total:tarifas.TOTAL_FIJO}});}
+ catch(e){return manejar(res,e);}
+}
+async function guardarTarifas(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede modificar las tarifas.'));
+ try{const data=await tarifas.guardar(req.body||{},req.usuario.usuarioId);
+  return res.json({ok:true,data:{...data,total:tarifas.TOTAL_FIJO},message:'Tarifas guardadas para nuevas solicitudes.'});}
+ catch(e){return manejar(res,e);}
+}
+// Se libera el día sin destruir pagos, comprobantes ni el historial auditado.
+async function liberar(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede liberar el día.'));
+ const id=Number(req.params.id),motivo=texto(req.body?.motivo,180);
+ if(!Number.isSafeInteger(id)||id<=0||motivo.length<8)return manejar(res,error(400,'Indica el motivo de la cancelación (mínimo 8 caracteres).'));
+ try{
+  const data=await db.transaction(async transaction=>{
+   const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row)throw error(404,'Reserva no encontrada');
+   if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
+   const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
+    revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+   return {id:row.id,correo:row.correo,fecha:row.fecha,pago};
+  });
+  let avisoCorreo=false;
+  try{await require('../services/email.service').enviarAvisoCasaClub({
+   destinatario:data.correo,asunto:'Casa Club · Reserva CC-'+data.id+' cancelada',
+   texto:'Administración canceló tu reserva para el '+data.fecha+'.\nMotivo: '+motivo+
+    (data.pago?'\nSi realizaste un pago, contacta a Administración para conciliar cualquier devolución.':'')
+  });avisoCorreo=true;}catch(e){console.warn('[casa-club] Reserva cancelada; correo no confirmado:',e.message);}
+  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago,avisoCorreo,
+   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría.'});
+ }catch(e){return manejar(res,e);}
+}
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar};
++Number(cargos.cuotaRecuperacion).toLocaleString('es-MX')+
+      '\nGarantía: 
+ }catch(e){
+  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Ese depósito o reserva ya tiene un pago registrado.'));
+  return manejar(res,e);
+ }
+}
+async function obtenerTarifas(req,res){
+ try{return res.json({ok:true,data:{...(await tarifas.obtener()),total:tarifas.TOTAL_FIJO}});}
+ catch(e){return manejar(res,e);}
+}
+async function guardarTarifas(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede modificar las tarifas.'));
+ try{const data=await tarifas.guardar(req.body||{},req.usuario.usuarioId);
+  return res.json({ok:true,data:{...data,total:tarifas.TOTAL_FIJO},message:'Tarifas guardadas para nuevas solicitudes.'});}
+ catch(e){return manejar(res,e);}
+}
+// Se libera el día sin destruir pagos, comprobantes ni el historial auditado.
+async function liberar(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede liberar el día.'));
+ const id=Number(req.params.id),motivo=texto(req.body?.motivo,180);
+ if(!Number.isSafeInteger(id)||id<=0||motivo.length<8)return manejar(res,error(400,'Indica el motivo de la cancelación (mínimo 8 caracteres).'));
+ try{
+  const data=await db.transaction(async transaction=>{
+   const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row)throw error(404,'Reserva no encontrada');
+   if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
+   const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
+    revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+   return {id:row.id,correo:row.correo,fecha:row.fecha,pago};
+  });
+  let avisoCorreo=false;
+  try{await require('../services/email.service').enviarAvisoCasaClub({
+   destinatario:data.correo,asunto:'Casa Club · Reserva CC-'+data.id+' cancelada',
+   texto:'Administración canceló tu reserva para el '+data.fecha+'.\nMotivo: '+motivo+
+    (data.pago?'\nSi realizaste un pago, contacta a Administración para conciliar cualquier devolución.':'')
+  });avisoCorreo=true;}catch(e){console.warn('[casa-club] Reserva cancelada; correo no confirmado:',e.message);}
+  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago,avisoCorreo,
+   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría.'});
+ }catch(e){return manejar(res,e);}
+}
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar};
++Number(cargos.depositoGarantia).toLocaleString('es-MX')+
+      '\nLimpieza: 
+ }catch(e){
+  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Ese depósito o reserva ya tiene un pago registrado.'));
+  return manejar(res,e);
+ }
+}
+async function obtenerTarifas(req,res){
+ try{return res.json({ok:true,data:{...(await tarifas.obtener()),total:tarifas.TOTAL_FIJO}});}
+ catch(e){return manejar(res,e);}
+}
+async function guardarTarifas(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede modificar las tarifas.'));
+ try{const data=await tarifas.guardar(req.body||{},req.usuario.usuarioId);
+  return res.json({ok:true,data:{...data,total:tarifas.TOTAL_FIJO},message:'Tarifas guardadas para nuevas solicitudes.'});}
+ catch(e){return manejar(res,e);}
+}
+// Se libera el día sin destruir pagos, comprobantes ni el historial auditado.
+async function liberar(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede liberar el día.'));
+ const id=Number(req.params.id),motivo=texto(req.body?.motivo,180);
+ if(!Number.isSafeInteger(id)||id<=0||motivo.length<8)return manejar(res,error(400,'Indica el motivo de la cancelación (mínimo 8 caracteres).'));
+ try{
+  const data=await db.transaction(async transaction=>{
+   const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row)throw error(404,'Reserva no encontrada');
+   if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
+   const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
+    revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+   return {id:row.id,correo:row.correo,fecha:row.fecha,pago};
+  });
+  let avisoCorreo=false;
+  try{await require('../services/email.service').enviarAvisoCasaClub({
+   destinatario:data.correo,asunto:'Casa Club · Reserva CC-'+data.id+' cancelada',
+   texto:'Administración canceló tu reserva para el '+data.fecha+'.\nMotivo: '+motivo+
+    (data.pago?'\nSi realizaste un pago, contacta a Administración para conciliar cualquier devolución.':'')
+  });avisoCorreo=true;}catch(e){console.warn('[casa-club] Reserva cancelada; correo no confirmado:',e.message);}
+  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago,avisoCorreo,
+   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría.'});
+ }catch(e){return manejar(res,e);}
+}
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar};
++Number(cargos.limpieza).toLocaleString('es-MX')+
+      '\nTotal registrado: 
+ }catch(e){
+  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Ese depósito o reserva ya tiene un pago registrado.'));
+  return manejar(res,e);
+ }
+}
+async function obtenerTarifas(req,res){
+ try{return res.json({ok:true,data:{...(await tarifas.obtener()),total:tarifas.TOTAL_FIJO}});}
+ catch(e){return manejar(res,e);}
+}
+async function guardarTarifas(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede modificar las tarifas.'));
+ try{const data=await tarifas.guardar(req.body||{},req.usuario.usuarioId);
+  return res.json({ok:true,data:{...data,total:tarifas.TOTAL_FIJO},message:'Tarifas guardadas para nuevas solicitudes.'});}
+ catch(e){return manejar(res,e);}
+}
+// Se libera el día sin destruir pagos, comprobantes ni el historial auditado.
+async function liberar(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede liberar el día.'));
+ const id=Number(req.params.id),motivo=texto(req.body?.motivo,180);
+ if(!Number.isSafeInteger(id)||id<=0||motivo.length<8)return manejar(res,error(400,'Indica el motivo de la cancelación (mínimo 8 caracteres).'));
+ try{
+  const data=await db.transaction(async transaction=>{
+   const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row)throw error(404,'Reserva no encontrada');
+   if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
+   const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
+    revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+   return {id:row.id,correo:row.correo,fecha:row.fecha,pago};
+  });
+  let avisoCorreo=false;
+  try{await require('../services/email.service').enviarAvisoCasaClub({
+   destinatario:data.correo,asunto:'Casa Club · Reserva CC-'+data.id+' cancelada',
+   texto:'Administración canceló tu reserva para el '+data.fecha+'.\nMotivo: '+motivo+
+    (data.pago?'\nSi realizaste un pago, contacta a Administración para conciliar cualquier devolución.':'')
+  });avisoCorreo=true;}catch(e){console.warn('[casa-club] Reserva cancelada; correo no confirmado:',e.message);}
+  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago,avisoCorreo,
+   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría.'});
+ }catch(e){return manejar(res,e);}
+}
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar};
++avisos.importe(cargos).toLocaleString('es-MX'):'\nMotivo: '+(avisoDecision.notas||'Consulta a Administración.');
+    await require('../services/email.service').enviarAvisoCasaClub({
+     destinatario:avisoDecision.correo,asunto:'Casa Club · Reserva '+avisoDecision.accion+' · CC-'+avisoDecision.id,
+     texto:'Hola '+(avisoDecision.solicitante||'')+'.\nTu solicitud para el '+avisoDecision.fecha+
+       ' fue '+(confirmada?'aprobada tras verificar el pago.':'rechazada y la fecha quedó libre.')+detalle
+    });avisoCorreo=true;
+   }catch(e){avisoCorreo=false;console.warn('[casa-club] Decisión guardada; correo no aceptado:',e.message);}
+  }
+  return res.json({ok:true,avisoCorreo,message:'Cambios guardados correctamente'});
  }catch(e){
   if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Ese depósito o reserva ya tiene un pago registrado.'));
   return manejar(res,e);
