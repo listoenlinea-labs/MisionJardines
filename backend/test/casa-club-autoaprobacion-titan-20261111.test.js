@@ -93,6 +93,22 @@ test('Solicitud pendiente aparece en Pagos y el residente puede elegir reserva d
  assert.match(clubUI,/pagos\.html\?tab=CASA_CLUB&reserva=/);
  assert.match(clubUI,/clubReviewProofs/);
 });
+test('No se cancela una fecha con comprobante todavía en revisión',async t=>{
+ const db=require('../src/config/database');
+ const PagoReportado=require('../src/models/PagoReportado');
+ const club=require('../src/controllers/casa-club.controller');
+ const r={code:200,body:null,status(n){this.code=n;return this;},json(d){this.body=d;return this;}};
+ let cancelada=false;
+ t.mock.method(db,'transaction',async fn=>fn({LOCK:{UPDATE:'UPDATE'}}));
+ t.mock.method(Reserva,'findByPk',async()=>({
+  id:81,usuarioId:10,estatus:'PENDIENTE',fecha:plusDays(7),pagado:false,
+  update:async()=>{cancelada=true;}
+ }));
+ t.mock.method(PagoReportado,'count',async()=>1);
+ await club.cancelar({usuario:{rol:'CONDOMINO',usuarioId:10},params:{id:81}},r);
+ assert.equal(r.code,409);
+ assert.equal(cancelada,false);
+});
 test('La API de comprobantes pertenece exclusivamente a Administración',()=>{
  const routes=fs.readFileSync(path.resolve(__dirname,'../src/routes/casa-club.routes.js'),'utf8');
  assert.match(routes,/administracion\/:id\/comprobantes',autorizarRoles\('SUPER_ADMIN','ADMINISTRADOR'\)/);
