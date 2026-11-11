@@ -141,11 +141,13 @@
       return `<div class="mj-side-group">${group.label ? `<div class="mj-side-label">${group.label}</div>` : ''}${links}</div>`;
     }).join('');
     const account = accountData();
+    const accountLink = role() === 'CONDOMINO' ? '' :
+      `<a class="mj-side-account${active === 'cuenta.html' ? ' active' : ''}" href="cuenta.html">${icons.account}<span><strong>${account.name}</strong><small>${account.role} · Editar cuenta</small></span></a>`;
     return `<div class="mj-side-inner">
       <div class="mj-side-logo"><img src="assets/images/logo-mision-jardines.png" alt="Misión Jardines"></div>
       <div class="mj-side-community"><strong>Misión Jardines</strong><span>Zapopan, Jalisco</span></div>
       <nav class="mj-side-nav" aria-label="Navegación principal">${nav}</nav>
-      <a class="mj-side-account${active === 'cuenta.html' ? ' active' : ''}" href="cuenta.html">${icons.account}<span><strong>${account.name}</strong><small>${account.role} · Editar cuenta</small></span></a>
+      ${accountLink}
       <details class="mj-side-support"><summary>${icons.headset}<span>¿Necesitas ayuda?</span></summary><p>Soporte disponible · Lun - Vie 9:00 - 18:00</p><a href="mailto:soluciones@listoenlinea.com">Contactar soporte</a></details>
       <button class="mj-side-logout" type="button">${icons.logout}<span>Cerrar sesión</span></button>
     </div>`;
@@ -226,6 +228,14 @@
       sheet.href='assets/css/mobile-operativo.css?v=20261015-safari-fechas-compactas';
       document.head.appendChild(sheet);
     }
+    // Composición responsive final para Inicio, Egresos y Casa Club.
+    if (!document.getElementById('mjMobilePolish20261111')) {
+      const link = document.createElement('link');
+      link.id = 'mjMobilePolish20261111';
+      link.rel = 'stylesheet';
+      link.href = 'assets/css/mobile-polish-20261111.css?v=1';
+      document.head.appendChild(link);
+    }
     // Cierre consistente en los modales de todas las secciones, incluso
     // las que se cargan dentro del panel de navegación persistente.
     if (!document.getElementById('mjModalCloseStyles')) {
@@ -256,6 +266,7 @@
 
   function createTopAccount() {
     document.querySelector('.mj-account-top')?.remove();
+    if (role() === 'CONDOMINO') return;
     if (page() === 'index.html' && !window.MJ_SHELL_MODE) {
       const menu = document.getElementById('profileMenu');
       if (menu && !menu.querySelector('.mj-account-menu-link')) {
@@ -398,7 +409,7 @@
         for(const link of [...links].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true}))){const option=document.createElement('option');option.value=link.casaId;option.textContent=(link.casa.calleCorrecta||link.casa.calle)+' '+link.casa.numero;selector.append(option);}
         const selected=sessionStorage.getItem('mjCasaSeleccionada');
         if(links.some(l=>String(l.casaId)===selected))selector.value=selected;
-        else if(selected && !['viviendas.html','cuenta.html'].includes(page())) {sessionStorage.removeItem('mjCasaSeleccionada');if(window.MJ_SHELL_MODE)window.MJShell?.navigate('viviendas.html',{replace:true});else location.replace('viviendas.html');return;}
+        else if(selected && !['viviendas.html','cuenta.html'].includes(page())) {sessionStorage.removeItem('mjCasaSeleccionada');const destino=role()==='CONDOMINO'?'pagos.html':'viviendas.html';if(window.MJ_SHELL_MODE)window.MJShell?.navigate(destino,{replace:true});else location.replace(destino);return;}
         if(!links.length){const option=document.createElement('option');option.textContent='Sin vivienda vinculada';selector.append(option);}
         selector.disabled=links.length<2;
         selector.addEventListener('change',()=>{sessionStorage.setItem('mjCasaSeleccionada',selector.value);if(window.MJ_SHELL_MODE)window.MJShell?.reload();else location.reload();});
@@ -421,7 +432,7 @@
     }
 
     loadHomeDashboard();
-    if (page() !== 'login.html' && !document.querySelector('script[data-mj-global-search]')) {
+    if (role() !== 'CONDOMINO' && page() !== 'login.html' && !document.querySelector('script[data-mj-global-search]')) {
       const search = document.createElement('script');
       search.src = 'assets/js/global-search.js?v=20261009-header';
       search.dataset.mjGlobalSearch = 'true';

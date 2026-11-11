@@ -17,8 +17,7 @@ reserva directa y su panel protegido.
 1. Se guarda un apartado PENDIENTE. El índice único de `fecha_bloqueada` impide
    dos apartados para el mismo día. Hay un apartado con plazo activo por
    vivienda y un límite de solicitudes por IP.
-2. El total actual es $1,400 MXN ($700 de renta, $700 de garantía y $0 de
-   limpieza). El plazo inicial es de 3 días calendario, con tope en la víspera
+2. El depósito fijo obligatorio para nuevas reservas es **$2,000 MXN** (distribución inicial: $700 de recuperación, $700 de garantía y $600 de limpieza). Administración puede editar cada importe, pero los tres deben sumar $2,000 y se guardan en MySQL. Los importes de reservas antiguas no se modifican. El plazo inicial es de 3 días calendario, con tope en la víspera
    del evento. Se permite pagar hasta el final de ese día en hora de Guadalajara.
    Para el flujo público no se permiten eventos para el mismo día.
 3. Se muestran los datos de depósito y se solicitan los envíos al correo y
@@ -65,3 +64,53 @@ reserva directa y su panel protegido.
   requerida; nunca envía un número de cuenta de ejemplo. Probar con una
   vivienda y destinatarios de prueba antes de compartir el enlace.
 - Referencia: [Meta WhatsApp Business Platform, mensajes de plantilla](https://www.postman.com/meta/whatsapp-business-platform/request/o65u5m5/send-message-template-text).
+
+## PR #382 (11-nov-2026): tarifas, reservas y comprobación de pagos
+
+La tarifa se guarda en `casa_club_tarifas` (una única configuración vigente).
+Las nuevas solicitudes registran una copia de sus importes en su reserva: el
+administrador puede repartir recuperación, garantía y limpieza en pesos
+enteros, pero **el total siempre debe ser $2,000**. Para desplegar sin permiso
+CREATE en Hostinger, ejecutar antes
+`backend/sql/2026-11-11-casa-club-tarifas-fijas.sql`. No migrar importes
+históricos ni borrar pagos previos.
+
+Administración ve la fecha **y hora de recepción** en hora de Guadalajara,
+el día solicitado y el desglose. Puede aprobar con depósito revisado y folio,
+o rechazar. La cancelación de una reserva aprobada exige motivo, cambia su
+estado a CANCELADA y libera `fecha_bloqueada` sin eliminar movimientos ni
+comprobantes. Si había depósito, debe tratar la devolución por separado.
+
+Los avisos de solicitud por correo y WhatsApp incluyen los tres conceptos y
+el total, así como banco, cuenta configurada, titular, plazo y folio. El envío
+real depende de las variables SMTP y Meta en Hostinger. La plantilla de Meta
+conserva ocho parámetros; ahora el parámetro del monto incluye el desglose.
+**Verificar con una plantilla aprobada y recepción real en un teléfono**, no
+solo con la respuesta HTTP de la API.
+
+### Validación indispensable antes de activar en producción
+
+1. Publicar frontend y backend de esta misma revisión. Comprobar que una
+   solicitud pública elegible aparta un único día con total $2,000 y que los
+   correos y WhatsApp llegan realmente a sus destinatarios.
+2. Aprobar tras revisar banco y registrar folio: la fecha queda confirmada y el
+   movimiento se guarda exactamente una vez. Rechazar otra solicitud y
+   confirmar que su fecha se libera sin pago.
+3. Cancelar una reserva aprobada: el día queda disponible, los pagos históricos
+   permanecen y la devolución no se marca automáticamente.
+4. Guardar una distribución distinta que sume $2,000, recargar la página y
+   reiniciar el backend para confirmar persistencia. Rechazar sumas erróneas,
+   decimales y valores negativos.
+5. Entrar como CONDOMINO: debe iniciar en **Pagos**, navegar únicamente a
+   **Pagos** y **Casa Club**, y recibir 403 al intentar otros módulos.
+
+La automatización general de pagos de mantenimiento usa captura y OCR en el
+servidor, conciliación IMAP y registro `VALIDADO` en transacción. Sólo
+entonces las mensualidades completas generan eventos para ajustar TAGs del C3
+después del commit. Los abonos parciales no adelantan vigencias; Casa Club y
+extraordinarias no actualizan TAGs. Revisar
+`PAGOS_BANK_AUTO_VALIDATE=true`, credenciales IMAP, remitente declarado y
+destino antes de ejecutar una prueba real con depósito, correo bancario,
+MySQL y C3. **No se realizó una prueba extremo a extremo en Hostinger/C3** en
+este PR. El criterio de remitente es el encabezado From, no DKIM/DMARC: no
+se debe presentar como autenticación criptográfica del banco.

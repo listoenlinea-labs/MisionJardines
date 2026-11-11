@@ -1,6 +1,10 @@
 const ReservaCasaClub=require('../models/ReservaCasaClub');
+const TarifaCasaClub=require('../models/TarifaCasaClub');
 async function asegurarCasaClub(){
  await ReservaCasaClub.sync();
+ // Configuración central; las reservas anteriores conservan sus importes.
+ await TarifaCasaClub.sync();
+ await TarifaCasaClub.findOrCreate({where:{id:1},defaults:{id:1,cuotaRecuperacion:700,depositoGarantia:700,limpieza:600}});
  const db=require('../config/database');
  const {DataTypes}=require('sequelize');
  const qi=db.getQueryInterface(),cols=await qi.describeTable('reservas_casa_club');

@@ -31,8 +31,10 @@ test('old administrator JWT cannot bypass current security permissions',async()=
 });
 test('resident cannot load operational APIs; current house replaces token claim',async()=>{
   for(const section of ['casas','visitas','accesos','conexion']) assert.equal((await check('CONDOMINO','/api/'+section)).status,403);
-  assert.equal((await check('CONDOMINO','/api/dashboard')).nextCalled,true);
-  const result=await check('CONDOMINO','/api/cuotas');
+  assert.equal((await check('CONDOMINO','/api/dashboard')).status,403);
+  assert.equal((await check('CONDOMINO','/api/cuotas')).status,403);
+  assert.equal((await check('CONDOMINO','/api/pagos')).nextCalled,true);
+  const result=await check('CONDOMINO','/api/casa-club');
   assert.equal(result.nextCalled,true); assert.equal(result.user.casaId,7);
 });
 test('inactive and removed accounts lose existing sessions',async()=>{

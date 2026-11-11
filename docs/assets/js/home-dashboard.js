@@ -1038,7 +1038,7 @@
           
         </article>
         <article class="hl-card hl-kpi hl-report-kpi hl-kpi-tone-lilac">
-          <div class="hl-kpi-content"><span>Residentes activos</span><strong>${fuentes.residentes ? integer.format(r.activos || 0) : '—'}</strong><small>${fuentes.residentes ? `${integer.format(r.viviendasOcupadas || 0)} de ${integer.format(r.viviendasTotales || 0)} viviendas con residente activo` : 'Fuente no disponible'}</small></div>
+          <div class="hl-kpi-content"><span>Viviendas del padrón</span><strong>${fuentes.residentes ? integer.format(r.viviendasTotales || 0) : '—'}</strong><small>${fuentes.residentes ? `${integer.format(r.viviendasOcupadas || 0)} viviendas con residente activo` : 'Fuente no disponible'}</small></div>
           
         </article>
       </section>

@@ -265,7 +265,7 @@
       if (!response.ok) throw Error('No fue posible validar la sesión.');
       const result = await response.json();
       userRole = result.usuario?.rol?.nombre || result.usuario?.rol || '';
-      if (!result.ok || !window.MJPermissions.canAccess(userRole, 'cuenta.html')) throw Error('Sesión inválida.');
+      if (!result.ok || !window.MJPermissions.canAccess(userRole, window.MJPermissions.landing(userRole))) throw Error('Sesión inválida.');
       for (const storage of [localStorage, sessionStorage]) {
         if (storage.getItem('misionJardinesToken') === token) {
           storage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));

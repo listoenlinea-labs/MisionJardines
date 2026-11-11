@@ -7,11 +7,12 @@ const PagoManualConcepto=require('../models/PagoManualConcepto');
 const {randomUUID}=require('crypto');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
 const avisos=require('../services/casa-club-avisos.service');
+const tarifas=require('../services/casa-club-tarifas.service');
 const {ordenarCalles}=require('../services/direccion-sort.service');
 const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
 // Mismos importes que propone la aprobación administrativa del formulario.
-const IMPORTES_RESERVA={cuotaRecuperacion:700,depositoGarantia:700,limpieza:0};
+const IMPORTES_LEGADOS={cuotaRecuperacion:700,depositoGarantia:700,limpieza:0};
 const limitePagoReserva=fecha=>{
  const anterior=new Date(Date.parse(fecha+'T12:00:00Z')-86400000).toISOString().slice(0,10);
  return anterior<hoy()?hoy():anterior;
@@ -100,15 +101,16 @@ async function crear(req,res){
   const membership=await UsuarioCasa.findOne({where:{usuarioId:req.usuario.usuarioId,casaId,activo:true}});
   if(!membership&&!admin(req.usuario.rol))throw error(403,'No tienes acceso a esa vivienda');
   await revisarElegibilidad(casaId);
+  const importes=await tarifas.obtener();
   // Solo el rol validado por el servidor puede reservar sin revisión humana.
   // La fecha única sigue protegida por fecha_bloqueada, aun con concurrencia.
   const estatus=reservaDirecta?'APROBADA':'PENDIENTE';
   const row=await Reserva.create({
    usuarioId:req.usuario.usuarioId,casaId,fecha,fechaBloqueada:fecha,
    solicitante,telefono,correo,motivo,propietario:body.propietario===true,
-   estatus,
+   estatus,...importes,
    ...(reservaDirecta?{
-    ...IMPORTES_RESERVA,fechaLimitePago:limitePagoReserva(fecha),
+    fechaLimitePago:limitePagoReserva(fecha),
     pagado:false,revisadoPor:req.usuario.usuarioId
    }:{})
   });
@@ -132,6 +134,7 @@ async function solicitar(req,res){
  if(!usuario&&(!calle||!numero))return manejar(res,error(400,'Indica la calle y el número de tu vivienda.'));
  try{
   const config=avisos.configuracion();
+  const importes=await tarifas.obtener();
   const noElegible=()=>error(409,'No se pudo solicitar la reserva para esa vivienda. Verifica tus datos o contacta a Administración.');
   let casaId;
   if(usuario){
@@ -154,7 +157,7 @@ async function solicitar(req,res){
     fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
    if(anterior)throw error(409,usuario?'Ya tienes una solicitud de Casa Club en revisión.':noElegible().message);
    return Reserva.create({usuarioId:usuario?.usuarioId??null,casaId,fecha,fechaBloqueada:fecha,solicitante,telefono,correo,motivo,
-    propietario:body.propietario===true,estatus:'PENDIENTE',...IMPORTES_RESERVA,
+    propietario:body.propietario===true,estatus:'PENDIENTE',...importes,
     fechaLimitePago:avisos.limitePago(hoySolicitud,fecha,config.dias)},{transaction});
   });
   const pago=avisos.instrucciones(row,config);
@@ -200,7 +203,7 @@ async function pendientesResumen(req,res){
 }
 // Prepara un borrador; el administrador decide si lo envía desde WhatsApp.
 const cargosSolicitud=row=>row.estatus==='PENDIENTE'&&!row.fechaLimitePago
- ?IMPORTES_RESERVA:{cuotaRecuperacion:row.cuotaRecuperacion,depositoGarantia:row.depositoGarantia,limpieza:row.limpieza};
+ ?IMPORTES_LEGADOS:{cuotaRecuperacion:row.cuotaRecuperacion,depositoGarantia:row.depositoGarantia,limpieza:row.limpieza};
 async function mensajeWhatsApp(req,res){
  if(!admin(req.usuario.rol))return manejar(res,error(403,'Acceso exclusivo de Administración'));
  const id=Number(req.params.id);
@@ -266,4 +269,39 @@ async function revisar(req,res){
   return manejar(res,e);
  }
 }
-module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen};
+async function obtenerTarifas(req,res){
+ try{return res.json({ok:true,data:{...(await tarifas.obtener()),total:tarifas.TOTAL_FIJO}});}
+ catch(e){return manejar(res,e);}
+}
+async function guardarTarifas(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede modificar las tarifas.'));
+ try{const data=await tarifas.guardar(req.body||{},req.usuario.usuarioId);
+  return res.json({ok:true,data:{...data,total:tarifas.TOTAL_FIJO},message:'Tarifas guardadas para nuevas solicitudes.'});}
+ catch(e){return manejar(res,e);}
+}
+// Se libera el día sin destruir pagos, comprobantes ni el historial auditado.
+async function liberar(req,res){
+ if(!admin(req.usuario?.rol))return manejar(res,error(403,'Solo Administración puede liberar el día.'));
+ const id=Number(req.params.id),motivo=texto(req.body?.motivo,180);
+ if(!Number.isSafeInteger(id)||id<=0||motivo.length<8)return manejar(res,error(400,'Indica el motivo de la cancelación (mínimo 8 caracteres).'));
+ try{
+  const data=await db.transaction(async transaction=>{
+   const row=await Reserva.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row)throw error(404,'Reserva no encontrada');
+   if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
+   const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
+    revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
+   return {id:row.id,correo:row.correo,fecha:row.fecha,pago};
+  });
+  let avisoCorreo=false;
+  try{await require('../services/email.service').enviarAvisoCasaClub({
+   destinatario:data.correo,asunto:'Casa Club · Reserva CC-'+data.id+' cancelada',
+   texto:'Administración canceló tu reserva para el '+data.fecha+'.\nMotivo: '+motivo+
+    (data.pago?'\nSi realizaste un pago, contacta a Administración para conciliar cualquier devolución.':'')
+  });avisoCorreo=true;}catch(e){console.warn('[casa-club] Reserva cancelada; correo no confirmado:',e.message);}
+  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago,avisoCorreo,
+   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría.'});
+ }catch(e){return manejar(res,e);}
+}
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar};
