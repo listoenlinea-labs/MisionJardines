@@ -117,7 +117,7 @@
       extras=d.data||[];
       // Tras validar cualquier transferencia, refrescar también la meta y
       // el disponible del proyecto actualmente seleccionado, sin datos obsoletos.
-      if(selectedExtra)selectedExtra=extras.find(e=>Number(e.id)===Number(selectedExtra.id))||null;
+      if(selectedExtra)selectedExtra=extras.find(e=>Number(e.cuotaExtraordinariaId)===Number(selectedExtra.cuotaExtraordinariaId))||null;
       renderExtras();
       if(paymentType==='EXTRAORDINARIO')updatePaymentSummary();
     }catch(e){$('extraList').innerHTML='<div class="empty">'+esc(e.message)+'</div>'} }
@@ -195,28 +195,35 @@
       $('extraList').hidden=esCondomino;
       if(esCondomino){
         const selector=$('extraProjectSelect');
-        const actual=Number(selectedExtra?.id||selector.value||0);
+        const key=x=>String(x.cuotaExtraordinariaId);
+        const actual=selectedExtra?key(selectedExtra):selector.value;
         selector.innerHTML='<option value="">Elige un proyecto activo</option>'+
-         extras.map(x=>'<option value="'+Number(x.id)+'">'+esc(x.concepto)+' · Saldo '+money(x.monto)+'</option>').join('');
-        selector.value=extras.some(x=>Number(x.id)===actual)?String(actual):'';
-        const p=extras.find(x=>String(x.id)===selector.value)||null;
+         extras.map(x=>'<option value="'+esc(key(x))+'">'+esc(x.concepto)+' · '+
+           (x.estado==='SIN_CARGO'?'Sin cuota asignada':Number(x.monto)<=0?'Meta alcanzada · $0 pendiente':'Saldo '+money(x.monto))+'</option>').join('');
+        selector.value=extras.some(x=>key(x)===actual)?actual:'';
+        const p=extras.find(x=>key(x)===selector.value)||null;
+        selectedExtra=p;
         $('extraProjectSummary').textContent=p
-         ?'Meta individual: '+money(p.montoOriginal)+' · Aportado: '+money(p.montoPagado)+
-          ' · En revisión: '+money(p.pendienteValidacion)+
-          ' · Restante: '+money(p.monto)+
-          ' · Puedes depositar ahora: '+money(p.montoDisponible)+
-          '. Aporta parcialidades cuando quieras, sin recargos ni afectar tus TAGs.'
+         ?p.estado==='SIN_CARGO'
+          ?'Proyecto disponible para consulta. Esta vivienda no tiene cuota asignada: $0 pendiente. No se generó ningún cargo.'
+          :'Meta individual: '+money(p.montoOriginal)+' · Aportado: '+money(p.montoPagado)+
+           ' · En revisión: '+money(p.pendienteValidacion)+
+           ' · Restante: '+money(p.monto)+
+           (Number(p.montoDisponible)>0
+            ?' · Puedes depositar ahora: '+money(p.montoDisponible)+'. Puedes aportar parcialidades sin recargos ni afectar tus TAGs.'
+            :' · '+(Number(p.monto)<=0?'Meta alcanzada; no tienes nada pendiente.':'No hay saldo disponible para otro depósito mientras se revisan tus aportaciones.'))
          :'Selecciona un proyecto para consultar tu meta y aportar en parcialidades.';
       }
       $('extraList').innerHTML = extras.length ? extras.map(x =>
-        '<div class="extra'+(selectedExtra&&Number(selectedExtra.id)===Number(x.id)?' selected':'')+
-        '" data-extra="'+Number(x.id)+'"><div><strong>'+esc(x.concepto)+'</strong>'+
-        '<small>Meta: '+money(x.montoOriginal)+' · Aportado: '+money(x.montoPagado)+
+        '<div class="extra'+(selectedExtra&&String(selectedExtra.cuotaExtraordinariaId)===String(x.cuotaExtraordinariaId)?' selected':'')+
+        '" data-extra="'+Number(x.cuotaExtraordinariaId)+'"><div><strong>'+esc(x.concepto)+'</strong>'+
+        '<small>'+(x.estado==='SIN_CARGO'?'Sin cuota asignada a esta vivienda · $0 pendiente':
+         'Meta: '+money(x.montoOriginal)+' · Aportado: '+money(x.montoPagado)+
         ' · Falta: '+money(x.monto)+
         (Number(x.pendienteValidacion)>0?' · Verificando '+money(x.pendienteValidacion):'')+
-        (x.estado==='PAGADO'?' · Meta alcanzada':' · Abona cuando quieras, sin recargos ni fechas obligatorias')+
+        (x.estado==='PAGADO'?' · Meta alcanzada':' · Abona cuando quieras, sin recargos ni fechas obligatorias'))+
         '</small></div><b>'+money(x.monto)+'</b></div>').join('')
-       :'<div class="empty">No hay proyectos extraordinarios activos para tu vivienda.</div>';
+       :'<div class="empty">No hay proyectos extraordinarios activos.</div>';
     }
     let receiptItems = [];
     const receiptFilter = {month:'',year:''};
@@ -798,15 +805,15 @@
     $('amount').addEventListener('input', updatePaymentSummary);
     document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
     $('extraProjectSelect').addEventListener('change',e=>{
-      selectedExtra=extras.find(x=>String(x.id)===e.target.value)||null;
+      selectedExtra=extras.find(x=>String(x.cuotaExtraordinariaId)===e.target.value)||null;
       renderExtras();updatePaymentSummary();
     });
-    $('extraList').addEventListener('click', e => { const row = e.target.closest('[data-extra]'); if (!row) return; selectedExtra = extras.find(x => Number(x.id) === Number(row.dataset.extra)) || null; renderExtras(); updatePaymentSummary() });
+    $('extraList').addEventListener('click', e => { const row = e.target.closest('[data-extra]'); if (!row) return; selectedExtra = extras.find(x => Number(x.cuotaExtraordinariaId) === Number(row.dataset.extra)) || null; renderExtras(); updatePaymentSummary() });
     $('clubPaymentList').addEventListener('click',e=>{const row=e.target.closest('[data-club]');if(!row)return;selectedClub=(debts?.tipos?.CASA_CLUB||[]).find(c=>Number(c.id)===Number(row.dataset.club))||null;renderClub();updatePaymentSummary();});
 
     $('adminExtraBox').hidden=true;
 
-    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if(reportBusy)return; if(repartoUI.activo(paymentType)&&!repartoUI.valido())return toast('La suma debe coincidir con el depósito y el reparto debe estar cotizado.'); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||selectedExtra.estado==='PAGADO'||Number(selectedExtra.montoDisponible??selectedExtra.monto)<=0))
+    $('paymentForm').addEventListener('submit', async e => { e.preventDefault(); if(reportBusy)return; if(repartoUI.activo(paymentType)&&!repartoUI.valido())return toast('La suma debe coincidir con el depósito y el reparto debe estar cotizado.'); if (!proofData || !proofConfirmed) return toast('Primero adjunta un comprobante cuyo Destino y cuenta hayan sido comprobados por OCR.'); if (paymentType === 'EXTRAORDINARIO' && (!selectedExtra||!selectedExtra.id||selectedExtra.estado==='PAGADO'||selectedExtra.estado==='SIN_CARGO'||Number(selectedExtra.montoDisponible??selectedExtra.monto)<=0))
        return toast('Selecciona un proyecto que todavía permita nuevas aportaciones.'); if(paymentType==='CASA_CLUB'&&(!selectedClub||selectedClub.estado==='EN_REVISION'))return toast('Selecciona una reserva activa y sin comprobante en revisión.'); const amount = Number($('amount').value), required = Number(String($('summaryTotal').textContent).replace(/[^0-9.]/g, '')); if (!Number.isFinite(amount) || amount <= 0 || (paymentType === 'CASA_CLUB' && Math.abs(amount - required) > .009) ||
        (paymentType === 'EXTRAORDINARIO' && Math.round(amount*100)>Math.round(required*100))) return toast(paymentType==='EXTRAORDINARIO'
         ?'Puedes aportar cualquier cantidad desde $1 hasta '+money(required)+' en este momento.'
