@@ -544,7 +544,8 @@ async function descargarRecibo(req, res) {
         const pago = await PagoReportado.findOne({
             where: {
                 id: Number(req.params.id),
-                ...repartoService.condicionLectura(req.usuario.casaId,req.usuario.usuarioId)
+                ...(['SUPER_ADMIN','ADMINISTRADOR'].includes(req.usuario.rol)
+                    ? {} : repartoService.condicionLectura(req.usuario.casaId,req.usuario.usuarioId))
             },
             include: [{
                 model: CuotaExtraordinaria,
