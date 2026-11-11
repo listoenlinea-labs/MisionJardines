@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261110-detalle">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261111-tarifas">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -33,16 +33,28 @@
 <div id="clubNumberOptions" class="club-address-options" role="listbox" aria-label="Números sugeridos" hidden></div></div>
 <p class="club-address-hint wide" id="clubAddressHint" role="status" hidden></p>
 <label>Nombre del solicitante<input id="clubName" name="solicitante" maxlength="180" required></label>
-<label>WhatsApp<input id="clubPhone" name="telefono" type="tel" autocomplete="tel" maxlength="25" aria-describedby="clubPhoneHint" required><small id="clubPhoneHint">Escribe 10 dígitos o +52 seguido de 10 dígitos.</small></label>
+<label>WhatsApp<input id="clubPhone" name="telefono" type="tel" autocomplete="tel" maxlength="25" required></label>
 <label class="wide">Correo de contacto<input id="clubEmail" name="correo" type="email" maxlength="150" required></label>
 <label class="wide">¿Eres propietario?<select id="clubOwner" name="propietario"><option value="">Selecciona una opción</option><option value="SI">Sí, propietario</option><option value="NO">No, residente o inquilino</option></select></label>
 <label class="wide">Motivo del evento<input id="clubReason" name="motivo" maxlength="200" required placeholder="Ej. Cumpleaños, reunión familiar"></label></div>
 <label class="check club-opt-in" id="clubWhatsAppConsent"><input id="clubOptIn" type="checkbox" required> Acepto recibir las instrucciones de pago de esta solicitud por WhatsApp.</label>
+<p id="clubFeeSummary" class="club-fee-summary" role="status" hidden></p>
 <button class="primary" id="clubSubmit" type="submit" disabled>Enviar solicitud de reservación</button>
 <p class="club-hint" id="clubFormHint">Para solicitar una fecha debes estar al corriente en mantenimiento y cuotas extraordinarias. Recibirás los datos de depósito por correo y WhatsApp.</p>
 </form></article></div></section>
 <section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
-<section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Consulta las solicitudes y abre una reserva para revisar el pago y sus datos.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div><div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
+<section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Consulta las solicitudes y abre una reserva para revisar el pago y sus datos.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div>
+<section id="clubTariffEditor" class="club-tariff-editor" aria-labelledby="clubTariffTitle" hidden>
+  <div class="section-header"><div><span class="eyebrow">TARIFAS DE RESERVACIÓN</span><h3 id="clubTariffTitle">Distribución del depósito fijo de $2,000 MXN</h3><p>Modifica cómo se reparten recuperación, garantía y limpieza. El total de nuevas reservas siempre es $2,000; las anteriores conservan su importe.</p></div></div>
+  <form id="clubTariffForm" class="club-tariff-grid">
+    <label>Pago de recuperación (MXN)<input id="clubTariffRecovery" type="number" min="0" max="2000" step="1" inputmode="numeric" required></label>
+    <label>Depósito de garantía (MXN)<input id="clubTariffGuarantee" type="number" min="0" max="2000" step="1" inputmode="numeric" required></label>
+    <label>Limpieza (MXN)<input id="clubTariffCleaning" type="number" min="0" max="2000" step="1" inputmode="numeric" required></label>
+    <div class="club-tariff-total"><small>Total de la reserva</small><strong id="clubTariffSum">$2,000</strong></div>
+    <button class="primary" id="clubTariffSave" type="submit">Guardar distribución</button>
+  </form>
+  <p id="clubTariffStatus" role="status" aria-live="polite"></p>
+</section><div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Solicitud registrada</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
 <section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Confirma disponibilidad, residente y condiciones de pago antes de aprobar.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
 </main>
 <dialog id="clubDebtModal" class="club-dialog club-debt-dialog" aria-labelledby="clubDebtTitle" aria-describedby="clubDebtExplanation">
@@ -63,8 +75,9 @@
 <label class="club-opt-in">Folio bancario <input id="clubBankFolio" maxlength="60" autocomplete="off"></label>
 <div class="dialog-actions"><button type="button" class="danger" id="clubReject">Rechazar</button><button class="primary" type="submit" id="clubApprove" disabled>Aprobar y confirmar reservación</button></div>
 </div>
+<button type="button" class="danger club-release-button" id="clubRelease" hidden>Cancelar reserva aprobada y liberar fecha</button>
 <p id="clubReviewError" role="alert" hidden></p>
 </form></dialog>
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
-<script src="assets/js/casa-club.js?v=20261110-detalle" defer></script>
+<script src="assets/js/casa-club.js?v=20261111-tarifas" defer></script>
 </body></html>
