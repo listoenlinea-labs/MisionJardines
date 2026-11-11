@@ -390,3 +390,32 @@ test('pruebas y correcciones guardan personas sin columna de dirección heredada
   assert.ok(f.tables.Condomino.every(c => !Object.hasOwn(c, 'direccionId')));
   assert.deepEqual(f.tables.CondominoVivienda.filter(l => l.condominoId === person.id && l.activo).map(l => l.viviendaId), [10]);
 });
+
+test('borrar prerregistro pendiente invalida el enlace y permite recrear sin borrar padrón', async () => {
+  const f = fixture();
+  await f.service.crearLote();
+  await f.service.enviarLote();
+  const token = tokenFrom(f), id = f.tables.Usuario[0].id;
+  const padron = structuredClone([f.tables.Condomino, f.tables.CondominoVivienda, f.tables.Casa]);
+  await f.service.borrarPrerregistro(id);
+  for (const [table, field] of [['Usuario', 'id'], ['UsuarioCasa', 'usuarioId'], ['Invitacion', 'usuarioId']])
+    assert.equal(f.tables[table].some(row => row[field] === id), false);
+  assert.deepEqual([f.tables.Condomino, f.tables.CondominoVivienda, f.tables.Casa], padron);
+  await assert.rejects(f.service.consultar(token), { status: 410 });
+  assert.equal((await f.service.createOne(1)).resultado, 'CREADO');
+});
+
+test('borrar prerregistro protege una cuenta aceptada y revierte si falla el borrado', async () => {
+  const f = fixture();
+  await f.service.crearLote();
+  const u = f.tables.Usuario[0];
+  u.cuentaAceptada = true;
+  let before = structuredClone(f.tables);
+  await assert.rejects(f.service.borrarPrerregistro(u.id), { status: 409 });
+  assert.deepEqual(f.tables, before);
+  f.tables.Usuario[0].cuentaAceptada = false;
+  before = structuredClone(f.tables);
+  f.failDelete('Usuario');
+  await assert.rejects(f.service.borrarPrerregistro(u.id), { name: 'SequelizeForeignKeyConstraintError' });
+  assert.deepEqual(f.tables, before);
+});

@@ -66,5 +66,6 @@ router.post('/individual', handle(req => service.crearIndividual(req.body)));
 router.post('/crear', handle(req => service.crearLote(number(req.body.desdeId))));
 router.post('/invitaciones', handle(req => service.enviarLote(number(req.body.desdeId))));
 router.post('/:id/invitacion', handle(req => service.enviarLote(0, positive(req.params.id))));
+router.delete('/:id', handle(req => service.borrarPrerregistro(positive(req.params.id))));
 router.patch('/:id', handle(req => service.editar(positive(req.params.id), req.body, req.usuario.usuarioId)));
 module.exports = router;

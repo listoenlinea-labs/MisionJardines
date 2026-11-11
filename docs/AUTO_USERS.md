@@ -102,3 +102,11 @@ No/escape cancela; errores y progreso permanecen visibles. El timeout no confirm
 - La API de login acepta `nombreUsuario` o `correo` junto con `contrasena`; un teléfono por sí solo no es una credencial de acceso. El formulario de solicitud sigue usando `/api/auth/registro/solicitar` y la revisión `/api/auth/cuentas`.
 
 Actualizar frontend y backend juntos. Requiere la tabla `condominos_viviendas` ya creada y poblada antes del despliegue. Ver [relaciones del padrón](CONDOMINOS_VIVIENDAS.md). No afecta el servicio de correo de recibos, invitaciones de vivienda ni verificación de cambio de correo. Las pruebas usan SMTP/DB simulados; no prueban entrega real ni aprobación de producción.
+
+En **Cuentas de condóminos**, **Borrar prerregistro** permite a Administración
+eliminar una cuenta pendiente sin aceptar. Tras confirmar, se eliminan su invitación,
+reportes de prerregistro y vínculos inactivos de la cuenta; el padrón y las viviendas
+se conservan. Si hay acceso activo o historial asociado en otro módulo, el servidor
+rechaza el borrado. Se puede volver a generar la cuenta desde el padrón; los enlaces
+anteriores ya no funcionan. Las cuentas ficticias se gestionan desde Usuarios de
+prueba guardados.
