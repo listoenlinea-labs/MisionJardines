@@ -43,6 +43,18 @@ jobs:
           node --check backend/src/controllers/zkteco.controller.js
           node --test backend/test/banco-coincidencia-unica-tcp-20261111.test.js backend/tests/banco-diagnostico-timeline.test.js backend/tests/diagnostico-cotejo-por-campo.test.js backend/test/correo-solo-remitente.test.js
 
+      - name: Casa Club confirma automáticamente con Titan y conserva comprobantes
+        run: |
+          node --check backend/src/services/casa-club-pago-automatico.service.js
+          node --check backend/src/services/casa-club-avisos.service.js
+          node --check backend/src/services/adeudos-comunidad.service.js
+          node --check backend/src/controllers/pagos.controller.js
+          node --check backend/src/controllers/casa-club.controller.js
+          node --check docs/assets/js/casa-club.js
+          node --check docs/assets/js/pagos.js
+          node --test backend/test/casa-club-autoaprobacion-titan-20261111.test.js backend/test/casa-club-publico.test.js backend/test/casa-club.test.js backend/test/casa-club-tarifas-liberacion-20261111.test.js
+          node --test backend/test/banco-coincidencia-unica-tcp-20261111.test.js backend/test/validacion-pagos-correo.test.js
+
       - name: Titan IMAP mensajes largos sin bloquear la conciliación bancaria
         run: |
           node --check backend/src/services/correo-imap.transport.js
