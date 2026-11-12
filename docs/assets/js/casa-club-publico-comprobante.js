@@ -50,6 +50,9 @@
    const status=await post('/estado',current());
    totalEsperado=Number(status.total);
    titular=status.destinatario||titular;terminacion=status.terminacionCuenta||terminacion;
+   window.MJClubCuenta?.render('clubProofBankDetails',status.datosTransferencia,{
+    conceptoTransferencia:status.conceptoTransferencia,monto:status.total
+   });
    const p=status.comprobante;
    const pagado=status.pagado&&status.estatusReserva==='APROBADA';
    $('clubProofRetry').hidden=!(p?.estado==='RECHAZADO');
@@ -90,7 +93,7 @@
   const parsed=parse(link);
   if(!parsed)return;
   acceso=parsed;
-  try{sessionStorage.setItem('mjCasaClubComprobante',JSON.stringify(parsed));}catch(_){}
+  // No persistir el enlace privado en sessionStorage ni usarlo como precarga.
   // Fragmento, no query: el token no se envía a logs ni en Referer HTTP.
   if(location.hash!=='#comprobante='+parsed.reservaId+'.'+parsed.claveAcceso)
    history.replaceState(null,'','#comprobante='+parsed.reservaId+'.'+parsed.claveAcceso);
@@ -248,13 +251,6 @@
   }catch(e){setStatus(e.message,'error');}finally{button.disabled=false;}
  });
  window.MJClubPublicProof={open,refresh};
- const linked=parse(location.hash);
- if(linked)open(location.hash);
- else{
-  try{
-   const saved=JSON.parse(sessionStorage.getItem('mjCasaClubComprobante')||'null');
-   if(saved&&Number.isSafeInteger(saved.reservaId)&&/^[0-9a-f]{64}$/.test(saved.claveAcceso))
-    open('#comprobante='+saved.reservaId+'.'+saved.claveAcceso);
-  }catch(_){}
- }
+ // En la URL pública genérica no se recupera ningún comprobante anterior.
+ if(parse(location.hash))open(location.hash);
 })();
