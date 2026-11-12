@@ -198,7 +198,6 @@
  }
  const datosFaltantes=(parsed,codigo)=>{
   const faltan=[];
-  if(!codigo)faltan.push('folio, referencia o clave de rastreo');
   if(!parsed.amount)faltan.push('monto');
   if(!parsed.date)faltan.push('fecha');
   if(!parsed.time)faltan.push('hora');
@@ -208,7 +207,7 @@
   if(!data||leyendo)return;
   const revision=++escaneo;
   leyendo=true;validadoOcr=false;$('clubProofSubmit').disabled=true;$('clubProofRead').disabled=true;
-  $('clubProofOcrStatus').textContent='Leyendo comprobante… Buscando beneficiario, cuenta, importe, fecha y folio.';
+  $('clubProofOcrStatus').textContent='Leyendo monto, fecha y hora del comprobante. No exigimos beneficiario ni referencia.';
   let worker=null;
   try{
    if(!window.Tesseract||!window.MJComprobante)throw Error('El lector OCR no se ha cargado. Revisa tu conexión e inténtalo de nuevo.');
@@ -236,7 +235,7 @@
     const dest=window.MJComprobante.verifyDestination(texto,titular,terminaciones);
     const codigo=parsed.claveRastreo||parsed.referencia||parsed.folio||
       window.MJComprobante.candidatosOperacion(texto)[0]||'';
-    return dest.ok&&Boolean(codigo&&parsed.amount&&parsed.date&&parsed.time);
+    return Boolean(parsed.amount&&parsed.date&&parsed.time);
    };
    if(!suficiente()){
     $('clubProofOcrStatus').textContent='Releyendo zonas de texto del banco…';
@@ -253,9 +252,8 @@
    const destino=window.MJComprobante.verifyDestination(texto,titular,terminaciones);
    const parsed=window.MJComprobante.extract(texto);
    const codigo=parsed.claveRastreo||parsed.referencia||parsed.folio||
-     window.MJComprobante.candidatosOperacion(texto)[0]||'';
-   if(!destino.ok)throw Error(destino.message+
-     ' La foto debe mostrar el destinatario y la cuenta, CLABE o tarjeta receptora. Puedes seleccionar otra fotografía o pulsar «Volver a leer».');
+     window.MJComprobante.candidatosOperacion(texto)[0]||
+     ('SINREF-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,12).toUpperCase());
    const faltan=datosFaltantes(parsed,codigo);
    if(faltan.length)throw Error('No pudimos identificar con seguridad: '+faltan.join(', ')+
      '. Puedes tomar una foto del detalle del movimiento completo y volver a intentarlo.');
@@ -267,10 +265,9 @@
    $('clubProofTime').value=parsed.time;
    validadoOcr=true;
    $('clubProofSubmit').disabled=!acceso;
-   $('clubProofOcrStatus').textContent='Comprobante leído: beneficiario y cuenta receptora terminación '+
-     (destino.matchedSuffix||terminaciones.join('/'))+
-     (acceso?'. Envíalo para que Titan verifique el depósito.':
-       '. Se asociará automáticamente al guardar tu solicitud. Titan comprobará el depósito después.');
+   $('clubProofOcrStatus').textContent='Comprobante legible: importe, fecha y hora detectados. No necesitamos el beneficiario ni una clave bancaria visible.'+
+     (acceso?' Puedes enviarlo; Titan confirmará el ingreso real.':
+       ' Se adjuntará al guardar tu solicitud para la conciliación bancaria.');
   }catch(e){
    if(revision===escaneo)$('clubProofOcrStatus').textContent='No se completó la lectura: '+e.message;
   }finally{
