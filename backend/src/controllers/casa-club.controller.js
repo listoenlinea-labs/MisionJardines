@@ -169,6 +169,9 @@ async function solicitar(req,res){
    const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
    if(!casa)throw noElegible();
    casaTransferencia=casa;
+   // Revalidar tras bloquear la vivienda evita carreras con una cuarta tarjeta
+   // asignada por Seguridad mientras el usuario completa la solicitud.
+   await tarjetasRojas.exigirDisponible(casaId,{transaction});
    const anterior=await Reserva.findOne({where:{casaId,estatus:'PENDIENTE',
     fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
    if(anterior)throw error(409,usuario?'Ya tienes una solicitud de Casa Club en revisión.':noElegible().message);
