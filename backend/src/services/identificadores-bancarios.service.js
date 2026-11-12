@@ -78,6 +78,13 @@ function identificadoresAviso(aviso){
 function coinciden(pago,aviso){
  const a=identificadoresPago(pago),b=identificadoresAviso(aviso);
  if(['claveRastreo','referencia','folio'].some(tipo=>a[tipo]&&b[tipo]&&a[tipo]===b[tipo]))return true;
+ // Mercado Pago rotula "Comprobante #188..." y también puede mostrar la
+ // clave de rastreo "CPO188...". Relacionar únicamente esa transformación
+ // exacta, con recibo explícito de Mercado Pago leído por nuestro servidor.
+ // El banco seguirá exigiendo cuenta, fecha, importe y aviso autorizado.
+ if(/MERCADO\s*PAGO/i.test(String(pago?.textoOcr||'')) &&
+    /^\d{10,17}$/.test(a.folio) &&
+    b.claveRastreo==='CPO'+a.folio)return true;
  // Candidatos OCR sin etiqueta, contra valores con etiqueta EXPLÍCITA de Titan.
  // No transformar un campo folio etiquetado en una referencia distinta.
  const etiquetados=[a.claveRastreo,a.referencia,a.folio].filter(Boolean);
