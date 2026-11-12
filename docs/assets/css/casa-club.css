@@ -466,3 +466,33 @@
  #clubMobileReservationDialog #clubInstructionsOpen,
  #clubMobileReservationDialog #clubFormHint{display:none!important}
 }
+
+/* Enlace privado por correo: una sola reserva y un solo comprobante. */
+.club-private-reservation-summary{margin:0 0 18px;padding:22px;border-radius:18px;border:1px solid #cbded6;background:linear-gradient(130deg,#f5fbf7 0%,#fff 85%);box-shadow:0 6px 21px rgba(31,83,65,.07)}
+.club-private-reservation-summary h2{font-size:23px;line-height:1.2;color:#20374f;margin:9px 0}
+.club-private-reservation-summary>p{font-size:13px;color:#597082;line-height:1.5;margin:8px 0 18px}
+.club-private-reservation-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.club-private-reservation-facts>div{min-width:0;border-radius:12px;background:#fff;padding:13px 14px;border:1px solid #e0eae8}
+.club-private-reservation-facts small{display:block;font-size:11px;color:#687a89;margin-bottom:7px}
+.club-private-reservation-facts strong{display:block;font-size:15px;color:#1e4053;overflow-wrap:anywhere}
+.club-private-reservation-status{background:#fff5e6;border:1px solid #edddc2;border-radius:11px;padding:11px 13px;color:#78521d;font-weight:700;margin-top:16px!important}
+body.club-private-reservation-view #tab-reservar .two-col{display:block;grid-template-columns:minmax(0,1fr)}
+body.club-private-reservation-view #clubAvailabilityCard{width:100%;max-width:930px;margin:0 auto}
+body.club-private-reservation-view #clubAvailabilityCard>.section-header,
+body.club-private-reservation-view #clubAvailabilityCard>.calendar-nav,
+body.club-private-reservation-view #clubAvailabilityCard>.weekdays,
+body.club-private-reservation-view #calendarDays,
+body.club-private-reservation-view #clubCalendarHint,
+body.club-private-reservation-view #clubRegulationsAcceptance,
+body.club-private-reservation-view #clubPaymentDetails,
+body.club-private-reservation-view #clubReservationCard,
+body.club-private-reservation-view #clubTabs{display:none!important}
+body.club-private-reservation-view .club-proof-card{margin-top:18px!important}
+@media(max-width:700px){
+ .club-private-reservation-summary{padding:17px 13px;margin:0 0 10px}
+ .club-private-reservation-summary h2{font-size:20px}
+ .club-private-reservation-facts{grid-template-columns:minmax(0,1fr);gap:9px}
+ .club-private-reservation-facts>div{padding:12px}
+ body.club-private-reservation-view #clubAvailabilityCard{padding:16px 12px}
+ body.club-private-reservation-view #tab-reservar .club-proof-card{margin-top:10px!important}
+}
