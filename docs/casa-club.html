@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-modal-movil-ocr">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-precomprobante-terminos">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -20,7 +20,7 @@
 <div class="weekdays"><b>L</b><b>M</b><b>M</b><b>J</b><b>V</b><b>S</b><b>D</b></div>
 <div id="calendarDays" class="calendar-days" role="group" aria-label="Calendario de disponibilidad"></div>
 <p class="club-hint" id="clubCalendarHint">Elige tu fecha: quedará bloqueada provisionalmente al registrar la solicitud y se confirmará automáticamente cuando Titan verifique el depósito. No necesitas esperar la aprobación de Administración.</p>
-<section id="clubProofIntro" class="club-proof-intro" aria-labelledby="clubProofIntroTitle">
+<section id="clubProofIntro" class="club-proof-intro" hidden aria-labelledby="clubProofIntroTitle">
  <div class="club-proof-intro-head"><span class="club-proof-intro-mark" aria-hidden="true">↑</span><div>
   <span class="eyebrow">PASO 2 · CONFIRMACIÓN BANCARIA</span>
   <h3 id="clubProofIntroTitle">Comprobante de pago</h3>
@@ -35,8 +35,8 @@
 </section>
 <section class="club-bill club-public-bill club-proof-payment-summary" id="clubPaymentDetails" aria-live="polite" hidden></section>
 <section id="clubPublicProofFlow" class="club-proof-card" aria-labelledby="clubProofTitle" hidden>
- <div class="section-header"><div><span class="eyebrow">CONFIRMACIÓN BANCARIA AUTOMÁTICA</span><h2 id="clubProofTitle">Sube tu comprobante</h2><p>Tu fecha queda apartada mientras verificamos el pago. Se confirma automáticamente solo después de comprobarlo con Titan.</p></div><span class="club-proof-lock">Acceso privado de tu reservación</span></div>
- <div class="club-proof-progress" aria-label="Etapas de reservación"><span id="clubProofStepOne" class="active">1 · Solicitud recibida</span><span id="clubProofStepTwo">2 · Comprobante enviado</span><span id="clubProofStepThree">3 · Pago verificado</span></div>
+ <div class="section-header"><div><span class="eyebrow">CONFIRMACIÓN BANCARIA AUTOMÁTICA</span><h2 id="clubProofTitle">Sube tu comprobante</h2><p>Puedes elegir y leer el comprobante antes de reservar. Después de guardar tu solicitud, lo enviaremos al sistema para comprobarlo con Titan.</p></div><span class="club-proof-lock">Acceso privado de tu reservación</span></div>
+ <div id="clubProofProgress" class="club-proof-progress" aria-label="Etapas de reservación" hidden><span id="clubProofStepOne" class="active">1 · Solicitud registrada</span><span id="clubProofStepTwo">2 · Comprobante enviado</span><span id="clubProofStepThree">3 · Pago verificado</span></div>
  <button type="button" class="soft club-payment-open" id="clubProofInstructionsOpen">Instrucciones de pago</button>
  <div id="clubProofResult" role="status" aria-live="polite" class="club-proof-result">Completa los datos de tu comprobante. El banco confirmará el depósito con una notificación independiente.</div>
  <form id="clubPublicProofForm" class="club-public-proof-form" autocomplete="off">
@@ -47,10 +47,10 @@
   <label>Importe depositado (MXN)<input id="clubProofAmount" readonly required></label>
   <label>Fecha del depósito<input id="clubProofDate" readonly required></label>
   <label>Hora del depósito<input id="clubProofTime" readonly required></label></div>
-  <p id="clubProofOcrStatus" class="club-proof-ocr-status" role="status">Selecciona el comprobante para verificar el destinatario y leer los datos bancarios.</p>
-  <div class="club-proof-actions"><button type="button" class="soft" id="clubProofRead" disabled>Volver a leer</button><button type="submit" class="primary" id="clubProofSubmit" disabled>Enviar comprobante a Titan</button></div>
+  <p id="clubProofOcrStatus" class="club-proof-ocr-status" role="status">Selecciona tu comprobante antes de enviar la solicitud. Se leerá aquí y, al guardar la reservación, se asociará a tu folio.</p>
+  <div class="club-proof-actions"><button type="button" class="soft" id="clubProofRead" disabled>Volver a leer</button><button type="submit" class="primary" id="clubProofSubmit" disabled hidden>Enviar comprobante a Titan</button></div>
  </form>
- <div class="club-proof-followup"><button type="button" class="soft" id="clubProofRefresh">Consultar estado</button><button type="button" class="soft" id="clubProofRetry" hidden>Reintentar validación</button><button type="button" class="soft" id="clubProofReceipt" hidden>Descargar recibo PDF</button></div>
+ <div id="clubProofFollowup" class="club-proof-followup" hidden><button type="button" class="soft" id="clubProofRefresh">Consultar estado</button><button type="button" class="soft" id="clubProofRetry" hidden>Reintentar validación</button><button type="button" class="soft" id="clubProofReceipt" hidden>Descargar recibo PDF</button></div>
  <p class="club-hint">No subas el mismo depósito dos veces. La aplicación valida el OCR, los identificadores y una notificación de Titan; una captura por sí sola no confirma el pago.</p>
 </section>
 </article>
@@ -71,7 +71,7 @@
 <label class="wide">¿Eres propietario?<select id="clubOwner" name="propietario"><option value="">Selecciona una opción</option><option value="SI">Sí, propietario</option><option value="NO">No, residente o inquilino</option></select></label>
 <label class="wide">Motivo del evento<input id="clubReason" name="motivo" maxlength="200" autocomplete="off" required placeholder="Ej. Cumpleaños, reunión familiar"></label></div>
 
- <section class="club-regulations-acceptance" aria-labelledby="clubRulesHeading">
+ <section id="clubRegulationsAcceptance" class="club-regulations-acceptance" aria-labelledby="clubRulesHeading">
  <div><span class="eyebrow">REQUISITO ANTES DE RESERVAR</span><h3 id="clubRulesHeading">Reglamento de Casa Club</h3>
  <p>Consulta las disposiciones completas y las cuotas oficiales. Debes leerlas y aceptarlas para continuar.</p></div>
  <button type="button" class="soft club-rules-open" id="clubOpenRules">Leer reglamento y términos</button>
@@ -80,6 +80,8 @@
 
 <p id="clubFeeSummary" class="club-fee-summary" role="status" hidden></p>
 <button type="button" class="soft club-payment-open" id="clubInstructionsOpen">Instrucciones de pago</button>
+<p id="clubMobileRulesPrompt" class="club-mobile-rules-prompt" hidden>Antes de guardar necesitas aceptar el reglamento en la pantalla principal.
+    <button type="button" id="clubMobileRulesGo" class="soft">Ir al reglamento</button></p>
 <button class="primary" id="clubSubmit" type="submit" disabled>Enviar solicitud de reservación</button>
 <p id="clubMobileSubmitError" class="club-mobile-submit-error" role="alert" hidden></p>
 <p class="club-hint" id="clubFormHint">Para solicitar una fecha debes estar al corriente en mantenimiento y cuotas extraordinarias. Consulta las instrucciones de pago aquí y adjunta el comprobante en esta misma página.</p>
@@ -159,8 +161,8 @@
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-<script src="assets/js/comprobante-parser.js?v=20261112-ocr-fotos-moviles" defer></script>
+<script src="assets/js/comprobante-parser.js?v=20261112-mercadopago" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
-<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-ocr-fotos-moviles" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-modal-movil-ocr" defer></script>
+<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-precomprobante" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-precomprobante-terminos" defer></script>
 </body></html>

@@ -450,3 +450,14 @@
  .club-mobile-reservation-head{padding:15px 12px 12px}
  #clubMobileReservationDialog #clubReservationCard{padding:14px 12px 20px}
 }
+
+/* Reglamento fuera del modal en celulares; se conserva dentro del formulario en escritorio. */
+.club-mobile-rules-prompt{display:none}
+@media(max-width:700px){
+ #tab-reservar #clubRegulationsAcceptance{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:17px 14px;margin:18px 0 10px;border:1px solid #e3d9f0;border-radius:17px;background:linear-gradient(140deg,#faf7ff,#f4fbf6)}
+ #tab-reservar #clubRegulationsAcceptance .club-rules-open{width:100%;min-height:48px}
+ #clubMobileReservationDialog #clubMobileRulesPrompt:not([hidden]){display:grid;gap:10px;margin:14px 0;border:1px solid #e8d3a9;border-radius:12px;background:#fffaf0;padding:12px;color:#77551f;font-size:12px;line-height:1.5}
+ #clubMobileReservationDialog #clubMobileRulesPrompt button{width:100%;min-height:44px}
+ #tab-reservar .club-proof-card{margin-top:17px}
+ #tab-reservar .club-public-proof-form .club-proof-upload{padding:18px 12px}
+}
