@@ -19,8 +19,12 @@
       el('segCuotasRows').innerHTML=json.viviendas.length?json.viviendas.map(v=>{
         const name=v.estado==='AL_CORRIENTE'?'Al corriente':v.estado==='DEUDOR'?'Deudor':'Sin historial';
         const pill=v.estado==='AL_CORRIENTE'?'paid':v.estado==='DEUDOR'?'due':'unknown';
-        return '<tr><td data-label="Calle">'+esc(v.calle)+'</td><td data-label="Casa">'+esc(v.numero)+'</td><td data-label="Estado"><span class="seg-cuotas-pill '+pill+'">'+name+'</span></td><td data-label="Último pago">'+esc(v.ultimaFechaPago||'Sin fecha')+'</td><td data-label="Mes pagado">'+esc(v.ultimoMesPagado||'Sin registro')+'</td></tr>';
-      }).join(''):'<tr><td colspan="5">No hay viviendas con estos filtros.</td></tr>';
+        const id=Number(v.casaId);
+        return '<tr><td data-label="Calle">'+esc(v.calle)+'</td><td data-label="Casa">'+esc(v.numero)+'</td><td data-label="Estado"><span class="seg-cuotas-pill '+pill+'">'+name+'</span></td><td data-label="Último pago">'+esc(v.ultimaFechaPago||'Sin fecha')+'</td><td data-label="Mes pagado">'+esc(v.ultimoMesPagado||'Sin registro')+'</td>'+
+          '<td data-label="Tarjetas rojas" data-red-count-id="'+id+'">'+(window.MJSeguridadRojas?.contar(id)??'…')+'</td>'+
+          '<td data-label="Acciones"><button type="button" class="seg-red-button" data-red-manage="'+id+'" '+(!id?'disabled':'')+'>Poner / quitar</button></td></tr>';
+      }).join(''):'<tr><td colspan="7">No hay viviendas con estos filtros.</td></tr>';
+      window.MJSeguridadRojas?.actualizarCeldas();
       status.textContent=String(json.total)+' viviendas · '+json.periodo;
       el('segCuotasPage').textContent='Página '+pagina+' de '+paginas;
       el('segCuotasPrev').disabled=pagina<=1;
