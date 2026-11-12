@@ -295,7 +295,7 @@
  }
  $('clubRelease').addEventListener('click',()=>{if(activeReview)void liberarReserva(activeReview);});
  const mon=d=>new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
- const filterStreet=$('clubFilterStreet'),filterNumber=$('clubFilterNumber');
+ const filterStreet=$('clubFilterStreet'),filterNumber=$('clubFilterNumber'),filterMonth=$('clubFilterMonth');
  function actualizarOpcionesCalle(){
   const previo=filterStreet.value;
   const calles=[...new Set(adminRows.map(r=>String(r.casa?.calleCorrecta||r.casa?.calle||'').trim()).filter(Boolean))]
@@ -304,27 +304,50 @@
    calles.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');
   filterStreet.value=calles.includes(previo)?previo:'';
  }
+ // El mes se determina por la fecha del EVENTO, no por la fecha de solicitud.
+ function actualizarOpcionesMes(){
+  const previo=filterMonth.value;
+  const meses=[...new Set(adminRows.map(r=>String(r.fecha||'').slice(0,7))
+   .filter(v=>/^\d{4}-(0[1-9]|1[0-2])$/.test(v)))].sort((a,b)=>b.localeCompare(a));
+  filterMonth.innerHTML='<option value="">Todos los meses</option>'+
+   meses.map(clave=>{
+    const [anio,mes]=clave.split('-').map(Number);
+    const texto=new Intl.DateTimeFormat('es-MX',{month:'long',year:'numeric',timeZone:'UTC'})
+     .format(new Date(Date.UTC(anio,mes-1,1)));
+    return '<option value="'+clave+'">'+esc(texto)+'</option>';
+   }).join('');
+  filterMonth.value=meses.includes(previo)?previo:'';
+ }
+ function coincideFiltrosReserva(row,{calle,numero,mes}){
+  return !!row
+   &&(!calle||String(row.casa?.calleCorrecta||row.casa?.calle||'').toLocaleLowerCase('es-MX')===calle)
+   &&(!numero||String(row.casa?.numero||'').toLocaleLowerCase('es-MX').includes(numero))
+   &&(!mes||String(row.fecha||'').slice(0,7)===mes);
+ }
  function aplicarFiltroReservas(){
-  const calle=filterStreet.value.trim().toLocaleLowerCase('es-MX');
-  const numero=filterNumber.value.trim().toLocaleLowerCase('es-MX');
+  const filtro={
+   calle:filterStreet.value.trim().toLocaleLowerCase('es-MX'),
+   numero:filterNumber.value.trim().toLocaleLowerCase('es-MX'),
+   mes:filterMonth.value
+  };
+  const mapa=new Map(adminRows.map(r=>[Number(r.id),r]));
   let visibles=0;
   $('clubAdminRows').querySelectorAll('[data-reserva]').forEach(tr=>{
-   const row=adminRows.find(r=>Number(r.id)===Number(tr.dataset.reserva));
-   const coincide=!!row&&(!calle||String(row.casa?.calleCorrecta||row.casa?.calle||'').toLocaleLowerCase('es-MX')===calle)
-    &&(!numero||String(row.casa?.numero||'').toLocaleLowerCase('es-MX').includes(numero));
+   const coincide=coincideFiltrosReserva(mapa.get(Number(tr.dataset.reserva)),filtro);
    tr.hidden=!coincide;
    if(coincide)visibles++;
   });
   $('clubRequests').querySelectorAll('[data-pendiente-id]').forEach(card=>{
-   const row=adminRows.find(r=>Number(r.id)===Number(card.dataset.pendienteId));
-   card.hidden=!(row&&(!calle||String(row.casa?.calleCorrecta||row.casa?.calle||'').toLocaleLowerCase('es-MX')===calle)
-    &&(!numero||String(row.casa?.numero||'').toLocaleLowerCase('es-MX').includes(numero)));
+   card.hidden=!coincideFiltrosReserva(mapa.get(Number(card.dataset.pendienteId)),filtro);
   });
   $('clubFilterCount').textContent=visibles+' de '+adminRows.length+' reservaciones';
  }
  filterStreet.addEventListener('change',aplicarFiltroReservas);
  filterNumber.addEventListener('input',aplicarFiltroReservas);
- $('clubClearFilters').addEventListener('click',()=>{filterStreet.value='';filterNumber.value='';aplicarFiltroReservas();});
+ filterMonth.addEventListener('change',aplicarFiltroReservas);
+ $('clubClearFilters').addEventListener('click',()=>{
+  filterStreet.value='';filterNumber.value='';filterMonth.value='';aplicarFiltroReservas();
+ });
  async function adminList(){
   if(!admin)return;
   try{
@@ -360,13 +383,13 @@
       ];
       return '<tr data-reserva="'+Number(r.id)+'">'+
        valores.map((v,idx)=>'<td'+(idx===11?' class="club-event-reason"':'')+'>'+esc(v)+'</td>').join('')+
-       '<td class="club-reservation-actions">'+acciones+'</td></tr>';
+       '<td class="club-reservation-actions"><div class="club-actions-inline">'+acciones+'</div></td></tr>';
     }).join('')||'<tr><td colspan="14">Aún no hay reservas registradas.</td></tr>';
     $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
     '<article class="reserve-card" data-pendiente-id="'+Number(r.id)+'"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
     '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
     '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>').join('')||'<div class="reserve-card">No hay solicitudes pendientes de aprobación.</div>';
-   actualizarOpcionesCalle();aplicarFiltroReservas();
+   actualizarOpcionesCalle();actualizarOpcionesMes();aplicarFiltroReservas();
   }catch(e){notify(e.message,true);}
  }
  $('clubRequests').addEventListener('click',e=>{const btn=e.target.closest('[data-review]');if(btn){const r=adminRows.find(x=>Number(x.id)===Number(btn.dataset.review));if(r)editReview(r);}});
