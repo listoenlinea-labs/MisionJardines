@@ -66,7 +66,8 @@ async function estado(req,res){
    conceptoTransferencia:cuentaOficial.conceptoVivienda(vivienda),
    total:Number(reserva.cuotaRecuperacion)+Number(reserva.depositoGarantia)+Number(reserva.limpieza),
    destinatario:process.env.PAGOS_TITULAR||'MARIA DEL ROCIO BAHENA JUAREZ',
-   terminacionCuenta:process.env.PAGOS_DESTINO_ULTIMOS4||'4409',
+   terminacionCuenta:cuentaOficial.obtener().destinoUltimos4,
+    terminacionesCuenta:cuentaOficial.obtener().destinosUltimos4,
    comprobante:pago?{
     estado:pago.estatus,
     etapa:String(revision.etapa||'RECIBIDO').slice(0,80),

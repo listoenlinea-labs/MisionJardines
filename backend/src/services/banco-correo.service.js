@@ -1,3 +1,4 @@
+const cuentaOficial=require('./pagos-cuenta-oficial.service');
 'use strict';
 // Sólo lectura. El correo bancario es evidencia secundaria: la aprobación exige
 // IMAP TLS, From autorizado (sin autenticar), identificador, monto, fecha y destino.
@@ -119,13 +120,13 @@ function coincideCuenta(detectada,esperada){
 // distinga un identificador ausente de una fecha/cuenta no coincidente.
 // Solo devuelven booleanos: nunca valores bancarios ni datos personales.
 function chequeosAviso(pago,noticia,config=process.env){
- const cuenta=suffix(config.PAGOS_DESTINO_ULTIMOS4||'4409');
+ const cuentas=cuentaOficial.obtener(config).destinosUltimos4;
  const fechaOperacion=String(pago?.fechaOperacion||'').slice(0,10);
  return {
   autenticado:Boolean(noticia?.autorizado),
   reciente:Boolean(noticia?.reciente),
   mensaje:Boolean(noticia?.id),
-  cuenta:cuenta.length===4&&coincideCuenta(noticia?.cuenta,cuenta),
+  cuenta:cuentas.some(cuenta=>coincideCuenta(noticia?.cuenta,cuenta)),
   fecha:Boolean(noticia?.fecha&&(noticia.fecha===fechaOperacion
    ||equivaleFechaSpei(fechaOperacion,noticia.fecha,pago?.horaOperacion)
    ||equivaleFechaSpei(noticia.fecha,fechaOperacion,pago?.horaOperacion))),

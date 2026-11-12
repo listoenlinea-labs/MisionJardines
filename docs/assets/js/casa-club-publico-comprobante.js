@@ -6,7 +6,7 @@
  const $=id=>document.getElementById(id);
  let acceso=null,data='',meta={name:'',mime:''},escaneo=0,leyendo=false,validadoOcr=false;
  let enProceso=false,estadoEnCurso=false,intervalo=null,totalEsperado=null;
- let titular='MARIA DEL ROCIO BAHENA JUAREZ',terminacion='4409';
+ let titular='MARIA DEL ROCIO BAHENA JUAREZ',terminaciones=['4409'];
  const money=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
  const setStatus=(msg,type='')=>{
   const host=$('clubProofResult');host.textContent=msg;
@@ -49,7 +49,7 @@
   try{
    const status=await post('/estado',current());
    totalEsperado=Number(status.total);
-   titular=status.destinatario||titular;terminacion=status.terminacionCuenta||terminacion;
+   titular=status.destinatario||titular;terminaciones=status.terminacionesCuenta?.length?status.terminacionesCuenta:[status.terminacionCuenta||'4409'];
    window.MJClubCuenta?.render('clubProofBankDetails',status.datosTransferencia,{
     conceptoTransferencia:status.conceptoTransferencia,monto:status.total
    });
@@ -159,7 +159,7 @@
    const readings=[(await worker.recognize(data))?.data?.text||''];
    if(revision!==escaneo)return;
    const one=window.MJComprobante.extract(readings[0]);
-   const check=window.MJComprobante.verifyDestination(readings[0],titular,terminacion);
+   const check=window.MJComprobante.verifyDestination(readings[0],titular,terminaciones);
    if(!check.ok||!one.amount||!one.date||!one.time||!(one.claveRastreo||one.referencia||one.folio)){
     try{
      await worker.setParameters({tessedit_pageseg_mode:Tesseract.PSM.SPARSE_TEXT});
@@ -169,8 +169,8 @@
    }
    if(revision!==escaneo)return;
    const texto=readings.join(window.MJComprobante.OCR_PASS_MARKER);
-   const destino=window.MJComprobante.verifyDestination(texto,titular,terminacion);
-   if(!destino.ok)throw Error(destino.message+' Adjunta un comprobante donde se vea el beneficiario y la terminación '+terminacion+'.');
+   const destino=window.MJComprobante.verifyDestination(texto,titular,terminaciones);
+   if(!destino.ok)throw Error(destino.message+' Adjunta un comprobante donde se vea el beneficiario y alguna terminación oficial: '+terminaciones.join(', ')+'.');
    const parsed=window.MJComprobante.extract(texto);
    const codigo=parsed.claveRastreo||parsed.referencia||parsed.folio||window.MJComprobante.candidatosOperacion(texto)[0]||'';
    if(!codigo||!parsed.amount||!parsed.date||!parsed.time)

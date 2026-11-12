@@ -300,6 +300,14 @@
     };
   }
   function verifyDestination(text, owner, suffix) {
+    if (Array.isArray(suffix)) {
+      // Nombre y terminación deben coincidir en el mismo pase OCR.
+      const permitidas=[...new Set(suffix.map(x=>String(x||'').replace(/\D/g,'').slice(-4))
+        .filter(x=>/^\d{4}$/.test(x)))];
+      const checks=permitidas.map(value=>({...verifyDestination(text,owner,value),matchedSuffix:value}));
+      return checks.find(x=>x.ok)||checks.find(x=>x.owner&&x.suffix)
+        ||checks.find(x=>x.owner)||checks[0]||verifyDestination(text,owner,'');
+    }
     const readings = String(text || '').split(OCR_PASS_MARKER);
     const checks = readings.map(part => verifyDestinationOne(part, owner, suffix));
     // Beneficiario y terminación deben coincidir EN LA MISMA lectura.

@@ -717,7 +717,7 @@
           const data = MJComprobante.extract(firstText);
           const destination = MJComprobante.verifyDestination(firstText,
             config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ',
-            config?.destinoUltimos4 || '4409');
+            (config?.destinosUltimos4?.length ? config.destinosUltimos4 : [config?.destinoUltimos4 || '4409']));
           if (!destination.ok || !data.amount || !data.date || !data.time ||
               !(data.claveRastreo || data.referencia || data.folio)) {
             // En capturas bancarias de dos columnas, AUTO puede perder los
@@ -737,7 +737,7 @@
         if (scanRevision !== revision) return;
         ocrText = readings.join(MJComprobante.OCR_PASS_MARKER);
         const beneficiary = config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ';
-        const suffix = config?.destinoUltimos4 || '4409';
+        const suffix = config?.destinosUltimos4?.length ? config.destinosUltimos4 : [config?.destinoUltimos4 || '4409'];
         const destination = MJComprobante.verifyDestination(ocrText, beneficiary, suffix);
         if (!destination.ok) {
           $('ocrState').textContent = 'Comprobante no aceptado: destinatario no verificado.';
@@ -746,7 +746,7 @@
           mostrarCamposFaltantes({message:destination.message,
             camposFaltantes: [
               ...(!destination.owner ? ['Nombre del beneficiario'] : []),
-              ...(!destination.suffix ? ['Cuenta destino terminación ' + suffix] : [])
+              ...(!destination.suffix ? ['Cuenta destino terminación ' + suffix.join(', ')] : [])
             ]});
           return;
         }
@@ -778,7 +778,7 @@
         $('submitPayment').disabled = false;
         $('ocrBar').style.width = '100%';
         $('ocrState').textContent = 'Lectura completada. Revisa los campos detectados.';
-        setDestinationStatus('Destino comprobado en la imagen: ' + beneficiary + ' · cuenta terminación ' + suffix + '. El depósito aún requiere confirmación bancaria.', 'ok');
+        setDestinationStatus('Destino comprobado en la imagen: ' + beneficiary + ' · cuenta terminación ' + (destination.matchedSuffix || suffix.join(', ')) + '. El depósito aún requiere confirmación bancaria.', 'ok');
         updatePaymentSummary();
         if (missing) toast('Comprobante aceptado; revisa y completa los campos que el OCR no pudo leer.');
       } catch (error) {

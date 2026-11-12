@@ -2,6 +2,7 @@ const { Worker } = require('node:worker_threads');
 const path = require('node:path');
 const parser = require('./comprobante-parser');
 const idsBanco = require('./identificadores-bancarios.service');
+const cuentaOficial = require('./pagos-cuenta-oficial.service');
 const { equivaleFechaSpei } = require('./fecha-operativa-spei.service');
 
 let running = 0;
@@ -49,9 +50,8 @@ function reconocerImagen(imageData) {
 
 async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto, exigirCampos = false }) {
   const texto = await reconocerImagen(comprobanteData);
-  const titular = process.env.PAGOS_TITULAR || 'MARIA DEL ROCIO BAHENA JUAREZ';
-  const terminacion = process.env.PAGOS_DESTINO_ULTIMOS4 || '4409';
-  const verificacion = parser.verifyDestination(texto, titular, terminacion);
+  const {titular,destinosUltimos4} = cuentaOficial.obtener();
+  const verificacion = parser.verifyDestination(texto, titular, destinosUltimos4);
   if (!verificacion.ok) throw Object.assign(new Error(verificacion.message + ' No se registró el pago.'), { status: 422 });
   const extraido = { ...parser.extract(texto), candidatos: parser.candidatosOperacion(texto) };
   validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos);

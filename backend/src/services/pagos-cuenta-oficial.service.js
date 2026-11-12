@@ -8,7 +8,7 @@ const tarjeta=(value,fallback)=>{
  return s&&!/^[—–-]+$/.test(s)?s:fallback;
 };
 function obtener(env=process.env){
- return {
+ const datos={
   banco:texto(env.PAGOS_BANCO,'BANCO AZTECA'),
   titular:texto(env.PAGOS_TITULAR,'MARIA DEL ROCIO BAHENA JUAREZ'),
   cuenta:texto(env.PAGOS_CUENTA,'00002128412440'),
@@ -18,6 +18,11 @@ function obtener(env=process.env){
   referencia:texto(env.PAGOS_REFERENCIA,'NOMBRE DE CALLE Y NUMERO DE CASA'),
   moneda:'MXN'
  };
+ // Admitir solo los últimos cuatro dígitos de identificadores oficiales.
+ const ultimos4=value=>String(value||'').replace(/\D/g,'').slice(-4);
+ return {...datos,destinosUltimos4:[...new Set([
+  datos.destinoUltimos4,datos.clabe,datos.tarjeta,datos.cuenta
+ ].map(ultimos4).filter(x=>/^\d{4}$/.test(x)))]};
 }
 function conceptoVivienda(casa){
  const calle=String(casa?.calleCorrecta||casa?.calle||'')
