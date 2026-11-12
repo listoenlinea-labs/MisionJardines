@@ -39,7 +39,7 @@
   $('segRedStatus').textContent=seleccion.totalActivas+' tarjeta(s) activa(s) · '+(seleccion.bloqueada?'Casa Club suspendida':'Sin suspensión vigente');
   $('segRedCards').innerHTML=seleccion.tarjetas.length?seleccion.tarjetas.map(t=>
    '<div class="seg-red-card"><strong>Tarjeta #'+Number(t.id)+' · '+(t.activa?'Activa':'Retirada')+'</strong>'+
-   '<p>'+safe(t.motivo)+'</p>'+
+   '<p>Incidencia registrada para la vivienda.</p>'+
    (t.activa?'<button type="button" data-quitar-roja="'+Number(t.id)+'">Quitar tarjeta</button>':
    '<small>Retirada con justificación registrada</small>')+'</div>'
   ).join(''):'<p>Sin tarjetas rojas para esta vivienda.</p>';
