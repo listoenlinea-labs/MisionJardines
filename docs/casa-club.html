@@ -40,8 +40,8 @@
  <button type="button" class="soft club-payment-open" id="clubProofInstructionsOpen">Instrucciones de pago</button>
  <div id="clubProofResult" role="status" aria-live="polite" class="club-proof-result">Completa los datos de tu comprobante. El banco confirmará el depósito con una notificación independiente.</div>
  <form id="clubPublicProofForm" class="club-public-proof-form" autocomplete="off">
-  <label class="club-proof-upload">Selecciona tu comprobante <span>JPG, PNG, WEBP o PDF · primera página del PDF</span>
-   <input id="clubProofFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+  <label class="club-proof-upload">Selecciona tu comprobante <span>JPG, PNG, WEBP, HEIC o PDF · primera página del PDF</span>
+   <input id="clubProofFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/pdf" required></label>
   <div class="club-proof-preview" id="clubProofPreviewWrap" hidden><img id="clubProofPreview" alt="Vista previa del comprobante bancario"></div>
   <div class="club-proof-fields"><label>Clave de rastreo / referencia / folio<input id="clubProofFolio" readonly required placeholder="Se detectará desde el comprobante"></label>
   <label>Importe depositado (MXN)<input id="clubProofAmount" readonly required></label>
@@ -159,8 +159,8 @@
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-<script src="assets/js/comprobante-parser.js?v=20261112-destinos-oficiales" defer></script>
+<script src="assets/js/comprobante-parser.js?v=20261112-ocr-fotos-moviles" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
-<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-comprobante-calendario" defer></script>
+<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-ocr-fotos-moviles" defer></script>
 <script src="assets/js/casa-club.js?v=20261112-modal-movil-ocr" defer></script>
 </body></html>
