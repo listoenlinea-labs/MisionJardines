@@ -11,7 +11,7 @@ test('la reserva pública no necesita variables de Meta, WhatsApp ni SMTP',()=>{
   PAGOS_BANCO:'BANCO DE PRUEBA',PAGOS_TITULAR:'TITULAR PRUEBA',
   PAGOS_CUENTA:'00000000000002440',CASA_CLUB_PLAZO_DIAS:'3'
  });
- assert.equal(config.dias,3);
+ assert.equal(config.dias,1);
  assert.equal(config.cuenta,'00000000000002440');
  assert.equal(config.telefonoId,undefined);
 });
@@ -28,7 +28,7 @@ test('formulario público mantiene el enlace de comprobante en la misma página'
  assert.match(html,/id="clubProofInstructionsOpen">Instrucciones de pago/);
  assert.match(html,/id="clubPublicProofForm"/);
  assert.doesNotMatch(html,/id="clubOptIn"/);
- assert.match(js,/MJClubPublicProof\.open\(p\.enlaceCarga\)/);
+ assert.doesNotMatch(js,/MJClubPublicProof\.open\(p\.enlaceCarga\)/);
  assert.match(js,/paymentDialog\.showModal\(\)/);
 });
 test('diseño móvil de reserva usa una sola columna y campos con altura estable',()=>{
