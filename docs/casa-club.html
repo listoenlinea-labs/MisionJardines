@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-errores-modal">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-rojas-tabs">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -11,10 +11,11 @@
 <button type="button" data-tab="mis-reservas" hidden>Mis reservas</button>
 <button type="button" data-tab="administracion" data-admin hidden>Administración de reservas</button>
 <button type="button" data-tab="aprobacion" data-admin hidden>Aprobación de reservas</button>
+<button type="button" data-tab="tarjetas" class="club-red-nav-tab" data-admin hidden>Administrar tarjetas rojas</button>
+<button type="button" data-tab="historial-rojas" class="club-red-nav-tab" data-admin hidden>Historial de tarjetas rojas</button>
 </nav>
 <div class="club-cards-toolbar" id="clubCardsToolbar" hidden>
    <button type="button" id="clubMyRedCards" class="club-red-count-btn" hidden>Ver mis tarjetas rojas <strong id="clubMyRedCount">0</strong></button>
-   <a href="tarjetas-rojas.html" id="clubManageRedCards" class="club-red-management-link" hidden>Administrar tarjetas rojas</a>
   </div>
   <div id="clubNotice" role="status" aria-live="polite" hidden></div>
 <section id="tab-reservar" class="club-panel">
@@ -107,6 +108,40 @@
   <button type="button" id="clubMobileReservationClose" class="xbtn" aria-label="Cerrar sin guardar">×</button>
  </div>
 </dialog>
+<section id="tab-tarjetas" class="club-panel" hidden>
+ <article class="club-card club-rojas-admin">
+  <div class="section-header"><div><span class="eyebrow">ADMINISTRACIÓN · CASA CLUB</span>
+   <h2>Administrar tarjetas rojas</h2><p>Localiza una vivienda por calle, número o nombre del residente. Asigna o retira tarjetas con motivo registrado.</p></div></div>
+  <label class="club-rojas-search-label" for="clubRojasSearch">Buscar vivienda o residente
+   <input id="clubRojasSearch" type="search" placeholder="Buscar por calle, casa o nombre del residente" autocomplete="off"></label>
+  <p id="clubRojasSummary" role="status" class="club-rojas-summary"></p>
+  <div class="table-scroll"><table class="club-table club-rojas-table">
+   <thead><tr><th>Calle</th><th>Casa</th><th>Residente</th><th>Tarjetas activas</th><th>Última tarjeta</th><th>Acciones</th></tr></thead>
+   <tbody id="clubRojasRows"></tbody>
+  </table></div>
+ </article>
+</section>
+<section id="tab-historial-rojas" class="club-panel" hidden>
+ <article class="club-card club-rojas-admin">
+  <div class="section-header"><div><span class="eyebrow">ADMINISTRACIÓN · AUDITORÍA</span>
+   <h2>Historial de tarjetas rojas</h2><p>Asignaciones y retiros registrados, con vivienda, residente y cantidad actual de tarjetas activas.</p></div>
+   <button type="button" class="soft" id="clubRojasHistoryRefresh">Actualizar historial</button></div>
+  <label class="club-rojas-search-label" for="clubRojasHistorySearch">Buscar movimientos
+    <input type="search" id="clubRojasHistorySearch" placeholder="Calle, casa o nombre del residente" autocomplete="off"></label>
+  <p class="club-rojas-summary" id="clubRojasHistorySummary" role="status"></p>
+  <div class="table-scroll"><table class="club-table club-rojas-table">
+  <thead><tr><th>Fecha</th><th>Calle</th><th>Casa</th><th>Residente</th><th>Tarjetas activas</th><th>Movimiento</th><th>Motivo</th><th>Registrado por</th></tr></thead>
+  <tbody id="clubRojasHistoryRows"></tbody></table></div>
+ </article>
+</section>
+<dialog id="clubRojasManageDialog" class="club-dialog" aria-labelledby="clubRojasManageTitle">
+ <div class="dialog-head"><h2 id="clubRojasManageTitle">Tarjetas de la vivienda</h2><button type="button" id="clubRojasManageClose" class="xbtn" aria-label="Cerrar">×</button></div>
+ <p id="clubRojasManageStatus" role="status"></p>
+ <form id="clubRojasAddForm"><label>Motivo para asignar tarjeta roja
+  <textarea id="clubRojasReason" rows="3" minlength="5" maxlength="500" required placeholder="Describe la incidencia"></textarea></label>
+  <button class="primary" type="submit">Asignar tarjeta roja</button></form>
+ <h3>Tarjetas activas e historial</h3><div id="clubRojasManageCards"></div>
+</dialog>
 <section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
 <section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Consulta las solicitudes y abre una reserva para revisar el pago y sus datos.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div>
 <section id="clubTariffEditor" class="club-tariff-editor" aria-labelledby="clubTariffTitle" hidden>
@@ -197,5 +232,6 @@
 <script src="assets/js/comprobante-parser.js?v=20261112-ocr-flexible" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-errores-modal" defer></script>
+<script src="assets/js/casa-club-rojas-admin.js?v=20261112" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-rojas-tabs" defer></script>
 </body></html>
