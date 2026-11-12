@@ -74,7 +74,7 @@
   }
   return d;
  }
- const notify=(msg,bad=false)=>{const el=$('clubNotice');el.textContent=msg;el.style.borderColor=bad?'#f2caca':'#d9e9dd';el.style.background=bad?'#fff2f3':'#f2faf5';el.hidden=false;window.scrollTo({top:0,behavior:'smooth'});};
+ const notify=(msg,bad=false,scroll=true)=>{const el=$('clubNotice');el.textContent=msg;el.style.borderColor=bad?'#f2caca':'#d9e9dd';el.style.background=bad?'#fff2f3':'#f2faf5';el.hidden=false;if(scroll)window.scrollTo({top:0,behavior:'smooth'});};
  const debtDialog=$('clubDebtModal');
  const debtNames={MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuotas extraordinarias'};
  const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -223,9 +223,9 @@
     const proof=window.MJClubPublicProof;
     if(proof){
      const envio=await proof.sendPrepared();
-     if(envio.status==='sent')notify('Solicitud guardada y comprobante enviado. Titan verificará el depósito.');
-     else if(envio.status==='unreadable')notify('Tu reservación quedó guardada. Revisa el comprobante debajo del calendario: '+envio.message,true);
-     else if(envio.status==='failed')notify('Reservación guardada, pero falta enviar el comprobante. Reintenta desde el área de carga: '+envio.message,true);
+     if(envio.status==='sent')notify('Solicitud guardada y comprobante enviado. Titan verificará el depósito.',false,false);
+     else if(envio.status==='unreadable')notify('Tu reservación quedó guardada. Revisa el comprobante debajo del calendario: '+envio.message,true,false);
+     else if(envio.status==='failed')notify('Reservación guardada, pero falta enviar el comprobante. Reintenta desde el área de carga: '+envio.message,true,false);
     }
    }
    $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
