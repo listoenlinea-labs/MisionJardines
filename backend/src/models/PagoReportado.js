@@ -16,7 +16,7 @@ const PagoReportado = sequelize.define(
         },
         usuarioId: {
             type: DataTypes.BIGINT.UNSIGNED,
-            allowNull: false,
+            allowNull: true,
             field: 'usuario_id'
         },
         tipoPago: {
