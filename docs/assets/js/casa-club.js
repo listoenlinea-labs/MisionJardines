@@ -508,6 +508,12 @@
   });
  }
  if(!profile){
+  // El formulario público arranca SIN datos heredados del navegador ni de
+  // una solicitud anterior. Los LOV conservan su catálogo, sin elección.
+  $('clubForm').reset();
+  for(const id of ['clubStreet','clubNumber','clubName','clubPhone','clubEmail','clubReason','clubDate'])$(id).value='';
+  $('clubOwner').value='';
+  $('clubOptIn').checked=false;
   window.MJClubAddress?.(api);
   for(const id of ['clubStreet','clubNumber']){
    $(id).addEventListener('input',actualizarBancoPublico);
