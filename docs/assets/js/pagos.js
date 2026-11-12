@@ -687,13 +687,13 @@
 
     function mostrarCamposFaltantes({message,camposFaltantes=[],camposCorreo=[]}) {
       $('missingProofExplanation').textContent = message || 'La imagen no contiene información suficiente para verificar el pago.';
-      const campos = Array.isArray(camposFaltantes) && camposFaltantes.length ? camposFaltantes : ['Clave de rastreo o referencia bancaria'];
+      const campos = Array.isArray(camposFaltantes) && camposFaltantes.length ? camposFaltantes : ['Monto transferido', 'Fecha', 'Hora'];
       $('missingProofFields').replaceChildren(...campos.map(field => {
         const li = document.createElement('li'); li.textContent = field; return li;
       }));
       $('missingProofMail').textContent = Array.isArray(camposCorreo) && camposCorreo.length
         ? 'En la notificación bancaria se identificaron: ' + camposCorreo.join(', ') + '.'
-        : 'Si el correo bancario no incluye el folio, necesitas la referencia o clave de rastreo del movimiento.';
+        : 'No necesitas que la captura muestre un folio ni el nombre del beneficiario para reportarla. Titan comprobará el ingreso bancario por separado.';
       const dialog = $('missingProofModal');
       if (!dialog.open) dialog.showModal();
     }
@@ -712,7 +712,7 @@
       retry.disabled = true;
       $('ocrState').textContent = 'Leyendo comprobante…';
       $('ocrBar').style.width = '5%';
-      setDestinationStatus('Verificando nombre y terminación bancaria en Destino…');
+      setDestinationStatus('Leyendo monto, fecha y hora. La identidad bancaria se validará después con Titan.');
       try {
         if (!window.Tesseract || !window.MJComprobante) throw Error('El lector OCR no se ha cargado. Revisa tu conexión.');
         const logger=m=>{
@@ -741,8 +741,7 @@
           const destination = MJComprobante.verifyDestination(firstText,
             config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ',
             (config?.destinosUltimos4?.length ? config.destinosUltimos4 : [config?.destinoUltimos4 || '4409']));
-          if (!destination.ok || !data.amount || !data.date || !data.time ||
-              !(data.claveRastreo || data.referencia || data.folio || MJComprobante.candidatosOperacion(firstText).length)) {
+          if (!data.amount || !data.date || !data.time) {
             // En capturas bancarias de dos columnas, AUTO puede perder los
             // valores alineados a la derecha. Releer con texto disperso.
             $('ocrState').textContent = 'Releyendo detalles bancarios…';
@@ -760,8 +759,7 @@
             const to=MJComprobante.verifyDestination(text,
               config?.titular||'MARIA DEL ROCIO BAHENA JUAREZ',
               config?.destinosUltimos4?.length?config.destinosUltimos4:[config?.destinoUltimos4||'4409']);
-            return to.ok&&Boolean(fields.amount&&fields.date&&fields.time&&
-              (fields.claveRastreo||fields.referencia||fields.folio||MJComprobante.candidatosOperacion(text).length));
+            return Boolean(fields.amount&&fields.date&&fields.time);
           };
           if(!completo()){
             $('ocrState').textContent='Mejorando contraste para leer el detalle bancario…';
@@ -779,20 +777,10 @@
         const beneficiary = config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ';
         const suffix = config?.destinosUltimos4?.length ? config.destinosUltimos4 : [config?.destinoUltimos4 || '4409'];
         const destination = MJComprobante.verifyDestination(ocrText, beneficiary, suffix);
-        if (!destination.ok) {
-          $('ocrState').textContent = 'Comprobante no aceptado: destinatario no verificado.';
-          setDestinationStatus(destination.message + ' Adjunta una captura más clara donde se vea Destino.', 'invalid');
-          $('ocrBar').style.width = '0%';
-          mostrarCamposFaltantes({message:destination.message,
-            camposFaltantes: [
-              ...(!destination.owner ? ['Nombre del beneficiario'] : []),
-              ...(!destination.suffix ? ['Cuenta destino terminación ' + suffix.join(', ')] : [])
-            ]});
-          return;
-        }
         const extracted = MJComprobante.extract(ocrText);
         const candidatos = MJComprobante.candidatosOperacion(ocrText);
-        const identificador = extracted.claveRastreo || extracted.referencia || extracted.folio || candidatos[0] || '';
+        const identificador = extracted.claveRastreo || extracted.referencia || extracted.folio || candidatos[0] ||
+          ('SINREF-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,12).toUpperCase());
         // Un código sin etiqueta NO es una aprobación; Titan coteja los códigos
         // explícitos antes de acreditar. La selección se valida en el servidor.
         $('operationFolio').value = identificador;
@@ -800,9 +788,8 @@
         ocrAmount=extracted.amount||'';
         $('operationDate').value = extracted.date || '';
         $('operationTime').value = extracted.time || '';
-        const missing = !identificador || !extracted.date || !extracted.time || !extracted.amount;
+        const missing = !extracted.date || !extracted.time || !extracted.amount;
         const camposFaltantes = [
-          ...(!identificador ? ['Código de operación o referencia verificable'] : []),
           ...(!extracted.date ? ['Fecha de operación'] : []),
           ...(!extracted.time ? ['Hora de operación'] : []),
           ...(!extracted.amount ? ['Monto depositado'] : [])
@@ -818,7 +805,7 @@
         $('submitPayment').disabled = false;
         $('ocrBar').style.width = '100%';
         $('ocrState').textContent = 'Lectura completada. Revisa los campos detectados.';
-        setDestinationStatus('Destino comprobado en la imagen: ' + beneficiary + ' · cuenta terminación ' + (destination.matchedSuffix || suffix.join(', ')) + '. El depósito aún requiere confirmación bancaria.', 'ok');
+        setDestinationStatus('Imagen legible: monto, fecha y hora identificados. No se exige nombre del beneficiario ni número de referencia. La acreditación sigue pendiente de Titan.', 'ok');
         updatePaymentSummary();
         if (missing) toast('Comprobante aceptado; revisa y completa los campos que el OCR no pudo leer.');
       } catch (error) {
