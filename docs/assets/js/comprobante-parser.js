@@ -201,7 +201,8 @@
   // Mercado Pago Wallet: la pantalla incluye un "Comprobante" propio,
   // distinto de la clave de rastreo SPEI y del concepto de vivienda.
   function folioMercadoPago(text) {
-    if (!/MERCADO\s*PAGO/i.test(text)) return '';
+    // No depender de que Tesseract lea el logotipo "Mercado Pago".
+    // Sólo se admite un identificador de 10-17 dígitos rotulado "Comprobante".
     const lines=String(text||'').split(/\r?\n/).map(x=>normal(x).trim()).filter(Boolean);
     for(let i=0;i<lines.length;i++){
       const m=lines[i].match(/^COMPROBANTE\s*(?::|#)?\s*(\d{10,17})\s*$/);
