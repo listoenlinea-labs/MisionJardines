@@ -127,7 +127,7 @@ test('prueba de integración local: la foto se prepara sin servidor y se envía 
  assert.equal($('clubPublicProofFlow').hidden,false);
  const file={name:'mercado.png',type:'image/png'};$('clubProofFile').files=[file];
  $('clubProofFile').handlers.change({target:{files:[file]}});
- for(let i=0;i<35;i++)await Promise.resolve();
+ await window.MJClubPublicProof.sendPrepared(); // espera a que termine la lectura local, sin token no envía
  assert.equal(uploads,0);
  assert.equal($('clubProofFolio').value,'188198047943');
  assert.equal($('clubProofAmount').value,'2000.00');
