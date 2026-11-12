@@ -371,8 +371,13 @@
       const permitidas=[...new Set(suffix.map(x=>String(x||'').replace(/\D/g,'').slice(-4))
         .filter(x=>/^\d{4}$/.test(x)))];
       const checks=permitidas.map(value=>({...verifyDestination(text,owner,value),matchedSuffix:value}));
-      return checks.find(x=>x.ok)||checks.find(x=>x.owner&&x.suffix)
-        ||checks.find(x=>x.owner)||checks[0]||verifyDestination(text,owner,'');
+      const confirmado=checks.find(x=>x.ok);
+      if(confirmado)return confirmado;
+      const mejor=checks.find(x=>x.owner&&x.suffix)||checks.find(x=>x.owner)||checks.find(x=>x.suffix)
+        ||checks[0]||verifyDestination(text,owner,'');
+      return {...mejor,matchedSuffix:'',
+        message:!mejor.owner?'No se pudo comprobar el beneficiario receptor en la sección Destino.':
+          'No se encontró junto al beneficiario ninguna terminación bancaria autorizada ('+permitidas.join(', ')+').'};
     }
     const readings = String(text || '').split(OCR_PASS_MARKER);
     const checks = readings.map(part => verifyDestinationOne(part, owner, suffix));
