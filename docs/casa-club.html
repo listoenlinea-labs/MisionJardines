@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-cuenta-publica">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-modal-instrucciones">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -17,7 +17,7 @@
 <section id="clubPublicProofFlow" class="club-card club-proof-card" aria-labelledby="clubProofTitle" hidden>
  <div class="section-header"><div><span class="eyebrow">CONFIRMACIÓN BANCARIA AUTOMÁTICA</span><h2 id="clubProofTitle">Sube tu comprobante</h2><p>Tu fecha queda apartada mientras verificamos el pago. Se confirma automáticamente solo después de comprobarlo con Titan.</p></div><span class="club-proof-lock">Enlace privado de tu reservación</span></div>
  <div class="club-proof-progress" aria-label="Etapas de reservación"><span id="clubProofStepOne" class="active">1 · Solicitud recibida</span><span id="clubProofStepTwo">2 · Comprobante enviado</span><span id="clubProofStepThree">3 · Pago verificado</span></div>
- <section id="clubProofBankDetails" class="club-bank-panel club-bank-panel-proof" aria-label="Cuenta bancaria y concepto de la reservación" hidden></section>
+ <button type="button" class="soft club-payment-open" id="clubProofInstructionsOpen">Instrucciones de pago</button>
  <div id="clubProofResult" role="status" aria-live="polite" class="club-proof-result">Completa los datos de tu comprobante. El banco confirmará el depósito con una notificación independiente.</div>
  <form id="clubPublicProofForm" class="club-public-proof-form" autocomplete="off">
   <label class="club-proof-upload">Archivo del comprobante <span>JPG, PNG, WEBP o PDF (se procesa su primera página)</span>
@@ -42,7 +42,7 @@
 <p class="club-hint" id="clubCalendarHint">Elige tu fecha: quedará bloqueada provisionalmente al registrar la solicitud y se confirmará automáticamente cuando Titan verifique el depósito. No necesitas esperar la aprobación de Administración.</p></article>
 <article class="club-card"><span class="eyebrow" id="clubRequestEyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
 <form id="clubForm" autocomplete="off">
-<div class="form-grid"><label>Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha"></label>
+<div class="form-grid"><label class="wide">Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha"></label>
 <label id="clubLinkedHouse" hidden>Vivienda<input id="clubHouse" readonly placeholder="Vivienda seleccionada"></label>
 <div class="club-address-field" id="clubStreetField"><label for="clubStreet">Calle de tu vivienda</label>
 <input id="clubStreet" maxlength="100" required placeholder="Escribe tu calle" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clubStreetOptions" aria-expanded="false">
@@ -52,21 +52,22 @@
 <div id="clubNumberOptions" class="club-address-options" role="listbox" aria-label="Números sugeridos" hidden></div></div>
 <p class="club-address-hint wide" id="clubAddressHint" role="status" hidden></p>
 <label>Nombre del solicitante<input id="clubName" name="solicitante" maxlength="180" autocomplete="off" required></label>
-<label>WhatsApp<input id="clubPhone" name="telefono" type="tel" autocomplete="off" maxlength="25" required></label>
+<label>Teléfono de contacto<input id="clubPhone" name="telefono" type="tel" autocomplete="off" maxlength="25" required></label>
 <label class="wide">Correo de contacto<input id="clubEmail" name="correo" type="email" autocomplete="off" maxlength="150" required></label>
 <label class="wide">¿Eres propietario?<select id="clubOwner" name="propietario"><option value="">Selecciona una opción</option><option value="SI">Sí, propietario</option><option value="NO">No, residente o inquilino</option></select></label>
 <label class="wide">Motivo del evento<input id="clubReason" name="motivo" maxlength="200" autocomplete="off" required placeholder="Ej. Cumpleaños, reunión familiar"></label></div>
-<section id="clubTransferHelp" class="club-bank-panel club-bank-panel-public" aria-label="Datos bancarios oficiales de Misión Jardines" hidden></section>
+
  <section class="club-regulations-acceptance" aria-labelledby="clubRulesHeading">
  <div><span class="eyebrow">REQUISITO ANTES DE RESERVAR</span><h3 id="clubRulesHeading">Reglamento de Casa Club</h3>
  <p>Consulta las disposiciones completas y las cuotas oficiales. Debes leerlas y aceptarlas para continuar.</p></div>
  <button type="button" class="soft club-rules-open" id="clubOpenRules">Leer reglamento y términos</button>
  <p id="clubRulesAcceptedStatus" class="club-rules-status" role="status">Pendiente de lectura y aceptación.</p>
 </section>
-<label class="check club-opt-in" id="clubWhatsAppConsent"><input id="clubOptIn" type="checkbox" required> Acepto recibir las instrucciones de pago de esta solicitud por WhatsApp.</label>
+
 <p id="clubFeeSummary" class="club-fee-summary" role="status" hidden></p>
+<button type="button" class="soft club-payment-open" id="clubInstructionsOpen">Instrucciones de pago</button>
 <button class="primary" id="clubSubmit" type="submit" disabled>Enviar solicitud de reservación</button>
-<p class="club-hint" id="clubFormHint">Para solicitar una fecha debes estar al corriente en mantenimiento y cuotas extraordinarias. Recibirás los datos de depósito por correo y WhatsApp.</p>
+<p class="club-hint" id="clubFormHint">Para solicitar una fecha debes estar al corriente en mantenimiento y cuotas extraordinarias. Consulta las instrucciones de pago aquí y adjunta el comprobante en esta misma página.</p>
 </form></article></div></section>
 <section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
 <section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Consulta las solicitudes y abre una reserva para revisar el pago y sus datos.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div>
@@ -99,6 +100,13 @@
 <div class="table-scroll"><table class="club-table"><thead><tr><th>Calle</th><th>No. casa</th><th>Nombre</th><th>Fecha del evento</th><th>Fecha y hora de solicitud</th><th>Pago recuperación</th><th>Depósito garantía</th><th>Limpieza</th><th>Folio</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
 <section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Puedes aprobar únicamente la fecha, o registrar manualmente un pago que hayas verificado. Los comprobantes enviados en Pagos se verifican automáticamente con Titan.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
 </main>
+<dialog id="clubPaymentInstructionsDialog" class="club-payment-dialog" aria-labelledby="clubPaymentInstructionsTitle">
+ <div class="club-payment-dialog-head"><div><span class="eyebrow">DEPÓSITO OFICIAL</span><h2 id="clubPaymentInstructionsTitle">Instrucciones de pago</h2><p>Banco, cuenta, concepto y total del depósito. No transfieras antes de apartar tu fecha y recibir tu folio.</p></div><button type="button" class="xbtn" id="clubInstructionsClose" aria-label="Cerrar instrucciones">×</button></div>
+ <div class="club-payment-dialog-body">
+  <section id="clubTransferHelp" class="club-bank-panel club-bank-panel-public" aria-label="Datos bancarios oficiales de Misión Jardines" hidden></section>
+  <section id="clubProofBankDetails" class="club-bank-panel club-bank-panel-proof" aria-label="Cuenta bancaria y concepto de la reservación" hidden></section>
+ </div>
+</dialog>
 <dialog id="clubRulesDialog" class="club-rules-dialog" aria-labelledby="clubRulesModalTitle">
  <div class="club-rules-dialog-head"><div><span class="eyebrow">Misión Jardines A.C.</span><h2 id="clubRulesModalTitle">Reglamento de Casa Club</h2><p>Lee el reglamento completo para poder aceptar los términos de tu reservación.</p></div><button type="button" id="clubRulesClose" class="xbtn" aria-label="Cerrar reglamento">×</button></div>
  <div class="club-rules-reading" id="clubRulesScroll" tabindex="0" aria-label="Contenido completo del reglamento"><div id="clubRulesContent"><p>Cargando reglamento…</p></div></div>
@@ -132,5 +140,5 @@
 <script src="assets/js/comprobante-parser.js?v=20261026-ocr-formatos-flexibles" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-cuenta-publica" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-cuenta-publica" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-modal-instrucciones" defer></script>
 </body></html>
