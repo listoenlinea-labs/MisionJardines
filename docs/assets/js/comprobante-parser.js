@@ -256,21 +256,41 @@
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(x => x.trim()).filter(Boolean);
     const desiredName = clean(owner).replace(/[0-9]+/g, '').trim();
     const last4 = String(suffix || '').replace(/\D/g, '').slice(-4);
+    // Variaciones frecuentes del OCR de fotografías: nombre con palabras
+    // repetidas/separadas o 0 por O. Exigir al menos tres palabras distintivas
+    // del beneficiario, incluidos apellidos, SIEMPRE en sección Destino.
+    const ownerParts = desiredName.split(/\s+/).filter(w => !['DEL','DE','LA','LAS','LOS','EL'].includes(w));
+    const token = w => w.replace(/0/g, 'O').replace(/1/g, 'I');
+    const ownerIn = raw => {
+      const normalized = clean(raw);
+      if (normalized.includes(desiredName)) return true;
+      if (ownerParts.length < 4) return false;
+      const words = new Set(normalized.split(/\s+/).map(token));
+      const matched = ownerParts.filter(w => words.has(token(w)));
+      const surnames = ownerParts.slice(-2);
+      return matched.length >= ownerParts.length - 1 &&
+        surnames.some(w => words.has(token(w))) &&
+        ownerParts.slice(0, -2).some(w => words.has(token(w)));
+    };
+    // Admitir CLABE/cuenta/tarjeta completas (10-22 dígitos), no sólo los
+    // últimos cuatro impresos por separado.
+    const destinoNumero = raw =>
+      [...raw.matchAll(/(?:^|\D)(\d{4,22})(?!\d)/g)].some(m => m[1].endsWith(last4));
     if (!desiredName || last4.length !== 4) return { ok: false, owner: false, suffix: false, message: 'La cuenta receptora no está configurada correctamente.' };
     let best = { owner: false, suffix: false };
     for (let i = 0; i < lines.length; i++) {
       const line = normal(lines[i]);
-      const marker = line.match(/\b(?:DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA\s+DESTINO|CUENTA\s+RECEPTORA|CUENTA\s+BENEFICIARIA|A\s+FAVOR\s+DE|A\s+NOMBRE\s+DE|RECEPTOR|RECIBE|ENVIADO\s+A)\b/);
+      const marker = line.match(/\b(?:DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA\s+DESTINO|CUENTA\s+RECEPTORA|CUENTA\s+BENEFICIARIA|TARJETA\s+(?:DESTINO|RECEPTORA)|CLABE\s+(?:DESTINO|RECEPTORA)|A\s+FAVOR\s+DE|A\s+NOMBRE\s+DE|RECEPTOR|RECIBE|ENVIADO\s+A|ENVIASTE\s+A|TRANSFERISTE\s+A|TRANSFERENCIA\s+A|PARA)\b/);
       if (!marker) continue;
       const sample = [line.slice(marker.index + marker[0].length)];
       for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
-        if (/^\s*(?:ORIGEN|COMISION|CONCEPTO|REFERENCIA|FOLIO|CLAVE\s+DE\s+RASTREO|FECHA\s+DE\s+OPERACION)\b/.test(normal(lines[j]))) break;
+        if (/^\s*(?:ORIGEN|DESDE|CUENTA\s+(?:DE\s+)?(?:ORIGEN|RETIRO)|COMISION|CONCEPTO|REFERENCIA|FOLIO|CLAVE\s+DE\s+RASTREO|FECHA\s+DE\s+OPERACION)\b/.test(normal(lines[j]))) break;
         sample.push(normal(lines[j]));
       }
       const raw = sample.join(' ');
       const seen = {
-        owner: clean(raw).includes(desiredName),
-        suffix: new RegExp('(?:^|\\D)' + last4 + '(?!\\d)').test(raw)
+        owner: ownerIn(raw),
+        suffix: destinoNumero(raw)
       };
       if (seen.owner && seen.suffix) return { ok: true, owner: true, suffix: true, message: '' };
       if (Number(seen.owner) + Number(seen.suffix) > Number(best.owner) + Number(best.suffix)) best = seen;
@@ -282,7 +302,7 @@
       const l=normal(lines[i]);
       if(/\bNOMBRE\s+DEL\s+BENEFICIARIO\b/.test(l)){
         const bloque=[l,...lines.slice(i+1,i+5).map(normal)].join(' ');
-        if(clean(bloque).includes(desiredName)) nombreDetallado=true;
+        if(ownerIn(bloque)) nombreDetallado=true;
       }
       if(/\b(?:CUENTA\s*\(\s*CLABE|CUENTA\s+DESTINO|CLABE\s+DESTINO|CUENTA\s+RECEPTORA)\b/.test(l)){
         const bloque=[l,...lines.slice(i+1,i+3).map(normal)].join(' ');
