@@ -519,3 +519,32 @@ body.club-private-reservation-view .club-proof-card{margin-top:18px!important}
  .club-red-cards-dialog{padding:16px 13px}
  .club-red-cards-score strong{width:60px;height:60px;flex-basis:60px;font-size:30px}
 }
+
+/* Avisos de Casa Club: modal único, errores específicos y campos destacados. */
+.club-error-dialog{width:min(560px,calc(100vw - 20px));padding:23px;border:1px solid #f0cdd0;
+ border-radius:20px;background:#fff;box-shadow:0 30px 100px #1d304955;max-height:min(86dvh,780px);overflow-y:auto}
+.club-error-dialog .dialog-head{align-items:start;gap:12px}
+.club-error-dialog .eyebrow{color:#c15347}
+.club-error-dialog h2{font-size:22px;line-height:1.2;letter-spacing:-.025em;color:#283b52;margin:8px 0 7px}
+#clubErrorMessage{font-size:14px;line-height:1.65;color:#485b71;margin:13px 0}
+.club-error-fields{border:1px solid #f1d0d4;background:#fff6f6;padding:13px 15px 13px 30px;
+ border-radius:12px;color:#913748;font-size:13px;line-height:1.6;margin:13px 0}
+.club-error-fields li+li{margin-top:7px}
+.club-error-action{padding:13px 14px;border:1px solid #eedfc8;background:#fffbf2;color:#765721;
+ font-size:12px;line-height:1.65;border-radius:12px;margin:13px 0}
+.club-error-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}
+.club-error-actions .primary{margin:0;min-height:47px;padding:12px 27px;font-size:13px}
+#clubForm .club-invalid-field:not(.club-regulations-acceptance),
+#clubMobileReservationDialog #clubForm .club-invalid-field:not(.club-regulations-acceptance){
+ border:2px solid #d83f54!important;box-shadow:0 0 0 3px #d83f541c!important;
+ background-color:#fff8f8!important;outline:none}
+#clubForm .club-regulations-acceptance.club-invalid-field,
+#clubRegulationsAcceptance.club-invalid-field{border:2px solid #d83f54!important;background:#fff5f5!important}
+#clubForm input.club-invalid-field:focus,#clubForm select.club-invalid-field:focus{
+ box-shadow:0 0 0 4px #e84b6244!important}
+@media(max-width:700px){
+ .club-error-dialog{padding:17px 15px;border-radius:16px}
+ .club-error-dialog h2{font-size:20px}
+ .club-error-actions .primary{width:100%}
+ #clubErrorMessage{font-size:13px}
+}
