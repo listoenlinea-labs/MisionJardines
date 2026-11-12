@@ -171,6 +171,12 @@
    const action=document.createElement('a');
    action.className='primary club-upload-link';
    action.href=result.pago.enlaceCarga||'pagos.html?tab=CASA_CLUB&reserva='+Number(result.id);
+   action.addEventListener('click',event=>{
+    if(result.pago.enlaceCarga&&window.MJClubPublicProof){
+     event.preventDefault();
+     window.MJClubPublicProof.open(result.pago.enlaceCarga);
+    }
+   });
    action.textContent='Subir comprobante aquí y consultar la verificación';
    host.append(action);
    if(result.pago.enlaceCarga&&window.MJClubPublicProof){
@@ -187,9 +193,11 @@
    propietario:$('clubOwner').value==='SI',motivo:$('clubReason').value.trim(),aceptaWhatsApp:$('clubOptIn').checked,aceptaReglamento:rulesAccepted};
   try{
    const result=await api(profile?'/reservas':'/publico/solicitudes','POST',values);
-   if(result.data?.pago)showPayment(result.data);
    notify(result.data?.estatus==='APROBADA'?'Reserva confirmada. El pago se registra por separado.':
     'Solicitud apartada provisionalmente. Adjunta el comprobante en esta página: Titan confirmará el depósito automáticamente.');
+   // El estado de pago se abre después del aviso para que el desplazamiento
+   // se mantenga en el formulario de comprobante y no vuelva arriba.
+   if(result.data?.pago)showPayment(result.data);
    $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
    if(admin)tab('mis-reservas');
   }catch(err){if(!showDebtAlert(err))notify(err.message,true);}
