@@ -14,7 +14,7 @@
   if(text!==undefined)n.textContent=text;
   return n;
  };
- function render(host,datos,{conceptoTransferencia='',monto=null,plazo=null}={}){
+ function render(host,datos,{conceptoTransferencia='',monto=null,plazo=null,informativo=false}={}){
   if(typeof host==='string')host=document.getElementById(host);
   if(!host)return;
   host.replaceChildren();
@@ -26,7 +26,9 @@
    nodo('h3','', 'Cuenta de Misión Jardines'));
   encabezado.append(titulo,nodo('span','club-bank-symbol','BA'));
   host.append(encabezado);
-  const info=nodo('p','club-bank-help','Realiza tu depósito únicamente a esta cuenta. Después adjunta el comprobante aquí mismo para validarlo con Titan.');
+  const info=nodo('p','club-bank-help',informativo
+   ?'Estos son los datos oficiales de Pagos. Primero elige tu fecha, completa tu solicitud y recibe tu folio. Después realiza la transferencia y adjunta el comprobante aquí mismo.'
+   :'Realiza tu depósito únicamente a esta cuenta. Después adjunta el comprobante aquí mismo para validarlo con Titan.');
   host.append(info);
   const fields=[
    ['Banco',datos.banco],
