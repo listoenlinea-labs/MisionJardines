@@ -496,3 +496,26 @@ body.club-private-reservation-view .club-proof-card{margin-top:18px!important}
  body.club-private-reservation-view #clubAvailabilityCard{padding:16px 12px}
  body.club-private-reservation-view #tab-reservar .club-proof-card{margin-top:10px!important}
 }
+
+/* Tarjetas rojas: contador condómino, diálogo similar al de adeudos y acceso admin. */
+.club-cards-toolbar{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin:0 0 15px}
+.club-red-count-btn,.club-red-management-link{display:inline-flex;gap:10px;align-items:center;justify-content:center;min-height:45px;padding:11px 15px;border:1px solid #efc5c8;border-radius:12px;background:#fff3f4;color:#982b3c;font-size:12px;font-weight:850;text-decoration:none}
+.club-red-count-btn strong{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:4px 7px;border-radius:50%;background:#c83545;color:#fff;font-size:12px;font-variant-numeric:tabular-nums}
+.club-red-cards-dialog{width:min(620px,calc(100vw - 20px));max-height:90dvh;overflow:auto}
+.club-red-cards-dialog>p{font-size:13px;line-height:1.55;color:#62738a}
+.club-red-cards-score{display:flex;align-items:center;gap:14px;padding:15px;border:1px solid #f1cccf;border-radius:15px;background:#fff6f6;margin:15px 0}
+.club-red-cards-score strong{display:grid;place-items:center;width:72px;height:72px;flex:0 0 72px;background:#bf3547;border-radius:14px;color:#fff;font-size:35px;line-height:1;font-variant-numeric:tabular-nums}
+.club-red-cards-score span{font-size:14px;font-weight:850;color:#a12c3c}
+.club-red-cards-restriction{margin:14px 0;padding:14px;border-radius:13px;border:1px solid #cee7d5;background:#f1faf4;color:#27744c;line-height:1.55;font-size:13px;font-weight:700}
+.club-red-cards-restriction.blocked{border-color:#eeb8bd;background:#fff2f2;color:#a5283d}
+.club-red-cards-list{display:grid;gap:9px;margin:15px 0}
+.club-red-card-item{background:#fff;border:1px solid #e8d6d9;border-radius:12px;padding:12px 14px}
+.club-red-card-item b{color:#9c3040;font-size:13px}
+.club-red-card-item small{display:block;color:#718197;font-size:11px;margin-top:5px}
+.club-red-card-item p{margin:7px 0 0;color:#52627c;font-size:12px;overflow-wrap:anywhere;line-height:1.6}
+@media(max-width:700px){
+ .club-cards-toolbar{justify-content:stretch;flex-direction:column;align-items:stretch}
+ .club-cards-toolbar>*{width:100%}
+ .club-red-cards-dialog{padding:16px 13px}
+ .club-red-cards-score strong{width:60px;height:60px;flex-basis:60px;font-size:30px}
+}
