@@ -14,8 +14,9 @@
  const tomorrow=()=>new Date(Date.parse(today()+'T12:00:00Z')+86400000).toISOString().slice(0,10);
  const lastDay=()=>new Date(Date.parse(today()+'T12:00:00Z')+365*86400000).toISOString().slice(0,10);
  const whatsappValido=value=>/^(?:52)?[0-9]{10}$/.test(value.replace(/[\s()+-]/g,''));
- const canSubmit=()=>!submitting&&calendarReady&&rulesAccepted&&Boolean(selectedDate)&&!(profile&&!profile.casa)
-  &&(admin||whatsappValido($('clubPhone').value));
+ // Permitir pulsar Guardar aunque falte un campo: el modal de errores explica
+ // qué corregir, marca el control en rojo y lleva al lugar correspondiente.
+ const canSubmit=()=>!submitting&&calendarReady&&Boolean(selectedDate);
  const syncSubmit=()=>{$('clubSubmit').disabled=!canSubmit();};
  $('clubPhone').addEventListener('input',syncSubmit);
  $('clubPhone').addEventListener('change',syncSubmit);
@@ -69,6 +70,7 @@
   if(!r.ok||!d.ok){
    const err=Error(d.message||'No fue posible realizar la operación');
    err.codigo=d.codigo||null;err.adeudos=d.adeudos||null;err.tarjetas=d.tarjetas||null;
+   err.campos=Array.isArray(d.campos)?d.campos:[];err.accion=d.accion||null;
    throw err;
   }
   return d;
@@ -206,6 +208,131 @@
   $('clubMobileSubmitError').hidden=true;
   mobileReservationDialog.showModal();
  }
+
+ // Toda falla de reservación se presenta con explicación accionable.
+ // El foco vuelve al campo incorrecto tras cerrar el diálogo, también en móvil.
+ const errorDialog=$('clubErrorDialog');
+ const camposMap={
+  fecha:{id:'clubDate',nombre:'Fecha solicitada'},
+  calle:{id:'clubStreet',nombre:'Calle de tu vivienda'},
+  numero:{id:'clubNumber',nombre:'Número de casa'},
+  vivienda:{id:'clubHouse',nombre:'Vivienda seleccionada'},
+  solicitante:{id:'clubName',nombre:'Nombre del solicitante'},
+  telefono:{id:'clubPhone',nombre:'Teléfono de contacto'},
+  correo:{id:'clubEmail',nombre:'Correo de contacto'},
+  propietario:{id:'clubOwner',nombre:'¿Eres propietario?'},
+  motivo:{id:'clubReason',nombre:'Motivo del evento'},
+  reglamento:{id:'clubRegulationsAcceptance',nombre:'Lectura y aceptación del reglamento'}
+ };
+ const titulosError={
+  RESERVA_PREVIA_PENDIENTE:'Ya hay una reservación pendiente',
+  FECHA_OCUPADA:'La fecha elegida ya está ocupada',
+  FECHA_INVALIDA:'Revisa la fecha solicitada',
+  VIVIENDA_INVALIDA:'Revisa los datos de la vivienda',
+  VIVIENDA_NO_ELEGIBLE:'No se pudo verificar la vivienda',
+  REGLAMENTO_PENDIENTE:'Falta aceptar el reglamento',
+  CAMPOS_INVALIDOS:'Hay datos por corregir',
+  SERVICIO_NO_DISPONIBLE:'No pudimos conectar con el sistema',
+  ERROR_RESERVA:'No se pudo completar la reservación'
+ };
+ function limpiarCamposInvalidos(){
+  $('clubForm').querySelectorAll('.club-invalid-field').forEach(el=>{
+   el.classList.remove('club-invalid-field');el.removeAttribute('aria-invalid');
+  });
+  rulesCard.classList.remove('club-invalid-field');
+ }
+ let campoParaCorregir=null;
+ function dirigirAlCampo(campo){
+  if(!campo)return;
+  const target=campo==='reglamento'?rulesCard:$(camposMap[campo]?.id);
+  if(!target)return;
+  if(mobileReservationQuery.matches&&(campo==='reglamento'||campo==='fecha')&&mobileReservationDialog.open)
+   mobileReservationDialog.close();
+  target.scrollIntoView({behavior:'smooth',block:'center'});
+  if(campo!=='reglamento'){
+   try{target.focus({preventScroll:true});}catch(_){target.focus();}
+  }else{
+   try{$('clubOpenRules').focus({preventScroll:true});}catch(_){}
+  }
+ }
+ function mostrarError(err,detalle=[]){
+  limpiarCamposInvalidos();
+  const info=detalle.length?detalle:(Array.isArray(err.campos)?err.campos.map(campo=>({
+   campo,mensaje:'Revisa el campo «'+(camposMap[campo]?.nombre||campo)+'».'
+  })):[]);
+  const campos=[...new Set(info.map(x=>x.campo))];
+  for(const campo of campos){
+   const target=campo==='reglamento'?rulesCard:$(camposMap[campo]?.id);
+   if(!target)continue;
+   target.classList.add('club-invalid-field');
+   if(campo!=='reglamento')target.setAttribute('aria-invalid','true');
+  }
+  campoParaCorregir=campos[0]||null;
+  $('clubErrorTitle').textContent=titulosError[err.codigo]||'No se pudo completar la reservación';
+  $('clubErrorMessage').textContent=String(err.message||'Revisa la información e inténtalo nuevamente.');
+  const list=$('clubErrorFields');
+  list.replaceChildren();
+  for(const item of info){
+   const li=document.createElement('li');li.textContent=item.mensaje||'Revisa '+(camposMap[item.campo]?.nombre||item.campo)+'.';
+   list.appendChild(li);
+  }
+  list.hidden=!info.length;
+  const accion=err.accion||(
+   err.codigo==='RESERVA_PREVIA_PENDIENTE'
+   ?'Para solicitar otra fecha, espera a que se confirme la reservación actual o pide a Administración cancelarla o rechazarla. Después podrás volver a intentar.'
+   :campoParaCorregir?'Cierra este aviso y te llevaremos al primer campo por corregir.':'Inténtalo nuevamente o contacta a Administración si el problema continúa.'
+  );
+  $('clubErrorAction').textContent=accion;
+  $('clubErrorAction').hidden=!accion;
+  if(!errorDialog.open)errorDialog.showModal();
+ }
+ function cerrarError(){
+  if(errorDialog.open)errorDialog.close();
+  const campo=campoParaCorregir;
+  campoParaCorregir=null;
+  dirigirAlCampo(campo);
+ }
+ $('closeClubError').addEventListener('click',cerrarError);
+ $('ackClubError').addEventListener('click',cerrarError);
+ errorDialog.addEventListener('close',()=>{
+  if(campoParaCorregir){
+   const campo=campoParaCorregir;campoParaCorregir=null;
+   dirigirAlCampo(campo);
+  }
+ });
+ function validarSolicitud(){
+  const errores=[];
+  const invalid=(campo,mensaje)=>errores.push({campo,mensaje});
+  if(!selectedDate)invalid('fecha','Selecciona primero una fecha disponible en el calendario.');
+  if(profile&&!profile.casa)invalid('vivienda','Selecciona una vivienda vinculada con tu cuenta.');
+  if(!profile){
+   if(!$('clubStreet').value.trim())invalid('calle','Selecciona la calle de tu vivienda.');
+   if(!$('clubNumber').value.trim())invalid('numero','Selecciona el número de casa.');
+  }
+  if(!$('clubName').value.trim())invalid('solicitante','Escribe el nombre de quien solicita.');
+  const telefono=$('clubPhone').value.replace(/[\s()+-]/g,'');
+  if(!/^(?:52)?[0-9]{10}$/.test(telefono))invalid('telefono','Escribe un teléfono válido de 10 dígitos.');
+  if(!$('clubEmail').value.trim()||!$('clubEmail').validity.valid)
+   invalid('correo','Escribe un correo electrónico válido.');
+  if(!['SI','NO'].includes($('clubOwner').value))invalid('propietario','Indica si eres propietario o residente/inquilino.');
+  if(!$('clubReason').value.trim())invalid('motivo','Describe el motivo del evento.');
+  if(!rulesAccepted)invalid('reglamento','Lee y acepta los términos del reglamento en la pantalla principal.');
+  if(errores.length)mostrarError({
+   codigo:'CAMPOS_INVALIDOS',
+   message:'Encontramos '+errores.length+' dato(s) por completar o corregir. No se ha enviado la solicitud.'
+  },errores);
+  return errores.length===0;
+ }
+ for(const ev of ['input','change']){
+  $('clubForm').addEventListener(ev,event=>{
+   const target=event.target;
+   if(target.classList?.contains('club-invalid-field')){
+    target.classList.remove('club-invalid-field');
+    target.removeAttribute('aria-invalid');
+   }
+  });
+ }
+
  $('clubMobileReservationClose').addEventListener('click',()=>mobileReservationDialog.close());
  if(mobileReservationQuery.addEventListener)mobileReservationQuery.addEventListener('change',situarFormulario);
  else if(mobileReservationQuery.addListener)mobileReservationQuery.addListener(situarFormulario);
@@ -233,7 +360,9 @@
   host.hidden=false;
  }
  $('clubForm').addEventListener('submit',async e=>{
-  e.preventDefault();if(!canSubmit())return;
+  e.preventDefault();
+  if(submitting||!calendarReady)return;
+  if(!validarSolicitud())return;
   $('clubMobileSubmitError').hidden=true;
   submitting=true;syncSubmit();
   const values={fecha:selectedDate,calle:$('clubStreet').value.trim(),numero:$('clubNumber').value.trim(),
@@ -253,16 +382,15 @@
    actualizarBancoPublico();
    if(admin)tab('mis-reservas');
   }catch(err){
-   if(err.codigo==='TARJETAS_ROJAS'){
+   // Los modales especiales de adeudos y tarjetas rojas ya contienen su desglose.
+   // El resto de errores utiliza el diálogo universal de reservación.
+   if(err.codigo==='TARJETAS_ROJAS'&&err.tarjetas){
     if(mobileReservationDialog.open)mobileReservationDialog.close();
-    if(!showRedCards(err.tarjetas))notify(err.message,true);
-   }else if(err.codigo==='ADEUDOS_RESERVA'){
+    showRedCards(err.tarjetas);
+   }else if(err.codigo==='ADEUDOS_RESERVA'&&err.adeudos){
     if(mobileReservationDialog.open)mobileReservationDialog.close();
-    if(!showDebtAlert(err))notify(err.message,true);
-   }else if(mobileReservationDialog.open){
-    $('clubMobileSubmitError').textContent=err.message;
-    $('clubMobileSubmitError').hidden=false;
-   }else notify(err.message,true);
+    showDebtAlert(err);
+   }else mostrarError(err);
   }
   finally{submitting=false;await calendar().catch(e=>notify(e.message,true));syncSubmit();}
  });
