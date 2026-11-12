@@ -107,7 +107,9 @@
     const dateRow = new RegExp('^(?:' + namedDatePattern + '|\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}[-/.]\\d{1,2}[-/.](?:20\\d{2}|\\d{2}))(?:[ ,T]+(?:[01]?\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?\\s*(?:H\\.?)?)?[ .]*$');
     for (let i = 0; i < lines.length; i++) {
       const line = normal(lines[i]);
-      if (!dateRow.test(line) || /\b(?:VENCIMIENTO|EXPIRACION|EMISION|IMPRESION|CONSULTA|CORTE|LIMITE|SESION)\b/.test(normal(lines[i - 1] || ''))) continue;
+      const mercadoPagoDate=/^\d{1,2}\s*[/.-]\s*[A-Z]+\s*[/.-]\s*20\d{2}\s+A\s+LAS\s+\d{1,2}:\d{2}\b/.test(line);
+      if ((!dateRow.test(line) && !mercadoPagoDate) ||
+          /\b(?:VENCIMIENTO|EXPIRACION|EMISION|IMPRESION|CONSULTA|CORTE|LIMITE|SESION)\b/.test(normal(lines[i - 1] || ''))) continue;
       const date = fecha(line);
       if (date) candidates.push({ date, time: hora(line) });
     }
@@ -196,10 +198,24 @@
   // resultados directamente puede juntar la etiqueta de un campo con el
   // valor de otro y producir una coincidencia bancaria falsa.
   const OCR_PASS_MARKER = '\n=== MJ OCR RELECTURA ===\n';
+  // Mercado Pago Wallet: la pantalla incluye un "Comprobante" propio,
+  // distinto de la clave de rastreo SPEI y del concepto de vivienda.
+  function folioMercadoPago(text) {
+    if (!/MERCADO\s*PAGO/i.test(text)) return '';
+    const lines=String(text||'').split(/\r?\n/).map(x=>normal(x).trim()).filter(Boolean);
+    for(let i=0;i<lines.length;i++){
+      const m=lines[i].match(/^COMPROBANTE\s*(?::|#)?\s*(\d{10,17})\s*$/);
+      if(m)return m[1];
+      if(!/^COMPROBANTE\s*:?\s*$/.test(lines[i]))continue;
+      const next=(lines[i+1]||'').match(/^#?\s*(\d{10,17})\s*$/);
+      if(next)return next[1];
+    }
+    return '';
+  }
   function extractOne(text) {
     const lines = String(text || '').replace(/\r/g, '').split(/\n/).map(s => s.trim()).filter(Boolean);
     // Do not use "Referencia", "Concepto" or "Clave de rastreo" if a folio exists.
-    const folio = valueNear(lines, [/\bFOLIO\s+(?:DE\s+)?(?:OPERACION|TRANSACCION|TRANSFERENCIA)\b/, /\bNUMERO\s+DE\s+OPERACION\b/, /\bFOLIO\b/], 'folio');
+    const folio = valueNear(lines, [/\bFOLIO\s+(?:DE\s+)?(?:OPERACION|TRANSACCION|TRANSFERENCIA)\b/, /\bNUMERO\s+DE\s+OPERACION\b/, /\bFOLIO\b/], 'folio') || folioMercadoPago(text);
     const amount = montoCerca(lines, [/\bMONTO\s+(?:TRANSFERIDO|PAGADO|ENVIADO)\b/, /\bIMPORTE\s+(?:TRANSFERIDO|PAGADO)\b/, /\b(?:MONTO|IMPORTE|TOTAL)\b/]) || montoFlexible(lines);
     const when = valueNear(lines, [/\bFECHA\s+(?:DE\s+)?(?:OPERACION|TRANSFERENCIA|PAGO)\b/, /\bFECHA\b/], 'date');
     const fallback = when.date ? when : fechaFlexible(lines);
@@ -277,11 +293,41 @@
     const destinoNumero = raw =>
       [...raw.matchAll(/(?:^|\D)(\d{4,22})(?!\d)/g)].some(m => m[1].endsWith(last4));
     if (!desiredName || last4.length !== 4) return { ok: false, owner: false, suffix: false, message: 'La cuenta receptora no está configurada correctamente.' };
+    // Mercado Pago muestra "Origen y destino" como CABECERA y después dos
+    // identidades con sus respectivos identificadores. No se deben mezclar
+    // la persona remitente ni la CLABE de origen con la cuenta receptora.
+    const start=lines.findIndex(line=>/^\s*ORIGEN\s+(?:Y|\/)\s+DESTINO\b/.test(normal(line)));
+    if(start>=0){
+      const registros=[];
+      let previo=start;
+      for(let j=start+1;j<Math.min(lines.length,start+24);j++){
+        const line=normal(lines[j]);
+        if(/^\s*(?:COMPROBANTE|REFERENCIA|DETALLES?\s+DE\s+OPERACION)\s*(?:#|:|$)/.test(line))break;
+        if(!/\b(?:CLABE|TARJETA|CUENTA|NUMERO\s+DE\s+TARJETA)\b/.test(line))continue;
+        const bloqueIdentificador=[line,normal(lines[j+1]||'')].join(' ');
+        const numeros=[...bloqueIdentificador.matchAll(/(?:^|\D)(\d{4,22})(?!\d)/g)].map(m=>m[1]);
+        if(!numeros.length)continue;
+        const identidad=lines.slice(previo+1,j).map(normal).join(' ');
+        registros.push({owner:ownerIn(identidad),suffix:numeros.some(n=>n.endsWith(last4))});
+        previo=j;
+      }
+      // Es obligatorio que el último registro corresponda al RECEPTOR.
+      // Si no tenemos dos registros fiables, utilizar sólo otros marcadores
+      // explícitos y nunca interpretar "Origen y destino" como "Destino".
+      if(registros.length>=2){
+        const destino=registros[registros.length-1];
+        return destino.owner&&destino.suffix
+          ?{ok:true,owner:true,suffix:true,message:''}
+          :{ok:false,owner:destino.owner,suffix:destino.suffix,
+            message:!destino.owner?'El beneficiario receptor no coincide en la sección Destino.':
+              'La tarjeta, cuenta o CLABE receptora no coincide con los destinos oficiales.'};
+      }
+    }
     let best = { owner: false, suffix: false };
     for (let i = 0; i < lines.length; i++) {
       const line = normal(lines[i]);
       const marker = line.match(/\b(?:DESTINO|BENEFICIARIO|DESTINATARIO|CUENTA\s+DESTINO|CUENTA\s+RECEPTORA|CUENTA\s+BENEFICIARIA|TARJETA\s+(?:DESTINO|RECEPTORA)|CLABE\s+(?:DESTINO|RECEPTORA)|A\s+FAVOR\s+DE|A\s+NOMBRE\s+DE|RECEPTOR|RECIBE|ENVIADO\s+A|ENVIASTE\s+A|TRANSFERISTE\s+A|TRANSFERENCIA\s+A|PARA)\b/);
-      if (!marker) continue;
+      if (!marker || /^\s*ORIGEN\s+(?:Y|\/)\s+DESTINO\b/.test(line)) continue;
       const sample = [line.slice(marker.index + marker[0].length)];
       for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
         if (/^\s*(?:ORIGEN|DESDE|CUENTA\s+(?:DE\s+)?(?:ORIGEN|RETIRO)|COMISION|CONCEPTO|REFERENCIA|FOLIO|CLAVE\s+DE\s+RASTREO|FECHA\s+DE\s+OPERACION)\b/.test(normal(lines[j]))) break;
