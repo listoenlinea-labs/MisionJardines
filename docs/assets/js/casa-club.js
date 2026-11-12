@@ -66,6 +66,9 @@
  rulesConfirm.addEventListener('click',()=>{
   if(rulesConfirm.disabled||!rulesReady)return;
   rulesAccepted=true;actualizarAceptacionReglamento();rulesDialog.close();
+  // En teléfonos, mostrar al usuario dónde quedó habilitado el envío.
+  if(window.matchMedia('(max-width: 700px)').matches)
+   $('clubMobileSubmitArea').scrollIntoView({behavior:'smooth',block:'nearest'});
  });
  actualizarAceptacionReglamento();
  const headers=(json=false)=>({Authorization:'Bearer '+token,...(sessionStorage.getItem('mjCasaSeleccionada')?{'X-Casa-Id':sessionStorage.getItem('mjCasaSeleccionada')}:{}) ,...(json?{'Content-Type':'application/json'}:{})});
