@@ -334,3 +334,30 @@
  .club-bank-row .club-bank-copy{grid-column:2;grid-row:2}
  .club-bank-row.is-concept{margin:9px -5px 0;padding:12px 8px}
 }
+
+/* Casa Club público: formulario alineado e instrucciones de transferencia modales */
+#clubForm .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px}
+#clubForm .form-grid>*{min-width:0}
+#clubForm .form-grid label{display:flex;flex-direction:column;gap:6px;line-height:1.35}
+#clubForm .form-grid input:not([type=checkbox]),#clubForm .form-grid select{margin-top:0;min-width:0;width:100%;height:48px;min-height:48px;padding:11px 13px;border-radius:11px;font-size:14px}
+#clubForm .club-address-field{position:relative;min-width:0;align-self:stretch}
+#clubForm .club-address-field>label{display:block;margin-bottom:6px;font-size:11px;font-weight:750;line-height:1.35}
+#clubForm .form-grid .wide{grid-column:1/-1}
+.club-payment-open{display:block;min-height:45px;margin:15px 0;width:100%;font-size:13px}
+.club-payment-dialog{position:fixed;inset:0;margin:auto;width:min(690px,calc(100vw - 26px));max-height:90dvh;overflow:auto;padding:0;background:#fff;color:#25354c;border:1px solid #e1e7ed;border-radius:19px;box-shadow:0 25px 85px #182a4761}
+.club-payment-dialog::backdrop{background:#1927389c;backdrop-filter:blur(3px)}
+.club-payment-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid #e2e8ef}
+.club-payment-dialog-head h2{font-size:21px;margin:5px 0 8px}
+.club-payment-dialog-head p{font-size:12px;line-height:1.55;color:#62738a;margin:0}
+.club-payment-dialog-head .xbtn{flex:0 0 38px}
+.club-payment-dialog-body{padding:8px 22px 22px}
+.club-payment-dialog-body .club-bank-panel{margin:0;box-shadow:none}
+@media(max-width:700px){
+ #clubForm .form-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+ #clubForm .form-grid .wide{grid-column:1}
+ #clubForm .form-grid input:not([type=checkbox]),#clubForm .form-grid select{height:48px}
+ .club-payment-dialog-head{padding:17px 14px}
+ .club-payment-dialog-body{padding:8px 12px 17px}
+ .club-payment-dialog-body .club-bank-panel{padding:14px 12px}
+ .club-payment-open{min-height:48px}
+}
