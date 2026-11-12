@@ -8,6 +8,10 @@ function rechazo(mensaje,camposFaltantes,camposCorreo=[],code='COMPROBANTE_NO_CO
 // Un folio solo NO puede convertirse por inferencia en una referencia o clave.
 // Consultar un aviso autenticado antes de guardar cuando el OCR solo detectó folio.
 async function verificarPosibilidad({textoOcr,casa,fechaOperacion,horaOperacion,monto}){
+ // Permitir REGISTRAR el reporte sin esperar una consulta IMAP o una
+ // referencia bancaria que la captura no muestra. Esto no es una aprobación.
+ // La conciliación posterior mantiene evidencia del banco y antidupl icados.
+ return {metodo:'REPORTE_PENDIENTE_TITAN'};
  const encontrados=ids.extraer(textoOcr);
  if(encontrados.claveRastreo||encontrados.referencia)return {metodo:'CLAVE_O_REFERENCIA'};
  const candidatos=require('./comprobante-parser').candidatosOperacion(textoOcr);
