@@ -66,6 +66,8 @@ async function estado(req,res){
 async function reintentar(req,res){
  try{
   const reserva=await leerReserva(req);
+  if(!['PENDIENTE','APROBADA'].includes(reserva.estatus)||reserva.pagado)
+   return res.status(409).json({ok:false,message:'La reservación ya no admite reintentos bancarios.'});
   const pago=await ultimoComprobante(reserva);
   if(!pago)return res.status(404).json({ok:false,message:'No se encontró un comprobante para esta reservación.'});
   const data=await reintentos.solicitarReintento({
