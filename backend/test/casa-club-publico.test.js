@@ -9,6 +9,7 @@ const Manual=require('../src/models/PagoManualConcepto');
 const db=require('../src/config/database');
 const avisos=require('../src/services/casa-club-avisos.service');
 const tarifas=require('../src/services/casa-club-tarifas.service');
+const rojas=require('../src/services/casa-club-tarjetas-rojas.service');
 const email=require('../src/services/email.service');
 const club=require('../src/controllers/casa-club.controller');
 const hoy=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City'}).format(new Date());
@@ -20,6 +21,7 @@ const admin={rol:'ADMINISTRADOR',usuarioId:9};
 const config={dias:1,banco:'Banco de prueba',titular:'Titular de prueba',cuenta:'000000000000000000',administracion:'admin@example.invalid',
  nombrePlantilla:'reserva_prueba',idioma:'es_MX',version:'v25.0',telefonoId:'123',token:'fake'};
 function setup(t){
+ t.mock.method(rojas,'exigirDisponible',async()=>({bloqueada:false}));
  t.mock.method(tarifas,'obtener',async()=>({cuotaRecuperacion:700,depositoGarantia:700,limpieza:600}));
  t.mock.method(Casa,'findAll',async()=>[{id:5}]);
  t.mock.method(Casa,'findByPk',async()=>({id:5}));
