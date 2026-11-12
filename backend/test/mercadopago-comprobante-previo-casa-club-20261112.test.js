@@ -50,16 +50,17 @@ for(const [name,p] of [['servidor',backend],['navegador',browser]]){
 test('el parser del backend es idéntico al de navegador en Pagos y Casa Club',()=>{
  assert.equal(read('backend/src/services/comprobante-parser.js'),read('docs/assets/js/comprobante-parser.js'));
 });
-test('comprobante seleccionable antes de reserva, enviado SOLO tras obtener token y folio',()=>{
+test('la liga general NO muestra la carga; solo el enlace del correo la habilita',()=>{
  const html=read('docs/casa-club.html');
  const proof=read('docs/assets/js/casa-club-publico-comprobante.js');
  const booking=read('docs/assets/js/casa-club.js');
- assert.match(html,/id="clubProofFile"[^>]*type="file"/);
- assert.match(proof,/else\{\s*\$\('clubProofIntro'\)\.hidden=true;\s*\$\('clubPublicProofFlow'\)\.hidden=false;/);
- assert.match(proof,/async function sendPrepared\(\)/);
- assert.match(proof,/await archivoPendiente/);
- assert.match(proof,/if\(enProceso\|\|!validadoOcr\|\|!acceso\)/);
- assert.match(booking,/showPayment\(result\.data\);[\s\S]*?await proof\.sendPrepared\(\)/);
+ assert.match(html,/id="clubPrivateReservationSummary"[^>]*hidden/);
+ assert.match(html,/id="clubPublicProofFlow"[^>]*hidden/);
+ assert.match(proof,/if\(parse\(location\.hash\)\)open\(location\.hash\)/);
+ assert.match(proof,/else\{\s*acceso=null;[\s\S]*?\$\('clubPublicProofFlow'\)\.hidden=true;/);
+ assert.match(proof,/document\.body\.classList\.add\('club-private-reservation-view'\)/);
+ assert.doesNotMatch(booking,/await proof\.sendPrepared\(\)/);
+ assert.doesNotMatch(booking,/MJClubPublicProof\.open\(p\.enlaceCarga\)/);
 });
 test('reglamento sigue visible en pantalla principal del celular, sin duplicar formulario',()=>{
  const html=read('docs/casa-club.html'),booking=read('docs/assets/js/casa-club.js');
@@ -86,57 +87,12 @@ test('tres modos OCR y código compartido en los tres tipos de pago',()=>{
  assert.match(controller,/\['MANTENIMIENTO', 'EXTRAORDINARIO', 'CASA_CLUB'\]/);
  assert.match(controller,/comprobarDestino\(/);
 });
-test('prueba de integración local: la foto se prepara sin servidor y se envía una vez al guardar',async()=>{
- const script=read('docs/assets/js/casa-club-publico-comprobante.js');
- const elems=new Map();
- const $=id=>{
-  if(!elems.has(id))elems.set(id,{hidden:id==='clubPublicProofFlow',
-   value:'',files:[],disabled:false,className:'',textContent:'',style:{},
-   classList:{toggle(){}},handlers:{},addEventListener(event,fn){this.handlers[event]=fn},
-   removeAttribute(){},scrollIntoView(){}});
-  return elems.get(id);
- };
- class FileReader{
-  readAsDataURL(){this.result='data:image/png;base64,aW1hZ2Vu';this.onload?.();}
- }
- class Image{
-  set src(_){this.width=1200;this.height=1800;Promise.resolve().then(()=>this.onload?.());}
- }
- const document={getElementById:$,createElement:()=>({width:0,height:0,
-  getContext:()=>({drawImage(){},getImageData:()=>({data:new Uint8ClampedArray(4)}),putImageData(){}}),
-  toDataURL:()=>('data:image/jpeg;base64,aW1hZ2Vu')})};
- let hash='',uploads=0,payload=null;
- const payment=mercado.replace('$ 350 MXN','$ 2,000 MXN');
- const Tesseract={PSM:{AUTO:3,SPARSE_TEXT:11,SINGLE_BLOCK:6},
-  createWorker:async()=>({setParameters:async()=>{},recognize:async()=>({data:{text:payment}}),terminate:async()=>{}})};
- const window={MJComprobante:browser,MJClubCuenta:{render(){}},MJ_API_URL:'https://test.invalid/api',Tesseract};
- const fetch=async(url,opts)=>{
-  const body=JSON.parse(opts.body);
-  if(url.endsWith('/estado'))return{ok:true,json:async()=>({ok:true,data:{
-   total:2000,pagado:false,estatusReserva:'PENDIENTE',destinatario:owner,
-   terminacionesCuenta:ends,datosTransferencia:{},
-   comprobante:uploads?{estado:'PENDIENTE_VALIDACION'}:null}})};
-  uploads++;payload=body;return{ok:true,json:async()=>({ok:true,data:{id:1}})};
- };
- const location={get hash(){return hash;}};
- const history={replaceState(_a,_b,next){hash=next;}};
- vm.runInNewContext(script,{window,document,location,history,fetch,Tesseract,Image,FileReader,
-  setInterval:()=>1,clearInterval:()=>{},Uint8ClampedArray,console:{warn(){},error(){}}},{timeout:1200});
- window.MJClubPublicProof.setOfficialAccount({titular:owner,destinosUltimos4:ends});
- window.MJClubPublicProof.setExpectedAmount(2000);
- assert.equal($('clubPublicProofFlow').hidden,false);
- const file={name:'mercado.png',type:'image/png'};$('clubProofFile').files=[file];
- $('clubProofFile').handlers.change({target:{files:[file]}});
- const pre=await window.MJClubPublicProof.sendPrepared(); // espera a que termine la lectura local, sin token no envía
- assert.equal(uploads,0);
- assert.equal($('clubProofFolio').value,'188198047943',JSON.stringify({pre,ocr:$('clubProofOcrStatus').textContent,preview:$('clubProofPreviewWrap').hidden}));
- assert.equal($('clubProofAmount').value,'2000.00');
- window.MJClubPublicProof.open('#comprobante=91.'+'a'.repeat(64));
- const result=await window.MJClubPublicProof.sendPrepared();
- assert.equal(result.status,'sent');
- assert.equal(uploads,1);
- assert.equal(payload.reservaId,91);
- assert.equal(payload.folioOperacion,'188198047943');
- assert.equal(payload.monto,2000);
- assert.equal(payload.fechaOperacion,'2026-11-12');
+test('la carga privada conserva asociación obligatoria a reserva y control Titan',()=>{
+ const proof=read('docs/assets/js/casa-club-publico-comprobante.js');
+ const backendController=read('backend/src/controllers/casa-club-publico-comprobante.controller.js');
+ assert.match(proof,/async function enviarComprobante\(\)/);
+ assert.match(proof,/if\(enProceso\|\|!validadoOcr\|\|!acceso\)/);
+ assert.match(proof,/async function refresh\(\)/);
+ assert.match(backendController,/req\.reservaPublica=reserva/);
+ assert.match(backendController,/reservaCasaClubId:reserva\.id/);
 });
