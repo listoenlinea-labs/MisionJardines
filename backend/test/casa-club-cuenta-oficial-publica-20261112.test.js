@@ -35,7 +35,7 @@ test('concepto exacto por vivienda del padrón; ninguna dirección se prellena',
  const backend=leer('backend/src/controllers/casa-club.controller.js');
  assert.match(backend,/casaTransferencia=casa/);
  assert.match(backend,/casa:casaTransferencia/);
- assert.match(backend,/conceptoTransferencia/);
+ assert.match(backend,/avisos\.instrucciones\(\{\.\.\.\(row\.toJSON/);
 });
 
 test('cuenta pública accesible antes de iniciar sesión, sin identidades privadas',()=>{
