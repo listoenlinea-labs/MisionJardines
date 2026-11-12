@@ -864,9 +864,22 @@
     .page-seguridad-v2 .dashboard {margin: 0 0 18px; grid-template-columns: minmax(0, 1.9fr) minmax(290px, .8fr);}
     .page-seguridad-v2 .dashboard > *, .page-seguridad-v2 .dashboard .side-stack {min-width: 0;}
     .page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-scroll {overflow: auto; max-height: 440px;}
-    .page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-table {min-width: 590px;}
+    .page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-table {min-width: 760px;}
     @media(max-width:1050px){.page-seguridad-v2 .dashboard{grid-template-columns:minmax(0,1fr);}}
-    @media(max-width:720px){.page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-table{min-width: 590px;}}
+    @media(max-width:720px){.page-seguridad-v2 #seguridadCuotasPanel .seg-cuotas-table{min-width: 760px;}}
+    .page-seguridad-v2 .seg-red-button{border:1px solid #e9b9c3;background:#fff5f5;color:#a52e41;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:800;cursor:pointer;min-height:36px}
+    #segRedDialog{width:min(520px,calc(100vw - 24px));padding:22px;border:1px solid #e5c8cc;border-radius:18px;box-shadow:0 20px 65px #172a3a55;color:#273849}
+    #segRedDialog::backdrop{background:#1e293b9c}
+    #segRedDialog h2{margin:0 0 10px;font-size:22px}#segRedDialog p{font-size:13px;line-height:1.55;color:#53667a}
+    #segRedDialog label{display:grid;gap:8px;font-size:12px;font-weight:800}
+    #segRedDialog textarea{width:100%;min-height:85px;border:1px solid #cdd9e7;border-radius:10px;padding:12px;font:inherit}
+    #segRedDialog .seg-red-card{border:1px solid #e9d9dc;padding:12px;margin:9px 0;border-radius:11px;font-size:12px;background:#fff9f9}
+    #segRedDialog .seg-red-card button{border:1px solid #ecbfc5;border-radius:8px;padding:8px 12px;background:#fff3f3;color:#9b3443;cursor:pointer}
+    #segRedDialog .seg-red-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
+    #segRedDialog .seg-red-actions button{padding:11px 14px;border:1px solid #e3d9df;border-radius:10px;cursor:pointer}
+    #segRedDialog .seg-red-actions [type=submit]{background:#bb3d47;color:#fff}
+    @media(max-width:720px){#segRedDialog{padding:15px}}
+
   </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -937,7 +950,7 @@
       </div>
       <p class="seg-cuotas-message" id="segCuotasStatus" role="status" aria-live="polite">Consultando…</p>
       <div class="seg-cuotas-scroll">
-        <table class="seg-cuotas-table"><thead><tr><th>Calle</th><th>Casa</th><th>Estado</th><th>Último pago</th><th>Mes pagado</th></tr></thead>
+        <table class="seg-cuotas-table"><thead><tr><th>Calle</th><th>Casa</th><th>Estado</th><th>Último pago</th><th>Mes pagado</th><th>Tarjetas rojas</th><th>Acciones</th></tr></thead>
           <tbody id="segCuotasRows"></tbody>
         </table>
       </div>
@@ -1160,6 +1173,17 @@
       <div class="modal-foot"><button class="btn" data-close>Cerrar</button></div>
     </section>
   </div>
+  <dialog id="segRedDialog" aria-labelledby="segRedTitle">
+    <h2 id="segRedTitle">Tarjetas rojas · Vivienda</h2>
+    <p id="segRedStatus" role="status">Consulta las tarjetas de esta casa.</p>
+    <form id="segRedAddForm"><label>Motivo de la tarjeta roja
+      <textarea id="segRedReason" minlength="5" maxlength="500" required placeholder="Describe la incidencia de la vivienda"></textarea>
+    </label><div class="seg-red-actions">
+      <button type="button" id="segRedClose">Cerrar</button>
+      <button type="submit">Poner tarjeta roja</button>
+    </div></form>
+    <div id="segRedCards" aria-live="polite"></div>
+  </dialog>
   <div id="toast" class="toast"></div>
 
   <script>
@@ -1220,7 +1244,8 @@ $('openGate').addEventListener('click', () => controlGate('open')); $('closeGate
     $('filterText').value = new URLSearchParams(location.search).get('buscar') || '';
     $('currentDate').textContent = window.MJDateDisplay.format(new Date()); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
-  <script src="assets/js/seguridad-cuotas.js?v=20261011"></script>
+  <script src="assets/js/seguridad-tarjetas-rojas.js?v=20261112"></script>
+  <script src="assets/js/seguridad-cuotas.js?v=20261112-rojas"></script>
   <script src="assets/js/site-sidebar.js?v=20261109-seguridad-caseta"></script>
 </body>
 
