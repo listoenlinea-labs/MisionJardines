@@ -127,9 +127,9 @@ test('prueba de integración local: la foto se prepara sin servidor y se envía 
  assert.equal($('clubPublicProofFlow').hidden,false);
  const file={name:'mercado.png',type:'image/png'};$('clubProofFile').files=[file];
  $('clubProofFile').handlers.change({target:{files:[file]}});
- await window.MJClubPublicProof.sendPrepared(); // espera a que termine la lectura local, sin token no envía
+ const pre=await window.MJClubPublicProof.sendPrepared(); // espera a que termine la lectura local, sin token no envía
  assert.equal(uploads,0);
- assert.equal($('clubProofFolio').value,'188198047943');
+ assert.equal($('clubProofFolio').value,'188198047943',JSON.stringify({pre,ocr:$('clubProofOcrStatus').textContent,preview:$('clubProofPreviewWrap').hidden}));
  assert.equal($('clubProofAmount').value,'2000.00');
  window.MJClubPublicProof.open('#comprobante=91.'+'a'.repeat(64));
  const result=await window.MJClubPublicProof.sendPrepared();
