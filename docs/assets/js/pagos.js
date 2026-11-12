@@ -971,7 +971,10 @@
       // también deben retirar su burbuja sin recargar la página.
       setInterval(()=>{if(!document.hidden)void loadDebts().catch(()=>{});},30000);
       document.addEventListener('visibilitychange',() => { if (!document.hidden) void syncPendingReceipts(); });
-      window.addEventListener('focus',() => void syncPendingReceipts());
+      window.addEventListener('focus',() => {void syncPendingReceipts();void loadDebts().catch(()=>{});});
+      document.addEventListener('visibilitychange',()=>{
+        if(!document.hidden)void loadDebts().catch(()=>{});
+      });
       const requested=new URLSearchParams(location.search).get('tab');
       setTab(['MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'].includes(requested)?requested:'MANTENIMIENTO');
     }
