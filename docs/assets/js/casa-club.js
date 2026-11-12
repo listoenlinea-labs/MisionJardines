@@ -140,6 +140,7 @@
   if(name==='mis-reservas')void mine();
   if(name==='administracion')void adminList();
   if(name==='aprobacion')void adminList();
+  if(admin&&['tarjetas','historial-rojas'].includes(name))void window.MJClubRojasAdmin?.mostrar(name);
  }
  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
  function monthShift(offset){
@@ -690,7 +691,7 @@
   $('clubStreet').required=$('clubNumber').required=false;
   fillProfile();
   $('clubCardsToolbar').hidden=false;
-  if(admin){$('clubManageRedCards').hidden=false;}
+  if(admin){/* Gestión e historial de tarjetas rojas integrados como pestañas. */}
   else{
    $('clubMyRedCards').hidden=false;
    void cargarMisRojas();
