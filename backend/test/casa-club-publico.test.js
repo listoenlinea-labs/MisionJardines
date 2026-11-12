@@ -177,3 +177,80 @@ test('el borrador administrativo cambia de instrucciones bancarias a confirmaci�
  row.estatus='CANCELADA';
  assert.equal((await borrador()).code,409);
 });
+
+
+test('una reservación pendiente presenta un error específico sin crear ni enviar otra',async t=>{
+ setup(t);
+ Reserva.findOne.mock.mockImplementation(async()=>({id:17,estatus:'PENDIENTE'}));
+ const crear=t.mock.method(Reserva,'create',async()=>{throw Error('No debe crear otra reserva');});
+ const aviso=t.mock.method(avisos,'notificar',async()=>{throw Error('No debe enviar otro correo');});
+ const r=res();
+ await club.solicitar({body},r);
+ assert.equal(r.code,409);
+ assert.equal(r.body.codigo,'RESERVA_PREVIA_PENDIENTE');
+ assert.match(r.body.message,/pendiente de pago o verificación/i);
+ assert.match(r.body.accion,/Administración/);
+ assert.equal(crear.mock.callCount(),0);
+ assert.equal(aviso.mock.callCount(),0);
+});
+
+test('Administración puede RECHAZAR aun con captura en revisión y la vivienda vuelve a solicitar',async t=>{
+ setup(t);
+ const row={id:35,casaId:5,fecha:body.fecha,fechaBloqueada:body.fecha,estatus:'PENDIENTE',
+  fechaLimitePago:offset(1),pagado:false,notas:'',
+  async update(patch){Object.assign(this,patch);}};
+ t.mock.method(Reserva,'findByPk',async()=>row);
+ const conteo=t.mock.method(PagoReportado,'count',async()=>1);
+ const rechazo=res();
+ await club.revisar({usuario:admin,params:{id:35},body:{accion:'RECHAZAR',notas:'No procede'}},rechazo);
+ assert.equal(rechazo.code,200);
+ assert.equal(row.estatus,'RECHAZADA');
+ assert.equal(row.fechaBloqueada,null);
+ assert.equal(conteo.mock.callCount(),0,'el comprobante pendiente no impide rechazo administrativo');
+ Reserva.findOne.mock.mockImplementation(async options=>options.where.estatus==='PENDIENTE'&&row.estatus==='PENDIENTE'?row:null);
+ const created=t.mock.method(Reserva,'create',async data=>({id:36,...data}));
+ t.mock.method(avisos,'notificar',async()=>({correo:true,administracion:true,whatsapp:false}));
+ const nueva=res();
+ await club.solicitar({body:{...body,fecha:offset(9)}},nueva);
+ assert.equal(nueva.code,201);
+ assert.equal(created.mock.callCount(),1);
+ assert.equal(nueva.body.data.id,36);
+});
+
+test('Administración CANCELA una fecha aprobada aun con prueba en revisión y permite otra solicitud',async t=>{
+ setup(t);
+ const row={id:44,casaId:5,fecha:body.fecha,fechaBloqueada:body.fecha,estatus:'APROBADA',
+  fechaLimitePago:offset(1),pagado:false,notas:'',correo:body.correo,
+  async update(patch){Object.assign(this,patch);}};
+ t.mock.method(Reserva,'findByPk',async()=>row);
+ const pending=t.mock.method(PagoReportado,'count',async()=>1);
+ t.mock.method(email,'enviarAvisoCasaClub',async()=>({}));
+ const cancelada=res();
+ await club.liberar({usuario:admin,params:{id:44},body:{motivo:'Cambio de planes de la familia'}},cancelada);
+ assert.equal(cancelada.code,200);
+ assert.equal(row.estatus,'CANCELADA');
+ assert.equal(row.fechaBloqueada,null);
+ assert.equal(pending.mock.callCount(),0,'se preserva historial, no se exige resolver OCR para cancelar');
+ t.mock.method(Reserva,'create',async data=>({id:45,...data}));
+ t.mock.method(avisos,'notificar',async()=>({correo:true,administracion:true,whatsapp:false}));
+ const siguiente=res();
+ await club.solicitar({body:{...body,fecha:offset(10)}},siguiente);
+ assert.equal(siguiente.code,201);
+ assert.equal(siguiente.body.data.id,45);
+});
+
+test('errores específicos tienen modal visible y guía al campo inválido',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const root=path.resolve(__dirname,'../../docs');
+ const html=fs.readFileSync(path.join(root,'casa-club.html'),'utf8');
+ const js=fs.readFileSync(path.join(root,'assets/js/casa-club.js'),'utf8');
+ const css=fs.readFileSync(path.join(root,'assets/css/casa-club.css'),'utf8');
+ for(const id of ['clubErrorDialog','clubErrorMessage','clubErrorFields','clubErrorAction','clubErrorTitle']){
+  assert.ok(html.includes('id="'+id+'"'),id);
+ }
+ assert.match(html,/<form id="clubForm"[^>]*novalidate/);
+ assert.match(js,/function validarSolicitud\(\)/);
+ assert.match(js,/function mostrarError\(err,detalle=\[\]\)/);
+ assert.match(js,/target\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
+ assert.match(css,/club-invalid-field/);
+});
