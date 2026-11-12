@@ -420,3 +420,33 @@
  .club-proof-intro{padding:14px 10px}
  #tab-reservar .club-proof-upload input::file-selector-button{display:block;margin:0 0 7px;width:100%}
 }
+
+/* Solicitud de reserva: modal EXCLUSIVO de teléfonos, sin duplicar formularios. */
+.club-mobile-reservation-dialog{position:fixed;inset:0;margin:auto;border:1px solid #e0e8ef;border-radius:19px;padding:0;background:#fff;color:#273850;box-shadow:0 30px 95px #152e465c;width:min(610px,calc(100vw - 18px));max-height:calc(100dvh - 16px);overscroll-behavior:contain;overflow-y:auto}
+.club-mobile-reservation-dialog::backdrop{background:#172b439c;backdrop-filter:blur(3px)}
+.club-mobile-reservation-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:20px 18px 15px;border-bottom:1px solid #ebeff5;position:sticky;top:0;z-index:5;background:#fff}
+.club-mobile-reservation-head h2{font-size:19px;margin:6px 0;color:#243650;line-height:1.25}
+.club-mobile-selected-date{margin:6px 0 0;font-size:13px;font-weight:750;color:#26714c}
+.club-mobile-reservation-head>.xbtn{flex:0 0 40px;width:40px;height:40px}
+.club-mobile-submit-error{font-size:12px;line-height:1.5;padding:12px;border:1px solid #efbcbf;background:#fff2f2;border-radius:11px;color:#a23b49;margin-top:14px}
+@media(min-width:701px){.club-mobile-reservation-dialog:not([open]){display:none}}
+@media(max-width:700px){
+ #tab-reservar .two-col{display:block}
+ #tab-reservar .two-col>.club-card:first-child{width:100%}
+ #clubMobileReservationDialog #clubReservationCard{border:0;border-radius:0;box-shadow:none;padding:18px 17px 23px;width:100%;min-width:0}
+ #clubMobileReservationDialog #clubReservationCard>.eyebrow,#clubMobileReservationDialog #clubReservationCard>h2{display:none}
+ #clubMobileReservationDialog #clubForm .form-grid{grid-template-columns:minmax(0,1fr);gap:13px}
+ #clubMobileReservationDialog #clubForm .form-grid>*,#clubMobileReservationDialog #clubForm input,#clubMobileReservationDialog #clubForm select{min-width:0}
+ #clubMobileReservationDialog #clubForm .form-grid input:not([type=checkbox]),#clubMobileReservationDialog #clubForm .form-grid select{height:48px;font-size:16px}
+ #clubMobileReservationDialog #clubSubmit{position:sticky;bottom:0;z-index:3;width:100%;min-height:50px;font-size:15px;margin:17px 0 0;box-shadow:0 5px 18px #e18d3560}
+ #clubMobileReservationDialog #clubOpenRules{min-height:46px}
+ #clubMobileReservationDialog .club-regulations-acceptance{padding:14px}
+ #clubMobileReservationDialog .club-payment-open{width:100%;min-height:46px}
+ #clubMobileReservationDialog #clubFormHint{margin-top:12px}
+ #clubMobileReservationDialog .club-address-options{max-height:190px;overflow:auto}
+}
+@media(max-width:390px){
+ .club-mobile-reservation-dialog{width:calc(100vw - 10px);border-radius:15px}
+ .club-mobile-reservation-head{padding:15px 12px 12px}
+ #clubMobileReservationDialog #clubReservationCard{padding:14px 12px 20px}
+}

@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-comprobante-calendario">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-modal-movil-ocr">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -40,8 +40,8 @@
  <button type="button" class="soft club-payment-open" id="clubProofInstructionsOpen">Instrucciones de pago</button>
  <div id="clubProofResult" role="status" aria-live="polite" class="club-proof-result">Completa los datos de tu comprobante. El banco confirmará el depósito con una notificación independiente.</div>
  <form id="clubPublicProofForm" class="club-public-proof-form" autocomplete="off">
-  <label class="club-proof-upload">Selecciona tu comprobante <span>JPG, PNG, WEBP o PDF · primera página del PDF</span>
-   <input id="clubProofFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+  <label class="club-proof-upload">Selecciona tu comprobante <span>JPG, PNG, WEBP, HEIC o PDF · primera página del PDF</span>
+   <input id="clubProofFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/pdf" required></label>
   <div class="club-proof-preview" id="clubProofPreviewWrap" hidden><img id="clubProofPreview" alt="Vista previa del comprobante bancario"></div>
   <div class="club-proof-fields"><label>Clave de rastreo / referencia / folio<input id="clubProofFolio" readonly required placeholder="Se detectará desde el comprobante"></label>
   <label>Importe depositado (MXN)<input id="clubProofAmount" readonly required></label>
@@ -54,7 +54,7 @@
  <p class="club-hint">No subas el mismo depósito dos veces. La aplicación valida el OCR, los identificadores y una notificación de Titan; una captura por sí sola no confirma el pago.</p>
 </section>
 </article>
-<article class="club-card"><span class="eyebrow" id="clubRequestEyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
+<article class="club-card" id="clubReservationCard"><span class="eyebrow" id="clubRequestEyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
 <form id="clubForm" autocomplete="off">
 <div class="form-grid"><label class="wide">Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha"></label>
 <label id="clubLinkedHouse" hidden>Vivienda<input id="clubHouse" readonly placeholder="Vivienda seleccionada"></label>
@@ -81,8 +81,16 @@
 <p id="clubFeeSummary" class="club-fee-summary" role="status" hidden></p>
 <button type="button" class="soft club-payment-open" id="clubInstructionsOpen">Instrucciones de pago</button>
 <button class="primary" id="clubSubmit" type="submit" disabled>Enviar solicitud de reservación</button>
+<p id="clubMobileSubmitError" class="club-mobile-submit-error" role="alert" hidden></p>
 <p class="club-hint" id="clubFormHint">Para solicitar una fecha debes estar al corriente en mantenimiento y cuotas extraordinarias. Consulta las instrucciones de pago aquí y adjunta el comprobante en esta misma página.</p>
 </form></article></div></section>
+<dialog id="clubMobileReservationDialog" class="club-mobile-reservation-dialog" aria-labelledby="clubMobileReservationTitle">
+ <div class="club-mobile-reservation-head">
+  <div><span class="eyebrow">CASA CLUB · RESERVACIÓN</span><h2 id="clubMobileReservationTitle">Completa tu solicitud</h2>
+  <p id="clubMobileSelectedDate" class="club-mobile-selected-date" aria-live="polite"></p></div>
+  <button type="button" id="clubMobileReservationClose" class="xbtn" aria-label="Cerrar sin guardar">×</button>
+ </div>
+</dialog>
 <section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
 <section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Consulta las solicitudes y abre una reserva para revisar el pago y sus datos.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div>
 <section id="clubTariffEditor" class="club-tariff-editor" aria-labelledby="clubTariffTitle" hidden>
@@ -151,8 +159,8 @@
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
-<script src="assets/js/comprobante-parser.js?v=20261112-destinos-oficiales" defer></script>
+<script src="assets/js/comprobante-parser.js?v=20261112-ocr-fotos-moviles" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
-<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-comprobante-calendario" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-comprobante-calendario" defer></script>
+<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-ocr-fotos-moviles" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-modal-movil-ocr" defer></script>
 </body></html>

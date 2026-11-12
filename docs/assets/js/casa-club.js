@@ -143,10 +143,36 @@
    btn.disabled=Boolean(status)||past;
    btn.setAttribute('aria-label',fmt(date)+' · '+(past?'No disponible':status==='APROBADA'?'Reservada':status?'Pendiente de aprobación':'Disponible'));
    btn.textContent=n;
-   btn.addEventListener('click',()=>{selectedDate=date;$('clubDate').value=fmt(date);days.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');syncSubmit();});
+   btn.addEventListener('click',()=>{selectedDate=date;$('clubDate').value=fmt(date);days.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');syncSubmit();abrirSolicitudMovil();});
    days.append(btn);
   }
  }
+  // El mismo formulario se mueve al modal solo en teléfonos: nunca duplicar IDs.
+ const mobileReservationQuery=window.matchMedia('(max-width: 700px)');
+ const mobileReservationDialog=$('clubMobileReservationDialog');
+ const reservationCard=$('clubReservationCard');
+ const reservationAnchor=document.createComment('Posición original del formulario de Casa Club');
+ reservationCard.parentNode.insertBefore(reservationAnchor,reservationCard);
+ function situarFormulario(){
+  if(mobileReservationQuery.matches){
+   mobileReservationDialog.appendChild(reservationCard);
+   $('clubSubmit').textContent='Guardar';
+  }else{
+   if(mobileReservationDialog.open)mobileReservationDialog.close();
+   reservationAnchor.parentNode.insertBefore(reservationCard,reservationAnchor.nextSibling);
+   $('clubSubmit').textContent=admin?'Reservar':'Enviar solicitud de reservación';
+  }
+ }
+ function abrirSolicitudMovil(){
+  if(!mobileReservationQuery.matches||!selectedDate)return;
+  $('clubMobileSelectedDate').textContent='Fecha seleccionada: '+fmt(selectedDate);
+  $('clubMobileSubmitError').hidden=true;
+  mobileReservationDialog.showModal();
+ }
+ $('clubMobileReservationClose').addEventListener('click',()=>mobileReservationDialog.close());
+ if(mobileReservationQuery.addEventListener)mobileReservationQuery.addEventListener('change',situarFormulario);
+ else if(mobileReservationQuery.addListener)mobileReservationQuery.addListener(situarFormulario);
+ situarFormulario();
  function homeText(r){return r?.casa?((r.casa.calleCorrecta||r.casa.calle)+' · Casa '+r.casa.numero):'Sin vivienda';}
  function statusBadge(status){return '<span class="state-pill '+esc(status)+'">'+esc(({PENDIENTE:'Pendiente',APROBADA:'Aprobada',RECHAZADA:'Rechazada',CANCELADA:'Cancelada'})[status]||status)+'</span>';}
  // Cuenta bancaria y tarifa oficiales dentro de un modal; no enviamos WhatsApp.
@@ -170,12 +196,14 @@
  }
  $('clubForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!canSubmit())return;
+  $('clubMobileSubmitError').hidden=true;
   submitting=true;syncSubmit();
   const values={fecha:selectedDate,calle:$('clubStreet').value.trim(),numero:$('clubNumber').value.trim(),
    solicitante:$('clubName').value.trim(),telefono:$('clubPhone').value.trim(),correo:$('clubEmail').value.trim(),
    propietario:$('clubOwner').value==='SI',motivo:$('clubReason').value.trim(),aceptaReglamento:rulesAccepted};
   try{
    const result=await api(profile?'/reservas':'/publico/solicitudes','POST',values);
+   if(mobileReservationDialog.open)mobileReservationDialog.close();
    notify(result.data?.estatus==='APROBADA'?'Reserva confirmada. El pago se registra por separado.':
     'Solicitud apartada provisionalmente. Adjunta el comprobante en esta página: Titan confirmará el depósito automáticamente.');
    // El estado de pago se abre después del aviso para que el desplazamiento
@@ -184,7 +212,15 @@
    $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
    actualizarBancoPublico();
    if(admin)tab('mis-reservas');
-  }catch(err){if(!showDebtAlert(err))notify(err.message,true);}
+  }catch(err){
+   if(err.codigo==='ADEUDOS_RESERVA'){
+    if(mobileReservationDialog.open)mobileReservationDialog.close();
+    if(!showDebtAlert(err))notify(err.message,true);
+   }else if(mobileReservationDialog.open){
+    $('clubMobileSubmitError').textContent=err.message;
+    $('clubMobileSubmitError').hidden=false;
+   }else notify(err.message,true);
+  }
   finally{submitting=false;await calendar().catch(e=>notify(e.message,true));syncSubmit();}
  });
  async function mine(){
@@ -512,7 +548,7 @@
  if(admin){
   document.querySelectorAll('[data-admin]').forEach(x=>x.hidden=false);
   
-  $('clubSubmit').textContent='Reservar';
+  $('clubSubmit').textContent=mobileReservationQuery.matches?'Guardar':'Reservar';
   $('clubRequestEyebrow').textContent='RESERVACIÓN DIRECTA';
   $('clubCalendarHint').textContent='Al reservar como administrador, la fecha se confirma de inmediato. El pago se gestiona por separado.';
   $('clubFormHint').textContent='La reserva se confirma al presionar Reservar. Se mantienen las reglas de adeudos y disponibilidad.';
