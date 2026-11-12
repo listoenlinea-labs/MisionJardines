@@ -1,5 +1,5 @@
-const cuentaOficial=require('./pagos-cuenta-oficial.service');
 'use strict';
+const cuentaOficial=require('./pagos-cuenta-oficial.service');
 // Sólo lectura. El correo bancario es evidencia secundaria: la aprobación exige
 // IMAP TLS, From autorizado (sin autenticar), identificador, monto, fecha y destino.
 const {createHash}=require('node:crypto');
@@ -9,7 +9,6 @@ const idsBanco=require('./identificadores-bancarios.service');
 const normal=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
 const clave=value=>normal(value).replace(/[^A-Z0-9]/g,'');
 const centavos=value=>Math.round(Number(value||0)*100);
-const suffix=value=>String(value||'').replace(/\D/g,'').slice(-4);
 function convertirTexto(html){
  return String(html||'').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ')
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ')
