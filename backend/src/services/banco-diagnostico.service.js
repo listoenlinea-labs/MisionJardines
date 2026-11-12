@@ -3,6 +3,7 @@
 // Solo un aviso de REMITENTE AUTORIZADO y enlazado por identificador del MISMO tipo puede causar
 // un rechazo automático por discrepancia material. La falta de correo NO es prueba de fraude.
 const banco=require('./banco-correo.service');
+const cuentaOficial=require('./pagos-cuenta-oficial.service');
 const ids=require('./identificadores-bancarios.service');
 const {equivaleFechaSpei}=require('./fecha-operativa-spei.service');
 const centavos=n=>Math.round(Number(n||0)*100);
@@ -11,9 +12,8 @@ const coincideFecha=(p,a)=>Boolean(a.fecha&&(a.fecha===fecha(p)
   ||equivaleFechaSpei(fecha(p),a.fecha,p.horaOperacion)
   ||equivaleFechaSpei(a.fecha,fecha(p),p.horaOperacion)));
 const cuentaCorrecta=a=>{
- const expected=String(process.env.PAGOS_DESTINO_ULTIMOS4||'4409').replace(/\D/g,'').slice(-4);
  const got=String(a?.cuenta||'');
- return expected.length===4&&/^\d{3,4}$/.test(got)&&expected.endsWith(got);
+ return /^\d{3,4}$/.test(got)&&cuentaOficial.obtener().destinosUltimos4.some(expected=>expected.endsWith(got));
 };
 function evidencia(pago,aviso){
  return {
