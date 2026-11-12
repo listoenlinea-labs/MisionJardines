@@ -690,9 +690,10 @@
   $('clubStreetField').hidden=$('clubNumberField').hidden=true;
   $('clubStreet').required=$('clubNumber').required=false;
   fillProfile();
-  $('clubCardsToolbar').hidden=false;
-  if(admin){/* Gestión e historial de tarjetas rojas integrados como pestañas. */}
-  else{
+  // La barra inferior es exclusiva del contador de condóminos.
+  // Administración usa las dos pestañas del menú superior derecho.
+  if(!admin){
+   $('clubCardsToolbar').hidden=false;
    $('clubMyRedCards').hidden=false;
    void cargarMisRojas();
   }
