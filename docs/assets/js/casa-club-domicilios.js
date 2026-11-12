@@ -38,8 +38,18 @@
     row.setAttribute('role','option');
     row.setAttribute('aria-selected','false');
     row.textContent=valor;
-    row.addEventListener('pointerdown',e=>e.preventDefault());
-    row.addEventListener('click',()=>elegir(valor));
+    // Safari/iPhone puede emitir blur antes del click y ocultar la opción
+    // sin seleccionarla. Elegimos al primer toque, antes de perder foco.
+    let elegida=false;
+    function seleccionar(e){
+     if(elegida)return;
+     e?.preventDefault();
+     elegida=true;
+     elegir(valor);
+    }
+    row.addEventListener('pointerdown',seleccionar);
+    row.addEventListener('touchstart',seleccionar,{passive:false});
+    row.addEventListener('click',seleccionar);
     return row;
    }));
    list.hidden=false;
