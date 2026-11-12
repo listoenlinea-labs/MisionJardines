@@ -64,7 +64,8 @@ async function whatsapp(row,datos,config){
   body:JSON.stringify({messaging_product:'whatsapp',to:row.telefono,type:'template',template:{
    name:config.nombrePlantilla,language:{code:config.idioma},
    components:[{type:'body',parameters:[datos.folio,datos.fecha,
-    moneda(datos.monto)+' (recuperación '+moneda(datos.cuotaRecuperacion)+', garantía '+moneda(datos.depositoGarantia)+', limpieza '+moneda(datos.limpieza)+')',
+    moneda(datos.monto)+' (recuperación '+moneda(datos.cuotaRecuperacion)+', garantía '+moneda(datos.depositoGarantia)+', limpieza '+moneda(datos.limpieza)+')'+
+     (datos.conceptoTransferencia?' · Concepto de transferencia: '+datos.conceptoTransferencia:''),
     datos.banco,datos.cuenta,datos.titular,
     datos.fechaLimitePago,datos.correoAdministracion].map(text=>({type:'text',text}))}]
   }})
