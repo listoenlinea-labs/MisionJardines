@@ -385,31 +385,9 @@
   }
   const release=e.target.closest('[data-release]');
   if(release){const r=adminRows.find(x=>Number(x.id)===Number(release.dataset.release));if(r)void liberarReserva(r);return;}
-  const refund=e.target.closest('[data-return]');
-  if(refund){
-    const r=adminRows.find(x=>Number(x.id)===Number(refund.dataset.return));
-    if(!r)return;
-    if(!confirm('¿Confirmas cambiar el estado de devolución de la garantía de '+r.solicitante+'?'))return;
-    refund.disabled=true;
-    try{await api('/administracion/'+Number(r.id),'PATCH',{accion:'GARANTIA',garantiaDevuelta:!r.garantiaDevuelta});notify('Estado de garantía actualizado.');await adminList();}
-    catch(err){notify(err.message,true);}
-    finally{refund.disabled=false;}
-    return;
-  }
-  const b=e.target.closest('[data-paid]');
-  if(!b){
-   const row=e.target.closest('[data-reserva]'),r=adminRows.find(x=>Number(x.id)===Number(row?.dataset.reserva));
-   if(r)editReview(r);
-   return;
-  }
-  const r=adminRows.find(x=>Number(x.id)===Number(b.dataset.paid));if(!r)return;
-  const folio=prompt('Folio de pago verificado (puede quedar vacío):',r.folio||'');if(folio===null)return;
-  const ok=confirm('¿Confirmas que verificaste este pago en la cuenta bancaria? Se guardará como pago manual conciliado.');
-  if(!ok)return;
-  b.disabled=true;
-  try{await api('/administracion/'+Number(r.id),'PATCH',{accion:'PAGO',pagado:true,folio});notify('Movimiento registrado.');await adminList();}
-  catch(err){notify(err.message,true);}
-  finally{b.disabled=false;}
+  const row=e.target.closest('[data-reserva]');
+  const reserva=adminRows.find(x=>Number(x.id)===Number(row?.dataset.reserva));
+  if(reserva)editReview(reserva);
  });
  $('refreshMine').addEventListener('click',mine);
  $('refreshAdmin').addEventListener('click',adminList);$('refreshReview').addEventListener('click',adminList);
