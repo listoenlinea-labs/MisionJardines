@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-rojas-tabs">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-mobile-enviar">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -25,6 +25,10 @@
 <div class="weekdays"><b>L</b><b>M</b><b>M</b><b>J</b><b>V</b><b>S</b><b>D</b></div>
 <div id="calendarDays" class="calendar-days" role="group" aria-label="Calendario de disponibilidad"></div>
 <p class="club-hint" id="clubCalendarHint">Elige una fecha y completa la solicitud. Recibirás por correo un enlace privado para subir el comprobante exclusivamente a esa vivienda y fecha.</p>
+<div id="clubMobileSubmitArea" class="club-mobile-submit-area" hidden>
+ <button type="button" id="clubMobileSendRequest" class="primary" disabled>Enviar solicitud de reservación</button>
+ <p id="clubMobileSavedStatus" role="status" aria-live="polite">Selecciona una fecha y guarda los datos de la reservación para enviar tu solicitud.</p>
+</div>
 <section id="clubPrivateReservationSummary" class="club-private-reservation-summary" aria-labelledby="clubPrivateReservationTitle" hidden>
  <span class="eyebrow">ACCESO EXCLUSIVO DESDE TU CORREO</span>
  <h2 id="clubPrivateReservationTitle">Tu reservación pendiente</h2>
@@ -234,5 +238,5 @@
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
 <script src="assets/js/casa-club-rojas-admin.js?v=20261112" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-rojas-tabs" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-mobile-enviar" defer></script>
 </body></html>
