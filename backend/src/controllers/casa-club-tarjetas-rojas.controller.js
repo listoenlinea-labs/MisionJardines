@@ -80,8 +80,12 @@ async function vivienda(req,res){
   const casa=await Casa.findByPk(casaId,{attributes:['id','calle','calleCorrecta','numero']});
   if(!casa)return res.status(404).json({ok:false,message:'Vivienda no encontrada'});
   res.setHeader('Cache-Control','private, no-store');
+  const detalle=await service.obtener(casa.id,{historial:true});
+  const seguro=rolAdmin(req)?detalle:{...detalle,tarjetas:detalle.tarjetas.map(t=>({
+   id:t.id,activa:t.activa,asignadaEn:t.asignadaEn
+  }))};
   return res.json({ok:true,data:{casa:{id:Number(casa.id),calle:casa.calleCorrecta||casa.calle,numero:casa.numero},
-   ...(await service.obtener(casa.id,{historial:true}))}});
+   ...seguro}});
  }catch(e){return fallo(res,e);}
 }
 async function agregar(req,res){
