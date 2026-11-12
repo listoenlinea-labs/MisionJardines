@@ -9,16 +9,56 @@
  const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  let profile=null,admin=false;
  let currentMonth=today().slice(0,7),selectedDate='',occupied=new Map(),adminRows=[],activeReview=null;
- let calendarRequest=0,submitting=false,calendarReady=false;
+ let calendarRequest=0,submitting=false,calendarReady=false,rulesAccepted=false;
  const tomorrow=()=>new Date(Date.parse(today()+'T12:00:00Z')+86400000).toISOString().slice(0,10);
  const lastDay=()=>new Date(Date.parse(today()+'T12:00:00Z')+365*86400000).toISOString().slice(0,10);
  const whatsappValido=value=>/^(?:52)?[0-9]{10}$/.test(value.replace(/[\s()+-]/g,''));
- const canSubmit=()=>!submitting&&calendarReady&&Boolean(selectedDate)&&!(profile&&!profile.casa)
+ const canSubmit=()=>!submitting&&calendarReady&&rulesAccepted&&Boolean(selectedDate)&&!(profile&&!profile.casa)
   &&(admin||(whatsappValido($('clubPhone').value)&&$('clubOptIn').checked));
  const syncSubmit=()=>{$('clubSubmit').disabled=!canSubmit();};
  $('clubPhone').addEventListener('input',syncSubmit);
  $('clubPhone').addEventListener('change',syncSubmit);
  $('clubOptIn').addEventListener('change',syncSubmit);
+ const rulesDialog=$('clubRulesDialog'),rulesScroll=$('clubRulesScroll'),rulesConfirm=$('clubRulesConfirm');
+ let rulesReady=false,openedRules=false;
+ function actualizarAceptacionReglamento(){
+  $('clubRulesAcceptedStatus').textContent=rulesAccepted
+   ?'Reglamento leído y aceptado. Puedes continuar con tu reservación.'
+   :'Pendiente de lectura y aceptación.';
+  $('clubRulesAcceptedStatus').classList.toggle('accepted',rulesAccepted);
+  $('clubOpenRules').textContent=rulesAccepted?'Volver a consultar reglamento':'Leer reglamento y términos';
+  syncSubmit();
+ }
+ function scrollReglamento(){
+  const final=rulesReady&&openedRules&&rulesScroll.scrollTop+rulesScroll.clientHeight>=rulesScroll.scrollHeight-28;
+  rulesConfirm.disabled=!final;
+  $('clubRulesHint').textContent=final
+   ?'Ya llegaste al final. Confirma que conoces y aceptas todas las disposiciones.'
+   :'Desplázate hasta el final del reglamento completo para habilitar la aceptación.';
+ }
+ async function abrirReglamento(){
+  rulesConfirm.disabled=true;openedRules=true;rulesDialog.showModal();
+  if(!rulesReady){
+   try{
+    const response=await fetch('reglamento-casa-club.html',{cache:'no-store'});
+    if(!response.ok)throw Error('El reglamento no se pudo cargar.');
+    const doc=new DOMParser().parseFromString(await response.text(),'text/html');
+    const article=doc.querySelector('#reglamentoContenido');
+    if(!article)throw Error('El reglamento completo no está disponible.');
+    $('clubRulesContent').replaceChildren(article);
+    rulesReady=true;
+   }catch(e){$('clubRulesContent').textContent='No se pudo cargar el reglamento: '+e.message+'. No se puede reservar sin leerlo.';}
+  }
+  rulesScroll.scrollTop=0;scrollReglamento();
+ }
+ $('clubOpenRules').addEventListener('click',()=>void abrirReglamento());
+ $('clubRulesClose').addEventListener('click',()=>rulesDialog.close());
+ rulesScroll.addEventListener('scroll',scrollReglamento,{passive:true});
+ rulesConfirm.addEventListener('click',()=>{
+  if(rulesConfirm.disabled||!rulesReady)return;
+  rulesAccepted=true;actualizarAceptacionReglamento();rulesDialog.close();
+ });
+ actualizarAceptacionReglamento();
  const headers=(json=false)=>({Authorization:'Bearer '+token,...(sessionStorage.getItem('mjCasaSeleccionada')?{'X-Casa-Id':sessionStorage.getItem('mjCasaSeleccionada')}:{}) ,...(json?{'Content-Type':'application/json'}:{})});
  async function api(path,method='GET',body){
   const publico=path.startsWith('/publico/');
@@ -120,7 +160,7 @@
    ['Banco y cuenta/CLABE',p.banco+' · '+p.cuenta],
    ['Titular',p.titular],
    ['Fecha límite de pago',fmt(p.fechaLimitePago)+' (hora de Guadalajara)'],
-   ['Comprobante','Sube tu comprobante en Pagos → Casa Club con la reserva '+p.folio+'. Titan aprobará automáticamente la fecha tras confirmar el depósito.']
+   ['Comprobante','Puedes subirlo desde esta misma página sin iniciar sesión. Titan confirmará automáticamente el depósito cuando exista evidencia bancaria coincidente.']
   ];
   const h=document.createElement('strong');h.textContent='Instrucciones de depósito';host.append(h);
   for(const [nombre,valor] of rows){const line=document.createElement('p');line.textContent=nombre+': '+valor;host.append(line);}
@@ -130,13 +170,11 @@
   if(Number.isSafeInteger(Number(result.id))&&Number(result.id)>0){
    const action=document.createElement('a');
    action.className='primary club-upload-link';
-   action.href='pagos.html?tab=CASA_CLUB&reserva='+Number(result.id);
-   action.textContent=profile?'Subir comprobante y confirmar fecha':'Inicia sesión para subir tu comprobante';
+   action.href=result.pago.enlaceCarga||'pagos.html?tab=CASA_CLUB&reserva='+Number(result.id);
+   action.textContent='Subir comprobante aquí y consultar la verificación';
    host.append(action);
-   if(!profile){
-    const note=document.createElement('p');
-    note.textContent='Para usar la validación automática necesitas una cuenta vinculada a esta vivienda. Solicita acceso a Administración si no lo tienes.';
-    host.append(note);
+   if(result.pago.enlaceCarga&&window.MJClubPublicProof){
+    window.MJClubPublicProof.open(result.pago.enlaceCarga);
    }
   }
   host.hidden=false;
@@ -146,13 +184,13 @@
   submitting=true;syncSubmit();
   const values={fecha:selectedDate,calle:$('clubStreet').value.trim(),numero:$('clubNumber').value.trim(),
    solicitante:$('clubName').value.trim(),telefono:$('clubPhone').value.trim(),correo:$('clubEmail').value.trim(),
-   propietario:$('clubOwner').value==='SI',motivo:$('clubReason').value.trim(),aceptaWhatsApp:$('clubOptIn').checked};
+   propietario:$('clubOwner').value==='SI',motivo:$('clubReason').value.trim(),aceptaWhatsApp:$('clubOptIn').checked,aceptaReglamento:rulesAccepted};
   try{
    const result=await api(profile?'/reservas':'/publico/solicitudes','POST',values);
    if(result.data?.pago)showPayment(result.data);
    notify(result.data?.estatus==='APROBADA'?'Reserva confirmada. El pago se registra por separado.':
-    'Fecha apartada. Sube el comprobante en Pagos para aprobación automática por Titan; sin pago, Administración podrá revisar la solicitud.');
-   $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();
+    'Solicitud apartada provisionalmente. Adjunta el comprobante en esta página: Titan confirmará el depósito automáticamente.');
+   $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
    if(admin)tab('mis-reservas');
   }catch(err){if(!showDebtAlert(err))notify(err.message,true);}
   finally{submitting=false;await calendar().catch(e=>notify(e.message,true));syncSubmit();}
