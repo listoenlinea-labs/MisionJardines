@@ -76,11 +76,11 @@ async function agregar(casaId,motivo,usuarioId){
   await Tarjeta.create({casaId:id,motivo:nota,asignadaPor:actor,asignadaEn:new Date()},{transaction});
   const vigentes=anteriores+1;
   const fecha=diaMexico();
+  const config=vigentes>UMBRAL?await configuracion({transaction}):null;
   let sancion=await Sancion.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
   const bloqueoVigente=sancion?.bloqueadoHasta&&sancion.bloqueadoHasta>=fecha;
   if(vigentes>UMBRAL&&!bloqueoVigente){
-   const c=await configuracion({transaction});
-   const valores={bloqueadoDesde:fecha,bloqueadoHasta:sumarAnios(fecha,c.aniosBloqueo),actualizadoEn:new Date()};
+   const valores={bloqueadoDesde:fecha,bloqueadoHasta:sumarAnios(fecha,config.aniosBloqueo),actualizadoEn:new Date()};
    if(sancion)await sancion.update(valores,{transaction});
    else sancion=await Sancion.create({casaId:id,...valores},{transaction});
   }
