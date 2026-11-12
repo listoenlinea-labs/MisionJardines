@@ -25,6 +25,7 @@ const { verificarPosibilidad } = require('../services/verificar-comprobante-iden
 const repartoService=require('../services/pagos-reparto.service');
 const BASE_MANTENIMIENTO = 300;
 const {tarifaParaCasa}=require('../services/tarifa-mantenimiento.service');
+const cuentaOficial=require('../services/pagos-cuenta-oficial.service');
 const RECARGO_TARDIO = 50;
 const DIA_LIMITE = 10;
 function nombreCompleto(usuario) {
@@ -86,13 +87,7 @@ async function obtenerConfiguracion(req, res) {
     return res.json({
         ok: true,
         data: {
-            banco: process.env.PAGOS_BANCO || 'BANCO AZTECA',
-            titular: process.env.PAGOS_TITULAR || 'MARIA DEL ROCIO BAHENA JUAREZ',
-            cuenta: process.env.PAGOS_CUENTA || '00002128412440',
-            clabe: process.env.PAGOS_CLABE || '127320021284124409',
-            destinoUltimos4: process.env.PAGOS_DESTINO_ULTIMOS4 || '4409',
-            tarjeta: datoTransferencia(process.env.PAGOS_TARJETA, '4027666123124884'),
-            referencia: process.env.PAGOS_REFERENCIA || 'NOMBRE DE CALLE Y NUMERO DE CASA',
+            ...cuentaOficial.obtener(),
             mantenimiento: {
                 montoBase: casa?tarifaParaCasa(casa):BASE_MANTENIMIENTO,
                 diaLimite: DIA_LIMITE,

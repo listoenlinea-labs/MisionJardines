@@ -13,6 +13,7 @@ router.post('/publico/solicitudes',limiteSolicitudes,club.solicitar);
 // Acceso con secreto de 256 bits ligado a una única reservación; no usa login.
 // Reutiliza OCR, folio, deduplicación y worker Titan de /api/pagos.
 const comprobante=require('../controllers/casa-club-publico-comprobante.controller');
+router.get('/publico/cuenta',comprobante.cuenta);
 const limiteComprobante=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:true,legacyHeaders:false,
  message:{ok:false,message:'Demasiados intentos de comprobante. Intenta más tarde.'}});
 const limiteConsulta=rateLimit({windowMs:60*1000,limit:20,standardHeaders:true,legacyHeaders:false,

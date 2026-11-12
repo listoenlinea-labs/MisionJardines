@@ -6,8 +6,17 @@ const acceso=require('../services/casa-club-acceso-publico.service');
 const Pago=require('../models/PagoReportado');
 const pagoController=require('./pagos.controller');
 const reintentos=require('../services/pagos-reintento-validacion.service');
+const cuentaOficial=require('../services/pagos-cuenta-oficial.service');
+const {Casa}=require('../models');
 
 const noCache=res=>res.setHeader('Cache-Control','private, no-store');
+function cuenta(_req,res){
+ noCache(res);
+ // Solo datos de la cuenta receptora publicados para transferencias; sin
+ // información de residentes ni vínculos con reservas.
+ return res.json({ok:true,data:cuentaOficial.obtener()});
+}
+
 function fallo(res,e){
  if(!e.status)console.error('[Casa Club][Comprobante público]',e);
  return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No se pudo completar la verificación'});
@@ -45,6 +54,7 @@ async function estado(req,res){
  try{
   const reserva=await leerReserva(req);
   const pago=await ultimoComprobante(reserva);
+  const vivienda=reserva.casaId?await Casa.findByPk(reserva.casaId,{attributes:['calle','calleCorrecta','numero']}):null;
   const revision=typeof pago?.verificacionBancaria==='string'
    ?JSON.parse(pago.verificacionBancaria||'{}'):pago?.verificacionBancaria||{};
   noCache(res);
@@ -52,9 +62,12 @@ async function estado(req,res){
   return res.json({ok:true,data:{
    reservaId:reserva.id,fecha:reserva.fecha,estatusReserva:reserva.estatus,
    pagado:Boolean(reserva.pagado),
+   datosTransferencia:cuentaOficial.obtener(),
+   conceptoTransferencia:cuentaOficial.conceptoVivienda(vivienda),
    total:Number(reserva.cuotaRecuperacion)+Number(reserva.depositoGarantia)+Number(reserva.limpieza),
    destinatario:process.env.PAGOS_TITULAR||'MARIA DEL ROCIO BAHENA JUAREZ',
-   terminacionCuenta:process.env.PAGOS_DESTINO_ULTIMOS4||'4409',
+   terminacionCuenta:cuentaOficial.obtener().destinoUltimos4,
+    terminacionesCuenta:cuentaOficial.obtener().destinosUltimos4,
    comprobante:pago?{
     estado:pago.estatus,
     etapa:String(revision.etapa||'RECIBIDO').slice(0,80),
@@ -90,4 +103,4 @@ async function descargarRecibo(req,res){
   return res.send(pago.reciboPdfData);
  }catch(e){return fallo(res,e);}
 }
-module.exports={reportar,estado,reintentar,descargarRecibo};
+module.exports={cuenta,reportar,estado,reintentar,descargarRecibo};

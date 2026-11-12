@@ -23,6 +23,8 @@
    input.value=valor;
    cerrar();
    onChange?.();
+   // Dispara cambio solo cuando el visitante selecciona una opción del LOV.
+   input.dispatchEvent(new Event('change',{bubbles:true}));
   }
   function mostrar(){
    cerrar();
