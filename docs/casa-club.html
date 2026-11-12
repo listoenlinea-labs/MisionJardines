@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-tarjetas-rojas">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-errores-modal">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -71,7 +71,7 @@
 </section>
 </article>
 <article class="club-card" id="clubReservationCard"><span class="eyebrow" id="clubRequestEyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
-<form id="clubForm" autocomplete="off">
+<form id="clubForm" autocomplete="off" novalidate>
 <div class="form-grid"><label class="wide">Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha"></label>
 <label id="clubLinkedHouse" hidden>Vivienda<input id="clubHouse" readonly placeholder="Vivienda seleccionada"></label>
 <div class="club-address-field" id="clubStreetField"><label for="clubStreet">Calle de tu vivienda</label>
@@ -150,6 +150,16 @@
  <div class="club-rules-reading" id="clubRulesScroll" tabindex="0" aria-label="Contenido completo del reglamento"><div id="clubRulesContent"><p>Cargando reglamento…</p></div></div>
  <div class="club-rules-dialog-footer"><a href="reglamento-casa-club.html" target="_blank" rel="noopener">Abrir reglamento completo en otra pestaña</a><p id="clubRulesHint" role="status">Desplázate hasta el final del documento para habilitar la aceptación.</p><button type="button" class="primary" id="clubRulesConfirm" disabled>He leído y acepto el reglamento</button></div>
 </dialog>
+<dialog id="clubErrorDialog" class="club-dialog club-error-dialog" aria-labelledby="clubErrorTitle" aria-describedby="clubErrorMessage">
+ <div class="dialog-head">
+  <div><span class="eyebrow">RESERVACIONES · AVISO IMPORTANTE</span><h2 id="clubErrorTitle">No se pudo registrar la solicitud</h2></div>
+  <button type="button" id="closeClubError" class="xbtn" aria-label="Cerrar aviso">×</button>
+ </div>
+ <p id="clubErrorMessage" role="alert"></p>
+ <ul id="clubErrorFields" class="club-error-fields" hidden></ul>
+ <p id="clubErrorAction" class="club-error-action" hidden></p>
+ <div class="club-error-actions"><button type="button" id="ackClubError" class="primary">Entendido</button></div>
+</dialog>
 <dialog id="clubDebtModal" class="club-dialog club-debt-dialog" aria-labelledby="clubDebtTitle" aria-describedby="clubDebtExplanation">
  <div class="dialog-head"><div><span class="eyebrow">PAGOS PENDIENTES</span><h2 id="clubDebtTitle">Antes de reservar Casa club</h2></div><button type="button" id="closeClubDebt" class="xbtn" aria-label="Cerrar alerta de adeudos">×</button></div>
  <p id="clubDebtExplanation" class="club-debt-explanation">Para solicitar una fecha necesitas estar al corriente únicamente en mantenimiento.</p>
@@ -187,5 +197,5 @@
 <script src="assets/js/comprobante-parser.js?v=20261112-ocr-flexible" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-tarjetas-rojas" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-errores-modal" defer></script>
 </body></html>

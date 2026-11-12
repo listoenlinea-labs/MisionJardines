@@ -25,9 +25,17 @@ const reservaSegura=row=>{const data=row.toJSON();delete data.tokenPagoPublicoHa
 const hoy=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const texto=(v,n=160)=>String(v||'').trim().slice(0,n);
 const fechaValida=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!Number.isNaN(Date.parse(String(v)+'T12:00:00Z'))&&new Date(String(v)+'T12:00:00Z').toISOString().slice(0,10)===v;
-function manejar(res,e){if(!e.status)console.error('[casa-club]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No se pudo completar la operación',
- ...(e.codigo==='ADEUDOS_RESERVA'?{codigo:e.codigo,adeudos:e.adeudos}:{}),
- ...(e.codigo==='TARJETAS_ROJAS'?{codigo:e.codigo,tarjetas:e.tarjetas}:{})});}
+function manejar(res,e){
+ if(!e.status)console.error('[casa-club]',e);
+ return res.status(e.status||503).json({ok:false,
+  message:e.status?e.message:'No se pudo completar la operación. Intenta nuevamente; si continúa, contacta a Administración.',
+  codigo:e.codigo||(e.status===503?'SERVICIO_NO_DISPONIBLE':'ERROR_RESERVA'),
+  ...(Array.isArray(e.campos)&&e.campos.length?{campos:e.campos}:{}),
+  ...(e.accion?{accion:e.accion}:{}),
+  ...(e.codigo==='ADEUDOS_RESERVA'?{adeudos:e.adeudos}:{}),
+  ...(e.codigo==='TARJETAS_ROJAS'?{tarjetas:e.tarjetas}:{})
+ });
+}
 async function revisarElegibilidad(casaId){
  const saldo=evaluarElegibilidadReserva(await consultarSoloMantenimiento(casaId));
  if(!saldo.puedeReservar)throw error(409,'No puedes reservar Casa club: tienes adeudos por '+saldo.total.toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
@@ -97,14 +105,16 @@ async function mias(req,res){
 }
 async function crear(req,res){
  const body=req.body||{};
- if(body.aceptaReglamento!==true)return res.status(400).json({ok:false,message:'Debes leer y aceptar el reglamento de Casa Club antes de reservar.'});
+ if(body.aceptaReglamento!==true)return manejar(res,error(400,'Lee y acepta el reglamento de Casa Club antes de reservar.',{codigo:'REGLAMENTO_PENDIENTE',campos:['reglamento'],accion:'Lee el reglamento de la pantalla principal y confírmalo.'}));
  const fecha=texto(body.fecha,10),solicitante=texto(body.solicitante,180),telefono=texto(body.telefono,25),correo=texto(body.correo,150),motivo=texto(body.motivo,200);
  const casaId=Number(body.casaId||req.usuario.casaId),reservaDirecta=admin(req.usuario.rol);
- if(!fechaValida(fecha)||fecha<hoy())return res.status(400).json({ok:false,message:'Selecciona una fecha válida, desde hoy en adelante'});
- if(!solicitante||!telefono||!/^\S+@\S+\.\S+$/.test(correo)||!motivo)return res.status(400).json({ok:false,message:'Completa solicitante, teléfono, correo y motivo'});
+ if(!fechaValida(fecha)||fecha<hoy())return manejar(res,error(400,'Selecciona una fecha válida en el calendario.',{codigo:'FECHA_INVALIDA',campos:['fecha']}));
+ if(!solicitante||!telefono||!/\S+@\S+\.\S+/.test(correo)||!motivo)
+ return manejar(res,error(400,'Revisa los datos obligatorios de la solicitud.',{codigo:'CAMPOS_INVALIDOS',
+ campos:[...(!solicitante?['solicitante']:[]),...(!telefono?['telefono']:[]),...(!/\S+@\S+\.\S+/.test(correo)?['correo']:[]),...(!motivo?['motivo']:[])]}));
  if(!reservaDirecta&&!avisos.whatsappMexico(telefono))
   return res.status(400).json({ok:false,message:'Indica un teléfono de contacto válido.'});
- if(!Number.isSafeInteger(casaId)||casaId<=0)return res.status(400).json({ok:false,message:'Selecciona tu vivienda antes de reservar'});
+ if(!Number.isSafeInteger(casaId)||casaId<=0)return manejar(res,error(400,'Selecciona tu vivienda antes de reservar.',{codigo:'VIVIENDA_INVALIDA',campos:['calle','numero']}));
  try{
   await expirarReservas();
   const house=await Casa.findByPk(casaId);
@@ -129,7 +139,7 @@ async function crear(req,res){
   return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus},
    message:reservaDirecta?'Reserva confirmada. El pago se registra por separado; no está marcado como pagado.':
     'Solicitud enviada. Administración puede aprobar la fecha o el depósito validado por Titan puede confirmarla automáticamente.'});
- }catch(e){if(e.name==='SequelizeUniqueConstraintError')return res.status(409).json({ok:false,message:'Esta fecha ya está ocupada o pendiente de aprobación'});return manejar(res,e);}
+ }catch(e){if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'La fecha elegida ya está ocupada o apartada. Selecciona otra.',{codigo:'FECHA_OCUPADA',campos:['fecha']}));return manejar(res,e);}
 }
 // La ruta pública no acepta identidad, estado, importe ni plazo del cliente.
 async function solicitar(req,res){
@@ -140,16 +150,17 @@ async function solicitar(req,res){
  const hoySolicitud=hoy();
  if(typeof fecha!=='string'||!fechaValida(fecha)||fecha<=hoySolicitud||
     Date.parse(fecha)-Date.parse(hoySolicitud)>365*86400000)
-  return manejar(res,error(400,'Elige una fecha entre mañana y los próximos 365 días.'));
- if(body.aceptaReglamento!==true)return manejar(res,error(400,'Debes leer y aceptar el reglamento de Casa Club antes de solicitar.'));
+  return manejar(res,error(400,'Elige una fecha entre mañana y los próximos 365 días.',{codigo:'FECHA_INVALIDA',campos:['fecha']}));
+ if(body.aceptaReglamento!==true)return manejar(res,error(400,'Debes leer y aceptar el reglamento de Casa Club antes de solicitar.',{codigo:'REGLAMENTO_PENDIENTE',campos:['reglamento']}));
  if(!solicitante||!telefono||!avisos.emailValido(correo)||!motivo)
-  return manejar(res,error(400,'Completa nombre, teléfono de contacto, correo y motivo.'));
- if(!usuario&&(!calle||!numero))return manejar(res,error(400,'Indica la calle y el número de tu vivienda.'));
+  return manejar(res,error(400,'Revisa los campos obligatorios: nombre, teléfono, correo y motivo del evento.',{codigo:'CAMPOS_INVALIDOS',
+   campos:[...(!solicitante?['solicitante']:[]),...(!telefono?['telefono']:[]),...(!avisos.emailValido(correo)?['correo']:[]),...(!motivo?['motivo']:[])]}));
+ if(!usuario&&(!calle||!numero))return manejar(res,error(400,'Indica la calle y el número de tu vivienda.',{codigo:'VIVIENDA_INVALIDA',campos:[...(!calle?['calle']:[]),...(!numero?['numero']:[])]}));
  try{
   const config=avisos.configuracion();
   const importes=await tarifas.obtener();
   const clavePublica=accesoPublico.crear();
-  const noElegible=()=>error(409,'No se pudo solicitar la reserva para esa vivienda. Verifica tus datos y el estado de mantenimiento, o contacta a Administración.');
+  const noElegible=()=>error(409,'No podemos verificar esta vivienda o tiene restricciones para reservar. Revisa calle y número; si los datos son correctos, consulta a Administración.',{codigo:'VIVIENDA_NO_ELEGIBLE',campos:['calle','numero']});
   let casaId;
   if(usuario){
    casaId=Number(usuario.casaId);
@@ -172,9 +183,11 @@ async function solicitar(req,res){
    // Revalidar tras bloquear la vivienda evita carreras con una cuarta tarjeta
    // asignada por Seguridad mientras el usuario completa la solicitud.
    await tarjetasRojas.exigirDisponible(casaId,{transaction});
-   const anterior=await Reserva.findOne({where:{casaId,estatus:'PENDIENTE',
-    fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
-   if(anterior)throw error(409,usuario?'Ya tienes una solicitud de Casa Club en revisión.':noElegible().message);
+   const anterior=await Reserva.findOne({where:{casaId,estatus:'PENDIENTE',pagado:false,
+    fechaBloqueada:{[Op.ne]:null},fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
+   if(anterior)throw error(409,'Esta vivienda ya tiene una reservación pendiente de pago o verificación. No puedes registrar otra hasta que se confirme, cancele o rechace la anterior.',{
+    codigo:'RESERVA_PREVIA_PENDIENTE',accion:'Revisa el enlace de pago enviado al correo de la solicitud anterior o pide a Administración que la cancele o rechace. Después podrás elegir otra fecha.'
+   });
    return Reserva.create({usuarioId:usuario?.usuarioId??null,casaId,fecha,fechaBloqueada:fecha,solicitante,telefono,correo,motivo,
     propietario:body.propietario===true,
     reglamentoVersion:accesoPublico.REGLAMENTO_VERSION,reglamentoAceptadoEn:new Date(),
@@ -189,7 +202,7 @@ async function solicitar(req,res){
   return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus:'PENDIENTE',pago,notificaciones},
    message:'Solicitud recibida. Titan aprobará automáticamente el depósito cuando exista una coincidencia bancaria completa.'});
  }catch(e){
-  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'Esta fecha ya está apartada. Elige otra.'));
+  if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'La fecha elegida ya está ocupada o apartada. Selecciona otra disponible.',{codigo:'FECHA_OCUPADA',campos:['fecha']}));
   return manejar(res,e);
  }
 }
@@ -201,9 +214,13 @@ async function cancelar(req,res){
    if(!row||(!admin(req.usuario.rol)&&String(row.usuarioId)!==String(req.usuario.usuarioId)))throw error(404,'Reserva no encontrada');
    if(!['PENDIENTE','APROBADA'].includes(row.estatus))throw error(409,'No se puede cancelar esta reserva');
    const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:'PENDIENTE_VALIDACION'},transaction});
-   if(enRevision)throw error(409,'El comprobante está en revisión bancaria. Espera el resultado antes de cancelar o consulta a Administración.');
+   if(enRevision&&!admin(req.usuario.rol))throw error(409,'El comprobante está en revisión bancaria. Solicita a Administración la cancelación para liberar la vivienda.');
    if(row.fecha<hoy()&&!admin(req.usuario.rol))throw error(409,'Consulta a Administración para cancelar una fecha pasada');
-   await row.update({estatus:'CANCELADA',fechaBloqueada:null,actualizadoEn:new Date(),notas:row.pagado?(texto(row.notas||'',480)+' | Cancelación: revisar devolución con administración').trim():row.notas},{transaction});
+   const nota=[texto(row.notas||'',340),
+    row.pagado?'Cancelación: revisar devolución bancaria':'',
+    enRevision?'Cancelación administrativa con comprobante todavía en revisión: conciliar abono y eventual devolución':''
+   ].filter(Boolean).join(' | ').slice(0,600);
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,actualizadoEn:new Date(),notas:nota},{transaction});
   });
   return res.json({ok:true,message:'Reserva cancelada. Si había pagos, Administración debe revisar cualquier devolución.'});
  }catch(e){return manejar(res,e);}
@@ -259,9 +276,13 @@ async function revisar(req,res){
    if(['APROBAR','RECHAZAR'].includes(action)){
     if(row.estatus!=='PENDIENTE')throw error(409,'La solicitud ya no está pendiente');
     if(action==='RECHAZAR'){
-     const pendientes=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},transaction});
-     if(pendientes)throw error(409,'Existe un comprobante en revisión. Resuelve la conciliación antes de rechazar la solicitud.');
-     await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:texto(req.body.notas,600),
+     // Rechazar libera inmediatamente fecha y vivienda. Guardamos una advertencia
+     // si Titan todavía está procesando el comprobante.
+     const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,
+      estatus:'PENDIENTE_VALIDACION'},transaction});
+     const nota=[texto(req.body.notas,350),enRevision?
+      'Rechazo con comprobante en revisión: conciliar depósito y posible devolución':''].filter(Boolean).join(' | ').slice(0,600);
+     await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:nota,
       revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
      return;
     }
@@ -326,20 +347,23 @@ async function liberar(req,res){
    if(!row)throw error(404,'Reserva no encontrada');
    if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
    const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:'PENDIENTE_VALIDACION'},transaction});
-   if(enRevision)throw error(409,'Hay un comprobante pendiente de validación bancaria. Resuélvelo antes de liberar esta fecha.');
-   const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
+   // Se conservan pruebas bancarias y la alerta de revisión, aun tras liberar.
+   const pago=Boolean(row.pagado),nota=[
+    texto(row.notas,290),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo,
+    enRevision?'Había comprobante en revisión: revisar si ingresó dinero y corresponde devolución':''
+   ].filter(Boolean).join(' | ').slice(0,600);
    await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
     revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
-   return {id:row.id,correo:row.correo,fecha:row.fecha,pago};
+   return {id:row.id,correo:row.correo,fecha:row.fecha,pago,enRevision:Boolean(enRevision)};
   });
   let avisoCorreo=false;
   try{await require('../services/email.service').enviarAvisoCasaClub({
    destinatario:data.correo,asunto:'Casa Club · Reserva CC-'+data.id+' cancelada',
    texto:'Administración canceló tu reserva para el '+data.fecha+'.\nMotivo: '+motivo+
-    (data.pago?'\nSi realizaste un pago, contacta a Administración para conciliar cualquier devolución.':'')
+    (data.pago||data.enRevision?'\nSi realizaste un pago, contacta a Administración para conciliar el depósito y una posible devolución.':'')
   });avisoCorreo=true;}catch(e){console.warn('[casa-club] Reserva cancelada; correo no confirmado:',e.message);}
-  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago,avisoCorreo,
-   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría.'});
+  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago||data.enRevision,avisoCorreo,
+   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría; si hubo depósito o comprobante en revisión, Administración deberá conciliarlo.'});
  }catch(e){return manejar(res,e);}
 }
 // Administración puede revisar todo el expediente sin exponer archivos a residentes.
