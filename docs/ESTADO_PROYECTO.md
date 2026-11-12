@@ -1,23 +1,86 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 10/nov/2026, 23:31, America/Mexico_City.
-**SHA de main consultado:** `5be37dc0f0e77657b698f4c8eea0bb6b56d88e87`.
+**Última revisión:** 11/nov/2026, 23:27, America/Mexico_City.
+**SHA de main consultado:** `4458a7b9b6720ff0cfd2954551d8fa9d2855a143`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `870b6f934bfc5f38b568c09e351b0b996572e875`,
-historial de 45 commits, PR #373–#381, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `3709fd2b70ac67b8564360067b0057c8d3029918`, dedicado exclusivamente
-a la bitácora anterior. Los nueve PR de producto están fusionados y no hay PR abiertos
-ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
-descritas en los PR son dirigidas, simuladas o estáticas y no se presentan como CI.
-Las vistas previas efímeras de Hostinger se eliminaron al cerrar los PR y no acreditan
-despliegue del portal principal. No se consultaron Hostinger, MySQL o C3 directamente,
-no se hicieron reservas, confirmaciones de pago, envíos, controles físicos o pruebas
-en sitio y no se publican credenciales, teléfonos o datos privados del padrón.
+comparación de main desde `5be37dc0f0e77657b698f4c8eea0bb6b56d88e87`,
+historial de 114 commits, PR #382–#396, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `d15903d651af509eb5917440721395b754aed9f3`, dedicado exclusivamente
+a la bitácora anterior. Los quince PR de producto están fusionados y no hay PR abiertos
+ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; los resultados
+locales declarados se conservan como evidencia limitada y no se presentan como CI.
+Las vistas previas efímeras de Hostinger se eliminan al cerrar los PR y no acreditan
+despliegue del portal principal. No se consultaron Hostinger, MySQL, Titan o C3
+directamente, no se hicieron pagos, reservas, importaciones, envíos ni pruebas físicas,
+y no se publican credenciales, contactos ni datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 11/nov/2026
+
+El PR [#382](https://github.com/listoenlinea-labs/MisionJardines/pull/382)
+restringe el rol CONDOMINO a Pagos y Casa Club en frontend/backend, renueva caché de
+permisos, compacta formularios y pestañas ZKTeco, excluye viviendas de prueba del
+padrón de Inicio y agrega tarifas configurables para nuevas reservas de Casa Club con
+total fijo de $2,000, cancelación auditada y desglose en avisos. Las reservas históricas
+conservan sus importes. Requiere desplegar frontend/backend, crear o verificar
+`casa_club_tarifas` y probar permisos, navegador, SMTP y WhatsApp; no se aplicó SQL ni
+se confirmó una reserva o aviso real.
+
+Los PR [#383](https://github.com/listoenlinea-labs/MisionJardines/pull/383)–[#384](https://github.com/listoenlinea-labs/MisionJardines/pull/384)
+muestran únicamente la vivienda de laboratorio TEST-001 en Análisis y ZKTeco para
+administradores, sin sumarla a las 231 viviendas, indicadores o proyectos. TEST-002,
+Seguridad y las vistas generales siguen excluidos. La excepción es visual/administrativa
+y no crea pagos, TAGs o accesos ni prueba escritura física.
+
+Los PR [#385](https://github.com/listoenlinea-labs/MisionJardines/pull/385)–[#387](https://github.com/listoenlinea-labs/MisionJardines/pull/387)
+evitan que un mensaje IMAP grande bloquee el resto del buzón, exigen exactamente una
+coincidencia bancaria completa, reducen a 15 segundos el sondeo predeterminado y
+reutilizan OCR/Titan para aprobar Casa Club en una transacción solo después de validar
+el depósito. Casa Club y extraordinarias no avanzan TAGs. #386 cambia el código para
+usar TCP directo por defecto, pero AGENTS.md aún declara AUTO como valor global
+predeterminado: la discrepancia debe resolverse antes de atribuir comportamiento a
+producción. No se autenticó Titan, SMTP, MySQL ni C3 en esta revisión.
+
+Los PR [#388](https://github.com/listoenlinea-labs/MisionJardines/pull/388)–[#389](https://github.com/listoenlinea-labs/MisionJardines/pull/389)
+permiten a Administración borrar de forma transaccional un prerregistro pendiente y
+corrigen la visibilidad del botón cuando la API devuelve `0`. Se preservan padrón y
+viviendas y se bloquean cuentas aceptadas, activas o con historial. El usuario informó
+que, después de un despliegue, el botón aún no era visible y volvió a fallar la creación
+de una cuenta controlada tras corregir su correo en el padrón; esto confirma un problema
+pendiente, no el funcionamiento de #388–#389 ni el estado de la base.
+
+Los PR [#390](https://github.com/listoenlinea-labs/MisionJardines/pull/390)–[#392](https://github.com/listoenlinea-labs/MisionJardines/pull/392)
+agregan una plantilla segura para importar reservas históricas sin datos privados,
+folios de recibo por concepto, recuperación de contraseña, eliminación de reservas sin
+movimientos, UI/filtros de Casa Club y consulta de todos los proyectos extraordinarios,
+incluidos saldados o sin cargo. El SQL de importación requiere una copia privada y no fue
+ejecutado; una opción sin cargo es solo lectura y no genera obligación ni habilita pago.
+#391–#392 declaran explícitamente que no ejecutaron pruebas.
+
+Los PR [#393](https://github.com/listoenlinea-labs/MisionJardines/pull/393)–[#395](https://github.com/listoenlinea-labs/MisionJardines/pull/395)
+crean una ruta excepcional de laboratorio para anular el movimiento seleccionado de
+TEST-001 aunque existan TAGs o acciones C3 registradas. La operación conserva auditoría
+y evidencias, rechaza reportes asociados para evitar reacreditación y no modifica
+`ZkTarjeta`, no crea una reversa ni llama TCP/bridge. No aplica a viviendas reales y
+una acción física ya ejecutada no se revierte. El código está en main, pero no hay
+confirmación accesible de ejecución exitosa en MySQL ni lectura física posterior.
+
+El PR [#396](https://github.com/listoenlinea-labs/MisionJardines/pull/396) agrupa cargos
+extraordinarios por proyecto y sincroniza selector con tarjetas accesibles por ratón,
+teclado o tacto. Los proyectos pagados muestran $0 pendiente y una vivienda sin cargo
+solo puede consultarlos; no cambia cuotas, roles, cobros, MySQL o ZKTeco. Falta publicar
+frontend y revisar el flujo real.
+
+GitHub devuelve cero runs y cero estados para los quince heads. #382 reporta validación
+aislada de tarifas/liberación; #388 y #389 declaran respectivamente 60 y 61 pruebas de
+Auto-users aprobadas. #385–#387 y #390 agregan suites y pasos al workflow, pero no hay
+run observable; #383–#384 y #393–#395 describen regresiones sin ejecución CI, y
+#391–#392 no ejecutaron pruebas. Ningún resultado acredita despliegue, Titan, SMTP,
+MySQL, navegador de producción o C3 físico.
 
 ## Implementado en main el 10/nov/2026
 
@@ -412,6 +475,13 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Accesos, padrón y Casa Club $2,000 | Implementado en main; migración, despliegue y operación real pendientes | #382 limita CONDOMINO a Pagos/Casa Club, congela tarifas por reserva y permite cancelación auditada. Falta tabla/configuración, permisos, SMTP/WhatsApp y prueba real |
+| TEST-001 en Análisis/ZKTeco | Excepción administrativa implementada sin alterar indicadores oficiales | #383–#384 muestran solo TEST-001 a administración y mantienen 231 viviendas/proyectos. No cambia filtros globales ni prueba C3 |
+| Titan, IMAP y Casa Club automática | Guardas y autoaprobación implementadas; producción no verificada | #385–#387 omiten mensajes demasiado grandes, exigen coincidencia completa única y aprueban Casa Club transaccionalmente. Falta Titan/MySQL/SMTP real; AUTO vs DIRECT está en discrepancia entre AGENTS.md y código |
+| Auto-users: borrar prerregistro | Backend/UI implementados; reporte del usuario indica que aún no funciona en su despliegue | #388–#389 protegen cuentas aceptadas/activas y corrigen `0`; el botón no fue visible tras el despliegue reportado y una creación controlada volvió a fallar |
+| Reservas históricas, folios y recuperación | Implementado en main; importación privada y despliegue pendientes | #390–#392 añaden plantilla sin PII, recuperación de contraseña, folios, filtros y proyectos saldados/sin cargo. No se ejecutó la importación ni pruebas de #391–#392 |
+| Reversión de laboratorio TEST-001 | Ruta contable excepcional implementada; ejecución y C3 no confirmados | #393–#395 permiten limpiar el movimiento elegido sin escribir TAGs/C3 y preservan auditoría; no aplica a viviendas reales ni revierte una acción física ya realizada |
+| Selector de extraordinarias | Interfaz accesible implementada; frontend real pendiente | #396 agrupa por proyecto y sincroniza selector/tarjetas sin alterar saldos o MySQL |
 | Monitor MySQL y noticias | Estimación y fallback RSS implementados en main; exactitud y despliegue pendientes | #373–#375 miden solo el proceso actual, conservan sesión ante fallos temporales y corrigen visualización. No es cuota autoritativa de Hostinger ni incluye otros procesos; falta entorno real y navegador |
 | Casa Club pública | Solicitud, enlace, domicilio y revisión administrativa implementados; migración y operación real pendientes | #376–#378/#380 permiten apartar sin sesión y aprobar solo tras confirmar depósito. Faltan SQL, banco, SMTP, WhatsApp, permisos, caducidad y prueba controlada; no hubo reservas ni pagos reales |
 | Controles remotos | Inventario administrativo aislado implementado; control físico no demostrado | #379 registra controles y auditoría en MySQL sin tocar TAGs/C3/pagos. Bloquear en UI no impide abrir portones; faltan migración, receptor/protocolo RF y prueba en sitio |
@@ -490,12 +560,18 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | Diagnóstico del buzón IMAP | La documentación incorporada por #265 registra conexión/lectura real de 41 mensajes con el diagnóstico anterior | En ese momento hubo cero avisos autenticados y cero cuentas de cuatro dígitos reconocidas; no acredita conciliación, depósito, aprobación, MySQL ni TAGs. El contenido privado no fue consultado en esta revisión |
 | Prueba bancaria controlada y saldo de Análisis | Los PR #280–#285 conservan evidencia de un reporte controlado que llegó a VALIDADO mientras la cuota aún mostraba saldo | Confirma la discrepancia concreta documentada y motivó #285; no prueba que el flujo general ya actualice `cuotas` ni que C3 haya cambiado. Esta revisión no consultó MySQL ni el buzón |
 | Requisito de fuente única | El usuario pidió que Pagos deje de calcular desde ZKTeco y use la misma fuente contable que Análisis, actualizando después Análisis y sincronizando C3 cuando exista TAG | Es una decisión/solicitud accesible, no una prueba física ni una implementación. #285–#287 cubren solo TEST-001 |
+| Despliegue de borrado de prerregistro | El usuario informó que realizó el despliegue, pero el botón seguía sin aparecer; también reportó un nuevo fallo al crear una cuenta controlada después de corregir el correo en el padrón | Confirma que el problema seguía abierto en el entorno observado. No acredita qué SHA quedó desplegado, el estado de MySQL ni que #388–#389 funcionen; no se publican datos personales del caso |
 | Diagnóstico Workbench del bloqueo por C3 anulado | El PR #352 conserva seis resultados aportados por el administrador: la cuota del caso seguía pendiente y el movimiento C3 vinculado estaba ANULADO | Evidencia puntual de consulta accesible en el PR; esta revisión no leyó MySQL directamente. No demuestra despliegue de #352, pago recibido, nuevo evento ni cambio físico en C3 |
 
 ## Pruebas automatizadas con resultado conocido
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 11/nov/2026 | PR #382–#396, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 15 heads | No hay CI observable; merge, cambios al YAML y previews no prueban despliegue |
+| 11/nov/2026 | #382, validación aislada declarada de tarifas y liberación | Casos dirigidos declarados correctos; comando/totales completos no publicados | No prueba MySQL, SMTP, WhatsApp, permisos ni navegador real |
+| 11/nov/2026 | #388–#389, suites locales Auto-users declaradas en los PR | #388: **60 aprobadas**; #389: **61 aprobadas** | Evidencia local, contradicha operativamente por el botón ausente reportado tras desplegar; falta identificar SHA/entorno y repetir |
+| 11/nov/2026 | #385–#387/#390, suites nuevas y pasos añadidos a `verificar-finanzas.yml` | Archivos/comandos definidos, pero **sin run observable** en los heads | No presentar como CI ejecutado ni como Titan/C3/SMTP funcional |
+| 11/nov/2026 | #383–#384/#393–#395, regresiones descritas o ajustadas; #391–#392 | Sin resultado CI; #391–#392 declaran **sin ejecución de pruebas** | Falta suite actual, MySQL controlado, revisión visual y verificar que no haya efectos físicos |
 | 10/nov/2026 | PR #373–#381, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 9 heads | No hay CI nuevo; merge y vista previa no prueban despliegue |
 | 10/nov/2026 | #373–#375, comandos no publicados; parser/contador y verificaciones estáticas de Inicio | Casos aislados declarados correctos; suite Node completa no ejecutada | No prueba cuota real de Hostinger, RSS externo ni apariencia en producción |
 | 10/nov/2026 | #376, comando no publicado; suites Casa Club y Chromium simulado | **28 pruebas**; flujo público simulado en 320, 390 y 768 px | Sin envíos, depósitos ni transacciones reales |
@@ -646,6 +722,13 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| PR #382: permisos, tarifa y Casa Club | Desplegar frontend/backend coordinados, verificar/crear `casa_club_tarifas`, probar roles 403, caché, total $2,000, históricos congelados, cancelación, SMTP/WhatsApp y navegador sin efectuar pagos reales |
+| TEST-001 #383–#384 | Publicar y confirmar con administrador que solo aparece en Análisis/ZKTeco, no modifica 231 viviendas, proyectos o indicadores y no queda visible para Seguridad; no usar la revisión visual para escribir al C3 |
+| Titan/IMAP/Casa Club #385–#387 | Ejecutar CI y luego prueba controlada en clon: mensaje grande/pequeño, coincidencia única/ambigua, transacción de Casa Club, no reutilización y ausencia de cambios TAG/C3. Resolver primero la discrepancia AGENTS.md=AUTO frente a código #386=DIRECT |
+| Borrado de prerregistro #388–#389 | Identificar el SHA realmente desplegado, limpiar caché, revisar respuesta API/rol/estado y repetir con una cuenta controlada. El usuario reportó botón ausente y creación fallida; no borrar cuentas aceptadas, activas o con historial ni editar padrón por ensayo |
+| #390–#392: reservas, contraseña y extraordinarias | Probar recuperación SMTP, folios, eliminación protegida, filtros y proyectos saldados/sin cargo. La importación requiere copia privada, respaldo, previsualización de domicilios/fechas y ejecución manual en clon; no subir contactos ni asumir que el Excel acredita pagos |
+| TEST-001 #393–#395 | Desplegar backend y repetir solo sobre laboratorio con respaldo: vista previa, confirmación, auditoría, rechazo del reporte asociado y conservación de otras cuotas/TAGs. Verificar que no hubo llamada TCP/bridge; no generalizar la excepción a viviendas reales |
+| Selector #396 | Publicar frontend, limpiar caché y comprobar con proyectos múltiples, saldados, parciales y sin cargo que selector/tarjetas coincidan y nunca habiliten un pago sin cargo real |
 | Medidor MySQL y noticias #373–#375 | Desplegar backend/frontend, configurar límites conocidos, comparar la estimación con métricas de Hostinger y otros procesos, probar 403 por rol, conservación de sesión y RSS/fallback; validar visualmente Inicio tras recarga sin caché |
 | Casa Club pública #376–#378/#380 | Ejecutar `backend/sql/2026-11-10-casa-club-reserva-publica.sql` en prueba, permitir usuario nulo de forma controlada, configurar banco/SMTP/WhatsApp y probar apartar, caducar, confirmar folio, colisiones, consentimiento, enlace público y administración sin usar pagos reales |
 | Controles remotos #379 | Ejecutar `backend/sql/2026-11-10-controles-remotos-mj.sql` en prueba, validar roles/CRUD/auditoría y confirmar con instalador el receptor, protocolo e identificación por botón. No presentar activar/bloquear MySQL como bloqueo físico |
@@ -729,6 +812,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-11
+
+- Main consultado a las 23:27, America/Mexico_City, en `4458a7b9b6720ff0cfd2954551d8fa9d2855a143`, 114 commits por delante del SHA guardado.
+- Se excluyó `d15903d`, que solo actualizó esta bitácora. Como producto se verificaron quince PR fusionados: #382–#396; no hay PR abiertos ni revertidos nuevos.
+- Los quince heads devuelven cero workflows y cero estados. Se conservaron como evidencia limitada las 60/61 pruebas locales de #388–#389 y validaciones dirigidas declaradas; #391–#392 no ejecutaron pruebas.
+- La conversación accesible confirma un despliegue tras el cual el botón de borrar prerregistro no apareció y una creación controlada volvió a fallar. Se registra como pendiente, sin datos personales y sin afirmar qué SHA o estado de MySQL estaba activo.
+- No se consultaron ni modificaron Hostinger, Titan, MySQL o C3; no se ejecutaron importaciones, pagos, reservas, mensajes ni pruebas físicas. Se dejó explícita la discrepancia entre AGENTS.md (AUTO) y el código de #386 (DIRECT) antes de cualquier verificación física.
 
 ### 2026-11-10
 
