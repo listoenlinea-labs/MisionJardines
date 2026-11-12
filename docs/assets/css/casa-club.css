@@ -225,3 +225,9 @@
 @media(max-width:1250px){#tab-administracion #clubTotals.stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:720px){#tab-administracion #clubTotals.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){#tab-administracion #clubTotals.stat-grid .stat{flex-wrap:wrap;gap:4px}}
+
+/* Administración Casa Club: 14 columnas, motivo legible y botones compactos. */
+#tab-administracion .club-table{min-width:1540px}
+#tab-administracion .club-table td.club-event-reason{min-width:180px;max-width:300px;white-space:normal;overflow-wrap:anywhere;line-height:1.45}
+#tab-administracion .club-table td.club-reservation-actions{min-width:220px;white-space:normal}
+#tab-administracion .club-reservation-actions button{margin:2px 3px 2px 0;white-space:nowrap}

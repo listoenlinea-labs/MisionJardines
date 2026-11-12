@@ -12,7 +12,7 @@ const {ordenarCalles}=require('../services/direccion-sort.service');
 const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
 // Mismos importes que propone la aprobación administrativa del formulario.
-const IMPORTES_LEGADOS={cuotaRecuperacion:700,depositoGarantia:700,limpieza:0};
+// Reservas anteriores: mostrar valores persistidos, nunca simular precios legados.
 const limitePagoReserva=fecha=>{
  const anterior=new Date(Date.parse(fecha+'T12:00:00Z')-86400000).toISOString().slice(0,10);
  return anterior<hoy()?hoy():anterior;
@@ -210,8 +210,7 @@ async function pendientesResumen(req,res){
  catch(e){return manejar(res,e);}
 }
 // Prepara un borrador; el administrador decide si lo envía desde WhatsApp.
-const cargosSolicitud=row=>row.estatus==='PENDIENTE'&&!row.fechaLimitePago
- ?IMPORTES_LEGADOS:{cuotaRecuperacion:row.cuotaRecuperacion,depositoGarantia:row.depositoGarantia,limpieza:row.limpieza};
+const cargosSolicitud=row=>({cuotaRecuperacion:row.cuotaRecuperacion,depositoGarantia:row.depositoGarantia,limpieza:row.limpieza});
 async function mensajeWhatsApp(req,res){
  if(!admin(req.usuario.rol))return manejar(res,error(403,'Acceso exclusivo de Administración'));
  const id=Number(req.params.id);

@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261111-filtros-completos">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-tabla-orden-importes">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -45,7 +45,7 @@
 <section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
 <section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Consulta las solicitudes y abre una reserva para revisar el pago y sus datos.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div>
 <section id="clubTariffEditor" class="club-tariff-editor" aria-labelledby="clubTariffTitle" hidden>
-  <div class="section-header"><div><span class="eyebrow">TARIFAS DE RESERVACIÓN</span><h3 id="clubTariffTitle">Distribución del depósito fijo de $2,000 MXN</h3><p>Modifica cómo se reparten recuperación, garantía y limpieza. El total de nuevas reservas siempre es $2,000; las anteriores conservan su importe.</p></div></div>
+  <div class="section-header"><div><span class="eyebrow">TARIFAS DE RESERVACIÓN</span><h3 id="clubTariffTitle">Distribución del depósito fijo de $2,000 MXN</h3><p>La homologación fija los registros existentes en $1,000 de recuperación, $700 de garantía y $300 de limpieza. El total de nuevas reservas se mantiene en $2,000.</p></div></div>
   <form id="clubTariffForm" class="club-tariff-grid">
     <label>Pago de recuperación (MXN)<input id="clubTariffRecovery" type="number" min="0" max="2000" step="1" inputmode="numeric" required></label>
     <label>Depósito de garantía (MXN)<input id="clubTariffGuarantee" type="number" min="0" max="2000" step="1" inputmode="numeric" required></label>
@@ -65,7 +65,7 @@
  <button type="button" class="soft" id="clubClearFilters">Limpiar filtros</button>
  <span id="clubFilterCount" role="status" aria-live="polite"></span>
 </div>
-<div class="table-scroll"><table class="club-table"><thead><tr><th>No. casa</th><th>Calle</th><th>Teléfono</th><th>Mes</th><th>Fecha</th><th>Solicitud registrada</th><th>Pago recuperación</th><th>Folio</th><th>Depósito garantía</th><th>Limpieza</th><th>Nombre</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
+<div class="table-scroll"><table class="club-table"><thead><tr><th>Calle</th><th>No. casa</th><th>Nombre</th><th>Fecha del evento</th><th>Fecha y hora de solicitud</th><th>Pago recuperación</th><th>Depósito garantía</th><th>Limpieza</th><th>Folio</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
 <section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Puedes aprobar únicamente la fecha, o registrar manualmente un pago que hayas verificado. Los comprobantes enviados en Pagos se verifican automáticamente con Titan.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
 </main>
 <dialog id="clubDebtModal" class="club-dialog club-debt-dialog" aria-labelledby="clubDebtTitle" aria-describedby="clubDebtExplanation">
@@ -91,5 +91,5 @@
 <p id="clubReviewError" role="alert" hidden></p>
 </form></dialog>
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
-<script src="assets/js/casa-club.js?v=20261111-filtros-completos" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-tabla-orden-importes" defer></script>
 </body></html>
