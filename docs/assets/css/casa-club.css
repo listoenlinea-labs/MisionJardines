@@ -551,7 +551,7 @@ body.club-private-reservation-view .club-proof-card{margin-top:18px!important}
 
 /* Pestañas de tarjetas rojas alineadas al extremo derecho de Casa Club. */
 #clubTabs .club-red-nav-tab{color:#a73143;background:#fff8f8;border:1px solid #eed3d7}
-#clubTabs .club-red-nav-tab:first-of-type{margin-left:auto}
+#clubTabs .club-red-nav-tab[data-tab=tarjetas]{margin-left:auto}
 #clubTabs .club-red-nav-tab[aria-current=page]{background:#fde8eb;border-color:#dfacb7;color:#9a2339}
 .club-rojas-search-label{display:grid;gap:8px;max-width:650px;font-size:12px;font-weight:800;color:#4b5b73;margin:14px 0}
 .club-rojas-search-label input{min-height:48px;width:100%;border:1px solid #d4dfeb;border-radius:12px;padding:12px 14px;background:#fff;font:inherit;font-size:14px}
@@ -568,7 +568,7 @@ body.club-private-reservation-view .club-proof-card{margin-top:18px!important}
 #clubRojasAddForm label{display:block;font-size:12px;font-weight:800;color:#4c5c76}
 #clubRojasAddForm textarea{display:block;min-height:85px;margin-top:8px;width:100%;padding:10px;border:1px solid #d6dfeb;border-radius:10px}
 @media(max-width:1020px){
- #clubTabs .club-red-nav-tab:first-of-type{margin-left:0}
+ #clubTabs .club-red-nav-tab[data-tab=tarjetas]{margin-left:0}
 }
 @media(max-width:700px){
  #clubTabs .club-red-nav-tab{flex:1 1 45%;min-height:47px}
