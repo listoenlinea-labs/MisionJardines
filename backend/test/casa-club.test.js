@@ -7,10 +7,12 @@ const PagoReportado=require('../src/models/PagoReportado');
 const PagoManualConcepto=require('../src/models/PagoManualConcepto');
 const club=require('../src/controllers/casa-club.controller');
 const tarifas=require('../src/services/casa-club-tarifas.service');
+const rojas=require('../src/services/casa-club-tarjetas-rojas.service');
 function res(){return{code:200,body:null,headers:{},status(n){this.code=n;return this;},setHeader(k,v){this.headers[k]=v;},json(v){this.body=v;return this;}};}
 const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const req=overrides=>({usuario:{usuarioId:19,rol:'CONDOMINO',casaId:5},body:{fecha:day,solicitante:'Prueba Usuario',telefono:'3331234567',correo:'persona@example.com',motivo:'Cumpleaños',casaId:5,propietario:true,aceptaWhatsApp:true,aceptaReglamento:true},...overrides});
 function sinAdeudos(t){
+ t.mock.method(rojas,'exigirDisponible',async()=>({bloqueada:false}));
  t.mock.method(tarifas,'obtener',async()=>({cuotaRecuperacion:700,depositoGarantia:700,limpieza:600}));
  t.mock.method(Reserva,'findAll',async()=>[]); // no reservas aprobadas por expirar ni cobros de club
  t.mock.method(CargoExtraordinario,'findAll',async()=>[]);
@@ -58,6 +60,7 @@ test('no acepta solicitudes de casa club con mantenimiento vencido',async t=>{
   assert.ok(response.body.adeudos.totales.MANTENIMIENTO>0);
 });
 test('permite reservar aunque tenga una deuda exclusiva de Casa club',async t=>{
+ t.mock.method(rojas,'exigirDisponible',async()=>({bloqueada:false}));
  const monthNames=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
  const [year,month]=day.split('-').map(Number),cuotas=[];
  for(let y=2026;y<=year;y++)for(let m=y===2026?9:1;m<=(y===year?month:12);m++)
@@ -76,7 +79,9 @@ test('permite reservar aunque tenga una deuda exclusiva de Casa club',async t=>{
  assert.equal(response.code,201);
  assert.equal(created,true);
 });
-test('impide reservar si hay un cargo extraordinario exigible y muestra el monto',async t=>{
+test('cuotas extraordinarias voluntarias no bloquean la reservación',async t=>{
+ t.mock.method(rojas,'exigirDisponible',async()=>({bloqueada:false}));
+ t.mock.method(tarifas,'obtener',async()=>({cuotaRecuperacion:700,depositoGarantia:700,limpieza:600}));
  const monthNames=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
  const [year,month]=day.split('-').map(Number),cuotas=[];
  for(let y=2026;y<=year;y++)for(let m=y===2026?9:1;m<=(y===year?month:12);m++)
@@ -94,10 +99,8 @@ test('impide reservar si hay un cargo extraordinario exigible y muestra el monto
  let created=false;
  t.mock.method(Reserva,'create',async()=>{created=true;});
  const response=res();await club.crear(req(),response);
- assert.equal(response.code,409);
- assert.equal(response.body.codigo,'ADEUDOS_RESERVA');
- assert.equal(response.body.adeudos.totales.EXTRAORDINARIO,123.45);
- assert.equal(created,false);
+ assert.equal(response.code,201);
+ assert.equal(created,true);
 });
 test('la colisión de fecha única produce respuesta 409 para evitar dobles reservas',async t=>{
  sinAdeudos(t);

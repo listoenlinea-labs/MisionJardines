@@ -68,7 +68,7 @@
   if(r.status===401&&!publico){location.replace('login.html');throw Error('Sesión expirada');}
   if(!r.ok||!d.ok){
    const err=Error(d.message||'No fue posible realizar la operación');
-   err.codigo=d.codigo||null;err.adeudos=d.adeudos||null;
+   err.codigo=d.codigo||null;err.adeudos=d.adeudos||null;err.tarjetas=d.tarjetas||null;
    throw err;
   }
   return d;
@@ -97,6 +97,38 @@
   debtDialog.showModal();
   return true;
  }
+ const redDialog=$('clubRedCardsModal');
+ function showRedCards(data){
+  if(!data)return false;
+  const count=Number(data.totalActivas||0);
+  $('clubRedCardsScore').textContent=count;
+  $('clubRedCardsTitle').textContent='Tarjetas rojas de tu vivienda';
+  $('clubRedCardsIntro').textContent='Tienes '+count+' tarjeta(s) roja(s) activa(s). Una cuarta tarjeta activa puede impedir reservar Casa Club.';
+  const isBlocked=data.bloqueada||Boolean(data.bloqueadoHasta&&count>3);
+  $('clubRedCardsRestriction').classList.toggle('blocked',isBlocked);
+  $('clubRedCardsRestriction').textContent=isBlocked
+   ?'Tu vivienda no puede reservar Casa Club hasta el '+fmt(data.bloqueadoHasta)+' por superar tres tarjetas rojas activas.'
+   :count===3?'Atención: una nueva tarjeta roja iniciaría una suspensión de '+Number(data.aniosBloqueo||1)+' año(s).':
+     count>3?'La suspensión anterior ya venció. Una nueva tarjeta puede activar otra restricción.':
+      'Tu vivienda no tiene suspensión vigente por tarjetas rojas. El límite es de 3 tarjetas activas.';
+  $('clubRedCardsList').innerHTML=Array.isArray(data.tarjetas)&&data.tarjetas.length
+   ?data.tarjetas.map(t=>'<div class="club-red-card-item"><b>Tarjeta #'+Number(t.id)+'</b><small>'+esc(fechaSolicitud(t.asignadaEn))+
+      '</small><p>'+esc(t.motivo||'Motivo no disponible')+'</p></div>').join('')
+   :'<p>Para conocer el detalle de una tarjeta, consulta con Administración.</p>';
+  if(!redDialog.open)redDialog.showModal();
+  return true;
+ }
+ $('closeClubRedCards').addEventListener('click',()=>redDialog.close());
+ $('ackClubRedCards').addEventListener('click',()=>redDialog.close());
+ async function cargarMisRojas(abrir=false){
+  if(!token||!profile||admin)return;
+  try{
+   const result=await api('/tarjetas-rojas/mias');
+   $('clubMyRedCount').textContent=result.data.totalActivas;
+   if(abrir)showRedCards(result.data);
+  }catch(err){if(abrir)notify(err.message,true);}
+ }
+ $('clubMyRedCards').addEventListener('click',()=>void cargarMisRojas(true));
  const closeDebt=()=>debtDialog.close();
  $('closeClubDebt').addEventListener('click',closeDebt);
  $('ackClubDebt').addEventListener('click',closeDebt);
@@ -221,7 +253,10 @@
    actualizarBancoPublico();
    if(admin)tab('mis-reservas');
   }catch(err){
-   if(err.codigo==='ADEUDOS_RESERVA'){
+   if(err.codigo==='TARJETAS_ROJAS'){
+    if(mobileReservationDialog.open)mobileReservationDialog.close();
+    if(!showRedCards(err.tarjetas))notify(err.message,true);
+   }else if(err.codigo==='ADEUDOS_RESERVA'){
     if(mobileReservationDialog.open)mobileReservationDialog.close();
     if(!showDebtAlert(err))notify(err.message,true);
    }else if(mobileReservationDialog.open){
@@ -518,6 +553,12 @@
   $('clubStreetField').hidden=$('clubNumberField').hidden=true;
   $('clubStreet').required=$('clubNumber').required=false;
   fillProfile();
+  $('clubCardsToolbar').hidden=false;
+  if(admin){$('clubManageRedCards').hidden=false;}
+  else{
+   $('clubMyRedCards').hidden=false;
+   void cargarMisRojas();
+  }
  }
  // Campos vacíos al abrir la liga pública; solamente calle y número
  // presentan sugerencias de datos existentes (sin seleccionar por el usuario).

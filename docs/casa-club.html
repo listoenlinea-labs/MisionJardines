@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-enlace-privado">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-tarjetas-rojas">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -12,7 +12,11 @@
 <button type="button" data-tab="administracion" data-admin hidden>Administración de reservas</button>
 <button type="button" data-tab="aprobacion" data-admin hidden>Aprobación de reservas</button>
 </nav>
-<div id="clubNotice" role="status" aria-live="polite" hidden></div>
+<div class="club-cards-toolbar" id="clubCardsToolbar" hidden>
+   <button type="button" id="clubMyRedCards" class="club-red-count-btn" hidden>Ver mis tarjetas rojas <strong id="clubMyRedCount">0</strong></button>
+   <a href="tarjetas-rojas.html" id="clubManageRedCards" class="club-red-management-link" hidden>Administrar tarjetas rojas</a>
+  </div>
+  <div id="clubNotice" role="status" aria-live="polite" hidden></div>
 <section id="tab-reservar" class="club-panel">
 <div class="two-col">
 <article class="club-card" id="clubAvailabilityCard"><div class="section-header"><div><span class="eyebrow">DISPONIBILIDAD</span><h2>Elige una fecha</h2><p>Selecciona un día disponible.</p></div><div class="legend"><span><i class="available"></i>Disponible</span><span><i class="busy"></i>Reservada</span><span><i class="waiting"></i>Apartada</span><span><i class="elapsed"></i>No disponible</span></div></div>
@@ -153,7 +157,16 @@
  <div id="clubDebtDetails" class="club-debt-details"></div>
  <div class="club-debt-actions"><button type="button" class="soft" id="ackClubDebt">Cerrar</button><a href="pagos.html" class="primary" id="clubDebtPayLink">Ir a Pagos</a></div>
 </dialog>
-<dialog id="clubReviewModal" class="club-dialog" aria-labelledby="clubReviewTitle">
+<dialog id="clubRedCardsModal" class="club-dialog club-red-cards-dialog" aria-labelledby="clubRedCardsTitle">
+   <div class="dialog-head"><div><span class="eyebrow">CASA CLUB · REGLAMENTO</span><h2 id="clubRedCardsTitle">Tarjetas rojas de tu vivienda</h2></div>
+   <button type="button" id="closeClubRedCards" class="xbtn" aria-label="Cerrar tarjetas rojas">×</button></div>
+   <p id="clubRedCardsIntro">Consulta cuántas tarjetas rojas tiene tu vivienda y si existe una restricción vigente para reservar Casa Club.</p>
+   <div class="club-red-cards-score"><strong id="clubRedCardsScore">0</strong><span>Tarjetas rojas activas</span></div>
+   <div id="clubRedCardsRestriction" class="club-red-cards-restriction" role="status"></div>
+   <div id="clubRedCardsList" class="club-red-cards-list"></div>
+   <div class="club-debt-actions"><button type="button" class="soft" id="ackClubRedCards">Entendido</button></div>
+  </dialog>
+  <dialog id="clubReviewModal" class="club-dialog" aria-labelledby="clubReviewTitle">
 <form id="clubReviewForm" method="dialog">
 <div class="dialog-head"><div><span class="eyebrow">REVISIÓN ADMINISTRATIVA</span><h2 id="clubReviewTitle">Detalles de la reservación</h2></div><button type="button" id="closeClubReview" class="xbtn" aria-label="Cerrar">×</button></div>
 <dl id="clubReviewDetails" class="review-details"></dl>
@@ -174,5 +187,5 @@
 <script src="assets/js/comprobante-parser.js?v=20261112-ocr-flexible" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-enlace-privado" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-tarjetas-rojas" defer></script>
 </body></html>

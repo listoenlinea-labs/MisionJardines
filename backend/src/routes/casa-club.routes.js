@@ -23,6 +23,18 @@ router.post('/publico/comprobante/estado',limiteConsulta,comprobante.estado);
 router.post('/publico/comprobante/reintentar',limiteComprobante,comprobante.reintentar);
 router.post('/publico/comprobante/recibo',limiteConsulta,comprobante.descargarRecibo);
 router.use(autenticarToken);
+// Seguridad puede gestionar tarjetas rojas sin entrar a reservas ni Pagos.
+// Cada ruta comprueba el rol incluso si se llama por HTTP directamente.
+const rojas=require('../controllers/casa-club-tarjetas-rojas.controller');
+const staff=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD');
+const admins=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR');
+router.get('/tarjetas-rojas/mias',autorizarRoles('CONDOMINO'),rojas.mias);
+router.get('/tarjetas-rojas/viviendas',staff,rojas.viviendas);
+router.get('/tarjetas-rojas/configuracion',staff,rojas.configuracion);
+router.patch('/tarjetas-rojas/configuracion',admins,rojas.guardarConfiguracion);
+router.get('/tarjetas-rojas/casas/:casaId',staff,rojas.vivienda);
+router.post('/tarjetas-rojas/casas/:casaId',staff,rojas.agregar);
+router.patch('/tarjetas-rojas/:tarjetaId/retirar',staff,rojas.retirar);
 router.use(autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','CONDOMINO'));
 router.get('/fechas',club.fechas);
 router.get('/mias',club.mias);

@@ -9,6 +9,7 @@ const accesoPublico=require('../services/casa-club-acceso-publico.service');
 const {consultarSoloMantenimiento}=require('../services/adeudos-comunidad.service');
 const avisos=require('../services/casa-club-avisos.service');
 const tarifas=require('../services/casa-club-tarifas.service');
+const tarjetasRojas=require('../services/casa-club-tarjetas-rojas.service');
 const {ordenarCalles}=require('../services/direccion-sort.service');
 const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
@@ -25,12 +26,14 @@ const hoy=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',ye
 const texto=(v,n=160)=>String(v||'').trim().slice(0,n);
 const fechaValida=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!Number.isNaN(Date.parse(String(v)+'T12:00:00Z'))&&new Date(String(v)+'T12:00:00Z').toISOString().slice(0,10)===v;
 function manejar(res,e){if(!e.status)console.error('[casa-club]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No se pudo completar la operación',
- ...(e.codigo==='ADEUDOS_RESERVA'?{codigo:e.codigo,adeudos:e.adeudos}:{})});}
+ ...(e.codigo==='ADEUDOS_RESERVA'?{codigo:e.codigo,adeudos:e.adeudos}:{}),
+ ...(e.codigo==='TARJETAS_ROJAS'?{codigo:e.codigo,tarjetas:e.tarjetas}:{})});}
 async function revisarElegibilidad(casaId){
  const saldo=evaluarElegibilidadReserva(await consultarSoloMantenimiento(casaId));
  if(!saldo.puedeReservar)throw error(409,'No puedes reservar Casa club: tienes adeudos por '+saldo.total.toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
   ' de mantenimiento. Regulariza ese concepto en Pagos.',
   {codigo:'ADEUDOS_RESERVA',adeudos:saldo});
+ await tarjetasRojas.exigirDisponible(casaId);
 }
 async function expirarReservas(rango){
  const vencidas=await Reserva.findAll({where:{estatus:{[Op.in]:['PENDIENTE','APROBADA']},pagado:false,
@@ -166,6 +169,9 @@ async function solicitar(req,res){
    const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
    if(!casa)throw noElegible();
    casaTransferencia=casa;
+   // Revalidar tras bloquear la vivienda evita carreras con una cuarta tarjeta
+   // asignada por Seguridad mientras el usuario completa la solicitud.
+   await tarjetasRojas.exigirDisponible(casaId,{transaction});
    const anterior=await Reserva.findOne({where:{casaId,estatus:'PENDIENTE',
     fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
    if(anterior)throw error(409,usuario?'Ya tienes una solicitud de Casa Club en revisión.':noElegible().message);

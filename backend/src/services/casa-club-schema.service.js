@@ -1,9 +1,16 @@
 const ReservaCasaClub=require('../models/ReservaCasaClub');
 const TarifaCasaClub=require('../models/TarifaCasaClub');
+const TarjetaRoja=require('../models/TarjetaRojaCasaClub');
+const Sancion=require('../models/SancionCasaClub');
+const ConfigRojas=require('../models/ConfiguracionTarjetasRojas');
 async function asegurarCasaClub(){
  await ReservaCasaClub.sync();
  // La homologación única respalda importes anteriores y aplica la tarifa aprobada.
  await TarifaCasaClub.sync();
+ await TarjetaRoja.sync();
+ await Sancion.sync();
+ await ConfigRojas.sync();
+ await ConfigRojas.findOrCreate({where:{id:1},defaults:{id:1,aniosBloqueo:1}});
  await TarifaCasaClub.findOrCreate({where:{id:1},defaults:{id:1,cuotaRecuperacion:1000,depositoGarantia:700,limpieza:300}});
  const db=require('../config/database');
  const {DataTypes}=require('sequelize');

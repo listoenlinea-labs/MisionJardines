@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarjetas rojas · Casa Club · Misión Jardines</title>
+<link rel="icon" href="assets/images/favicon.ico">
+<script src="assets/js/permissions.js?v=20261112-rojas"></script>
+<script src="assets/js/page-access.js?v=20261112-rojas"></script>
+<link rel="stylesheet" href="assets/css/tarjetas-rojas.css?v=20261112">
+</head><body>
+<main class="red-wrap">
+ <header class="red-hero">
+  <div><span class="eyebrow">MISIÓN JARDINES · CASA CLUB</span><h1>Tarjetas rojas</h1>
+   <p>Control de incidencias por vivienda para el uso responsable de Casa Club.
+   Seguridad y Administración pueden registrar o retirar tarjetas con historial verificable.</p></div>
+  <nav aria-label="Volver"><a href="seguridad.html" id="redReturnSecurity" class="link-btn">Seguridad</a>
+   <a href="casa-club.html" id="redReturnClub" class="link-btn" hidden>Casa Club</a></nav>
+ </header>
+ <div id="redNotice" class="red-notice" role="status" aria-live="polite" hidden></div>
+ <section id="redConfigSection" class="card config-card" hidden>
+  <div><span class="eyebrow">SOLO ADMINISTRACIÓN</span><h2>Duración de la suspensión</h2>
+   <p>Al registrar la cuarta tarjeta roja activa se suspende el derecho a reservar Casa Club.
+   Configura cuántos años dura la restricción. Cambiar este valor actualiza también las suspensiones vigentes.</p></div>
+  <form id="redConfigForm" class="config-form"><label>Años de suspensión
+   <input id="redYears" type="number" min="1" max="20" step="1" inputmode="numeric" required></label>
+   <button type="submit" class="primary">Guardar años</button></form>
+ </section>
+ <section class="card selector-card">
+  <div><span class="eyebrow">CONSULTAR VIVIENDA</span><h2>Selecciona la casa</h2>
+   <p>Las tarjetas se asignan a la vivienda, no a un residente individual.</p></div>
+  <div class="selector-fields">
+   <label>Calle<select id="redStreet" required><option value="">Selecciona una calle</option></select></label>
+   <label>Número de casa<select id="redHouse" disabled required><option value="">Primero elige la calle</option></select></label>
+  </div>
+ </section>
+ <section id="redHousePanel" class="card house-panel" hidden>
+  <div class="house-head"><div><span class="eyebrow">EXPEDIENTE DE CASA CLUB</span>
+   <h2 id="redHouseTitle">Vivienda</h2><p id="redHouseStatus" role="status"></p></div>
+   <div class="red-count"><strong id="redCount">0</strong><span>Tarjetas rojas activas</span></div></div>
+  <div class="red-threshold" id="redThreshold"></div>
+  <form id="redAddForm" class="red-add">
+   <label>Motivo de la nueva tarjeta roja<textarea id="redReason" rows="3" minlength="5" maxlength="500"
+      placeholder="Describe los hechos que justifican esta tarjeta (obligatorio)" required></textarea></label>
+   <button type="submit" class="primary">Asignar tarjeta roja</button>
+  </form>
+  <div class="red-history-header"><h3>Historial de tarjetas</h3><button type="button" id="redRefresh" class="link-btn">Actualizar</button></div>
+  <div id="redHistory" class="red-history" aria-live="polite"></div>
+ </section>
+</main>
+<dialog id="redRemoveDialog" aria-labelledby="redRemoveTitle">
+ <form id="redRemoveForm"><div class="dialog-head"><h2 id="redRemoveTitle">Retirar tarjeta roja</h2>
+  <button type="button" id="redRemoveClose" class="xbtn" aria-label="Cerrar">×</button></div>
+  <p>La tarjeta se marcará como retirada sin borrar su historial. Registra el motivo o evidencia que justifica la corrección.</p>
+  <label>Motivo del retiro<textarea id="redRemoveReason" minlength="5" maxlength="500" rows="3" required
+    placeholder="Explica por qué no correspondía esta tarjeta"></textarea></label>
+  <div class="dialog-actions"><button class="link-btn" type="button" id="redRemoveCancel">Cancelar</button>
+   <button class="primary" type="submit">Confirmar retiro</button></div>
+ </form>
+</dialog>
+<script src="assets/js/tarjetas-rojas.js?v=20261112" defer></script>
+</body></html>
