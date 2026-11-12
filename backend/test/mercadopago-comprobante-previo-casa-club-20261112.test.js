@@ -121,7 +121,7 @@ test('prueba de integración local: la foto se prepara sin servidor y se envía 
  const location={get hash(){return hash;}};
  const history={replaceState(_a,_b,next){hash=next;}};
  vm.runInNewContext(script,{window,document,location,history,fetch,Tesseract,Image,FileReader,
-  setInterval:()=>1,clearInterval:()=>{},Uint8ClampedArray,console},{timeout:1200});
+  setInterval:()=>1,clearInterval:()=>{},Uint8ClampedArray,console:{warn(){},error(){}}},{timeout:1200});
  window.MJClubPublicProof.setOfficialAccount({titular:owner,destinosUltimos4:ends});
  window.MJClubPublicProof.setExpectedAmount(2000);
  assert.equal($('clubPublicProofFlow').hidden,false);
