@@ -15,7 +15,7 @@ function datosBancarios(env=process.env){
 }
 function configuracion(env=process.env){
  const dias=Number(env.CASA_CLUB_PLAZO_DIAS||3);
- const {banco,titular,cuenta}=cuentaOficial.obtener(env);
+ const {banco,titular,cuenta,clabe,tarjeta}=cuentaOficial.obtener(env);
  const administracion=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
  const nombrePlantilla=env.CASA_CLUB_WHATSAPP_TEMPLATE?.trim()||'';
  const idioma=env.CASA_CLUB_WHATSAPP_IDIOMA||'es_MX';
