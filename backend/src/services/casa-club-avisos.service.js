@@ -1,3 +1,4 @@
+const cuentaOficial=require('./pagos-cuenta-oficial.service');
 const correo=require('./email.service');
 
 const emailValido=value=>/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(value);
@@ -5,20 +6,12 @@ function whatsappMexico(value){
  const numero=value.replace(/[\s()+-]/g,'');
  return /^\d{10}$/.test(numero)?'52'+numero:/^52\d{10}$/.test(numero)?numero:null;
 }
-function cuentaOficial(env){
- // Casa Club utiliza por defecto la MISMA cuenta oficial que el módulo Pagos.
- // Si aún no se configuraron PAGOS_*, conserva la configuración anterior de Casa Club.
- const banco=String(env.PAGOS_BANCO||env.CASA_CLUB_BANCO||'').trim();
- const titular=String(env.PAGOS_TITULAR||env.CASA_CLUB_TITULAR||'').trim();
- const cuenta=String(env.PAGOS_CUENTA||env.PAGOS_CLABE||env.CASA_CLUB_CUENTA||'').trim();
- return {banco,titular,cuenta};
-}
 function datosBancarios(env=process.env){
- const {banco,titular,cuenta}=cuentaOficial(env);
+ const {banco,titular,cuenta,clabe,tarjeta}=cuentaOficial.obtener(env);
  if(!banco||!titular||!/^\d{10,18}$/.test(cuenta||''))
   throw Object.assign(Error('Configura los datos bancarios de Casa Club para preparar las instrucciones.'),{status:503});
  const correo=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
- return {banco,titular,cuenta,administracion:emailValido(correo)?correo:null};
+ return {banco,titular,cuenta,clabe,tarjeta,administracion:emailValido(correo)?correo:null};
 }
 function configuracion(env=process.env){
  const dias=Number(env.CASA_CLUB_PLAZO_DIAS||3);
@@ -33,7 +26,7 @@ function configuracion(env=process.env){
     !['SMTP_HOST','SMTP_PORT','SMTP_USER','SMTP_PASSWORD','SMTP_FROM_EMAIL'].every(k=>env[k])){
   throw Object.assign(Error('Las solicitudes en línea no están disponibles en este momento. Contacta a Administración.'),{status:503});
  }
- return {dias,banco,titular,cuenta,administracion,nombrePlantilla,idioma,version,
+ return {dias,banco,titular,cuenta,clabe,tarjeta,administracion,nombrePlantilla,idioma,version,
   telefonoId:env.WHATSAPP_PHONE_NUMBER_ID,token:env.WHATSAPP_ACCESS_TOKEN};
 }
 const sumarDias=(fecha,dias)=>new Date(Date.parse(fecha+'T12:00:00Z')+dias*86400000).toISOString().slice(0,10);
@@ -46,7 +39,9 @@ function instrucciones(row,config){
  return {folio:'CC-'+row.id,fecha:row.fecha,monto:importe(row),
   cuotaRecuperacion:Number(row.cuotaRecuperacion),depositoGarantia:Number(row.depositoGarantia),limpieza:Number(row.limpieza),
   fechaLimitePago:row.fechaLimitePago,
-  banco:config.banco,titular:config.titular,cuenta:config.cuenta,correoAdministracion:config.administracion};
+  conceptoTransferencia:cuentaOficial.conceptoVivienda(row.casa),
+  banco:config.banco,titular:config.titular,cuenta:config.cuenta,
+  clabe:config.clabe,tarjeta:config.tarjeta,correoAdministracion:config.administracion};
 }
 function textoPago(datos){
  const plazo=datos.fechaLimitePago?', a más tardar el '+datos.fechaLimitePago+' (hora de Guadalajara)':'';
@@ -54,8 +49,11 @@ function textoPago(datos){
  return 'Solicitud '+datos.folio+' para el '+datos.fecha+'. La reserva queda confirmada al verificar el pago.\n\n'+
   'Total a depositar: '+moneda(datos.monto)+' (recuperación '+moneda(datos.cuotaRecuperacion)+
   ', garantía '+moneda(datos.depositoGarantia)+', limpieza '+moneda(datos.limpieza)+').\n'+
-  'Deposita '+moneda(datos.monto)+' en '+datos.banco+', cuenta/CLABE '+datos.cuenta+
-  ', a nombre de '+datos.titular+plazo+'.\n'+
+  'Realiza la transferencia a la CUENTA OFICIAL de Misión Jardines:\n'+
+  'Banco: '+datos.banco+'\nTitular: '+datos.titular+'\nCuenta: '+datos.cuenta+
+  (datos.clabe?'\nCLABE: '+datos.clabe:'')+(datos.tarjeta?'\nTarjeta: '+datos.tarjeta:'')+
+  '\n'+(datos.conceptoTransferencia?'CONCEPTO OBLIGATORIO: '+datos.conceptoTransferencia+'\n':'')+
+  'Importe: '+moneda(datos.monto)+plazo+'.\n'+
   'Para verificar tu depósito, sube el comprobante desde Casa Club sin iniciar sesión con este enlace personal: '+(datos.enlaceCarga||'Consulta el enlace en la página de solicitud')+'. No compartas este enlace: sirve para consultar el estado de esta reserva.'+
   (plazo?' Si no se confirma el pago antes del vencimiento, se libera la fecha.':'');
 }
