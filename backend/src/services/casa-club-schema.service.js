@@ -9,6 +9,9 @@ async function asegurarCasaClub(){
  const {DataTypes}=require('sequelize');
  const qi=db.getQueryInterface(),cols=await qi.describeTable('reservas_casa_club');
  if(!cols.fecha_limite_pago)await qi.addColumn('reservas_casa_club','fecha_limite_pago',{type:DataTypes.DATEONLY,allowNull:true});
+ if(!cols.reglamento_version)await qi.addColumn('reservas_casa_club','reglamento_version',{type:DataTypes.STRING(60),allowNull:true});
+ if(!cols.reglamento_aceptado_en)await qi.addColumn('reservas_casa_club','reglamento_aceptado_en',{type:DataTypes.DATE,allowNull:true});
+ if(!cols.token_pago_publico_hash)await qi.addColumn('reservas_casa_club','token_pago_publico_hash',{type:DataTypes.STRING(64),allowNull:true,unique:true});
  if(cols.usuario_id?.allowNull===false)await qi.changeColumn('reservas_casa_club','usuario_id',{type:DataTypes.BIGINT.UNSIGNED,allowNull:true});
  await require('./casa-club-homologar-importes.service').homologar();
 }
