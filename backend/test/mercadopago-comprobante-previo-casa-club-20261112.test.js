@@ -109,7 +109,7 @@ test('prueba de integración local: la foto se prepara sin servidor y se envía 
  const payment=mercado.replace('$ 350 MXN','$ 2,000 MXN');
  const Tesseract={PSM:{AUTO:3,SPARSE_TEXT:11,SINGLE_BLOCK:6},
   createWorker:async()=>({setParameters:async()=>{},recognize:async()=>({data:{text:payment}}),terminate:async()=>{}})};
- const window={MJComprobante:browser,MJClubCuenta:{render(){}},MJ_API_URL:'https://test.invalid/api'};
+ const window={MJComprobante:browser,MJClubCuenta:{render(){}},MJ_API_URL:'https://test.invalid/api',Tesseract};
  const fetch=async(url,opts)=>{
   const body=JSON.parse(opts.body);
   if(url.endsWith('/estado'))return{ok:true,json:async()=>({ok:true,data:{
