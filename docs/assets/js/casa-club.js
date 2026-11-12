@@ -505,7 +505,10 @@
    $('clubTransferHelp').textContent='No se pudieron consultar los datos bancarios oficiales. No deposites hasta confirmar la cuenta: '+e.message;
   });
  }
- if(profile)$('clubInstructionsOpen').hidden=true;
+ if(profile){
+  $('clubInstructionsOpen').hidden=true;
+  if(!/^#comprobante=/.test(location.hash))$('clubProofIntro').hidden=true;
+ }
  if(admin){
   document.querySelectorAll('[data-admin]').forEach(x=>x.hidden=false);
   

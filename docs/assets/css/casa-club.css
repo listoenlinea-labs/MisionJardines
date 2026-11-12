@@ -361,3 +361,62 @@
  .club-payment-dialog-body .club-bank-panel{padding:14px 12px}
  .club-payment-open{min-height:48px}
 }
+
+/* Casa Club pública: carga bancaria integrada justo debajo del calendario */
+#tab-reservar .two-col>.club-card:first-child{min-width:0}
+.club-proof-intro,#tab-reservar .club-proof-card{width:100%;min-width:0;margin-top:22px;border-radius:18px}
+.club-proof-intro{padding:20px;background:linear-gradient(140deg,#f7fcf9,#fff 74%);border:1px solid #d4e9de;box-shadow:0 5px 18px rgba(32,95,63,.045)}
+.club-proof-intro-head{display:flex;align-items:center;gap:13px;margin-bottom:17px}
+.club-proof-intro-mark{display:grid;place-items:center;flex:0 0 46px;height:46px;border:1px solid #c8e2d4;border-radius:13px;background:#e8f8ef;color:#277350;font-size:25px;font-weight:850}
+.club-proof-intro-head h3{margin:5px 0;color:#263a4b;font-size:19px;line-height:1.25}
+.club-proof-intro-head p{margin:0;color:#687b88;font-size:12px;line-height:1.55}
+.club-proof-intro-dropzone{display:flex;align-items:center;flex-direction:column;justify-content:center;gap:9px;text-align:center;border:2px dashed #b9dacc;border-radius:15px;background:#fafffc;padding:22px 17px}
+.club-proof-intro-file{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#e6f6ed;color:#397f5a;font-size:26px;line-height:1}
+.club-proof-intro-dropzone strong{font-size:13px;color:#334b43}
+.club-proof-intro-dropzone small{font-size:11px;color:#6f8792;line-height:1.5}
+.club-proof-intro-dropzone button{margin-top:4px;min-height:41px;min-width:185px;background:#ebf5ef;border-color:#c7dfd1;color:#3c7455}
+.club-proof-intro-dropzone button:disabled{opacity:.8;cursor:not-allowed}
+.club-proof-intro-hint{margin:13px 0 0;color:#657784;font-size:12px;line-height:1.65}
+#tab-reservar .club-proof-payment-summary{margin:20px 0 0}
+#tab-reservar .club-proof-card{max-width:none;margin:20px 0 0;padding:20px;border:1px solid #cde4d7;background:linear-gradient(145deg,#f8fdfa,#fff 65%);box-shadow:0 5px 18px rgba(32,95,63,.045);scroll-margin-top:18px}
+#tab-reservar .club-proof-card .section-header{gap:12px;flex-wrap:wrap;margin-bottom:10px}
+#tab-reservar .club-proof-card .section-header h2{font-size:20px}
+#tab-reservar .club-proof-card .section-header p{font-size:12px}
+#tab-reservar .club-proof-progress{gap:6px;margin:12px 0}
+#tab-reservar .club-proof-progress span{padding:10px 7px;font-size:10px;line-height:1.4}
+#tab-reservar .club-proof-lock{font-size:10px;white-space:normal;text-align:center}
+#tab-reservar .club-public-proof-form{grid-template-columns:minmax(0,1fr);gap:13px;margin:12px 0}
+#tab-reservar .club-proof-upload{grid-column:1;width:100%;min-height:140px;padding:19px 16px;gap:10px;background:#f4fbf7;border-color:#a9d6be}
+#tab-reservar .club-proof-upload input{display:block;width:100%;min-width:0;padding:9px;border:1px solid #b8dbc8;border-radius:10px;background:#fff;color:#2d5a45;font-size:13px;cursor:pointer}
+#tab-reservar .club-proof-upload input::file-selector-button{border:0;border-radius:8px;background:#e3f4e9;color:#216b46;font:inherit;font-weight:800;min-height:40px;padding:9px 12px;margin-right:10px;cursor:pointer}
+#tab-reservar .club-proof-preview{grid-column:1;grid-row:auto;width:100%;height:200px}
+#tab-reservar .club-proof-fields{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#tab-reservar .club-proof-fields label{min-width:0}
+#tab-reservar .club-proof-fields input{min-width:0;min-height:44px;font-size:14px}
+#tab-reservar .club-proof-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#tab-reservar .club-proof-actions button{margin:0;min-width:0;white-space:normal;min-height:46px;font-size:12px}
+#tab-reservar .club-proof-followup{display:flex;gap:8px}
+#tab-reservar .club-proof-followup button{flex:1 1 130px;min-height:42px;min-width:0}
+#tab-reservar .club-proof-result{overflow-wrap:anywhere}
+@media(max-width:700px){
+ .club-proof-intro{padding:16px 13px;margin-top:19px}
+ .club-proof-intro-head{gap:10px}
+ .club-proof-intro-mark{flex-basis:42px;height:42px}
+ .club-proof-intro-head h3{font-size:18px}
+ .club-proof-intro-dropzone{padding:19px 12px}
+ .club-proof-intro-dropzone button{width:100%;min-width:0}
+ #tab-reservar .club-proof-card{padding:16px 13px;margin-top:18px}
+ #tab-reservar .club-proof-progress{grid-template-columns:minmax(0,1fr)}
+ #tab-reservar .club-proof-progress span{text-align:left;padding:9px 11px}
+ #tab-reservar .club-proof-upload{padding:16px 11px}
+ #tab-reservar .club-proof-upload input{font-size:16px}
+ #tab-reservar .club-proof-fields{grid-template-columns:minmax(0,1fr)}
+ #tab-reservar .club-proof-actions{grid-template-columns:minmax(0,1fr)}
+ #tab-reservar .club-proof-followup{flex-direction:column}
+ #tab-reservar .club-proof-followup button{flex-basis:auto;width:100%}
+}
+@media(max-width:380px){
+ #tab-reservar .club-proof-card{padding:14px 10px}
+ .club-proof-intro{padding:14px 10px}
+ #tab-reservar .club-proof-upload input::file-selector-button{display:block;margin:0 0 7px;width:100%}
+}
