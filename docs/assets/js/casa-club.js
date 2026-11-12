@@ -28,7 +28,6 @@
    :'Pendiente de lectura y aceptación.';
   $('clubRulesAcceptedStatus').classList.toggle('accepted',rulesAccepted);
   $('clubOpenRules').textContent=rulesAccepted?'Volver a consultar reglamento':'Leer reglamento y términos';
-  $('clubMobileRulesPrompt').hidden=rulesAccepted;
   syncSubmit();
  }
  function scrollReglamento(){
@@ -176,10 +175,6 @@
   mobileReservationDialog.showModal();
  }
  $('clubMobileReservationClose').addEventListener('click',()=>mobileReservationDialog.close());
- $('clubMobileRulesGo').addEventListener('click',()=>{
-  mobileReservationDialog.close();
-  rulesCard.scrollIntoView({behavior:'smooth',block:'center'});
- });
  if(mobileReservationQuery.addEventListener)mobileReservationQuery.addEventListener('change',situarFormulario);
  else if(mobileReservationQuery.addListener)mobileReservationQuery.addListener(situarFormulario);
  situarFormulario();
