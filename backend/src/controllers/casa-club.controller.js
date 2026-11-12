@@ -162,9 +162,11 @@ async function solicitar(req,res){
   try{await revisarElegibilidad(casaId);}
   catch(e){if(!usuario&&(e.codigo==='ADEUDOS_RESERVA'||e.status===404))throw noElegible();throw e;}
   await expirarReservas([fecha,fecha]);
+  let casaTransferencia=null;
   const row=await db.transaction(async transaction=>{
    const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
    if(!casa)throw noElegible();
+   casaTransferencia=casa;
    const anterior=await Reserva.findOne({where:{casaId,estatus:'PENDIENTE',
     fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
    if(anterior)throw error(409,usuario?'Ya tienes una solicitud de Casa Club en revisión.':noElegible().message);
@@ -175,7 +177,7 @@ async function solicitar(req,res){
     estatus:'PENDIENTE',...importes,
     fechaLimitePago:avisos.limitePago(hoySolicitud,fecha,config.dias)},{transaction});
   });
-  const pago={...avisos.instrucciones(row,config),
+  const pago={...avisos.instrucciones({...(row.toJSON?.()||row),casa:casaTransferencia},config),
    enlaceCarga:accesoPublico.enlace(row.id,clavePublica.token)};
   const notificaciones=await avisos.notificar(row,pago,config);
   res.setHeader('Cache-Control','no-store');
@@ -227,7 +229,7 @@ async function mensajeWhatsApp(req,res){
  const id=Number(req.params.id);
  if(!Number.isSafeInteger(id)||id<=0)return manejar(res,error(400,'Reserva no válida'));
  try{
-  const row=await Reserva.findByPk(id,{attributes:['id','estatus','pagado','telefono','fecha','fechaLimitePago','cuotaRecuperacion','depositoGarantia','limpieza']});
+  const row=await Reserva.findByPk(id,{attributes:['id','casaId','estatus','pagado','telefono','fecha','fechaLimitePago','cuotaRecuperacion','depositoGarantia','limpieza']});
   if(!row)throw error(404,'Reserva no encontrada');
   if(!['PENDIENTE','APROBADA'].includes(row.estatus)||(!row.pagado&&row.fechaLimitePago&&row.fechaLimitePago<hoy()))
    throw error(409,'La solicitud ya no está activa.');
@@ -236,7 +238,7 @@ async function mensajeWhatsApp(req,res){
   const confirmada=row.estatus==='APROBADA'&&row.pagado;
   const mensaje=confirmada
    ?'Hola. Confirmamos tu reservación de Casa Club para el '+row.fecha+'. El pago fue verificado y la fecha ya quedó apartada. Folio CC-'+row.id+'.'
-   :avisos.textoPago(avisos.instrucciones({id:row.id,fecha:row.fecha,fechaLimitePago:row.fechaLimitePago,...cargosSolicitud(row)},avisos.datosBancarios()));
+   :avisos.textoPago(avisos.instrucciones({id:row.id,fecha:row.fecha,fechaLimitePago:row.fechaLimitePago,...cargosSolicitud(row),casa:row.casaId?await Casa.findByPk(row.casaId,{attributes:['calle','calleCorrecta','numero']}):null},avisos.datosBancarios()));
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,telefono,mensaje,tipo:confirmada?'CONFIRMACION':'PAGO'});
  }catch(e){return manejar(res,e);}
