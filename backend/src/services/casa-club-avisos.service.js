@@ -56,7 +56,7 @@ function textoPago(datos){
   ', garantía '+moneda(datos.depositoGarantia)+', limpieza '+moneda(datos.limpieza)+').\n'+
   'Deposita '+moneda(datos.monto)+' en '+datos.banco+', cuenta/CLABE '+datos.cuenta+
   ', a nombre de '+datos.titular+plazo+'.\n'+
-  'Para verificar tu depósito, inicia sesión en Misión Jardines → Pagos → Casa Club y sube tu comprobante usando la reserva '+datos.folio+'. Si no tienes cuenta, solicítala a Administración.'+
+  'Para verificar tu depósito, sube el comprobante desde Casa Club sin iniciar sesión con este enlace personal: '+(datos.enlaceCarga||'Consulta el enlace en la página de solicitud')+'. No compartas este enlace: sirve para consultar el estado de esta reserva.'+
   (plazo?' Si no se confirma el pago antes del vencimiento, se libera la fecha.':'');
 }
 async function whatsapp(row,datos,config){
