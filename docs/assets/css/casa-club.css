@@ -303,3 +303,34 @@
 .club-proof-followup{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-start;margin:13px 0}
 .club-proof-followup button{min-height:38px}
 @media(max-width:720px){.club-regulations-acceptance{grid-template-columns:1fr}.club-regulations-acceptance .club-rules-open{width:100%}.club-rules-dialog-head{padding:16px}.club-rules-reading{padding:5px 14px 20px}.club-rules-dialog-footer{grid-template-columns:1fr;padding:14px}.club-rules-dialog-footer p,.club-rules-dialog-footer button{grid-column:1;grid-row:auto}.club-rules-dialog-footer button{width:100%}.club-proof-card .section-header{align-items:flex-start}.club-proof-lock{display:none}.club-proof-progress{grid-template-columns:1fr;gap:5px}.club-proof-progress span{text-align:left;padding:8px 11px}.club-public-proof-form{grid-template-columns:1fr}.club-proof-upload,.club-proof-preview,.club-proof-fields,.club-proof-ocr-status,.club-proof-actions{grid-column:1}.club-proof-preview{grid-row:auto}.club-proof-fields{grid-template-columns:1fr}.club-proof-actions{display:grid;grid-template-columns:1fr}.club-proof-actions button{width:100%}}
+
+/* Datos de transferencia: cuenta compartida con Pagos, sin datos precargados. */
+.club-bank-panel{margin:16px 0 20px;padding:22px;border:1px solid #eed5bc;border-radius:19px;background:linear-gradient(138deg,#fffaf4,#fff 65%,#fbfefa);box-shadow:0 9px 27px #7e50350b;min-width:0}
+.club-bank-panel[hidden]{display:none!important}
+.club-bank-head{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.club-bank-title h3{color:#25354c;font-size:20px;line-height:1.2;margin:6px 0 0}
+.club-bank-symbol{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:14px;background:#fff0dc;border:1px solid #f0d1ab;font-weight:900;color:#a36523}
+.club-bank-help{font-size:12px;color:#68778b;line-height:1.6;margin:12px 0 10px}
+.club-bank-list{margin:12px 0 0;display:grid}
+.club-bank-row{display:grid;grid-template-columns:minmax(110px,140px) minmax(0,1fr) auto;align-items:center;gap:10px 14px;min-height:52px;padding:12px 0;border-top:1px solid #efebe7}
+.club-bank-row dt{margin:0;color:#8490a3;font-size:10px;font-weight:800;letter-spacing:.065em;text-transform:uppercase}
+.club-bank-row dd{min-width:0;margin:0;color:#2a3a53;font-size:13px;font-weight:760;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.club-bank-row.is-concept{background:#fff9e9;border:1px solid #f3dfa9;border-radius:11px;margin:10px -8px 0;padding:12px 8px}
+.club-bank-row.is-concept dd{color:#845219}
+.club-bank-copy{min-height:33px;padding:6px 12px;border:1px solid #ebdbc9;border-radius:10px;background:#fffaf6;color:#985e2f;cursor:pointer;font-size:11px;font-weight:800}
+.club-bank-copy:hover{background:#fff0e1}
+.club-bank-copy:focus-visible{outline:3px solid #eca854;outline-offset:2px}
+.club-bank-total{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:15px;padding:14px 16px;background:#edf8f1;border:1px solid #c7dfcf;border-radius:11px;color:#315944;font-size:13px;font-weight:700}
+.club-bank-total strong{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums;color:#216846}
+.club-bank-deadline{color:#735428;font-size:12px;font-weight:750;margin:10px 0 0}
+.club-bank-warning{margin:12px 0 0;padding:10px 12px;background:#fff;border-left:3px solid #d58431;border-radius:6px;font-size:12px;line-height:1.55;color:#635a55}
+.club-bank-panel-proof{margin:10px 0 18px}
+@media(max-width:700px){
+ .club-bank-panel{padding:17px 14px}
+ .club-bank-title h3{font-size:18px}
+ .club-bank-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:12px 0}
+ .club-bank-row dt{grid-column:1/-1}
+ .club-bank-row dd{grid-column:1;grid-row:2}
+ .club-bank-row .club-bank-copy{grid-column:2;grid-row:2}
+ .club-bank-row.is-concept{margin:9px -5px 0;padding:12px 8px}
+}
