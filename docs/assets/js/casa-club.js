@@ -1,7 +1,8 @@
 (async()=>{
  const API=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
  const $=id=>document.getElementById(id);
- const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
+ // Un enlace público de comprobante no habilita ninguna precarga de perfil.
+ const token=/^#comprobante=/.test(location.hash)?null:(localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken'));
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=v=>Number(v||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const fmt=d=>window.MJDateDisplay.format(d);
@@ -157,8 +158,12 @@
    ['Depósito de garantía',money(p.depositoGarantia)],
    ['Limpieza',money(p.limpieza)],
    ['Total a depositar',money(p.monto)],
-   ['Banco y cuenta/CLABE',p.banco+' · '+p.cuenta],
+   ['Banco',p.banco],
    ['Titular',p.titular],
+   ['Cuenta',p.cuenta],
+   ['CLABE',p.clabe||'—'],
+   ['Tarjeta',p.tarjeta||'—'],
+   ['Concepto OBLIGATORIO en la transferencia',p.conceptoTransferencia||'Revisa la calle y número de la vivienda'],
    ['Fecha límite de pago',fmt(p.fechaLimitePago)+' (hora de Guadalajara)'],
    ['Comprobante','Puedes subirlo desde esta misma página sin iniciar sesión. Titan confirmará automáticamente el depósito cuando exista evidencia bancaria coincidente.']
   ];
@@ -199,6 +204,7 @@
    // se mantenga en el formulario de comprobante y no vuelva arriba.
    if(result.data?.pago)showPayment(result.data);
    $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
+   actualizarBancoPublico();
    if(admin)tab('mis-reservas');
   }catch(err){if(!showDebtAlert(err))notify(err.message,true);}
   finally{submitting=false;await calendar().catch(e=>notify(e.message,true));syncSubmit();}
@@ -491,7 +497,30 @@
   $('clubStreet').required=$('clubNumber').required=false;
   fillProfile();
  }
- if(!profile)window.MJClubAddress?.(api);
+ // Campos vacíos al abrir la liga pública; solamente calle y número
+ // presentan sugerencias de datos existentes (sin seleccionar por el usuario).
+ let bancoPublico=null,importePublico=null;
+ function actualizarBancoPublico(){
+  if(profile||!bancoPublico)return;
+  const concepto=window.MJClubCuenta?.concepto($('clubStreet').value,$('clubNumber').value)||'';
+  window.MJClubCuenta?.render('clubTransferHelp',bancoPublico,{
+   conceptoTransferencia:concepto,monto:importePublico
+  });
+ }
+ if(!profile){
+  window.MJClubAddress?.(api);
+  for(const id of ['clubStreet','clubNumber']){
+   $(id).addEventListener('input',actualizarBancoPublico);
+   $(id).addEventListener('change',actualizarBancoPublico);
+  }
+  // Sin usar Storage o perfil, consultar únicamente la cuenta oficial.
+  api('/publico/cuenta').then(result=>{
+   bancoPublico=result.data;actualizarBancoPublico();
+  }).catch(e=>{
+   $('clubTransferHelp').hidden=false;
+   $('clubTransferHelp').textContent='No se pudieron consultar los datos bancarios oficiales. No deposites hasta confirmar la cuenta: '+e.message;
+  });
+ }
  if(admin){
   document.querySelectorAll('[data-admin]').forEach(x=>x.hidden=false);
   $('clubWhatsAppConsent').hidden=true;$('clubOptIn').required=false;
@@ -515,6 +544,7 @@
    ' + garantía '+money(p.depositoGarantia)+' + limpieza '+money(p.limpieza)+
    ' = '+money(p.total)+'. Se confirma al verificar el pago.';
   $('clubFeeSummary').hidden=false;
+  importePublico=Number(p.total);actualizarBancoPublico();
   if(admin){
    $('clubTariffEditor').hidden=false;
    for(const [clave,id] of Object.entries(tarifaCampos))$(id).value=p[clave];
