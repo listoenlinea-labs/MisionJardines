@@ -34,6 +34,7 @@ function resumenVivienda(casa, registros, fecha=new Date()) {
   }
   const ultimo=adeudo.ultimoMesPagado;
   return {
+    casaId:Number(casa.id),
     calle:String(casa.calleCorrecta||casa.calle||''),
     numero:String(casa.numero||''),
     estado,

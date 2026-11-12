@@ -30,6 +30,7 @@ const staff=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','SEGURIDAD');
 const admins=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR');
 router.get('/tarjetas-rojas/mias',autorizarRoles('CONDOMINO'),rojas.mias);
 router.get('/tarjetas-rojas/viviendas',staff,rojas.viviendas);
+router.get('/tarjetas-rojas/historial',admins,rojas.historial);
 router.get('/tarjetas-rojas/configuracion',staff,rojas.configuracion);
 router.patch('/tarjetas-rojas/configuracion',admins,rojas.guardarConfiguracion);
 router.get('/tarjetas-rojas/casas/:casaId',staff,rojas.vivienda);

@@ -140,6 +140,7 @@
   if(name==='mis-reservas')void mine();
   if(name==='administracion')void adminList();
   if(name==='aprobacion')void adminList();
+  if(admin&&['tarjetas','historial-rojas'].includes(name))void window.MJClubRojasAdmin?.mostrar(name);
  }
  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
  function monthShift(offset){
@@ -689,9 +690,10 @@
   $('clubStreetField').hidden=$('clubNumberField').hidden=true;
   $('clubStreet').required=$('clubNumber').required=false;
   fillProfile();
-  $('clubCardsToolbar').hidden=false;
-  if(admin){$('clubManageRedCards').hidden=false;}
-  else{
+  // La barra inferior es exclusiva del contador de condóminos.
+  // Administración usa las dos pestañas del menú superior derecho.
+  if(!admin){
+   $('clubCardsToolbar').hidden=false;
    $('clubMyRedCards').hidden=false;
    void cargarMisRojas();
   }

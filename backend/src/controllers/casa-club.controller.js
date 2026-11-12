@@ -10,6 +10,7 @@ const {consultarSoloMantenimiento}=require('../services/adeudos-comunidad.servic
 const avisos=require('../services/casa-club-avisos.service');
 const tarifas=require('../services/casa-club-tarifas.service');
 const tarjetasRojas=require('../services/casa-club-tarjetas-rojas.service');
+const {plazoEfectivo}=require('../services/casa-club-plazo-efectivo.service');
 const {ordenarCalles}=require('../services/direccion-sort.service');
 const {evaluarElegibilidadReserva}=require('../services/elegibilidad-casa-club.service');
 const admin=r=>['SUPER_ADMIN','ADMINISTRADOR'].includes(r);
@@ -44,6 +45,17 @@ async function revisarElegibilidad(casaId){
  await tarjetasRojas.exigirDisponible(casaId);
 }
 async function expirarReservas(rango){
+ // Las solicitudes previas podían guardar 3 días; rectificar automáticamente
+ // las PENDIENTES aún sin pago a fin del día siguiente a su creación real.
+ const pendientes=await Reserva.findAll({where:{estatus:'PENDIENTE',pagado:false,
+  fechaLimitePago:{[Op.ne]:null}},attributes:['id','creadoEn','fecha','fechaLimitePago'],limit:2000});
+ for(const reserva of pendientes){
+  const correcto=plazoEfectivo(reserva);
+  if(correcto&&correcto!==reserva.fechaLimitePago){
+   await Reserva.update({fechaLimitePago:correcto},{where:{id:reserva.id,
+    estatus:'PENDIENTE',pagado:false,fechaLimitePago:reserva.fechaLimitePago}});
+  }
+ }
  const vencidas=await Reserva.findAll({where:{estatus:{[Op.in]:['PENDIENTE','APROBADA']},pagado:false,
   fechaLimitePago:{[Op.lt]:hoy()},...(rango?{fechaBloqueada:{[Op.between]:rango}}:{})},attributes:['id']});
  for(const item of vencidas){
