@@ -35,7 +35,8 @@ async function viviendas(req,res){
   for(const t of tarjetas){
    const id=Number(t.casaId);
    if(!t.retiradaEn)counts.set(id,(counts.get(id)||0)+1);
-   const date=t.asignadaEn?new Date(t.asignadaEn).toISOString():null;
+   const time=t.asignadaEn?new Date(t.asignadaEn):null;
+   const date=time&&!Number.isNaN(time.getTime())?time.toISOString():null;
    if(date&&(!last.get(id)||last.get(id)<date))last.set(id,date);
   }
   res.setHeader('Cache-Control','private, no-store');
@@ -52,7 +53,7 @@ async function historial(req,res){
  try{
   const [casas,tarjetas]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre'],raw:true}),
-   Tarjeta.findAll({order:[['asignadaEn','DESC'],['id','DESC']],limit:3000,raw:true})
+   Tarjeta.findAll({order:[['asignadaEn','DESC'],['id','DESC']],raw:true})
   ]);
   const domicilios=new Map(casas.map(c=>[Number(c.id),c]));
   const activos=new Map();
