@@ -6,7 +6,8 @@
  const $=id=>document.getElementById(id);
  let acceso=null,data='',meta={name:'',mime:''},escaneo=0,leyendo=false,validadoOcr=false;
  let enProceso=false,estadoEnCurso=false,intervalo=null,totalEsperado=null;
- let titular='MARIA DEL ROCIO BAHENA JUAREZ',terminaciones=['4409'];
+ let titular='MARIA DEL ROCIO BAHENA JUAREZ',terminaciones=['4409','4884','2440'];
+ let archivoPendiente=Promise.resolve();
  const money=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
  const setStatus=(msg,type='')=>{
   const host=$('clubProofResult');host.textContent=msg;
@@ -34,14 +35,35 @@
    $(id).classList.toggle('active',i===n);
   });
  }
- function resetFile(){
+ function resetFile({mantenerSelector=false}={}){
   escaneo++;data='';meta={name:'',mime:''};validadoOcr=false;
-  $('clubProofFile').value='';
+  if(!mantenerSelector)$('clubProofFile').value='';
   $('clubProofPreviewWrap').hidden=true;
   $('clubProofPreview').removeAttribute('src');
   for(const id of ['clubProofFolio','clubProofAmount','clubProofDate','clubProofTime'])$(id).value='';
   $('clubProofRead').disabled=true;
   $('clubProofSubmit').disabled=true;
+ }
+ function setOfficialAccount(cuenta){
+  if(!cuenta||!cuenta.titular||!Array.isArray(cuenta.destinosUltimos4))return;
+  const siguiente=cuenta.destinosUltimos4.filter(x=>/^\d{4}$/.test(String(x)));
+  if(!siguiente.length)return;
+  const changed=titular!==cuenta.titular||JSON.stringify(terminaciones)!==JSON.stringify(siguiente);
+  titular=cuenta.titular;
+  terminaciones=siguiente;
+  if(changed&&data&&!leyendo)void leer();
+ }
+ function setExpectedAmount(amount){
+  const next=Number(amount);
+  if(!Number.isFinite(next)||next<=0)return;
+  totalEsperado=next;
+  if(data&&!leyendo&&validadoOcr&&
+     Math.round(Number($('clubProofAmount').value)*100)!==Math.round(next*100)){
+   validadoOcr=false;
+   $('clubProofSubmit').disabled=true;
+   $('clubProofOcrStatus').textContent='El comprobante tiene un monto distinto de '+money(next)+
+     '. Puedes conservar la foto, pero no se podrá enviar como pago de esta reserva.';
+  }
  }
  async function refresh(){
   if(!acceso||estadoEnCurso)return;
@@ -99,8 +121,14 @@
    history.replaceState(null,'','#comprobante='+parsed.reservaId+'.'+parsed.claveAcceso);
   $('clubProofIntro').hidden=true;
   $('clubPublicProofFlow').hidden=false;
+  $('clubProofProgress').hidden=false;
+  $('clubProofFollowup').hidden=false;
+  $('clubProofSubmit').hidden=false;
   $('clubPublicProofForm').hidden=false;
-  resetFile();steps(0);
+  // Mantener la imagen y los campos que se leyeron ANTES de crear la reserva.
+  if(!data)resetFile();
+  $('clubProofSubmit').disabled=!validadoOcr;
+  steps(0);
   void refresh();schedule();
   const target=$('clubPaymentDetails').hidden?$('clubPublicProofFlow'):$('clubPaymentDetails');
   target.scrollIntoView({behavior:'smooth',block:'start'});
@@ -238,10 +266,11 @@
    $('clubProofDate').value=parsed.date;
    $('clubProofTime').value=parsed.time;
    validadoOcr=true;
-   $('clubProofSubmit').disabled=false;
+   $('clubProofSubmit').disabled=!acceso;
    $('clubProofOcrStatus').textContent='Comprobante leído: beneficiario y cuenta receptora terminación '+
      (destino.matchedSuffix||terminaciones.join('/'))+
-     '. Revisa los campos y envíalo para que Titan confirme el depósito.';
+     (acceso?'. Envíalo para que Titan verifique el depósito.':
+       '. Se asociará automáticamente al guardar tu solicitud. Titan comprobará el depósito después.');
   }catch(e){
    if(revision===escaneo)$('clubProofOcrStatus').textContent='No se completó la lectura: '+e.message;
   }finally{
@@ -249,22 +278,37 @@
    leyendo=false;$('clubProofRead').disabled=!data;
   }
  }
- $('clubProofFile').addEventListener('change',async e=>{
-  const file=e.target.files?.[0];resetFile();if(!file)return;
+ async function procesarArchivo(file){
+  resetFile({mantenerSelector:true});
+  if(!file)return;
   const revision=escaneo;
   try{
    meta={name:file.name||'comprobante',mime:file.type||''};
    data=await convertirArchivo(file);
    if(revision!==escaneo)return;
-   $('clubProofPreview').src=data;$('clubProofPreviewWrap').hidden=false;
+   $('clubProofPreview').src=data;
+   $('clubProofPreviewWrap').hidden=false;
    $('clubProofRead').disabled=false;
    await leer();
-  }catch(err){if(revision===escaneo)$('clubProofOcrStatus').textContent=err.message+
-     ' Si tu celular no permite abrir HEIC, elige «Guardar como JPG» en Fotos.';}
+  }catch(err){
+   if(revision===escaneo)$('clubProofOcrStatus').textContent='No se pudo abrir el archivo: '+err.message+
+      ' Si tu celular no permite abrir HEIC, elige una imagen JPG.';
+  }
+ }
+ $('clubProofFile').addEventListener('change',e=>{
+  archivoPendiente=procesarArchivo(e.target.files?.[0]);
  });
- $('clubProofRead').addEventListener('click',()=>void leer());
- $('clubPublicProofForm').addEventListener('submit',async e=>{
-  e.preventDefault();if(enProceso||!validadoOcr||!acceso)return;
+ $('clubProofRead').addEventListener('click',()=>{
+  archivoPendiente=leer();
+ });
+ async function enviarComprobante(){
+  if(enProceso||!validadoOcr||!acceso)return {status:'unreadable',message:'Falta leer completamente el comprobante.'};
+  if(Number.isFinite(totalEsperado)&&totalEsperado>0&&
+     Math.round(Number($('clubProofAmount').value)*100)!==Math.round(totalEsperado*100)){
+   const message='El depósito no coincide con el importe requerido '+money(totalEsperado)+'.';
+   $('clubProofOcrStatus').textContent=message;
+   return {status:'unreadable',message};
+  }
   enProceso=true;$('clubProofSubmit').disabled=true;
   $('clubProofSubmit').textContent='Enviando comprobante…';
   try{
@@ -276,15 +320,37 @@
     comprobanteData:data,comprobanteNombre:meta.name,comprobanteMime:meta.mime
    });
    resetFile();
-   setStatus('Comprobante reportado. Iniciamos la verificación bancaria con Titan.','pending');
+   setStatus('Comprobante enviado. Titan realizará la comprobación bancaria independiente.','pending');
    await refresh();
+   return {status:'sent'};
   }catch(error){
-   setStatus('No se pudo registrar el comprobante: '+error.message,'error');
-   $('clubProofOcrStatus').textContent='Revisa la imagen y vuelve a intentarlo. No se registró un depósito.';
+   setStatus('No se pudo enviar el comprobante: '+error.message,'error');
+   $('clubProofOcrStatus').textContent='La foto sigue seleccionada. Puedes corregirla o reintentar el envío.';
+   return {status:'failed',message:error.message};
   }finally{
-   enProceso=false;$('clubProofSubmit').textContent='Enviar comprobante a Titan';
+   enProceso=false;
+   $('clubProofSubmit').textContent='Enviar comprobante a Titan';
    $('clubProofSubmit').disabled=!validadoOcr;
   }
+ }
+ async function sendPrepared(){
+  // La reserva ya existe y tiene un token secreto propio: hasta entonces
+  // se puede transmitir la imagen al servidor y asociarla a ese folio.
+  try{
+   await archivoPendiente;
+   if(!data)return {status:'empty'};
+   if(!validadoOcr)return {status:'unreadable',message:
+     $('clubProofOcrStatus').textContent||'La imagen necesita una nueva lectura.'};
+   return await enviarComprobante();
+  }catch(e){return {status:'failed',message:e.message};}
+ }
+ $('clubPublicProofForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!acceso){
+   setStatus('Primero guarda la solicitud. El archivo ya está seleccionado y se enviará al generar el folio.','pending');
+   return;
+  }
+  await enviarComprobante();
  });
  $('clubProofRefresh').addEventListener('click',()=>void refresh());
  $('clubProofRetry').addEventListener('click',async()=>{
@@ -310,7 +376,17 @@
    setTimeout(()=>URL.revokeObjectURL(url),60000);
   }catch(e){setStatus(e.message,'error');}finally{button.disabled=false;}
  });
- window.MJClubPublicProof={open,refresh};
- // En la URL pública genérica no se recupera ningún comprobante anterior.
+ window.MJClubPublicProof={open,refresh,sendPrepared,setOfficialAccount,setExpectedAmount};
+ // La fotografía se puede escoger y analizar ANTES del registro.
+ // El servidor no recibe el archivo hasta existir una reserva asociada.
  if(parse(location.hash))open(location.hash);
+ else{
+  $('clubProofIntro').hidden=true;
+  $('clubPublicProofFlow').hidden=false;
+  $('clubProofProgress').hidden=true;
+  $('clubProofFollowup').hidden=true;
+  $('clubProofSubmit').hidden=true;
+  $('clubPublicProofForm').hidden=false;
+  setStatus('Selecciona tu comprobante ahora. Al guardar la solicitud se asociará al folio y se verificará con Titan.','pending');
+ }
 })();
