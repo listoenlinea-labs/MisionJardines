@@ -56,8 +56,8 @@ async function obtener(casaId,{historial=false,transaction}={}){
      retiradaEn:t.retiradaEn,motivoRetiro:t.motivoRetiro}: {})
   }))};
 }
-async function exigirDisponible(casaId){
- const resumen=await obtener(casaId);
+async function exigirDisponible(casaId,{transaction}={}){
+ const resumen=await obtener(casaId,{transaction});
  if(resumen.bloqueada)throw fallo(409,
   'Esta vivienda no puede reservar Casa Club por exceder tres tarjetas rojas activas. Restricción vigente hasta el '+resumen.bloqueadoHasta+'.',
   {codigo:'TARJETAS_ROJAS',tarjetas:{
