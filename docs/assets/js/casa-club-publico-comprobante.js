@@ -51,7 +51,7 @@
   const changed=titular!==cuenta.titular||JSON.stringify(terminaciones)!==JSON.stringify(siguiente);
   titular=cuenta.titular;
   terminaciones=siguiente;
-  if(changed&&data&&!leyendo)void leer();
+  if(changed&&data&&!leyendo)archivoPendiente=leer();
  }
  function setExpectedAmount(amount){
   const next=Number(amount);
@@ -126,7 +126,7 @@
   $('clubProofSubmit').hidden=false;
   $('clubPublicProofForm').hidden=false;
   // Mantener la imagen y los campos que se leyeron ANTES de crear la reserva.
-  if(!data)resetFile();
+  if(!data&&!$('clubProofFile').files?.length)resetFile();
   $('clubProofSubmit').disabled=!validadoOcr;
   steps(0);
   void refresh();schedule();
