@@ -83,11 +83,9 @@ test('servidor valida valores OCR por tipo e importe',()=>{
   folioOperacion:'0910260',fechaOperacion:'2026-10-26',horaOperacion:'18:41:00',monto:20
  },parser.extract(textoInicial),true),/monto/i);
 });
-test('si falta identificador devuelve campos necesarios para modal',async()=>{
- await assert.rejects(
-  verificarPosibilidad({textoOcr:'Folio de operación\n1769715857',casa:{calle:'Prueba',numero:'TEST-001'},monto:10,fechaOperacion:'2026-10-26',horaOperacion:'18:41:00'}),
-  error=>error.status===422&&error.code==='FOLIO_SIN_RESPALDO_BANCARIO'&&error.camposFaltantes.includes('Referencia bancaria')
- );
- await assert.rejects(verificarPosibilidad({textoOcr:'Sin identificador'}),error=>error.status===422&&error.camposFaltantes.includes('Clave de rastreo'));
- assert.deepEqual(await verificarPosibilidad({textoOcr:'Referencia\n0910260'}),{metodo:'CLAVE_O_REFERENCIA'});
+test('reporte sin identificador pasa a conciliación asincrónica, sin acreditar depósito',async()=>{
+ for(const textoOcr of ['Folio de operación\\n1769715857','Sin identificador','Referencia\\n0910260']){
+  assert.deepEqual(await verificarPosibilidad({textoOcr,fechaOperacion:'2026-10-26',horaOperacion:'18:41:00',monto:10}),
+   {metodo:'REPORTE_PENDIENTE_TITAN'});
+ }
 });
