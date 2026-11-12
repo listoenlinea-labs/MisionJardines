@@ -206,7 +206,8 @@ test('Administración puede RECHAZAR aun con captura en revisión y la vivienda 
  assert.equal(rechazo.code,200);
  assert.equal(row.estatus,'RECHAZADA');
  assert.equal(row.fechaBloqueada,null);
- assert.equal(conteo.mock.callCount(),0,'el comprobante pendiente no impide rechazo administrativo');
+ assert.equal(conteo.mock.callCount(),1,'se registra la advertencia sin impedir el rechazo');
+ assert.match(row.notas,/conciliar depósito/);
  Reserva.findOne.mock.mockImplementation(async options=>options.where.estatus==='PENDIENTE'&&row.estatus==='PENDIENTE'?row:null);
  const created=t.mock.method(Reserva,'create',async data=>({id:36,...data}));
  t.mock.method(avisos,'notificar',async()=>({correo:true,administracion:true,whatsapp:false}));
@@ -230,7 +231,8 @@ test('Administración CANCELA una fecha aprobada aun con prueba en revisión y p
  assert.equal(cancelada.code,200);
  assert.equal(row.estatus,'CANCELADA');
  assert.equal(row.fechaBloqueada,null);
- assert.equal(pending.mock.callCount(),0,'se preserva historial, no se exige resolver OCR para cancelar');
+ assert.equal(pending.mock.callCount(),1,'se detecta la captura para auditoría sin bloquear la cancelación');
+ assert.equal(cancelada.body.pagoPendienteDeRevision,true);
  t.mock.method(Reserva,'create',async data=>({id:45,...data}));
  t.mock.method(avisos,'notificar',async()=>({correo:true,administracion:true,whatsapp:false}));
  const siguiente=res();
