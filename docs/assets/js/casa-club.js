@@ -336,10 +336,33 @@
        cleaning=paid.reduce((a,r)=>a+Number(r.limpieza),0);
    $('clubTotals').innerHTML=[['Total de reservas',adminRows.length],['Reservas aprobadas',adminRows.filter(r=>r.estatus==='APROBADA').length],['Recuperación cobrada',money(income)],['Garantías recibidas',money(guarantee)],['Limpieza cobrada',money(cleaning)]].map(([name,value])=>'<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
    const tableRows=[...adminRows].sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE'));
-   $('clubAdminRows').innerHTML=tableRows.map(r=>'<tr data-reserva="'+Number(r.id)+'">'+
-    [r.casa?.numero,r.casa?.calleCorrecta||r.casa?.calle,r.telefono,mon(r.fecha),fmt(r.fecha),fechaSolicitud(r.creadoEn),money(r.cuotaRecuperacion),r.folio||'—',money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),money(r.limpieza),r.solicitante,r.propietario?'Sí':'No',paymentStatus(r),r.notas||'—',r.estatus].map(v=>'<td>'+esc(v)+'</td>').join('')+
-    '<td><button type="button" class="soft">Ver detalles</button> '+(!r.pagado?' <button type="button" class="danger" data-delete="'+Number(r.id)+'">Eliminar registro</button> ':'')+(r.estatus==='APROBADA'?' <button type="button" class="danger" data-release="'+Number(r.id)+'">Cancelar / liberar día</button> ':'')+(r.estatus==='APROBADA'?(r.pagado?'<span class="state-pill APROBADA">Pago confirmado</span>':'<button type="button" class="soft" data-paid="'+Number(r.id)+'">Registrar pago</button>')+' <button type="button" class="soft" data-return="'+Number(r.id)+'">'+(r.garantiaDevuelta?'Garantía devuelta':'Devolver garantía')+'</button>':'—')+'</td></tr>').join('')||'<tr><td colspan="16">Aún no hay reservas registradas.</td></tr>';
-   $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
+   $('clubAdminRows').innerHTML=tableRows.map(r=>{
+      const acciones='<button type="button" class="soft">Ver detalles</button> '+
+       (r.estatus==='APROBADA'
+        ?'<button type="button" class="danger" data-release="'+Number(r.id)+'">Cancelar / liberar día</button>'
+        :!r.pagado
+         ?'<button type="button" class="danger" data-delete="'+Number(r.id)+'">Eliminar registro</button>'
+         :'');
+      const valores=[
+       r.casa?.calleCorrecta||r.casa?.calle||'—',
+       r.casa?.numero||'—',
+       r.solicitante||'—',
+       fmt(r.fecha),
+       fechaSolicitud(r.creadoEn),
+       money(r.cuotaRecuperacion),
+       money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
+       money(r.limpieza),
+       r.folio||'—',
+       r.propietario?'Sí':'No',
+       paymentStatus(r),
+       r.motivo||'—',
+       r.estatus
+      ];
+      return '<tr data-reserva="'+Number(r.id)+'">'+
+       valores.map((v,idx)=>'<td'+(idx===11?' class="club-event-reason"':'')+'>'+esc(v)+'</td>').join('')+
+       '<td class="club-reservation-actions">'+acciones+'</td></tr>';
+    }).join('')||'<tr><td colspan="14">Aún no hay reservas registradas.</td></tr>';
+    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
     '<article class="reserve-card" data-pendiente-id="'+Number(r.id)+'"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
     '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
     '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>').join('')||'<div class="reserve-card">No hay solicitudes pendientes de aprobación.</div>';
