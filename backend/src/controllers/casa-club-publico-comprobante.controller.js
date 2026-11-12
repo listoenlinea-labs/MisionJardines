@@ -52,6 +52,9 @@ async function estado(req,res){
   return res.json({ok:true,data:{
    reservaId:reserva.id,fecha:reserva.fecha,estatusReserva:reserva.estatus,
    pagado:Boolean(reserva.pagado),
+   total:Number(reserva.cuotaRecuperacion)+Number(reserva.depositoGarantia)+Number(reserva.limpieza),
+   destinatario:process.env.PAGOS_TITULAR||'MARIA DEL ROCIO BAHENA JUAREZ',
+   terminacionCuenta:process.env.PAGOS_DESTINO_ULTIMOS4||'4409',
    comprobante:pago?{
     estado:pago.estatus,
     etapa:String(revision.etapa||'RECIBIDO').slice(0,80),
