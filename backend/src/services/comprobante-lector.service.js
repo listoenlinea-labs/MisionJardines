@@ -50,9 +50,9 @@ function reconocerImagen(imageData) {
 
 async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacion, horaOperacion, monto, exigirCampos = false }) {
   const texto = await reconocerImagen(comprobanteData);
-  const {titular,destinosUltimos4} = cuentaOficial.obtener();
-  const verificacion = parser.verifyDestination(texto, titular, destinosUltimos4);
-  if (!verificacion.ok) throw Object.assign(new Error(verificacion.message + ' No se registró el pago.'), { status: 422 });
+  // La imagen es evidencia para REPORTAR, no para acreditar el abono.
+  // No exigir beneficiario, cuenta ni un identificador ausente de la captura.
+  // La acreditación continúa dependiendo de la notificación bancaria Titan.
   const extraido = { ...parser.extract(texto), candidatos: parser.candidatosOperacion(texto) };
   validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos);
   return { texto: texto.slice(0, 12000), extraido };
@@ -60,12 +60,10 @@ async function comprobarDestino({ comprobanteData, folioOperacion, fechaOperacio
 
 function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion, monto }, extraido, exigirCampos = false) {
   const faltantes = [];
-  if (!(extraido.claveRastreo || extraido.referencia || extraido.folio || extraido.candidatos?.length))
-    faltantes.push('Identificador de operación verificable');
   for (const [campo,nombre] of [['date','Fecha de operación'],['time','Hora de operación'],['amount','Monto transferido']])
     if (!extraido[campo]) faltantes.push(nombre);
-  if (exigirCampos && faltantes.length) {
-    throw Object.assign(new Error('El comprobante no contiene todos los campos necesarios. Adjunta el detalle del movimiento o una imagen más clara.'), {
+  if (faltantes.length) {
+    throw Object.assign(new Error('La captura debe mostrar monto transferido, fecha y hora de operación claramente legibles.'), {
       status: 422, code: 'COMPROBANTE_INCOMPLETO', camposFaltantes: faltantes
     });
   }
@@ -78,10 +76,14 @@ function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion,
   const expected = extraido.claveRastreo
     ? idsBanco.normal(detected)
     : extraido.referencia ? idsBanco.referencia(detected) : idsBanco.normal(detected);
-  if (!detected && extraido.candidatos?.length && !extraido.candidatos.some(
-    c => idsBanco.normal(c) === idsBanco.normal(folioOperacion) ||
-         (idsBanco.referencia(c) && idsBanco.referencia(c) === idsBanco.referencia(folioOperacion))
-  )) throw Object.assign(new Error('El identificador no se encontró entre los códigos de la imagen.'), {status:422});
+  // Código sintético SOLO si no figura ningún identificador en la foto.
+  // No debe considerarse jamás una referencia bancaria válida para confirmar.
+  const sinReferencia=/^SINREF-[A-Z0-9-]{8,80}$/i.test(String(folioOperacion||''));
+  if (!detected && extraido.candidatos?.length && !sinReferencia &&
+      !extraido.candidatos.some(
+        c => idsBanco.normal(c) === idsBanco.normal(folioOperacion) ||
+          (idsBanco.referencia(c) && idsBanco.referencia(c) === idsBanco.referencia(folioOperacion))
+      )) throw Object.assign(new Error('El identificador no se encontró entre los códigos de la imagen.'), {status:422});
   if (detected && (!provided || provided !== expected))
     throw Object.assign(new Error('El identificador seleccionado no coincide con el campo leído por OCR. Vuelve a leer el comprobante.'), {
       status: 422, code: 'IDENTIFICADOR_NO_COINCIDE'
@@ -94,7 +96,8 @@ function validarCamposExtraidos({ folioOperacion, fechaOperacion, horaOperacion,
   if (!same(fechaOperacion, extraido.date) && !equivaleFechaSpei(fechaOperacion, extraido.date, horaOperacion))
     throw Object.assign(new Error('La fecha no coincide con la fecha real ni con el día operativo SPEI mostrado en el comprobante.'), { status: 422 });
   if (extraido.time && String(horaOperacion).slice(0, 5) !== extraido.time.slice(0, 5)) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
-  if (exigirCampos && (String(horaOperacion).length === 5 ? horaOperacion + ':00' : String(horaOperacion)) !== extraido.time) throw Object.assign(new Error('La hora no coincide con Fecha de operación del comprobante.'), { status: 422 });
+  // Comparar a resolución de minuto: muchos bancos no muestran segundos.
+  // La hora nunca se omite; se tolera solo la ausencia de segundos visibles.
   if (extraido.amount && Number(monto).toFixed(2) !== extraido.amount) throw Object.assign(new Error('El monto no coincide con el monto transferido que aparece en el comprobante.'), { status: 422 });
 }
 

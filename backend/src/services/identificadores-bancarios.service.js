@@ -31,6 +31,10 @@ function almacenarVerificados(extraido, folioOperacion, textoOcr='') {
  const posibles=candidatos(textoOcr);
  if (!tipo && posibles.some(c=>equivalen(c,folioOperacion)))
    return {version:2,origen:'OCR_SERVIDOR',tipo:'candidato',...parsed,candidatos:posibles};
+ // El número de reporte SINREF no es un identificador financiero. Sirve solo
+ // para evitar colisiones de solicitudes que carecen de folio bancario visible.
+ if (!tipo && !posibles.length && /^SINREF-[A-Z0-9-]{8,80}$/i.test(String(folioOperacion||'')))
+   return {version:2,origen:'OCR_SERVIDOR',tipo:'sinIdentificador',...parsed,candidatos:[]};
  if (!tipo || parsed[tipo] !== valor)
    throw Object.assign(new Error('Los identificadores del comprobante no coinciden con el OCR del servidor.'), {status:422});
  return {version:2,origen:'OCR_SERVIDOR',tipo,...parsed,candidatos:posibles};
@@ -38,9 +42,9 @@ function almacenarVerificados(extraido, folioOperacion, textoOcr='') {
 function identificadoresPago(pago){
  const meta=pago?.identificadoresVerificados;
  if(meta&&typeof meta==='object'&&[1,2].includes(meta.version)&&meta.origen==='OCR_SERVIDOR'
-   &&['claveRastreo','referencia','folio','candidato'].includes(meta.tipo)){
+   &&['claveRastreo','referencia','folio','candidato','sinIdentificador'].includes(meta.tipo)){
   const typed={claveRastreo:normal(meta.claveRastreo),referencia:referencia(meta.referencia),folio:normal(meta.folio)};
-  if(typed[meta.tipo]||(meta.tipo==='candidato'&&Array.isArray(meta.candidatos)))
+  if(typed[meta.tipo]||(meta.tipo==='candidato'&&Array.isArray(meta.candidatos))||meta.tipo==='sinIdentificador')
    return {...typed,candidatos:meta.version===2&&Array.isArray(meta.candidatos)?meta.candidatos.filter(v=>/^[A-Z0-9]{7,80}$/.test(String(v))).slice(0,30):[]};
  }
  const extraidos=extraer(pago?.textoOcr);
@@ -74,6 +78,13 @@ function identificadoresAviso(aviso){
 function coinciden(pago,aviso){
  const a=identificadoresPago(pago),b=identificadoresAviso(aviso);
  if(['claveRastreo','referencia','folio'].some(tipo=>a[tipo]&&b[tipo]&&a[tipo]===b[tipo]))return true;
+ // Mercado Pago rotula "Comprobante #188..." y también puede mostrar la
+ // clave de rastreo "CPO188...". Relacionar únicamente esa transformación
+ // exacta, con recibo explícito de Mercado Pago leído por nuestro servidor.
+ // El banco seguirá exigiendo cuenta, fecha, importe y aviso autorizado.
+ if(/MERCADO\s*PAGO/i.test(String(pago?.textoOcr||'')) &&
+    /^\d{10,17}$/.test(a.folio) &&
+    b.claveRastreo==='CPO'+a.folio)return true;
  // Candidatos OCR sin etiqueta, contra valores con etiqueta EXPLÍCITA de Titan.
  // No transformar un campo folio etiquetado en una referencia distinta.
  const etiquetados=[a.claveRastreo,a.referencia,a.folio].filter(Boolean);
