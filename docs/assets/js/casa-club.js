@@ -28,6 +28,7 @@
    :'Pendiente de lectura y aceptación.';
   $('clubRulesAcceptedStatus').classList.toggle('accepted',rulesAccepted);
   $('clubOpenRules').textContent=rulesAccepted?'Volver a consultar reglamento':'Leer reglamento y términos';
+  $('clubMobileRulesPrompt').hidden=rulesAccepted;
   syncSubmit();
  }
  function scrollReglamento(){
@@ -153,13 +154,18 @@
  const reservationCard=$('clubReservationCard');
  const reservationAnchor=document.createComment('Posición original del formulario de Casa Club');
  reservationCard.parentNode.insertBefore(reservationAnchor,reservationCard);
+ const rulesCard=$('clubRegulationsAcceptance');
+ const rulesAnchor=document.createComment('Posición del reglamento en formulario de escritorio');
+ rulesCard.parentNode.insertBefore(rulesAnchor,rulesCard);
  function situarFormulario(){
   if(mobileReservationQuery.matches){
+   $('clubCalendarHint').insertAdjacentElement('afterend',rulesCard);
    mobileReservationDialog.appendChild(reservationCard);
    $('clubSubmit').textContent='Guardar';
   }else{
    if(mobileReservationDialog.open)mobileReservationDialog.close();
    reservationAnchor.parentNode.insertBefore(reservationCard,reservationAnchor.nextSibling);
+   rulesAnchor.parentNode.insertBefore(rulesCard,rulesAnchor.nextSibling);
    $('clubSubmit').textContent=admin?'Reservar':'Enviar solicitud de reservación';
   }
  }
@@ -170,6 +176,10 @@
   mobileReservationDialog.showModal();
  }
  $('clubMobileReservationClose').addEventListener('click',()=>mobileReservationDialog.close());
+ $('clubMobileRulesGo').addEventListener('click',()=>{
+  mobileReservationDialog.close();
+  rulesCard.scrollIntoView({behavior:'smooth',block:'center'});
+ });
  if(mobileReservationQuery.addEventListener)mobileReservationQuery.addEventListener('change',situarFormulario);
  else if(mobileReservationQuery.addListener)mobileReservationQuery.addListener(situarFormulario);
  situarFormulario();
@@ -208,7 +218,16 @@
     'Solicitud apartada provisionalmente. Adjunta el comprobante en esta página: Titan confirmará el depósito automáticamente.');
    // El estado de pago se abre después del aviso para que el desplazamiento
    // se mantenga en el formulario de comprobante y no vuelva arriba.
-   if(result.data?.pago)showPayment(result.data);
+   if(result.data?.pago){
+    showPayment(result.data);
+    const proof=window.MJClubPublicProof;
+    if(proof){
+     const envio=await proof.sendPrepared();
+     if(envio.status==='sent')notify('Solicitud guardada y comprobante enviado. Titan verificará el depósito.');
+     else if(envio.status==='unreadable')notify('Tu reservación quedó guardada. Revisa el comprobante debajo del calendario: '+envio.message,true);
+     else if(envio.status==='failed')notify('Reservación guardada, pero falta enviar el comprobante. Reintenta desde el área de carga: '+envio.message,true);
+    }
+   }
    $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
    actualizarBancoPublico();
    if(admin)tab('mis-reservas');
@@ -535,7 +554,9 @@
   }
   // Sin usar Storage o perfil, consultar únicamente la cuenta oficial.
   api('/publico/cuenta').then(result=>{
-   bancoPublico=result.data;actualizarBancoPublico();
+   bancoPublico=result.data;
+   window.MJClubPublicProof?.setOfficialAccount(result.data);
+   actualizarBancoPublico();
   }).catch(e=>{
    $('clubTransferHelp').hidden=false;
    $('clubTransferHelp').textContent='No se pudieron consultar los datos bancarios oficiales. No deposites hasta confirmar la cuenta: '+e.message;
@@ -543,7 +564,10 @@
  }
  if(profile){
   $('clubInstructionsOpen').hidden=true;
-  if(!/^#comprobante=/.test(location.hash))$('clubProofIntro').hidden=true;
+  if(!/^#comprobante=/.test(location.hash)){
+   $('clubProofIntro').hidden=true;
+   $('clubPublicProofFlow').hidden=true;
+  }
  }
  if(admin){
   document.querySelectorAll('[data-admin]').forEach(x=>x.hidden=false);
@@ -568,7 +592,9 @@
    ' + garantía '+money(p.depositoGarantia)+' + limpieza '+money(p.limpieza)+
    ' = '+money(p.total)+'. Se confirma al verificar el pago.';
   $('clubFeeSummary').hidden=false;
-  importePublico=Number(p.total);actualizarBancoPublico();
+  importePublico=Number(p.total);
+  window.MJClubPublicProof?.setExpectedAmount(importePublico);
+  actualizarBancoPublico();
   if(admin){
    $('clubTariffEditor').hidden=false;
    for(const [clave,id] of Object.entries(tarifaCampos))$(id).value=p[clave];
