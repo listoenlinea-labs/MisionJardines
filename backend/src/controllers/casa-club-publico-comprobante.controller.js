@@ -8,6 +8,7 @@ const pagoController=require('./pagos.controller');
 const reintentos=require('../services/pagos-reintento-validacion.service');
 const cuentaOficial=require('../services/pagos-cuenta-oficial.service');
 const {Casa}=require('../models');
+const {expirarReservas}=require('./casa-club.controller');
 
 const noCache=res=>res.setHeader('Cache-Control','private, no-store');
 function cuenta(_req,res){
@@ -52,6 +53,10 @@ async function reportar(req,res){
 }
 async function estado(req,res){
  try{
+  const accesoValido=await leerReserva(req);
+  // Incluso si nadie visita el calendario, el enlace personal refleja
+  // el vencimiento y libera la fecha al consultar su estado.
+  await expirarReservas([accesoValido.fecha,accesoValido.fecha]);
   const reserva=await leerReserva(req);
   const pago=await ultimoComprobante(reserva);
   const vivienda=reserva.casaId?await Casa.findByPk(reserva.casaId,{attributes:['calle','calleCorrecta','numero']}):null;
@@ -60,7 +65,10 @@ async function estado(req,res){
   noCache(res);
   // No devolver identificadores bancarios ni datos personales.
   return res.json({ok:true,data:{
-   reservaId:reserva.id,fecha:reserva.fecha,estatusReserva:reserva.estatus,
+   reservaId:reserva.id,folio:'CC-'+reserva.id,fecha:reserva.fecha,
+   fechaLimitePago:reserva.fechaLimitePago,solicitante:reserva.solicitante,
+   vivienda:vivienda?String(vivienda.calleCorrecta||vivienda.calle||'').trim()+' '+String(vivienda.numero||'').trim():null,
+   estatusReserva:reserva.estatus,
    pagado:Boolean(reserva.pagado),
    datosTransferencia:cuentaOficial.obtener(),
    conceptoTransferencia:cuentaOficial.conceptoVivienda(vivienda),
@@ -78,6 +86,8 @@ async function estado(req,res){
 }
 async function reintentar(req,res){
  try{
+  const reservaInicial=await leerReserva(req);
+  await expirarReservas([reservaInicial.fecha,reservaInicial.fecha]);
   const reserva=await leerReserva(req);
   if(!['PENDIENTE','APROBADA'].includes(reserva.estatus)||reserva.pagado)
    return res.status(409).json({ok:false,message:'La reservación ya no admite reintentos bancarios.'});
