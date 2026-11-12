@@ -9,7 +9,7 @@ const club=require('../src/controllers/casa-club.controller');
 const tarifas=require('../src/services/casa-club-tarifas.service');
 function res(){return{code:200,body:null,headers:{},status(n){this.code=n;return this;},setHeader(k,v){this.headers[k]=v;},json(v){this.body=v;return this;}};}
 const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const req=overrides=>({usuario:{usuarioId:19,rol:'CONDOMINO',casaId:5},body:{fecha:day,solicitante:'Prueba Usuario',telefono:'3331234567',correo:'persona@example.com',motivo:'Cumpleaños',casaId:5,propietario:true,aceptaWhatsApp:true},...overrides});
+const req=overrides=>({usuario:{usuarioId:19,rol:'CONDOMINO',casaId:5},body:{fecha:day,solicitante:'Prueba Usuario',telefono:'3331234567',correo:'persona@example.com',motivo:'Cumpleaños',casaId:5,propietario:true,aceptaWhatsApp:true,aceptaReglamento:true},...overrides});
 function sinAdeudos(t){
  t.mock.method(tarifas,'obtener',async()=>({cuotaRecuperacion:700,depositoGarantia:700,limpieza:600}));
  t.mock.method(Reserva,'findAll',async()=>[]); // no reservas aprobadas por expirar ni cobros de club
