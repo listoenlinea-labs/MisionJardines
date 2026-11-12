@@ -39,7 +39,7 @@ function fechaVisible(value){
  return match?match[3]+'-'+MESES[Number(match[2])-1]+'-'+match[1]:date;
 }
 const importe=row=>Number(row.cuotaRecuperacion)+Number(row.depositoGarantia)+Number(row.limpieza);
-const moneda=n=>n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+const moneda=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
 function instrucciones(row,config){
  return {folio:'CC-'+row.id,fecha:row.fecha,monto:importe(row),
   cuotaRecuperacion:Number(row.cuotaRecuperacion),depositoGarantia:Number(row.depositoGarantia),limpieza:Number(row.limpieza),
