@@ -15,11 +15,11 @@
  const lastDay=()=>new Date(Date.parse(today()+'T12:00:00Z')+365*86400000).toISOString().slice(0,10);
  const whatsappValido=value=>/^(?:52)?[0-9]{10}$/.test(value.replace(/[\s()+-]/g,''));
  const canSubmit=()=>!submitting&&calendarReady&&rulesAccepted&&Boolean(selectedDate)&&!(profile&&!profile.casa)
-  &&(admin||(whatsappValido($('clubPhone').value)&&$('clubOptIn').checked));
+  &&(admin||whatsappValido($('clubPhone').value));
  const syncSubmit=()=>{$('clubSubmit').disabled=!canSubmit();};
  $('clubPhone').addEventListener('input',syncSubmit);
  $('clubPhone').addEventListener('change',syncSubmit);
- $('clubOptIn').addEventListener('change',syncSubmit);
+ 
  const rulesDialog=$('clubRulesDialog'),rulesScroll=$('clubRulesScroll'),rulesConfirm=$('clubRulesConfirm');
  let rulesReady=false,openedRules=false;
  function actualizarAceptacionReglamento(){
@@ -149,53 +149,31 @@
  }
  function homeText(r){return r?.casa?((r.casa.calleCorrecta||r.casa.calle)+' · Casa '+r.casa.numero):'Sin vivienda';}
  function statusBadge(status){return '<span class="state-pill '+esc(status)+'">'+esc(({PENDIENTE:'Pendiente',APROBADA:'Aprobada',RECHAZADA:'Rechazada',CANCELADA:'Cancelada'})[status]||status)+'</span>';}
+ // Cuenta bancaria y tarifa oficiales dentro de un modal; no enviamos WhatsApp.
+ const paymentDialog=$('clubPaymentInstructionsDialog');
+ function abrirInstrucciones(){
+  const usarReserva=!$('clubPublicProofFlow').hidden&&!$('clubProofBankDetails').hidden;
+  $('clubProofBankDetails').hidden=!usarReserva;
+  $('clubTransferHelp').hidden=usarReserva||!bancoPublico;
+  paymentDialog.showModal();
+ }
+ $('clubInstructionsOpen').addEventListener('click',abrirInstrucciones);
+ $('clubProofInstructionsOpen').addEventListener('click',abrirInstrucciones);
+ $('clubInstructionsClose').addEventListener('click',()=>paymentDialog.close());
  function showPayment(result){
-  const p=result.pago, host=$('clubPaymentDetails');
-  host.replaceChildren();
-  const rows=[
-   ['Fecha apartada',fmt(result.fecha)+' · '+p.folio],
-   ['Pago de recuperación',money(p.cuotaRecuperacion)],
-   ['Depósito de garantía',money(p.depositoGarantia)],
-   ['Limpieza',money(p.limpieza)],
-   ['Total a depositar',money(p.monto)],
-   ['Banco',p.banco],
-   ['Titular',p.titular],
-   ['Cuenta',p.cuenta],
-   ['CLABE',p.clabe||'—'],
-   ['Tarjeta',p.tarjeta||'—'],
-   ['Concepto OBLIGATORIO en la transferencia',p.conceptoTransferencia||'Revisa la calle y número de la vivienda'],
-   ['Fecha límite de pago',fmt(p.fechaLimitePago)+' (hora de Guadalajara)'],
-   ['Comprobante','Puedes subirlo desde esta misma página sin iniciar sesión. Titan confirmará automáticamente el depósito cuando exista evidencia bancaria coincidente.']
-  ];
-  const h=document.createElement('strong');h.textContent='Instrucciones de depósito';host.append(h);
-  for(const [nombre,valor] of rows){const line=document.createElement('p');line.textContent=nombre+': '+valor;host.append(line);}
-  const noEnviados=[['correo','correo'],['whatsapp','WhatsApp'],['administracion','correo a Administración']]
-   .filter(([k])=>!result.notificaciones[k]).map(([,label])=>label);
-  if(noEnviados.length){const warning=document.createElement('p');warning.textContent='No se pudo confirmar el envío por: '+noEnviados.join(', ')+'. Guarda estas instrucciones.';host.append(warning);}
-  if(Number.isSafeInteger(Number(result.id))&&Number(result.id)>0){
-   const action=document.createElement('a');
-   action.className='primary club-upload-link';
-   action.href=result.pago.enlaceCarga||'pagos.html?tab=CASA_CLUB&reserva='+Number(result.id);
-   action.addEventListener('click',event=>{
-    if(result.pago.enlaceCarga&&window.MJClubPublicProof){
-     event.preventDefault();
-     window.MJClubPublicProof.open(result.pago.enlaceCarga);
-    }
-   });
-   action.textContent='Subir comprobante aquí y consultar la verificación';
-   host.append(action);
-   if(result.pago.enlaceCarga&&window.MJClubPublicProof){
-    window.MJClubPublicProof.open(result.pago.enlaceCarga);
-   }
-  }
-  host.hidden=false;
+  const p=result.pago,host=$('clubPaymentDetails');host.replaceChildren();
+  const titulo=document.createElement('strong');titulo.textContent='Fecha apartada: '+fmt(result.fecha)+' · '+p.folio;
+  const resumen=document.createElement('p');
+  resumen.textContent='Total '+money(p.monto)+'. Adjunta aquí mismo el comprobante. Titan verificará la transferencia y confirmará tu fecha.';
+  host.append(titulo,resumen);host.hidden=false;
+  if(p.enlaceCarga&&window.MJClubPublicProof)window.MJClubPublicProof.open(p.enlaceCarga);
  }
  $('clubForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!canSubmit())return;
   submitting=true;syncSubmit();
   const values={fecha:selectedDate,calle:$('clubStreet').value.trim(),numero:$('clubNumber').value.trim(),
    solicitante:$('clubName').value.trim(),telefono:$('clubPhone').value.trim(),correo:$('clubEmail').value.trim(),
-   propietario:$('clubOwner').value==='SI',motivo:$('clubReason').value.trim(),aceptaWhatsApp:$('clubOptIn').checked,aceptaReglamento:rulesAccepted};
+   propietario:$('clubOwner').value==='SI',motivo:$('clubReason').value.trim(),aceptaReglamento:rulesAccepted};
   try{
    const result=await api(profile?'/reservas':'/publico/solicitudes','POST',values);
    notify(result.data?.estatus==='APROBADA'?'Reserva confirmada. El pago se registra por separado.':
@@ -513,7 +491,7 @@
   $('clubForm').reset();
   for(const id of ['clubStreet','clubNumber','clubName','clubPhone','clubEmail','clubReason','clubDate'])$(id).value='';
   $('clubOwner').value='';
-  $('clubOptIn').checked=false;
+  
   window.MJClubAddress?.(api);
   for(const id of ['clubStreet','clubNumber']){
    $(id).addEventListener('input',actualizarBancoPublico);
@@ -527,9 +505,10 @@
    $('clubTransferHelp').textContent='No se pudieron consultar los datos bancarios oficiales. No deposites hasta confirmar la cuenta: '+e.message;
   });
  }
+ if(profile)$('clubInstructionsOpen').hidden=true;
  if(admin){
   document.querySelectorAll('[data-admin]').forEach(x=>x.hidden=false);
-  $('clubWhatsAppConsent').hidden=true;$('clubOptIn').required=false;
+  
   $('clubSubmit').textContent='Reservar';
   $('clubRequestEyebrow').textContent='RESERVACIÓN DIRECTA';
   $('clubCalendarHint').textContent='Al reservar como administrador, la fecha se confirma de inmediato. El pago se gestiona por separado.';
