@@ -2,6 +2,7 @@
 const { Op } = require('sequelize');
 const { Cuota, PagoReportado } = require('../models');
 const Reserva = require('../models/ReservaCasaClub');
+const PagoManualConcepto=require('../models/PagoManualConcepto');
 const { calcularAdeudoVivienda } = require('./adeudo-vivienda-analisis.service');
 const { estadoCargos } = require('./cargos-extraordinarios.service');
 const { fechaMexico } = require('./vigencia-calculo');
@@ -29,8 +30,19 @@ async function consultarAdeudos(casaId) {
     Reserva.findAll({where:{casaId,estatus:{[Op.in]:['PENDIENTE','APROBADA']},pagado:false,fechaBloqueada:{[Op.ne]:null},fechaLimitePago:{[Op.gte]:hoy}},attributes:['id','fecha','estatus','fechaLimitePago','cuotaRecuperacion','depositoGarantia','limpieza']})
   ]);
   const reservaIds=reservas.map(r=>r.id);
-  const proofs=reservaIds.length?await PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},estatus:'PENDIENTE_VALIDACION'},attributes:['reservaCasaClubId']}):[];
-  const submitted=new Set(proofs.map(p=>String(p.reservaCasaClubId)));
+  // Ocultar reservas efectivamente pagadas aunque la fila legada todavía
+  // conserve pagado=false. El mismo pago no debe generar una burbuja de deuda.
+  const [proofs,manuales]=await Promise.all([
+   reservaIds.length?PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},
+    tipoPago:'CASA_CLUB',estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},
+    attributes:['reservaCasaClubId','estatus'],raw:true}):[],
+   reservaIds.length?PagoManualConcepto.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},
+    tipoPago:'CASA_CLUB'},attributes:['reservaCasaClubId'],raw:true}):[]
+  ]);
+  const submitted=new Set(proofs.filter(p=>p.estatus==='PENDIENTE_VALIDACION')
+   .map(p=>String(p.reservaCasaClubId)));
+  const paid=new Set([...proofs.filter(p=>p.estatus==='VALIDADO'),...manuales]
+   .map(p=>String(p.reservaCasaClubId)));
   // La fecha de alta del proyecto NO es un vencimiento. Se muestran todas las
    // metas activas y lo aportado hasta hoy, sin imponer períodos ni recargos.
    const extras = pendientesReales(cargos).map(x=>({
@@ -40,7 +52,7 @@ async function consultarAdeudos(casaId) {
     montoDisponible:x.montoDisponible,pendienteValidacion:x.pendienteValidacion,
     estado:x.estado,esAportacionVoluntaria:true
    }));
-  const club = reservas.map(r=>({categoria:'CASA_CLUB',id:r.id,concepto:'Casa club',periodo:r.fecha,estatusReserva:r.estatus,monto:Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza),
+  const club = reservas.filter(r=>!paid.has(String(r.id))).map(r=>({categoria:'CASA_CLUB',id:r.id,concepto:'Casa club',periodo:r.fecha,estatusReserva:r.estatus,monto:Number(r.cuotaRecuperacion)+Number(r.depositoGarantia)+Number(r.limpieza),
     renta:Number(r.cuotaRecuperacion),deposito:Number(r.depositoGarantia),limpieza:Number(r.limpieza),fechaLimitePago:r.fechaLimitePago,estado:submitted.has(String(r.id))?'EN_REVISION':'PENDIENTE'}));
   const tipos = {
     MANTENIMIENTO:soloMantenimiento.tipos.MANTENIMIENTO,
