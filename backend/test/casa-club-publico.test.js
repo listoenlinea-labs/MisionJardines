@@ -17,7 +17,7 @@ const body={fecha:offset(7),calle:'Calle de prueba',numero:'10',solicitante:'Per
  telefono:'3312345678',correo:'prueba@example.invalid',motivo:'Reunión',aceptaWhatsApp:true,aceptaReglamento:true};
 const res=()=>({code:200,body:null,status(n){this.code=n;return this;},json(d){this.body=d;return this;},setHeader(){}});
 const admin={rol:'ADMINISTRADOR',usuarioId:9};
-const config={dias:3,banco:'Banco de prueba',titular:'Titular de prueba',cuenta:'000000000000000000',administracion:'admin@example.invalid',
+const config={dias:1,banco:'Banco de prueba',titular:'Titular de prueba',cuenta:'000000000000000000',administracion:'admin@example.invalid',
  nombrePlantilla:'reserva_prueba',idioma:'es_MX',version:'v25.0',telefonoId:'123',token:'fake'};
 function setup(t){
  t.mock.method(tarifas,'obtener',async()=>({cuotaRecuperacion:700,depositoGarantia:700,limpieza:600}));
@@ -43,9 +43,13 @@ test('la solicitud anónima bloquea la fecha y fija monto/plazo sin requerir Wha
  assert.ok(guardada.reglamentoAceptadoEn instanceof Date);
  assert.match(guardada.tokenPagoPublicoHash,/^[0-9a-f]{64}$/);
  assert.match(r.body.data.pago.enlaceCarga,/^https:\/\/listoenlinea-labs\.github\.io\/MisionJardines\/casa-club\.html#comprobante=23\.[0-9a-f]{64}$/);
- assert.equal(r.body.data.pago.monto,2000);assert.equal(r.body.data.pago.limpieza,600);assert.equal(r.body.data.pago.fechaLimitePago,offset(3));
+ assert.equal(r.body.data.pago.monto,2000);assert.equal(r.body.data.pago.limpieza,600);assert.equal(r.body.data.pago.fechaLimitePago,offset(1));
  assert.deepEqual(r.body.data.notificaciones,{correo:true,whatsapp:false,administracion:true});
  assert.deepEqual(correos.map(c=>c.destinatario),[body.correo,config.administracion]);
+ assert.match(correos[0].texto,/Folio: CC-23/);
+ assert.match(correos[0].texto,/Fecha del evento: \d{2}-[A-Z]{3}-\d{4}/);
+ assert.match(correos[0].html,/<a href=/);
+ assert.match(correos[0].html,/Subir comprobante de CC-23/);
 });
 test('un rechazo del proveedor no se presenta como mensaje enviado ni cancela el apartado',async t=>{
  setup(t);
@@ -92,6 +96,23 @@ test('al consultar el calendario se libera un apartado vencido sin exponer datos
  const r=res();await club.fechas({query:{}},r);
  assert.equal(cambio.estatus,'CANCELADA');assert.equal(cambio.fechaBloqueada,null);
  assert.deepEqual(r.body.ocupadas,[{fecha:offset(9),estatus:'APROBADA'}]);
+});
+test('un comprobante en revisión NO prolonga el apartado más allá del día límite',async t=>{
+ setup(t);
+ t.mock.method(Reserva,'findAll',async options=>{
+  if(options.attributes?.[0]==='id')return [{id:91}];
+  return [];
+ });
+ let editado=null;
+ t.mock.method(Reserva,'findByPk',async()=>({
+  id:91,estatus:'PENDIENTE',pagado:false,fechaLimitePago:offset(-1),
+  notas:'',update:async cambios=>{editado=cambios;}
+ }));
+ const lectura=t.mock.method(PagoReportado,'count',async()=>2);
+ await club.expirarReservas();
+ assert.equal(editado.estatus,'CANCELADA');
+ assert.equal(editado.fechaBloqueada,null);
+ assert.equal(lectura.mock.callCount(),0,'un archivo OCR pendiente no acredita el depósito');
 });
 test('solo el administrador puede confirmar el pago y aprobar el monto ya comunicado',async t=>{
  setup(t);
