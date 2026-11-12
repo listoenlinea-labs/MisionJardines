@@ -232,17 +232,20 @@ async function reportarPago(req, res) {
     let transaction;
 
     try {
+        // La ruta pública de Casa Club incorpora previamente una reservación
+        // autenticada por su token SHA-256; no existe un usuario ficticio.
+        const publicoCasaClub=Boolean(req.reservaPublica);
         let casaId = Number(req.usuario.casaId);
-        const usuarioId = Number(req.usuario.usuarioId);
+        const usuarioId = publicoCasaClub?null:Number(req.usuario.usuarioId);
 
-        if (!casaId || !usuarioId) {
+        if (!casaId || (!publicoCasaClub && !usuarioId)) {
             return res.status(400).json({
                 ok: false,
                 message: 'Tu sesión no tiene una vivienda asociada'
             });
         }
 
-        const tipoPago = String(req.body.tipoPago || 'MANTENIMIENTO').toUpperCase();
+        const tipoPago = publicoCasaClub?'CASA_CLUB':String(req.body.tipoPago || 'MANTENIMIENTO').toUpperCase();
 
         if (!['MANTENIMIENTO', 'EXTRAORDINARIO', 'CASA_CLUB'].includes(tipoPago)) {
             return res.status(400).json({
@@ -335,7 +338,7 @@ async function reportarPago(req, res) {
             Casa.findByPk(casaId, {
                 attributes: ['id', 'calle', 'numero']
             }),
-            Usuario.findByPk(usuarioId, {
+            publicoCasaClub?Promise.resolve(null):Usuario.findByPk(usuarioId, {
                 attributes: ['id', 'nombre', 'apellidoPaterno', 'apellidoMaterno']
             })
         ]);
@@ -384,7 +387,7 @@ async function reportarPago(req, res) {
             requerido = Number(cargoExtraordinario.monto);
             concepto = 'Aportación libre al proyecto: ' + cuotaExtraordinaria.concepto;
         } else if(tipoPago==='CASA_CLUB'){
-            const reservaId=Number(req.body.reservaCasaClubId);
+            const reservaId=publicoCasaClub?Number(req.reservaPublica.id):Number(req.body.reservaCasaClubId);
             reservaCasaClub=await ReservaCasaClub.findOne({where:{id:reservaId,casaId,estatus:{[require('sequelize').Op.in]:['PENDIENTE','APROBADA']},pagado:false}});
             if(!reservaCasaClub)return res.status(404).json({ok:false,message:'No existe una solicitud activa de Casa Club para esta vivienda'});
             if(!reservaCasaClub.fechaBloqueada||reservaCasaClub.fechaBloqueada!==reservaCasaClub.fecha||!reservaCasaClub.fechaLimitePago||fechaMexico()>reservaCasaClub.fechaLimitePago||fechaOperacion>reservaCasaClub.fechaLimitePago)
@@ -481,7 +484,7 @@ async function reportarPago(req, res) {
             aplicacionCuotas,
             calleSnapshot: casa.calle,
             numeroCasaSnapshot: casa.numero,
-            nombreReportante: nombreCompleto(usuario) || 'Residente',
+            nombreReportante: publicoCasaClub?String(req.reservaPublica.solicitante).slice(0,250):nombreCompleto(usuario) || 'Residente',
             comprobanteData,
             comprobanteNombre: comprobanteNombre || null,
             comprobanteMime: comprobanteMime || 'image/jpeg',
