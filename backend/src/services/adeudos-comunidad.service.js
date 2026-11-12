@@ -33,10 +33,10 @@ async function consultarAdeudos(casaId) {
   // Ocultar reservas efectivamente pagadas aunque la fila legada todavía
   // conserve pagado=false. El mismo pago no debe generar una burbuja de deuda.
   const [proofs,manuales]=await Promise.all([
-   reservaIds.length?PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},
+   reservaIds.length?PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},casaId,
     tipoPago:'CASA_CLUB',estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']}},
     attributes:['reservaCasaClubId','estatus'],raw:true}):[],
-   reservaIds.length?PagoManualConcepto.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},
+   reservaIds.length?PagoManualConcepto.findAll({where:{reservaCasaClubId:{[Op.in]:reservaIds},casaId,
     tipoPago:'CASA_CLUB'},attributes:['reservaCasaClubId'],raw:true}):[]
   ]);
   const submitted=new Set(proofs.filter(p=>p.estatus==='PENDIENTE_VALIDACION')
