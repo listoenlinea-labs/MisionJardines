@@ -244,15 +244,20 @@
  let campoParaCorregir=null;
  function dirigirAlCampo(campo){
   if(!campo)return;
-  const target=campo==='reglamento'?rulesCard:$(camposMap[campo]?.id);
-  if(!target)return;
-  if(mobileReservationQuery.matches&&(campo==='reglamento'||campo==='fecha')&&mobileReservationDialog.open)
+  const field=campo==='reglamento'?rulesCard:$(camposMap[campo]?.id);
+  if(!field)return;
+  const outsideDialog=campo==='reglamento'||campo==='fecha';
+  if(mobileReservationQuery.matches&&outsideDialog&&mobileReservationDialog.open)
    mobileReservationDialog.close();
+  const target=campo==='fecha'?$('clubAvailabilityCard'):field;
   target.scrollIntoView({behavior:'smooth',block:'center'});
-  if(campo!=='reglamento'){
-   try{target.focus({preventScroll:true});}catch(_){target.focus();}
-  }else{
+  if(campo==='reglamento'){
    try{$('clubOpenRules').focus({preventScroll:true});}catch(_){}
+  }else if(campo==='fecha'){
+   const dayButton=$('calendarDays').querySelector('button.selected');
+   try{dayButton?.focus({preventScroll:true});}catch(_){}
+  }else{
+   try{field.focus({preventScroll:true});}catch(_){field.focus();}
   }
  }
  function mostrarError(err,detalle=[]){
