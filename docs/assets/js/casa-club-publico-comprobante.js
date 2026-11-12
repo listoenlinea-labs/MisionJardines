@@ -70,6 +70,17 @@
   estadoEnCurso=true;
   try{
    const status=await post('/estado',current());
+   // Datos exclusivos de la reserva identificada por el token del correo.
+   // Todos los valores vienen del backend, jamás de parámetros editables.
+   const fmt=fecha=>window.MJDateDisplay?.format(fecha)||String(fecha||'');
+   $('clubPrivateReservationFolio').textContent=String(status.folio||'CC-'+status.reservaId);
+   $('clubPrivateReservationDate').textContent=fmt(status.fecha);
+   $('clubPrivateReservationHouse').textContent=String(status.vivienda||'Vivienda registrada');
+   $('clubPrivateReservationDeadline').textContent=fmt(status.fechaLimitePago)+' · 23:59 (Guadalajara)';
+   $('clubPrivateReservationStatus').textContent=status.pagado?'Pago confirmado · reservación aprobada':
+    ['CANCELADA','RECHAZADA'].includes(status.estatusReserva)
+     ?'Reservación cancelada o vencida · ya no se admite el pago':
+     'Solicitud pendiente · pago aún no confirmado';
    totalEsperado=Number(status.total);
    titular=status.destinatario||titular;terminaciones=status.terminacionesCuenta?.length?status.terminacionesCuenta:[status.terminacionCuenta||'4409'];
    window.MJClubCuenta?.render('clubProofBankDetails',status.datosTransferencia,{
@@ -96,7 +107,7 @@
     $('clubPublicProofForm').hidden=true;
    }else if(p){
     steps(1);
-    setStatus('Comprobante recibido. Titan está comparando importe, fecha, cuenta e identificadores. La fecha sigue apartada mientras se verifica.','pending');
+    setStatus('Comprobante recibido. Titan está verificando el depósito. La fecha solo se mantiene apartada hasta el vencimiento indicado.','pending');
     $('clubPublicProofForm').hidden=true;
    }else{
     steps(0);
@@ -104,7 +115,9 @@
     setStatus('Tu solicitud ya está apartada provisionalmente. Adjunta el comprobante de tu depósito para que Titan lo valide.','pending');
    }
   }catch(error){
-   setStatus('No pudimos consultar el resultado: '+error.message+'. Conserva el enlace para reintentar.','error');
+   setStatus('No pudimos consultar el resultado: '+error.message+'. Conserva el correo para reintentar.','error');
+   if(/no se encontró el enlace|no se encontró la reservación/i.test(error.message))
+    $('clubPublicProofForm').hidden=true;
   }finally{estadoEnCurso=false;}
  }
  function schedule(){
@@ -115,6 +128,10 @@
   const parsed=parse(link);
   if(!parsed)return;
   acceso=parsed;
+  // La liga con secreto es la única que puede mostrar el uploader.
+  document.body.classList.add('club-private-reservation-view');
+  $('clubPrivateReservationSummary').hidden=false;
+  $('clubPrivateReservationFolio').textContent='Consultando reserva CC-'+parsed.reservaId;
   // No persistir el enlace privado en sessionStorage ni usarlo como precarga.
   // Fragmento, no query: el token no se envía a logs ni en Referer HTTP.
   if(location.hash!=='#comprobante='+parsed.reservaId+'.'+parsed.claveAcceso)
@@ -130,7 +147,7 @@
   $('clubProofSubmit').disabled=!validadoOcr;
   steps(0);
   void refresh();schedule();
-  const target=$('clubPaymentDetails').hidden?$('clubPublicProofFlow'):$('clubPaymentDetails');
+  const target=$('clubPrivateReservationSummary');
   target.scrollIntoView({behavior:'smooth',block:'start'});
  }
  async function fileUrl(file){
@@ -374,16 +391,15 @@
   }catch(e){setStatus(e.message,'error');}finally{button.disabled=false;}
  });
  window.MJClubPublicProof={open,refresh,sendPrepared,setOfficialAccount,setExpectedAmount};
- // La fotografía se puede escoger y analizar ANTES del registro.
- // El servidor no recibe el archivo hasta existir una reserva asociada.
+ // Solo la URL privada incluida en el correo habilita el comprobante.
  if(parse(location.hash))open(location.hash);
  else{
+  acceso=null;
+  $('clubPrivateReservationSummary').hidden=true;
   $('clubProofIntro').hidden=true;
-  $('clubPublicProofFlow').hidden=false;
-  $('clubProofProgress').hidden=true;
+  $('clubPublicProofFlow').hidden=true;
+  $('clubPublicProofForm').hidden=true;
   $('clubProofFollowup').hidden=true;
-  $('clubProofSubmit').hidden=true;
-  $('clubPublicProofForm').hidden=false;
-  setStatus('Selecciona tu comprobante ahora. Al guardar la solicitud se asociará al folio y se verificará con Titan.','pending');
  }
+
 })();
