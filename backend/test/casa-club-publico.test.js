@@ -14,7 +14,7 @@ const club=require('../src/controllers/casa-club.controller');
 const hoy=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City'}).format(new Date());
 const offset=n=>new Date(Date.parse(hoy+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
 const body={fecha:offset(7),calle:'Calle de prueba',numero:'10',solicitante:'Persona de prueba',
- telefono:'3312345678',correo:'prueba@example.invalid',motivo:'Reunión',aceptaWhatsApp:true};
+ telefono:'3312345678',correo:'prueba@example.invalid',motivo:'Reunión',aceptaWhatsApp:true,aceptaReglamento:true};
 const res=()=>({code:200,body:null,status(n){this.code=n;return this;},json(d){this.body=d;return this;},setHeader(){}});
 const admin={rol:'ADMINISTRADOR',usuarioId:9};
 const config={dias:3,banco:'Banco de prueba',titular:'Titular de prueba',cuenta:'000000000000000000',administracion:'admin@example.invalid',
@@ -45,6 +45,10 @@ test('la solicitud anónima bloquea la fecha antes de los tres avisos y fija mon
  const r=res();await club.solicitar({body:{...body,usuarioId:9,estatus:'APROBADA',pagado:true,cuotaRecuperacion:1}},r);
  assert.equal(r.code,201);
  assert.equal(guardada.usuarioId,null);assert.equal(guardada.cuotaRecuperacion,700);
+ assert.equal(guardada.reglamentoVersion,'2026-03-26-firmado');
+ assert.ok(guardada.reglamentoAceptadoEn instanceof Date);
+ assert.match(guardada.tokenPagoPublicoHash,/^[0-9a-f]{64}$/);
+ assert.match(r.body.data.pago.enlaceCarga,/^https:\/\/listoenlinea-labs\.github\.io\/MisionJardines\/casa-club\.html#comprobante=23\.[0-9a-f]{64}$/);
  assert.equal(r.body.data.pago.monto,2000);assert.equal(r.body.data.pago.limpieza,600);assert.equal(r.body.data.pago.fechaLimitePago,offset(3));
  assert.deepEqual(r.body.data.notificaciones,{correo:true,whatsapp:true,administracion:true});
  assert.deepEqual(correos.map(c=>c.destinatario),[body.correo,config.administracion]);
@@ -64,6 +68,11 @@ test('un choque de fecha no genera avisos',async t=>{
  const enviar=t.mock.method(avisos,'notificar',async()=>{});
  const r=res();await club.solicitar({body},r);
  assert.equal(r.code,409);assert.equal(enviar.mock.callCount(),0);
+});
+test('sin aceptar el reglamento firmado no se crea ni bloquea una reservación',async()=>{
+ const r=res();await club.solicitar({body:{...body,aceptaReglamento:false}},r);
+ assert.equal(r.code,400);
+ assert.match(r.body.message,/reglamento/i);
 });
 test('sin consentimiento no se acepta una solicitud pública',async ()=>{
  const r=res();await club.solicitar({body:{...body,aceptaWhatsApp:false}},r);

@@ -10,6 +10,17 @@ router.get('/publico/tarifas',club.obtenerTarifas);
 router.get('/publico/domicilios',rateLimit({windowMs:15*60*1000,limit:60,standardHeaders:true,legacyHeaders:false,
  message:{ok:false,message:'Las sugerencias no están disponibles temporalmente.'}}),club.domicilios);
 router.post('/publico/solicitudes',limiteSolicitudes,club.solicitar);
+// Acceso con secreto de 256 bits ligado a una única reservación; no usa login.
+// Reutiliza OCR, folio, deduplicación y worker Titan de /api/pagos.
+const comprobante=require('../controllers/casa-club-publico-comprobante.controller');
+const limiteComprobante=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:true,legacyHeaders:false,
+ message:{ok:false,message:'Demasiados intentos de comprobante. Intenta más tarde.'}});
+const limiteConsulta=rateLimit({windowMs:60*1000,limit:20,standardHeaders:true,legacyHeaders:false,
+ message:{ok:false,message:'Espera unos segundos para consultar el estado.'}});
+router.post('/publico/comprobante',limiteComprobante,comprobante.reportar);
+router.post('/publico/comprobante/estado',limiteConsulta,comprobante.estado);
+router.post('/publico/comprobante/reintentar',limiteComprobante,comprobante.reintentar);
+router.post('/publico/comprobante/recibo',limiteConsulta,comprobante.descargarRecibo);
 router.use(autenticarToken);
 router.use(autorizarRoles('SUPER_ADMIN','ADMINISTRADOR','CONDOMINO'));
 router.get('/fechas',club.fechas);

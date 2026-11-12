@@ -20,14 +20,17 @@ function elegible(pago) {
     !pago?.correoBancarioHash && !pago?.fechaValidacion &&
     !aplicacion.aplicado;
 }
-async function solicitarReintento({pagoId,casaId,usuarioId,ahora=new Date()}){
+async function solicitarReintento({pagoId,casaId,usuarioId,reservaCasaClubId=null,ahora=new Date()}){
   if(!Number.isSafeInteger(pagoId)||pagoId<=0||!Number.isSafeInteger(casaId)||casaId<=0)
     throw fail(404,'Comprobante no encontrado.');
   if(!banco.configurado())
     throw fail(503,'La verificación bancaria no está disponible. Intenta más tarde.');
   const result=await sequelize.transaction({isolationLevel:'READ COMMITTED'},async transaction=>{
     const pago=await PagoReportado.findOne({
-      where:{id:pagoId,...require('./pagos-reparto.service').condicionLectura(casaId,usuarioId)},transaction,lock:transaction.LOCK.UPDATE
+      where:reservaCasaClubId!=null
+       ?{id:pagoId,casaId,reservaCasaClubId:Number(reservaCasaClubId),tipoPago:'CASA_CLUB',usuarioId:null}
+       :{id:pagoId,...require('./pagos-reparto.service').condicionLectura(casaId,usuarioId)},
+      transaction,lock:transaction.LOCK.UPDATE
     });
     if(!pago)throw fail(404,'Comprobante no encontrado.');
     if(!elegible(pago))throw fail(409,'Este pago no admite reintento: ya fue validado, está en revisión o tiene movimientos aplicados.');

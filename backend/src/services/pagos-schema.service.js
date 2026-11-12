@@ -55,6 +55,14 @@ async function asegurarEsquemaPagos() {
 
     const table = 'pagos_reportados';
     const current = await queryInterface.describeTable(table);
+    // El visitante puede reportar el pago de SU reserva mediante enlace
+    // secreto sin cuenta de usuario: usuario_id NULL y casa_id obligatorio.
+    // No se modifican otros campos financieros ni restricciones bancarias.
+    if (current.usuario_id?.allowNull === false) {
+        await queryInterface.changeColumn(table, 'usuario_id', {
+            type: DataTypes.BIGINT.UNSIGNED, allowNull: true
+        });
+    }
     await ensureColumn(queryInterface, table, current, 'aplicacion_cuotas', {type:DataTypes.JSON,allowNull:true});
     await ensureColumn(queryInterface, table, current, 'cortes_recargo', { type: DataTypes.JSON, allowNull: true });
     await ensureColumn(queryInterface, table, current, 'verificacion_bancaria', { type: DataTypes.JSON, allowNull: true });

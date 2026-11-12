@@ -5,6 +5,7 @@ const db=require('../config/database');
 const PagoReportado=require('../models/PagoReportado');
 const PagoManualConcepto=require('../models/PagoManualConcepto');
 const {randomUUID}=require('crypto');
+const accesoPublico=require('../services/casa-club-acceso-publico.service');
 const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
 const avisos=require('../services/casa-club-avisos.service');
 const tarifas=require('../services/casa-club-tarifas.service');
@@ -18,6 +19,8 @@ const limitePagoReserva=fecha=>{
  return anterior<hoy()?hoy():anterior;
 };
 const error=(status,message,extra={})=>Object.assign(new Error(message),{status,...extra});
+// Nunca incluir el hash del enlace de subida en respuestas de la API.
+const reservaSegura=row=>{const data=row.toJSON();delete data.tokenPagoPublicoHash;return data;};
 const hoy=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const texto=(v,n=160)=>String(v||'').trim().slice(0,n);
 const fechaValida=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!Number.isNaN(Date.parse(String(v)+'T12:00:00Z'))&&new Date(String(v)+'T12:00:00Z').toISOString().slice(0,10)===v;
@@ -86,12 +89,13 @@ async function mias(req,res){
   const comprobantes=reservaciones.length?await PagoReportado.findAll({where:{reservaCasaClubId:{[Op.in]:reservaciones},tipoPago:'CASA_CLUB'},
    attributes:['reservaCasaClubId','estatus'],raw:true}):[];
   const enRevision=new Set(comprobantes.filter(x=>x.estatus==='PENDIENTE_VALIDACION').map(x=>Number(x.reservaCasaClubId)));
-  return res.json({ok:true,data:rows.map(x=>({...x.toJSON(),casa:mapa.get(Number(x.casaId))||null,
+  return res.json({ok:true,data:rows.map(x=>({...reservaSegura(x),casa:mapa.get(Number(x.casaId))||null,
    comprobanteEnRevision:enRevision.has(Number(x.id))}))});
  }catch(e){return manejar(res,e);}
 }
 async function crear(req,res){
  const body=req.body||{};
+ if(body.aceptaReglamento!==true)return res.status(400).json({ok:false,message:'Debes leer y aceptar el reglamento de Casa Club antes de reservar.'});
  const fecha=texto(body.fecha,10),solicitante=texto(body.solicitante,180),telefono=texto(body.telefono,25),correo=texto(body.correo,150),motivo=texto(body.motivo,200);
  const casaId=Number(body.casaId||req.usuario.casaId),reservaDirecta=admin(req.usuario.rol);
  if(!fechaValida(fecha)||fecha<hoy())return res.status(400).json({ok:false,message:'Selecciona una fecha válida, desde hoy en adelante'});
@@ -113,6 +117,7 @@ async function crear(req,res){
   const row=await Reserva.create({
    usuarioId:req.usuario.usuarioId,casaId,fecha,fechaBloqueada:fecha,
    solicitante,telefono,correo,motivo,propietario:body.propietario===true,
+   reglamentoVersion:accesoPublico.REGLAMENTO_VERSION,reglamentoAceptadoEn:new Date(),
    estatus,...importes,
    ...(reservaDirecta?{
     fechaLimitePago:limitePagoReserva(fecha),
@@ -134,12 +139,14 @@ async function solicitar(req,res){
  if(typeof fecha!=='string'||!fechaValida(fecha)||fecha<=hoySolicitud||
     Date.parse(fecha)-Date.parse(hoySolicitud)>365*86400000)
   return manejar(res,error(400,'Elige una fecha entre mañana y los próximos 365 días.'));
+ if(body.aceptaReglamento!==true)return manejar(res,error(400,'Debes leer y aceptar el reglamento de Casa Club antes de solicitar.'));
  if(!solicitante||!telefono||!avisos.emailValido(correo)||!motivo||body.aceptaWhatsApp!==true)
   return manejar(res,error(400,'Completa nombre, WhatsApp, correo, motivo y autorización de aviso.'));
  if(!usuario&&(!calle||!numero))return manejar(res,error(400,'Indica la calle y el número de tu vivienda.'));
  try{
   const config=avisos.configuracion();
   const importes=await tarifas.obtener();
+  const clavePublica=accesoPublico.crear();
   const noElegible=()=>error(409,'No se pudo solicitar la reserva para esa vivienda. Verifica tus datos o contacta a Administración.');
   let casaId;
   if(usuario){
@@ -162,10 +169,14 @@ async function solicitar(req,res){
     fechaLimitePago:{[Op.gte]:hoySolicitud}},attributes:['id'],transaction,lock:transaction.LOCK.UPDATE});
    if(anterior)throw error(409,usuario?'Ya tienes una solicitud de Casa Club en revisión.':noElegible().message);
    return Reserva.create({usuarioId:usuario?.usuarioId??null,casaId,fecha,fechaBloqueada:fecha,solicitante,telefono,correo,motivo,
-    propietario:body.propietario===true,estatus:'PENDIENTE',...importes,
+    propietario:body.propietario===true,
+    reglamentoVersion:accesoPublico.REGLAMENTO_VERSION,reglamentoAceptadoEn:new Date(),
+    tokenPagoPublicoHash:clavePublica.hash,
+    estatus:'PENDIENTE',...importes,
     fechaLimitePago:avisos.limitePago(hoySolicitud,fecha,config.dias)},{transaction});
   });
-  const pago=avisos.instrucciones(row,config);
+  const pago={...avisos.instrucciones(row,config),
+   enlaceCarga:accesoPublico.enlace(row.id,clavePublica.token)};
   const notificaciones=await avisos.notificar(row,pago,config);
   res.setHeader('Cache-Control','no-store');
   return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus:'PENDIENTE',pago,notificaciones},
@@ -200,7 +211,7 @@ async function listar(req,res){
   const ids=[...new Set(rows.map(x=>x.casaId))],casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','calleCorrecta','numero']}):[];
   const mapa=new Map(casas.map(x=>[Number(x.id),x]));
   res.setHeader('Cache-Control','no-store');
-  return res.json({ok:true,data:rows.map(x=>({...x.toJSON(),...cargosSolicitud(x),casa:mapa.get(Number(x.casaId))||null}))});
+  return res.json({ok:true,data:rows.map(x=>({...reservaSegura(x),...cargosSolicitud(x),casa:mapa.get(Number(x.casaId))||null}))});
  }catch(e){return manejar(res,e);}
 }
 async function pendientesResumen(req,res){
