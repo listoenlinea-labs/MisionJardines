@@ -30,18 +30,12 @@ function setup(t){
  t.mock.method(db,'transaction',async fn=>fn({LOCK:{UPDATE:'UPDATE'}}));
  t.mock.method(avisos,'configuracion',()=>config);
 }
-test('la solicitud anónima bloquea la fecha antes de los tres avisos y fija monto y plazo en servidor',async t=>{
+test('la solicitud anónima bloquea la fecha y fija monto/plazo sin requerir WhatsApp',async t=>{
  setup(t);
  let guardada;const correos=[];
  t.mock.method(Reserva,'create',async values=>{guardada=values;return {id:23,...values};});
  t.mock.method(email,'enviarAvisoCasaClub',async data=>{assert.equal(guardada.estatus,'PENDIENTE');correos.push(data);});
- t.mock.method(global,'fetch',async (url,req)=>{
-  assert.equal(guardada.fechaBloqueada,body.fecha);
-  assert.match(url,/graph\.facebook\.com/);
-  const d=JSON.parse(req.body);assert.equal(d.to,'523312345678');assert.equal(d.type,'template');
-  assert.equal(d.template.components[0].parameters[6].text,offset(3));
-  return {ok:true,json:async()=>({messages:[{id:'wamid.test'}]})};
- });
+ t.mock.method(global,'fetch',async ()=>{throw Error('No debe enviar instrucciones por WhatsApp');});
  const r=res();await club.solicitar({body:{...body,usuarioId:9,estatus:'APROBADA',pagado:true,cuotaRecuperacion:1}},r);
  assert.equal(r.code,201);
  assert.equal(guardada.usuarioId,null);assert.equal(guardada.cuotaRecuperacion,700);
@@ -50,7 +44,7 @@ test('la solicitud anónima bloquea la fecha antes de los tres avisos y fija mon
  assert.match(guardada.tokenPagoPublicoHash,/^[0-9a-f]{64}$/);
  assert.match(r.body.data.pago.enlaceCarga,/^https:\/\/listoenlinea-labs\.github\.io\/MisionJardines\/casa-club\.html#comprobante=23\.[0-9a-f]{64}$/);
  assert.equal(r.body.data.pago.monto,2000);assert.equal(r.body.data.pago.limpieza,600);assert.equal(r.body.data.pago.fechaLimitePago,offset(3));
- assert.deepEqual(r.body.data.notificaciones,{correo:true,whatsapp:true,administracion:true});
+ assert.deepEqual(r.body.data.notificaciones,{correo:true,whatsapp:false,administracion:true});
  assert.deepEqual(correos.map(c=>c.destinatario),[body.correo,config.administracion]);
 });
 test('un rechazo del proveedor no se presenta como mensaje enviado ni cancela el apartado',async t=>{
@@ -74,9 +68,13 @@ test('sin aceptar el reglamento firmado no se crea ni bloquea una reservación',
  assert.equal(r.code,400);
  assert.match(r.body.message,/reglamento/i);
 });
-test('sin consentimiento no se acepta una solicitud pública',async ()=>{
+test('sin consentimiento de WhatsApp se permite la solicitud y la carga web',async t=>{
+ setup(t);
+ t.mock.method(Reserva,'create',async values=>({id:26,...values}));
+ t.mock.method(email,'enviarAvisoCasaClub',async()=>{});
  const r=res();await club.solicitar({body:{...body,aceptaWhatsApp:false}},r);
- assert.equal(r.code,400);
+ assert.equal(r.code,201);
+ assert.equal(r.body.data.notificaciones.whatsapp,false);
 });
 test('al consultar el calendario se libera un apartado vencido sin exponer datos privados',async t=>{
  setup(t);
