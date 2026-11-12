@@ -11,13 +11,20 @@
  let profile=null,admin=false;
  let currentMonth=today().slice(0,7),selectedDate='',occupied=new Map(),adminRows=[],activeReview=null;
  let calendarRequest=0,submitting=false,calendarReady=false,rulesAccepted=false;
+ let mobileDetailsSaved=false;
  const tomorrow=()=>new Date(Date.parse(today()+'T12:00:00Z')+86400000).toISOString().slice(0,10);
  const lastDay=()=>new Date(Date.parse(today()+'T12:00:00Z')+365*86400000).toISOString().slice(0,10);
  const whatsappValido=value=>/^(?:52)?[0-9]{10}$/.test(value.replace(/[\s()+-]/g,''));
  // Permitir pulsar Guardar aunque falte un campo: el modal de errores explica
  // qué corregir, marca el control en rojo y lleva al lugar correspondiente.
  const canSubmit=()=>!submitting&&calendarReady&&Boolean(selectedDate);
- const syncSubmit=()=>{$('clubSubmit').disabled=!canSubmit();};
+ const syncSubmit=()=>{
+  $('clubSubmit').disabled=!canSubmit();
+  // El botón de envío de la pantalla principal solo aparece después de
+  // leer y aceptar el reglamento, incluso antes de completar los demás datos.
+  const send=$('clubMobileSendRequest'),area=$('clubMobileSubmitArea');
+  if(send&&area){area.hidden=!rulesAccepted;send.disabled=!rulesAccepted||!canSubmit();}
+ };
  $('clubPhone').addEventListener('input',syncSubmit);
  $('clubPhone').addEventListener('change',syncSubmit);
  
@@ -59,6 +66,9 @@
  rulesConfirm.addEventListener('click',()=>{
   if(rulesConfirm.disabled||!rulesReady)return;
   rulesAccepted=true;actualizarAceptacionReglamento();rulesDialog.close();
+  // En teléfonos, mostrar al usuario dónde quedó habilitado el envío.
+  if(window.matchMedia('(max-width: 700px)').matches)
+   $('clubMobileSubmitArea').scrollIntoView({behavior:'smooth',block:'nearest'});
  });
  actualizarAceptacionReglamento();
  const headers=(json=false)=>({Authorization:'Bearer '+token,...(sessionStorage.getItem('mjCasaSeleccionada')?{'X-Casa-Id':sessionStorage.getItem('mjCasaSeleccionada')}:{}) ,...(json?{'Content-Type':'application/json'}:{})});
@@ -178,7 +188,9 @@
    btn.disabled=Boolean(status)||past;
    btn.setAttribute('aria-label',fmt(date)+' · '+(past?'No disponible':status==='APROBADA'?'Reservada':status?'Pendiente de aprobación':'Disponible'));
    btn.textContent=n;
-   btn.addEventListener('click',()=>{selectedDate=date;$('clubDate').value=fmt(date);days.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');syncSubmit();abrirSolicitudMovil();});
+   btn.addEventListener('click',()=>{selectedDate=date;mobileDetailsSaved=false;
+    $('clubMobileSavedStatus').textContent='Completa y guarda los datos para enviar esta solicitud.';
+    $('clubDate').value=fmt(date);days.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');syncSubmit();abrirSolicitudMovil();});
    days.append(btn);
   }
  }
@@ -195,11 +207,13 @@
   if(mobileReservationQuery.matches){
    $('clubCalendarHint').insertAdjacentElement('afterend',rulesCard);
    mobileReservationDialog.appendChild(reservationCard);
+   $('clubSubmit').type='button';
    $('clubSubmit').textContent='Guardar';
   }else{
    if(mobileReservationDialog.open)mobileReservationDialog.close();
    reservationAnchor.parentNode.insertBefore(reservationCard,reservationAnchor.nextSibling);
    rulesAnchor.parentNode.insertBefore(rulesCard,rulesAnchor.nextSibling);
+   $('clubSubmit').type='submit';
    $('clubSubmit').textContent=admin?'Reservar':'Enviar solicitud de reservación';
   }
  }
@@ -250,6 +264,8 @@
   const outsideDialog=campo==='reglamento'||campo==='fecha';
   if(mobileReservationQuery.matches&&outsideDialog&&mobileReservationDialog.open)
    mobileReservationDialog.close();
+  if(mobileReservationQuery.matches&&!outsideDialog&&!mobileReservationDialog.open)
+   abrirSolicitudMovil();
   const target=campo==='fecha'?$('clubAvailabilityCard'):field;
   target.scrollIntoView({behavior:'smooth',block:'center'});
   if(campo==='reglamento'){
@@ -306,7 +322,7 @@
    dirigirAlCampo(campo);
   }
  });
- function validarSolicitud(){
+ function validarSolicitud({omitirReglamento=false}={}){
   const errores=[];
   const invalid=(campo,mensaje)=>errores.push({campo,mensaje});
   if(!selectedDate)invalid('fecha','Selecciona primero una fecha disponible en el calendario.');
@@ -322,7 +338,7 @@
    invalid('correo','Escribe un correo electrónico válido.');
   if(!['SI','NO'].includes($('clubOwner').value))invalid('propietario','Indica si eres propietario o residente/inquilino.');
   if(!$('clubReason').value.trim())invalid('motivo','Describe el motivo del evento.');
-  if(!rulesAccepted)invalid('reglamento','Lee y acepta los términos del reglamento en la pantalla principal.');
+  if(!omitirReglamento&&!rulesAccepted)invalid('reglamento','Lee y acepta los términos del reglamento en la pantalla principal.');
   if(errores.length)mostrarError({
    codigo:'CAMPOS_INVALIDOS',
    message:'Encontramos '+errores.length+' dato(s) por completar o corregir. No se ha enviado la solicitud.'
@@ -336,6 +352,10 @@
     target.classList.remove('club-invalid-field');
     target.removeAttribute('aria-invalid');
    }
+   if(mobileReservationQuery.matches){
+    mobileDetailsSaved=false;
+    $('clubMobileSavedStatus').textContent='Hay cambios sin guardar. Abre la fecha y pulsa Guardar.';
+   }
   });
  }
 
@@ -343,6 +363,27 @@
  if(mobileReservationQuery.addEventListener)mobileReservationQuery.addEventListener('change',situarFormulario);
  else if(mobileReservationQuery.addListener)mobileReservationQuery.addListener(situarFormulario);
  situarFormulario();
+
+ // Guardar se limita a validar los campos y cerrar el modal móvil.
+ $('clubSubmit').addEventListener('click',()=>{
+  if(!mobileReservationQuery.matches)return;
+  if(!validarSolicitud({omitirReglamento:true}))return;
+  mobileDetailsSaved=true;
+  $('clubMobileSavedStatus').textContent='Datos guardados para '+fmt(selectedDate)+'. Ya puedes enviar la solicitud.';
+  mobileReservationDialog.close();
+  syncSubmit();
+  if(rulesAccepted)$('clubMobileSubmitArea').scrollIntoView({behavior:'smooth',block:'center'});
+ });
+ // Único envío real: desde el botón principal después de aceptar el reglamento.
+ $('clubMobileSendRequest').addEventListener('click',()=>{
+  if(!mobileReservationQuery.matches||!rulesAccepted||submitting||!canSubmit())return;
+  if(!mobileDetailsSaved){
+   $('clubMobileSavedStatus').textContent='Antes de enviar, completa los datos de la fecha elegida y pulsa Guardar.';
+   abrirSolicitudMovil();
+   return;
+  }
+  $('clubForm').requestSubmit();
+ });
  function homeText(r){return r?.casa?((r.casa.calleCorrecta||r.casa.calle)+' · Casa '+r.casa.numero):'Sin vivienda';}
  function statusBadge(status){return '<span class="state-pill '+esc(status)+'">'+esc(({PENDIENTE:'Pendiente',APROBADA:'Aprobada',RECHAZADA:'Rechazada',CANCELADA:'Cancelada'})[status]||status)+'</span>';}
  // Cuenta bancaria y tarifa oficiales dentro de un modal; no enviamos WhatsApp.
@@ -384,7 +425,9 @@
    // El estado de pago se abre después del aviso para que el desplazamiento
    // se mantenga en el formulario de comprobante y no vuelva arriba.
    if(result.data?.pago)showPayment(result.data);
-   $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
+   $('clubForm').reset();$('clubDate').value='';selectedDate='';mobileDetailsSaved=false;
+   $('clubMobileSavedStatus').textContent='Selecciona una fecha y guarda los datos de la reservación para enviar tu solicitud.';
+   fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
    actualizarBancoPublico();
    if(admin)tab('mis-reservas');
   }catch(err){
