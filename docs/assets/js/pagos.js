@@ -626,6 +626,25 @@
     async function canvasToCompressed(canvas) { let q = .9, data = canvas.toDataURL('image/jpeg', q); while (data.length > 1350000 && q > .42) { q -= .1; data = canvas.toDataURL('image/jpeg', q) } if (data.length > 1500000) throw Error('El comprobante procesado es demasiado grande.'); return data }
     async function imageToData(file) { const raw = await readFile(file); const image = await loadImage(raw); const max = 2800; const upscale = image.width >= 500 && image.width < 1150 ? Math.min(1.75, 1150 / image.width) : 1; const scale = Math.min(upscale, max / Math.max(image.width, image.height)); const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale)); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); return canvasToCompressed(canvas) }
     async function pdfToData(file) { if (!window.mjPdfJs) throw Error('El lector PDF todavía está cargando. Intenta de nuevo en unos segundos.'); const bytes = new Uint8Array(await file.arrayBuffer()); const pdf = await window.mjPdfJs.getDocument({ data: bytes }).promise; const page = await pdf.getPage(1); const viewport = page.getViewport({ scale: 1.7 }); const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height; await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise; return canvasToCompressed(canvas) }
+    async function imagenAltoContraste(original) {
+      // Paso OCR alternativo para letras grises de Mercado Pago y bancos móviles.
+      // El comprobante original es el que el servidor recibe y vuelve a leer.
+      const img=await loadImage(original);
+      const scale=Math.min(1,2400/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.max(1,Math.round(img.width*scale));
+      cv.height=Math.max(1,Math.round(img.height*scale));
+      const ctx=cv.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0,cv.width,cv.height);
+      const frame=ctx.getImageData(0,0,cv.width,cv.height);
+      for(let i=0;i<frame.data.length;i+=4){
+        const gray=frame.data[i]*.299+frame.data[i+1]*.587+frame.data[i+2]*.114;
+        const value=Math.max(0,Math.min(255,(gray-128)*1.58+128));
+        frame.data[i]=frame.data[i+1]=frame.data[i+2]=value;
+      }
+      ctx.putImageData(frame,0,0);
+      return cv.toDataURL('image/jpeg',.86);
+    }
     function normalizeAmount(value) { const s = String(value || '').replace(/[^0-9.,]/g, ''); if (!s) return ''; const comma = s.lastIndexOf(','), dot = s.lastIndexOf('.'); const n = Number(comma > dot ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '')); return Number.isFinite(n) ? n.toFixed(2) : '' }
     function normalizeDate(v) { let m = String(v || '').match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'); m = String(v || '').match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/); if (m) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); return '' }
     function normalizeTime(v) {
@@ -696,16 +715,20 @@
       setDestinationStatus('Verificando nombre y terminación bancaria en Destino…');
       try {
         if (!window.Tesseract || !window.MJComprobante) throw Error('El lector OCR no se ha cargado. Revisa tu conexión.');
-        const worker = await Tesseract.createWorker('spa+eng', 1, {
-          logger: m => {
-            if (scanRevision !== revision) return;
-            if (m.status === 'recognizing text') {
-              const p = Math.round((m.progress || 0) * 100);
-              $('ocrBar').style.width = p + '%';
-              $('ocrState').textContent = 'Leyendo texto… ' + p + '%';
-            }
+        const logger=m=>{
+          if(scanRevision!==revision)return;
+          if(m.status==='recognizing text'){
+            const p=Math.round((m.progress||0)*100);
+            $('ocrBar').style.width=p+'%';
+            $('ocrState').textContent='Leyendo texto… '+p+'%';
           }
-        });
+        };
+        let worker;
+        try{worker=await Tesseract.createWorker('spa+eng',1,{logger});}
+        catch(_){
+          $('ocrState').textContent='Preparando lector alternativo…';
+          worker=await Tesseract.createWorker('eng',1,{logger});
+        }
         const readings = [];
         try {
           // Primero leer la página completa: preservar la validación existente.
@@ -719,7 +742,7 @@
             config?.titular || 'MARIA DEL ROCIO BAHENA JUAREZ',
             (config?.destinosUltimos4?.length ? config.destinosUltimos4 : [config?.destinoUltimos4 || '4409']));
           if (!destination.ok || !data.amount || !data.date || !data.time ||
-              !(data.claveRastreo || data.referencia || data.folio)) {
+              !(data.claveRastreo || data.referencia || data.folio || MJComprobante.candidatosOperacion(firstText).length)) {
             // En capturas bancarias de dos columnas, AUTO puede perder los
             // valores alineados a la derecha. Releer con texto disperso.
             $('ocrState').textContent = 'Releyendo detalles bancarios…';
@@ -730,6 +753,23 @@
             } catch (fallbackError) {
               console.warn('Segunda lectura OCR no disponible:', fallbackError.message);
             }
+          }
+          const combined=()=>readings.join(MJComprobante.OCR_PASS_MARKER);
+          const completo=()=>{
+            const text=combined(),fields=MJComprobante.extract(text);
+            const to=MJComprobante.verifyDestination(text,
+              config?.titular||'MARIA DEL ROCIO BAHENA JUAREZ',
+              config?.destinosUltimos4?.length?config.destinosUltimos4:[config?.destinoUltimos4||'4409']);
+            return to.ok&&Boolean(fields.amount&&fields.date&&fields.time&&
+              (fields.claveRastreo||fields.referencia||fields.folio||MJComprobante.candidatosOperacion(text).length));
+          };
+          if(!completo()){
+            $('ocrState').textContent='Mejorando contraste para leer el detalle bancario…';
+            try{
+              await worker.setParameters({tessedit_pageseg_mode:Tesseract.PSM.SINGLE_BLOCK});
+              const third=await worker.recognize(await imagenAltoContraste(proofData));
+              if(third?.data?.text?.trim())readings.push(third.data.text);
+            }catch(e){console.warn('Lectura de contraste no disponible:',e.message);}
           }
         } finally {
           await worker.terminate();
