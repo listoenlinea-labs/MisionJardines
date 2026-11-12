@@ -23,7 +23,7 @@
   // El botón de envío de la pantalla principal solo aparece después de
   // leer y aceptar el reglamento, incluso antes de completar los demás datos.
   const send=$('clubMobileSendRequest'),area=$('clubMobileSubmitArea');
-  if(send&&area){area.hidden=!rulesAccepted;send.disabled=!rulesAccepted||!canSubmit();}
+  if(send&&area){send.disabled=!rulesAccepted||submitting;}
  };
  $('clubPhone').addEventListener('input',syncSubmit);
  $('clubPhone').addEventListener('change',syncSubmit);
@@ -376,7 +376,12 @@
  });
  // Único envío real: desde el botón principal después de aceptar el reglamento.
  $('clubMobileSendRequest').addEventListener('click',()=>{
-  if(!mobileReservationQuery.matches||!rulesAccepted||submitting||!canSubmit())return;
+  if(!mobileReservationQuery.matches||!rulesAccepted||submitting)return;
+  if(!canSubmit()){
+   $('clubMobileSavedStatus').textContent='Selecciona una fecha disponible en el calendario para continuar.';
+   $('clubAvailabilityCard').scrollIntoView({behavior:'smooth',block:'center'});
+   return;
+  }
   if(!mobileDetailsSaved){
    $('clubMobileSavedStatus').textContent='Antes de enviar, completa los datos de la fecha elegida y pulsa Guardar.';
    abrirSolicitudMovil();
