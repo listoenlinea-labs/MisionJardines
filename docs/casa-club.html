@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-tabla-orden-importes">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-filtro-mes-acciones-fila">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -62,6 +62,11 @@
  <label for="clubFilterNumber">Número de casa
   <input id="clubFilterNumber" inputmode="text" autocomplete="off" placeholder="Ej. 18" maxlength="30">
  </label>
+ <label for="clubFilterMonth">Mes de la reservación
+  <select id="clubFilterMonth" aria-label="Filtrar por mes y año de la fecha del evento">
+   <option value="">Todos los meses</option>
+  </select>
+ </label>
  <button type="button" class="soft" id="clubClearFilters">Limpiar filtros</button>
  <span id="clubFilterCount" role="status" aria-live="polite"></span>
 </div>
@@ -91,5 +96,5 @@
 <p id="clubReviewError" role="alert" hidden></p>
 </form></dialog>
 <script src="assets/js/casa-club-domicilios.js?v=20261110" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-tabla-orden-importes" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-filtro-mes-acciones-fila" defer></script>
 </body></html>
