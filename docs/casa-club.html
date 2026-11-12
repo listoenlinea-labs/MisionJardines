@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-modal-instrucciones">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261112-comprobante-calendario">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -13,14 +13,34 @@
 <button type="button" data-tab="aprobacion" data-admin hidden>Aprobación de reservas</button>
 </nav>
 <div id="clubNotice" role="status" aria-live="polite" hidden></div>
-<section class="club-bill club-public-bill" id="clubPaymentDetails" aria-live="polite" hidden></section>
-<section id="clubPublicProofFlow" class="club-card club-proof-card" aria-labelledby="clubProofTitle" hidden>
- <div class="section-header"><div><span class="eyebrow">CONFIRMACIÓN BANCARIA AUTOMÁTICA</span><h2 id="clubProofTitle">Sube tu comprobante</h2><p>Tu fecha queda apartada mientras verificamos el pago. Se confirma automáticamente solo después de comprobarlo con Titan.</p></div><span class="club-proof-lock">Enlace privado de tu reservación</span></div>
+<section id="tab-reservar" class="club-panel">
+<div class="two-col">
+<article class="club-card"><div class="section-header"><div><span class="eyebrow">DISPONIBILIDAD</span><h2>Elige una fecha</h2><p>Selecciona un día disponible.</p></div><div class="legend"><span><i class="available"></i>Disponible</span><span><i class="busy"></i>Reservada</span><span><i class="waiting"></i>Apartada</span><span><i class="elapsed"></i>No disponible</span></div></div>
+<div class="calendar-nav"><button id="prevMonth" type="button" aria-label="Mes anterior">‹</button><strong id="calendarLabel"></strong><button id="nextMonth" type="button" aria-label="Mes siguiente">›</button></div>
+<div class="weekdays"><b>L</b><b>M</b><b>M</b><b>J</b><b>V</b><b>S</b><b>D</b></div>
+<div id="calendarDays" class="calendar-days" role="group" aria-label="Calendario de disponibilidad"></div>
+<p class="club-hint" id="clubCalendarHint">Elige tu fecha: quedará bloqueada provisionalmente al registrar la solicitud y se confirmará automáticamente cuando Titan verifique el depósito. No necesitas esperar la aprobación de Administración.</p>
+<section id="clubProofIntro" class="club-proof-intro" aria-labelledby="clubProofIntroTitle">
+ <div class="club-proof-intro-head"><span class="club-proof-intro-mark" aria-hidden="true">↑</span><div>
+  <span class="eyebrow">PASO 2 · CONFIRMACIÓN BANCARIA</span>
+  <h3 id="clubProofIntroTitle">Comprobante de pago</h3>
+  <p>En esta misma página, sin WhatsApp y sin iniciar sesión.</p></div></div>
+ <div class="club-proof-intro-dropzone" aria-describedby="clubProofIntroHelp">
+  <span class="club-proof-intro-file" aria-hidden="true">▧</span>
+  <strong>Aquí podrás subir tu comprobante</strong>
+  <small>Imagen JPG, PNG, WEBP o PDF · lectura automática</small>
+  <button type="button" class="soft" disabled>Seleccionar comprobante</button>
+ </div>
+ <p id="clubProofIntroHelp" class="club-proof-intro-hint">Primero completa y envía tu solicitud. Cuando se genere el folio y la fecha quede apartada, podrás adjuntar aquí mismo el archivo y consultar su validación.</p>
+</section>
+<section class="club-bill club-public-bill club-proof-payment-summary" id="clubPaymentDetails" aria-live="polite" hidden></section>
+<section id="clubPublicProofFlow" class="club-proof-card" aria-labelledby="clubProofTitle" hidden>
+ <div class="section-header"><div><span class="eyebrow">CONFIRMACIÓN BANCARIA AUTOMÁTICA</span><h2 id="clubProofTitle">Sube tu comprobante</h2><p>Tu fecha queda apartada mientras verificamos el pago. Se confirma automáticamente solo después de comprobarlo con Titan.</p></div><span class="club-proof-lock">Acceso privado de tu reservación</span></div>
  <div class="club-proof-progress" aria-label="Etapas de reservación"><span id="clubProofStepOne" class="active">1 · Solicitud recibida</span><span id="clubProofStepTwo">2 · Comprobante enviado</span><span id="clubProofStepThree">3 · Pago verificado</span></div>
  <button type="button" class="soft club-payment-open" id="clubProofInstructionsOpen">Instrucciones de pago</button>
  <div id="clubProofResult" role="status" aria-live="polite" class="club-proof-result">Completa los datos de tu comprobante. El banco confirmará el depósito con una notificación independiente.</div>
  <form id="clubPublicProofForm" class="club-public-proof-form" autocomplete="off">
-  <label class="club-proof-upload">Archivo del comprobante <span>JPG, PNG, WEBP o PDF (se procesa su primera página)</span>
+  <label class="club-proof-upload">Selecciona tu comprobante <span>JPG, PNG, WEBP o PDF · primera página del PDF</span>
    <input id="clubProofFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
   <div class="club-proof-preview" id="clubProofPreviewWrap" hidden><img id="clubProofPreview" alt="Vista previa del comprobante bancario"></div>
   <div class="club-proof-fields"><label>Clave de rastreo / referencia / folio<input id="clubProofFolio" readonly required placeholder="Se detectará desde el comprobante"></label>
@@ -33,13 +53,7 @@
  <div class="club-proof-followup"><button type="button" class="soft" id="clubProofRefresh">Consultar estado</button><button type="button" class="soft" id="clubProofRetry" hidden>Reintentar validación</button><button type="button" class="soft" id="clubProofReceipt" hidden>Descargar recibo PDF</button></div>
  <p class="club-hint">No subas el mismo depósito dos veces. La aplicación valida el OCR, los identificadores y una notificación de Titan; una captura por sí sola no confirma el pago.</p>
 </section>
-<section id="tab-reservar" class="club-panel">
-<div class="two-col">
-<article class="club-card"><div class="section-header"><div><span class="eyebrow">DISPONIBILIDAD</span><h2>Elige una fecha</h2><p>Selecciona un día disponible.</p></div><div class="legend"><span><i class="available"></i>Disponible</span><span><i class="busy"></i>Reservada</span><span><i class="waiting"></i>Apartada</span><span><i class="elapsed"></i>No disponible</span></div></div>
-<div class="calendar-nav"><button id="prevMonth" type="button" aria-label="Mes anterior">‹</button><strong id="calendarLabel"></strong><button id="nextMonth" type="button" aria-label="Mes siguiente">›</button></div>
-<div class="weekdays"><b>L</b><b>M</b><b>M</b><b>J</b><b>V</b><b>S</b><b>D</b></div>
-<div id="calendarDays" class="calendar-days" role="group" aria-label="Calendario de disponibilidad"></div>
-<p class="club-hint" id="clubCalendarHint">Elige tu fecha: quedará bloqueada provisionalmente al registrar la solicitud y se confirmará automáticamente cuando Titan verifique el depósito. No necesitas esperar la aprobación de Administración.</p></article>
+</article>
 <article class="club-card"><span class="eyebrow" id="clubRequestEyebrow">SOLICITUD DE RESERVA</span><h2>Datos de la reservación</h2>
 <form id="clubForm" autocomplete="off">
 <div class="form-grid"><label class="wide">Fecha solicitada<input id="clubDate" readonly required placeholder="Selecciona una fecha"></label>
@@ -139,6 +153,6 @@
 <script type="module" src="assets/js/pagos-pdf.js?v=20261006"></script>
 <script src="assets/js/comprobante-parser.js?v=20261112-destinos-oficiales" defer></script>
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
-<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-destinos-oficiales" defer></script>
-<script src="assets/js/casa-club.js?v=20261112-modal-instrucciones" defer></script>
+<script src="assets/js/casa-club-publico-comprobante.js?v=20261112-comprobante-calendario" defer></script>
+<script src="assets/js/casa-club.js?v=20261112-comprobante-calendario" defer></script>
 </body></html>

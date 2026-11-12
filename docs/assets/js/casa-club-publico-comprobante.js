@@ -97,11 +97,13 @@
   // Fragmento, no query: el token no se envía a logs ni en Referer HTTP.
   if(location.hash!=='#comprobante='+parsed.reservaId+'.'+parsed.claveAcceso)
    history.replaceState(null,'','#comprobante='+parsed.reservaId+'.'+parsed.claveAcceso);
+  $('clubProofIntro').hidden=true;
   $('clubPublicProofFlow').hidden=false;
   $('clubPublicProofForm').hidden=false;
   resetFile();steps(0);
   void refresh();schedule();
-  $('clubPublicProofFlow').scrollIntoView({behavior:'smooth',block:'start'});
+  const target=$('clubPaymentDetails').hidden?$('clubPublicProofFlow'):$('clubPaymentDetails');
+  target.scrollIntoView({behavior:'smooth',block:'start'});
  }
  async function fileUrl(file){
   return new Promise((resolve,reject)=>{
