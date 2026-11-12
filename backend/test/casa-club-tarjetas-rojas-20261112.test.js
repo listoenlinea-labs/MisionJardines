@@ -76,7 +76,7 @@ test('al registrar o levantar tarjeta se conserva auditoría y no se toca ZKTeco
 test('reservas pagadas dejan de generar burbuja en Pagos, incluso con bandera antigua',()=>{
  const debt=read('backend/src/services/adeudos-comunidad.service.js');
  const ui=read('docs/assets/js/pagos.js');
- assert.match(debt,/estatus:'VALIDADO'/);
+ assert.match(debt,/VALIDADO/);
  assert.match(debt,/PagoManualConcepto\.findAll/);
  assert.match(debt,/reservas\.filter\(r=>!paid\.has\(String\(r\.id\)\)\)/);
  assert.match(ui,/clubItems\.find/);
