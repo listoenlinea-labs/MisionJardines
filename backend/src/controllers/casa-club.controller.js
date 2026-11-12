@@ -216,7 +216,11 @@ async function cancelar(req,res){
    const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:'PENDIENTE_VALIDACION'},transaction});
    if(enRevision&&!admin(req.usuario.rol))throw error(409,'El comprobante está en revisión bancaria. Solicita a Administración la cancelación para liberar la vivienda.');
    if(row.fecha<hoy()&&!admin(req.usuario.rol))throw error(409,'Consulta a Administración para cancelar una fecha pasada');
-   await row.update({estatus:'CANCELADA',fechaBloqueada:null,actualizadoEn:new Date(),notas:row.pagado?(texto(row.notas||'',480)+' | Cancelación: revisar devolución con administración').trim():row.notas},{transaction});
+   const nota=[texto(row.notas||'',340),
+    row.pagado?'Cancelación: revisar devolución bancaria':'',
+    enRevision?'Cancelación administrativa con comprobante todavía en revisión: conciliar abono y eventual devolución':''
+   ].filter(Boolean).join(' | ').slice(0,600);
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,actualizadoEn:new Date(),notas:nota},{transaction});
   });
   return res.json({ok:true,message:'Reserva cancelada. Si había pagos, Administración debe revisar cualquier devolución.'});
  }catch(e){return manejar(res,e);}
@@ -272,9 +276,13 @@ async function revisar(req,res){
    if(['APROBAR','RECHAZAR'].includes(action)){
     if(row.estatus!=='PENDIENTE')throw error(409,'La solicitud ya no está pendiente');
     if(action==='RECHAZAR'){
-     // Rechazar una solicitud pendiente debe liberar inmediatamente fecha y vivienda,
-     // incluso si Titan todavía analiza una captura. El historial se conserva para auditoría.
-     await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:texto(req.body.notas,600),
+     // Rechazar libera inmediatamente fecha y vivienda. Guardamos una advertencia
+     // si Titan todavía está procesando el comprobante.
+     const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,
+      estatus:'PENDIENTE_VALIDACION'},transaction});
+     const nota=[texto(req.body.notas,350),enRevision?
+      'Rechazo con comprobante en revisión: conciliar depósito y posible devolución':''].filter(Boolean).join(' | ').slice(0,600);
+     await row.update({estatus:'RECHAZADA',fechaBloqueada:null,notas:nota,
       revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
      return;
     }
@@ -339,21 +347,23 @@ async function liberar(req,res){
    if(!row)throw error(404,'Reserva no encontrada');
    if(row.estatus!=='APROBADA')throw error(409,'Solo puedes liberar reservas aprobadas desde esta acción.');
    const enRevision=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:'PENDIENTE_VALIDACION'},transaction});
-   // Administración puede cancelar aun si Titan sigue revisando una captura.
-   // Se conservan todas las pruebas y el pago tardío NO reactivará una reserva cancelada.
-   const pago=Boolean(row.pagado),nota=[texto(row.notas,330),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo].filter(Boolean).join(' | ').slice(0,600);
+   // Se conservan pruebas bancarias y la alerta de revisión, aun tras liberar.
+   const pago=Boolean(row.pagado),nota=[
+    texto(row.notas,290),'Liberó Administración (ID '+req.usuario.usuarioId+'): '+motivo,
+    enRevision?'Había comprobante en revisión: revisar si ingresó dinero y corresponde devolución':''
+   ].filter(Boolean).join(' | ').slice(0,600);
    await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:nota,
     revisadoPor:req.usuario.usuarioId,actualizadoEn:new Date()},{transaction});
-   return {id:row.id,correo:row.correo,fecha:row.fecha,pago};
+   return {id:row.id,correo:row.correo,fecha:row.fecha,pago,enRevision:Boolean(enRevision)};
   });
   let avisoCorreo=false;
   try{await require('../services/email.service').enviarAvisoCasaClub({
    destinatario:data.correo,asunto:'Casa Club · Reserva CC-'+data.id+' cancelada',
    texto:'Administración canceló tu reserva para el '+data.fecha+'.\nMotivo: '+motivo+
-    (data.pago?'\nSi realizaste un pago, contacta a Administración para conciliar cualquier devolución.':'')
+    (data.pago||data.enRevision?'\nSi realizaste un pago, contacta a Administración para conciliar el depósito y una posible devolución.':'')
   });avisoCorreo=true;}catch(e){console.warn('[casa-club] Reserva cancelada; correo no confirmado:',e.message);}
-  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago,avisoCorreo,
-   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría.'});
+  return res.json({ok:true,fechaLiberada:true,pagoPendienteDeRevision:data.pago||data.enRevision,avisoCorreo,
+   message:'Reserva cancelada y día liberado. Pagos y comprobantes conservados para auditoría; si hubo depósito o comprobante en revisión, Administración deberá conciliarlo.'});
  }catch(e){return manejar(res,e);}
 }
 // Administración puede revisar todo el expediente sin exponer archivos a residentes.
