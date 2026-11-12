@@ -100,8 +100,8 @@ async function crear(req,res){
  const casaId=Number(body.casaId||req.usuario.casaId),reservaDirecta=admin(req.usuario.rol);
  if(!fechaValida(fecha)||fecha<hoy())return res.status(400).json({ok:false,message:'Selecciona una fecha válida, desde hoy en adelante'});
  if(!solicitante||!telefono||!/^\S+@\S+\.\S+$/.test(correo)||!motivo)return res.status(400).json({ok:false,message:'Completa solicitante, teléfono, correo y motivo'});
- if(!reservaDirecta&&(!avisos.whatsappMexico(telefono)||body.aceptaWhatsApp!==true))
-  return res.status(400).json({ok:false,message:'Indica un número de WhatsApp válido y acepta recibir las instrucciones de pago.'});
+ if(!reservaDirecta&&!avisos.whatsappMexico(telefono))
+  return res.status(400).json({ok:false,message:'Indica un teléfono de contacto válido.'});
  if(!Number.isSafeInteger(casaId)||casaId<=0)return res.status(400).json({ok:false,message:'Selecciona tu vivienda antes de reservar'});
  try{
   await expirarReservas();
@@ -140,8 +140,8 @@ async function solicitar(req,res){
     Date.parse(fecha)-Date.parse(hoySolicitud)>365*86400000)
   return manejar(res,error(400,'Elige una fecha entre mañana y los próximos 365 días.'));
  if(body.aceptaReglamento!==true)return manejar(res,error(400,'Debes leer y aceptar el reglamento de Casa Club antes de solicitar.'));
- if(!solicitante||!telefono||!avisos.emailValido(correo)||!motivo||body.aceptaWhatsApp!==true)
-  return manejar(res,error(400,'Completa nombre, WhatsApp, correo, motivo y autorización de aviso.'));
+ if(!solicitante||!telefono||!avisos.emailValido(correo)||!motivo)
+  return manejar(res,error(400,'Completa nombre, teléfono de contacto, correo y motivo.'));
  if(!usuario&&(!calle||!numero))return manejar(res,error(400,'Indica la calle y el número de tu vivienda.'));
  try{
   const config=avisos.configuracion();

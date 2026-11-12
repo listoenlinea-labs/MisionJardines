@@ -15,16 +15,14 @@ function datosBancarios(env=process.env){
 }
 function configuracion(env=process.env){
  const dias=Number(env.CASA_CLUB_PLAZO_DIAS||3);
- const {banco,titular,cuenta}=cuentaOficial(env);
+ const {banco,titular,cuenta}=cuentaOficial.obtener(env);
  const administracion=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
  const nombrePlantilla=env.CASA_CLUB_WHATSAPP_TEMPLATE?.trim()||'';
  const idioma=env.CASA_CLUB_WHATSAPP_IDIOMA||'es_MX';
  const version=env.WHATSAPP_GRAPH_VERSION;
- if(!Number.isInteger(dias)||dias<1||dias>30||!banco||!titular||!/^\d{10,18}$/.test(cuenta||'')||
-    !emailValido(administracion)||!/^[a-z0-9_]+$/.test(nombrePlantilla)||!/^v\d+\.\d+$/.test(version||'')||
-    !/^\d+$/.test(env.WHATSAPP_PHONE_NUMBER_ID||'')||!env.WHATSAPP_ACCESS_TOKEN||
-    !['SMTP_HOST','SMTP_PORT','SMTP_USER','SMTP_PASSWORD','SMTP_FROM_EMAIL'].every(k=>env[k])){
-  throw Object.assign(Error('Las solicitudes en línea no están disponibles en este momento. Contacta a Administración.'),{status:503});
+ // La solicitud y el comprobante no requieren WhatsApp, Meta ni SMTP.
+ if(!Number.isInteger(dias)||dias<1||dias>30||!banco||!titular||!/^\d{10,18}$/.test(cuenta||'')){
+  throw Object.assign(Error('No fue posible consultar el plazo o la cuenta oficial de depósito.'),{status:503});
  }
  return {dias,banco,titular,cuenta,clabe,tarjeta,administracion,nombrePlantilla,idioma,version,
   telefonoId:env.WHATSAPP_PHONE_NUMBER_ID,token:env.WHATSAPP_ACCESS_TOKEN};
@@ -77,7 +75,7 @@ async function notificar(row,datos,config){
   timeZone:'America/Mexico_City',dateStyle:'medium',timeStyle:'short'});
  const resultados=await Promise.allSettled([
   correo.enviarAvisoCasaClub({destinatario:row.correo,asunto:'Apartado de Casa Club · '+datos.folio,texto:textoPago(datos)}),
-  whatsapp(row,datos,config),
+  Promise.resolve(false), // No enviar instrucciones al WhatsApp del residente.
   correo.enviarAvisoCasaClub({destinatario:config.administracion,asunto:'Solicitud de Casa Club · '+datos.folio,
    texto:'Nueva solicitud recibida: '+fechaSolicitud+' (Guadalajara).\nSolicitante: '+row.solicitante+
     '\nVivienda ID: '+row.casaId+'\nWhatsApp: '+row.telefono+'\nCorreo: '+row.correo+
@@ -88,8 +86,8 @@ async function notificar(row,datos,config){
  ]);
  const estados={};
  ['correo','whatsapp','administracion'].forEach((canal,i)=>{
-  estados[canal]=resultados[i].status==='fulfilled';
-  if(!estados[canal])console.warn('[casa-club] Aviso no aceptado:',canal,datos.folio);
+  estados[canal]=resultados[i].status==='fulfilled'&&resultados[i].value!==false;
+  if(!estados[canal]&&canal!=='whatsapp')console.warn('[casa-club] Aviso no aceptado:',canal,datos.folio);
  });
  return estados;
 }
