@@ -237,3 +237,69 @@
 #tab-administracion .club-table td.club-reservation-actions{min-width:260px;white-space:nowrap}
 #tab-administracion .club-actions-inline{display:flex;flex-flow:row nowrap;align-items:center;justify-content:flex-start;gap:8px;width:max-content;min-width:0}
 #tab-administracion .club-actions-inline button{flex:0 0 auto;margin:0;white-space:nowrap}
+
+/* --------------------------------------------------------------------------
+   CASA CLUB · Reglamento vigente y comprobante bancario público
+   Elementos separados del resto de Casa Club para no alterar su diseño.
+   -------------------------------------------------------------------------- */
+.club-regulations-acceptance{margin:18px 0 14px;padding:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px 16px;background:linear-gradient(120deg,#faf6ff,#f4faf6);border:1px solid #ded3ed;border-radius:16px}
+.club-regulations-acceptance h3{margin:4px 0 7px;font-size:18px;color:#263650}
+.club-regulations-acceptance p{margin:0;color:#64748b;font-size:12px;line-height:1.5}
+.club-regulations-acceptance .club-rules-open{min-height:43px;padding:0 17px;white-space:nowrap}
+.club-rules-status{grid-column:1/-1;display:flex;align-items:center;gap:7px;background:white;border:1px solid #e5dbea;border-radius:10px;padding:9px 11px;color:#86695d!important}
+.club-rules-status.accepted{color:#277350!important;border-color:#b7dfc9;background:#f4fcf7}
+.club-rules-status::before{content:'○';font-size:16px}
+.club-rules-status.accepted::before{content:'✓';font-weight:900}
+.club-rules-dialog{position:fixed;inset:0;margin:auto;width:min(870px,calc(100vw - 24px));height:min(92dvh,900px);max-height:92dvh;padding:0;border:1px solid #dfe6ee;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 25px 100px #172b4977;color:#263650}
+.club-rules-dialog::backdrop{background:#13233eb8;backdrop-filter:blur(3px)}
+.club-rules-dialog[open]{display:flex;flex-direction:column}
+.club-rules-dialog-head{padding:20px 24px;display:flex;align-items:flex-start;gap:20px;justify-content:space-between;border-bottom:1px solid #e9edf2;background:linear-gradient(95deg,#fff9f3,#fbf8ff)}
+.club-rules-dialog-head h2{margin:4px 0 6px;font-size:22px}
+.club-rules-dialog-head p{margin:0;color:#68788b;font-size:12px;line-height:1.5}
+.club-rules-dialog-head .xbtn{flex:0 0 36px}
+.club-rules-reading{padding:6px 22px 32px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.club-rules-reading .rules-document{max-width:760px;background:white;margin:0 auto;padding:22px 6px;border:none;box-shadow:none}
+.club-rules-reading .rules-document header{text-align:center;padding-bottom:18px;border-bottom:2px solid #e8e9ef}
+.club-rules-reading .rules-document h1{font-size:23px}
+.club-rules-reading .rules-document h2{font-size:18px;color:#2d604f;margin:26px 0 12px}
+.club-rules-reading .rules-document h3{font-size:14px;margin:18px 0 7px}
+.club-rules-reading .rules-document p,.club-rules-reading .rules-document li{line-height:1.65;font-size:13px}
+.club-rules-reading .rules-section{border-bottom:1px solid #e6ebef;margin-bottom:9px;padding-bottom:10px}
+.club-rules-reading .fee-row{display:flex;justify-content:space-between;gap:14px;padding:10px;border-bottom:1px solid #e8edf2}
+.club-rules-reading .fee-row.total{background:#eaf9f0;border-radius:9px;font-weight:800}
+.club-rules-reading .signatures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.club-rules-reading .signature{padding:10px;border-radius:9px;background:#f7fafc}
+.club-rules-dialog-footer{flex:0 0 auto;padding:14px 22px 17px;border-top:1px solid #e6eaf0;background:white;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 16px;align-items:center}
+.club-rules-dialog-footer a{font-size:12px;color:#79549b;text-decoration:underline}
+.club-rules-dialog-footer p{grid-column:1;font-size:11px;color:#64748b;margin:0}
+.club-rules-dialog-footer button{grid-column:2;grid-row:1/span 2;min-height:44px}
+.club-rules-dialog-footer button:disabled{opacity:.48;cursor:not-allowed}
+.club-proof-card{max-width:1500px;margin:16px auto 22px;border-color:#cee3d8;background:linear-gradient(125deg,#fff,#fbfffc);scroll-margin-top:90px}
+.club-proof-card .section-header{align-items:center}
+.club-proof-card .section-header h2{font-size:24px;margin:5px 0 8px}
+.club-proof-card .section-header p{font-size:12px;color:#60738a;line-height:1.5;max-width:680px}
+.club-proof-lock{padding:8px 12px;border:1px solid #b8dfca;color:#2c7250;background:#eaf8f0;border-radius:99px;font-size:11px;font-weight:750;white-space:nowrap}
+.club-proof-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0}
+.club-proof-progress span{padding:12px;text-align:center;border:1px solid #e3e8ef;background:#f8f9fd;border-radius:11px;color:#7a8aa0;font-size:12px;font-weight:800}
+.club-proof-progress span.active{background:#fff2e5;border-color:#f3c69c;color:#9a590e}
+.club-proof-progress span.done{background:#edfaf2;border-color:#b4dfc7;color:#2b7351}
+.club-proof-result{border:1px solid #d5e5f1;border-radius:13px;padding:14px 16px;background:#f2f7fc;color:#36516a;font-size:13px;line-height:1.6;margin:16px 0}
+.club-proof-result.success{background:#effbf3;color:#236b45;border-color:#b9dfc6}
+.club-proof-result.error{background:#fff4f3;color:#ab4551;border-color:#f2cccf}
+.club-proof-result.pending{background:#fffaf1;color:#925e21;border-color:#ecd4aa}
+.club-public-proof-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:17px;margin:16px 0}
+.club-proof-upload{grid-column:1;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:18px 20px;border:2px dashed #bdd5c9;border-radius:15px;background:#f5fbf7;min-height:132px;color:#294c3e;font-weight:800;font-size:14px}
+.club-proof-upload span{font-size:11px;color:#698277;font-weight:500}
+.club-proof-upload input{font-size:12px;max-width:100%;cursor:pointer}
+.club-proof-preview{grid-column:2;grid-row:1;height:185px;border-radius:13px;background:#f3f6f9;border:1px solid #e3e9ee;display:grid;place-items:center;overflow:hidden}
+.club-proof-preview[hidden]{display:none}
+.club-proof-preview img{width:100%;height:100%;object-fit:contain}
+.club-proof-fields{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.club-proof-fields label{font-size:12px;font-weight:700;color:#465a70}
+.club-proof-fields input{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #dce5ee;border-radius:10px;padding:12px;background:#f8fafc;color:#24364c;font-size:14px}
+.club-proof-ocr-status{grid-column:1/-1;margin:0;font-size:12px;line-height:1.5;color:#65788a}
+.club-proof-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px}
+.club-proof-actions button{min-height:43px}
+.club-proof-followup{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-start;margin:13px 0}
+.club-proof-followup button{min-height:38px}
+@media(max-width:720px){.club-regulations-acceptance{grid-template-columns:1fr}.club-regulations-acceptance .club-rules-open{width:100%}.club-rules-dialog-head{padding:16px}.club-rules-reading{padding:5px 14px 20px}.club-rules-dialog-footer{grid-template-columns:1fr;padding:14px}.club-rules-dialog-footer p,.club-rules-dialog-footer button{grid-column:1;grid-row:auto}.club-rules-dialog-footer button{width:100%}.club-proof-card .section-header{align-items:flex-start}.club-proof-lock{display:none}.club-proof-progress{grid-template-columns:1fr;gap:5px}.club-proof-progress span{text-align:left;padding:8px 11px}.club-public-proof-form{grid-template-columns:1fr}.club-proof-upload,.club-proof-preview,.club-proof-fields,.club-proof-ocr-status,.club-proof-actions{grid-column:1}.club-proof-preview{grid-row:auto}.club-proof-fields{grid-template-columns:1fr}.club-proof-actions{display:grid;grid-template-columns:1fr}.club-proof-actions button{width:100%}}
