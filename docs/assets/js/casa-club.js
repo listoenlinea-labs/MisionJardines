@@ -411,7 +411,7 @@
  }
  $('myReservations').addEventListener('click',async e=>{
   const btn=e.target.closest('[data-cancel]');if(!btn||!confirm('¿Cancelar esta reserva? Si ya se pagó, Administración deberá revisar cualquier devolución.'))return;
-  btn.disabled=true;try{await api('/reservas/'+Number(btn.dataset.cancel)+'/cancelar','PATCH');notify('Reserva cancelada.');await Promise.all([mine(),calendar()]);}catch(err){notify(err.message,true);btn.disabled=false;}
+  btn.disabled=true;try{await api('/reservas/'+Number(btn.dataset.cancel)+'/cancelar','PATCH');notify('Reserva cancelada.');await Promise.all([mine(),calendar()]);}catch(err){mostrarError(err);btn.disabled=false;}
  });
  const reviewModal=$('clubReviewModal');
  const paymentStatus=r=>r.pagado?'Pagado':(['PENDIENTE','APROBADA'].includes(r.estatus)?'Pendiente de pago':'Sin pago');
@@ -517,14 +517,17 @@
     pagado:approve&&info.pagoVerificado,fechaPago:approve&&info.pagoVerificado?today():null,folio:approve&&info.pagoVerificado?info.folio:null,notas:info.notas});
    notify(approve?(info.pagoVerificado?'Pago manual registrado y reservación confirmada.':'Fecha aprobada sin pago. El residente podrá pagar desde Pagos.'):'Solicitud rechazada. La fecha se liberó.');
    await Promise.all([adminList(),calendar().catch(e=>notify(e.message,true))]);
-  }catch(err){if(reviewModal.open&&activeReview===r){error.textContent=err.message;error.hidden=false;}}
+  }catch(err){
+   if(reviewModal.open&&activeReview===r){error.textContent=err.message;error.hidden=false;}
+   mostrarError(err);
+  }
   finally{reviewing=false;syncReview();}
  }
  async function liberarReserva(r){
   if(!admin||r.estatus!=='APROBADA')return;
   const motivo=prompt('Motivo de cancelación (mínimo 8 caracteres). Se conserva el historial de pagos:', '');
   if(motivo===null)return;
-  if(motivo.trim().length<8){notify('Indica un motivo de al menos 8 caracteres.',true);return;}
+  if(motivo.trim().length<8){mostrarError({codigo:'CAMPOS_INVALIDOS',message:'El motivo de cancelación debe tener por lo menos 8 caracteres.'});return;}
   if(!confirm('¿Cancelar CC-'+r.id+' del '+fmt(r.fecha)+' y liberar ese día?'+
     (r.pagado?' El pago permanecerá registrado y su devolución requerirá conciliación.':'')))return;
   try{
@@ -533,7 +536,7 @@
    notify(d.message+(d.pagoPendienteDeRevision?' Revisa la devolución del dinero.':'')+
     (!d.avisoCorreo?' No se confirmó el correo de aviso.':''));
    await Promise.all([adminList(),calendar()]);
-  }catch(e){notify(e.message,true);}
+  }catch(e){mostrarError(e);}
  }
  $('clubRelease').addEventListener('click',()=>{if(activeReview)void liberarReserva(activeReview);});
  const mon=d=>new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
