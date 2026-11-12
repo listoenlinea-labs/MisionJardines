@@ -184,10 +184,16 @@
   let worker=null;
   try{
    if(!window.Tesseract||!window.MJComprobante)throw Error('El lector OCR no se ha cargado. Revisa tu conexión e inténtalo de nuevo.');
-   worker=await Tesseract.createWorker('spa+eng',1,{
-    logger:status=>{if(revision===escaneo&&status.status==='recognizing text')
-     $('clubProofOcrStatus').textContent='Leyendo imagen: '+Math.round((status.progress||0)*100)+'%';}
-   });
+   const logger=status=>{if(revision===escaneo&&status.status==='recognizing text')
+    $('clubProofOcrStatus').textContent='Leyendo imagen: '+Math.round((status.progress||0)*100)+'%';};
+   try{
+    worker=await Tesseract.createWorker('spa+eng',1,{logger});
+   }catch(primaryError){
+    // Redes móviles que bloquean alguno de los dos diccionarios aún pueden
+    // leer dígitos, referencias y apellidos mediante el idioma inglés.
+    $('clubProofOcrStatus').textContent='Reintentando el lector con un diccionario alternativo…';
+    worker=await Tesseract.createWorker('eng',1,{logger});
+   }
    const readings=[];
    const capturar=async(src,mode)=>{
     await worker.setParameters({tessedit_pageseg_mode:mode});
