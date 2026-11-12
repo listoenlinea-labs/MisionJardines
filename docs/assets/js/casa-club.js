@@ -75,7 +75,7 @@
  }
  const notify=(msg,bad=false,scroll=true)=>{const el=$('clubNotice');el.textContent=msg;el.style.borderColor=bad?'#f2caca':'#d9e9dd';el.style.background=bad?'#fff2f3':'#f2faf5';el.hidden=false;if(scroll)window.scrollTo({top:0,behavior:'smooth'});};
  const debtDialog=$('clubDebtModal');
- const debtNames={MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuotas extraordinarias'};
+ const debtNames={MANTENIMIENTO:'Mantenimiento'};
  const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const monthPeriod=p=>{
   const m=/^(\d{4})-(0[1-9]|1[0-2])(?:-\d{2})?$/.exec(String(p||''));
@@ -84,14 +84,14 @@
  function showDebtAlert(error){
   if(error.codigo!=='ADEUDOS_RESERVA'||!error.adeudos)return false;
   const adeudos=error.adeudos;
-  $('clubDebtExplanation').textContent='Esta vivienda no puede solicitar ni obtener aprobación de una reserva hasta cubrir los adeudos de mantenimiento o cuotas extraordinarias. Los cargos de Casa club no intervienen en esta restricción.';
-  $('clubDebtSummary').innerHTML=['MANTENIMIENTO','EXTRAORDINARIO'].map(tipo=>
+  $('clubDebtExplanation').textContent='Esta vivienda no puede solicitar una reserva hasta cubrir los adeudos de mantenimiento. Las cuotas extraordinarias no bloquean Casa Club.';
+  $('clubDebtSummary').innerHTML=['MANTENIMIENTO'].map(tipo=>
    '<div class="club-debt-stat '+(tipo==='MANTENIMIENTO'?'maintenance':'extra')+'"><small>'+debtNames[tipo]+'</small><strong>'+esc(money(adeudos.totales?.[tipo]))+'</strong></div>'
   ).join('')+'<div class="club-debt-total"><span>Total por regularizar</span><strong>'+esc(money(adeudos.total))+'</strong></div>';
-  const rows=['MANTENIMIENTO','EXTRAORDINARIO'].flatMap(tipo=>(adeudos.tipos?.[tipo]||[]).map(item=>({tipo,...item})));
+  const rows=['MANTENIMIENTO'].flatMap(tipo=>(adeudos.tipos?.[tipo]||[]).map(item=>({tipo,...item})));
   $('clubDebtDetails').innerHTML=rows.length?'<h3>Desglose de los adeudos</h3>'+rows.map(item=>
    '<div class="club-debt-item"><div><b>'+esc(debtNames[item.tipo])+'</b><small>'+esc(monthPeriod(item.periodo))+
-   (item.tipo==='EXTRAORDINARIO'&&item.concepto?' · '+esc(item.concepto):'')+'</small></div><div><strong>'+esc(money(item.monto))+'</strong>'+
+   (item.concepto?' · '+esc(item.concepto):'')+'</small></div><div><strong>'+esc(money(item.monto))+'</strong>'+
    (Number(item.recargo)>0?'<small>Incluye '+esc(money(item.recargo))+' de recargo por atraso</small>':'')+'</div></div>'
   ).join(''):'<p>Consulta el saldo actualizado en Pagos.</p>';
   debtDialog.showModal();
@@ -193,11 +193,12 @@
  $('clubInstructionsClose').addEventListener('click',()=>paymentDialog.close());
  function showPayment(result){
   const p=result.pago,host=$('clubPaymentDetails');host.replaceChildren();
-  const titulo=document.createElement('strong');titulo.textContent='Fecha apartada: '+fmt(result.fecha)+' · '+p.folio;
+  const titulo=document.createElement('strong');
+  titulo.textContent='Solicitud '+p.folio+' · Fecha '+fmt(result.fecha);
   const resumen=document.createElement('p');
-  resumen.textContent='Total '+money(p.monto)+'. Adjunta aquí mismo el comprobante. Titan verificará la transferencia y confirmará tu fecha.';
-  host.append(titulo,resumen);host.hidden=false;
-  if(p.enlaceCarga&&window.MJClubPublicProof)window.MJClubPublicProof.open(p.enlaceCarga);
+  resumen.textContent='Total '+money(p.monto)+'. Consulta tu correo: recibirás las instrucciones bancarias y un enlace personal que muestra exactamente tu vivienda y fecha. Solo desde ese enlace podrás subir el comprobante.';
+  host.append(titulo,resumen);
+  host.hidden=false;
  }
  $('clubForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!canSubmit())return;
@@ -210,19 +211,12 @@
    const result=await api(profile?'/reservas':'/publico/solicitudes','POST',values);
    if(mobileReservationDialog.open)mobileReservationDialog.close();
    notify(result.data?.estatus==='APROBADA'?'Reserva confirmada. El pago se registra por separado.':
-    'Solicitud apartada provisionalmente. Adjunta el comprobante en esta página: Titan confirmará el depósito automáticamente.');
+    result.data?.notificaciones?.correo===false
+     ?'Solicitud registrada, pero no se confirmó el envío del correo. Contacta a Administración para recuperar el enlace privado.'
+     :'Solicitud registrada. Revisa tu correo: ahí recibirás las instrucciones de pago y el enlace exclusivo para subir el comprobante.');
    // El estado de pago se abre después del aviso para que el desplazamiento
    // se mantenga en el formulario de comprobante y no vuelva arriba.
-   if(result.data?.pago){
-    showPayment(result.data);
-    const proof=window.MJClubPublicProof;
-    if(proof){
-     const envio=await proof.sendPrepared();
-     if(envio.status==='sent')notify('Solicitud guardada y comprobante enviado. Titan verificará el depósito.',false,false);
-     else if(envio.status==='unreadable')notify('Tu reservación quedó guardada. Revisa el comprobante debajo del calendario: '+envio.message,true,false);
-     else if(envio.status==='failed')notify('Reservación guardada, pero falta enviar el comprobante. Reintenta desde el área de carga: '+envio.message,true,false);
-    }
-   }
+   if(result.data?.pago)showPayment(result.data);
    $('clubForm').reset();$('clubDate').value='';selectedDate='';fillProfile();rulesAccepted=false;actualizarAceptacionReglamento();
    actualizarBancoPublico();
    if(admin)tab('mis-reservas');

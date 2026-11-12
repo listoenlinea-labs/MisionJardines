@@ -357,10 +357,11 @@ async function enviarReciboAdjunto({destinatario,folio,buffer,nombreArchivo,conc
   throw Error('SMTP no aceptó al destinatario. No se confirma el envío.');
  return {messageId:info.messageId||null};
 }
-async function enviarAvisoCasaClub({destinatario,asunto,texto}){
+async function enviarAvisoCasaClub({destinatario,asunto,texto,html}){
     const info=await crearTransportador().sendMail({
         from:{name:process.env.SMTP_FROM_NAME||'Misión Jardines',address:process.env.SMTP_FROM_EMAIL},
-        to:{address:destinatario,name:''},subject:asunto,text:texto
+        to:{address:destinatario,name:''},subject:asunto,text:texto,
+        ...(html?{html}:{})
     });
     if(!info.accepted?.some(x=>String(x).toLowerCase()===destinatario.toLowerCase()))
         throw Error('SMTP no aceptó al destinatario');

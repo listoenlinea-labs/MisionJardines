@@ -6,7 +6,7 @@ const PagoReportado=require('../models/PagoReportado');
 const PagoManualConcepto=require('../models/PagoManualConcepto');
 const {randomUUID}=require('crypto');
 const accesoPublico=require('../services/casa-club-acceso-publico.service');
-const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
+const {consultarSoloMantenimiento}=require('../services/adeudos-comunidad.service');
 const avisos=require('../services/casa-club-avisos.service');
 const tarifas=require('../services/casa-club-tarifas.service');
 const {ordenarCalles}=require('../services/direccion-sort.service');
@@ -27,9 +27,9 @@ const fechaValida=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!Number.isNaN(Da
 function manejar(res,e){if(!e.status)console.error('[casa-club]',e);return res.status(e.status||503).json({ok:false,message:e.status?e.message:'No se pudo completar la operación',
  ...(e.codigo==='ADEUDOS_RESERVA'?{codigo:e.codigo,adeudos:e.adeudos}:{})});}
 async function revisarElegibilidad(casaId){
- const saldo=evaluarElegibilidadReserva(await consultarAdeudos(casaId));
+ const saldo=evaluarElegibilidadReserva(await consultarSoloMantenimiento(casaId));
  if(!saldo.puedeReservar)throw error(409,'No puedes reservar Casa club: tienes adeudos por '+saldo.total.toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
-  ' entre mantenimiento y cuotas extraordinarias. Regulariza esos conceptos en Pagos.',
+  ' de mantenimiento. Regulariza ese concepto en Pagos.',
   {codigo:'ADEUDOS_RESERVA',adeudos:saldo});
 }
 async function expirarReservas(rango){
@@ -39,11 +39,10 @@ async function expirarReservas(rango){
   await db.transaction(async transaction=>{
    const row=await Reserva.findByPk(item.id,{transaction,lock:transaction.LOCK.UPDATE});
    if(!row||!['PENDIENTE','APROBADA'].includes(row.estatus)||row.pagado||!row.fechaLimitePago||row.fechaLimitePago>=hoy())return;
-   // Un comprobante presentado a tiempo espera revisión bancaria; no se
-   // elimina la reserva por tardanza de Administración en validarlo.
-   const proof=await PagoReportado.count({where:{reservaCasaClubId:row.id,estatus:{[Op.in]:['PENDIENTE_VALIDACION','VALIDADO']},fechaOperacion:{[Op.lte]:row.fechaLimitePago}},transaction});
-   if(proof)return;
-   await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:(texto(row.notas,400)+' | Cancelación automática por pago vencido').trim(),actualizadoEn:new Date()},{transaction});
+   // La recepción de una imagen no acredita dinero. Si al finalizar el día
+   // límite nadie ha confirmado el pago, el apartado se cancela y libera
+   // aunque exista un comprobante con estatus PENDIENTE_VALIDACION.
+   await row.update({estatus:'CANCELADA',fechaBloqueada:null,notas:(texto(row.notas,400)+' | Cancelación automática: depósito no confirmado al vencimiento').trim(),actualizadoEn:new Date()},{transaction});
   });
  }
 }
@@ -147,7 +146,7 @@ async function solicitar(req,res){
   const config=avisos.configuracion();
   const importes=await tarifas.obtener();
   const clavePublica=accesoPublico.crear();
-  const noElegible=()=>error(409,'No se pudo solicitar la reserva para esa vivienda. Verifica tus datos o contacta a Administración.');
+  const noElegible=()=>error(409,'No se pudo solicitar la reserva para esa vivienda. Verifica tus datos y el estado de mantenimiento, o contacta a Administración.');
   let casaId;
   if(usuario){
    casaId=Number(usuario.casaId);
@@ -383,4 +382,4 @@ async function eliminarRegistro(req,res){
   return res.json({ok:true,message:'Registro sin pagos eliminado y fecha liberada.'});
  }catch(e){return manejar(res,e);}
 }
-module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar,comprobantes,eliminarRegistro};
+module.exports={fechas,domicilios,mias,crear,solicitar,cancelar,listar,mensajeWhatsApp,revisar,pendientesResumen,obtenerTarifas,guardarTarifas,liberar,comprobantes,eliminarRegistro,expirarReservas};

@@ -14,7 +14,7 @@ function datosBancarios(env=process.env){
  return {banco,titular,cuenta,clabe,tarjeta,administracion:emailValido(correo)?correo:null};
 }
 function configuracion(env=process.env){
- const dias=Number(env.CASA_CLUB_PLAZO_DIAS||3);
+ const dias=1; // El plazo de Casa Club no admite prolongación a tres días.
  const {banco,titular,cuenta,clabe,tarjeta}=cuentaOficial.obtener(env);
  const administracion=env.CASA_CLUB_ADMIN_CORREO?.trim()||'';
  const nombrePlantilla=env.CASA_CLUB_WHATSAPP_TEMPLATE?.trim()||'';
@@ -28,11 +28,18 @@ function configuracion(env=process.env){
   telefonoId:env.WHATSAPP_PHONE_NUMBER_ID,token:env.WHATSAPP_ACCESS_TOKEN};
 }
 const sumarDias=(fecha,dias)=>new Date(Date.parse(fecha+'T12:00:00Z')+dias*86400000).toISOString().slice(0,10);
-function limitePago(hoy,fecha,dias){
- return [sumarDias(hoy,dias),sumarDias(fecha,-1)].sort()[0];
+function limitePago(hoy,fecha,_dias){
+ // Día natural completo siguiente (hasta 23:59 en Guadalajara);
+ // nunca exceder la víspera del evento para solicitudes urgentes.
+ return [sumarDias(hoy,1),sumarDias(fecha,-1)].sort()[0];
+}
+const MESES=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+function fechaVisible(value){
+ const date=String(value||''),match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+ return match?match[3]+'-'+MESES[Number(match[2])-1]+'-'+match[1]:date;
 }
 const importe=row=>Number(row.cuotaRecuperacion)+Number(row.depositoGarantia)+Number(row.limpieza);
-const moneda=n=>n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+const moneda=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
 function instrucciones(row,config){
  return {folio:'CC-'+row.id,fecha:row.fecha,monto:importe(row),
   cuotaRecuperacion:Number(row.cuotaRecuperacion),depositoGarantia:Number(row.depositoGarantia),limpieza:Number(row.limpieza),
@@ -42,18 +49,93 @@ function instrucciones(row,config){
   clabe:config.clabe,tarjeta:config.tarjeta,correoAdministracion:config.administracion};
 }
 function textoPago(datos){
- const plazo=datos.fechaLimitePago?', a más tardar el '+datos.fechaLimitePago+' (hora de Guadalajara)':'';
- const destino=datos.correoAdministracion?' a '+datos.correoAdministracion:' a Administración';
- return 'Solicitud '+datos.folio+' para el '+datos.fecha+'. La reserva queda confirmada al verificar el pago.\n\n'+
-  'Total a depositar: '+moneda(datos.monto)+' (recuperación '+moneda(datos.cuotaRecuperacion)+
-  ', garantía '+moneda(datos.depositoGarantia)+', limpieza '+moneda(datos.limpieza)+').\n'+
-  'Realiza la transferencia a la CUENTA OFICIAL de Misión Jardines:\n'+
-  'Banco: '+datos.banco+'\nTitular: '+datos.titular+'\nCuenta: '+datos.cuenta+
-  (datos.clabe?'\nCLABE: '+datos.clabe:'')+(datos.tarjeta?'\nTarjeta: '+datos.tarjeta:'')+
-  '\n'+(datos.conceptoTransferencia?'CONCEPTO OBLIGATORIO: '+datos.conceptoTransferencia+'\n':'')+
-  'Importe: '+moneda(datos.monto)+plazo+'.\n'+
-  'Para verificar tu depósito, sube el comprobante desde Casa Club sin iniciar sesión con este enlace personal: '+(datos.enlaceCarga||'Consulta el enlace en la página de solicitud')+'. No compartas este enlace: sirve para consultar el estado de esta reserva.'+
-  (plazo?' Si no se confirma el pago antes del vencimiento, se libera la fecha.':'');
+ const fecha=fechaVisible(datos.fecha),vence=fechaVisible(datos.fechaLimitePago);
+ return [
+  'MISIÓN JARDINES | SOLICITUD DE CASA CLUB',
+  '',
+  'Hemos recibido tu solicitud. La fecha queda apartada provisionalmente hasta confirmar el pago correspondiente.',
+  '',
+  'DETALLES DE LA RESERVACIÓN',
+  'Folio: '+datos.folio,
+  ...(datos.fechaSolicitud?['Fecha de solicitud: '+fechaVisible(datos.fechaSolicitud)]:[]),
+  'Fecha del evento: '+fecha,
+  'Vivienda: '+(datos.conceptoTransferencia||'Vivienda registrada'),
+  'Estado: PENDIENTE DE PAGO Y VERIFICACIÓN',
+  '',
+  'IMPORTE A DEPOSITAR',
+  'Recuperación: '+moneda(datos.cuotaRecuperacion),
+  'Garantía: '+moneda(datos.depositoGarantia),
+  'Limpieza: '+moneda(datos.limpieza),
+  'TOTAL: '+moneda(datos.monto),
+  '',
+  'DATOS BANCARIOS OFICIALES',
+  'Banco: '+datos.banco,
+  'Titular: '+datos.titular,
+  'Cuenta: '+datos.cuenta,
+  ...(datos.clabe?['CLABE: '+datos.clabe]:[]),
+  ...(datos.tarjeta?['Tarjeta: '+datos.tarjeta]:[]),
+  'Concepto de transferencia: '+(datos.conceptoTransferencia||'CALLE Y NÚMERO'),
+  '',
+  'FECHA LÍMITE DE PAGO: '+vence+' a las 23:59 (hora de Guadalajara).',
+  'Si al finalizar ese día el pago no se ha confirmado, la fecha se liberará automáticamente aunque el comprobante permanezca en revisión.',
+  '',
+  'CARGA DEL COMPROBANTE DE TU RESERVACIÓN',
+  'El siguiente enlace privado corresponde exclusivamente a la fecha '+fecha+
+    ' y a la vivienda '+(datos.conceptoTransferencia||'registrada')+':',
+  datos.enlaceCarga||'Consulta tu enlace privado en el correo de confirmación.',
+  '',
+  'Al abrirlo verás el folio, la vivienda y la fecha de TU solicitud pendiente; ahí podrás adjuntar el comprobante y consultar su estado.',
+  'No compartas el enlace con otras personas.',
+  '',
+  'El envío de una captura no confirma el pago. La reservación se confirma únicamente con una validación bancaria o una verificación acreditada por Administración.',
+  '',
+  'Atentamente,',
+  'Administración de Misión Jardines'
+ ].join('\n');
+}
+const escaparHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({
+ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[c]));
+function htmlPago(datos){
+ const x=escaparHtml,mon=n=>x(moneda(n));
+ const fila=(nombre,valor,importante=false)=>
+  '<tr><td style="padding:11px 13px;border-bottom:1px solid #edf1f3;color:#667487">'+x(nombre)+'</td>'+
+  '<td style="padding:11px 13px;text-align:right;border-bottom:1px solid #edf1f3;color:#20374c;font-weight:'+(importante?'800':'650')+'">'+x(valor)+'</td></tr>';
+ const tarjeta=(titulo,contenido)=>
+  '<section style="margin:22px 0"><h2 style="font-size:14px;letter-spacing:.03em;color:#203850;margin:0 0 10px">'+x(titulo)+'</h2>'+
+   '<table role="presentation" style="width:100%;border-collapse:collapse;background:#f8fafb;border:1px solid #e8ecf1;border-radius:12px">'+contenido+'</table></section>';
+ return '<!doctype html><html lang="es"><body style="margin:0;padding:25px 12px;background:#f2f6f9;font-family:Arial,Helvetica,sans-serif;color:#2a3850">'+
+  '<div style="margin:auto;max-width:640px;background:#fff;border:1px solid #e0e8ee;border-radius:18px;overflow:hidden">'+
+   '<header style="background:#20374c;padding:27px;color:#fff">'+
+    '<div style="color:#f6a052;letter-spacing:.12em;font-size:12px;font-weight:bold">MISIÓN JARDINES · CASA CLUB</div>'+
+    '<h1 style="font-size:24px;line-height:1.3;margin:12px 0 0">Solicitud de reservación recibida</h1>'+
+    '<p style="font-size:13px;line-height:1.6;color:#d6e6eb;margin:10px 0 0">Tu fecha está apartada provisionalmente. Para confirmarla, necesitamos verificar el pago.</p>'+
+   '</header><main style="padding:26px 25px">'+
+    '<p style="font-size:14px;line-height:1.65">Conserva este correo para identificar tu reservación y consultar su comprobante. El enlace de abajo es <b>exclusivo para tu vivienda y fecha</b>.</p>'+
+    tarjeta('RESERVACIÓN',
+      fila('Folio',datos.folio,true)+
+      (datos.fechaSolicitud?fila('Fecha de solicitud',fechaVisible(datos.fechaSolicitud)):'')+
+      fila('Fecha del evento',fechaVisible(datos.fecha),true)+
+      fila('Vivienda',datos.conceptoTransferencia||'Registrada')+
+      fila('Estado','Pendiente de pago'))+
+    tarjeta('DETALLE DEL DEPÓSITO',
+      fila('Recuperación',moneda(datos.cuotaRecuperacion))+
+      fila('Garantía',moneda(datos.depositoGarantia))+
+      fila('Limpieza',moneda(datos.limpieza))+
+      fila('TOTAL A PAGAR',moneda(datos.monto),true))+
+    tarjeta('CUENTA OFICIAL DE DEPÓSITO',
+      fila('Banco',datos.banco)+fila('Titular',datos.titular)+fila('Cuenta',datos.cuenta)+
+      (datos.clabe?fila('CLABE',datos.clabe):'')+(datos.tarjeta?fila('Tarjeta',datos.tarjeta):'')+
+      fila('Concepto',datos.conceptoTransferencia||'CALLE Y NÚMERO',true))+
+    '<p style="background:#fff7ea;border:1px solid #f0dfbd;border-radius:12px;padding:14px;color:#83571c;line-height:1.5;font-size:13px">'+
+      '<strong>Fecha límite:</strong> '+x(fechaVisible(datos.fechaLimitePago))+
+      ' a las 23:59 (Guadalajara). Si no se confirma el pago, se libera la fecha incluso si el comprobante está en revisión.</p>'+
+    '<div style="text-align:center;margin:25px 0">'+
+      '<a href="'+x(datos.enlaceCarga||'#')+'" style="display:inline-block;background:#d8741c;padding:15px 25px;border-radius:11px;color:#fff;font-size:15px;font-weight:bold;text-decoration:none">Subir comprobante de '+x(datos.folio)+'</a>'+
+    '</div>'+
+    '<p style="font-size:12px;line-height:1.65;color:#657488">El botón abre el expediente de tu solicitud y muestra la fecha y la vivienda antes de adjuntar el archivo. No compartas este enlace. La captura enviada no acredita por sí sola un depósito.</p>'+
+   '</main><footer style="padding:17px 25px;background:#f6f9fa;border-top:1px solid #ecf0f2;color:#69798a;font-size:12px">Administración de Misión Jardines</footer>'+
+  '</div></body></html>';
 }
 async function whatsapp(row,datos,config){
  const response=await fetch('https://graph.facebook.com/'+config.version+'/'+config.telefonoId+'/messages',{
@@ -71,18 +153,21 @@ async function whatsapp(row,datos,config){
  if(!response.ok||!(await response.json()).messages?.[0]?.id)throw Error('WhatsApp no aceptó la notificación');
 }
 async function notificar(row,datos,config){
+ const fechaSolicitudDia=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City'}).format(row.creadoEn||new Date());
  const fechaSolicitud=new Date(row.creadoEn||new Date()).toLocaleString('es-MX',{
   timeZone:'America/Mexico_City',dateStyle:'medium',timeStyle:'short'});
  const resultados=await Promise.allSettled([
-  correo.enviarAvisoCasaClub({destinatario:row.correo,asunto:'Apartado de Casa Club · '+datos.folio,texto:textoPago(datos)}),
+  correo.enviarAvisoCasaClub({destinatario:row.correo,asunto:'Misión Jardines | '+datos.folio+' | '+fechaVisible(datos.fecha),
+   texto:textoPago({...datos,fechaSolicitud:fechaSolicitudDia}),
+   html:htmlPago({...datos,fechaSolicitud:fechaSolicitudDia})}),
   Promise.resolve(false), // No enviar instrucciones al WhatsApp del residente.
-  correo.enviarAvisoCasaClub({destinatario:config.administracion,asunto:'Solicitud de Casa Club · '+datos.folio,
+  correo.enviarAvisoCasaClub({destinatario:config.administracion,asunto:'Solicitud de Casa Club · '+datos.folio+' · '+fechaVisible(datos.fecha),
    texto:'Nueva solicitud recibida: '+fechaSolicitud+' (Guadalajara).\nSolicitante: '+row.solicitante+
     '\nVivienda ID: '+row.casaId+'\nWhatsApp: '+row.telefono+'\nCorreo: '+row.correo+
-    '\nFecha solicitada: '+datos.fecha+' ('+datos.folio+').\nRecuperación: '+moneda(datos.cuotaRecuperacion)+
+    '\nFecha solicitada: '+fechaVisible(datos.fecha)+' ('+datos.folio+').\nRecuperación: '+moneda(datos.cuotaRecuperacion)+
     '\nGarantía: '+moneda(datos.depositoGarantia)+'\nLimpieza: '+moneda(datos.limpieza)+
     '\nTotal: '+moneda(datos.monto)+
-    '\nFecha límite: '+datos.fechaLimitePago+'\nRevisa la solicitud en Casa Club → Aprobación de reservas.'})
+    '\nFecha límite: '+fechaVisible(datos.fechaLimitePago)+' a las 23:59 (Guadalajara).\nRevisa la solicitud en Casa Club → Aprobación de reservas.'})
  ]);
  const estados={};
  ['correo','whatsapp','administracion'].forEach((canal,i)=>{

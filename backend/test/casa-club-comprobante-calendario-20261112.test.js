@@ -20,7 +20,8 @@ test('carga protegida visible solo tras generar el enlace de reserva',()=>{
  assert.match(script,/if\(!parsed\)return;/);
  assert.match(script,/\$\('clubProofIntro'\)\.hidden=true;/);
  assert.match(script,/\$\('clubPublicProofFlow'\)\.hidden=false;/);
- assert.match(main,/MJClubPublicProof\.open\(p\.enlaceCarga\)/);
+ assert.doesNotMatch(main,/MJClubPublicProof\.open\(p\.enlaceCarga\)/);
+ assert.match(script,/if\(parse\(location\.hash\)\)open\(location\.hash\)/);
 });
 test('OCR, estado Titan y diseño móvil permanecen accesibles',()=>{
  for(const id of ['clubProofFolio','clubProofAmount','clubProofDate','clubProofTime','clubProofRead','clubProofRefresh','clubProofRetry','clubProofReceipt','clubProofInstructionsOpen'])assert.match(html,new RegExp('id="'+id+'"'));

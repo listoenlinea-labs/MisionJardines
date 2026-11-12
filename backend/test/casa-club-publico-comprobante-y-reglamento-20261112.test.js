@@ -50,6 +50,7 @@ test('subida pública solo puede cargar el comprobante de SU reserva con la mism
  assert.equal(forwarded.reservaPublica.id,71);
 });
 test('estado público no devuelve referencias, OCR, comprobante ni correo bancario',async t=>{
+ t.mock.method(Reserva,'findAll',async()=>[]); // La revisión de expiración no utiliza MySQL en pruebas.
  t.mock.method(acceso,'verificar',async()=>({id:88,fecha:'2026-12-20',estatus:'PENDIENTE',
   pagado:false,cuotaRecuperacion:1000,depositoGarantia:700,limpieza:300}));
  t.mock.method(Pago,'findOne',async()=>({id:43,estatus:'PENDIENTE_VALIDACION',
@@ -59,6 +60,8 @@ test('estado público no devuelve referencias, OCR, comprobante ni correo bancar
  assert.equal(r.code,200);
  assert.equal(r.data.data.total,2000);
  assert.equal(r.data.data.pagado,false);
+ assert.equal(r.data.data.folio,'CC-88');
+ assert.equal(r.data.data.fecha,'2026-12-20');
  assert.equal(r.data.data.comprobante.estado,'PENDIENTE_VALIDACION');
  const body=JSON.stringify(r.data);
  for(const secreto of ['ID-SENSIBLE','DATA-SENSIBLE','HASH-SENSIBLE','secreto interno'])assert.ok(!body.includes(secreto));
