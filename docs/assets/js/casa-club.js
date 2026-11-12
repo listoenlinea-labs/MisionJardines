@@ -504,7 +504,7 @@
   if(profile||!bancoPublico)return;
   const concepto=window.MJClubCuenta?.concepto($('clubStreet').value,$('clubNumber').value)||'';
   window.MJClubCuenta?.render('clubTransferHelp',bancoPublico,{
-   conceptoTransferencia:concepto,monto:importePublico
+   conceptoTransferencia:concepto,monto:importePublico,informativo:true
   });
  }
  if(!profile){
