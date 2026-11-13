@@ -44,7 +44,9 @@ function resumenVivienda(casa, registros, fecha=new Date()) {
 }
 async function consultar(req,res) {
   try {
-    const pagina=Math.max(1,Math.min(10000,Number.parseInt(req.query.pagina,10)||1));
+    const paginaSolicitada=Math.max(1,Math.min(10000,Number.parseInt(req.query.pagina,10)||1));
+    // El cliente elige únicamente 3 (móvil) o 10 (escritorio), sin valores arbitrarios.
+    const limite=Number(req.query.limite)===3?3:10;
     const calle=String(req.query.calle||'').trim().toLocaleLowerCase('es-MX').slice(0,100);
     const numero=String(req.query.numero||'').trim().slice(0,20);
     const estado=String(req.query.estado||'').trim();
@@ -59,10 +61,12 @@ async function consultar(req,res) {
       .filter(c=>(!calle||c.calle.toLocaleLowerCase('es-MX').includes(calle))&&
         (!numero||c.numero.includes(numero))&&(!estado||c.estado===estado))
       .sort((a,b)=>numeric(a.calle,b.calle)||numeric(a.numero,b.numero));
+    const paginas=Math.max(1,Math.ceil(rows.length/limite));
+    const pagina=Math.min(paginaSolicitada,paginas);
     res.setHeader('Cache-Control','private, no-store');
     res.json({ok:true,periodo:new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',month:'long',year:'numeric'}).format(new Date()),
-      total:rows.length,pagina,paginas:Math.max(1,Math.ceil(rows.length/15)),
-      viviendas:rows.slice((pagina-1)*15,pagina*15)});
+      total:rows.length,pagina,paginas,limite,
+      viviendas:rows.slice((pagina-1)*limite,pagina*limite)});
   }catch(e){console.error('[seguridad-cuotas]',e);res.status(503).json({ok:false,message:'No fue posible consultar el estado de cuotas'});}
 }
 module.exports={consultar,resumenVivienda};
