@@ -77,3 +77,39 @@ test('Ambas tarjetas presentan total al pie y las calles tienen divisores en mó
  assert.match(css,/border-bottom:1px solid #dce6ec!important/);
  assert.match(css,/\.finance-expense-layout\{grid-template-columns:minmax\(0,1fr\)/);
 });
+
+
+test('El alta de conceptos ahora solo aparece en un modal, abierta por + Concepto',()=>{
+ const html=read('docs/analisis-cuotas.html');
+ const card=html.indexOf('id="financeExpenseCard"');
+ const trigger=html.indexOf('id="financeProjectExpenseOpen"');
+ const modal=html.indexOf('id="financeProjectExpenseModal"');
+ const form=html.indexOf('id="financeProjectExpenseForm"');
+ const nav=html.indexOf('id="financeMonthlyPagination"');
+ assert.ok(card>=0&&trigger>card&&modal>trigger&&form>modal&&nav>form);
+ for(const id of ['financeProjectExpenseOpen','financeProjectExpenseModal',
+  'financeProjectExpenseForm','financeProjectExpenseName','financeProjectExpenseAmount',
+  'financeProjectExpenseDate','financeProjectExpenseProof','financeProjectExpenseSave',
+  'financeProjectExpenseClose','financeProjectExpenseCancel']){
+  assert.equal(html.split('id="'+id+'"').length-1,1,id+' debe existir una sola vez');
+ }
+ assert.match(html,/aria-haspopup="dialog"/);
+ assert.match(html,/aria-modal="true"/);
+ assert.match(html,/role="dialog"/);
+ assert.match(html,/\+<\/span> Concepto/);
+});
+test('Cerrar modal no registra gastos y la acción de guardar conserva el backend',()=>{
+ const js=read('docs/assets/js/analisis-cuotas.js');
+ const css=read('docs/assets/css/analisis-cuotas.css');
+ assert.match(js,/projectExpenseTrigger\.addEventListener\('click',openProjectExpenseModal\)/);
+ assert.match(js,/financeProjectExpenseClose'\)\.addEventListener/);
+ assert.match(js,/financeProjectExpenseCancel'\)\.addEventListener/);
+ assert.match(js,/e\.key==='Escape'/);
+ assert.match(js,/projectExpensePreviousFocus\.focus\(\)/);
+ assert.match(js,/projectExpenseModal\.dataset\.proyectoId/);
+ assert.match(js,/await request\('\/egresos',body\)/);
+ assert.match(js,/closeProjectExpenseModal\(\{force:true\}\)/);
+ assert.match(css,/\.finance-project-concept-trigger/);
+ assert.match(css,/\.finance-project-expense-modal/);
+ assert.match(css,/@media\(max-width:700px\)/);
+});
