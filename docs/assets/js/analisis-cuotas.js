@@ -255,6 +255,7 @@ let expensePage=1;
   }
  }
  function renderExpenseHistory(){
+  if(activeConcept!=='MANTENIMIENTO'){selectedExpenseCategory=null;setFinanceHistoryOverlay('financeExpenseHistory',false);return;}
   const rows=data?.egresosPorConcepto?.historialMensual?.[selectedExpenseCategory];
   if(!selectedExpenseCategory||!Array.isArray(rows)){
    setFinanceHistoryOverlay('financeExpenseHistory',false);
@@ -284,6 +285,7 @@ let expensePage=1;
   setFinanceHistoryOverlay('financeExpenseHistory',true);
  }
  function renderIncomeHistory(){
+  if(activeConcept!=='MANTENIMIENTO'){selectedIncomeStreet=null;setFinanceHistoryOverlay('financeIncomeHistoryModal',false);return;}
   const street=data?.ingresosMantenimientoCalles?.calles?.find(c=>c.calle===selectedIncomeStreet);
   const rows=street?.historialMensual;
   if(!selectedIncomeStreet||!Array.isArray(rows)){
@@ -324,13 +326,8 @@ let expensePage=1;
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
    ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Cuotas cubiertas del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
-   ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
-   ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
-   ['Egresos registrados',fmt(data.totalEgresos)],['Saldo disponible',fmt(data.balanceReportado)],
-   ['Casa Club · recuperación',fmt(data.casaClub?.recuperacion)],
-   ['Casa Club · limpieza',fmt(data.casaClub?.limpieza)],
-   ['Garantías recibidas',fmt(data.casaClub?.garantiasRecibidas)],
-   ['Garantías devueltas',fmt(data.casaClub?.garantiasDevueltas)]
+   ['Egresos de mantenimiento',fmt(data.finanzasAmbitos?.MANTENIMIENTO?.egresos)],
+   ['Diferencia de mantenimiento',fmt(Number(data.finanzasAmbitos?.MANTENIMIENTO?.ingresos||0)-Number(data.finanzasAmbitos?.MANTENIMIENTO?.egresos||0))]
   ];
   $('financialSummary').innerHTML=financialCards.slice(0,4).map(([n,v],i)=>downloadableFinancialCard(n,v,['padron','pagadas','pendientes','historicas'][i])).join('');
   $('financialSecondary').innerHTML=financialCards.slice(4).map(([n,v])=>financialCard(n,v)).join('');
@@ -705,7 +702,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   // Una recarga del MISMO proyecto sí conserva la selección que siga visible.
   const nextSelectionScope=concepto==='EXTRAORDINARIO'
    ?'EXTRAORDINARIO:'+String(activeProyectoId||''):concepto;
-  if(receiptSelectionScope!==nextSelectionScope)selectedReceiptHouseId=null;
+  if(receiptSelectionScope!==nextSelectionScope){selectedReceiptHouseId=null;expensePage=1;}
   receiptSelectionScope=nextSelectionScope;
   if(concepto==='CASA_CLUB')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
