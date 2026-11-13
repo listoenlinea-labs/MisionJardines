@@ -20,7 +20,8 @@ const {ultimoAbonoConAdeudo}=require('../services/abono-con-adeudo-resumen.servi
 const {folioRecibo}=require('../services/recibo-mantenimiento-analisis.service');
 const {ultimosRegistrosPago}=require('../services/ultimo-registro-pago.service');
 const {agrupacionMantenimiento}=require('../services/resumen-cobranza-calles.service');
-const {categorias,canonica,resumenEgresos}=require('../services/categorias-egresos.service');
+const {categorias,canonica,ambitoDeEgreso,resumenEgresos}=require('../services/categorias-egresos.service');
+const archivosEgresos=require('../services/comprobantes-egresos.service');
 const mesNombres=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const num=x=>Number(x||0);
 const fail=(status,message)=>Object.assign(new Error(message),{status});
@@ -55,9 +56,10 @@ async function analizar(req,res){
    PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']}),
     AportacionExtraordinaria.findAll({attributes:['id','cuotaExtraordinariaId','cargoExtraordinarioId','casaId','fecha','monto','referencia','origen']})
   ]);
-  const egresosHistoricos=await Egreso.findAll({
-   where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto'],raw:true
-  });
+  const [egresosHistoricos,gastosProyectos]=await Promise.all([
+   Egreso.findAll({where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto','ambito'],raw:true}),
+   Egreso.findAll({where:{ambito:'EXTRAORDINARIO',proyectoId:{[Op.ne]:null}},order:[['fecha','DESC'],['id','DESC']]})
+  ]);
   const registros=ultimosRegistrosPago({reportados:require('../services/pagos-reparto-datos').desglosar(foliosRegistrados),cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   // La vivienda de prueba se muestra solamente en Análisis. El padrón y las
@@ -140,11 +142,25 @@ async function analizar(req,res){
    comprobantes:require('../services/pagos-reparto-datos').desglosar(comprobantesMantenimiento),
    inicio:start,fin:end
   });
-  const egresosAcumulados=resumenEgresos(egresosHistoricos,start,end);
+  const egresosAcumulados=resumenEgresos(egresosHistoricos.filter(e=>ambitoDeEgreso(e)==='MANTENIMIENTO'),start,end);
+  const egresosCasaClub=egresos.filter(e=>ambitoDeEgreso(e)==='CASA_CLUB');
+  const egresosMantenimiento=egresos.filter(e=>ambitoDeEgreso(e)==='MANTENIMIENTO');
+  const egresosClubTotal=egresosCasaClub.reduce((sum,e)=>sum+num(e.monto),0);
+  const gastosPorProyecto=new Map();
+  for(const e of gastosProyectos){
+   const id=Number(e.proyectoId);
+   if(!gastosPorProyecto.has(id))gastosPorProyecto.set(id,[]);
+   gastosPorProyecto.get(id).push({id:Number(e.id),fecha:e.fecha,concepto:e.concepto,monto:num(e.monto),
+    referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo});
+  }
+  for(const p of proyectosExtraordinarios){
+   p.gastosConceptos=gastosPorProyecto.get(Number(p.id))||[];
+   p.egresosReales=p.gastosConceptos.reduce((sum,e)=>sum+e.monto,0);
+  }
   const ingresosReportados={mantenimiento:0,extraordinarios:0,casaClub:0};
   for(const p of pagos)ingresosReportados[p.tipoPago==='EXTRAORDINARIO'?'extraordinarios':p.tipoPago==='CASA_CLUB'?'casaClub':'mantenimiento']+=num(p.monto);
   const categoriasGasto=Object.fromEntries(categorias.map(c=>[c,0]));
-  for(const e of egresos){const key=canonica(e.categoria);if(Object.hasOwn(categoriasGasto,key))categoriasGasto[key]+=num(e.monto);}
+  for(const e of egresosMantenimiento){const key=canonica(e.categoria);if(Object.hasOwn(categoriasGasto,key))categoriasGasto[key]+=num(e.monto);}
   const ingresosValidados=ingresosReportados.mantenimiento+ingresosReportados.extraordinarios+ingresosReportados.casaClub;
   const totalManualConcepto=pagosManualesConcepto.reduce((a,p)=>a+num(p.monto),0);
   const manualesCasaClub=pagosManualesConcepto.filter(p=>p.tipoPago==='CASA_CLUB').reduce((a,p)=>a+num(p.monto),0);
@@ -198,30 +214,71 @@ async function analizar(req,res){
    avisoPadron:padron.excluidas ? 'El porcentaje de cumplimiento excluye '+padron.excluidas+' registros auxiliares y de prueba. TEST-001 puede verse en esta tabla para pruebas, pero no modifica los indicadores oficiales ni los datos originales.' : '',
    cobrosCuotasRegistrados:cobrosHistoricos,ingresosHistoricos:esCargaHistorica?cobrosHistoricos:0,esCargaHistorica,
    ingresosParaBalance,ingresosAdicionales,totalManualConcepto,ingresosAportacionesExtraordinarias,saldoInicial,ingresosManuales,
-   ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:ingresosParaBalance+saldoInicial-totalEgresos,
+   ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:cobranzaMantenimiento.recibidoMes+ingresosAdicionales+saldoInicial-totalEgresos,
+   finanzasAmbitos:{MANTENIMIENTO:{ingresos:cobranzaMantenimiento.mes,egresos:totalEgresos},
+    CASA_CLUB:{ingresos:casaClub.recuperacion+casaClub.limpieza,egresos:egresosClubTotal,reservasPagadas:reservasClub.length}},
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
-   egresosCategorias:categoriasGasto,egresos:egresos.map(e=>({...e.toJSON(),esAjusteMensual:esAjuste(e),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))})),
+   egresosCategorias:categoriasGasto,egresos:egresos.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();return {...row,
+    ambito:ambitoDeEgreso(e),comprobanteDisponible:!!comprobanteArchivo,
+    esAjusteMensual:esAjuste(e),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))};}),
    avisoConciliacion:'Los ingresos por calle se asignan a la mensualidad cubierta (con recargo efectivamente pagado). El saldo de caja se calcula por fecha del cobro, sin duplicar depósitos. Los movimientos sin período requieren conciliación.'
   }});
  }catch(e){return sendErr(res,e);}
 }
 async function registrarEgreso(req,res){
+ let archivo=null;
  try{
-  const fecha=String(req.body?.fecha||''),categoria=String(req.body?.categoria||''),concepto=String(req.body?.concepto||'').trim(),monto=Number(req.body?.monto);
-  const extraordinaria=categoria==='CUOTA_EXTRAORDINARIA';
-  const meses=Number(req.body?.meses),fechaInicio=String(req.body?.fechaInicio||'');
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||new Date(fecha+'T12:00:00Z').toISOString().slice(0,10)!==fecha
-     ||!categorias.includes(categoria)||!concepto||concepto.length>250||!Number.isFinite(monto)||monto<=0||monto>100000000)throw fail(400,'Completa fecha, categoría, concepto y monto válidos');
-  // Crear y asignar la referencia dentro de una sola transacción. Se deriva
-  // del ID persistido; dos egresos concurrentes no comparten referencia.
+  const fecha=String(req.body?.fecha||''),categoria=String(req.body?.categoria||'').toUpperCase(),
+   concepto=String(req.body?.concepto||'').trim(),monto=Number(req.body?.monto);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||!Number.isFinite(new Date(fecha+'T12:00:00Z').valueOf())||
+    new Date(fecha+'T12:00:00Z').toISOString().slice(0,10)!==fecha||
+    !categorias.includes(categoria)||categoria==='CUOTA_EXTRAORDINARIA'||!concepto||concepto.length>250||
+    !Number.isFinite(monto)||monto<=0||!Number.isInteger(monto)||monto>100000000)
+   throw fail(400,'Completa fecha, categoría, concepto y monto entero válidos');
+  const proyectoId=Number(req.body?.proyectoId||0);
+  if(categoria==='PROYECTO'&&!proyectoId){
+   // Alta unificada con Nuevo proyecto. Presupuesto no equivale a gasto realmente pagado.
+   const creado=await require('../services/proyectos-extraordinarios.service').crearProyecto({
+    nombre:concepto,montoTotal:monto,fechaInicio:fecha.slice(0,7)+'-01'
+   },req.usuario.usuarioId);
+   return res.status(201).json({ok:true,proyectoId:creado.proyectos?.[0]?.id||null,
+    message:'Proyecto creado sin duplicar el presupuesto como gasto realizado.'});
+  }
+  const ambito=categoria==='PROYECTO'?'EXTRAORDINARIO':String(req.body?.ambito||'MANTENIMIENTO');
+  if(!['MANTENIMIENTO','CASA_CLUB'].includes(ambito)&&
+     !(ambito==='EXTRAORDINARIO'&&categoria==='PROYECTO'&&proyectoId))
+   throw fail(400,'Selecciona el ámbito financiero correcto.');
+  if(proyectoId){
+   if(categoria!=='PROYECTO'||!Number.isSafeInteger(proyectoId)||proyectoId<1)
+    throw fail(400,'Proyecto asociado inválido');
+   const existe=await CuotaExtraordinaria.findOne({where:{id:proyectoId,activo:true}});
+   if(!existe)throw fail(404,'Selecciona un proyecto extraordinario vigente');
+  }
+  if(req.body?.comprobante&&!proyectoId)throw fail(400,'Selecciona el proyecto del comprobante');
+  archivo=await archivosEgresos.guardar(req.body?.comprobante);
   const saved=await sequelize.transaction(async transaction=>{
-   const row=await Egreso.create({fecha,categoria,concepto,monto,referencia:null,registradoPor:req.usuario.usuarioId},{transaction});
+   const row=await Egreso.create({fecha,categoria,concepto,monto,ambito,
+    proyectoId:proyectoId||null,comprobanteArchivo:archivo,referencia:null,
+    registradoPor:req.usuario.usuarioId},{transaction});
    const referencia=referenciaEgreso(fecha,row.id);
    await row.update({referencia},{transaction});
-   const cuota=extraordinaria?await crearPorEgreso({egreso:row,meses,fechaInicio,usuarioId:req.usuario.usuarioId,transaction}):null;
-   return {id:row.id,referencia,cuotaExtraordinariaId:cuota?.id||null};
+   return {id:row.id,referencia,proyectoId:proyectoId||null};
   });
-  return res.status(201).json({ok:true,...saved,message:'Egreso registrado con referencia automática'});
+  return res.status(201).json({ok:true,...saved,message:'Egreso registrado en su ámbito financiero'});
+ }catch(e){await archivosEgresos.eliminar(archivo);return sendErr(res,e);}
+}
+async function comprobanteEgreso(req,res){
+ try{
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1)throw fail(400,'Egreso inválido');
+  const egreso=await Egreso.findByPk(id);
+  if(!egreso||!egreso.comprobanteArchivo)throw fail(404,'Comprobante no encontrado');
+  const archivo=await archivosEgresos.leer(egreso.comprobanteArchivo);
+  res.setHeader('Cache-Control','private, no-store');
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('Content-Disposition','inline');
+  res.type(archivo.mime);
+  return res.send(archivo.bytes);
  }catch(e){return sendErr(res,e);}
 }
 async function activarCuotaExistente(req,res){
@@ -303,4 +360,4 @@ async function modificarCuotaPorCobrar(req,res){
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
  }catch(error){return sendErr(res,error);}
 }
-module.exports={analizar,registrarEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
+module.exports={analizar,registrarEgreso,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};

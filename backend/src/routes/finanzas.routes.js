@@ -38,6 +38,7 @@ router.post('/pagos-vivienda/:casaId/anulacion',reversion.anular);
 router.post('/viviendas/:id/registrar-residente',require('../controllers/residentes.controller').registrarRapido);
 router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorCobrar);
 router.post('/egresos',controller.registrarEgreso);
+router.get('/egresos/:id/comprobante',controller.comprobanteEgreso);
 router.put('/egresos/resumen-mensual',controller.ajustarTotalEgresoMensual);
 router.post('/egresos/:id/activar-cuota',controller.activarCuotaExistente);
 const abonoAdeudo=require('../controllers/abono-con-adeudo.controller');
