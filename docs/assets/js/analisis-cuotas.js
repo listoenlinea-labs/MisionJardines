@@ -420,11 +420,8 @@ function render(){
  }
  function renderExpenses(){
  if(!data)return;
- const project=activeConcept==='EXTRAORDINARIO'?
-  (data.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(activeProyectoId)):null;
- const rows=activeConcept==='EXTRAORDINARIO'?
-  (project?.gastosConceptos||[]).map(e=>({...e,categoria:'PROYECTO',ambito:'EXTRAORDINARIO'})):
-  (data.egresos||[]).filter(e=>e.ambito===activeConcept);
+ const {proyecto:project,egresos:rows}=window.MJExpenseScope.egresosDelAmbito(
+  data,activeConcept,activeProyectoId);
  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const text=normalize($('expenseFilterConcept').value.trim()),category=$('expenseFilterCategory').value;
  const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value,order=$('expenseSort').value;
@@ -447,7 +444,9 @@ function render(){
  expensePage=Math.max(1,Math.min(expensePage,pages));
  const first=(expensePage-1)*size,shown=filtered.slice(first,first+size);
  $('expenseResultCount').textContent='Mostrando '+(filtered.length?first+1:0)+'–'+(first+shown.length)+
-  ' de '+filtered.length+' egresos de '+(project?'«'+project.nombre+'»':activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
+  ' de '+filtered.length+' egresos de '+(activeConcept==='EXTRAORDINARIO'?
+  (project?'«'+project.nombre+'»':'proyecto sin seleccionar'):
+  activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
  const cell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
@@ -702,8 +701,26 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   // Una recarga del MISMO proyecto sí conserva la selección que siga visible.
   const nextSelectionScope=concepto==='EXTRAORDINARIO'
    ?'EXTRAORDINARIO:'+String(activeProyectoId||''):concepto;
-  if(receiptSelectionScope!==nextSelectionScope){selectedReceiptHouseId=null;expensePage=1;}
+  if(receiptSelectionScope!==nextSelectionScope){
+   selectedReceiptHouseId=null;expensePage=1;
+   // Cada pestaña y proyecto tiene sus filtros de consulta independientes.
+   for(const id of ['expenseFilterConcept','expenseFilterCategory','expenseFilterFrom','expenseFilterTo'])
+    $(id).value='';
+   $('expenseSort').value='fecha_desc';
+   expenseDateInputs.forEach(syncExpenseDateDisplay);
+  }
   receiptSelectionScope=nextSelectionScope;
+  const esProyecto=concepto==='EXTRAORDINARIO';
+  for(const option of $('expenseFilterCategory').options){
+   const disponible=!option.value||(esProyecto?option.value==='PROYECTO':option.value!=='PROYECTO');
+   option.hidden=!disponible;option.disabled=!disponible;
+  }
+  $('expenseHistoryTitle').textContent=esProyecto?'Gastos del proyecto seleccionado':
+   concepto==='CASA_CLUB'?'Movimientos de Casa Club':'Movimientos de mantenimiento';
+  $('expenseHistoryScope').textContent=esProyecto
+   ?(seleccionado?'Solo gastos registrados de «'+seleccionado.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
+   :concepto==='CASA_CLUB'?'Solo gastos de Casa Club; sin mantenimiento ni proyectos.'
+   :'Solo gastos de mantenimiento; sin proyectos ni Casa Club.';
   if(concepto==='CASA_CLUB')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
