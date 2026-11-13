@@ -1,23 +1,81 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 11/nov/2026, 23:27, America/Mexico_City.
-**SHA de main consultado:** `4458a7b9b6720ff0cfd2954551d8fa9d2855a143`.
+**Última revisión:** 12/nov/2026, 23:29, America/Mexico_City.
+**SHA de main consultado:** `18e8c3e9164bcca9681f0ab4976b8f01c8792955`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `5be37dc0f0e77657b698f4c8eea0bb6b56d88e87`,
-historial de 114 commits, PR #382–#396, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `d15903d651af509eb5917440721395b754aed9f3`, dedicado exclusivamente
-a la bitácora anterior. Los quince PR de producto están fusionados y no hay PR abiertos
-ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; los resultados
-locales declarados se conservan como evidencia limitada y no se presentan como CI.
-Las vistas previas efímeras de Hostinger se eliminan al cerrar los PR y no acreditan
-despliegue del portal principal. No se consultaron Hostinger, MySQL, Titan o C3
-directamente, no se hicieron pagos, reservas, importaciones, envíos ni pruebas físicas,
-y no se publican credenciales, contactos ni datos privados del padrón.
+comparación de main desde `4458a7b9b6720ff0cfd2954551d8fa9d2855a143`,
+historial de 222 commits, PR #397–#413, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `cd97f81f665140aafd685909f335afc636cabf3f`, dedicado exclusivamente
+a la bitácora anterior. Los diecisiete PR de producto están fusionados y no hay PR
+abiertos ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; los
+resultados locales declarados se conservan como evidencia limitada y no se presentan
+como CI. Las vistas previas efímeras de Hostinger no acreditan despliegue del portal
+principal. No se consultaron Hostinger, MySQL, Titan o C3 directamente, no se ejecutaron
+pagos, reservas, migraciones, mensajes ni pruebas físicas y no se publican credenciales,
+contactos, comprobantes ni datos privados del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 12/nov/2026
+
+El PR [#397](https://github.com/listoenlinea-labs/MisionJardines/pull/397)
+reordena la tabla administrativa de Casa Club y agrega una migración automática, única
+y respaldada, que homologa el importe nominal de todas las reservas a recuperación
+$1,000, garantía $700 y limpieza $300. Conserva estados, folios, comprobantes y pagos
+registrados, pero cambia valores históricos almacenados; antes de desplegar debe
+cotejarse el respaldo y distinguir tarifa nominal de dinero realmente recibido. No se
+ejecutó la migración contra MySQL de producción.
+
+Los PR [#398](https://github.com/listoenlinea-labs/MisionJardines/pull/398)–[#406](https://github.com/listoenlinea-labs/MisionJardines/pull/406)
+iteran el flujo público de Casa Club: filtro mensual, aceptación de reglamento, cuenta
+oficial compartida con Pagos, concepto derivado por backend, enlace privado ligado a
+reserva/vivienda/fecha, OCR móvil y seguimiento Titan. La versión final de #406 deja el
+calendario/formulario en la liga pública y reserva la carga del comprobante para el
+enlace secreto enviado por correo, con vencimiento al día siguiente; una captura
+pendiente no conserva la fecha vencida. #400 admite los destinos oficiales configurados
+en mantenimiento, extraordinarias y Casa Club sin aceptar cuentas ajenas.
+
+Los PR #403–#404 amplían el parser para capturas de Mercado Pago y permiten reportar
+cuando el OCR de servidor obtiene importe, fecha y hora, aunque no lea beneficiario,
+destino o referencia; el reporte queda `PENDIENTE_VALIDACION` y Titan todavía exige
+evidencia bancaria independiente, cuenta oficial, monto/fecha, no reutilización y una
+coincidencia segura. Esto entra en tensión con las reglas vigentes de AGENTS.md sobre
+datos bancarios obligatorios y con la regla de aceptar cualquier abono positivo: varios
+flujos de Casa Club siguen exigiendo el total exacto de la reserva. La discrepancia debe
+resolverse explícitamente antes de usar estos cambios en producción; un merge no
+sustituye la regla vigente ni acredita un depósito.
+
+Los PR [#407](https://github.com/listoenlinea-labs/MisionJardines/pull/407)–[#409](https://github.com/listoenlinea-labs/MisionJardines/pull/409)
+agregan tarjetas rojas de Casa Club por vivienda, historial no destructivo y sanción
+configurable: la cuarta tarjeta activa suspende nuevas reservas y retirar hasta tres o
+menos levanta la sanción. Seguridad puede asignar/retirar desde su tabla sin recibir
+nombres, motivos libres ni autores; Administración conserva búsqueda, historial y
+configuración. No afecta TAGs/ZKTeco ni mantenimiento. Requiere crear/verificar tres
+tablas MySQL y validar privacidad, concurrencia y plazos en un entorno controlado.
+
+Los PR [#408](https://github.com/listoenlinea-labs/MisionJardines/pull/408)–[#411](https://github.com/listoenlinea-labs/MisionJardines/pull/411)
+mejoran errores de reserva, liberan la fecha al rechazar/cancelar sin borrar evidencia,
+permiten una nueva solicitud después de cerrar la anterior y separan en móvil
+`Guardar` de `Enviar solicitud`. El botón móvil queda siempre visible pero deshabilitado
+hasta aceptar el reglamento; no aparece en enlaces privados ni altera escritorio. Falta
+publicar y comprobar el flujo completo en Android/iPhone.
+
+Los PR [#412](https://github.com/listoenlinea-labs/MisionJardines/pull/412)–[#413](https://github.com/listoenlinea-labs/MisionJardines/pull/413)
+convierten Cuotas por vivienda de Seguridad en fichas móviles sin desplazamiento lateral,
+con siete filas y acción de tarjetas rojas por vivienda; #413 elimina el acceso superior
+duplicado. Conservan API, permisos, pagos y ZKTeco. Falta verificación visual real y
+publicación de GitHub Pages.
+
+GitHub devuelve cero runs y cero estados para los diecisiete heads. #402 declara 10
+pruebas aisladas; #403, 9 comprobaciones nuevas y 16 anteriores del parser; #408 agrega
+4 pruebas; #410 agrega 4 regresiones pero deja su ejecución pendiente. #407 declara
+simulaciones transaccionales correctas y sintaxis de 15 archivos. Los demás PR reportan
+sintaxis, estructura o pruebas añadidas sin CI observable; #411–#413 declaran revisión
+rápida sin suite extensa. Ningún resultado acredita Hostinger, MySQL, Titan, SMTP,
+navegador de producción o C3 físico.
 
 ## Implementado en main el 11/nov/2026
 
@@ -475,6 +533,11 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Casa Club: tarifas y flujo público | Implementado en main; migración, correo y operación real pendientes | #397 homologa importes nominales con respaldo; #398–#406 consolidan reglamento, cuenta oficial, enlace privado, OCR/Titan y vencimiento. No se ejecutó SQL ni se confirmó envío, depósito o reserva real |
+| OCR y conciliación flexible | Reporte más tolerante implementado; reglas vigentes en discrepancia | #403–#404 permiten reportar con importe/fecha/hora y dejar pendiente; Titan conserva guardas. Falta reconciliar requisitos bancarios y abonos parciales de AGENTS.md antes de producción |
+| Tarjetas rojas Casa Club | Modelo, auditoría, sanción y UI implementados; MySQL/caseta pendientes | #407–#409 ligan tarjetas a vivienda, bloquean desde la cuarta y limitan PII para Seguridad. No toca TAGs/C3; faltan tablas, concurrencia, privacidad y prueba móvil |
+| Reserva móvil Casa Club | Guardar/Enviar y errores implementados; dispositivos reales pendientes | #408–#411 liberan fecha de registros cerrados, muestran errores específicos y separan preparación de envío. Falta publicar y validar Android/iPhone |
+| Seguridad móvil | Fichas horizontales implementadas; revisión visual pendiente | #412–#413 muestran siete renglones por vivienda y dejan Poner/quitar como único acceso a tarjetas rojas; API y permisos no cambian |
 | Accesos, padrón y Casa Club $2,000 | Implementado en main; migración, despliegue y operación real pendientes | #382 limita CONDOMINO a Pagos/Casa Club, congela tarifas por reserva y permite cancelación auditada. Falta tabla/configuración, permisos, SMTP/WhatsApp y prueba real |
 | TEST-001 en Análisis/ZKTeco | Excepción administrativa implementada sin alterar indicadores oficiales | #383–#384 muestran solo TEST-001 a administración y mantienen 231 viviendas/proyectos. No cambia filtros globales ni prueba C3 |
 | Titan, IMAP y Casa Club automática | Guardas y autoaprobación implementadas; producción no verificada | #385–#387 omiten mensajes demasiado grandes, exigen coincidencia completa única y aprueban Casa Club transaccionalmente. Falta Titan/MySQL/SMTP real; AUTO vs DIRECT está en discrepancia entre AGENTS.md y código |
@@ -561,12 +624,19 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 | Prueba bancaria controlada y saldo de Análisis | Los PR #280–#285 conservan evidencia de un reporte controlado que llegó a VALIDADO mientras la cuota aún mostraba saldo | Confirma la discrepancia concreta documentada y motivó #285; no prueba que el flujo general ya actualice `cuotas` ni que C3 haya cambiado. Esta revisión no consultó MySQL ni el buzón |
 | Requisito de fuente única | El usuario pidió que Pagos deje de calcular desde ZKTeco y use la misma fuente contable que Análisis, actualizando después Análisis y sincronizando C3 cuando exista TAG | Es una decisión/solicitud accesible, no una prueba física ni una implementación. #285–#287 cubren solo TEST-001 |
 | Despliegue de borrado de prerregistro | El usuario informó que realizó el despliegue, pero el botón seguía sin aparecer; también reportó un nuevo fallo al crear una cuenta controlada después de corregir el correo en el padrón | Confirma que el problema seguía abierto en el entorno observado. No acredita qué SHA quedó desplegado, el estado de MySQL ni que #388–#389 funcionen; no se publican datos personales del caso |
+| Comprobante controlado de Mercado Pago y ausencia de aviso bancario | El usuario aportó capturas donde se distinguen importe, fecha, hora e identificador de la operación; también informó que el depósito aparecía en la aplicación bancaria pero no llegó el correo esperado | Confirma la incidencia y la existencia de evidencia visual accesible, no la autenticidad bancaria independiente, recepción por Titan, aprobación en MySQL ni cambio de TAG/C3. No se reproducen datos del comprobante |
 | Diagnóstico Workbench del bloqueo por C3 anulado | El PR #352 conserva seis resultados aportados por el administrador: la cuota del caso seguía pendiente y el movimiento C3 vinculado estaba ANULADO | Evidencia puntual de consulta accesible en el PR; esta revisión no leyó MySQL directamente. No demuestra despliegue de #352, pago recibido, nuevo evento ni cambio físico en C3 |
 
 ## Pruebas automatizadas con resultado conocido
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 12/nov/2026 | PR #397–#413, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 17 heads | No hay CI observable; merge, YAML o preview no prueban despliegue |
+| 12/nov/2026 | #402, simulación aislada Node/test de modal móvil y OCR | **10 pruebas declaradas aprobadas**; sintaxis JS validada | Sin red, MySQL, Titan, fotografía real ni dispositivo |
+| 12/nov/2026 | #403, parser compartido y secuencia archivo local→OCR→reserva→envío | **9 comprobaciones nuevas** y **7 básicas + 9 flexibles** anteriores declaradas correctas | Texto/simulación, no OCR visual del archivo original ni producción |
+| 12/nov/2026 | #404, lectura sintética de formato Mercado Pago | Importe/fecha/hora/identificador y correspondencia exacta declarados correctos; rechazo sin monto | No prueba navegador Android, Titan, MySQL ni autenticidad del depósito |
+| 12/nov/2026 | #407, servicio de tarjetas rojas con modelos simulados | 3 tarjetas permiten; 4 bloquean; retiro desbloquea; plazo de 2 años respetado | Simulación transaccional, no migración Hostinger ni caseta real |
+| 12/nov/2026 | #408/#410 y #411–#413 | #408 agrega **4** pruebas; #410 agrega **4** regresiones pero su ejecución queda pendiente; #411–#413 solo revisión rápida/estática | No declarar suite verde ni experiencia móvil confirmada |
 | 11/nov/2026 | PR #382–#396, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 15 heads | No hay CI observable; merge, cambios al YAML y previews no prueban despliegue |
 | 11/nov/2026 | #382, validación aislada declarada de tarifas y liberación | Casos dirigidos declarados correctos; comando/totales completos no publicados | No prueba MySQL, SMTP, WhatsApp, permisos ni navegador real |
 | 11/nov/2026 | #388–#389, suites locales Auto-users declaradas en los PR | #388: **60 aprobadas**; #389: **61 aprobadas** | Evidencia local, contradicha operativamente por el botón ausente reportado tras desplegar; falta identificar SHA/entorno y repetir |
@@ -722,6 +792,13 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Casa Club #397: homologación histórica | Antes de desplegar, respaldar y ejecutar en clon; comparar tabla de respaldo con reservas, comprobantes y cobros reales. Confirmar que cambiar importes nominales históricos no reescriba ni represente dinero recibido y definir rollback |
+| Flujo público #398–#406 | Desplegar frontend/backend coordinados, revisar columnas nuevas, SMTP y token privado; probar calendario, reglamento, correo, plazo, uploader, OCR, seguimiento y expiración en incógnito/móvil sin usar depósitos reales |
+| Reglas bancarias y abonos parciales #403–#404 | Resolver por decisión explícita la discrepancia entre main y AGENTS.md: qué campos mínimos permiten reportar y cómo Casa Club acepta cualquier abono positivo sin marcar reserva pagada. Mantener Titan, cuenta oficial, monto/fecha, unicidad y no reutilización |
+| Tarjetas rojas #407–#409 | Respaldar y crear/verificar tablas en MySQL de prueba; probar 3/4 tarjetas, retiro, sanción 1–20 años, carrera reserva/asignación, roles, ausencia de PII para Seguridad, historial y que mantenimiento/TAGs/C3 no cambien |
+| Casa Club móvil #408–#411 | Publicar GitHub Pages y reiniciar backend cuando corresponda; limpiar caché y probar Guardar/Enviar, reglamento, fecha faltante, errores, cancelación/rechazo con comprobante pendiente y nueva solicitud en Android/iPhone |
+| Seguridad móvil #412–#413 | Publicar frontend y verificar en Safari/Android 3 filas por página móvil, 10 escritorio, rotación, filtros, paginación, siete renglones, acción Poner/quitar y ausencia de scroll lateral |
+| Incidencia Mercado Pago/correo | Mantener el pago pendiente hasta contar con evidencia bancaria independiente; diagnosticar por qué no llegó el aviso, reintentar Titan sin duplicar y cotejar el identificador de rastreo de forma segura. La captura y el movimiento visible en la app no autorizan por sí solos |
 | PR #382: permisos, tarifa y Casa Club | Desplegar frontend/backend coordinados, verificar/crear `casa_club_tarifas`, probar roles 403, caché, total $2,000, históricos congelados, cancelación, SMTP/WhatsApp y navegador sin efectuar pagos reales |
 | TEST-001 #383–#384 | Publicar y confirmar con administrador que solo aparece en Análisis/ZKTeco, no modifica 231 viviendas, proyectos o indicadores y no queda visible para Seguridad; no usar la revisión visual para escribir al C3 |
 | Titan/IMAP/Casa Club #385–#387 | Ejecutar CI y luego prueba controlada en clon: mensaje grande/pequeño, coincidencia única/ambigua, transacción de Casa Club, no reutilización y ausencia de cambios TAG/C3. Resolver primero la discrepancia AGENTS.md=AUTO frente a código #386=DIRECT |
@@ -812,6 +889,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-12
+
+- Main consultado a las 23:29, America/Mexico_City, en `18e8c3e9164bcca9681f0ab4976b8f01c8792955`, 222 commits por delante del SHA guardado.
+- Se excluyó `cd97f81`, que solo actualizó esta bitácora. Como producto se verificaron diecisiete PR fusionados: #397–#413; no hay PR abiertos ni revertidos nuevos.
+- Los diecisiete heads devuelven cero workflows y cero estados. Se conservaron como evidencia limitada 10 pruebas de #402, 9 nuevas más 16 anteriores de parser en #403, lectura sintética de #404, simulaciones de #407 y pruebas agregadas/no ejecutadas de #408/#410.
+- La conversación accesible confirma un comprobante controlado con importe/fecha/hora/identificador visible y un depósito observado en la aplicación bancaria sin correo recibido. Se registra como incidencia pendiente, sin publicar datos del comprobante y sin afirmar aprobación, MySQL o C3.
+- No se consultaron ni modificaron Hostinger, MySQL, Titan o C3 y no se ejecutaron migraciones, pagos, reservas, correos ni pruebas físicas. Se dejaron explícitas las discrepancias sobre campos bancarios mínimos, abonos parciales de Casa Club e importes históricos antes de producción.
 
 ### 2026-11-11
 
