@@ -36,9 +36,11 @@ test('Calendarios de egresos abren al hacer clic en toda el área y tienen acces
   assert.match(html, /analisis-cuotas\.js\?v=20261103-egresos-filtros-fecha/);
 });
 
-test('Fecha desde y hasta filtran ante input o change sin modificar egresos', () => {
-  assert.match(js, /\(!from\|\|String\(e\.fecha\)>=from\)/);
-  assert.match(js, /\(!to\|\|String\(e\.fecha\)<=to\)/);
-  assert.match(js, /for\(const id of \['expenseFilterFrom','expenseFilterTo'\]\)\s*\$\(id\)\.addEventListener\('input',renderExpenses\)/);
-  assert.match(js, /for\(const id of \['expenseFilterCategory','expenseFilterFrom','expenseFilterTo','expenseSort'\]\)\s*\$\(id\)\.addEventListener\('change',renderExpenses\)/);
+test('filtros y paginación 10 escritorio / 3 celular sin alterar movimientos', () => {
+ assert.match(js, /\(!from\|\|String\(e\.fecha\)\.slice\(0,10\)>=from\)/);
+ assert.match(js, /\(!to\|\|String\(e\.fecha\)\.slice\(0,10\)<=to\)/);
+ assert.match(js, /matchMedia\('\(max-width:700px\)'\)\.matches\?3:10/);
+ assert.match(js, /expensePage=1;renderExpenses\(\)/);
+ for(const id of ['expensePrev','expenseNext','expensePageInfo','expenseScope'])assert.ok(html.includes('id="'+id+'"'));
+ assert.doesNotMatch(html,/value="CUOTA_EXTRAORDINARIA"/);
 });
