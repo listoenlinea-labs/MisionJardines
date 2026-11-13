@@ -1326,7 +1326,7 @@ $('openGate').addEventListener('click', () => controlGate('open')); $('closeGate
     $('currentDate').textContent = window.MJDateDisplay.format(new Date()); renderIncidents(); setAdminContact(); Promise.all([loadHouses(), loadAccesses()]).catch(error => { $('apiStatus').textContent = 'Sin conexión'; toast(error.message) });
   </script>
   <script src="assets/js/seguridad-tarjetas-rojas.js?v=20261112"></script>
-  <script src="assets/js/seguridad-cuotas.js?v=20261112-rojas"></script>
+  <script src="assets/js/seguridad-cuotas.js?v=20261112-paginacion-3-10"></script>
   <script src="assets/js/site-sidebar.js?v=20261109-seguridad-caseta"></script>
 </body>
 
