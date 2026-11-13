@@ -33,7 +33,7 @@ test('Calendarios de egresos abren al hacer clic en toda el área y tienen acces
   assert.match(js, /input\.focus\(\)/);
   assert.match(js, /input\.addEventListener\('click',\(\)=>openExpenseDatePicker\(input\)\)/);
   assert.match(js, /event\.key==='Enter'\|\|event\.key===' '/);
-  assert.match(html, /analisis-cuotas\.js\?v=20261103-egresos-filtros-fecha/);
+  assert.match(html, /analisis-cuotas\.js\?v=20261113-ambitos-paginacion/);
 });
 
 test('filtros y paginación 10 escritorio / 3 celular sin alterar movimientos', () => {
