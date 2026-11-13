@@ -3,7 +3,9 @@
  function render({data,scope,projectId,$,fmt,esc,bar}){
   const project=scope==='EXTRAORDINARIO'?
    (data.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(projectId)):null;
-  const club=scope==='CASA_CLUB',scopeName=project?'PROYECTO':club?'CASA CLUB':'MANTENIMIENTO';
+  const club=scope==='CASA_CLUB',scopeName=scope==='EXTRAORDINARIO'?'PROYECTO':club?'CASA CLUB':'MANTENIMIENTO';
+  // Los totales inferiores usan el mismo origen contable que las barras.
+  let incomeFooter=null,expenseFooter=null;
   for(const id of ['financeIncomeCard','financeBalanceCard','financeExpenseCard'])
    $(id).querySelector('.eyebrow').textContent=scopeName;
   $('financeIncomeSubtitle').textContent=project?project.nombre:club?'Casa Club · Ingresos del período':'Mantenimiento · Ingresos por calle';
@@ -34,7 +36,9 @@
    $('financeIncomeTotals').innerHTML='<span>Recaudado del proyecto: <b>'+esc(fmt(project.recaudado))+'</b></span>';
    $('financeCashChart').innerHTML=ordered.map(([name,value])=>bar(name,value,max,false,fmt(value))).join('');
    $('financeWarning').textContent='Solo aportaciones del proyecto seleccionado, sin cuotas de mantenimiento ni Casa Club.';
+   incomeFooter=Number(project.recaudado||0);
    const concepts=project.gastosConceptos||[],spent=Number(project.egresosReales||0);
+   expenseFooter=spent;
    const maxExpense=Math.max(1,Number(project.totalEsperado||0),...concepts.map(x=>Number(x.monto||0)));
    $('financeExpenseTotals').innerHTML='<span>Presupuesto: <b>'+esc(fmt(project.totalEsperado))+
     '</b></span><span>Gastos reales: <b>'+esc(fmt(spent))+'</b></span>';
@@ -44,8 +48,15 @@
      bar(e.concepto,Number(e.monto||0),maxExpense,true,fmt(e.monto))+
      (e.comprobanteDisponible?'<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Ver comprobante</button>':'')+
      '</div>').join('');
+  }else if(scope==='EXTRAORDINARIO'){
+   $('financeIncomeTotals').textContent='Selecciona un proyecto para consultar sus aportaciones.';
+   $('financeExpenseTotals').textContent='Selecciona un proyecto para consultar sus gastos.';
+   $('financeCashChart').innerHTML='';
+   $('financeExpenseChart').innerHTML='';
   }else if(club){
    const info=data.finanzasAmbitos?.CASA_CLUB||{},expenses=(data.egresos||[]).filter(e=>e.ambito==='CASA_CLUB');
+   incomeFooter=Number(info.ingresos||0);
+   expenseFooter=Number(info.egresos||0);
    const categories=new Map();
    for(const e of expenses)categories.set(String(e.categoria||'OTROS'),(categories.get(String(e.categoria||'OTROS'))||0)+Number(e.monto||0));
    const max=Math.max(1,...categories.values());
@@ -56,6 +67,7 @@
   }else{
    const income=data.ingresosMantenimientoCalles;
    if(income?.calles){
+    incomeFooter=Number(income.mes||0);
     const max=Math.max(1,...income.calles.map(c=>Number(c.mes||0)));
     $('financeIncomeTotals').innerHTML='<span>Cuotas pagadas de '+esc(data.periodo)+': <b>'+esc(fmt(income.mes))+'</b></span>';
     $('financeCashChart').innerHTML=income.calles.map(c=>
@@ -71,6 +83,7 @@
    }
    const out=data.egresosPorConcepto;
    if(out?.conceptos){
+    expenseFooter=Number(out.mes||0);
     const items=out.conceptos.filter(c=>!['PROYECTO','CUOTA_EXTRAORDINARIA'].includes(c.categoria));
     const max=Math.max(1,...items.map(c=>Number(c.mes||0)));
     $('financeExpenseTotals').innerHTML='<span>Egresos de mantenimiento de '+esc(data.periodo)+': <b>'+esc(fmt(out.mes))+'</b></span>';
@@ -80,6 +93,8 @@
      bar(c.concepto,Number(c.mes||0),max,true,fmt(c.mes))+'</button>').join('');
    }else{$('financeExpenseTotals').textContent='Actualiza también la API para consultar egresos.';$('financeExpenseChart').textContent='';}
   }
+  $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
+  $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
   const balance=project?root.MJFinanceBalance?.proyecto(project):
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
