@@ -1697,3 +1697,113 @@ body.page-analisis .finance-monthly-columns > .finance-chart-card{
 .houses-scroll #financeHouseRows>tr.house-row-overdue .house-abono-debt-tag{
  border-color:#efb7a3;background:#ffe8d8;color:#9b4b24;
 }
+
+
+/* 2026-11-13: registro y filtros de egresos consistentes en todas las pantallas. */
+body.page-analisis .expense-form,
+body.page-analisis .expense-filters{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ align-items:end;gap:13px!important;
+}
+body.page-analisis .expense-form > label,
+body.page-analisis .expense-filters > label{
+ display:flex;flex-direction:column;min-width:0;gap:7px;
+ font-family:inherit;font-weight:750;font-size:12px;line-height:1.35;color:#354761;
+ grid-column:auto!important;
+}
+body.page-analisis .expense-form > label[hidden]{display:none!important}
+body.page-analisis .expense-form input,
+body.page-analisis .expense-form select,
+body.page-analisis .expense-filters input,
+body.page-analisis .expense-filters select{
+ box-sizing:border-box;min-height:47px;width:100%;min-width:0;max-width:100%;
+ padding:9px 11px;border:1px solid #d4ddeb;border-radius:11px;
+ font:600 12px/1.35 Inter,system-ui,-apple-system,Segoe UI,sans-serif;
+ background:#fff;color:#263954;text-overflow:ellipsis;
+}
+body.page-analisis .expense-form .mj-date-control,
+body.page-analisis .expense-filters .mj-date-control{width:100%;min-width:0;max-width:100%;height:47px}
+body.page-analisis .expense-form .mj-date-display,
+body.page-analisis .expense-filters .mj-date-display{font-size:12px;max-width:calc(100% - 22px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.page-analisis .expense-form > .expense-concept-field{grid-column:span 2!important}
+body.page-analisis .expense-form > .expense-form-hint{
+ grid-column:1/-1;margin:0;color:#6e7b92;font-size:11px;line-height:1.5;
+}
+body.page-analisis .expense-form #saveExpense{
+ grid-column:1/-1;min-height:46px;border-radius:11px;
+}
+body.page-analisis .expense-filters{border-radius:16px;padding:16px;background:#fbf8fc}
+body.page-analisis .expense-filters #expenseClearFilters{
+ grid-column:auto;min-height:47px;margin:0;align-self:end;border-radius:11px;
+}
+body.page-analisis .expense-pagination{
+ display:flex;align-items:center;justify-content:center;gap:14px;margin-top:15px;
+ padding:12px 5px;border-top:1px solid #e7eaf3;
+}
+body.page-analisis .expense-pagination button{min-height:38px;border-radius:10px}
+body.page-analisis .expense-pagination button:disabled{opacity:.45;cursor:not-allowed}
+body.page-analisis .expense-pagination span{font-size:12px;color:#596a82;font-weight:700}
+body.page-analisis .finance-card-subtitle{
+ display:block;min-width:0;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+body.page-analisis .finance-project-expense-entry{
+ margin-top:16px;padding:14px;border-radius:14px;background:#f9fafc;border:1px solid #e2e8ef;
+}
+body.page-analisis .finance-project-expense-entry[hidden]{display:none!important}
+body.page-analisis .finance-project-expense-entry h3{font-size:14px;color:#334d65;margin:0 0 7px}
+body.page-analisis .finance-project-expense-form{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:11px;
+}
+body.page-analisis .finance-project-expense-form label{
+ display:flex;flex-direction:column;gap:6px;min-width:0;font-weight:750;font-size:11px;color:#41526d;
+}
+body.page-analisis .finance-project-expense-form input{
+ width:100%;min-width:0;max-width:100%;box-sizing:border-box;min-height:43px;
+ padding:7px 9px;border:1px solid #d2dce9;border-radius:10px;font:600 12px Inter,system-ui,sans-serif;
+}
+body.page-analisis .finance-project-expense-form input[type=file]{font-size:10px;overflow:hidden}
+body.page-analisis .finance-project-expense-form button{grid-column:1/-1;min-height:44px}
+body.page-analisis .finance-project-expense-entry #financeProjectExpenseStatus{
+ font-size:11px;color:#3b795d;overflow-wrap:anywhere;
+}
+body.page-analisis .project-budget-bar{border-radius:9px;background:#fffaf2;padding:4px 0;margin-bottom:9px}
+body.page-analisis .project-expense-line{border-top:1px solid #ecedf4;padding:4px 0 9px}
+body.page-analisis .project-expense-line > button{margin-top:5px;font-size:11px}
+@media(max-width:700px){
+ body.page-analisis .expense-form,
+ body.page-analisis .expense-filters{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:11px!important}
+ body.page-analisis .expense-form > label,
+ body.page-analisis .expense-filters > label{font-size:11px}
+ body.page-analisis .expense-form input,
+ body.page-analisis .expense-form select,
+ body.page-analisis .expense-filters input,
+ body.page-analisis .expense-filters select{padding:8px 7px;font-size:11px;min-height:43px}
+ body.page-analisis .expense-form .mj-date-control,
+ body.page-analisis .expense-filters .mj-date-control{height:43px}
+ body.page-analisis .expense-form .mj-date-display,
+ body.page-analisis .expense-filters .mj-date-display{font-size:10px}
+ body.page-analisis .expense-form > .expense-concept-field{grid-column:span 2!important}
+ body.page-analisis .expense-table-scroll{overflow:visible!important;max-height:none!important}
+ body.page-analisis .expense-table-scroll table,
+ body.page-analisis .expense-table-scroll tbody{display:block;width:100%;min-width:0!important}
+ body.page-analisis .expense-table-scroll thead{display:none}
+ body.page-analisis .expense-table-scroll tbody tr{
+  display:block;padding:9px 12px;border:1px solid #dde7ef;border-radius:13px;
+  margin:0 0 10px;background:#fff;box-shadow:0 3px 12px #25385209;
+ }
+ body.page-analisis .expense-table-scroll tbody td{
+  box-sizing:border-box;display:flex;align-items:flex-start;justify-content:space-between;
+  gap:10px;min-width:0;min-height:31px;padding:7px 0!important;
+  border:0;border-bottom:1px solid #edf1f5;
+  font:600 11px/1.45 Inter,system-ui,sans-serif;white-space:normal!important;
+ }
+ body.page-analisis .expense-table-scroll tbody td:last-child{border-bottom:0}
+ body.page-analisis .expense-table-scroll tbody td::before{
+  content:attr(data-label);flex:0 0 37%;max-width:37%;font-weight:760;color:#6a7890;
+ }
+ body.page-analisis .expense-table-scroll tbody td .expense-field-value{
+  flex:1;min-width:0;text-align:right;overflow-wrap:anywhere;color:#2d3d59;
+ }
+ body.page-analisis .expense-table-scroll tbody tr td[colspan]::before{content:none}
+ body.page-analisis .expense-table-scroll .soft{font-size:10px;white-space:normal}
+}
