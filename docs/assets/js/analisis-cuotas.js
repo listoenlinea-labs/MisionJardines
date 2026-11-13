@@ -20,12 +20,19 @@
  const moment=new Date();$('financeYear').value=moment.getFullYear();$('financeMonth').value=String(moment.getMonth()+1);
  $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(moment);
  $('expenseStart').value=$('expenseDate').value.slice(0,7);
+ $('financeProjectExpenseDate').value=$('expenseDate').value;
  function syncExtraExpense(){
-  const extra=$('expenseCategory').value==='CUOTA_EXTRAORDINARIA';
-  document.querySelectorAll('.extra-expense-option').forEach(e=>e.hidden=!extra);
-  $('expenseMonths').required=extra;$('expenseStart').required=extra;
- }
- $('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpense();
+ const project=$('expenseCategory').value==='PROYECTO';
+ document.querySelectorAll('.extra-expense-option').forEach(e=>e.hidden=true);
+ $('expenseMonths').required=false;$('expenseStart').required=false;
+ $('expenseScopeWrap').hidden=project;
+ $('expenseFormHint').textContent=project
+  ?'Se creará un proyecto con este presupuesto. Registra sus gastos reales en Conceptos dentro del proyecto.'
+  :'El egreso se asignará únicamente a '+($('expenseScope').value==='CASA_CLUB'?'Casa Club':'Mantenimiento')+'.';
+ $('saveExpense').textContent=project?'Crear proyecto':'Registrar egreso';
+}
+$('expenseScope').addEventListener('change',syncExtraExpense);
+$('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpense();
  // Texto de fecha independiente del ancho intrínseco del date picker iOS.
  // El input de tipo date permanece funcional y es el único valor enviado.
  function syncExpenseDateDisplay(input){
@@ -86,6 +93,7 @@
  let housePage=1;
  let houseSort={key:"calle",direction:"asc"};
  let activeConcept='MANTENIMIENTO';
+let expensePage=1;
  let activeProyectoId=null;
  let importacionExtraordinaria=null;
  let importacionPrevisualizada=false;
@@ -247,6 +255,7 @@
   }
  }
  function renderExpenseHistory(){
+  if(activeConcept!=='MANTENIMIENTO'){selectedExpenseCategory=null;setFinanceHistoryOverlay('financeExpenseHistory',false);return;}
   const rows=data?.egresosPorConcepto?.historialMensual?.[selectedExpenseCategory];
   if(!selectedExpenseCategory||!Array.isArray(rows)){
    setFinanceHistoryOverlay('financeExpenseHistory',false);
@@ -276,6 +285,7 @@
   setFinanceHistoryOverlay('financeExpenseHistory',true);
  }
  function renderIncomeHistory(){
+  if(activeConcept!=='MANTENIMIENTO'){selectedIncomeStreet=null;setFinanceHistoryOverlay('financeIncomeHistoryModal',false);return;}
   const street=data?.ingresosMantenimientoCalles?.calles?.find(c=>c.calle===selectedIncomeStreet);
   const rows=street?.historialMensual;
   if(!selectedIncomeStreet||!Array.isArray(rows)){
@@ -316,13 +326,8 @@
    ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
    ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Cuotas cubiertas del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
-   ['Extraordinarios validados',fmt(data.ingresosReportados.extraordinarios)],
-   ['Ingreso sin recibo y otros',fmt(data.ingresosAdicionales)],['Saldo administración anterior',fmt(data.saldoInicial)],
-   ['Egresos registrados',fmt(data.totalEgresos)],['Saldo disponible',fmt(data.balanceReportado)],
-   ['Casa Club · recuperación',fmt(data.casaClub?.recuperacion)],
-   ['Casa Club · limpieza',fmt(data.casaClub?.limpieza)],
-   ['Garantías recibidas',fmt(data.casaClub?.garantiasRecibidas)],
-   ['Garantías devueltas',fmt(data.casaClub?.garantiasDevueltas)]
+   ['Egresos de mantenimiento',fmt(data.finanzasAmbitos?.MANTENIMIENTO?.egresos)],
+   ['Diferencia de mantenimiento',fmt(Number(data.finanzasAmbitos?.MANTENIMIENTO?.ingresos||0)-Number(data.finanzasAmbitos?.MANTENIMIENTO?.egresos||0))]
   ];
   $('financialSummary').innerHTML=financialCards.slice(0,4).map(([n,v],i)=>downloadableFinancialCard(n,v,['padron','pagadas','pendientes','historicas'][i])).join('');
   $('financialSecondary').innerHTML=financialCards.slice(4).map(([n,v])=>financialCard(n,v)).join('');
@@ -343,8 +348,8 @@
   const incomplete=Number(project.pendientes||0)+partial;
   const pct=applied?Math.round(registered/applied*10000)/100:0;
   const cards=[['Casas en padrón',houses.length],
-   ['Con pago registrado',registered+' · '+pct+'%'],
-   ['Sin pago completo',incomplete+' · '+(applied?Math.round(incomplete/applied*100):0)+'%'],
+   ['Meta alcanzada',complete+' · '+(houses.length?Math.round(complete*100/houses.length):0)+'%'],
+   ['Sin meta alcanzada',(houses.length-complete)+' · '+(houses.length?Math.round((houses.length-complete)*100/houses.length):0)+'%'],
    ['Recaudado del proyecto',fmt(project.recaudado)]];
   $('financialSummary').innerHTML=cards.map(([name,val],index)=>
    downloadableFinancialCard(name,val,['padron','pagadas','pendientes','historicas'][index])).join('');
@@ -380,82 +385,29 @@
   document.querySelector('#financeStreetPanel h2').textContent='Cumplimiento del proyecto por calle';
  }
 
- function renderBalanceCard(){
-  const card=$('financeBalanceCard');
-  const project=activeConcept==='EXTRAORDINARIO'&&activeProyectoId
-   ?data?.proyectosExtraordinarios?.find(p=>Number(p.id)===Number(activeProyectoId)):null;
-  const balance=project?window.MJFinanceBalance?.proyecto(project):
-   window.MJFinanceBalance?.mensual(data);
-  const isProject=Boolean(project);
-  $('financeBalanceSubtitle').textContent=isProject?'Aportaciones contra meta':'Ingresos menos egresos';
-  $('financeBalanceExpenseLabel').textContent=isProject?'Meta del proyecto':'Egresos';
-  $('financeBalanceDescription').textContent=isProject?
-   'Aportaciones acumuladas comparadas con el presupuesto; no se trata de gastos pagados.':
-   'Balance informativo de cuotas cubiertas en el mes y gastos registrados del mismo período.';
-  if(!balance){
-   card.dataset.balanceState='';
-   $('financeBalanceTotals').textContent='Sin datos suficientes para calcular el balance.';
-   $('financeBalanceWarning').textContent='Actualiza el análisis para consultar importes del período.';
-   $('financeBalanceIncome').textContent='—';$('financeBalanceExpense').textContent='—';
-   $('financeBalanceDifference').textContent='—';$('financeBalanceStatus').textContent='Sin información';
-   $('financeBalanceIncomeBar').style.width='0%';$('financeBalanceExpenseBar').style.width='0%';
-   return;
-  }
-  const abs=Math.abs(balance.diferencia);
-  const label=balance.estado==='SALDO_A_FAVOR'?'Saldo a favor':
-   balance.estado==='SALDO_EN_CONTRA'?'Saldo en contra':'En equilibrio';
-  card.dataset.balanceState=balance.estado;
-  $('financeBalanceTotals').textContent=isProject?'Proyecto: '+project.nombre:'Período: '+data.periodo;
-  $('financeBalanceIncome').textContent=fmt(balance.ingresos);
-  $('financeBalanceExpense').textContent=fmt(balance.egresos);
-  $('financeBalanceDifference').textContent=fmt(abs);
-  $('financeBalanceStatus').textContent=isProject?
-   (balance.estado==='SALDO_EN_CONTRA'?'Saldo en contra · por recaudar':balance.estado==='SALDO_A_FAVOR'?'Saldo a favor · sobre la meta':'Meta cubierta · en equilibrio'):label;
-  const max=Math.max(1,balance.ingresos,balance.egresos);
-  $('financeBalanceIncomeBar').style.width=Math.max(0,100*balance.ingresos/max)+'%';
-  $('financeBalanceExpenseBar').style.width=Math.max(0,100*balance.egresos/max)+'%';
-  $('financeBalanceWarning').textContent=balance.criterio;
-  $('financeBalanceVisual').setAttribute('aria-label',
-   (isProject?'Aportaciones '+fmt(balance.ingresos)+'; meta '+fmt(balance.egresos):
-   'Ingresos '+fmt(balance.ingresos)+'; egresos '+fmt(balance.egresos))+
-   '; '+label+' '+fmt(abs));
- }
- 
- function render(){
+ function renderClubDashboard(){
+ const scope=data?.finanzasAmbitos?.CASA_CLUB||{},houses=Number(data.casas||0);
+ $('financialSummary').innerHTML=[
+  ['Casas en padrón',houses],['Reservas pagadas',Number(scope.reservasPagadas||0)],
+  ['Ingresos Casa Club',fmt(scope.ingresos)],['Egresos Casa Club',fmt(scope.egresos)]]
+  .map(([n,v])=>financialCard(n,v)).join('');
+ $('financialSecondary').innerHTML=[['Ámbito','Casa Club · contabilidad independiente'],
+  ['Diferencia',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))]]
+  .map(([n,v])=>financialCard(n,v)).join('');
+ $('financeDonut').style.setProperty('--percent','0%');
+ $('financeDonutText').innerHTML='Club<small>Independiente</small>';
+ $('financeLegend').innerHTML='<div>Reservas pagadas <b>'+Number(scope.reservasPagadas||0)+'</b></div>';
+ $('financeStreetChart').textContent='Los cobros de Casa Club no son mantenimiento ni proyectos.';
+ $('financePadronNote').hidden=true;
+ document.querySelector('#financeCompliancePanel h2').textContent='Actividad de Casa Club';
+ document.querySelector('#financeStreetPanel h2').textContent='Movimientos de Casa Club';
+}
+function renderBalanceCard(){
+ window.MJFinanceAmbitosUI?.render({data,scope:activeConcept,projectId:activeProyectoId,$,fmt,esc,bar});
+}
+function render(){
   if(!data)return;
   renderMaintenanceDashboard();
-  const ingresos=data.ingresosMantenimientoCalles;
-  if(ingresos?.calles){
-   const max=Math.max(1,...ingresos.calles.map(c=>Number(c.mes||0)));
-   $('financeIncomeTotals').innerHTML='<span>Cuotas pagadas de '+esc(data.periodo)+': <b>'+esc(fmt(ingresos.mes))+'</b></span>';
-   $('financeCashChart').innerHTML=ingresos.calles.map(c=>
-    '<button type="button" class="finance-income-select" data-income-street="'+esc(c.calle)+
-    '" aria-controls="financeIncomeHistoryModal" aria-expanded="'+String(selectedIncomeStreet===c.calle)+
-    '" title="Ver historial de mantenimiento de '+esc(c.calle)+'">'+
-    bar(c.calle,Number(c.mes||0),max,false,fmt(c.mes))+'</button>'
-   ).join('');
-   $('financeWarning').textContent=ingresos.sinPeriodo
-    ?ingresos.sinPeriodo+' movimiento(s) sin mensualidad asignada ('+fmt(ingresos.montoSinPeriodo)+') requieren conciliación; no se imputan arbitrariamente.'
-    :'Cada cuota se contabiliza en el mes que cubre, incluyendo el recargo efectivamente pagado; los anticipos no se duplican.';
-  }else{
-   $('financeIncomeTotals').textContent='Actualiza el backend para consultar el mantenimiento del mes.';
-   $('financeCashChart').textContent='';
-   $('financeWarning').textContent='Requiere desplegar también la API de Hostinger.';
-  }
-  const egresos=data.egresosPorConcepto;
-  if(egresos?.conceptos){
-   const max=Math.max(1,...egresos.conceptos.map(c=>Number(c.mes||0)));
-   $('financeExpenseTotals').innerHTML='<span>Egresos de '+esc(data.periodo)+': <b>'+esc(fmt(egresos.mes))+'</b></span>';
-   $('financeExpenseChart').innerHTML=egresos.conceptos.map(c=>
-    '<button type="button" class="finance-expense-select" data-expense-concept="'+esc(c.categoria)+
-    '" aria-controls="financeExpenseHistory" aria-expanded="'+String(selectedExpenseCategory===c.categoria)+
-    '" title="Ver historial de '+esc(c.concepto)+'">'+
-    bar(c.concepto,Number(c.mes||0),max,true,fmt(c.mes))+'</button>'
-   ).join('');
-  }else{
-   $('financeExpenseTotals').textContent='Actualiza el backend para consultar los egresos del mes.';
-   $('financeExpenseChart').textContent='';
-  }
   renderBalanceCard();
   renderExpenseHistory();
   renderIncomeHistory();
@@ -467,39 +419,49 @@
   renderHouses();
  }
  function renderExpenses(){
-  if(!data)return;
-  // Los egresos y totales provienen del mes/año seleccionado. Filtros de
-  // consulta: no alteran ni los datos guardados ni los indicadores contables.
-  const egresos=Array.isArray(data.egresos)?data.egresos:[];
-  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  const concept=normalize($('expenseFilterConcept').value.trim());
-  const category=$('expenseFilterCategory').value;
-  const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value;
-  const order=$('expenseSort').value;
-  const result=egresos.filter(e=>(!concept||normalize(e.concepto).includes(concept))
-    &&(!category||canonicalExpenseCategory(e.categoria)===category)
-    &&(!from||String(e.fecha)>=from)
-    &&(!to||String(e.fecha)<=to));
-  result.sort((a,b)=>{
-    let cmp=0;
-    if(order==='monto_asc')cmp=Number(a.monto)-Number(b.monto);
-    else if(order==='monto_desc')cmp=Number(b.monto)-Number(a.monto);
-    else if(order==='categoria_asc')cmp=String(a.categoria).localeCompare(String(b.categoria),'es-MX');
-    else if(order==='categoria_desc')cmp=String(b.categoria).localeCompare(String(a.categoria),'es-MX');
-    else if(order==='fecha_asc')cmp=String(a.fecha).localeCompare(String(b.fecha));
-    else cmp=String(b.fecha).localeCompare(String(a.fecha));
-    return cmp||String(b.fecha).localeCompare(String(a.fecha))||Number(b.id)-Number(a.id);
-  });
-  $('expenseResultCount').textContent='Mostrando '+result.length+' de '+egresos.length+' egresos del período seleccionado';
-  const expenseCell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
-  $('financeExpenseRows').innerHTML=result.length?result.map(e=>'<tr>'+
-    expenseCell('Fecha',esc(e.fecha))+expenseCell('Categoría',esc(expenseLabel(e.categoria)))+
-    expenseCell('Concepto',esc(e.concepto))+expenseCell('Referencia',esc(e.referencia||'—'))+
-    expenseCell('Monto',esc(fmt(e.monto)))+expenseCell('Cobro',!e.esAjusteMensual&&(e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS')?(e.tieneCuota?'<span class="status-paid">Programado</span>':'<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>'):'—')+'</tr>').join(''):
-    '<tr><td colspan="6">'+(egresos.length?'No hay egresos que coincidan con los filtros.':'No hay egresos registrados para este mes.')+'</td></tr>';
- }
-
- // Resumen ligero desde MySQL; al abrir el detalle se solicita lectura física C3.
+ if(!data)return;
+ const project=activeConcept==='EXTRAORDINARIO'?
+  (data.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(activeProyectoId)):null;
+ const rows=activeConcept==='EXTRAORDINARIO'?
+  (project?.gastosConceptos||[]).map(e=>({...e,categoria:'PROYECTO',ambito:'EXTRAORDINARIO'})):
+  (data.egresos||[]).filter(e=>e.ambito===activeConcept);
+ const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ const text=normalize($('expenseFilterConcept').value.trim()),category=$('expenseFilterCategory').value;
+ const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value,order=$('expenseSort').value;
+ const filtered=rows.filter(e=>(!text||normalize(e.concepto).includes(text))
+  &&(!category||canonicalExpenseCategory(e.categoria)===category)
+  &&(!from||String(e.fecha).slice(0,10)>=from)
+  &&(!to||String(e.fecha).slice(0,10)<=to));
+ filtered.sort((a,b)=>{
+  let cmp=0;
+  if(order==='monto_asc')cmp=Number(a.monto)-Number(b.monto);
+  else if(order==='monto_desc')cmp=Number(b.monto)-Number(a.monto);
+  else if(order==='categoria_asc')cmp=String(a.categoria).localeCompare(String(b.categoria),'es-MX');
+  else if(order==='categoria_desc')cmp=String(b.categoria).localeCompare(String(a.categoria),'es-MX');
+  else if(order==='fecha_asc')cmp=String(a.fecha).localeCompare(String(b.fecha));
+  else cmp=String(b.fecha).localeCompare(String(a.fecha));
+  return cmp||String(b.fecha).localeCompare(String(a.fecha))||Number(b.id)-Number(a.id);
+ });
+ const size=window.matchMedia('(max-width:700px)').matches?3:10;
+ const pages=Math.max(1,Math.ceil(filtered.length/size));
+ expensePage=Math.max(1,Math.min(expensePage,pages));
+ const first=(expensePage-1)*size,shown=filtered.slice(first,first+size);
+ $('expenseResultCount').textContent='Mostrando '+(filtered.length?first+1:0)+'–'+(first+shown.length)+
+  ' de '+filtered.length+' egresos de '+(project?'«'+project.nombre+'»':activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
+ const cell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
+ $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
+  cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
+  cell('Concepto',esc(e.concepto))+cell('Referencia',esc(e.referencia||'—'))+
+  cell('Monto',esc(fmt(e.monto)))+cell('Comprobante',e.comprobanteDisponible?
+   '<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Descargar comprobante</button>':
+   (!e.esAjusteMensual&&e.categoria==='CUOTA_EXTRAORDINARIA'&&!e.tieneCuota?
+   '<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>':'—'))+
+  '</tr>').join(''):'<tr><td colspan="6">No hay egresos que coincidan con los filtros.</td></tr>';
+ $('expensePageInfo').textContent='Página '+expensePage+' de '+pages;
+ $('expensePrev').disabled=expensePage===1;$('expenseNext').disabled=expensePage===pages;
+}
+ 
+// Resumen ligero desde MySQL; al abrir el detalle se solicita lectura física C3.
  const c3Key=v=>{const value=String(v??'').trim(),digits=value.replace(/\D/g,'');return digits?digits.replace(/^0+(?=\d)/,''):value.toLowerCase();};
  const todayC3=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  function tagStateForHouse(tag,diagnosis){
@@ -740,7 +702,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   // Una recarga del MISMO proyecto sí conserva la selección que siga visible.
   const nextSelectionScope=concepto==='EXTRAORDINARIO'
    ?'EXTRAORDINARIO:'+String(activeProyectoId||''):concepto;
-  if(receiptSelectionScope!==nextSelectionScope)selectedReceiptHouseId=null;
+  if(receiptSelectionScope!==nextSelectionScope){selectedReceiptHouseId=null;expensePage=1;}
   receiptSelectionScope=nextSelectionScope;
   if(concepto==='CASA_CLUB')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
@@ -749,8 +711,10 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   data.viviendas=data.viviendasMantenimiento.filter(h=>concepto==='MANTENIMIENTO'||!h.esPrueba).map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
   if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
+  else if(concepto==='CASA_CLUB')renderClubDashboard();
   else renderMaintenanceDashboard();
-  renderBalanceCard();
+  if(['MANTENIMIENTO','CASA_CLUB'].includes(concepto)){$('expenseScope').value=concepto;syncExtraExpense();}
+  renderBalanceCard();renderExpenses();
   $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
   if(concepto==='EXTRAORDINARIO'){
    $('financeLastPaidMonth').value='';
@@ -2522,21 +2486,25 @@ function renderHouses(){
    }
   }
  });
- $('expenseFilterConcept').addEventListener('input',renderExpenses);
+ $('expenseFilterConcept').addEventListener('input',()=>{expensePage=1;renderExpenses();});
  for(const id of ['expenseFilterCategory','expenseFilterFrom','expenseFilterTo','expenseSort'])
-  $(id).addEventListener('change',renderExpenses);
+  $(id).addEventListener('change',()=>{expensePage=1;renderExpenses();});
  // Algunos selectores nativos notifican primero input; reflejar el rango en
  // la tabla sin esperar a que el usuario cierre o pierda foco.
  for(const id of ['expenseFilterFrom','expenseFilterTo'])
-  $(id).addEventListener('input',renderExpenses);
+  $(id).addEventListener('input',()=>{expensePage=1;renderExpenses();});
  $('expenseClearFilters').addEventListener('click',()=>{
   for(const id of ['expenseFilterConcept','expenseFilterCategory','expenseFilterFrom','expenseFilterTo'])$(id).value='';
   expenseDateInputs.forEach(syncExpenseDateDisplay);
-  $('expenseSort').value='fecha_desc';
+  $('expenseSort').value='fecha_desc';expensePage=1;
   renderExpenses();
  });
- let historicalExtraId=null;
+ $('expensePrev').addEventListener('click',()=>{expensePage--;renderExpenses();});
+$('expenseNext').addEventListener('click',()=>{expensePage++;renderExpenses();});
+window.addEventListener('resize',()=>{if(data)renderExpenses();});
+let historicalExtraId=null;
  $('financeExpenseRows').addEventListener('click',event=>{
+  const proof=event.target.closest('[data-expense-proof]');if(proof){descargarComprobante(proof.dataset.expenseProof);return;}
   const b=event.target.closest('[data-extra-expense]');if(!b)return;
   const item=data?.egresos?.find(e=>Number(e.id)===Number(b.dataset.extraExpense));if(!item)return;
   historicalExtraId=item.id;
@@ -2575,31 +2543,75 @@ function renderHouses(){
   housePage=1;renderHouses();
  });
  $('newExpense').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const body={fecha:$('expenseDate').value,categoria:$('expenseCategory').value,
-   monto:Number($('expenseAmount').value),concepto:$('expenseConcept').value.trim()};
-  if(body.categoria==='CUOTA_EXTRAORDINARIA'){
-   body.meses=Number($('expenseMonths').value);body.fechaInicio=$('expenseStart').value+'-01';
-   if(!Number.isInteger(body.meses)||body.meses<1||body.meses>36||!/^20\d{2}-(0[1-9]|1[0-2])-01$/.test(body.fechaInicio))return notice('Selecciona de 1 a 36 meses y el primer mes de cobro.');
-  }
-  if(!confirm('¿Confirmas este egreso de '+fmt(body.monto)+' por '+body.concepto+'?'))return;
-  $('saveExpense').disabled=true;
-  try{
-   const saved=await request('/egresos',body);
-   $('newExpense').reset();
-   syncExtraExpense();
-   $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-   expenseDateInputs.forEach(syncExpenseDateDisplay);
-   await load();
-   notice('Egreso registrado correctamente. Referencia: '+(saved.referencia||'generada'));
-  }
-  catch(e){notice(e.message);}
-  finally{$('saveExpense').disabled=false;}
- });
- // Proyecto extraordinario: el alta se configura en un único modal con 231 viviendas.
+ e.preventDefault();
+ const body={fecha:$('expenseDate').value,categoria:$('expenseCategory').value,
+  ambito:$('expenseScope').value,monto:Number($('expenseAmount').value),concepto:$('expenseConcept').value.trim()};
+ if(!Number.isInteger(body.monto)||body.monto<=0)return notice('Ingresa un monto sin decimales.');
+ const project=body.categoria==='PROYECTO';
+ if(!confirm('¿Confirmas '+(project?'crear el proyecto':'registrar este egreso')+
+  ' por '+fmt(body.monto)+' de '+body.concepto+'?'))return;
+ $('saveExpense').disabled=true;
+ try{
+  const saved=await request('/egresos',body);
+  if(project&&saved.proyectoId){activeConcept='EXTRAORDINARIO';activeProyectoId=saved.proyectoId;}
+  $('newExpense').reset();syncExtraExpense();
+  $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  expenseDateInputs.forEach(syncExpenseDateDisplay);expensePage=1;
+  await load();
+  notice(project?'Proyecto creado: disponible en el selector de cuotas extraordinarias.':
+   'Egreso registrado. Referencia: '+(saved.referencia||'generada'),'success');
+ }catch(error){notice(error.message);}
+ finally{$('saveExpense').disabled=false;}
+});
+ 
+
+async function descargarComprobante(id){
+ try{
+  const num=Number(id);if(!Number.isSafeInteger(num)||num<1)throw Error('Comprobante inválido');
+  const response=await fetch(API+'/finanzas/egresos/'+num+'/comprobante',{headers:{Authorization:'Bearer '+token}});
+  if(!response.ok)throw Error('No se pudo descargar el comprobante.');
+  const blob=await response.blob(),extension=blob.type==='application/pdf'?'pdf':blob.type==='image/png'?'png':'jpg';
+  const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+  anchor.href=url;anchor.download='comprobante-egreso-'+num+'.'+extension;
+  document.body.append(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),15000);
+ }catch(error){notice(error.message);}
+}
+$('financeExpenseChart').addEventListener('click',e=>{
+ const proof=e.target.closest('[data-expense-proof]');
+ if(proof)descargarComprobante(proof.dataset.expenseProof);
+});
+$('financeProjectExpenseForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ if(activeConcept!=='EXTRAORDINARIO'||!activeProyectoId)return notice('Selecciona un proyecto.');
+ const btn=$('financeProjectExpenseSave'),file=$('financeProjectExpenseProof').files?.[0];
+ const body={fecha:$('financeProjectExpenseDate').value,categoria:'PROYECTO',proyectoId:activeProyectoId,
+  concepto:$('financeProjectExpenseName').value.trim(),monto:Number($('financeProjectExpenseAmount').value)};
+ if(!Number.isInteger(body.monto)||body.monto<=0)return notice('El costo debe expresarse en pesos enteros.');
+ if(file){
+  if(file.size>1024*1024)return notice('El comprobante no puede superar 1 MB.');
+  if(!['image/jpeg','image/png','application/pdf'].includes(file.type))
+   return notice('Adjunta una imagen JPG, PNG o un PDF.');
+  const bytes=new Uint8Array(await file.arrayBuffer()),pieces=[];
+  for(let i=0;i<bytes.length;i+=8192)pieces.push(String.fromCharCode(...bytes.subarray(i,i+8192)));
+  body.comprobante={mime:file.type,base64:btoa(pieces.join(''))};
+ }
+ if(!confirm('¿Registrar '+body.concepto+' por '+fmt(body.monto)+' en este proyecto?'))return;
+ btn.disabled=true;
+ try{
+  await request('/egresos',body);$('financeProjectExpenseForm').reset();
+  $('financeProjectExpenseDate').value=$('expenseDate').value;expensePage=1;
+  await load();
+  $('financeProjectExpenseStatus').textContent='Concepto guardado en el proyecto.';
+  notice('Gasto real registrado, sin afectar mantenimiento o Casa Club.','success');
+ }catch(error){$('financeProjectExpenseStatus').textContent=error.message;notice(error.message);}
+ finally{btn.disabled=false;}
+});
+
+// Proyecto extraordinario: el alta se configura en un único modal con 231 viviendas.
  $('financeProjectSelect').addEventListener('change',()=>{
   const id=Number($('financeProjectSelect').value);
-  activeProyectoId=Number.isSafeInteger(id)&&id>0?id:null;
+  activeProyectoId=Number.isSafeInteger(id)&&id>0?id:null;expensePage=1;
   elegirConcepto('EXTRAORDINARIO');
  });
 

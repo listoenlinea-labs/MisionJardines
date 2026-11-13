@@ -13,9 +13,16 @@ async function asegurarFinanzas(){
   {type:QueryTypes.SELECT});
  if(!col)throw Error('No se encontró la columna categoria de egresos_fraccionamiento');
  const columnType=String(col.COLUMN_TYPE||'').toUpperCase();
- if(opciones.every(c=>columnType.includes("'"+c+"'")))return;
+ if(!opciones.every(c=>columnType.includes("'"+c+"'"))){
  // Ejecutar ALTER solo al cambiar el catálogo, no en cada arranque.
  const safe=opciones.map(c=>"'"+c+"'").join(',');
  await db.query('ALTER TABLE egresos_fraccionamiento MODIFY COLUMN categoria ENUM('+safe+') NOT NULL');
+ }
+ const columns=await db.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='egresos_fraccionamiento'",{type:QueryTypes.SELECT});
+ const names=new Set(columns.map(c=>c.COLUMN_NAME));
+ if(!names.has('ambito'))await db.query("ALTER TABLE egresos_fraccionamiento ADD COLUMN ambito ENUM('MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB') NOT NULL DEFAULT 'MANTENIMIENTO'");
+ if(!names.has('proyecto_id'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN proyecto_id BIGINT UNSIGNED NULL');
+ if(!names.has('comprobante_archivo'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN comprobante_archivo VARCHAR(100) NULL');
+ await db.query("UPDATE egresos_fraccionamiento SET ambito='EXTRAORDINARIO' WHERE categoria IN ('CUOTA_EXTRAORDINARIA','PROYECTOS','PROYECTO') AND ambito='MANTENIMIENTO'");
 }
 module.exports={asegurarFinanzas};
