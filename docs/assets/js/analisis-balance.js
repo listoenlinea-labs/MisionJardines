@@ -5,44 +5,32 @@
  function clasificar(diferencia){
   return diferencia>0?'SALDO_A_FAVOR':diferencia<0?'SALDO_EN_CONTRA':'EN_EQUILIBRIO';
  }
- // El balance informativo coincide exactamente con las dos gráficas visibles:
- // cuotas de mantenimiento por mes CUBIERTO menos egresos del mes seleccionado.
- // Es distinto al flujo de caja por FECHA DE COBRO del servidor.
+ // Solo cuotas cubiertas en el mes y gastos imputados a mantenimiento.
  function mensual(data){
   const ingresos=data?.ingresosMantenimientoCalles?.mes;
   const egresos=data?.finanzasAmbitos?.MANTENIMIENTO?.egresos ?? data?.egresosPorConcepto?.mes;
-  if(!Number.isFinite(Number(ingresos))||!Number.isFinite(Number(egresos))||
-   ingresos==null||egresos==null)return null;
-  const ingresosCentavos=centavos(ingresos),egresosCentavos=centavos(egresos);
-  const diferenciaCentavos=ingresosCentavos-egresosCentavos;
-  return {
-   tipo:'MANTENIMIENTO',ingresos:ingresosCentavos/100,egresos:egresosCentavos/100,
-   diferencia:diferenciaCentavos/100,estado:clasificar(diferenciaCentavos),
-   criterio:'Cuotas atribuidas al mes cubierto menos egresos del mismo mes; no representa el saldo bancario.'
-  };
+  if(ingresos==null||egresos==null||
+   !Number.isFinite(Number(ingresos))||!Number.isFinite(Number(egresos)))return null;
+  const income=centavos(ingresos),expense=centavos(egresos),diff=income-expense;
+  return {tipo:'MANTENIMIENTO',ingresos:income/100,egresos:expense/100,
+   diferencia:diff/100,estado:clasificar(diff),
+   criterio:'Cuotas del mes cubierto menos egresos del mismo mes, únicamente de mantenimiento; no representa el saldo bancario.'};
  }
- // En extraordinarias NO hay egresos atribuidos a cada proyecto en la BD.
- // Comparar las aportaciones con la meta es útil, pero no es balance de caja.
+ // Los presupuestos no equivalen a dinero gastado. Comparar con egresos REALES.
  function proyecto(project){
-   if(!project)return null;
-   const ingresosCentavos=centavos(project.recaudado);
-   const egresosCentavos=centavos(project.egresosReales);
-   const diferenciaCentavos=ingresosCentavos-egresosCentavos;
-   return {
-    tipo:'EXTRAORDINARIO',ingresos:ingresosCentavos/100,egresos:egresosCentavos/100,
-    diferencia:diferenciaCentavos/100,estado:clasificar(diferenciaCentavos),
-    criterio:'Aportaciones acumuladas menos gastos efectivamente registrados de este proyecto. El presupuesto se muestra por separado.'
-   };
-  }
-  function casaClub(scope){
-   if(!scope)return null;
-   const ingresosCentavos=centavos(scope.ingresos);
-   const egresosCentavos=centavos(scope.egresos);
-   const diferenciaCentavos=ingresosCentavos-egresosCentavos;
-   return {tipo:'CASA_CLUB',ingresos:ingresosCentavos/100,egresos:egresosCentavos/100,
-    diferencia:diferenciaCentavos/100,estado:clasificar(diferenciaCentavos),
-    criterio:'Cuotas de recuperación y limpieza recibidas menos gastos de Casa Club del período; no se contabilizan garantías como ingreso.'};
-  };
+  if(!project)return null;
+  const income=centavos(project.recaudado),expense=centavos(project.egresosReales),diff=income-expense;
+  return {tipo:'EXTRAORDINARIO',ingresos:income/100,egresos:expense/100,
+   diferencia:diff/100,estado:clasificar(diff),
+   criterio:'Aportaciones acumuladas menos gastos efectivamente registrados de este proyecto. El presupuesto se muestra por separado.'};
+ }
+ // Las garantías reembolsables del club no se consideran ingresos operativos.
+ function casaClub(scope){
+  if(!scope)return null;
+  const income=centavos(scope.ingresos),expense=centavos(scope.egresos),diff=income-expense;
+  return {tipo:'CASA_CLUB',ingresos:income/100,egresos:expense/100,
+   diferencia:diff/100,estado:clasificar(diff),
+   criterio:'Recuperación y limpieza cobradas menos gastos registrados de Casa Club en el período, excluyendo garantías.'};
  }
  const api={mensual,proyecto,casaClub,clasificar,importe};
  if(typeof module==='object'&&module.exports)module.exports=api;
