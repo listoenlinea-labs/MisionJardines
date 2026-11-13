@@ -2054,3 +2054,43 @@ body.page-analisis .finance-project-expense-dialog #financeProjectExpenseStatus:
 @media(prefers-reduced-motion:reduce){
  body.page-analisis .finance-project-concept-trigger{transition:none}
 }
+
+
+/* PR #416: los ingresos de proyectos/Casa Club son filas de gráfica no
+   interactivas; a diferencia de mantenimiento, no vienen en botones.
+   Aplicarles el mismo alto y ritmo que a las filas de Egresos en escritorio.
+   La disposición compacta con separadores móviles permanece <701px. */
+@media (min-width:701px){
+ body.page-analisis .finance-monthly-columns #financeCashChart > .bar-row{
+  box-sizing:border-box;
+  display:grid;
+  width:100%;
+  min-width:0;
+  min-height:44px;
+  align-items:center;
+  padding:8px 9px;
+  margin:0;
+  border-bottom:1px solid #e7eaf0;
+  border-radius:0;
+ }
+ body.page-analisis .finance-monthly-columns #financeCashChart > .bar-row:last-child{
+  border-bottom:0;
+ }
+ body.page-analisis .finance-monthly-columns #financeCashChart > .bar-row strong{
+  min-width:0;
+  font-size:11px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+ }
+ body.page-analisis .finance-monthly-columns #financeCashChart > .bar-row .track{
+  min-width:0;
+  width:100%;
+ }
+ body.page-analisis .finance-monthly-columns #financeCashChart > .bar-row b{
+  min-width:0;
+  font-size:12px;
+  text-align:right;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+ }
+}

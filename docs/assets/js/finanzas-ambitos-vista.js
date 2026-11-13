@@ -35,15 +35,12 @@
    }
    const ordered=[...streets].sort(([a],[b])=>a.localeCompare(b,'es-MX',{numeric:true}));
    const max=Math.max(1,...ordered.map(x=>x[1]));
-   $('financeIncomeTotals').innerHTML='<span>Recaudado del proyecto: <b>'+esc(fmt(project.recaudado))+'</b></span>';
    $('financeCashChart').innerHTML=ordered.map(([name,value])=>bar(name,value,max,false,fmt(value))).join('');
    $('financeWarning').textContent='Solo aportaciones del proyecto seleccionado, sin cuotas de mantenimiento ni Casa Club.';
    incomeFooter=Number(project.recaudado||0);
    const concepts=project.gastosConceptos||[],spent=Number(project.egresosReales||0);
    expenseFooter=spent;
    const maxExpense=Math.max(1,Number(project.totalEsperado||0),...concepts.map(x=>Number(x.monto||0)));
-   $('financeExpenseTotals').innerHTML='<span>Presupuesto: <b>'+esc(fmt(project.totalEsperado))+
-    '</b></span><span>Gastos reales: <b>'+esc(fmt(spent))+'</b></span>';
    $('financeExpenseChart').innerHTML='<div class="project-budget-bar">'+
     bar('Costo total presupuestado',Number(project.totalEsperado||0),maxExpense,true,fmt(project.totalEsperado))+'</div>'+
     concepts.map(e=>'<div class="project-expense-line">'+
@@ -51,10 +48,8 @@
      (e.comprobanteDisponible?'<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Ver comprobante</button>':'')+
      '</div>').join('');
   }else if(scope==='EXTRAORDINARIO'){
-   $('financeIncomeTotals').textContent='Selecciona un proyecto para consultar sus aportaciones.';
-   $('financeExpenseTotals').textContent='Selecciona un proyecto para consultar sus gastos.';
-   $('financeCashChart').innerHTML='';
-   $('financeExpenseChart').innerHTML='';
+   $('financeCashChart').textContent='Selecciona un proyecto para consultar sus aportaciones.';
+   $('financeExpenseChart').textContent='Selecciona un proyecto para consultar sus gastos.';
   }else if(club){
    const info=data.finanzasAmbitos?.CASA_CLUB||{},expenses=(data.egresos||[]).filter(e=>e.ambito==='CASA_CLUB');
    incomeFooter=Number(info.ingresos||0);
@@ -62,16 +57,13 @@
    const categories=new Map();
    for(const e of expenses)categories.set(String(e.categoria||'OTROS'),(categories.get(String(e.categoria||'OTROS'))||0)+Number(e.monto||0));
    const max=Math.max(1,...categories.values());
-   $('financeIncomeTotals').innerHTML='<span>Ingresos Casa Club: <b>'+esc(fmt(info.ingresos))+'</b></span>';
    $('financeCashChart').innerHTML=bar('Recuperación y limpieza',Number(info.ingresos||0),Math.max(1,Number(info.ingresos||0)),false,fmt(info.ingresos));
-   $('financeExpenseTotals').innerHTML='<span>Egresos Casa Club: <b>'+esc(fmt(info.egresos))+'</b></span>';
    $('financeExpenseChart').innerHTML=[...categories].map(([name,value])=>bar(name,value,max,true,fmt(value))).join('')||'<p class="hint">Sin gastos en Casa Club durante el período.</p>';
   }else{
    const income=data.ingresosMantenimientoCalles;
    if(income?.calles){
     incomeFooter=Number(income.mes||0);
     const max=Math.max(1,...income.calles.map(c=>Number(c.mes||0)));
-    $('financeIncomeTotals').innerHTML='<span>Cuotas pagadas de '+esc(data.periodo)+': <b>'+esc(fmt(income.mes))+'</b></span>';
     $('financeCashChart').innerHTML=income.calles.map(c=>
      '<button type="button" class="finance-income-select" data-income-street="'+esc(c.calle)+
      '" aria-controls="financeIncomeHistoryModal" aria-expanded="false" title="Ver historial de mantenimiento de '+esc(c.calle)+'">'+
@@ -80,20 +72,18 @@
      income.sinPeriodo+' movimiento(s) sin mensualidad asignada ('+fmt(income.montoSinPeriodo)+') requieren conciliación.':
      'Cada cuota se contabiliza en el mes cubierto, con recargos reales.';
    }else{
-    $('financeIncomeTotals').textContent='Actualiza también la API para consultar ingresos.';
-    $('financeCashChart').textContent='';
+    $('financeCashChart').textContent='No hay datos de ingresos disponibles para este período.';
    }
    const out=data.egresosPorConcepto;
    if(out?.conceptos){
     expenseFooter=Number(out.mes||0);
     const items=out.conceptos.filter(c=>!['PROYECTO','CUOTA_EXTRAORDINARIA'].includes(c.categoria));
     const max=Math.max(1,...items.map(c=>Number(c.mes||0)));
-    $('financeExpenseTotals').innerHTML='<span>Egresos de mantenimiento de '+esc(data.periodo)+': <b>'+esc(fmt(out.mes))+'</b></span>';
     $('financeExpenseChart').innerHTML=items.map(c=>
      '<button type="button" class="finance-expense-select" data-expense-concept="'+esc(c.categoria)+
      '" aria-controls="financeExpenseHistory" aria-expanded="false" title="Ver historial de '+esc(c.concepto)+'">'+
      bar(c.concepto,Number(c.mes||0),max,true,fmt(c.mes))+'</button>').join('');
-   }else{$('financeExpenseTotals').textContent='Actualiza también la API para consultar egresos.';$('financeExpenseChart').textContent='';}
+   }else{$('financeExpenseChart').textContent='No hay datos de egresos disponibles para este período.';}
   }
   $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
@@ -108,7 +98,6 @@
    club?'Sin garantías ni pagos de otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   const card=$('financeBalanceCard');
   if(!balance){
-   card.dataset.balanceState='';$('financeBalanceTotals').textContent='Sin datos suficientes.';
    $('financeBalanceIncome').textContent='—';$('financeBalanceExpense').textContent='—';
    $('financeBalanceDifference').textContent='—';$('financeBalanceStatus').textContent='Sin información';
    $('financeBalanceIncomeBar').style.width='0%';$('financeBalanceExpenseBar').style.width='0%';
@@ -118,7 +107,6 @@
   const abs=Math.abs(balance.diferencia),label=balance.estado==='SALDO_A_FAVOR'?'Saldo a favor':
    balance.estado==='SALDO_EN_CONTRA'?'Saldo en contra':'En equilibrio';
   card.dataset.balanceState=balance.estado;
-  $('financeBalanceTotals').textContent=project?'Proyecto: '+project.nombre:scopeName+' · '+data.periodo;
   $('financeBalanceIncome').textContent=fmt(balance.ingresos);
   $('financeBalanceExpense').textContent=fmt(balance.egresos);
   $('financeBalanceDifference').textContent=fmt(abs);
