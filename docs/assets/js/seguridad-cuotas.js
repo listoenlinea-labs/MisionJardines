@@ -5,11 +5,13 @@
   const API=(window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api').replace(/\/$/,'');
   const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
   let pagina=1,paginas=1,lastRequest=0;
+  const mobileQuery=window.matchMedia('(max-width: 720px)');
+  const limiteActual=()=>mobileQuery.matches?3:10;
   const esc=x=>String(x??'').replace(/[&<>"']/g,v=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[v]));
   async function refresh(){
     const current=++lastRequest;
     status.textContent='Consultando estado de cuotas…';
-    const qs=new URLSearchParams({pagina:String(pagina),calle:el('segCuotasCalle').value,numero:el('segCuotasNumero').value,estado:el('segCuotasEstado').value});
+    const qs=new URLSearchParams({pagina:String(pagina),limite:String(limiteActual()),calle:el('segCuotasCalle').value,numero:el('segCuotasNumero').value,estado:el('segCuotasEstado').value});
     try{
       const response=await fetch(API+'/seguridad-cuotas/cuotas-viviendas?'+qs,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
       const json=await response.json().catch(()=>({}));
@@ -25,7 +27,7 @@
           '<td data-label="Acciones"><button type="button" class="seg-red-button" data-red-manage="'+id+'" '+(!id?'disabled':'')+'>Poner / quitar</button></td></tr>';
       }).join(''):'<tr><td colspan="7">No hay viviendas con estos filtros.</td></tr>';
       window.MJSeguridadRojas?.actualizarCeldas();
-      status.textContent=String(json.total)+' viviendas · '+json.periodo;
+      status.textContent=String(json.total)+' viviendas · '+json.periodo+' · '+String(json.limite||limiteActual())+' por página';
       el('segCuotasPage').textContent='Página '+pagina+' de '+paginas;
       el('segCuotasPrev').disabled=pagina<=1;
       el('segCuotasNext').disabled=pagina>=paginas;
@@ -38,5 +40,9 @@
   el('segCuotasRefresh').addEventListener('click',refresh);
   el('segCuotasPrev').addEventListener('click',()=>{if(pagina>1){pagina--;refresh()}});
   el('segCuotasNext').addEventListener('click',()=>{if(pagina<paginas){pagina++;refresh()}});
+  // Cambio de ancho, rotación o vista de escritorio: nueva cantidad y página 1.
+  const cambioVista=()=>{pagina=1;refresh()};
+  if(typeof mobileQuery.addEventListener==='function')mobileQuery.addEventListener('change',cambioVista);
+  else if(typeof mobileQuery.addListener==='function')mobileQuery.addListener(cambioVista);
   refresh();
 })();
