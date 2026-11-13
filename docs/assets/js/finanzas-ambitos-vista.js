@@ -8,8 +8,10 @@
   let incomeFooter=null,expenseFooter=null;
   for(const id of ['financeIncomeCard','financeBalanceCard','financeExpenseCard'])
    $(id).querySelector('.eyebrow').textContent=scopeName;
-  $('financeIncomeSubtitle').textContent=project?project.nombre:club?'Casa Club · Ingresos del período':'Mantenimiento · Ingresos por calle';
-  $('financeExpenseSubtitle').textContent=project?project.nombre:club?'Casa Club · Gastos por concepto':'Mantenimiento · Gastos por concepto';
+  $('financeIncomeSubtitle').textContent=project?project.nombre:
+   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Ingresos del período':'Mantenimiento · Ingresos por calle';
+  $('financeExpenseSubtitle').textContent=project?project.nombre:
+   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Gastos por concepto':'Mantenimiento · Gastos por concepto';
   $('financeIncomeSubtitle').title=$('financeExpenseSubtitle').title=project?project.nombre:scopeName;
   $('financeProjectExpenseEntry').hidden=!project;
   $('financeIncomeCard').querySelector('.finance-graph-help').hidden=!!project||club;
