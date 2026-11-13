@@ -7,6 +7,9 @@ module.exports=db.define('Egreso',{
  concepto:{type:DataTypes.STRING(250),allowNull:false},
  monto:{type:DataTypes.DECIMAL(12,2),allowNull:false},
  referencia:{type:DataTypes.STRING(120),allowNull:true},
+ ambito:{type:DataTypes.ENUM('MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB'),allowNull:false,defaultValue:'MANTENIMIENTO'},
+ proyectoId:{type:DataTypes.BIGINT.UNSIGNED,allowNull:true,field:'proyecto_id'},
+ comprobanteArchivo:{type:DataTypes.STRING(100),allowNull:true,field:'comprobante_archivo'},
  registradoPor:{type:DataTypes.BIGINT.UNSIGNED,allowNull:false,field:'registrado_por'},
  creadoEn:{type:DataTypes.DATE,allowNull:false,defaultValue:DataTypes.NOW,field:'creado_en'}
 },{tableName:'egresos_fraccionamiento',timestamps:false,indexes:[{fields:['fecha','categoria']}]});

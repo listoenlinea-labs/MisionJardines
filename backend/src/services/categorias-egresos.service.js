@@ -13,6 +13,11 @@ function canonica(value){
  const raw=String(value||'').trim().toUpperCase();
  return ({LUZ:'CFE',AGUA:'SIAPA',PROYECTOS:'CUOTA_EXTRAORDINARIA'})[raw]||raw;
 }
+function ambitoDeEgreso(row){
+ const cat=canonica(row?.categoria);
+ if(cat==='PROYECTO'||cat==='CUOTA_EXTRAORDINARIA')return 'EXTRAORDINARIO';
+ return ['MANTENIMIENTO','CASA_CLUB','EXTRAORDINARIO'].includes(row?.ambito)?row.ambito:'MANTENIMIENTO';
+}
 const importe=x=>Math.round(Number(x||0)*100);
 const meses=Object.freeze(['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']);
 
@@ -58,4 +63,4 @@ function resumenEgresos(rows,inicio,fin){
   acumulado:conceptos.reduce((a,x)=>a+importe(x.acumulado),0)/100,
   anio,mesSeleccionado:mesFinal,historialMensual};
 }
-module.exports={categorias,anteriores,etiquetas,canonica,resumenEgresos};
+module.exports={categorias,anteriores,etiquetas,canonica,ambitoDeEgreso,resumenEgresos};
