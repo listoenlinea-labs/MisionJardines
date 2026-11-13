@@ -50,3 +50,20 @@ test('La UI informa cuando falta un proyecto o datos sin reconstruir tarjetas re
  assert.match(renderer,/No hay datos de ingresos disponibles/);
  assert.match(renderer,/No hay datos de egresos disponibles/);
 });
+
+
+test('Ingresos por proyecto se ven como filas de escritorio, no apretadas como móvil',()=>{
+ const css=read('docs/assets/css/analisis-cuotas.css');
+ const html=read('docs/analisis-cuotas.html');
+ const script=read('docs/assets/js/finanzas-ambitos-vista.js');
+ // Los proyectos y Casa Club generan renglones directos; mantenimiento genera botones.
+ assert.match(script,/ordered\.map\(\(\[name,value\]\)=>bar\(name,value,max,false,fmt\(value\)\)\)/);
+ assert.match(script,/finance-income-select/);
+ assert.match(css,/@media\s*\(min-width:701px\)\s*\{/);
+ assert.match(css,/#financeCashChart\s*>\s*\.bar-row\s*\{/);
+ assert.match(css,/min-height:44px/);
+ assert.match(css,/border-bottom:1px solid #e7eaf0/);
+ assert.match(css,/#financeCashChart\s*>\s*\.bar-row strong/);
+ assert.match(css,/#financeCashChart\s*>\s*\.bar-row b/);
+ assert.match(html,/analisis-cuotas\.css\?v=20261113-ingresos-escritorio-alineados/);
+});
