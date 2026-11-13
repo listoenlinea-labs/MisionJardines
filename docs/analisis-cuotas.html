@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261113-ambitos-paginacion">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261113-concepto-modal">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -48,28 +48,58 @@
 <div id="financeIncomeTotals" class="finance-period-summary" role="status" aria-live="polite"></div>
 <p class="hint finance-history-hint finance-graph-help">Haz clic en una calle para comparar las cuotas pagadas de enero al mes seleccionado.</p>
 <div id="financeCashChart" class="money-bars" aria-label="Cuotas de mantenimiento pagadas por calle en el mes cubierto"></div>
-<p class="hint" id="financeWarning"></p></section>
+<p class="hint" id="financeWarning"></p>
+<div class="finance-chart-footer" id="financeIncomeFooter" role="status" aria-live="polite">
+ <span>Total de ingresos</span><strong id="financeIncomeFooterTotal">—</strong>
+</div></section>
 <section class="analysis-card finance-chart-card finance-balance-card" id="financeBalanceCard" aria-label="Diferencia mensual entre ingresos y egresos"><span class="eyebrow">BALANCE INFORMATIVO</span><h2>Diferencia del período</h2><p class="finance-card-subtitle" id="financeBalanceSubtitle">Ingresos menos egresos</p><p class="hint finance-chart-description" id="financeBalanceDescription">Cálculo del período seleccionado.</p><div class="finance-period-summary" id="financeBalanceTotals" role="status" aria-live="polite"></div><div class="finance-balance-visual" id="financeBalanceVisual" role="img" aria-label="Comparación de ingresos y egresos"><div class="finance-balance-rows"><div><span>Ingresos</span><strong id="financeBalanceIncome">$0</strong></div><div class="finance-balance-track"><i id="financeBalanceIncomeBar" class="finance-balance-fill income"></i></div><div><span id="financeBalanceExpenseLabel">Egresos</span><strong id="financeBalanceExpense">$0</strong></div><div class="finance-balance-track"><i id="financeBalanceExpenseBar" class="finance-balance-fill expense"></i></div></div><div class="finance-balance-result"><small>Diferencia del período</small><strong id="financeBalanceDifference">$0</strong><span id="financeBalanceStatus">En equilibrio</span></div></div><p id="financeBalanceWarning" class="hint"></p></section>
- <section class="analysis-card finance-chart-card" id="financeExpenseCard"><span class="eyebrow">EGRESOS</span><h2>Egresos</h2>
+ <section class="analysis-card finance-chart-card" id="financeExpenseCard">
+<div class="finance-project-expense-card-heading">
+ <div><span class="eyebrow">EGRESOS</span><h2>Egresos</h2></div>
+ <div id="financeProjectExpenseEntry" class="finance-project-expense-entry" hidden>
+  <button type="button" id="financeProjectExpenseOpen" class="finance-project-concept-trigger"
+   aria-haspopup="dialog" aria-controls="financeProjectExpenseModal" aria-expanded="false"
+   title="Agregar concepto de gasto al proyecto seleccionado"><span aria-hidden="true">+</span> Concepto</button>
+ </div>
+</div>
 <p class="finance-card-subtitle" id="financeExpenseSubtitle">Mantenimiento · Gastos por concepto</p>
 <p class="hint finance-chart-description">Egresos exclusivos del área financiera seleccionada.</p>
 <div id="financeExpenseTotals" class="finance-period-summary" role="status"></div>
 <p class="hint finance-expense-click-hint finance-graph-help">Haz clic en un concepto para consultar su historial mensual del año seleccionado.</p>
 <div id="financeExpenseChart" class="money-bars" aria-label="Gastos del ámbito seleccionado"></div>
-<div id="financeProjectExpenseEntry" class="finance-project-expense-entry" hidden>
- <h3>Agregar concepto de gasto del proyecto</h3>
- <p class="hint">Cada gasto real se registra una sola vez. El costo total del proyecto es presupuesto, no un gasto duplicado.</p>
- <form id="financeProjectExpenseForm" class="finance-project-expense-form">
-  <label>Concepto<input id="financeProjectExpenseName" required maxlength="250" placeholder="Ej. Pintura o soldadura"></label>
-  <label>Monto (MXN)<input id="financeProjectExpenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label>
-  <label>Fecha<input id="financeProjectExpenseDate" type="date" required></label>
-  <label>Recibo o comprobante (opcional)<input id="financeProjectExpenseProof" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
-  <button id="financeProjectExpenseSave" type="submit" class="primary">Guardar concepto</button>
- </form>
- <p id="financeProjectExpenseStatus" role="status" aria-live="polite"></p>
-</div>
 
+<div class="finance-chart-footer" id="financeExpenseFooter" role="status" aria-live="polite">
+ <span>Total de egresos</span><strong id="financeExpenseFooterTotal">—</strong>
+</div>
 </section></div>
+<!-- El editor está fuera del carrusel para no recortarse en iPhone. -->
+<section id="financeProjectExpenseModal" class="finance-pay-overlay finance-project-expense-modal"
+ hidden aria-labelledby="financeProjectExpenseModalTitle">
+ <div class="finance-pay-dialog finance-project-expense-dialog" role="dialog" aria-modal="true"
+  aria-labelledby="financeProjectExpenseModalTitle" aria-describedby="financeProjectExpenseModalDescription" tabindex="-1">
+  <div class="finance-pay-heading">
+   <div>
+    <span class="eyebrow">EGRESO DE PROYECTO</span>
+    <h2 id="financeProjectExpenseModalTitle">Agregar concepto de gasto</h2>
+   </div>
+   <button id="financeProjectExpenseClose" type="button" class="soft finance-project-expense-close"
+    aria-label="Cerrar sin guardar">×</button>
+  </div>
+  <p id="financeProjectExpenseProjectName" class="finance-project-expense-project-name"></p>
+  <p id="financeProjectExpenseModalDescription" class="hint">Registra solo los gastos reales del proyecto. Su presupuesto no se contabiliza dos veces.</p>
+  <form id="financeProjectExpenseForm" class="finance-project-expense-form">
+   <label>Concepto<input id="financeProjectExpenseName" required maxlength="250" placeholder="Ej. Pintura o soldadura"></label>
+   <label>Monto (MXN)<input id="financeProjectExpenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label>
+   <label>Fecha<input id="financeProjectExpenseDate" type="date" required></label>
+   <label>Recibo o comprobante (opcional)<input id="financeProjectExpenseProof" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
+   <div class="finance-project-expense-actions">
+    <button id="financeProjectExpenseCancel" type="button" class="soft">Cancelar</button>
+    <button id="financeProjectExpenseSave" type="submit" class="primary">Guardar concepto</button>
+   </div>
+  </form>
+  <p id="financeProjectExpenseStatus" role="status" aria-live="polite"></p>
+ </div>
+</section>
 <nav id="financeMonthlyPagination" class="finance-monthly-pagination" aria-label="Seleccionar gráfica financiera">
  <button type="button" class="finance-monthly-jump is-active" data-finance-slide="0" aria-current="true" aria-label="Ir a gráfica 1 de 3: Ingresos">Ingresos</button>
  <button type="button" class="finance-monthly-jump" data-finance-slide="1" aria-label="Ir a gráfica 2 de 3: Diferencia">Diferencia</button>
@@ -106,8 +136,22 @@
   </div>
  </div>
 </section>
-<section class="analysis-card"><div class="heading"><div><span class="eyebrow">REGISTRO DE EGRESOS</span><h2>Registrar un gasto</h2><p>Registra gastos por concepto, sin modificar cuotas ni movimientos anteriores.</p></div></div>
+<section class="analysis-card finance-expenses-section" id="financeExpensesSection" aria-label="Administración y consulta de egresos">
+<div class="finance-expense-layout">
+ <div class="finance-expense-panel finance-expense-register-panel">
+  <div class="finance-expense-panel-heading">
+   <span class="eyebrow">REGISTRO DE EGRESOS</span>
+   <h2 id="financeExpenseRegisterHeading">Registrar un gasto</h2>
+   <p>Registra cada movimiento en su área correspondiente sin modificar pagos anteriores.</p>
+  </div>
 <form id="newExpense" class="expense-form"><label>Fecha<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input id="expenseDate" type="date" required></div></label><label>Categoría<select id="expenseCategory" required><option value="CFE">CFE</option><option value="SIAPA">SIAPA</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTO">Proyecto</option><option value="INTERNET">Internet</option><option value="SERVICIOS">Servicios</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label><label id="expenseScopeWrap">Área financiera<select id="expenseScope"><option value="MANTENIMIENTO">Mantenimiento</option><option value="CASA_CLUB">Casa Club</option></select></label><label class="expense-concept-field">Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><label class="extra-expense-option" hidden>Meses para cubrir el proyecto<input id="expenseMonths" type="number" min="1" max="36" value="1"></label><label class="extra-expense-option" hidden>Primer mes de cobro<input id="expenseStart" type="month" min="2026-10"></label><p id="expenseFormHint" class="expense-form-hint" role="status">El egreso se contabilizará únicamente en el área seleccionada.</p><button id="saveExpense" class="primary">Registrar egreso</button></form>
+ </div>
+ <div class="finance-expense-panel finance-expense-filter-panel">
+  <div class="finance-expense-panel-heading">
+   <span class="eyebrow">CONSULTA DE EGRESOS</span>
+   <h2 id="financeExpenseFiltersHeading">Buscar y filtrar gastos</h2>
+   <p>Consulta solamente los movimientos de la sección o proyecto seleccionado.</p>
+  </div>
 <div class="expense-filters" role="search" aria-label="Filtrar y ordenar egresos">
   <label>Buscar concepto<input type="search" id="expenseFilterConcept" placeholder="Ej. Internet, limpieza"></label>
   <label>Categoría<select id="expenseFilterCategory"><option value="">Todas</option><option value="CFE">CFE</option><option value="SIAPA">SIAPA</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTO">Proyecto</option><option value="INTERNET">Internet</option><option value="SERVICIOS">Servicios</option><option value="OTROS">Otros</option></select></label>
@@ -115,6 +159,13 @@
   <label>Fecha hasta<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input type="date" id="expenseFilterTo"></div></label>
   <label>Ordenar por<select id="expenseSort"><option value="fecha_desc">Fecha: más reciente</option><option value="fecha_asc">Fecha: más antigua</option><option value="monto_asc">Monto: menor a mayor</option><option value="monto_desc">Monto: mayor a menor</option><option value="categoria_asc">Categoría: A–Z</option><option value="categoria_desc">Categoría: Z–A</option></select></label>
   <button type="button" class="soft" id="expenseClearFilters">Limpiar filtros</button>
+</div>
+ </div>
+</div>
+<div class="finance-expense-history-heading">
+ <span class="eyebrow">HISTORIAL DE EGRESOS</span>
+ <h2 id="expenseHistoryTitle">Movimientos de mantenimiento</h2>
+ <p class="hint" id="expenseHistoryScope">Solo gastos de mantenimiento.</p>
 </div>
 <p id="expenseResultCount" class="expense-results" role="status" aria-live="polite"></p>
 <div class="table-scroll expense-table-scroll"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Referencia</th><th>Monto</th><th>Comprobante / Cobro</th></tr></thead><tbody id="financeExpenseRows"></tbody></table></div><nav class="analysis-pagination expense-pagination" id="expensePagination" aria-label="Páginas de egresos"><button type="button" id="expensePrev">Anterior</button><span id="expensePageInfo" role="status" aria-live="polite"></span><button type="button" id="expenseNext">Siguiente</button></nav></section>
@@ -680,4 +731,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261113-ambitos" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261113-proyectos" defer></script><script src="assets/js/analisis-cuotas.js?v=20261113-ambitos-paginacion" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261113-ambitos" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261113-totales-separadores" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-scope" defer></script><script src="assets/js/analisis-cuotas.js?v=20261113-concepto-modal" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

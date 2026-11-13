@@ -420,11 +420,8 @@ function render(){
  }
  function renderExpenses(){
  if(!data)return;
- const project=activeConcept==='EXTRAORDINARIO'?
-  (data.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(activeProyectoId)):null;
- const rows=activeConcept==='EXTRAORDINARIO'?
-  (project?.gastosConceptos||[]).map(e=>({...e,categoria:'PROYECTO',ambito:'EXTRAORDINARIO'})):
-  (data.egresos||[]).filter(e=>e.ambito===activeConcept);
+ const {proyecto:project,egresos:rows}=window.MJExpenseScope.egresosDelAmbito(
+  data,activeConcept,activeProyectoId);
  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const text=normalize($('expenseFilterConcept').value.trim()),category=$('expenseFilterCategory').value;
  const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value,order=$('expenseSort').value;
@@ -447,7 +444,9 @@ function render(){
  expensePage=Math.max(1,Math.min(expensePage,pages));
  const first=(expensePage-1)*size,shown=filtered.slice(first,first+size);
  $('expenseResultCount').textContent='Mostrando '+(filtered.length?first+1:0)+'–'+(first+shown.length)+
-  ' de '+filtered.length+' egresos de '+(project?'«'+project.nombre+'»':activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
+  ' de '+filtered.length+' egresos de '+(activeConcept==='EXTRAORDINARIO'?
+  (project?'«'+project.nombre+'»':'proyecto sin seleccionar'):
+  activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
  const cell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
@@ -702,8 +701,26 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   // Una recarga del MISMO proyecto sí conserva la selección que siga visible.
   const nextSelectionScope=concepto==='EXTRAORDINARIO'
    ?'EXTRAORDINARIO:'+String(activeProyectoId||''):concepto;
-  if(receiptSelectionScope!==nextSelectionScope){selectedReceiptHouseId=null;expensePage=1;}
+  if(receiptSelectionScope!==nextSelectionScope){
+   selectedReceiptHouseId=null;expensePage=1;
+   // Cada pestaña y proyecto tiene sus filtros de consulta independientes.
+   for(const id of ['expenseFilterConcept','expenseFilterCategory','expenseFilterFrom','expenseFilterTo'])
+    $(id).value='';
+   $('expenseSort').value='fecha_desc';
+   expenseDateInputs.forEach(syncExpenseDateDisplay);
+  }
   receiptSelectionScope=nextSelectionScope;
+  const esProyecto=concepto==='EXTRAORDINARIO';
+  for(const option of $('expenseFilterCategory').options){
+   const disponible=!option.value||(esProyecto?option.value==='PROYECTO':option.value!=='PROYECTO');
+   option.hidden=!disponible;option.disabled=!disponible;
+  }
+  $('expenseHistoryTitle').textContent=esProyecto?'Gastos del proyecto seleccionado':
+   concepto==='CASA_CLUB'?'Movimientos de Casa Club':'Movimientos de mantenimiento';
+  $('expenseHistoryScope').textContent=esProyecto
+   ?(seleccionado?'Solo gastos registrados de «'+seleccionado.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
+   :concepto==='CASA_CLUB'?'Solo gastos de Casa Club; sin mantenimiento ni proyectos.'
+   :'Solo gastos de mantenimiento; sin proyectos ni Casa Club.';
   if(concepto==='CASA_CLUB')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
@@ -2581,9 +2598,63 @@ $('financeExpenseChart').addEventListener('click',e=>{
  const proof=e.target.closest('[data-expense-proof]');
  if(proof)descargarComprobante(proof.dataset.expenseProof);
 });
+// El editor de conceptos queda fuera del carrusel para no recortarse en móviles.
+const projectExpenseModal=$('financeProjectExpenseModal');
+const projectExpenseTrigger=$('financeProjectExpenseOpen');
+let projectExpensePreviousFocus=null,projectExpenseSaving=false;
+function closeProjectExpenseModal({force=false}={}){
+ if(projectExpenseSaving&&!force)return;
+ projectExpenseModal.hidden=true;
+ projectExpenseTrigger.setAttribute('aria-expanded','false');
+ if(projectExpensePreviousFocus?.isConnected&&!projectExpensePreviousFocus.closest('[hidden]'))
+  projectExpensePreviousFocus.focus();
+ projectExpensePreviousFocus=null;
+}
+function openProjectExpenseModal(){
+ const project=activeConcept==='EXTRAORDINARIO'
+  ?data?.proyectosExtraordinarios?.find(p=>Number(p.id)===Number(activeProyectoId)):null;
+ if(!project)return notice('Selecciona un proyecto para agregar el gasto.');
+ projectExpensePreviousFocus=document.activeElement;
+ $('financeProjectExpenseForm').reset();
+ $('financeProjectExpenseDate').value=$('expenseDate').value;
+ $('financeProjectExpenseStatus').textContent='';
+ $('financeProjectExpenseProjectName').textContent=project.nombre;
+ projectExpenseModal.dataset.proyectoId=String(project.id);
+ projectExpenseModal.hidden=false;
+ projectExpenseTrigger.setAttribute('aria-expanded','true');
+ $('financeProjectExpenseName').focus();
+}
+projectExpenseTrigger.addEventListener('click',openProjectExpenseModal);
+$('financeProjectExpenseClose').addEventListener('click',()=>closeProjectExpenseModal());
+$('financeProjectExpenseCancel').addEventListener('click',()=>closeProjectExpenseModal());
+projectExpenseModal.addEventListener('click',e=>{
+ if(e.target===projectExpenseModal)closeProjectExpenseModal();
+});
+document.addEventListener('keydown',e=>{
+ if(projectExpenseModal.hidden)return;
+ if(e.key==='Escape'){
+  e.preventDefault();e.stopPropagation();closeProjectExpenseModal();return;
+ }
+ if(e.key!=='Tab')return;
+ const focusables=[...projectExpenseModal.querySelectorAll(
+  'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])'
+ )].filter(el=>el.getClientRects().length);
+ if(!focusables.length)return;
+ const first=focusables[0],last=focusables[focusables.length-1];
+ if(!projectExpenseModal.contains(document.activeElement)){
+  e.preventDefault();(e.shiftKey?last:first).focus();
+ }else if(e.shiftKey&&document.activeElement===first){
+  e.preventDefault();last.focus();
+ }else if(!e.shiftKey&&document.activeElement===last){
+  e.preventDefault();first.focus();
+ }
+});
 $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  e.preventDefault();
- if(activeConcept!=='EXTRAORDINARIO'||!activeProyectoId)return notice('Selecciona un proyecto.');
+ if(projectExpenseModal.hidden||projectExpenseSaving)return;
+ if(activeConcept!=='EXTRAORDINARIO'||!activeProyectoId||
+   Number(projectExpenseModal.dataset.proyectoId)!==Number(activeProyectoId))
+  return notice('El proyecto cambió. Abre el formulario del proyecto seleccionado.');
  const btn=$('financeProjectExpenseSave'),file=$('financeProjectExpenseProof').files?.[0];
  const body={fecha:$('financeProjectExpenseDate').value,categoria:'PROYECTO',proyectoId:activeProyectoId,
   concepto:$('financeProjectExpenseName').value.trim(),monto:Number($('financeProjectExpenseAmount').value)};
@@ -2597,15 +2668,15 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   body.comprobante={mime:file.type,base64:btoa(pieces.join(''))};
  }
  if(!confirm('¿Registrar '+body.concepto+' por '+fmt(body.monto)+' en este proyecto?'))return;
- btn.disabled=true;
+ projectExpenseSaving=true;btn.disabled=true;
  try{
   await request('/egresos',body);$('financeProjectExpenseForm').reset();
   $('financeProjectExpenseDate').value=$('expenseDate').value;expensePage=1;
+  closeProjectExpenseModal({force:true});
   await load();
-  $('financeProjectExpenseStatus').textContent='Concepto guardado en el proyecto.';
   notice('Gasto real registrado, sin afectar mantenimiento o Casa Club.','success');
  }catch(error){$('financeProjectExpenseStatus').textContent=error.message;notice(error.message);}
- finally{btn.disabled=false;}
+ finally{projectExpenseSaving=false;btn.disabled=false;}
 });
 
 // Proyecto extraordinario: el alta se configura en un único modal con 231 viviendas.

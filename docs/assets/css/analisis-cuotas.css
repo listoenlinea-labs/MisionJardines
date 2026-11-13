@@ -1826,3 +1826,231 @@ body.page-analisis .project-expense-line > button{margin-top:5px;font-size:11px}
  body.page-analisis .expense-filters>label:first-child{grid-column:auto!important}
  body.page-analisis .expense-filters #expenseClearFilters{grid-column:auto!important}
 }
+
+
+/* PR 2026-11-13 — paneles laterales e historial por ámbito */
+body.page-analisis .finance-expenses-section{min-width:0}
+body.page-analisis .finance-expense-layout{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ align-items:stretch;gap:16px;margin:0 0 22px;
+}
+body.page-analisis .finance-expense-panel{
+ min-width:0;box-sizing:border-box;
+ border:1px solid #e2e7ee;border-radius:16px;
+ padding:19px 18px 18px;background:#fff;
+}
+body.page-analisis .finance-expense-register-panel{
+ border-color:#f0dfcb;background:linear-gradient(145deg,#fffdf9,#fff);
+}
+body.page-analisis .finance-expense-filter-panel{
+ border-color:#e5ddf0;background:linear-gradient(145deg,#fcfaff,#fff);
+}
+body.page-analisis .finance-expense-panel-heading{margin:0 0 17px}
+body.page-analisis .finance-expense-panel-heading h2{
+ margin:6px 0 6px;font-size:17px;line-height:1.25;color:#25374e;
+}
+body.page-analisis .finance-expense-panel-heading p{
+ margin:0;color:#76849a;font-size:12px;line-height:1.55;
+}
+body.page-analisis .finance-expense-layout .expense-form,
+body.page-analisis .finance-expense-layout .expense-filters{
+ width:100%;min-width:0;margin:0;padding:0!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:12px!important;background:none;border:0;border-radius:0;
+}
+body.page-analisis .finance-expense-layout .expense-form > label,
+body.page-analisis .finance-expense-layout .expense-filters > label{min-width:0}
+body.page-analisis .finance-expense-layout .expense-form #saveExpense{
+ margin-top:3px;width:100%;
+}
+body.page-analisis .finance-expense-layout .expense-filters #expenseClearFilters{
+ width:100%;margin:0!important;
+}
+body.page-analisis .finance-expense-history-heading{
+ border-top:1px solid #e7eaf0;padding-top:17px;margin:0 0 8px;
+}
+body.page-analisis .finance-expense-history-heading h2{
+ margin:5px 0;font-size:16px;line-height:1.3;color:#263b50;
+}
+body.page-analisis .finance-expense-history-heading .hint{
+ margin:0;font-size:12px;overflow-wrap:anywhere;
+}
+
+/* Los importes al pie son los mismos totales de las barras, no un nuevo asiento. */
+body.page-analisis #financeIncomeCard,
+body.page-analisis #financeExpenseCard{
+ display:flex;flex-direction:column;min-width:0;
+}
+body.page-analisis .finance-chart-footer{
+ box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;
+ gap:12px;border-top:1px solid #dfe8e5;background:#f4faf6;
+ border-radius:10px;padding:13px 14px;margin-top:auto;
+ font-size:12px;font-weight:750;color:#416353;
+}
+body.page-analisis #financeExpenseFooter{
+ border-color:#eadce2;background:#fff6f4;color:#8d5247;
+}
+body.page-analisis .finance-chart-footer strong{
+ font-size:17px;font-weight:850;font-variant-numeric:tabular-nums;
+ color:#23754e;white-space:nowrap;
+}
+body.page-analisis #financeExpenseFooter strong{color:#b25b4d}
+body.page-analisis #financeWarning{margin-bottom:13px}
+
+@media(max-width:980px){
+ body.page-analisis .finance-expense-layout{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:700px){
+ body.page-analisis .finance-expense-layout{gap:13px;margin-bottom:18px}
+ body.page-analisis .finance-expense-panel{padding:15px 13px;border-radius:14px}
+ body.page-analisis .finance-expense-panel-heading h2{font-size:16px}
+ body.page-analisis .finance-expense-panel-heading p{font-size:11px}
+ body.page-analisis .finance-expense-layout .expense-form,
+ body.page-analisis .finance-expense-layout .expense-filters{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;grid-template-rows:none!important;
+  gap:12px 10px!important;
+ }
+ body.page-analisis .finance-expense-layout .expense-filters>label,
+ body.page-analisis .finance-expense-layout .expense-filters>button{
+  grid-column:auto!important;grid-row:auto!important;min-width:0!important;
+ }
+ body.page-analisis .finance-expense-layout .expense-filters label:first-child{
+  grid-column:auto!important;
+ }
+ body.page-analisis .finance-expense-history-heading h2{font-size:15px}
+ body.page-analisis .finance-chart-footer{padding:12px;gap:8px}
+ body.page-analisis .finance-chart-footer strong{font-size:16px}
+
+ /* El listado por calle (incluidos los proyectos) usa separadores horizontales. */
+ body.page-analisis #financeCashChart > .bar-row,
+ body.page-analisis #financeCashChart > .finance-income-select{
+  box-sizing:border-box;border-bottom:1px solid #dce6ec!important;
+  border-radius:0!important;min-height:43px;
+  padding:10px 5px!important;margin:0!important;
+ }
+ body.page-analisis #financeCashChart > :last-child{
+  border-bottom:0!important;
+ }
+ body.page-analisis #financeCashChart > .bar-row{
+  display:grid;align-items:center;
+  grid-template-columns:minmax(0,103px) minmax(0,1fr) minmax(66px,82px);
+  column-gap:9px;
+ }
+ body.page-analisis #financeCashChart > .bar-row strong{
+  overflow-wrap:anywhere;line-height:1.4;
+ }
+ body.page-analisis #financeCashChart > .bar-row b{
+  text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;
+ }
+ body.page-analisis #financeCashChart > .finance-income-select:nth-child(even),
+ body.page-analisis #financeCashChart > .bar-row:nth-child(even){
+  background:#f9fbfc!important;
+ }
+ body.page-analisis #financeCashChart > .finance-income-select::before{
+  display:none!important;
+ }
+}
+
+
+/* PR #415 — Conceptos de proyecto dentro de un modal, no en la tarjeta. */
+body.page-analisis .finance-project-expense-card-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;
+}
+body.page-analisis .finance-project-expense-card-heading>div:first-child{min-width:0}
+body.page-analisis .finance-project-expense-card-heading h2{margin:5px 0 0}
+body.page-analisis .finance-project-expense-entry{
+ flex:0 0 auto;margin:0;padding:0;background:transparent;border:0;border-radius:0;
+}
+body.page-analisis .finance-project-expense-entry[hidden]{display:none!important}
+body.page-analisis .finance-project-concept-trigger{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ min-height:32px;padding:6px 11px;border:1px solid #ecd5b8;border-radius:9px;
+ background:#fffaf4;color:#a76023;font:750 11px/1.2 Inter,system-ui,sans-serif;
+ letter-spacing:.01em;box-shadow:0 1px 4px rgba(130,80,25,.04);
+ cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,box-shadow .15s;
+}
+body.page-analisis .finance-project-concept-trigger span{
+ font-size:17px;font-weight:500;line-height:.65;
+}
+body.page-analisis .finance-project-concept-trigger:hover{
+ background:#fff0df;border-color:#e9b674;box-shadow:0 2px 8px rgba(130,80,25,.09);
+}
+body.page-analisis .finance-project-concept-trigger:focus-visible{
+ outline:2px solid #d78631;outline-offset:3px;
+}
+body.page-analisis .finance-project-expense-modal{
+ padding:16px;z-index:10200;
+}
+body.page-analisis .finance-project-expense-modal .finance-project-expense-dialog{
+ box-sizing:border-box;width:min(520px,100%);max-height:calc(100dvh - 32px);
+ padding:23px;border-radius:19px;overflow-y:auto;
+}
+body.page-analisis .finance-project-expense-dialog .finance-pay-heading{
+ align-items:start;margin:0 0 12px;
+}
+body.page-analisis .finance-project-expense-dialog .finance-pay-heading h2{
+ font-size:19px;line-height:1.3;color:#243a52;letter-spacing:-.015em;
+}
+body.page-analisis .finance-project-expense-close{
+ flex:0 0 auto;width:34px;height:34px;min-height:34px;padding:0;
+ display:grid;place-items:center;font-size:23px;line-height:1;border-radius:10px;
+}
+body.page-analisis .finance-project-expense-project-name{
+ margin:0 0 9px;padding:10px 12px;border:1px solid #d9e9e0;
+ border-radius:11px;background:#f3faf6;color:#376b52;
+ font-size:12px;font-weight:750;line-height:1.5;overflow-wrap:anywhere;
+}
+body.page-analisis .finance-project-expense-dialog #financeProjectExpenseModalDescription{
+ margin:0;color:#718096;font-size:11px;line-height:1.5;
+}
+body.page-analisis .finance-project-expense-modal .finance-project-expense-form{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:13px;margin-top:20px;
+}
+body.page-analisis .finance-project-expense-modal .finance-project-expense-form label{
+ font-size:12px;line-height:1.4;color:#344861;
+}
+body.page-analisis .finance-project-expense-modal .finance-project-expense-form input{
+ min-height:44px;font-size:13px;
+}
+body.page-analisis .finance-project-expense-modal .finance-project-expense-form input[type="file"]{
+ padding:10px 9px;font-size:11px;overflow:hidden;
+}
+body.page-analisis .finance-project-expense-actions{
+ grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;
+ gap:10px;margin-top:10px;
+}
+body.page-analisis .finance-project-expense-actions button{
+ flex:0 1 auto;min-height:42px;padding:10px 16px;border-radius:10px;font-size:12px;
+}
+body.page-analisis .finance-project-expense-actions .primary{
+ background:linear-gradient(115deg,#ef9334,#df770a);color:white;
+}
+body.page-analisis .finance-project-expense-dialog #financeProjectExpenseStatus{
+ margin:10px 0 0;font-size:12px;color:#476a60;overflow-wrap:anywhere;
+}
+body.page-analisis .finance-project-expense-dialog #financeProjectExpenseStatus:empty{display:none}
+@media(max-width:700px){
+ body.page-analisis .finance-project-concept-trigger{
+  min-height:32px;padding:6px 10px;font-size:11px;
+ }
+ body.page-analisis .finance-project-expense-modal{
+  padding:12px;align-items:center;
+ }
+ body.page-analisis .finance-project-expense-modal .finance-project-expense-dialog{
+  width:100%;max-height:calc(100dvh - 24px);padding:18px 16px;border-radius:17px;
+ }
+ body.page-analisis .finance-project-expense-dialog .finance-pay-heading h2{font-size:18px}
+ body.page-analisis .finance-project-expense-modal .finance-project-expense-form{
+  grid-template-columns:minmax(0,1fr);gap:13px;margin-top:16px;
+ }
+ body.page-analisis .finance-project-expense-actions{grid-column:1;gap:8px}
+ body.page-analisis .finance-project-expense-actions button{
+  flex:1 1 0;min-width:0;padding-inline:8px;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ body.page-analisis .finance-project-concept-trigger{transition:none}
+}
