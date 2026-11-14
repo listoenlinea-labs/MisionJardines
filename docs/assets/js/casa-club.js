@@ -153,10 +153,24 @@
   if(admin&&['tarjetas','historial-rojas'].includes(name))void window.MJClubRojasAdmin?.mostrar(name);
  }
  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+ function historicalMonths(){
+  return [...new Set([...adminRows,...historicGoogleRows]
+   .map(r=>String(r.fecha||'').slice(0,7))
+   .filter(m=>/^\d{4}-(0[1-9]|1[0-2])$/.test(m)))].sort();
+ }
  function monthShift(offset){
   const [y,m]=currentMonth.split('-').map(Number);
-  const dt=new Date(Date.UTC(y,m-1+offset,1));
-  currentMonth=dt.toISOString().slice(0,7);
+  const nowMonth=today().slice(0,7);
+  if(admin&&offset<0&&currentMonth<=nowMonth){
+   const previous=historicalMonths().filter(v=>v<currentMonth);
+   if(!previous.length)return;
+   currentMonth=previous[previous.length-1];
+  }else if(admin&&offset>0&&currentMonth<nowMonth){
+   currentMonth=historicalMonths().find(v=>v>currentMonth&&v<nowMonth)||nowMonth;
+  }else{
+   const dt=new Date(Date.UTC(y,m-1+offset,1));
+   currentMonth=dt.toISOString().slice(0,7);
+  }
   selectedDate='';$('clubDate').value='';
   void calendar().catch(e=>notify(e.message,true));
  }
@@ -180,8 +194,19 @@
   }
   $('nextMonth').disabled=!admin&&currentMonth>=lastDay().slice(0,7);
   occupied=new Map(response.ocupadas.map(x=>[x.fecha,x.estatus]));
+  if(admin){
+   // Histórico privado: no enviar nombres ni datos antiguos a la liga pública.
+   for(const r of [...adminRows,...historicGoogleRows]){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(r.fecha||''))||occupied.has(r.fecha))continue;
+    if(r.estatus==='APROBADA')occupied.set(r.fecha,'APROBADA');
+    else if(r.estatus==='PENDIENTE')occupied.set(r.fecha,'PENDIENTE');
+    else if(r.soloLectura)occupied.set(r.fecha,'HISTORICA_GOOGLE');
+   }
+  }
   $('calendarLabel').textContent=new Intl.DateTimeFormat('es-MX',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(start+'T12:00:00Z'));
-  $('prevMonth').disabled=start.slice(0,7)<=today().slice(0,7);
+  $('prevMonth').disabled=admin?
+   (currentMonth<=today().slice(0,7)&&!historicalMonths().some(v=>v<currentMonth)):
+   start.slice(0,7)<=today().slice(0,7);
   if(occupied.has(selectedDate)){selectedDate='';$('clubDate').value='';}
   syncSubmit();
   const days=$('calendarDays');
@@ -190,10 +215,14 @@
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
    const date=currentMonth+'-'+String(n).padStart(2,'0'),status=occupied.get(date),past=admin?date<today():date<tomorrow()||date>lastDay();
    const btn=document.createElement('button');btn.type='button';
-   btn.className=past||(!status&&!googleVerificado)?'past':status==='APROBADA'?'booked':status?'waiting':'available';
+   btn.className=admin&&date<today()&&status?
+    (status==='APROBADA'?'booked':status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'waiting':'past'):
+    past||(!status&&!googleVerificado)?'past':status==='APROBADA'?'booked':status?'waiting':'available';
    if(date===selectedDate)btn.classList.add('selected');
    btn.disabled=Boolean(status)||past||!googleVerificado;
-   btn.setAttribute('aria-label',fmt(date)+' · '+(past||(!status&&!googleVerificado)?'No disponible (verificación de Google pendiente)':status==='APROBADA'?'Reservada':status?'En revisión':'Disponible'));
+   btn.setAttribute('aria-label',fmt(date)+' · '+(admin&&date<today()&&status?
+    (status==='APROBADA'?'Reservación histórica':status==='HISTORICA_GOOGLE'?'Solicitud histórica de Google':'En revisión (fecha pasada)'):
+    past||(!status&&!googleVerificado)?'No disponible':status==='APROBADA'?'Reservada':status?'En revisión':'Disponible'));
    btn.textContent=n;
    btn.addEventListener('click',()=>{selectedDate=date;mobileDetailsSaved=false;
     $('clubMobileSavedStatus').textContent='Completa y guarda los datos para enviar esta solicitud.';
@@ -652,13 +681,15 @@
  });
  let reviewPage=1;
  const reviewText=$('clubReviewSearch'),reviewMonth=$('clubReviewMonth');
- const reviewSize=()=>window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)').matches?3:10;
+ const reviewSize=()=>window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)').matches?3:4;
  const cleanReview=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLocaleLowerCase('es-MX').trim().replace(/\s+/g,' ');
  function filteredReview(){
   const needle=cleanReview(reviewText.value),month=reviewMonth.value;
-  return adminRows.filter(r=>r.estatus==='PENDIENTE')
-   .filter(r=>!month||String(r.fecha||'').slice(0,7)===month)
+  const base=month?[...adminRows,...historicGoogleRows].filter(r=>
+   r.estatus==='PENDIENTE'||r.soloLectura||String(r.fecha||'')<today()):
+   adminRows.filter(r=>r.estatus==='PENDIENTE');
+  return base.filter(r=>!month||String(r.fecha||'').slice(0,7)===month)
    .filter(r=>{
     if(!needle)return true;
     const street=String(r.casa?.calleCorrecta||r.casa?.calle||'');
@@ -673,7 +704,7 @@
  }
  function refreshReviewMonths(){
   const previous=reviewMonth.value;
-  const months=[...new Set(adminRows.filter(r=>r.estatus==='PENDIENTE')
+  const months=[...new Set([...adminRows,...historicGoogleRows]
    .map(r=>String(r.fecha||'').slice(0,7))
    .filter(v=>/^\d{4}-(0[1-9]|1[0-2])$/.test(v)))].sort((a,b)=>b.localeCompare(a));
   reviewMonth.innerHTML='<option value="">Todos los meses</option>'+
@@ -690,11 +721,18 @@
   const pages=Math.max(1,Math.ceil(rows.length/size));
   reviewPage=Math.min(Math.max(1,reviewPage),pages);
   const from=(reviewPage-1)*size;
-  $('clubRequests').innerHTML=rows.slice(from,from+size).map(r=>
-   '<article class="reserve-card" data-pendiente-id="'+Number(r.id)+'"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
-   '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
-   '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>'
-  ).join('')||'<div class="reserve-card">No se encontraron solicitudes en revisión con estos filtros.</div>';
+  $('clubRequests').innerHTML=rows.slice(from,from+size).map(r=>{
+   const past=String(r.fecha||'')<today(),canReview=!r.soloLectura&&!past&&r.estatus==='PENDIENTE';
+   const state=r.soloLectura?
+    '<span class="club-google-readonly">'+(past?'Histórica · Google':'Solo consulta · Google')+'</span>':
+    statusBadge(r.estatus);
+   return '<article class="reserve-card" data-pendiente-id="'+Number(r.id)+'"><h3>'+esc(fmt(r.fecha))+'</h3>'+state+
+    '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+
+    esc(r.soloLectura?r.fechaRegistroGoogle:fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+
+    esc(r.soloLectura?'Registro del formulario original':r.motivo||'')+'</p>'+
+    (canReview?'<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button>':
+     '<span class="club-google-readonly">Solo consulta · sin cambios a fechas anteriores</span>')+'</article>';
+  }).join('')||'<div class="reserve-card">No hay solicitudes para los filtros elegidos.</div>';
   $('clubReviewCount').textContent=rows.length?
    'Mostrando '+(from+1)+'–'+Math.min(from+size,rows.length)+' de '+rows.length+
    ' solicitudes · fecha más reciente primero':'0 solicitudes en revisión';
@@ -733,6 +771,14 @@
    ];
    $('clubReviewSummary').innerHTML=cards.map(([title,value])=>
     '<div class="club-overview-stat"><small>'+esc(title)+'</small><strong>'+esc(Number(value)||0)+'</strong></div>').join('');
+   const driveOk=d.googleDisponible===true&&Boolean(d.googleSincronizadoEn);
+   document.querySelectorAll('.club-drive-status').forEach(el=>{
+    el.classList.toggle('offline',!driveOk);
+    el.title=driveOk?'Última sincronización: '+fechaSolicitud(d.googleSincronizadoEn):
+     'Google Drive sin confirmación de sincronización';
+   });
+   for(const id of ['clubDriveAdminStatusText','clubDriveReviewStatusText'])
+    $(id).textContent=driveOk?'Drive sincronizado':'Drive sin conexión verificada';
    $('clubHistoryInfo').textContent=d.googleDisponible===false?
     'Google no respondió. Se muestran solo los registros de MySQL y el resumen podría estar incompleto.':
     'Incluye '+historicGoogleRows.length+' solicitudes adicionales de Google (solo consulta). Las duplicadas de MySQL se omiten; ningún pago se valida por importar la hoja.';
@@ -925,6 +971,7 @@
   finally{sumarTarifas();}
  });
  try{await cargarTarifas();}catch(e){console.warn('[casa-club] No se pudo consultar tarifa:',e.message);}
+ if(admin)await adminList();
  try{await calendar();}catch(e){notify(e.message,true);}
  tab('reservar');
 })();
