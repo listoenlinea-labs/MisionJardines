@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261114-past-red">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261114-observaciones-modal">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -219,6 +219,15 @@
  <button type="button" class="soft" id="clubReviewNext">Siguiente</button>
 </nav></article></section>
 </main>
+<dialog id="clubObservationsModal" class="club-dialog club-observations-dialog" aria-labelledby="clubObservationsTitle">
+ <div class="dialog-head">
+  <div><span class="eyebrow">CASA CLUB · ADMINISTRACIÓN</span><h2 id="clubObservationsTitle">Observaciones de la reservación</h2></div>
+  <button type="button" id="clubObservationsClose" class="xbtn" aria-label="Cerrar observaciones">×</button>
+ </div>
+ <p id="clubObservationsContext" class="club-observations-context"></p>
+ <div id="clubObservationsText" class="club-observations-text"></div>
+ <div class="club-observations-footer"><button type="button" id="clubObservationsDone" class="soft">Cerrar</button></div>
+</dialog>
 <dialog id="clubPaymentInstructionsDialog" class="club-payment-dialog" aria-labelledby="clubPaymentInstructionsTitle">
  <div class="club-payment-dialog-head"><div><span class="eyebrow">DEPÓSITO OFICIAL</span><h2 id="clubPaymentInstructionsTitle">Instrucciones de pago</h2><p>Banco, cuenta, concepto y total del depósito. No transfieras antes de apartar tu fecha y recibir tu folio.</p></div><button type="button" class="xbtn" id="clubInstructionsClose" aria-label="Cerrar instrucciones">×</button></div>
  <div class="club-payment-dialog-body">
@@ -279,6 +288,6 @@
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
 <script src="assets/js/casa-club-rojas-admin.js?v=20261112" defer></script>
-<script src="assets/js/casa-club.js?v=20261114-past-red" defer></script>
+<script src="assets/js/casa-club.js?v=20261114-observaciones-modal" defer></script>
 <script src="assets/js/casa-club-mis-reservas.js?v=20261114-correo-mis-reservas" defer></script>
 </body></html>
