@@ -727,3 +727,12 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
  }
  #tab-administracion .club-admin-pagination{justify-content:space-between;gap:8px}
 }
+
+
+/* Un punto discreto distingue los días históricos registrados de los
+   demás días grises; solamente se aplica al calendario del administrador. */
+#calendarDays button.historic-entry{position:relative}
+#calendarDays button.historic-entry::after{
+ content:'';position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
+ width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;
+}
