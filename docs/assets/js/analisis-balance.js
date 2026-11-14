@@ -19,10 +19,10 @@
  // Los presupuestos no equivalen a dinero gastado. Comparar con egresos REALES.
  function proyecto(project){
   if(!project)return null;
-  const income=centavos(project.recaudado),expense=centavos(project.egresosReales),diff=income-expense;
+  const income=centavos(project.recaudado),expense=centavos(project.egresosComprometidos??project.totalEsperado),diff=income-expense;
   return {tipo:'EXTRAORDINARIO',ingresos:income/100,egresos:expense/100,
    diferencia:diff/100,estado:clasificar(diff),
-   criterio:'Aportaciones acumuladas menos gastos efectivamente registrados de este proyecto. El presupuesto se muestra por separado.'};
+   criterio:'Balance presupuestario: aportaciones acumuladas menos presupuesto base y costos adicionales; los gastos incluidos no se suman dos veces. No equivale al saldo bancario.'};
  }
  // Las garantías reembolsables del club no se consideran ingresos operativos.
  function casaClub(scope){

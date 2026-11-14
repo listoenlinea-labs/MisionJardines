@@ -38,13 +38,17 @@
    $('financeCashChart').innerHTML=ordered.map(([name,value])=>bar(name,value,max,false,fmt(value))).join('');
    $('financeWarning').textContent='Solo aportaciones del proyecto seleccionado, sin cuotas de mantenimiento ni Casa Club.';
    incomeFooter=Number(project.recaudado||0);
-   const concepts=project.gastosConceptos||[],spent=Number(project.egresosReales||0);
-   expenseFooter=spent;
-   const maxExpense=Math.max(1,Number(project.totalEsperado||0),...concepts.map(x=>Number(x.monto||0)));
+   const concepts=project.gastosConceptos||[];
+   const costos=root.MJCostosProyecto?.resumen(project);
+   const spent=Number(costos?.gastosReales??project.egresosReales??0);
+   expenseFooter=Number(costos?.costoComprometido??project.egresosComprometidos??project.totalEsperado??0);
+   const maxExpense=Math.max(1,Number(costos?.presupuesto??project.totalEsperado??0),...concepts.map(x=>Number(x.monto||0)));
    $('financeExpenseChart').innerHTML='<div class="project-budget-bar">'+
-    bar('Costo total presupuestado',Number(project.totalEsperado||0),maxExpense,true,fmt(project.totalEsperado))+'</div>'+
+    '<div class="finance-budget-edit" data-project-budget="'+Number(project.id)+'" title="Doble clic para editar presupuesto">'+
+    bar('Presupuesto base',Number(costos?.presupuesto??project.totalEsperado??0),maxExpense,true,fmt(costos?.presupuesto??project.totalEsperado))+'</div>'+'</div>'+
     concepts.map(e=>'<div class="project-expense-line">'+
-     bar(e.concepto,Number(e.monto||0),maxExpense,true,fmt(e.monto))+
+     '<div class="finance-project-concept-edit" data-expense-edit="'+Number(e.id)+'" title="Doble clic para editar importe">'+
+     bar(e.concepto+(e.incluidoPresupuesto===false?' · Adicional':' · Incluido'),Number(e.monto||0),maxExpense,true,fmt(e.monto))+'</div>'+
      (e.comprobanteDisponible?'<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Ver comprobante</button>':'')+
      '</div>').join('');
   }else if(scope==='EXTRAORDINARIO'){
@@ -87,14 +91,21 @@
   }
   $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
+  $('financeExpenseFooter').querySelector('span').textContent=project?'Costo total comprometido':'Total de egresos';
+  $('financeProjectExpenseSummary').hidden=!project;
+  if(project){
+   const totals=root.MJCostosProyecto?.resumen(project);
+   $('financeProjectExpenseSummary').textContent='Gastos registrados: '+fmt(totals?.gastosReales??project.egresosReales)+
+    ' · Incluidos: '+fmt(totals?.incluidos??0)+' · Adicionales: '+fmt(totals?.adicionales??0);
+  }
   const balance=project?root.MJFinanceBalance?.proyecto(project):
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
-  $('financeBalanceSubtitle').textContent=project?'Proyecto · Aportaciones menos gastos reales':
+  $('financeBalanceSubtitle').textContent=project?'Proyecto · Aportaciones menos costo comprometido':
    club?'Casa Club · Ingresos menos egresos':'Mantenimiento · Ingresos menos egresos';
-  $('financeBalanceExpenseLabel').textContent='Egresos';
+  $('financeBalanceExpenseLabel').textContent=project?'Costo comprometido':'Egresos';
   $('financeBalanceDescription').textContent=project?
-   'Los egresos son únicamente conceptos registrados, no el presupuesto.':
+   'Presupuesto base y gastos adicionales. Los conceptos incluidos no aumentan dos veces el total.':
    club?'Sin garantías ni pagos de otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   const card=$('financeBalanceCard');
   if(!balance){

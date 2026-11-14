@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261113-ingresos-escritorio-alineados">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261113-landscape-costos">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -67,6 +67,7 @@
 
 <p class="hint finance-expense-click-hint finance-graph-help">Haz clic en un concepto para consultar su historial mensual del año seleccionado.</p>
 <div id="financeExpenseChart" class="money-bars" aria-label="Gastos del ámbito seleccionado"></div>
+<p id="financeProjectExpenseSummary" class="finance-project-expense-summary hint" hidden></p>
 
 <div class="finance-chart-footer" id="financeExpenseFooter" role="status" aria-live="polite">
  <span>Total de egresos</span><strong id="financeExpenseFooterTotal">—</strong>
@@ -92,6 +93,8 @@
    <label>Monto (MXN)<input id="financeProjectExpenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label>
    <label>Fecha<input id="financeProjectExpenseDate" type="date" required></label>
    <label>Recibo o comprobante (opcional)<input id="financeProjectExpenseProof" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
+   <label class="finance-project-included-check"><input id="financeProjectExpenseIncluded" type="checkbox" checked>
+    <span>Este concepto ya está incluido en el presupuesto total (no aumenta el costo comprometido)</span></label>
    <div class="finance-project-expense-actions">
     <button id="financeProjectExpenseCancel" type="button" class="soft">Cancelar</button>
     <button id="financeProjectExpenseSave" type="submit" class="primary">Guardar concepto</button>
@@ -168,7 +171,7 @@
  <p class="hint" id="expenseHistoryScope">Solo gastos de mantenimiento.</p>
 </div>
 <p id="expenseResultCount" class="expense-results" role="status" aria-live="polite"></p>
-<div class="table-scroll expense-table-scroll"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Referencia</th><th>Monto</th><th>Comprobante / Cobro</th></tr></thead><tbody id="financeExpenseRows"></tbody></table></div><nav class="analysis-pagination expense-pagination" id="expensePagination" aria-label="Páginas de egresos"><button type="button" id="expensePrev">Anterior</button><span id="expensePageInfo" role="status" aria-live="polite"></span><button type="button" id="expenseNext">Siguiente</button></nav></section>
+<p class="hint finance-inline-edit-help">Doble clic sobre un importe para editarlo (solo administración).</p><div class="table-scroll expense-table-scroll"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Referencia</th><th>Monto</th><th>Comprobante / Cobro</th></tr></thead><tbody id="financeExpenseRows"></tbody></table></div><nav class="analysis-pagination expense-pagination" id="expensePagination" aria-label="Páginas de egresos"><button type="button" id="expensePrev">Anterior</button><span id="expensePageInfo" role="status" aria-live="polite"></span><button type="button" id="expenseNext">Siguiente</button></nav></section>
 <section id="historicalExtraModal" class="finance-pay-overlay" hidden aria-label="Programar cuota extraordinaria histórica"><div class="finance-pay-dialog" role="dialog" aria-modal="true"><div class="finance-pay-heading"><div><span class="eyebrow">CUOTA EXTRAORDINARIA</span><h2>Programar proyecto anterior</h2><p id="historicalExtraName" class="hint"></p></div><button id="historicalExtraClose" class="soft" type="button">Cerrar</button></div><form id="historicalExtraForm" class="house-payment-form"><label>Meses para cubrir el egreso<input id="historicalExtraMonths" type="number" min="1" max="36" value="1" required></label><label>Primer mes de cobro<input id="historicalExtraStart" type="month" min="2026-10" required></label><p class="hint">Se cobrarán las mensualidades entre las 231 viviendas del padrón, conservando cada centavo y sin actualizar TAGs.</p><button type="submit" class="primary">Generar mensualidades</button></form><p id="historicalExtraStatus" role="status"></p></div></section>
 <section id="financeProjectBulkModal" class="finance-pay-overlay" hidden aria-label="Modificar importes de las viviendas del proyecto">
  <div class="finance-pay-dialog finance-rules-dialog finance-bulk-dialog" role="dialog" aria-modal="true" aria-labelledby="financeBulkTitle" tabindex="-1">
@@ -731,4 +734,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261113-ambitos" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261113-totales-sin-duplicados" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261113-proyectos-filtro" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261113-presupuesto" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261113-presupuestos" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261113-presupuesto" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261113-edicion-egresos" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
