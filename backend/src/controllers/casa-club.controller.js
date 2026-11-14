@@ -269,7 +269,10 @@ async function listar(req,res){
   // El botón Actualizar del administrador también relee las filas Google nuevas.
   let googleResult={historialGoogle:[],resumen:null};
   let googleDisponible=true;
-  try{googleResult=await googleCasaClub.sync({force:true});}
+  try{
+   googleResult=await googleCasaClub.sync({force:true});
+   googleDisponible=!googleResult.disabled && Boolean(googleResult.syncedAt);
+  }
   catch(e){googleDisponible=false;console.warn('[CasaClub Google] Actualización administrativa parcial:',e.message);}
   await expirarReservas();
   const estado=texto(req.query.estatus,15);
@@ -282,7 +285,7 @@ async function listar(req,res){
    data:rows.map(x=>({...reservaSegura(x),...cargosSolicitud(x),casa:mapa.get(Number(x.casaId))||null})),
    historialGoogle:googleResult.historialGoogle||[],
    resumenGoogle:googleResult.resumen||null,
-   googleDisponible
+   googleDisponible,googleSincronizadoEn:googleDisponible?googleResult.syncedAt:null
   });
  }catch(e){return manejar(res,e);}
 }
