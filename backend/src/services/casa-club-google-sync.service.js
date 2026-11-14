@@ -4,6 +4,7 @@ const Reserva=require('../models/ReservaCasaClub');
 const {Casa}=require('../models');
 const sheets=require('./casa-club-google-client.service');
 const {obtener:tarifas}=require('./casa-club-tarifas.service');
+const historical=require('./casa-club-google-historial.service');
 const TZ='America/Mexico_City';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const normal=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -26,7 +27,7 @@ const parseDateTime=v=>{
  const dt=new Date(Date.UTC(+m[3],+m[2]-1,+m[1],+m[4]+6,+m[5],+m[6]));
  return Number.isNaN(dt.getTime())?new Date():dt;
 };
-let pending=null,lastRun=0,latest={occupied:[],inserted:0,exported:0,unresolved:0,conflicts:0};
+let pending=null,lastRun=0,latest={occupied:[],inserted:0,exported:0,unresolved:0,conflicts:0,historialGoogle:[],resumen:null};
 const fmtDateTime=d=>new Intl.DateTimeFormat('en-GB',{
  timeZone:TZ,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',
  minute:'2-digit',second:'2-digit',hour12:false
@@ -59,25 +60,32 @@ async function execute(){
  const external=sheetRows.map(legacy).filter(Boolean);
  const folios=new Set(sheetRows.map(r=>String(r.values?.[0]||'').trim()).filter(Boolean));
  const casas=await Casa.findAll({attributes:['id','calle','calleCorrecta','numero'],raw:true});
+ // Consultar TODA la historia para deduplicar por fecha/vivienda/folio.
+ // El límite de 5000 evita sobrecarga: si se alcanza, detener el resumen
+ // antes de afirmar cifras incompletas.
  const existing=await Reserva.findAll({attributes:['id','folio','fecha','fechaBloqueada','estatus','usuarioId',
   'casaId','creadoEn','correo','telefono','solicitante','propietario','notas'],
-  where:{[Op.or]:[{fecha:{[Op.gte]:today()}},{folio:{[Op.in]:external.map(x=>x.folio).slice(0,5000)}}]},
-  limit:5000});
+  order:[['id','ASC']],limit:5001});
+ if(existing.length>5000)throw Error('Casa Club excede 5000 reservas; revisar paginación de sincronización');
  const byFolio=new Map(existing.filter(x=>x.folio).map(x=>[x.folio,x]));
  const occupiedByLocal=new Map(existing.filter(x=>x.fechaBloqueada&&
   ['PENDIENTE','APROBADA'].includes(x.estatus)).map(x=>[x.fechaBloqueada,x]));
  const tariff=await tarifas();
- let inserted=0,unresolved=0,conflicts=0;
+ let inserted=0,unresolved=0,conflicts=0,duplicates=0;
  const occupied=[];
  for(const row of external){
   // PRECEDENCIA ABSOLUTA: MySQL es el calendario oficial.
   // Si existe reserva local activa para la fecha, no importar ni pintar
   // amarillo por un registro diferente o desactualizado de Google.
+  const casaId=houseId([row.folio,null,row.correo,row.numero,row.calle],casas);
   const local=occupiedByLocal.get(row.fecha);
   if(local){
-   if(local.folio!==row.folio)conflicts++;
-   // Se conserva la reserva de MySQL, con su color PENDIENTE/APROBADA.
-   // No se añade a occupied: el endpoint /fechas ya lee MySQL.
+   if(local.folio===row.folio||Number(local.casaId)===Number(casaId)&&casaId){
+    duplicates++;
+   }else{
+    conflicts++;
+   }
+   // MySQL mantiene prioridad y estado/color; hoja no puede reemplazarlo.
    continue;
   }
   const old=byFolio.get(row.folio);
@@ -89,7 +97,6 @@ async function execute(){
    continue;
   }
   // No asumir calle por solo número o nombre del fraccionamiento.
-  const casaId=houseId([row.folio,null,row.correo,row.numero,row.calle],casas);
   if(!casaId){
    unresolved++;
    occupied.push({fecha:row.fecha,estatus:'PENDIENTE'});
@@ -127,10 +134,20 @@ async function execute(){
   .filter(Boolean);
  // Una sola operación de append, nunca reescribir la hoja original.
  if(rows.length)await sheets.append(rows);
- latest={occupied,inserted,exported:rows.length,unresolved,conflicts};
+ // Historial de Google: incluye fechas pasadas en modo SOLO CONSULTA.
+ // Nunca se convierten automáticamente en pagadas, aprobadas o canceladas.
+ const report=historical.build({sheetRows,casas,existing:[...existing,
+  // Evita perder la visibilidad de las altas creadas en este mismo ciclo.
+  ],today:today(),houseId});
+ latest={occupied,inserted,exported:rows.length,unresolved,conflicts,duplicates,
+  historialGoogle:report.historial,resumen:report.counts};
  lastRun=Date.now();
  if(unresolved||conflicts)console.warn('[CasaClub Google] Pendientes de conciliar:',
-  {unresolved,conflicts});
+  {unresolved,conflicts,duplicates});
+ // El resumen vive en K:L de la misma pestaña; nunca modifica A:J.
+ // Un fallo de la tarjeta de resumen no invalida el calendario.
+ try{await sheets.updateSummary(report.counts);}
+ catch(error){console.warn('[CasaClub Google] Resumen en hoja no disponible:',error.message);}
  return latest;
 }
 async function sync({force=false}={}){
