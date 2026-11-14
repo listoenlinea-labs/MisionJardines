@@ -2094,3 +2094,77 @@ body.page-analisis .finance-project-expense-dialog #financeProjectExpenseStatus:
   font-variant-numeric:tabular-nums;
  }
 }
+
+
+/* Proyecto: distinguir conceptos absorbidos por el presupuesto y excedentes. */
+body.page-analisis .finance-project-included-check{
+ grid-column:1/-1;display:flex!important;align-items:flex-start;gap:11px;
+ min-width:0;padding:12px;border:1px solid #d6e6de;border-radius:12px;
+ background:#f2f9f4;cursor:pointer;font-size:12px;line-height:1.5;
+}
+body.page-analisis .finance-project-included-check input[type="checkbox"]{
+ flex:none;width:20px;min-width:20px;max-width:20px;height:20px;min-height:20px;
+ margin:0;accent-color:#39835a;
+}
+body.page-analisis .finance-project-expense-summary{
+ margin:9px 0 14px;font-size:11px;line-height:1.5;overflow-wrap:anywhere;
+}
+body.page-analisis .finance-budget-edit,
+body.page-analisis .finance-project-concept-edit,
+body.page-analisis .finance-expense-edit-amount{cursor:pointer}
+body.page-analisis .finance-budget-edit:hover,
+body.page-analisis .finance-project-concept-edit:hover,
+body.page-analisis .finance-expense-edit-amount:hover{
+ background:#fff1e3;border-radius:7px;
+}
+body.page-analisis .finance-expense-edit-amount{
+ display:inline-block;border-bottom:1px dashed #ce974f;
+ padding:4px 6px;font-weight:800;
+}
+body.page-analisis .finance-expense-edit-amount:focus-visible{
+ outline:2px solid #d58a39;outline-offset:2px;border-radius:5px;
+}
+body.page-analisis #financeExpenseFooter{cursor:pointer}
+body.page-analisis .finance-inline-edit-help{margin:5px 0 8px;font-size:10px}
+
+/* iPhone en orientación horizontal: las tres tarjetas están a la vista.
+   Se desactiva el carrusel de retrato sin modificar la versión vertical. */
+@media screen and (orientation:landscape) and (max-height:550px) and (min-width:600px){
+ body.page-analisis #financeMonthlyColumns.finance-monthly-columns{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  align-items:stretch!important;
+  gap:9px!important;
+  height:auto!important;min-height:0!important;
+  overflow:visible!important;scroll-snap-type:none!important;
+  scroll-padding:0!important;transition:none!important;
+ }
+ body.page-analisis #financeMonthlyColumns.finance-monthly-columns>.finance-chart-card{
+  display:flex!important;flex-direction:column!important;
+  flex:none!important;width:100%!important;max-width:100%!important;
+  min-width:0!important;height:auto!important;min-height:0!important;
+  padding:11px 9px!important;margin:0!important;
+  scroll-snap-align:none!important;
+ }
+ body.page-analisis .finance-monthly-pagination{display:none!important}
+ body.page-analisis #financeMonthlyColumns .bar-row{
+  grid-template-columns:minmax(42px,.85fr) minmax(8px,1fr) minmax(45px,.65fr)!important;
+  gap:4px!important;
+ }
+ body.page-analisis #financeMonthlyColumns .bar-row strong,
+ body.page-analisis #financeMonthlyColumns .bar-row b{
+  font-size:9px!important;line-height:1.25!important;overflow-wrap:anywhere;
+ }
+ body.page-analisis #financeMonthlyColumns .bar-row b{text-align:right}
+ body.page-analisis #financeMonthlyColumns .finance-card-subtitle{
+  font-size:11px!important;white-space:normal!important;
+ }
+ body.page-analisis #financeMonthlyColumns .finance-chart-description,
+ body.page-analisis #financeMonthlyColumns .hint{font-size:9px!important}
+ body.page-analisis #financeMonthlyColumns .finance-balance-result strong{font-size:22px!important}
+ body.page-analisis #financeMonthlyColumns .finance-chart-footer{padding:9px 5px!important}
+ body.page-analisis #financeMonthlyColumns .finance-chart-footer strong{font-size:12px!important}
+ body.page-analisis #financeCashChart>.bar-row,
+ body.page-analisis #financeExpenseChart>.project-budget-bar{min-height:33px}
+}
