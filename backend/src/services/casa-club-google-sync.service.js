@@ -70,10 +70,22 @@ async function execute(){
  let inserted=0,unresolved=0,conflicts=0;
  const occupied=[];
  for(const row of external){
+  // PRECEDENCIA ABSOLUTA: MySQL es el calendario oficial.
+  // Si existe reserva local activa para la fecha, no importar ni pintar
+  // amarillo por un registro diferente o desactualizado de Google.
+  const local=occupiedByLocal.get(row.fecha);
+  if(local){
+   if(local.folio!==row.folio)conflicts++;
+   // Se conserva la reserva de MySQL, con su color PENDIENTE/APROBADA.
+   // No se añade a occupied: el endpoint /fechas ya lee MySQL.
+   continue;
+  }
   const old=byFolio.get(row.folio);
   if(old&&['RECHAZADA','CANCELADA'].includes(old.estatus))continue;
   if(old){
-   if(old.fechaBloqueada)occupied.push({fecha:row.fecha,estatus:old.estatus});
+   // El folio ya existe: jamás resucitar, reubicar ni sobreescribir reservas.
+   if(old.fechaBloqueada&&old.fechaBloqueada===row.fecha)
+    occupied.push({fecha:row.fecha,estatus:old.estatus});
    continue;
   }
   // No asumir calle por solo número o nombre del fraccionamiento.
@@ -81,11 +93,6 @@ async function execute(){
   if(!casaId){
    unresolved++;
    occupied.push({fecha:row.fecha,estatus:'PENDIENTE'});
-   continue;
-  }
-  if(occupiedByLocal.has(row.fecha)){
-   conflicts++;
-   // Conservamos lo que ya existe en MySQL sin sobrescribir ni duplicar.
    continue;
   }
   if(!row.solicitante||!row.telefono||!row.correo){
