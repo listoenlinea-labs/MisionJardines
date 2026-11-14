@@ -860,10 +860,10 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
  .club-email-reservation{padding:15px}
 }
 
-/* Días anteriores a hoy en zona America/Mexico_City: rojo pastel informativo.
-   Solo presentación; el valor real del estatus permanece en MySQL. */
-#calendarDays button.past-date-red,
-#calendarDays button.past-date-red:disabled{
+/* Únicamente reservas aprobadas anteriores a hoy en la vista del administrador.
+   Solo presentación; no modifica el estatus en MySQL. */
+#calendarDays button.past-reserved,
+#calendarDays button.past-reserved:disabled{
  opacity:1;
  color:#a83846;
  background:#fff0f1;
