@@ -67,6 +67,12 @@
   function targetFor(step) {
     if (!step.page) {
       let el = document.querySelector(step.selector);
+      // Cuando el menú está cerrado en celular, explicar la pestaña amarilla
+      // en lugar de resaltar coordenadas fuera de la pantalla.
+      if (visibleElement(el)) {
+        const rect = el.getBoundingClientRect();
+        if (rect.right <= 0 || rect.left >= innerWidth) el = null;
+      }
       if (!visibleElement(el)) el = document.querySelector('.mj-side-tab');
       return visibleElement(el) ? {el, frame:null} : null;
     }
@@ -154,6 +160,7 @@
       panel.style.left = '50%';
       panel.style.top = '50%';
       panel.style.transform = 'translate(-50%, -50%)';
+      panel.style.bottom = 'auto';
       return;
     }
     overlay.classList.remove('mj-tour-no-focus');
@@ -211,6 +218,9 @@
     byId('mjTourTitle').textContent = 'Abriendo ' + targetStep.group + '…';
     try {
       const ok = await routeTo(targetStep.page);
+      // Si el usuario cerró el recorrido durante una navegación, no intentar
+      // reabrirlo ni desplazar la página en una promesa ya obsoleta.
+      if (!open) return;
       if (!ok) {
         byId('mjTourTitle').textContent = 'No se pudo abrir esta sección';
         byId('mjTourDescription').textContent = 'Revisa tu conexión o abre otro módulo desde el menú. Puedes salir y reiniciar la guía más tarde.';
