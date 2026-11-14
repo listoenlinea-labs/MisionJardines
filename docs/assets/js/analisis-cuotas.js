@@ -2693,6 +2693,129 @@ let historicalExtraId=null;
 });
  
 
+// Visor seguro de comprobantes de proyectos: no expone tokens ni enlaces públicos.
+const projectProofModal=$('financeProjectProofModal');
+const projectProofPreview=$('financeProjectProofPreview');
+const projectProofDownload=$('financeProjectProofDownload');
+let projectProofSource=null,projectProofUrl=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
+let projectProofClickTimer=null;
+
+function closeProjectProofModal(){
+ if(projectProofModal.hidden)return;
+ projectProofModal.hidden=true;
+ ++projectProofSequence;
+ projectProofAbort?.abort();
+ projectProofAbort=null;
+ projectProofPreview.replaceChildren();
+ projectProofPreview.hidden=true;
+ projectProofDownload.hidden=true;
+ if(projectProofUrl)URL.revokeObjectURL(projectProofUrl);
+ projectProofUrl=null;projectProofSource=null;
+ if(projectProofFocus?.isConnected&&!projectProofFocus.closest('[hidden]'))projectProofFocus.focus();
+ projectProofFocus=null;
+}
+async function openProjectProofModal(id,trigger){
+ const project=activeConcept==='EXTRAORDINARIO'?
+  data?.proyectosExtraordinarios?.find(p=>Number(p.id)===Number(activeProyectoId)):null;
+ const expense=project?.gastosConceptos?.find(e=>Number(e.id)===Number(id));
+ if(!project||!expense)return;
+ closeProjectProofModal();
+ projectProofFocus=trigger||document.activeElement;
+ projectProofSource=expense;
+ const seq=++projectProofSequence;
+ $('financeProjectProofProject').textContent=project.nombre;
+ $('financeProjectProofConcept').textContent=expense.concepto||'Sin concepto';
+ $('financeProjectProofAmount').textContent=fmt(expense.monto);
+ $('financeProjectProofDate').textContent=displayDate(expense.fecha);
+ $('financeProjectProofIncluded').textContent=expense.incluidoPresupuesto===false?'Adicional al presupuesto':'Incluido en presupuesto';
+ $('financeProjectProofReference').textContent=expense.referencia||'Sin referencia';
+ projectProofPreview.replaceChildren();projectProofPreview.hidden=true;projectProofDownload.hidden=true;
+ $('financeProjectProofStatus').textContent=expense.comprobanteDisponible?
+  'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
+ projectProofModal.hidden=false;
+ $('financeProjectProofClose').focus();
+ if(!expense.comprobanteDisponible)return;
+ const controller=new AbortController();projectProofAbort=controller;
+ try{
+  const response=await fetch(API+'/finanzas/egresos/'+Number(expense.id)+'/comprobante',{
+   headers:{Authorization:'Bearer '+token},signal:controller.signal,cache:'no-store'
+  });
+  if(!response.ok)throw Error(response.status===404?
+   'El comprobante indicado no está disponible en el servidor.':'No fue posible cargar el comprobante.');
+  const blob=await response.blob();
+  if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))
+   throw Error('El comprobante tiene un formato que no se puede previsualizar.');
+  if(seq!==projectProofSequence||projectProofModal.hidden)return;
+  projectProofUrl=URL.createObjectURL(blob);
+  const viewer=blob.type==='application/pdf'?document.createElement('iframe'):document.createElement('img');
+  viewer.src=projectProofUrl;
+  if(blob.type==='application/pdf'){
+   viewer.title='Vista previa del comprobante PDF';
+   viewer.setAttribute('aria-label','Comprobante PDF del egreso');
+  }else{
+   viewer.alt='Imagen del comprobante de '+expense.concepto;
+  }
+  projectProofPreview.replaceChildren(viewer);
+  projectProofPreview.hidden=false;
+  projectProofDownload.hidden=false;
+  $('financeProjectProofStatus').textContent='Comprobante adjunto al egreso.';
+ }catch(error){
+  if(controller.signal.aborted||seq!==projectProofSequence)return;
+  $('financeProjectProofStatus').textContent=error.message;
+ }finally{if(projectProofAbort===controller)projectProofAbort=null;}
+}
+$('financeProjectProofClose').addEventListener('click',closeProjectProofModal);
+$('financeProjectProofDone').addEventListener('click',closeProjectProofModal);
+projectProofModal.addEventListener('click',event=>{
+ if(event.target===projectProofModal)closeProjectProofModal();
+});
+document.addEventListener('keydown',event=>{
+ if(projectProofModal.hidden)return;
+ if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeProjectProofModal();return;}
+ if(event.key!=='Tab')return;
+ const elements=[...projectProofModal.querySelectorAll('button:not([hidden]):not([disabled])')]
+  .filter(el=>el.getClientRects().length);
+ if(!elements.length)return;
+ const first=elements[0],last=elements[elements.length-1];
+ if(!projectProofModal.contains(document.activeElement)){
+  event.preventDefault();(event.shiftKey?last:first).focus();
+ }else if(event.shiftKey&&document.activeElement===first){
+  event.preventDefault();last.focus();
+ }else if(!event.shiftKey&&document.activeElement===last){
+  event.preventDefault();first.focus();
+ }
+});
+projectProofDownload.addEventListener('click',()=>{
+ if(!projectProofUrl||!projectProofSource)return;
+ const mime=projectProofPreview.querySelector('iframe')?'pdf':
+  (projectProofPreview.querySelector('img')?.src===projectProofUrl&&projectProofUrl?
+   'imagen':'archivo');
+ const anchor=document.createElement('a');
+ anchor.href=projectProofUrl;
+ anchor.download='comprobante-egreso-'+Number(projectProofSource.id)+(mime==='pdf'?'.pdf':'.jpg');
+ document.body.append(anchor);anchor.click();anchor.remove();
+});
+// El doble clic de escritorio sigue reservado a la edición del importe.
+// Esperar el intervalo de doble clic evita abrir el visor por accidente.
+$('financeExpenseChart').addEventListener('click',event=>{
+ const row=event.target.closest('[data-project-expense-detail]');
+ if(!row||activeConcept!=='EXTRAORDINARIO')return;
+ if(projectProofClickTimer)clearTimeout(projectProofClickTimer);
+ projectProofClickTimer=setTimeout(()=>{
+  projectProofClickTimer=null;
+  openProjectProofModal(Number(row.dataset.projectExpenseDetail),row);
+ },240);
+});
+$('financeExpenseChart').addEventListener('dblclick',()=>{
+ if(projectProofClickTimer)clearTimeout(projectProofClickTimer);
+ projectProofClickTimer=null;
+});
+$('financeExpenseChart').addEventListener('keydown',event=>{
+ const row=event.target.closest('[data-project-expense-detail]');
+ if(!row||!['Enter',' '].includes(event.key))return;
+ event.preventDefault();openProjectProofModal(Number(row.dataset.projectExpenseDetail),row);
+});
+
 async function descargarComprobante(id){
  try{
   const num=Number(id);if(!Number.isSafeInteger(num)||num<1)throw Error('Comprobante inválido');
