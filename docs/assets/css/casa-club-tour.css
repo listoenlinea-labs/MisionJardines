@@ -1,0 +1,115 @@
+/* Tour de reservaciones (driver.js), aislado de los estilos funcionales de Casa Club. */
+.club-tour-launch {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+  padding: 11px 17px;
+  min-height: 42px;
+  border: 1px solid #b5d7ca;
+  border-radius: 999px;
+  background: linear-gradient(115deg, #e9f8f0, #e9f1fb);
+  color: #285d58;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .01em;
+  box-shadow: 0 3px 11px #2d706415;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.club-tour-launch:hover,
+.club-tour-launch:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px #2d706425;
+  outline-offset: 3px;
+}
+.driver-popover.club-tour-popover {
+  box-sizing: border-box;
+  max-width: min(390px, calc(100vw - 26px));
+  border: 1px solid #d5e7e0;
+  border-radius: 18px;
+  padding: 19px 20px 15px;
+  background: #ffffff;
+  color: #2b3d50;
+  box-shadow: 0 20px 65px #1c3d4352;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+.club-tour-popover .driver-popover-title {
+  padding-right: 13px;
+  color: #224c47;
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.3;
+}
+.club-tour-popover .driver-popover-description {
+  color: #52667a;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.club-tour-popover .driver-popover-description p { margin: 9px 0; }
+.club-tour-popover .driver-popover-description strong { color: #294f53; }
+.club-tour-popover .driver-popover-progress-text {
+  color: #708492;
+  font-size: 12px;
+  font-weight: 700;
+}
+.club-tour-popover .driver-popover-next-btn,
+.club-tour-popover .driver-popover-prev-btn {
+  border: 1px solid #bcdcd0;
+  border-radius: 999px;
+  background: #eef9f2;
+  color: #28584e;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: none;
+  padding: 8px 13px;
+}
+.club-tour-popover .driver-popover-next-btn:hover,
+.club-tour-popover .driver-popover-prev-btn:hover {
+  background: #d6f2e2;
+  color: #194b3b;
+}
+.club-tour-popover .driver-popover-close-btn { color: #738390; }
+.club-tour-popover .driver-popover-close-btn:hover { color: #263b49; }
+
+.club-tour-fallback {
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 24px));
+  max-height: 85dvh;
+  overflow-y: auto;
+  margin: auto;
+  border: 1px solid #d5e7e0;
+  border-radius: 19px;
+  padding: 24px;
+  background: #fff;
+  color: #384d5c;
+  box-shadow: 0 25px 75px #172b3955;
+}
+.club-tour-fallback::backdrop { background: #16283399; }
+.club-tour-fallback h2 { margin: 0 0 15px; font-size: 21px; color: #27574d; }
+.club-tour-fallback p { line-height: 1.7; font-size: 13px; }
+.club-tour-fallback-close {
+  border: none;
+  border-radius: 10px;
+  padding: 11px 18px;
+  background: #d7f1e3;
+  color: #255b49;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+@media (max-width: 700px) {
+  .club-tour-launch { width: 100%; max-width: 245px; margin-top: 13px; }
+  .driver-popover.club-tour-popover {
+    width: calc(100vw - 24px);
+    max-height: min(68dvh, 500px);
+    overflow-y: auto;
+    padding: 15px 16px 13px;
+  }
+  .club-tour-popover .driver-popover-title { font-size: 16px; }
+  .club-tour-popover .driver-popover-description { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .club-tour-launch { transition: none; }
+}
