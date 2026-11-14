@@ -280,6 +280,33 @@ async function registrarEgreso(req,res){
  }catch(e){await archivosEgresos.eliminar(archivo);return sendErr(res,e);}
 }
 
+
+async function actualizarTotalMantenimiento(req,res){
+ try{
+  const anio=Number(req.body?.anio),mes=Number(req.body?.mes),nuevo=Number(req.body?.monto),
+   anterior=Number(req.body?.montoAnterior);
+  if(!Number.isInteger(anio)||anio<2020||anio>2100||!Number.isInteger(mes)||mes<1||mes>12||
+   !Number.isSafeInteger(nuevo)||nuevo<0||nuevo>100000000||
+   !Number.isSafeInteger(anterior)||anterior<0)
+   throw fail(400,'Indica período e importes de mantenimiento válidos');
+  const start=anio+'-'+String(mes).padStart(2,'0')+'-01';
+  const end=new Date(Date.UTC(anio,mes,0)).toISOString().slice(0,10);
+  const resultado=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const egresos=await Egreso.findAll({where:{fecha:{[Op.between]:[start,end]},ambito:'MANTENIMIENTO',
+    categoria:{[Op.notIn]:['PROYECTOS','PROYECTO','CUOTA_EXTRAORDINARIA']}},transaction,lock:transaction.LOCK.UPDATE});
+   const actual=Math.round(egresos.reduce((sum,e)=>sum+Number(e.monto),0));
+   if(actual!==anterior)throw fail(409,'El total cambió en otra sesión. Actualiza el análisis');
+   const diferencia=nuevo-actual;
+   if(!diferencia)return {sinCambio:true,monto:nuevo};
+   const adjustment=await Egreso.create({fecha:end,categoria:'OTROS',ambito:'MANTENIMIENTO',
+    concepto:'AJUSTE DE TOTAL DE MANTENIMIENTO · '+anio+'-'+String(mes).padStart(2,'0'),
+    monto:diferencia,referencia:null,registradoPor:req.usuario.usuarioId},{transaction});
+   await adjustment.update({referencia:referenciaEgreso(end,adjustment.id)},{transaction});
+   return {id:adjustment.id,monto:nuevo,anterior,diferencia,referencia:adjustment.referencia};
+  });
+  return res.json({ok:true,data:resultado,message:'Total ajustado mediante un movimiento compensatorio registrado.'});
+ }catch(e){return sendErr(res,e);}
+}
 async function actualizarMontoEgreso(req,res){
  try{
   const id=Number(req.params.id),monto=Number(req.body?.monto),anterior=Number(req.body?.montoAnterior);
@@ -407,4 +434,4 @@ async function modificarCuotaPorCobrar(req,res){
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
  }catch(error){return sendErr(res,error);}
 }
-module.exports={analizar,registrarEgreso,actualizarMontoEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
+module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};

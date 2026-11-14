@@ -2577,9 +2577,32 @@ let historicalExtraId=null;
   return activeConcept==='EXTRAORDINARIO'?
    data?.proyectosExtraordinarios?.find(x=>Number(x.id)===Number(activeProyectoId)):null;
  }
+ async function editMaintenanceTotal(){
+  if(expenseAmountSaving)return;
+  const old=Math.round(Number(data?.finanzasAmbitos?.MANTENIMIENTO?.egresos||0));
+  const input=window.prompt('Nuevo total de egresos de mantenimiento del período (ajuste auditado)',String(old));
+  if(input===null)return;
+  const next=Number(input.trim());
+  if(!/^\\d+$/.test(input.trim())||!Number.isSafeInteger(next)||next<0||next>100000000)
+   return notice('Introduce un total válido, sin decimales.');
+  if(old===next)return;
+  if(!window.confirm('¿Ajustar el total de mantenimiento de '+fmt(old)+' a '+fmt(next)+
+   '? Se registrará un movimiento compensatorio; no se modificarán gastos individuales.'))return;
+  expenseAmountSaving=true;
+  try{
+   await request('/egresos/total-mantenimiento',{anio:Number($('financeYear').value),
+    mes:Number($('financeMonth').value),monto:next,montoAnterior:old},'PUT');
+   await load();notice('Total de mantenimiento actualizado con ajuste registrado.','success');
+  }catch(error){notice(error.message);}
+  finally{expenseAmountSaving=false;}
+ }
  async function handleExpenseDblclick(event){
   const budget=event.target.closest('[data-project-budget]');
   const footer=event.target.closest('#financeExpenseFooter');
+  if(footer&&activeConcept==='MANTENIMIENTO'){
+   await editMaintenanceTotal();
+   return;
+  }
   if(budget||footer&&activeConcept==='EXTRAORDINARIO'){
    const project=selectedProject();
    if(project&&(!budget||Number(budget.dataset.projectBudget)===Number(project.id)))
