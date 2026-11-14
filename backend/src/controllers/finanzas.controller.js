@@ -47,7 +47,7 @@ async function analizar(req,res){
    Cuota.findAll({attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','referencia','folio','fechaPago','fechaConfirmacion','formaPago','origenImportacion','confirmadoPorUsuarioId']}),
    ZkTarjeta.findAll({attributes:['id','casaId','numeroTarjeta','nombreDispositivo','departamento','fechaInicio','fechaFin','bloqueado','enControlador','puertasAutorizadas','ultimaLectura']})
    ,PagoManualConcepto.findAll({where:{creadoEn:{[Op.between]:[start+' 00:00:00',end+' 23:59:59']}},attributes:['id','casaId','tipoPago','monto','formaPago','referencia','creadoEn']})
-   ,CuotaExtraordinaria.findAll({attributes:['egresoId','id','codigo','concepto','monto','activo','fechaInicio']}),
+   ,CuotaExtraordinaria.findAll({attributes:['egresoId','id','codigo','concepto','monto','montoTotal','activo','fechaInicio']}),
    CargoExtraordinario.findAll({attributes:['id','cuotaExtraordinariaId','casaId','periodo','monto'],include:[{model:CuotaExtraordinaria,as:'cuota',attributes:[],required:true,where:{activo:true}}]}),
    PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoManualConcepto.findAll({attributes:['id','casaId','tipoPago','cargoExtraordinarioId','reservaCasaClubId','monto','formaPago','referencia','creadoEn']}),
@@ -151,11 +151,19 @@ async function analizar(req,res){
    const id=Number(e.proyectoId);
    if(!gastosPorProyecto.has(id))gastosPorProyecto.set(id,[]);
    gastosPorProyecto.get(id).push({id:Number(e.id),fecha:e.fecha,concepto:e.concepto,monto:num(e.monto),
-    referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo});
+    referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo,
+    incluidoPresupuesto:e.incluidoPresupuesto!==false});
   }
+  const cuotasPorId=new Map(cuotasExtras.map(p=>[Number(p.id),p]));
   for(const p of proyectosExtraordinarios){
+   const presupuesto=cuotasPorId.get(Number(p.id));
+   p.presupuestoBase=num(presupuesto?.montoTotal ?? p.totalEsperado);
    p.gastosConceptos=gastosPorProyecto.get(Number(p.id))||[];
    p.egresosReales=p.gastosConceptos.reduce((sum,e)=>sum+e.monto,0);
+   p.gastosIncluidos=p.gastosConceptos.filter(e=>e.incluidoPresupuesto).reduce((sum,e)=>sum+e.monto,0);
+   p.gastosAdicionales=p.gastosConceptos.filter(e=>!e.incluidoPresupuesto).reduce((sum,e)=>sum+e.monto,0);
+   p.egresosComprometidos=p.presupuestoBase+p.gastosAdicionales;
+   p.egresosPendientesDeComprobar=Math.max(0,p.presupuestoBase-p.gastosIncluidos);
   }
   const ingresosReportados={mantenimiento:0,extraordinarios:0,casaClub:0};
   for(const p of pagos)ingresosReportados[p.tipoPago==='EXTRAORDINARIO'?'extraordinarios':p.tipoPago==='CASA_CLUB'?'casaClub':'mantenimiento']+=num(p.monto);
@@ -236,6 +244,9 @@ async function registrarEgreso(req,res){
     !Number.isFinite(monto)||monto<=0||!Number.isInteger(monto)||monto>100000000)
    throw fail(400,'Completa fecha, categoría, concepto y monto entero válidos');
   const proyectoId=Number(req.body?.proyectoId||0);
+  const incluidoPresupuesto=req.body?.incluidoPresupuesto!==false;
+  if(req.body?.incluidoPresupuesto!==undefined&&typeof req.body.incluidoPresupuesto!=='boolean')
+   throw fail(400,'Indica verdadero o falso para incluido en presupuesto');
   if(categoria==='PROYECTO'&&!proyectoId){
    // Alta unificada con Nuevo proyecto. Presupuesto no equivale a gasto realmente pagado.
    const creado=await require('../services/proyectos-extraordinarios.service').crearProyecto({
@@ -259,6 +270,7 @@ async function registrarEgreso(req,res){
   const saved=await sequelize.transaction(async transaction=>{
    const row=await Egreso.create({fecha,categoria,concepto,monto,ambito,
     proyectoId:proyectoId||null,comprobanteArchivo:archivo,referencia:null,
+    incluidoPresupuesto,
     registradoPor:req.usuario.usuarioId},{transaction});
    const referencia=referenciaEgreso(fecha,row.id);
    await row.update({referencia},{transaction});
@@ -266,6 +278,77 @@ async function registrarEgreso(req,res){
   });
   return res.status(201).json({ok:true,...saved,message:'Egreso registrado en su ámbito financiero'});
  }catch(e){await archivosEgresos.eliminar(archivo);return sendErr(res,e);}
+}
+
+
+async function actualizarTotalMantenimiento(req,res){
+ try{
+  const anio=Number(req.body?.anio),mes=Number(req.body?.mes),nuevo=Number(req.body?.monto),
+   anterior=Number(req.body?.montoAnterior);
+  if(!Number.isInteger(anio)||anio<2020||anio>2100||!Number.isInteger(mes)||mes<1||mes>12||
+   !Number.isSafeInteger(nuevo)||nuevo<0||nuevo>100000000||
+   !Number.isSafeInteger(anterior)||anterior<0)
+   throw fail(400,'Indica período e importes de mantenimiento válidos');
+  const start=anio+'-'+String(mes).padStart(2,'0')+'-01';
+  const end=new Date(Date.UTC(anio,mes,0)).toISOString().slice(0,10);
+  const resultado=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const egresos=await Egreso.findAll({where:{fecha:{[Op.between]:[start,end]},ambito:'MANTENIMIENTO',
+    categoria:{[Op.notIn]:['PROYECTOS','PROYECTO','CUOTA_EXTRAORDINARIA']}},transaction,lock:transaction.LOCK.UPDATE});
+   const actual=Math.round(egresos.reduce((sum,e)=>sum+Number(e.monto),0));
+   if(actual!==anterior)throw fail(409,'El total cambió en otra sesión. Actualiza el análisis');
+   const diferencia=nuevo-actual;
+   if(!diferencia)return {sinCambio:true,monto:nuevo};
+   const adjustment=await Egreso.create({fecha:end,categoria:'OTROS',ambito:'MANTENIMIENTO',
+    concepto:'AJUSTE DE TOTAL DE MANTENIMIENTO · '+anio+'-'+String(mes).padStart(2,'0'),
+    monto:diferencia,referencia:null,registradoPor:req.usuario.usuarioId},{transaction});
+   await adjustment.update({referencia:referenciaEgreso(end,adjustment.id)},{transaction});
+   await sequelize.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['TOTAL_MANTENIMIENTO',adjustment.id,actual,nuevo,req.usuario.usuarioId,start],transaction});
+   return {id:adjustment.id,monto:nuevo,anterior,diferencia,referencia:adjustment.referencia};
+  });
+  return res.json({ok:true,data:resultado,message:'Total ajustado mediante un movimiento compensatorio registrado.'});
+ }catch(e){return sendErr(res,e);}
+}
+async function actualizarMontoEgreso(req,res){
+ try{
+  const id=Number(req.params.id),monto=Number(req.body?.monto),anterior=Number(req.body?.montoAnterior);
+  if(!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(monto)||monto<0||monto>100000000||
+   !Number.isSafeInteger(anterior)||anterior<0)throw fail(400,'Indica importes enteros válidos');
+  const saved=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row)throw fail(404,'Egreso no encontrado');
+   if(esAjuste(row))throw fail(409,'Los movimientos de ajuste se conservan para auditoría y no se editan');
+   if(await CuotaExtraordinaria.findOne({where:{egresoId:id},transaction}))
+    throw fail(409,'Este egreso tiene cargos vinculados; edita el presupuesto en su proyecto');
+   if(Math.round(Number(row.monto))!==anterior)
+    throw fail(409,'Otro administrador cambió el monto. Actualiza antes de editar');
+   await row.update({monto},{transaction});
+   await sequelize.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['EGRESO',id,anterior,monto,req.usuario.usuarioId,row.referencia||null],transaction});
+   return {id:row.id,montoAnterior:anterior,monto,referencia:row.referencia};
+  });
+  return res.json({ok:true,...saved,message:'Importe actualizado. El análisis se recalculará al actualizar.'});
+ }catch(e){return sendErr(res,e);}
+}
+async function actualizarPresupuestoProyecto(req,res){
+ try{
+  const id=Number(req.params.id),monto=Number(req.body?.monto),anterior=Number(req.body?.montoAnterior);
+  if(!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(monto)||monto<0||monto>100000000||
+   !Number.isSafeInteger(anterior)||anterior<0)throw fail(400,'Indica importes enteros válidos');
+  const saved=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const p=await CuotaExtraordinaria.findOne({where:{id,activo:true},transaction,lock:transaction.LOCK.UPDATE});
+   if(!p)throw fail(404,'Proyecto no encontrado');
+   const legacyAmount=p.montoTotal==null?
+    await CargoExtraordinario.sum('monto',{where:{cuotaExtraordinariaId:id},transaction}):p.montoTotal;
+   const actual=Math.round(Number(legacyAmount||0));
+   if(actual!==anterior)throw fail(409,'Otro administrador cambió el presupuesto. Actualiza antes de editar');
+   await p.update({montoTotal:monto,actualizadoEn:new Date()},{transaction});
+   await sequelize.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['PRESUPUESTO_PROYECTO',id,anterior,monto,req.usuario.usuarioId,p.concepto],transaction});
+   return {proyectoId:id,montoAnterior:anterior,monto};
+  });
+  return res.json({ok:true,...saved,message:'Presupuesto actualizado; las cuotas de las viviendas permanecen igual.'});
+ }catch(e){return sendErr(res,e);}
 }
 async function comprobanteEgreso(req,res){
  try{
@@ -360,4 +443,4 @@ async function modificarCuotaPorCobrar(req,res){
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
  }catch(error){return sendErr(res,error);}
 }
-module.exports={analizar,registrarEgreso,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
+module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
