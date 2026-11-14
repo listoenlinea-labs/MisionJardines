@@ -86,3 +86,15 @@ test('No crea registros; recuerda navegador y permite reiniciar la guía', () =>
   assert.match(css, /max-width:660px/);
   assert.match(club, /insidePortal/); // El tour de Casa Club no se superpone en el shell.
 });
+
+test('Omitir guía está disponible desde la invitación y desde cualquier paso', () => {
+  assert.match(engine, /id="mjTourSkip">Omitir guía<\/button>/);
+  assert.match(engine, /id="mjWelcomeNotNow">Omitir guía<\/button>/);
+  assert.match(engine, /mjTourSkip'\)\.addEventListener\('click',\s*\(\)\s*=>\s*finish\('skipped'\)/);
+  assert.match(engine, /save\('skipped'\)/);
+  assert.match(engine, /function finish\(status\)/);
+  assert.match(engine, /save\(status\)/);
+  assert.match(engine, /readSaved\(\)/);
+  assert.match(engine, /mjPortalTourLauncher/);
+  assert.match(css, /\.mj-tour-skip\s*\{/);
+});
