@@ -88,4 +88,29 @@ async function append(rows){
  return query('POST','/values/'+range(tab)+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
   {majorDimension:'ROWS',values:rows});
 }
-module.exports={enabled,config,read,append};
+// Pequeño resumen dentro de la MISMA pestaña, fuera de las columnas A:J
+// del formulario antiguo. No sobreescribir contenido ajeno de K:L.
+const summaryMarker='RESUMEN CASA CLUB (AUTOMATICO)';
+async function updateSummary(summary){
+ const {tab}=config();
+ const address=encodeURIComponent("'"+tab.replace(/'/g,"''")+"'!K1:L5");
+ const snapshot=await query('GET','/values/'+address+'?valueRenderOption=FORMATTED_VALUE');
+ const current=snapshot.values||[];
+ const first=String(current[0]?.[0]||'').trim();
+ const hasOtherContent=current.some((r,i)=>r.some((x,j)=>
+  String(x??'').trim() && !(i===0&&j===0&&first===summaryMarker)));
+ if(first!==summaryMarker && hasOtherContent){
+  console.warn('[CasaClub Google] Resumen omitido: las columnas K:L ya contienen información');
+  return {skipped:true};
+ }
+ const rows=[
+  [summaryMarker,''],
+  ['Solicitudes únicas (ambos sistemas)',Number(summary.solicitudes)||0],
+  ['Personas distintas (estimación)',Number(summary.personas)||0],
+  ['En revisión',Number(summary.enRevision)||0],
+  ['Reservadas',Number(summary.reservadas)||0]
+ ];
+ return query('PUT','/values/'+address+'?valueInputOption=RAW',
+  {range:"'"+tab.replace(/'/g,"''")+"'!K1:L5",majorDimension:'ROWS',values:rows});
+}
+module.exports={enabled,config,read,append,updateSummary};
