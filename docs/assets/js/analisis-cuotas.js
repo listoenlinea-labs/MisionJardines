@@ -2554,26 +2554,6 @@ let historicalExtraId=null;
   }catch(err){notice(err.message);}
   finally{expenseAmountSaving=false;}
  }
- async function editProjectBudget(project){
-  if(expenseAmountSaving||!project)return;
-  const extra=Number(project.gastosAdicionales||0);
-  const old=Math.round(Number(project.presupuestoBase??project.totalEsperado??0));
-  const input=window.prompt('Presupuesto base del proyecto (no modifica cuotas por vivienda)',String(old));
-  if(input===null)return;
-  const next=Number(input.trim());
-  if(!/^\d+$/.test(input.trim())||!Number.isSafeInteger(next)||next<0||next>100000000)
-   return notice('Introduce un presupuesto válido sin decimales');
-  if(old===next)return;
-  if(!window.confirm('¿Cambiar el presupuesto de '+fmt(old)+' a '+fmt(next)+'? Costo comprometido: '+fmt(next+extra)+
-    '. Las metas de las 231 viviendas no se modificarán.'))return;
-  expenseAmountSaving=true;
-  try{
-   await request('/proyectos-extraordinarios/'+Number(project.id)+'/presupuesto',
-    {monto:next,montoAnterior:old},'PATCH');
-   await load();notice('Presupuesto actualizado; las cuotas por vivienda no cambiaron.','success');
-  }catch(error){notice(error.message);}
-  finally{expenseAmountSaving=false;}
- }
  function selectedProject(){
   return activeConcept==='EXTRAORDINARIO'?
    data?.proyectosExtraordinarios?.find(x=>Number(x.id)===Number(activeProyectoId)):null;
@@ -2782,40 +2762,26 @@ let historicalExtraId=null;
   }catch(error){notice(error.message);}
   finally{expenseAmountSaving=false;}
  }
- async function handleExpenseDblclick(event){
-  const budget=event.target.closest('[data-project-budget]');
-  const footer=event.target.closest('#financeExpenseFooter');
-  if(footer&&activeConcept==='MANTENIMIENTO'){
-   await editMaintenanceTotal();
-   return;
-  }
-  if(budget||footer&&activeConcept==='EXTRAORDINARIO'){
-   const project=selectedProject();
-   if(project&&(!budget||Number(budget.dataset.projectBudget)===Number(project.id)))
-    await editProjectBudget(project);
-   return;
-  }
+ // La edición de Cuotas extraordinarias es exclusivamente desde el modal
+ // de desglose con botones Editar. Mantenimiento conserva su comportamiento anterior.
+ async function handleMaintenanceExpenseEdit(event){
+  if(activeConcept!=='MANTENIMIENTO')return;
+  if(event.target.closest('#financeExpenseFooter')){await editMaintenanceTotal();return;}
   const target=event.target.closest('[data-expense-edit]');
   if(!target)return;
-  const id=Number(target.dataset.expenseEdit);
-  const item=activeConcept==='EXTRAORDINARIO'?
-   selectedProject()?.gastosConceptos?.find(x=>Number(x.id)===id):
-   data?.egresos?.find(x=>Number(x.id)===id);
+  const item=data?.egresos?.find(e=>Number(e.id)===Number(target.dataset.expenseEdit));
   if(item)await editExpenseAmount(item.id,item.monto);
  }
- $('financeExpenseChart').addEventListener('dblclick',handleExpenseDblclick);
- $('financeExpenseRows').addEventListener('dblclick',handleExpenseDblclick);
- $('financeExpenseFooter').addEventListener('dblclick',handleExpenseDblclick);
- $('financeBalanceExpense').addEventListener('dblclick',event=>{
+ $('financeExpenseRows').addEventListener('dblclick',handleMaintenanceExpenseEdit);
+ $('financeExpenseFooter').addEventListener('dblclick',handleMaintenanceExpenseEdit);
+ $('financeBalanceExpense').addEventListener('dblclick',()=>{
   if(activeConcept==='MANTENIMIENTO')editMaintenanceTotal();
-  else if(activeConcept==='EXTRAORDINARIO')editProjectBudget(selectedProject());
  });
  $('financeExpenseRows').addEventListener('keydown',event=>{
-  if(event.key==='Enter'&&event.target.closest('[data-expense-edit]')){
-   event.preventDefault();handleExpenseDblclick(event);
+  if(activeConcept==='MANTENIMIENTO'&&event.key==='Enter'&&event.target.closest('[data-expense-edit]')){
+   event.preventDefault();handleMaintenanceExpenseEdit(event);
   }
  });
-
  $('financeExpenseRows').addEventListener('click',event=>{
   const proof=event.target.closest('[data-expense-proof]');if(proof){descargarComprobante(proof.dataset.expenseProof);return;}
   const b=event.target.closest('[data-extra-expense]');if(!b)return;
