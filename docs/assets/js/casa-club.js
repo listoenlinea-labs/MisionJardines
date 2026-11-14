@@ -2,7 +2,8 @@
  const API=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
  const $=id=>document.getElementById(id);
  // Un enlace público de comprobante no habilita ninguna precarga de perfil.
- const token=/^#comprobante=/.test(location.hash)?null:(localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken'));
+ const token=/^#(?:comprobante|mis-reservas)=/.test(location.hash)?null:(localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken'));
+ if(/^#mis-reservas=/.test(location.hash))return; // vista privada del correo, sin autocompletar perfiles
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=v=>Number(v||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
  const fmt=d=>window.MJDateDisplay.format(d);
@@ -217,18 +218,20 @@
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
    const date=currentMonth+'-'+String(n).padStart(2,'0'),status=occupied.get(date),past=admin?date<today():date<tomorrow()||date>lastDay();
    const btn=document.createElement('button');btn.type='button';
-   btn.className=admin&&date<today()&&status?
-    (status==='APROBADA'?'booked':status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'waiting':'past'):
-    past||(!status&&!googleVerificado)?'past':status==='APROBADA'?'booked':status?'waiting':'available';
+   // La fecha ocupada conserva su color incluso si ya no permite reservar.
+   btn.className=status==='APROBADA'?'booked':
+    status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'waiting':
+    status==='HISTORICA_INACTIVA'?'past':
+    past||!googleVerificado?'past':'available';
    if(admin&&date<today()&&status)btn.classList.add('historic-entry');
    // Hoy según America/Mexico_City; solo añade contorno, conserva color de estado.
    if(date===today())btn.classList.add('today-mx');
    if(date===selectedDate)btn.classList.add('selected');
    btn.disabled=Boolean(status)||past||!googleVerificado;
-   btn.setAttribute('aria-label',fmt(date)+' · '+(admin&&date<today()&&status?
-    (status==='APROBADA'?'Reservación histórica':status==='HISTORICA_GOOGLE'?'Solicitud histórica de Google':
-     status==='HISTORICA_INACTIVA'?'Registro histórico cancelado o rechazado':'En revisión (fecha pasada)'):
-    past||(!status&&!googleVerificado)?'No disponible':status==='APROBADA'?'Reservada':status?'En revisión':'Disponible'));
+   btn.setAttribute('aria-label',fmt(date)+' · '+(
+    status==='APROBADA'?'Reservada':status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'En revisión':
+    status==='HISTORICA_INACTIVA'?'Registro histórico cancelado o rechazado':
+    past||!googleVerificado?'No disponible':'Disponible'));
    btn.textContent=n;
    btn.addEventListener('click',()=>{selectedDate=date;mobileDetailsSaved=false;
     $('clubMobileSavedStatus').textContent='Completa y guarda los datos para enviar esta solicitud.';
