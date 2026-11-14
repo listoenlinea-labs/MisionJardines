@@ -302,6 +302,8 @@ async function actualizarTotalMantenimiento(req,res){
     concepto:'AJUSTE DE TOTAL DE MANTENIMIENTO · '+anio+'-'+String(mes).padStart(2,'0'),
     monto:diferencia,referencia:null,registradoPor:req.usuario.usuarioId},{transaction});
    await adjustment.update({referencia:referenciaEgreso(end,adjustment.id)},{transaction});
+   await sequelize.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['TOTAL_MANTENIMIENTO',adjustment.id,actual,nuevo,req.usuario.usuarioId,start],transaction});
    return {id:adjustment.id,monto:nuevo,anterior,diferencia,referencia:adjustment.referencia};
   });
   return res.json({ok:true,data:resultado,message:'Total ajustado mediante un movimiento compensatorio registrado.'});
@@ -321,6 +323,8 @@ async function actualizarMontoEgreso(req,res){
    if(Math.round(Number(row.monto))!==anterior)
     throw fail(409,'Otro administrador cambió el monto. Actualiza antes de editar');
    await row.update({monto},{transaction});
+   await sequelize.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['EGRESO',id,anterior,monto,req.usuario.usuarioId,row.referencia||null],transaction});
    return {id:row.id,montoAnterior:anterior,monto,referencia:row.referencia};
   });
   return res.json({ok:true,...saved,message:'Importe actualizado. El análisis se recalculará al actualizar.'});
@@ -339,6 +343,8 @@ async function actualizarPresupuestoProyecto(req,res){
    const actual=Math.round(Number(legacyAmount||0));
    if(actual!==anterior)throw fail(409,'Otro administrador cambió el presupuesto. Actualiza antes de editar');
    await p.update({montoTotal:monto,actualizadoEn:new Date()},{transaction});
+   await sequelize.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['PRESUPUESTO_PROYECTO',id,anterior,monto,req.usuario.usuarioId,p.concepto],transaction});
    return {proyectoId:id,montoAnterior:anterior,monto};
   });
   return res.json({ok:true,...saved,message:'Presupuesto actualizado; las cuotas de las viviendas permanecen igual.'});

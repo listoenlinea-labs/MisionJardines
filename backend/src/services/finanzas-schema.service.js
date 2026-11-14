@@ -25,5 +25,17 @@ async function asegurarFinanzas(){
  if(!names.has('comprobante_archivo'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN comprobante_archivo VARCHAR(100) NULL');
  if(!names.has('incluido_presupuesto'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN incluido_presupuesto TINYINT(1) NOT NULL DEFAULT 1');
  await db.query("UPDATE egresos_fraccionamiento SET ambito='EXTRAORDINARIO' WHERE categoria IN ('CUOTA_EXTRAORDINARIA','PROYECTOS','PROYECTO') AND ambito='MANTENIMIENTO'");
+ await db.query(`CREATE TABLE IF NOT EXISTS finanzas_edicion_auditoria (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  tipo VARCHAR(40) NOT NULL,
+  entidad_id BIGINT UNSIGNED NULL,
+  monto_anterior DECIMAL(12,2) NOT NULL,
+  monto_nuevo DECIMAL(12,2) NOT NULL,
+  usuario_id BIGINT UNSIGNED NOT NULL,
+  detalle VARCHAR(250) NULL,
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX ix_finanzas_audit_tipo (tipo,entidad_id),
+  INDEX ix_finanzas_audit_fecha (creado_en)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 }
 module.exports={asegurarFinanzas};
