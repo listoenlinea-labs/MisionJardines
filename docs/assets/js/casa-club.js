@@ -170,7 +170,14 @@
   $('calendarDays').replaceChildren();
   const response=await api('/publico/fechas?desde='+start+'&hasta='+end);
   if(request!==calendarRequest)return;
-  calendarReady=true;
+  const googleVerificado=response.disponibilidadVerificada!==false;
+  calendarReady=googleVerificado;
+  if(!googleVerificado){
+   selectedDate='';$('clubDate').value='';
+   $('clubCalendarHint').textContent='No se pudo verificar Google Sheets. Se muestran las reservas ya guardadas en Misión Jardines, pero las fechas nuevas están temporalmente deshabilitadas para evitar reservas duplicadas. Administración debe revisar la conexión.';
+  }else{
+   $('clubCalendarHint').textContent='Elige una fecha y completa la solicitud. Recibirás por correo un enlace privado para subir el comprobante exclusivamente a esa vivienda y fecha.';
+  }
   $('nextMonth').disabled=!admin&&currentMonth>=lastDay().slice(0,7);
   occupied=new Map(response.ocupadas.map(x=>[x.fecha,x.estatus]));
   $('calendarLabel').textContent=new Intl.DateTimeFormat('es-MX',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(start+'T12:00:00Z'));
@@ -183,10 +190,10 @@
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
    const date=currentMonth+'-'+String(n).padStart(2,'0'),status=occupied.get(date),past=admin?date<today():date<tomorrow()||date>lastDay();
    const btn=document.createElement('button');btn.type='button';
-   btn.className=past?'past':status==='APROBADA'?'booked':status?'waiting':'available';
+   btn.className=past||(!status&&!googleVerificado)?'past':status==='APROBADA'?'booked':status?'waiting':'available';
    if(date===selectedDate)btn.classList.add('selected');
-   btn.disabled=Boolean(status)||past;
-   btn.setAttribute('aria-label',fmt(date)+' · '+(past?'No disponible':status==='APROBADA'?'Reservada':status?'En revisión':'Disponible'));
+   btn.disabled=Boolean(status)||past||!googleVerificado;
+   btn.setAttribute('aria-label',fmt(date)+' · '+(past||(!status&&!googleVerificado)?'No disponible (verificación de Google pendiente)':status==='APROBADA'?'Reservada':status?'En revisión':'Disponible'));
    btn.textContent=n;
    btn.addEventListener('click',()=>{selectedDate=date;mobileDetailsSaved=false;
     $('clubMobileSavedStatus').textContent='Completa y guarda los datos para enviar esta solicitud.';
