@@ -137,6 +137,21 @@
       prevBtnText: 'Atrás',
       doneBtnText: 'Terminar',
       popoverClass: 'club-tour-popover',
+      // Botón explícito para salir desde cualquier paso, también en móvil.
+      // Al iniciar ya se guarda la visita: Omitir no volverá a abrir el tour
+      // automáticamente en este navegador, pero el botón de ayuda sigue visible.
+      onPopoverRender: (popover, { driver }) => {
+        const skip = document.createElement('button');
+        skip.type = 'button';
+        skip.className = 'club-tour-skip';
+        skip.textContent = 'Omitir guía';
+        skip.setAttribute('aria-label', 'Omitir el resto de la guía de Casa Club');
+        skip.addEventListener('click', () => {
+          markSeen();
+          driver.destroy();
+        });
+        popover.footerButtons.prepend(skip);
+      },
       steps
     }).drive();
   }
