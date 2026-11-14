@@ -668,6 +668,24 @@
  }
  let adminPage=1,adminTableRows=[];
  const adminPageSize=()=>window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)').matches?3:10;
+ const observationsModal=$('clubObservationsModal');
+ function observationText(r){
+  return r.soloLectura?
+   'Tarifa de referencia $2,000 (1000/700/300); pago no verificado en Google.':
+   String(r.motivo||'').trim()||'Sin observaciones registradas.';
+ }
+ function openObservations(id){
+  const r=adminTableRows.find(x=>Number(x.id)===id);
+  if(!r)return;
+  const street=r.casa?.calleCorrecta||r.casa?.calle||r.calleOriginal||'';
+  const number=r.casa?.numero||r.numeroOriginal||'';
+  $('clubObservationsContext').textContent=[street,number?'Casa '+number:'',r.solicitante||'',fmt(r.fecha)]
+   .filter(Boolean).join(' · ');
+  $('clubObservationsText').textContent=observationText(r);
+  if(!observationsModal.open)observationsModal.showModal();
+ }
+ $('clubObservationsClose').addEventListener('click',()=>observationsModal.close());
+ $('clubObservationsDone').addEventListener('click',()=>observationsModal.close());
  function renderAdminTable(rows){
    $('clubAdminRows').innerHTML=rows.map(r=>{
       const acciones=r.soloLectura?'<span class="club-google-readonly">Solo consulta · Google</span>':
@@ -694,7 +712,9 @@
         r.estatus==='CONFLICTO_GOOGLE'?'Conflicto · Google':'En revisión · Google'):r.estatus
       ];
       return '<tr data-reserva="'+Number(r.id)+'">'+
-       valores.map((v,idx)=>'<td'+(idx===11?' class="club-event-reason"':'')+'>'+esc(v)+'</td>').join('')+
+       valores.map((v,idx)=>idx===11?
+        '<td class="club-event-reason"><button type="button" class="club-observations-btn" data-club-observations="'+Number(r.id)+'">Ver observaciones</button></td>':
+        '<td>'+esc(v)+'</td>').join('')+
        '<td class="club-reservation-actions"><div class="club-actions-inline">'+acciones+'</div></td></tr>';
     }).join('')||'<tr><td colspan="14">Aún no hay reservas registradas.</td></tr>';
 
@@ -715,7 +735,9 @@
     r.soloLectura?'Histórica · Google':r.estatus
    ];
    const details=labels.map((label,i)=>'<div class="club-admin-mobile-line"><span>'+
-    esc(label)+'</span><strong>'+esc(values[i])+'</strong></div>').join('');
+    esc(label)+'</span>'+(i===11?
+     '<button type="button" class="club-observations-btn" data-club-observations="'+Number(r.id)+'">Ver observaciones</button>':
+     '<strong>'+esc(values[i])+'</strong>')+'</div>').join('');
    const actions=r.soloLectura?'<span class="club-google-readonly">Solo consulta · Google</span>':
     '<button type="button" class="soft" data-admin-details="'+Number(r.id)+'">Ver detalles</button> '+
     (r.estatus==='APROBADA'
@@ -882,6 +904,11 @@
  }
  $('clubRequests').addEventListener('click',e=>{const btn=e.target.closest('[data-review]');if(btn){const r=adminRows.find(x=>Number(x.id)===Number(btn.dataset.review));if(r)editReview(r);}});
  const handleAdminAction=async e=>{
+  const observations=e.target.closest('[data-club-observations]');
+  if(observations){
+   openObservations(Number(observations.dataset.clubObservations));
+   return;
+  }
   const eliminar=e.target.closest('[data-delete]');
   if(eliminar){
    const id=Number(eliminar.dataset.delete);
