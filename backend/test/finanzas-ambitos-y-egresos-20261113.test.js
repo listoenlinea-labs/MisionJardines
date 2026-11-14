@@ -7,9 +7,9 @@ const read=file=>fs.readFileSync(path.resolve(__dirname,'../..',file),'utf8');
 const balance=require('../../docs/assets/js/analisis-balance.js');
 const {ambitoDeEgreso}=require('../src/services/categorias-egresos.service');
 
-test('un proyecto solo descuenta gastos reales propios y no la meta presupuestada',()=>{
- const p=balance.proyecto({recaudado:8000,totalEsperado:15000,egresosReales:1250});
- assert.equal(p.ingresos,8000);assert.equal(p.egresos,1250);assert.equal(p.diferencia,6750);
+test('el balance del proyecto resta el presupuesto comprometido, sin duplicar conceptos',()=>{
+ const p=balance.proyecto({recaudado:8000,totalEsperado:15000,egresosReales:1250,egresosComprometidos:15000});
+ assert.equal(p.ingresos,8000);assert.equal(p.egresos,15000);assert.equal(p.diferencia,-7000);
  assert.equal(p.tipo,'EXTRAORDINARIO');
 });
 test('club no usa gastos de otros ámbitos y mantenimiento permanece independiente',()=>{

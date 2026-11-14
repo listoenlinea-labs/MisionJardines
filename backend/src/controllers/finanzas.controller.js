@@ -315,6 +315,7 @@ async function actualizarMontoEgreso(req,res){
   const saved=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
    const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
    if(!row)throw fail(404,'Egreso no encontrado');
+   if(esAjuste(row))throw fail(409,'Los movimientos de ajuste se conservan para auditoría y no se editan');
    if(await CuotaExtraordinaria.findOne({where:{egresoId:id},transaction}))
     throw fail(409,'Este egreso tiene cargos vinculados; edita el presupuesto en su proyecto');
    if(Math.round(Number(row.monto))!==anterior)
@@ -333,7 +334,9 @@ async function actualizarPresupuestoProyecto(req,res){
   const saved=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
    const p=await CuotaExtraordinaria.findOne({where:{id,activo:true},transaction,lock:transaction.LOCK.UPDATE});
    if(!p)throw fail(404,'Proyecto no encontrado');
-   const actual=Math.round(Number(p.montoTotal??0));
+   const legacyAmount=p.montoTotal==null?
+    await CargoExtraordinario.sum('monto',{where:{cuotaExtraordinariaId:id},transaction}):p.montoTotal;
+   const actual=Math.round(Number(legacyAmount||0));
    if(actual!==anterior)throw fail(409,'Otro administrador cambió el presupuesto. Actualiza antes de editar');
    await p.update({montoTotal:monto,actualizadoEn:new Date()},{transaction});
    return {proyectoId:id,montoAnterior:anterior,monto};

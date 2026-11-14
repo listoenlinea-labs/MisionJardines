@@ -20,11 +20,11 @@ test('balance mensual coincide con ambos paneles, sin sumarle saldo inicial',()=
  assert.equal(balance.mensual({ingresosMantenimientoCalles:{mes:100}}),null);
 });
 
-test('diferencia de extraordinarias usa gastos reales, nunca presupuesto duplicado',()=>{
- const b=balance.proyecto({recaudado:1500.5,totalEsperado:3000,egresosReales:500});
- assert.equal(b.diferencia,1000.5);
+test('diferencia extraordinaria usa presupuesto comprometido y no duplica conceptos',()=>{
+ const b=balance.proyecto({recaudado:1500.5,totalEsperado:3000,egresosReales:500,egresosComprometidos:3000});
+ assert.equal(b.diferencia,-1499.5);
  assert.equal(b.tipo,'EXTRAORDINARIO');
- assert.equal(b.estado,'SALDO_A_FAVOR');
+ assert.equal(b.estado,'SALDO_EN_CONTRA');
  const club=balance.casaClub({ingresos:1200,egresos:1300});
  assert.equal(club.tipo,'CASA_CLUB');
  assert.equal(club.diferencia,-100);
