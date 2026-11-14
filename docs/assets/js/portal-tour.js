@@ -197,9 +197,18 @@
       event.preventDefault();
       finish('dismissed');
     });
-    window.addEventListener('resize', reposition, {passive:true});
+    const alignViewport = () => {
+      if (!open || busy) return;
+      requestAnimationFrame(() => {
+        if (!open || busy) return;
+        reposition();
+        scrollTargetIntoView(targetFor(steps[index]));
+        requestAnimationFrame(reposition);
+      });
+    };
+    window.addEventListener('resize', alignViewport, {passive:true});
     window.addEventListener('scroll', reposition, {passive:true});
-    window.visualViewport?.addEventListener('resize', reposition, {passive:true});
+    window.visualViewport?.addEventListener('resize', alignViewport, {passive:true});
     // Seguir el desplazamiento dentro de los marcos, no solo del shell.
     document.querySelectorAll('.mj-app-frame').forEach(frame => {
       const attachScroll = () => {
