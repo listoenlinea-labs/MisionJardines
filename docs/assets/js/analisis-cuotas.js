@@ -2583,7 +2583,7 @@ let historicalExtraId=null;
   const input=window.prompt('Nuevo total de egresos de mantenimiento del período (ajuste auditado)',String(old));
   if(input===null)return;
   const next=Number(input.trim());
-  if(!/^\\d+$/.test(input.trim())||!Number.isSafeInteger(next)||next<0||next>100000000)
+  if(!/^\d+$/.test(input.trim())||!Number.isSafeInteger(next)||next<0||next>100000000)
    return notice('Introduce un total válido, sin decimales.');
   if(old===next)return;
   if(!window.confirm('¿Ajustar el total de mantenimiento de '+fmt(old)+' a '+fmt(next)+
