@@ -461,7 +461,9 @@ function render(){
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
   cell('Concepto',esc(e.concepto))+cell('Referencia',esc(e.referencia||'—'))+
-  cell('Monto',e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
+  cell('Monto',activeConcept==='EXTRAORDINARIO'?
+   '<button type="button" class="soft finance-project-row-breakdown" data-open-project-breakdown title="Ver desglose del presupuesto y editar importes">'+esc(fmt(e.monto))+'</button>':
+   consultaProyectos||e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
    '<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
    '" data-amount="'+Number(e.monto)+'" tabindex="0" role="button" title="Doble clic o Enter para editar el monto">'+
    esc(fmt(e.monto))+'</span>')+cell('Comprobante',e.comprobanteDisponible?
@@ -2765,13 +2767,17 @@ let historicalExtraId=null;
  // La edición de Cuotas extraordinarias es exclusivamente desde el modal
  // de desglose con botones Editar. Mantenimiento conserva su comportamiento anterior.
  async function handleMaintenanceExpenseEdit(event){
-  if(activeConcept!=='MANTENIMIENTO')return;
+  if(activeConcept!=='MANTENIMIENTO'||$('expenseFilterCategory').value==='PROYECTO')return;
   if(event.target.closest('#financeExpenseFooter')){await editMaintenanceTotal();return;}
   const target=event.target.closest('[data-expense-edit]');
   if(!target)return;
   const item=data?.egresos?.find(e=>Number(e.id)===Number(target.dataset.expenseEdit));
   if(item)await editExpenseAmount(item.id,item.monto);
  }
+ $('financeExpenseRows').addEventListener('click',e=>{
+  if(activeConcept==='EXTRAORDINARIO'&&e.target.closest('[data-open-project-breakdown]'))
+   openProjectBreakdown(e.target.closest('[data-open-project-breakdown]'));
+ });
  $('financeExpenseRows').addEventListener('dblclick',handleMaintenanceExpenseEdit);
  $('financeExpenseFooter').addEventListener('dblclick',handleMaintenanceExpenseEdit);
  $('financeBalanceExpense').addEventListener('dblclick',()=>{
