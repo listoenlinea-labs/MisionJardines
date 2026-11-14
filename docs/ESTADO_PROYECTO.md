@@ -1,23 +1,78 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 12/nov/2026, 23:29, America/Mexico_City.
-**SHA de main consultado:** `18e8c3e9164bcca9681f0ab4976b8f01c8792955`.
+**Última revisión:** 13/nov/2026, 23:29, America/Mexico_City.
+**SHA de main consultado:** `75e60a109524c05a4f54c0cf46ca35616f170464`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `4458a7b9b6720ff0cfd2954551d8fa9d2855a143`,
-historial de 222 commits, PR #397–#413, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `cd97f81f665140aafd685909f335afc636cabf3f`, dedicado exclusivamente
-a la bitácora anterior. Los diecisiete PR de producto están fusionados y no hay PR
-abiertos ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; los
-resultados locales declarados se conservan como evidencia limitada y no se presentan
-como CI. Las vistas previas efímeras de Hostinger no acreditan despliegue del portal
-principal. No se consultaron Hostinger, MySQL, Titan o C3 directamente, no se ejecutaron
-pagos, reservas, migraciones, mensajes ni pruebas físicas y no se publican credenciales,
-contactos, comprobantes ni datos privados del padrón.
+comparación de main desde `18e8c3e9164bcca9681f0ab4976b8f01c8792955`,
+historial de 96 commits, PR #414–#422, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `f3f415f31efb1bd71c46495ca66a63c0e75c5549`, dedicado exclusivamente
+a la bitácora anterior. Los nueve PR de producto están fusionados y no hay PR abiertos
+ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; los resultados
+locales declarados se conservan como evidencia limitada y no se presentan como CI.
+No se consultaron Hostinger, MySQL, Google Sheets, Titan o C3 directamente, no se
+ejecutaron migraciones, ediciones financieras, reservas, cargas de comprobantes ni
+pruebas físicas y no se publican credenciales, contactos, comprobantes o contenido
+privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 13/nov/2026
+
+Los PR [#414](https://github.com/listoenlinea-labs/MisionJardines/pull/414)–[#417](https://github.com/listoenlinea-labs/MisionJardines/pull/417)
+separan indicadores y egresos de Mantenimiento, Casa Club y cada proyecto extraordinario.
+Los gastos reales de proyecto quedan vinculados por ID y pueden tener comprobante privado;
+los históricos sin asociación permanecen pendientes de conciliación y no se atribuyen
+automáticamente. La meta/presupuesto no se duplica como gasto pagado. La interfaz añade
+paginación 10/3, paneles separados, totales al pie, elimina resúmenes duplicados y permite
+consultar movimientos de proyectos desde Mantenimiento en modo solo lectura, sin
+mezclarlos con su balance. Requiere migración controlada, backend/frontend coordinados,
+almacenamiento persistente y conciliación de históricos; no se probó contra producción.
+
+Los PR [#418](https://github.com/listoenlinea-labs/MisionJardines/pull/418)–[#419](https://github.com/listoenlinea-labs/MisionJardines/pull/419)
+distinguen presupuesto base, gastos registrados, conceptos incluidos/adicionales y costo
+total comprometido. Incorporan edición administrativa transaccional y auditada de
+presupuesto, gastos y ajustes de mantenimiento, con bloqueo y comparación del valor
+anterior; no cambian cuotas ni aportaciones por vivienda. También agregan un modal seguro
+para consultar PDF/JPG/PNG o señalar que no existe archivo, y un desglose editable desde
+Presupuesto/Costo total. Falta ejecutar migraciones, respaldar, probar concurrencia y
+verificar archivos reales, permisos y cálculos en staging antes de cualquier edición.
+
+El PR [#420](https://github.com/listoenlinea-labs/MisionJardines/pull/420) alinea el
+calendario público/autenticado de Casa Club: verde disponible, rojo reservada, amarillo
+En revisión y gris no disponible; las fechas pendientes o aprobadas permanecen
+bloqueadas. Solo cambia leyendas, accesibilidad y caché; no modifica estatus, pagos,
+Google Sheets, TAGs o ZKTeco.
+
+El PR [#421](https://github.com/listoenlinea-labs/MisionJardines/pull/421) agrega
+sincronización bidireccional y opt-in con la pestaña original de Google Sheets mediante
+cuenta de servicio: importa solicitudes futuras inequívocas como pendientes y exporta
+reservas locales sin duplicar folios. MySQL tiene prioridad absoluta y las fechas de
+Google sin vivienda resuelta se bloquean temporalmente. El panel administrativo añade
+filtros y paginación 10/3. La integración permanece deshabilitada hasta configurar y
+validar credenciales privadas; no se probó lectura/escritura real. El formulario antiguo
+de Apps Script aún no consulta disponibilidad de MySQL, por lo que existe riesgo de
+doble reserva hasta modificarlo y validar ambos sentidos.
+
+El PR [#422](https://github.com/listoenlinea-labs/MisionJardines/pull/422) corrige
+el fallo observado cuando Google Sheets responde HTTP 404: conserva visibles las reservas
+de MySQL, marca la disponibilidad externa como no verificada y bloquea nuevas fechas
+libres hasta recuperar Google, sin vaciar el calendario ni cambiar datos. Los diagnósticos
+distinguen documento inaccesible, rango inválido y permisos sin imprimir credenciales.
+El 404 reportado sigue requiriendo revisar en Hostinger el identificador del archivo, la
+identidad de la cuenta de servicio y su permiso sobre el Sheet privado; el código no
+acredita que la configuración ya funcione.
+
+GitHub devuelve cero runs y cero estados para los nueve heads. #415 declara 8 pruebas
+simuladas; #416 reporta 4 y luego 5 verificaciones de fuente; #417, 10 comprobaciones;
+#418, 5/5 sintéticas; #419, al menos 5 pruebas puntuales más cinco focalizadas en su
+ampliación. #414 declara sintaxis y casos simulados sin total; #420 añade una prueba
+puntual, #421 pruebas específicas sin resultado numérico publicado y #422 declara 3
+pruebas focalizadas aprobadas. Ningún resultado
+acredita Hostinger, MySQL, Google Sheets, almacenamiento privado, navegador real, Titan
+o C3 físico.
 
 ## Implementado en main el 12/nov/2026
 
@@ -533,6 +588,10 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Finanzas por ámbito | Separación y consulta implementadas; migración, almacenamiento y conciliación pendientes | #414–#417 aíslan Mantenimiento/Casa Club/proyectos, evitan duplicar presupuesto como gasto, agregan comprobantes privados y UI 10/3. No se probó con MySQL ni archivos reales |
+| Presupuesto, gastos y comprobantes | Edición auditada y visor implementados; staging obligatorio | #418–#419 permiten editar presupuesto/gastos con transacción y auditoría, y consultar PDF/JPG/PNG. No cambian cuotas/aportaciones; faltan respaldo, concurrencia, permisos y archivos reales |
+| Calendario Casa Club | Estados visuales implementados; datos no modificados | #420 usa Disponible/Reservada/En revisión/No disponible y bloquea fechas ocupadas; no sincroniza Google ni cambia MySQL |
+| Google Sheets Casa Club | Sincronización opt-in y fallback implementados; configuración real sigue fallando | #421 importa/exporta con idempotencia y prioridad MySQL; #422 conserva el calendario local ante HTTP 404 y bloquea fechas nuevas. Faltan corregir acceso, probar ambos sentidos y adaptar el Apps Script antiguo |
 | Casa Club: tarifas y flujo público | Implementado en main; migración, correo y operación real pendientes | #397 homologa importes nominales con respaldo; #398–#406 consolidan reglamento, cuenta oficial, enlace privado, OCR/Titan y vencimiento. No se ejecutó SQL ni se confirmó envío, depósito o reserva real |
 | OCR y conciliación flexible | Reporte más tolerante implementado; reglas vigentes en discrepancia | #403–#404 permiten reportar con importe/fecha/hora y dejar pendiente; Titan conserva guardas. Falta reconciliar requisitos bancarios y abonos parciales de AGENTS.md antes de producción |
 | Tarjetas rojas Casa Club | Modelo, auditoría, sanción y UI implementados; MySQL/caseta pendientes | #407–#409 ligan tarjetas a vivienda, bloquean desde la cuarta y limitan PII para Seguridad. No toca TAGs/C3; faltan tablas, concurrencia, privacidad y prueba móvil |
@@ -631,6 +690,12 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 13/nov/2026 | PR #414–#422, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 9 heads | No hay CI observable; merge o pruebas añadidas no prueban despliegue |
+| 13/nov/2026 | #415, datos simulados de filtros/ámbitos/paneles/totales/CSS | **8 pruebas puntuales**, sin fallos declarados | Sin MySQL, Hostinger ni navegador real |
+| 13/nov/2026 | #416–#417, revisión de fuente y sintaxis | #416: **4** y luego **5** verificaciones; #417: **10** comprobaciones superadas | Evidencia estática/local; no prueba cifras ni móvil real |
+| 13/nov/2026 | #418, reglas presupuesto/costo/gastos y orientación | **5/5** pruebas focalizadas con datos sintéticos | No prueba migración, auditoría, concurrencia ni edición real |
+| 13/nov/2026 | #419, visor y desglose editable | **5** pruebas puntuales más cinco focalizadas declaradas correctas | No prueba archivos privados de Hostinger, iPhone o MySQL |
+| 13/nov/2026 | #414/#420–#422, sintaxis, casos simulados o pruebas específicas añadidas | #422 declara **3 pruebas focalizadas** aprobadas; el resto sin total completo; **0 runs** observables | Mantener como pendiente CI e integración real |
 | 12/nov/2026 | PR #397–#413, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 17 heads | No hay CI observable; merge, YAML o preview no prueban despliegue |
 | 12/nov/2026 | #402, simulación aislada Node/test de modal móvil y OCR | **10 pruebas declaradas aprobadas**; sintaxis JS validada | Sin red, MySQL, Titan, fotografía real ni dispositivo |
 | 12/nov/2026 | #403, parser compartido y secuencia archivo local→OCR→reserva→envío | **9 comprobaciones nuevas** y **7 básicas + 9 flexibles** anteriores declaradas correctas | Texto/simulación, no OCR visual del archivo original ni producción |
@@ -792,6 +857,12 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Finanzas por ámbito #414–#417 | Respaldar y ejecutar migración en clon; desplegar backend/frontend juntos; comprobar 231 viviendas, separación Mantenimiento/Casa Club/proyecto, paginación 10/3, totales y modo Proyectos solo lectura. Conciliar manualmente históricos sin proyecto_id y asegurar almacenamiento privado persistente |
+| Edición financiera #418–#419 | En staging, probar permisos, bloqueo concurrente, auditoría, presupuesto base, incluidos/adicionales, costo comprometido, ajustes negativos controlados y rollback. Verificar que cuotas/aportaciones y pagos originales no cambien |
+| Comprobantes de egresos #414/#419 | Cargar archivos ficticios PDF/JPG/PNG dentro del límite, probar descarga autorizada, ausencia/archivo perdido, extensión correcta, limpieza de URL y privacidad. No usar comprobantes reales ni publicar storage |
+| Calendario Casa Club #420 | Publicar frontend, limpiar caché y validar en móvil/escritorio los cuatro estados, accesibilidad y bloqueo de pendientes/aprobadas contra datos controlados |
+| Google Sheets #421–#422 | Mantener sincronización deshabilitada. Corregir el HTTP 404 verificando identificador, cuenta de servicio y permiso del archivo sin publicar secretos; después probar Google→MySQL y MySQL→Google, idempotencia, vivienda ambigua, fallback, prioridad MySQL y worker. Adaptar el Apps Script antiguo para consultar disponibilidad o retirarlo |
+| Aprobación de reservas #421 | Validar filtros, contador, 10 tarjetas escritorio/3 móvil también en horizontal, actualización que importa nuevos folios y que una fecha ocupada en MySQL nunca se recoloree, reapruebe o duplique por Google |
 | Casa Club #397: homologación histórica | Antes de desplegar, respaldar y ejecutar en clon; comparar tabla de respaldo con reservas, comprobantes y cobros reales. Confirmar que cambiar importes nominales históricos no reescriba ni represente dinero recibido y definir rollback |
 | Flujo público #398–#406 | Desplegar frontend/backend coordinados, revisar columnas nuevas, SMTP y token privado; probar calendario, reglamento, correo, plazo, uploader, OCR, seguimiento y expiración en incógnito/móvil sin usar depósitos reales |
 | Reglas bancarias y abonos parciales #403–#404 | Resolver por decisión explícita la discrepancia entre main y AGENTS.md: qué campos mínimos permiten reportar y cómo Casa Club acepta cualquier abono positivo sin marcar reserva pagada. Mantener Titan, cuenta oficial, monto/fecha, unicidad y no reutilización |
@@ -889,6 +960,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-13
+
+- Main consultado a las 23:29, America/Mexico_City, en `75e60a109524c05a4f54c0cf46ca35616f170464`, 96 commits por delante del SHA guardado.
+- Se excluyó `f3f415f`, que solo actualizó esta bitácora. Como producto se verificaron nueve PR fusionados: #414–#422; no hay PR abiertos ni revertidos nuevos.
+- Los nueve heads devuelven cero workflows y cero estados. Se conservaron como evidencia limitada las pruebas simuladas/estáticas declaradas: 8 de #415, 4+5 de #416, 10 de #417, 5/5 de #418 y pruebas puntuales de #419, además de 3 focalizadas de #422; no hay CI verde observable.
+- No hubo confirmaciones nuevas accesibles de despliegue, migración, edición financiera, archivos privados, Google Sheets, MySQL, navegador, Titan o C3.
+- Se actualizaron resumen y pendientes preservando aislamiento financiero y privacidad. La sincronización Google queda opt-in; el HTTP 404 exige corregir acceso/configuración y el Apps Script antiguo sigue siendo un riesgo de doble reserva hasta consultar disponibilidad de MySQL.
 
 ### 2026-11-12
 
