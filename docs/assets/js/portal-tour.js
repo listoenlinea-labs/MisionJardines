@@ -119,7 +119,8 @@
         <h2 id="mjTourTitle"></h2>
         <p class="mj-tour-copy" id="mjTourDescription"></p>
         <div class="mj-tour-foot">
-          <span id="mjTourCounter" class="mj-tour-counter" aria-live="polite"></span>
+          <div class="mj-tour-foot-left"><span id="mjTourCounter" class="mj-tour-counter" aria-live="polite"></span>
+            <button type="button" class="mj-tour-skip" id="mjTourSkip">Omitir guía</button></div>
           <div class="mj-tour-buttons">
             <button type="button" class="mj-tour-prev" id="mjTourPrevious">Atrás</button>
             <button type="button" class="mj-tour-next" id="mjTourNext">Siguiente</button>
@@ -130,6 +131,7 @@
     document.body.appendChild(root);
     overlay = root;
     byId('mjTourExit').addEventListener('click', () => finish('dismissed'));
+    byId('mjTourSkip').addEventListener('click', () => finish('skipped'));
     byId('mjTourPrevious').addEventListener('click', () => void go(index - 1));
     byId('mjTourNext').addEventListener('click', () => {
       if (index === steps.length - 1) finish('completed');
@@ -301,14 +303,14 @@
       <p>¿Quieres conocer paso a paso las pantallas disponibles para tu perfil?
       El recorrido es interactivo y muestra dónde está cada función, sin crear registros ni pagos reales.</p>
       <p class="mj-tour-once">Solo preguntaremos una vez en este navegador y para este perfil. Cuando quieras, podrás reiniciar la guía desde el menú.</p>
-      <div class="mj-tour-welcome-actions"><button type="button" id="mjWelcomeNotNow">Ahora no</button>
+      <div class="mj-tour-welcome-actions"><button type="button" id="mjWelcomeNotNow">Omitir guía</button>
         <button type="button" id="mjWelcomeStart">Comenzar recorrido</button></div>`;
     dialog.querySelector('h2').textContent = title;
     document.body.append(dialog);
     welcomeOpen = true;
     // Recordar el consentimiento o el rechazo, no una invitación sin respuesta.
     dialog.querySelector('#mjWelcomeNotNow').addEventListener('click', () => {
-      save('dismissed');
+      save('skipped');
       closeWelcome();
     });
     dialog.querySelector('#mjWelcomeStart').addEventListener('click', start);
