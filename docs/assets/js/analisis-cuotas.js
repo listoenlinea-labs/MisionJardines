@@ -2697,7 +2697,7 @@ let historicalExtraId=null;
 const projectProofModal=$('financeProjectProofModal');
 const projectProofPreview=$('financeProjectProofPreview');
 const projectProofDownload=$('financeProjectProofDownload');
-let projectProofSource=null,projectProofUrl=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
+let projectProofSource=null,projectProofUrl=null,projectProofMime=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
 let projectProofClickTimer=null;
 
 function closeProjectProofModal(){
@@ -2710,7 +2710,7 @@ function closeProjectProofModal(){
  projectProofPreview.hidden=true;
  projectProofDownload.hidden=true;
  if(projectProofUrl)URL.revokeObjectURL(projectProofUrl);
- projectProofUrl=null;projectProofSource=null;
+ projectProofUrl=null;projectProofMime=null;projectProofSource=null;
  if(projectProofFocus?.isConnected&&!projectProofFocus.closest('[hidden]'))projectProofFocus.focus();
  projectProofFocus=null;
 }
@@ -2746,7 +2746,7 @@ async function openProjectProofModal(id,trigger){
   if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))
    throw Error('El comprobante tiene un formato que no se puede previsualizar.');
   if(seq!==projectProofSequence||projectProofModal.hidden)return;
-  projectProofUrl=URL.createObjectURL(blob);
+  projectProofUrl=URL.createObjectURL(blob);projectProofMime=blob.type;
   const viewer=blob.type==='application/pdf'?document.createElement('iframe'):document.createElement('img');
   viewer.src=projectProofUrl;
   if(blob.type==='application/pdf'){
@@ -2787,12 +2787,11 @@ document.addEventListener('keydown',event=>{
 });
 projectProofDownload.addEventListener('click',()=>{
  if(!projectProofUrl||!projectProofSource)return;
- const mime=projectProofPreview.querySelector('iframe')?'pdf':
-  (projectProofPreview.querySelector('img')?.src===projectProofUrl&&projectProofUrl?
-   'imagen':'archivo');
+ const extension=projectProofMime==='application/pdf'?'.pdf':
+  projectProofMime==='image/png'?'.png':'.jpg';
  const anchor=document.createElement('a');
  anchor.href=projectProofUrl;
- anchor.download='comprobante-egreso-'+Number(projectProofSource.id)+(mime==='pdf'?'.pdf':'.jpg');
+ anchor.download='comprobante-egreso-'+Number(projectProofSource.id)+extension;
  document.body.append(anchor);anchor.click();anchor.remove();
 });
 // El doble clic de escritorio sigue reservado a la edición del importe.
