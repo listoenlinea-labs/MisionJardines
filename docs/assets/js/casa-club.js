@@ -642,6 +642,67 @@
  $('clubClearFilters').addEventListener('click',()=>{
   filterStreet.value='';filterNumber.value='';filterMonth.value='';aplicarFiltroReservas();
  });
+ let reviewPage=1;
+ const reviewText=$('clubReviewSearch'),reviewMonth=$('clubReviewMonth');
+ const reviewSize=()=>window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)').matches?3:10;
+ const cleanReview=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLocaleLowerCase('es-MX').trim().replace(/\s+/g,' ');
+ function filteredReview(){
+  const needle=cleanReview(reviewText.value),month=reviewMonth.value;
+  return adminRows.filter(r=>r.estatus==='PENDIENTE')
+   .filter(r=>!month||String(r.fecha||'').slice(0,7)===month)
+   .filter(r=>{
+    if(!needle)return true;
+    const street=String(r.casa?.calleCorrecta||r.casa?.calle||'');
+    const number=String(r.casa?.numero||'');
+    return cleanReview([street,number,r.solicitante].join(' ')).includes(needle)||
+     cleanReview(street).includes(needle)||
+     cleanReview(number).includes(needle)||
+     cleanReview(r.solicitante).includes(needle);
+   })
+   .sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))||
+     Number(b.id)-Number(a.id));
+ }
+ function refreshReviewMonths(){
+  const previous=reviewMonth.value;
+  const months=[...new Set(adminRows.filter(r=>r.estatus==='PENDIENTE')
+   .map(r=>String(r.fecha||'').slice(0,7))
+   .filter(v=>/^\d{4}-(0[1-9]|1[0-2])$/.test(v)))].sort((a,b)=>b.localeCompare(a));
+  reviewMonth.innerHTML='<option value="">Todos los meses</option>'+
+   months.map(m=>{
+    const [year,mm]=m.split('-');
+    const name=new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'UTC'}).format(
+     new Date(Date.UTC(Number(year),Number(mm)-1,1)));
+    return '<option value="'+esc(m)+'">'+esc(name.charAt(0).toUpperCase()+name.slice(1)+' '+year)+'</option>';
+   }).join('');
+  reviewMonth.value=months.includes(previous)?previous:'';
+ }
+ function renderReviewRequests(){
+  const rows=filteredReview(),size=reviewSize();
+  const pages=Math.max(1,Math.ceil(rows.length/size));
+  reviewPage=Math.min(Math.max(1,reviewPage),pages);
+  const from=(reviewPage-1)*size;
+  $('clubRequests').innerHTML=rows.slice(from,from+size).map(r=>
+   '<article class="reserve-card" data-pendiente-id="'+Number(r.id)+'"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
+   '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
+   '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>'
+  ).join('')||'<div class="reserve-card">No se encontraron solicitudes en revisión con estos filtros.</div>';
+  $('clubReviewCount').textContent=rows.length?
+   'Mostrando '+(from+1)+'–'+Math.min(from+size,rows.length)+' de '+rows.length+
+   ' solicitudes · fecha más reciente primero':'0 solicitudes en revisión';
+  $('clubReviewPagination').hidden=pages<=1;
+  $('clubReviewPageIndicator').textContent='Página '+reviewPage+' de '+pages;
+  $('clubReviewPrevious').disabled=reviewPage===1;
+  $('clubReviewNext').disabled=reviewPage>=pages;
+ }
+ reviewText.addEventListener('input',()=>{reviewPage=1;renderReviewRequests();});
+ reviewMonth.addEventListener('change',()=>{reviewPage=1;renderReviewRequests();});
+ $('clubReviewPrevious').addEventListener('click',()=>{if(reviewPage>1){reviewPage--;renderReviewRequests();}});
+ $('clubReviewNext').addEventListener('click',()=>{
+  if(reviewPage*reviewSize()<filteredReview().length){reviewPage++;renderReviewRequests();}
+ });
+ const reviewMedia=window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)');
+ reviewMedia.addEventListener?.('change',()=>{reviewPage=1;renderReviewRequests();});
  async function adminList(){
   if(!admin)return;
   try{
@@ -679,10 +740,7 @@
        valores.map((v,idx)=>'<td'+(idx===11?' class="club-event-reason"':'')+'>'+esc(v)+'</td>').join('')+
        '<td class="club-reservation-actions"><div class="club-actions-inline">'+acciones+'</div></td></tr>';
     }).join('')||'<tr><td colspan="14">Aún no hay reservas registradas.</td></tr>';
-    $('clubRequests').innerHTML=adminRows.filter(r=>r.estatus==='PENDIENTE').map(r=>
-    '<article class="reserve-card" data-pendiente-id="'+Number(r.id)+'"><h3>'+esc(fmt(r.fecha))+'</h3>'+statusBadge(r.estatus)+
-    '<p><b>'+esc(r.solicitante)+'</b> · '+esc(homeText(r))+'</p><p>Solicitud recibida: '+esc(fechaSolicitud(r.creadoEn))+' (Guadalajara)</p><p>'+esc(r.motivo)+' · '+esc(r.telefono)+'</p>'+
-    '<button type="button" class="primary" data-review="'+Number(r.id)+'">Revisar solicitud</button></article>').join('')||'<div class="reserve-card">No hay solicitudes pendientes de aprobación.</div>';
+    refreshReviewMonths();renderReviewRequests();
    actualizarOpcionesCalle();actualizarOpcionesMes();aplicarFiltroReservas();
   }catch(e){notify(e.message,true);}
  }

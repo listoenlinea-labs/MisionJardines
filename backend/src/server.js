@@ -60,6 +60,7 @@ async function iniciarServidor() {
             require('./services/zkteco-autosync.service').startZktecoAutoSync();
             require('./services/zkteco-adeudos.service').start();
             require('./services/banco-correo-worker.service').iniciar();
+            require('./services/casa-club-google-sync.service').start();
         });
     } catch (error) {
         console.error(

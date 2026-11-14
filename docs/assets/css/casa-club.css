@@ -596,3 +596,41 @@ body.club-private-reservation-view .club-proof-card{margin-top:18px!important}
 }
 /* Enlaces privados son para un comprobante existente, no para crear otra solicitud. */
 body.club-private-reservation-view .club-mobile-submit-area{display:none!important}
+
+
+/* Aprobación: filtros compactos, 2 tarjetas por fila, paginación adaptable. */
+#tab-aprobacion .club-review-filters{
+ display:grid;grid-template-columns:minmax(0,2fr) minmax(180px,1fr);
+ gap:12px;align-items:end;margin:16px 0 9px;
+}
+#tab-aprobacion .club-review-filters label{
+ min-width:0;display:grid;gap:7px;font-size:12px;font-weight:750;color:#384f6b;
+}
+#tab-aprobacion .club-review-filters input,
+#tab-aprobacion .club-review-filters select{
+ width:100%;min-width:0;min-height:44px;padding:10px 12px;
+ font:inherit;font-weight:500;color:#263c56;
+ border:1px solid #dce4ef;border-radius:11px;background:#fff;box-sizing:border-box;
+}
+#tab-aprobacion .club-review-count{
+ margin:0 0 12px;font-size:12px;color:#697b92;
+}
+#tab-aprobacion .club-review-pagination{
+ display:flex;justify-content:center;align-items:center;gap:13px;
+ margin:18px 0 0;padding:14px 4px 0;border-top:1px solid #e7ebf1;
+ color:#586b85;font-size:12px;font-weight:700;
+}
+#tab-aprobacion .club-review-pagination[hidden]{display:none!important}
+#tab-aprobacion .club-review-pagination button{min-height:40px;padding:8px 14px}
+#tab-aprobacion .club-review-pagination button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:720px){
+ #tab-aprobacion .club-review-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ #tab-aprobacion .club-review-filters label{font-size:11px}
+ #tab-aprobacion .club-review-filters input,
+ #tab-aprobacion .club-review-filters select{min-height:42px;padding:8px 9px;font-size:12px}
+ #tab-aprobacion .reservation-grid{grid-template-columns:1fr}
+ #tab-aprobacion .club-review-pagination{gap:8px;justify-content:space-between}
+}
+@media(max-width:390px){
+ #tab-aprobacion .club-review-filters{grid-template-columns:1fr}
+}
