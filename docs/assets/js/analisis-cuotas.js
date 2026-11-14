@@ -461,7 +461,8 @@ function render(){
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
   cell('Concepto',esc(e.concepto))+cell('Referencia',esc(e.referencia||'—'))+
-  cell('Monto','<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
+  cell('Monto',e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
+   '<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
    '" data-amount="'+Number(e.monto)+'" tabindex="0" role="button" title="Doble clic o Enter para editar el monto">'+
    esc(fmt(e.monto))+'</span>')+cell('Comprobante',e.comprobanteDisponible?
    '<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Descargar comprobante</button>':
@@ -2620,6 +2621,10 @@ let historicalExtraId=null;
  $('financeExpenseChart').addEventListener('dblclick',handleExpenseDblclick);
  $('financeExpenseRows').addEventListener('dblclick',handleExpenseDblclick);
  $('financeExpenseFooter').addEventListener('dblclick',handleExpenseDblclick);
+ $('financeBalanceExpense').addEventListener('dblclick',event=>{
+  if(activeConcept==='MANTENIMIENTO')editMaintenanceTotal();
+  else if(activeConcept==='EXTRAORDINARIO')editProjectBudget(selectedProject());
+ });
  $('financeExpenseRows').addEventListener('keydown',event=>{
   if(event.key==='Enter'&&event.target.closest('[data-expense-edit]')){
    event.preventDefault();handleExpenseDblclick(event);
