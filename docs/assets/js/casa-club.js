@@ -186,7 +186,7 @@
    btn.className=past?'past':status==='APROBADA'?'booked':status?'waiting':'available';
    if(date===selectedDate)btn.classList.add('selected');
    btn.disabled=Boolean(status)||past;
-   btn.setAttribute('aria-label',fmt(date)+' · '+(past?'No disponible':status==='APROBADA'?'Reservada':status?'Pendiente de aprobación':'Disponible'));
+   btn.setAttribute('aria-label',fmt(date)+' · '+(past?'No disponible':status==='APROBADA'?'Reservada':status?'En revisión':'Disponible'));
    btn.textContent=n;
    btn.addEventListener('click',()=>{selectedDate=date;mobileDetailsSaved=false;
     $('clubMobileSavedStatus').textContent='Completa y guarda los datos para enviar esta solicitud.';
