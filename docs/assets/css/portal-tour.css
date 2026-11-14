@@ -13,6 +13,12 @@
 .mj-tour-copy{font-size:13px;line-height:1.65;color:#4e6174;margin:0 0 15px;white-space:pre-line}
 .mj-tour-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .mj-tour-counter{font-size:11px;font-weight:750;color:#748598}
+
+.mj-tour-foot-left{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
+.mj-tour-skip{padding:7px 2px;border:0;background:transparent;color:#526a7b;font-size:12px;font-weight:750;text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap}
+.mj-tour-skip:hover,.mj-tour-skip:focus-visible{color:#255b49}
+.mj-tour-foot{flex-wrap:wrap}
+
 .mj-tour-buttons{display:flex;gap:7px}
 .mj-tour-prev,.mj-tour-next{border:1px solid #bcded1;border-radius:999px;padding:9px 13px;font-size:12px;font-weight:800;color:#295f4d;background:#f0faf5;cursor:pointer}
 .mj-tour-next{background:#d8f1e6;color:#1c5a45}
