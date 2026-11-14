@@ -72,6 +72,7 @@ async function execute(){
   ['PENDIENTE','APROBADA'].includes(x.estatus)).map(x=>[x.fechaBloqueada,x]));
  const tariff=await tarifas();
  let inserted=0,unresolved=0,conflicts=0,duplicates=0;
+ const createdRows=[];
  const occupied=[];
  for(const row of external){
   // PRECEDENCIA ABSOLUTA: MySQL es el calendario oficial.
@@ -118,6 +119,7 @@ async function execute(){
     cuotaRecuperacion:tariff.cuotaRecuperacion,
     depositoGarantia:tariff.depositoGarantia,limpieza:tariff.limpieza});
    byFolio.set(row.folio,created);occupiedByLocal.set(row.fecha,created);
+   createdRows.push(created);
    occupied.push({fecha:row.fecha,estatus:'PENDIENTE'});inserted++;
   }catch(e){
    if(e.name==='SequelizeUniqueConstraintError'){conflicts++;continue;}
@@ -136,9 +138,8 @@ async function execute(){
  if(rows.length)await sheets.append(rows);
  // Historial de Google: incluye fechas pasadas en modo SOLO CONSULTA.
  // Nunca se convierten automáticamente en pagadas, aprobadas o canceladas.
- const report=historical.build({sheetRows,casas,existing:[...existing,
-  // Evita perder la visibilidad de las altas creadas en este mismo ciclo.
-  ],today:today(),houseId});
+ const report=historical.build({sheetRows,casas,existing:[...existing,...createdRows],
+  today:today(),houseId});
  latest={occupied,inserted,exported:rows.length,unresolved,conflicts,duplicates,
   historialGoogle:report.historial,resumen:report.counts};
  lastRun=Date.now();
