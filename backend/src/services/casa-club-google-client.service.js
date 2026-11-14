@@ -49,7 +49,24 @@ async function query(method,suffix,body){
  const response=await limitedFetch(url,{method,headers:{
   Authorization:'Bearer '+bearer,...(body?{'Content-Type':'application/json'}:{})
  },...(body?{body:JSON.stringify(body)}:{})});
- if(!response.ok)throw Error('Google Sheets Casa Club HTTP '+response.status+' (verificar Editor, pestaña y cuota API)');
+ if(!response.ok){
+  let googleCode='',googleMessage='';
+  try{
+   const fault=await response.json();
+   googleCode=String(fault?.error?.status||'');
+   googleMessage=String(fault?.error?.message||'').slice(0,250);
+  }catch(_){}
+  const source=response.status===404?
+   'Documento no encontrado o no accesible para esta cuenta de servicio. Revisa el ID exacto y el permiso Editor.':
+   response.status===400?'El rango o nombre de pestaña es incorrecto.':
+   response.status===403?'La cuenta de servicio no tiene permisos suficientes o la API está restringida.':
+   'Google Sheets devolvió un error.';
+  const error=new Error('Google Sheets Casa Club HTTP '+response.status+': '+source+
+   (googleCode?' ['+googleCode+']':'')+(googleMessage?' '+googleMessage:''));
+  error.statusCode=response.status;
+  error.code='CASA_CLUB_GOOGLE_SHEETS';
+  throw error;
+ }
  return response.json();
 }
 const range=tab=>encodeURIComponent("'"+tab.replace(/'/g,"''")+"'!A1:J5000");
