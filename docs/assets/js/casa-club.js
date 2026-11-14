@@ -201,6 +201,8 @@
     if(r.estatus==='APROBADA')occupied.set(r.fecha,'APROBADA');
     else if(r.estatus==='PENDIENTE')occupied.set(r.fecha,'PENDIENTE');
     else if(r.soloLectura)occupied.set(r.fecha,'HISTORICA_GOOGLE');
+    else if(['RECHAZADA','CANCELADA'].includes(r.estatus))
+     occupied.set(r.fecha,'HISTORICA_INACTIVA');
    }
   }
   $('calendarLabel').textContent=new Intl.DateTimeFormat('es-MX',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(start+'T12:00:00Z'));
@@ -218,10 +220,12 @@
    btn.className=admin&&date<today()&&status?
     (status==='APROBADA'?'booked':status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'waiting':'past'):
     past||(!status&&!googleVerificado)?'past':status==='APROBADA'?'booked':status?'waiting':'available';
+   if(admin&&date<today()&&status)btn.classList.add('historic-entry');
    if(date===selectedDate)btn.classList.add('selected');
    btn.disabled=Boolean(status)||past||!googleVerificado;
    btn.setAttribute('aria-label',fmt(date)+' · '+(admin&&date<today()&&status?
-    (status==='APROBADA'?'Reservación histórica':status==='HISTORICA_GOOGLE'?'Solicitud histórica de Google':'En revisión (fecha pasada)'):
+    (status==='APROBADA'?'Reservación histórica':status==='HISTORICA_GOOGLE'?'Solicitud histórica de Google':
+     status==='HISTORICA_INACTIVA'?'Registro histórico cancelado o rechazado':'En revisión (fecha pasada)'):
     past||(!status&&!googleVerificado)?'No disponible':status==='APROBADA'?'Reservada':status?'En revisión':'Disponible'));
    btn.textContent=n;
    btn.addEventListener('click',()=>{selectedDate=date;mobileDetailsSaved=false;
