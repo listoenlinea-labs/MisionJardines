@@ -644,7 +644,7 @@
  });
  let reviewPage=1;
  const reviewText=$('clubReviewSearch'),reviewMonth=$('clubReviewMonth');
- const reviewSize=()=>window.matchMedia('(max-width: 720px)').matches?3:10;
+ const reviewSize=()=>window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)').matches?3:10;
  const cleanReview=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLocaleLowerCase('es-MX').trim().replace(/\s+/g,' ');
  function filteredReview(){
@@ -701,7 +701,7 @@
  $('clubReviewNext').addEventListener('click',()=>{
   if(reviewPage*reviewSize()<filteredReview().length){reviewPage++;renderReviewRequests();}
  });
- const reviewMedia=window.matchMedia('(max-width: 720px)');
+ const reviewMedia=window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)');
  reviewMedia.addEventListener?.('change',()=>{reviewPage=1;renderReviewRequests();});
  async function adminList(){
   if(!admin)return;
