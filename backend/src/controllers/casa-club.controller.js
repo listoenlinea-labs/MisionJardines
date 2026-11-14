@@ -259,6 +259,9 @@ async function cancelar(req,res){
 async function listar(req,res){
  if(!admin(req.usuario.rol))return res.status(403).json({ok:false,message:'Acceso exclusivo de administración'});
  try{
+  // El botón Actualizar del administrador también relee las filas Google nuevas.
+  try{await googleCasaClub.sync({force:true});}
+  catch(e){console.warn('[CasaClub Google] Actualización administrativa parcial:',e.message);}
   await expirarReservas();
   const estado=texto(req.query.estatus,15);
   if(estado&&!['PENDIENTE','APROBADA','RECHAZADA','CANCELADA'].includes(estado))throw error(400,'Estado inválido');
@@ -271,8 +274,11 @@ async function listar(req,res){
 }
 async function pendientesResumen(req,res){
  if(!admin(req.usuario.rol))return res.status(403).json({ok:false,message:'Acceso exclusivo de Administración'});
- try{return res.json({ok:true,cantidad:await Reserva.count({where:{estatus:'PENDIENTE',
-  [Op.or]:[{fechaLimitePago:null},{fechaLimitePago:{[Op.gte]:hoy()}}]}})});}
+ try{
+  try{await googleCasaClub.sync();}catch(e){console.warn('[CasaClub Google] Contador parcial:',e.message);}
+  return res.json({ok:true,cantidad:await Reserva.count({where:{estatus:'PENDIENTE',
+  [Op.or]:[{fechaLimitePago:null},{fechaLimitePago:{[Op.gte]:hoy()}}]}})});
+ }
  catch(e){return manejar(res,e);}
 }
 // Prepara un borrador; el administrador decide si lo envía desde WhatsApp.
