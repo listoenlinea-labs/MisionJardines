@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa Club · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script>
-<link rel="stylesheet" href="assets/css/casa-club.css?v=20261114-aprobacion-paginada">
+<link rel="stylesheet" href="assets/css/casa-club.css?v=20261114-historial-google-personas">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-club">
 <main class="club-wrap">
@@ -149,6 +149,7 @@
 </dialog>
 <section id="tab-mis-reservas" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Mis reservas</h2><p>Consulta sus estados y cancela las fechas que ya no necesites.</p></div><button class="soft" id="refreshMine">Actualizar</button></div><div id="myReservations" class="reservation-grid"></div></article></section>
 <section id="tab-administracion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">CONTROL OPERATIVO</span><h2>Administración de reservas</h2><p>Consulta las solicitudes y abre una reserva para revisar el pago y sus datos.</p></div><button class="soft" id="refreshAdmin">Actualizar</button></div><div id="clubTotals" class="stat-grid"></div>
+<p id="clubHistoryInfo" class="club-history-info" role="status">La tabla incluye solicitudes antiguas de Google en modo solo consulta; no se acreditan pagos ni se modifican fechas ocupadas.</p>
 <section id="clubTariffEditor" class="club-tariff-editor" aria-labelledby="clubTariffTitle" hidden>
   <div class="section-header"><div><span class="eyebrow">TARIFAS DE RESERVACIÓN</span><h3 id="clubTariffTitle">Distribución del depósito fijo de $2,000 MXN</h3><p>La homologación fija los registros existentes en $1,000 de recuperación, $700 de garantía y $300 de limpieza. El total de nuevas reservas se mantiene en $2,000.</p></div></div>
   <form id="clubTariffForm" class="club-tariff-grid">
@@ -177,6 +178,7 @@
 </div>
 <div class="table-scroll"><table class="club-table"><thead><tr><th>Calle</th><th>No. casa</th><th>Nombre</th><th>Fecha del evento</th><th>Fecha y hora de solicitud</th><th>Pago recuperación</th><th>Depósito garantía</th><th>Limpieza</th><th>Folio</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
 <section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Puedes aprobar únicamente la fecha, o registrar manualmente un pago que hayas verificado. Los comprobantes enviados en Pagos se verifican automáticamente con Titan.</p></div><button class="soft" id="refreshReview">Actualizar</button></div>
+<div id="clubReviewSummary" class="club-overview-stats" aria-label="Resumen de solicitudes y personas"></div>
 <div class="club-review-filters" role="search" aria-label="Filtros de aprobación de reservas">
  <label for="clubReviewSearch">Buscar por calle, número de casa o nombre
   <input id="clubReviewSearch" type="search" placeholder="Ej. Gardenias 20 o nombre del solicitante" autocomplete="off">
@@ -253,5 +255,5 @@
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
 <script src="assets/js/casa-club-rojas-admin.js?v=20261112" defer></script>
-<script src="assets/js/casa-club.js?v=20261114-google-404-calendario" defer></script>
+<script src="assets/js/casa-club.js?v=20261114-historial-google-personas" defer></script>
 </body></html>
