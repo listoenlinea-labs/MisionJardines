@@ -202,10 +202,12 @@
     window.visualViewport?.addEventListener('resize', reposition, {passive:true});
     // Seguir el desplazamiento dentro de los marcos, no solo del shell.
     document.querySelectorAll('.mj-app-frame').forEach(frame => {
-      frame.addEventListener('load', () => {
+      const attachScroll = () => {
         try { frame.contentWindow?.addEventListener('scroll', reposition, {passive:true}); }
         catch (_) { /* Página inaccesible: no romper el recorrido. */ }
-      });
+      };
+      frame.addEventListener('load', attachScroll);
+      attachScroll(); // El iframe actual ya estaba cargado al abrir la guía.
     });
     return root;
   }
@@ -316,6 +318,14 @@
         scrollTargetIntoView(targetFor(steps[index]));
         requestAnimationFrame(reposition);
       });
+      // Algunos módulos muestran las tarjetas después de recibir datos.
+      // Reintentar el foco de ese paso sin seleccionar otra sección por error.
+      if (open) setTimeout(() => {
+        if (!open || busy || index !== to) return;
+        const target = targetFor(steps[index]);
+        if (target) scrollTargetIntoView(target);
+        reposition();
+      }, 650);
     }
   }
 
