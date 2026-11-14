@@ -44,3 +44,13 @@ test('La guía no realiza llamadas de red ni envía formularios', () => {
   assert.doesNotMatch(tour, /\.submit\s*\(/);
   assert.match(tour, /disableActiveInteraction:\s*true/);
 });
+
+test('Omitir guía cierra cualquier paso y conserva la opción de reiniciar', () => {
+  assert.match(tour, /onPopoverRender:\s*\(popover,\s*\{\s*driver\s*\}\)/);
+  assert.match(tour, /skip\.textContent\s*=\s*'Omitir guía'/);
+  assert.match(tour, /popover\.footerButtons\.prepend\(skip\)/);
+  assert.match(tour, /skip\.addEventListener\('click'/);
+  assert.match(tour, /markSeen\(\);\s*driver\.destroy\(\)/);
+  assert.match(tour, /action\.addEventListener\('click',\s*openTour\)/);
+  assert.match(css, /\.club-tour-skip\s*\{/);
+});
