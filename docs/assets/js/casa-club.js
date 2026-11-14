@@ -218,9 +218,10 @@
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
    const date=currentMonth+'-'+String(n).padStart(2,'0'),status=occupied.get(date);
    const pastDate=date<today(),past=admin?pastDate:date<tomorrow()||date>lastDay();
-   const historicReserved=admin&&pastDate&&status==='APROBADA';
+   // Una reservación histórica puede seguir en revisión: no exige aprobación.
+   const historicReserved=admin&&pastDate&&['APROBADA','PENDIENTE','HISTORICA_GOOGLE'].includes(status);
    const btn=document.createElement('button');btn.type='button';
-   // Las fechas pasadas son grises para todos, salvo reservas aprobadas de administración.
+   // Las fechas pasadas son grises para todos, salvo las que tuvieron reserva en administración.
    // No alterar los colores de hoy ni de las fechas futuras.
    btn.className=pastDate?(historicReserved?'booked':'past'):
     status==='APROBADA'?'booked':
