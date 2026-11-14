@@ -230,7 +230,8 @@ async function solicitar(req,res){
     fechaLimitePago:avisos.limitePago(hoySolicitud,fecha,config.dias)},{transaction});
   });
   const pago={...avisos.instrucciones({...(row.toJSON?.()||row),casa:casaTransferencia},config),
-   enlaceCarga:accesoPublico.enlace(row.id,clavePublica.token)};
+   enlaceCarga:accesoPublico.enlace(row.id,clavePublica.token),
+   enlaceMisReservas:accesoPublico.enlaceMisReservas(row.id,clavePublica.token)};
   const notificaciones=await avisos.notificar(row,pago,config);
   // Si Google falla después de confirmar MySQL no reintentamos crear la reserva:
   // el worker sincroniza el folio CC-id pendiente en el siguiente ciclo.
