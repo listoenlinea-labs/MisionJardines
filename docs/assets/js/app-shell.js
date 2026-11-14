@@ -174,6 +174,7 @@
     errorBox.hidden = true;
     document.title = (frame.contentDocument?.title || route.page) + ' | Misión Jardines';
     updateSidebar();
+    document.dispatchEvent(new CustomEvent('mj-shell-page-ready', { detail: { page: route.page } }));
   }
 
   function navigate(input, { replace = false, fromHistory = false, reload = false } = {}) {
