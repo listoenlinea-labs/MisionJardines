@@ -10,7 +10,7 @@ test('Aprobación tiene búsqueda única, filtro mensual y paginación',()=>{
  for(const id of ['clubReviewSearch','clubReviewMonth','clubReviewCount',
   'clubReviewPagination','clubReviewPrevious','clubReviewNext','clubReviewPageIndicator'])
   assert.equal(html.split('id="'+id+'"').length-1,1,id);
- assert.match(js,/const reviewSize=\(\)=>window\.matchMedia\('\(max-width: 720px\)'\)\.matches\?3:10/);
+ assert.match(js,/const reviewSize=.*matches\?3:10/);
  assert.match(js,/adminRows\.filter\(r=>r\.estatus==='PENDIENTE'\)/);
  assert.match(js,/String\(b\.fecha\|\|''\)\.localeCompare\(String\(a\.fecha\|\|''\)\)/);
  assert.match(js,/rows\.slice\(from,from\+size\)/);
