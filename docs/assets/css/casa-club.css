@@ -671,8 +671,8 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
 
 /* Estado verificable de Google Drive, visible solo a administradores. */
 .club-drive-status{
- display:inline-flex;align-items:center;gap:7px;width:max-content;max-width:100%;
- padding:7px 12px;margin:12px 0;border-radius:999px;
+ display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;
+ padding:7px 12px;margin:12px 0 12px auto;border-radius:999px;
  border:1px solid #a9dfbd;background:#ebfaf0;color:#216b43;
  font-size:11px;font-weight:750;box-shadow:0 2px 8px rgba(20,105,45,.06);
 }
@@ -687,7 +687,7 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
 .club-drive-status.offline .club-drive-dot{
  background:#d3a149;box-shadow:0 0 0 3px rgba(211,161,73,.12);
 }
-.club-drive-status-review{margin:4px 0 10px}
+.club-drive-status-review{margin:4px 0 10px auto}
 
 /* Historial de Administración: 10 registros por página escritorio,
    3 tarjetas apiladas por página móvil. */
