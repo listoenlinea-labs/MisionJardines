@@ -9,7 +9,7 @@
  const fechaSolicitud=d=>d?new Date(d).toLocaleString('es-MX',{timeZone:'America/Mexico_City',dateStyle:'short',timeStyle:'short'}):'—';
  const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  let profile=null,admin=false;
- let currentMonth=today().slice(0,7),selectedDate='',occupied=new Map(),adminRows=[],activeReview=null;
+ let currentMonth=today().slice(0,7),selectedDate='',occupied=new Map(),adminRows=[],historicGoogleRows=[],activeReview=null;
  let calendarRequest=0,submitting=false,calendarReady=false,rulesAccepted=false;
  let mobileDetailsSaved=false;
  const tomorrow=()=>new Date(Date.parse(today()+'T12:00:00Z')+86400000).toISOString().slice(0,10);
@@ -597,9 +597,10 @@
  $('clubRelease').addEventListener('click',()=>{if(activeReview)void liberarReserva(activeReview);});
  const mon=d=>new Intl.DateTimeFormat('es-MX',{month:'long',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
  const filterStreet=$('clubFilterStreet'),filterNumber=$('clubFilterNumber'),filterMonth=$('clubFilterMonth');
+ const allAdminRecords=()=>[...adminRows,...historicGoogleRows];
  function actualizarOpcionesCalle(){
   const previo=filterStreet.value;
-  const calles=[...new Set(adminRows.map(r=>String(r.casa?.calleCorrecta||r.casa?.calle||'').trim()).filter(Boolean))]
+  const calles=[...new Set(allAdminRecords().map(r=>String(r.casa?.calleCorrecta||r.casa?.calle||'').trim()).filter(Boolean))]
    .sort((a,b)=>a.localeCompare(b,'es-MX',{sensitivity:'base'}));
   filterStreet.innerHTML='<option value="">Todas las calles</option>'+
    calles.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');
@@ -608,7 +609,7 @@
  // El mes se determina por la fecha del EVENTO, no por la fecha de solicitud.
  function actualizarOpcionesMes(){
   const previo=filterMonth.value;
-  const meses=[...new Set(adminRows.map(r=>String(r.fecha||'').slice(0,7))
+  const meses=[...new Set(allAdminRecords().map(r=>String(r.fecha||'').slice(0,7))
    .filter(v=>/^\d{4}-(0[1-9]|1[0-2])$/.test(v)))].sort((a,b)=>b.localeCompare(a));
   filterMonth.innerHTML='<option value="">Todos los meses</option>'+
    meses.map(clave=>{
@@ -631,7 +632,7 @@
    numero:filterNumber.value.trim().toLocaleLowerCase('es-MX'),
    mes:filterMonth.value
   };
-  const mapa=new Map(adminRows.map(r=>[Number(r.id),r]));
+  const mapa=new Map(allAdminRecords().map(r=>[Number(r.id),r]));
   let visibles=0;
   $('clubAdminRows').querySelectorAll('[data-reserva]').forEach(tr=>{
    const coincide=coincideFiltrosReserva(mapa.get(Number(tr.dataset.reserva)),filtro);
@@ -641,7 +642,7 @@
   $('clubRequests').querySelectorAll('[data-pendiente-id]').forEach(card=>{
    card.hidden=!coincideFiltrosReserva(mapa.get(Number(card.dataset.pendienteId)),filtro);
   });
-  $('clubFilterCount').textContent=visibles+' de '+adminRows.length+' reservaciones';
+  $('clubFilterCount').textContent=visibles+' de '+allAdminRecords().length+' registros (incluye históricos Google)';
  }
  filterStreet.addEventListener('change',aplicarFiltroReservas);
  filterNumber.addEventListener('input',aplicarFiltroReservas);
@@ -714,15 +715,42 @@
   if(!admin)return;
   try{
    const d=await api('/administracion');adminRows=[...(d.data||[])].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true})||String(a.fecha||'').localeCompare(String(b.fecha||'')));
+   // Los folios del formulario antiguo son solo consulta si no corresponden
+   // a una reserva MySQL. Nunca se habilitan botones de edición en esas filas.
+   historicGoogleRows=(d.historialGoogle||[]).map((row,i)=>({...row,id:-(i+1),soloLectura:true}));
+   const totalRows=allAdminRecords();
+   const summary=d.resumenGoogle||{
+    solicitudes:totalRows.length,
+    personas:new Set(totalRows.map(r=>String(r.correo||r.telefono||r.solicitante||'').toLowerCase())).size,
+    enRevision:adminRows.filter(r=>r.estatus==='PENDIENTE').length,
+    reservadas:adminRows.filter(r=>r.estatus==='APROBADA').length
+   };
+   const cards=[
+    ['Solicitudes únicas',summary.solicitudes],
+    ['Personas distintas (estimación)',summary.personas],
+    ['En revisión',summary.enRevision],
+    ['Reservadas',summary.reservadas]
+   ];
+   $('clubReviewSummary').innerHTML=cards.map(([title,value])=>
+    '<div class="club-overview-stat"><small>'+esc(title)+'</small><strong>'+esc(Number(value)||0)+'</strong></div>').join('');
+   $('clubHistoryInfo').textContent=d.googleDisponible===false?
+    'Google no respondió. Se muestran solo los registros de MySQL y el resumen podría estar incompleto.':
+    'Incluye '+historicGoogleRows.length+' solicitudes adicionales de Google (solo consulta). Las duplicadas de MySQL se omiten; ningún pago se valida por importar la hoja.';
    // Una reserva cancelada NO equivale a devolver el pago: conservarlo en lo recaudado.
    let paid=adminRows.filter(r=>r.pagado);
    let income=paid.reduce((a,r)=>a+Number(r.cuotaRecuperacion),0),
        guarantee=paid.reduce((a,r)=>a+Number(r.depositoGarantia),0),
        cleaning=paid.reduce((a,r)=>a+Number(r.limpieza),0);
-   $('clubTotals').innerHTML=[['Total de reservas',adminRows.length],['Reservas aprobadas',adminRows.filter(r=>r.estatus==='APROBADA').length],['Recuperación cobrada',money(income)],['Garantías recibidas',money(guarantee)],['Limpieza cobrada',money(cleaning)]].map(([name,value])=>'<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
-   const tableRows=[...adminRows].sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE'));
+   $('clubTotals').innerHTML=[['Solicitudes únicas (MySQL + Google)',summary.solicitudes],
+    ['Personas distintas (estimación)',summary.personas],
+    ['Reservas aprobadas (MySQL)',adminRows.filter(r=>r.estatus==='APROBADA').length],
+    ['Recuperación cobrada',money(income)],['Garantías recibidas',money(guarantee)],
+    ['Limpieza cobrada',money(cleaning)]].map(([name,value])=>
+     '<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
+   const tableRows=totalRows.sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE')||String(b.fecha||'').localeCompare(String(a.fecha||'')));
    $('clubAdminRows').innerHTML=tableRows.map(r=>{
-      const acciones='<button type="button" class="soft">Ver detalles</button> '+
+      const acciones=r.soloLectura?'<span class="club-google-readonly">Solo consulta · Google</span>':
+       '<button type="button" class="soft">Ver detalles</button> '+
        (r.estatus==='APROBADA'
         ?'<button type="button" class="danger" data-release="'+Number(r.id)+'">Cancelar / liberar día</button>'
         :!r.pagado
@@ -733,15 +761,16 @@
        r.casa?.numero||'—',
        r.solicitante||'—',
        fmt(r.fecha),
-       fechaSolicitud(r.creadoEn),
-       money(r.cuotaRecuperacion),
-       money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
-       money(r.limpieza),
+       r.soloLectura?(r.fechaRegistroGoogle||'—'):fechaSolicitud(r.creadoEn),
+       r.soloLectura?'—':money(r.cuotaRecuperacion),
+       r.soloLectura?'—':money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
+       r.soloLectura?'—':money(r.limpieza),
        r.folio||'—',
        r.propietario?'Sí':'No',
-       paymentStatus(r),
-       r.motivo||'—',
-       r.estatus
+       r.soloLectura?'No verificado en Google':paymentStatus(r),
+       r.soloLectura?'Formulario Google original: estado de pago no verificado.':r.motivo||'—',
+       r.soloLectura?(r.estatus==='HISTORICA_GOOGLE'?'Histórica · Google':
+        r.estatus==='CONFLICTO_GOOGLE'?'Conflicto · Google':'En revisión · Google'):r.estatus
       ];
       return '<tr data-reserva="'+Number(r.id)+'">'+
        valores.map((v,idx)=>'<td'+(idx===11?' class="club-event-reason"':'')+'>'+esc(v)+'</td>').join('')+
