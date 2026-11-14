@@ -78,7 +78,14 @@ async function fechas(req,res){
   await expirarReservas([desde,hasta]);
   // Las reservas sin vivienda conciliada también bloquean fechas (amarillo).
   // Si Google está habilitado y no responde, no afirmar falsamente que está libre.
-  const google=await googleCasaClub.sync();
+  // Mostrar reservas locales aunque falle Google, pero NO afirmar que
+  // las fechas restantes están disponibles hasta comprobar la fuente externa.
+  let google={occupied:[]},googleDisponible=true;
+  try{google=await googleCasaClub.sync();}
+  catch(syncError){
+   googleDisponible=false;
+   console.warn('[CasaClub Google] Disponibilidad externa sin verificar:',syncError.message);
+  }
   const rows=await Reserva.findAll({where:{fechaBloqueada:{[Op.between]:[desde,hasta]}},attributes:['fecha','estatus']});
   const dates=new Map(rows.map(x=>[x.fecha,{fecha:x.fecha,estatus:x.estatus}]));
   for(const r of google.occupied||[]){
@@ -86,7 +93,7 @@ async function fechas(req,res){
     dates.set(r.fecha,{fecha:r.fecha,estatus:'PENDIENTE'});
   }
   res.setHeader('Cache-Control','no-store');
-  return res.json({ok:true,ocupadas:[...dates.values()]});
+  return res.json({ok:true,ocupadas:[...dates.values()],disponibilidadVerificada:googleDisponible});
  }catch(e){return manejar(res,e);}
 }
 // Solo opciones del formulario público: no enviar filas completas del padrón.
