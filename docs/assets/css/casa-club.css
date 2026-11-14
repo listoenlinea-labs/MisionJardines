@@ -634,3 +634,36 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
 @media(max-width:390px){
  #tab-aprobacion .club-review-filters{grid-template-columns:1fr}
 }
+
+/* Cifras consolidadas del formulario antiguo + Misión Jardines. */
+#tab-aprobacion .club-overview-stats{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:10px;margin:14px 0 18px;
+}
+#tab-aprobacion .club-overview-stat{
+ background:linear-gradient(135deg,#f8fbfe,#f7f7fd);
+ border:1px solid #e0e8f1;border-radius:13px;padding:14px;
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+}
+#tab-aprobacion .club-overview-stat small{
+ color:#60718a;font-size:11px;font-weight:700;
+}
+#tab-aprobacion .club-overview-stat strong{
+ font-size:23px;line-height:1.1;color:#243750;font-variant-numeric:tabular-nums;
+}
+#tab-administracion .club-history-info{
+ font-size:12px;color:#677b94;padding:0 0 12px;margin:0;line-height:1.5;
+}
+#tab-administracion .club-google-readonly{
+ display:inline-flex;align-items:center;border:1px solid #d7e2ea;
+ background:#f4f7fb;border-radius:9px;padding:7px 10px;
+ color:#527084;font-size:11px;font-weight:750;white-space:nowrap;
+}
+@media(max-width:900px){
+ #tab-aprobacion .club-overview-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){
+ #tab-aprobacion .club-overview-stat{padding:11px}
+ #tab-aprobacion .club-overview-stat strong{font-size:20px}
+ #tab-aprobacion .club-overview-stat small{font-size:10px}
+}
