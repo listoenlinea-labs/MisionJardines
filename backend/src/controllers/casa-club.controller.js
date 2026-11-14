@@ -8,6 +8,7 @@ const {randomUUID}=require('crypto');
 const accesoPublico=require('../services/casa-club-acceso-publico.service');
 const {consultarSoloMantenimiento}=require('../services/adeudos-comunidad.service');
 const avisos=require('../services/casa-club-avisos.service');
+const googleCasaClub=require('../services/casa-club-google-sync.service');
 const tarifas=require('../services/casa-club-tarifas.service');
 const tarjetasRojas=require('../services/casa-club-tarjetas-rojas.service');
 const {plazoEfectivo}=require('../services/casa-club-plazo-efectivo.service');
@@ -75,9 +76,17 @@ async function fechas(req,res){
   const hasta=fechaValida(req.query.hasta)?req.query.hasta:new Date(Date.parse(desde+'T12:00:00Z')+92*86400000).toISOString().slice(0,10);
   if(hasta<desde||Date.parse(hasta)-Date.parse(desde)>370*86400000)throw error(400,'Rango máximo de 370 días');
   await expirarReservas([desde,hasta]);
+  // Las reservas sin vivienda conciliada también bloquean fechas (amarillo).
+  // Si Google está habilitado y no responde, no afirmar falsamente que está libre.
+  const google=await googleCasaClub.sync();
   const rows=await Reserva.findAll({where:{fechaBloqueada:{[Op.between]:[desde,hasta]}},attributes:['fecha','estatus']});
+  const dates=new Map(rows.map(x=>[x.fecha,{fecha:x.fecha,estatus:x.estatus}]));
+  for(const r of google.occupied||[]){
+   if(r.fecha>=desde&&r.fecha<=hasta&&!dates.has(r.fecha))
+    dates.set(r.fecha,{fecha:r.fecha,estatus:'PENDIENTE'});
+  }
   res.setHeader('Cache-Control','no-store');
-  return res.json({ok:true,ocupadas:rows.map(x=>({fecha:x.fecha,estatus:x.estatus}))});
+  return res.json({ok:true,ocupadas:[...dates.values()]});
  }catch(e){return manejar(res,e);}
 }
 // Solo opciones del formulario público: no enviar filas completas del padrón.
@@ -134,6 +143,9 @@ async function crear(req,res){
   const membership=await UsuarioCasa.findOne({where:{usuarioId:req.usuario.usuarioId,casaId,activo:true}});
   if(!membership&&!admin(req.usuario.rol))throw error(403,'No tienes acceso a esa vivienda');
   await revisarElegibilidad(casaId);
+  // Lectura obligatoria inmediatamente antes de reservar; evitar carreras
+  // con la hoja antigua cuando Google está activado.
+  await googleCasaClub.beforeBooking(fecha);
   const importes=await tarifas.obtener();
   // Solo el rol validado por el servidor puede reservar sin revisión humana.
   // La fecha única sigue protegida por fecha_bloqueada, aun con concurrencia.
@@ -148,6 +160,8 @@ async function crear(req,res){
     pagado:false,revisadoPor:req.usuario.usuarioId
    }:{})
   });
+  try{await googleCasaClub.sync({force:true});}
+  catch(syncError){console.error('[CasaClub Google] Reserva guardada, envío pendiente:',syncError.message);}
   return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus},
    message:reservaDirecta?'Reserva confirmada. El pago se registra por separado; no está marcado como pagado.':
     'Solicitud enviada. Administración puede aprobar la fecha o el depósito validado por Titan puede confirmarla automáticamente.'});
@@ -187,6 +201,7 @@ async function solicitar(req,res){
   try{await revisarElegibilidad(casaId);}
   catch(e){if(!usuario&&(e.codigo==='ADEUDOS_RESERVA'||e.status===404))throw noElegible();throw e;}
   await expirarReservas([fecha,fecha]);
+  await googleCasaClub.beforeBooking(fecha);
   let casaTransferencia=null;
   const row=await db.transaction(async transaction=>{
    const casa=await Casa.findByPk(casaId,{transaction,lock:transaction.LOCK.UPDATE});
@@ -210,6 +225,10 @@ async function solicitar(req,res){
   const pago={...avisos.instrucciones({...(row.toJSON?.()||row),casa:casaTransferencia},config),
    enlaceCarga:accesoPublico.enlace(row.id,clavePublica.token)};
   const notificaciones=await avisos.notificar(row,pago,config);
+  // Si Google falla después de confirmar MySQL no reintentamos crear la reserva:
+  // el worker sincroniza el folio CC-id pendiente en el siguiente ciclo.
+  try{await googleCasaClub.sync({force:true});}
+  catch(syncError){console.error('[CasaClub Google] Reserva guardada, envío pendiente:',syncError.message);}
   res.setHeader('Cache-Control','no-store');
   return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus:'PENDIENTE',pago,notificaciones},
    message:'Solicitud recibida. Titan aprobará automáticamente el depósito cuando exista una coincidencia bancaria completa.'});
