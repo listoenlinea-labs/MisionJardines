@@ -16,6 +16,11 @@ function crear(){
 function enlace(id,token){
  return FRONTEND_PUBLICO+'#comprobante='+encodeURIComponent(String(id)+'.'+token);
 }
+// El mismo secreto privado entregado a ese correo autoriza únicamente la
+// lectura de los estados asociados a la dirección verificada de la reserva.
+function enlaceMisReservas(id,token){
+ return FRONTEND_PUBLICO+'#mis-reservas='+encodeURIComponent(String(id)+'.'+token);
+}
 async function verificar({id,token,exigirVigente=false}){
  const reservaId=Number(id);
  if(!Number.isSafeInteger(reservaId)||reservaId<1||typeof token!=='string'||!/^[0-9a-f]{64}$/.test(token))
@@ -32,4 +37,4 @@ async function verificar({id,token,exigirVigente=false}){
   throw error(409,'La reservación ya no permite subir un comprobante. Revisa su estado con Administración.');
  return row;
 }
-module.exports={REGLAMENTO_VERSION,crear,enlace,verificar,hoy,FRONTEND_PUBLICO};
+module.exports={REGLAMENTO_VERSION,crear,enlace,enlaceMisReservas,verificar,hoy,FRONTEND_PUBLICO};
