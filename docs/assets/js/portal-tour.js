@@ -1,0 +1,354 @@
+/* Onboarding contextual del portal. Controlado desde el shell para cruzar iframes
+ * de forma segura: no realiza clics, solicitudes ni mutaciones de negocio. */
+(() => {
+  'use strict';
+  const SUPPORTED = new Set(['SUPER_ADMIN', 'ADMINISTRADOR', 'CONDOMINO', 'SEGURIDAD']);
+  const PREFIX = 'mjPortalRecorridoV1:';
+  const NEXT_EVENT = 'mj-shell-page-ready';
+  let role = '';
+  let storageKey = '';
+  let steps = [];
+  let index = 0;
+  let open = false;
+  let busy = false;
+  let welcomeOpen = false;
+  let originalPage = '';
+  let overlay = null;
+  let lastTarget = null;
+
+  const byId = id => document.getElementById(id);
+  const limit = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  function account() {
+    for (const area of [localStorage, sessionStorage]) {
+      try {
+        const raw = area.getItem('misionJardinesUsuario');
+        if (raw) return JSON.parse(raw);
+      } catch (_) { /* El almacenamiento puede estar bloqueado. */ }
+    }
+    return {};
+  }
+
+  function keyFor(user) {
+    // El registro es exclusivamente local al navegador; nunca incluye token.
+    const rawId = user.id ?? user.usuarioId ?? user.idUsuario ?? '';
+    const identity = String(rawId).replace(/[^0-9A-Za-z_-]/g, '').slice(0, 64);
+    return PREFIX + role + ':' + (identity || 'rol');
+  }
+
+  function readSaved() {
+    try { return localStorage.getItem(storageKey); }
+    catch (_) { return null; }
+  }
+
+  function save(value) {
+    try { localStorage.setItem(storageKey, value); }
+    catch (_) { /* Navegación privada: se mostrará otra vez en próxima sesión. */ }
+  }
+
+  function currentFrame() {
+    return document.querySelector('.mj-app-frame.is-active');
+  }
+
+  function visibleElement(element) {
+    if (!element?.isConnected || element.closest('[hidden], [inert]')) return false;
+    const view = element.ownerDocument.defaultView;
+    if (!view || element.getClientRects().length === 0) return false;
+    let node = element;
+    while (node && node.nodeType === 1) {
+      const style = view.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      node = node.parentElement;
+    }
+    const rect = element.getBoundingClientRect();
+    return rect.width > 2 && rect.height > 2;
+  }
+
+  function targetFor(step) {
+    if (!step.page) {
+      let el = document.querySelector(step.selector);
+      if (!visibleElement(el)) el = document.querySelector('.mj-side-tab');
+      return visibleElement(el) ? {el, frame:null} : null;
+    }
+    const frame = currentFrame();
+    if (!frame || !frame.contentDocument) return null;
+    let el = null;
+    try { el = frame.contentDocument.querySelector(step.selector); } catch (_) {}
+    // Algunos controles solo aparecen cuando se elige una pestaña,
+    // cuenta o concepto. No abrirlos ni modificar el estado para resaltarlos.
+    if (!visibleElement(el)) {
+      el = ['h1', '.club-hero', '.heading', '.hero', 'main h2', 'main']
+        .map(s => frame.contentDocument.querySelector(s)).find(visibleElement);
+    }
+    return visibleElement(el) ? {el,frame} : null;
+  }
+
+  function screenRect(target) {
+    if (!target) return null;
+    const bounds = target.el.getBoundingClientRect();
+    const parent = target.frame?.getBoundingClientRect();
+    const left = bounds.left + (parent?.left || 0);
+    const top = bounds.top + (parent?.top || 0);
+    const width = Math.min(bounds.width, (parent?.width || innerWidth));
+    const height = Math.min(bounds.height, (parent?.height || innerHeight));
+    const x = limit(left - 5, 8, innerWidth - 34);
+    const y = limit(top - 5, 8, innerHeight - 34);
+    const right = limit(left + width + 5, x + 20, innerWidth - 8);
+    const bottom = limit(top + height + 5, y + 20, innerHeight - 8);
+    return {left:x, top:y, width:right-x, height:bottom-y};
+  }
+
+  function createOverlay() {
+    if (overlay) return overlay;
+    const root = document.createElement('div');
+    root.id = 'mjPortalTourOverlay';
+    root.className = 'mj-tour-root';
+    root.hidden = true;
+    root.innerHTML = `
+      <div class="mj-tour-focus" aria-hidden="true"></div>
+      <section class="mj-tour-panel" role="dialog" aria-modal="true" aria-labelledby="mjTourTitle">
+        <div class="mj-tour-panel-top"><span class="mj-tour-group" id="mjTourGroup"></span>
+          <button class="mj-tour-close" id="mjTourExit" type="button" aria-label="Cerrar recorrido">×</button></div>
+        <div class="mj-tour-track" aria-hidden="true"><span id="mjTourTrack"></span></div>
+        <h2 id="mjTourTitle"></h2>
+        <p class="mj-tour-copy" id="mjTourDescription"></p>
+        <div class="mj-tour-foot">
+          <span id="mjTourCounter" class="mj-tour-counter" aria-live="polite"></span>
+          <div class="mj-tour-buttons">
+            <button type="button" class="mj-tour-prev" id="mjTourPrevious">Atrás</button>
+            <button type="button" class="mj-tour-next" id="mjTourNext">Siguiente</button>
+          </div>
+        </div>
+        <p class="mj-tour-safety">El recorrido es solo demostrativo; no ejecuta operaciones.</p>
+      </section>`;
+    document.body.appendChild(root);
+    overlay = root;
+    byId('mjTourExit').addEventListener('click', () => finish('dismissed'));
+    byId('mjTourPrevious').addEventListener('click', () => void go(index - 1));
+    byId('mjTourNext').addEventListener('click', () => {
+      if (index === steps.length - 1) finish('completed');
+      else void go(index + 1);
+    });
+    window.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !open) return;
+      event.preventDefault();
+      finish('dismissed');
+    });
+    window.addEventListener('resize', reposition, {passive:true});
+    window.addEventListener('scroll', reposition, {passive:true});
+    return root;
+  }
+
+  function reposition() {
+    if (!open || !overlay || overlay.hidden || busy) return;
+    const step = steps[index];
+    if (!step) return;
+    const target = targetFor(step);
+    lastTarget = target;
+    const rect = screenRect(target);
+    const focus = overlay.querySelector('.mj-tour-focus');
+    const panel = overlay.querySelector('.mj-tour-panel');
+    if (!rect) {
+      overlay.classList.add('mj-tour-no-focus');
+      focus.style.display = 'none';
+      panel.style.left = '50%';
+      panel.style.top = '50%';
+      panel.style.transform = 'translate(-50%, -50%)';
+      return;
+    }
+    overlay.classList.remove('mj-tour-no-focus');
+    focus.style.display = 'block';
+    focus.style.left = rect.left + 'px';
+    focus.style.top = rect.top + 'px';
+    focus.style.width = rect.width + 'px';
+    focus.style.height = rect.height + 'px';
+    panel.style.transform = 'none';
+    const panelWidth = Math.min(400, innerWidth - 22);
+    const panelHeight = panel.offsetHeight || 260;
+    let top = rect.top + rect.height + 15;
+    if (top + panelHeight > innerHeight - 10) top = rect.top - panelHeight - 15;
+    if (top < 10) top = limit(innerHeight - panelHeight - 12, 10, innerHeight);
+    const left = limit(rect.left + rect.width / 2 - panelWidth / 2, 11, innerWidth - panelWidth - 11);
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+    if (innerWidth <= 660) {
+      panel.style.left = '12px';
+      panel.style.top = 'auto';
+      panel.style.bottom = '12px';
+      panel.style.transform = 'none';
+    } else {
+      panel.style.bottom = 'auto';
+    }
+  }
+
+  async function routeTo(page) {
+    if (!page || window.MJShell?.currentPage === page) return true;
+    if (!window.MJPermissions?.canAccess(role, page)) return false;
+    return new Promise(resolve => {
+      let finished = false;
+      const done = value => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeout);
+        document.removeEventListener(NEXT_EVENT, onReady);
+        resolve(value);
+      };
+      const onReady = event => {
+        if (event.detail?.page === page) done(true);
+      };
+      document.addEventListener(NEXT_EVENT, onReady);
+      const timeout = setTimeout(() => done(false), 16000);
+      if (!window.MJShell.navigate(page)) done(false);
+    });
+  }
+
+  async function go(to) {
+    if (!open || busy || to < 0 || to >= steps.length) return;
+    const targetStep = steps[to];
+    busy = true;
+    byId('mjTourPrevious').disabled = true;
+    byId('mjTourNext').disabled = true;
+    byId('mjTourTitle').textContent = 'Abriendo ' + targetStep.group + '…';
+    try {
+      const ok = await routeTo(targetStep.page);
+      if (!ok) {
+        byId('mjTourTitle').textContent = 'No se pudo abrir esta sección';
+        byId('mjTourDescription').textContent = 'Revisa tu conexión o abre otro módulo desde el menú. Puedes salir y reiniciar la guía más tarde.';
+        return;
+      }
+      index = to;
+      const step = steps[index];
+      const target = targetFor(step);
+      if (target?.el) {
+        try {
+          target.el.scrollIntoView({block:'center', inline:'nearest', behavior:'instant'});
+        } catch (_) { /* La guía puede avanzar aunque no se pueda desplazar. */ }
+      }
+      byId('mjTourGroup').textContent = step.group;
+      byId('mjTourTitle').textContent = step.title;
+      byId('mjTourDescription').textContent = step.description;
+      byId('mjTourCounter').textContent = 'Paso ' + (index+1) + ' de ' + steps.length;
+      byId('mjTourTrack').style.width = ((index+1)/steps.length*100) + '%';
+      byId('mjTourNext').textContent = index === steps.length - 1 ? 'Finalizar' : 'Siguiente';
+      byId('mjTourPrevious').hidden = index === 0;
+    } finally {
+      busy = false;
+      byId('mjTourPrevious').disabled = false;
+      byId('mjTourNext').disabled = false;
+      requestAnimationFrame(reposition);
+    }
+  }
+
+  function finish(status) {
+    if (!open) return;
+    open = false;
+    busy = false;
+    save(status);
+    window.MJPortalTourActive = false;
+    if (overlay) overlay.hidden = true;
+    // Reponer el módulo en el que se solicitó la guía, sin modificar datos.
+    if (originalPage && window.MJShell?.currentPage !== originalPage &&
+      window.MJPermissions?.canAccess(role, originalPage)) {
+      window.MJShell.navigate(originalPage);
+    }
+  }
+
+  function start() {
+    if (!window.MJPortalTourContent || !SUPPORTED.has(role) || open) return;
+    closeWelcome();
+    steps = window.MJPortalTourContent.getSteps(role).filter(step =>
+      !step.page || window.MJPermissions.canAccess(role, step.page));
+    if (!steps.length) return;
+    originalPage = window.MJShell?.currentPage || window.MJPermissions.landing(role);
+    window.MJPortalTourActive = true;
+    createOverlay();
+    overlay.hidden = false;
+    open = true;
+    save('started'); // Dispositivo recordado incluso si se cierra a mitad de camino.
+    index = 0;
+    void go(0);
+    byId('mjTourExit').focus({preventScroll:true});
+  }
+
+  function closeWelcome() {
+    const dialog = byId('mjPortalTourWelcome');
+    if (!dialog) return;
+    if (dialog.open) dialog.close();
+    dialog.remove();
+    welcomeOpen = false;
+  }
+
+  function invite() {
+    if (welcomeOpen || open || readSaved() || !SUPPORTED.has(role)) return;
+    if (document.querySelector('.mj-child-modal-open, #mjPortalTourWelcome')) return;
+    const dialog = document.createElement('dialog');
+    dialog.id = 'mjPortalTourWelcome';
+    dialog.className = 'mj-tour-welcome';
+    const title = role === 'SEGURIDAD' ? 'Tu guía de caseta' :
+      role === 'CONDOMINO' ? 'Conoce tu portal de residente' : 'Conoce la administración de Misión Jardines';
+    dialog.innerHTML = `<span class="mj-tour-tag">PRIMER ACCESO EN ESTE DISPOSITIVO</span>
+      <h2 id="mjWelcomeTitle"></h2>
+      <p>¿Quieres conocer paso a paso las pantallas disponibles para tu perfil?
+      El recorrido es interactivo y muestra dónde está cada función, sin crear registros ni pagos reales.</p>
+      <p class="mj-tour-once">Solo preguntaremos una vez en este navegador y para este perfil. Cuando quieras, podrás reiniciar la guía desde el menú.</p>
+      <div class="mj-tour-welcome-actions"><button type="button" id="mjWelcomeNotNow">Ahora no</button>
+        <button type="button" id="mjWelcomeStart">Comenzar recorrido</button></div>`;
+    dialog.querySelector('h2').textContent = title;
+    document.body.append(dialog);
+    welcomeOpen = true;
+    save('invited');
+    dialog.querySelector('#mjWelcomeNotNow').addEventListener('click', () => {
+      save('dismissed');
+      closeWelcome();
+    });
+    dialog.querySelector('#mjWelcomeStart').addEventListener('click', start);
+    dialog.addEventListener('cancel', event => {
+      event.preventDefault();
+      save('dismissed');
+      closeWelcome();
+    });
+    dialog.showModal();
+  }
+
+  function addLauncher() {
+    if (byId('mjPortalTourLauncher')) return true;
+    const inner = document.querySelector('.mj-shared-sidebar .mj-side-inner');
+    if (!inner) return false;
+    const btn = document.createElement('button');
+    btn.id = 'mjPortalTourLauncher';
+    btn.type = 'button';
+    btn.className = 'mj-tour-restart';
+    btn.innerHTML = '<span aria-hidden="true">✦</span> Recorrido guiado';
+    btn.setAttribute('aria-label','Volver a iniciar el recorrido de ayuda del portal');
+    btn.addEventListener('click', start);
+    const before = inner.querySelector('.mj-side-support') || inner.querySelector('.mj-side-logout');
+    if (before) inner.insertBefore(btn, before);
+    else inner.append(btn);
+    return true;
+  }
+
+  async function boot() {
+    const verified = await window.MJAccessReady;
+    if (!verified) return;
+    role = window.MJVerifiedRole || '';
+    if (!SUPPORTED.has(role)) return;
+    storageKey = keyFor(account());
+    if (!addLauncher()) {
+      const observer = new MutationObserver(() => {
+        if (addLauncher()) observer.disconnect();
+      });
+      observer.observe(document.body, {childList:true,subtree:true});
+    }
+    const ready = () => window.MJShell?.currentPage &&
+      document.querySelector('.mj-app-frame.is-active');
+    if (ready()) {
+      setTimeout(invite, 1100);
+    } else {
+      document.addEventListener(NEXT_EVENT, () => setTimeout(invite, 1100), {once:true});
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { void boot(); }, {once:true});
+  } else void boot();
+})();
