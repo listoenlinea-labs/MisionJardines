@@ -46,10 +46,12 @@
    $('financeExpenseChart').innerHTML='<div class="project-budget-bar">'+
     '<div class="finance-budget-edit" data-project-budget="'+Number(project.id)+'" title="Doble clic para editar presupuesto">'+
     bar('Presupuesto base',Number(costos?.presupuesto??project.totalEsperado??0),maxExpense,true,fmt(costos?.presupuesto??project.totalEsperado))+'</div>'+'</div>'+
-    concepts.map(e=>'<div class="project-expense-line">'+
+    concepts.map(e=>'<div class="project-expense-line finance-project-expense-visual" data-project-expense-detail="'+Number(e.id)+'"'+
+     ' tabindex="0" role="button" aria-haspopup="dialog" aria-controls="financeProjectProofModal"'+
+     ' aria-label="Ver detalle y comprobante de '+esc(e.concepto)+'" title="Toca para ver comprobante; doble clic en el importe para editar">'+
      '<div class="finance-project-concept-edit" data-expense-edit="'+Number(e.id)+'" title="Doble clic para editar importe">'+
      bar(e.concepto+(e.incluidoPresupuesto===false?' · Adicional':' · Incluido'),Number(e.monto||0),maxExpense,true,fmt(e.monto))+'</div>'+
-     (e.comprobanteDisponible?'<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Ver comprobante</button>':'')+
+     '<span class="finance-project-proof-indicator" aria-hidden="true">'+(e.comprobanteDisponible?'Ver recibo':'Sin recibo')+'</span>'+
      '</div>').join('');
   }else if(scope==='EXTRAORDINARIO'){
    $('financeCashChart').textContent='Selecciona un proyecto para consultar sus aportaciones.';
