@@ -859,3 +859,52 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
  .club-email-reservations .club-history-back{font-size:11px}
  .club-email-reservation{padding:15px}
 }
+
+/* Días anteriores a hoy en zona America/Mexico_City: rojo pastel informativo.
+   Solo presentación; el valor real del estatus permanece en MySQL. */
+#calendarDays button.past-date-red,
+#calendarDays button.past-date-red:disabled{
+ opacity:1;
+ color:#a83846;
+ background:#fff0f1;
+ border-color:#efbdc4;
+ cursor:not-allowed;
+}
+
+
+/* Observaciones compactas de cada reservación (escritorio y móvil). */
+#tab-administracion .club-observations-btn{
+ display:inline-flex;align-items:center;justify-content:center;
+ border:1px solid #dfceed;background:#faf7fd;color:#74558f;
+ padding:9px 12px;border-radius:10px;
+ font:inherit;font-size:12px;font-weight:750;line-height:1.2;
+ white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s;
+}
+#tab-administracion .club-observations-btn:hover,
+#tab-administracion .club-observations-btn:focus-visible{
+ background:#f4ebfa;border-color:#cbb1e1;
+}
+#tab-administracion .club-admin-mobile-line .club-observations-btn{
+ justify-self:end;min-height:40px;max-width:100%;
+}
+.club-observations-dialog{
+ width:min(620px,calc(100vw - 24px));max-height:88dvh;
+ overflow-y:auto;
+}
+.club-observations-dialog::backdrop{
+ background:rgba(22,35,59,.55);backdrop-filter:blur(2px);
+}
+.club-observations-dialog .dialog-head{align-items:flex-start}
+.club-observations-dialog .dialog-head h2{font-size:20px;line-height:1.25}
+.club-observations-context{margin:2px 0 18px;color:#718097;
+ font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.club-observations-text{
+ padding:17px 18px;border-radius:13px;border:1px solid #e6e2ef;
+ background:#faf9fd;color:#30435c;font-size:14px;line-height:1.7;
+ white-space:pre-wrap;overflow-wrap:anywhere;max-height:52dvh;overflow-y:auto;
+}
+.club-observations-footer{display:flex;justify-content:flex-end;margin-top:18px}
+@media(max-width:520px){
+ .club-observations-dialog{padding:17px 15px;border-radius:16px}
+ .club-observations-text{padding:14px;font-size:13px}
+}
