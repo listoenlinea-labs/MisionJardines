@@ -199,6 +199,14 @@
     });
     window.addEventListener('resize', reposition, {passive:true});
     window.addEventListener('scroll', reposition, {passive:true});
+    window.visualViewport?.addEventListener('resize', reposition, {passive:true});
+    // Seguir el desplazamiento dentro de los marcos, no solo del shell.
+    document.querySelectorAll('.mj-app-frame').forEach(frame => {
+      frame.addEventListener('load', () => {
+        try { frame.contentWindow?.addEventListener('scroll', reposition, {passive:true}); }
+        catch (_) { /* Página inaccesible: no romper el recorrido. */ }
+      });
+    });
     return root;
   }
 
@@ -206,18 +214,30 @@
     if (!open || !overlay || overlay.hidden || busy) return;
     const step = steps[index];
     if (!step) return;
+    const panel = overlay.querySelector('.mj-tour-panel');
+    const focus = overlay.querySelector('.mj-tour-focus');
+    const mobile = innerWidth <= 660;
     const target = targetFor(step);
     lastTarget = target;
+    // Colocar PRIMERO la tarjeta inferior. screenRect necesita su posición
+    // actual para no dibujar un foco debajo de ella.
+    if (mobile) {
+      panel.style.left = '12px';
+      panel.style.top = 'auto';
+      panel.style.bottom = 'max(12px, env(safe-area-inset-bottom))';
+      panel.style.transform = 'none';
+    } else {
+      panel.style.bottom = 'auto';
+    }
     const rect = screenRect(target);
-    const focus = overlay.querySelector('.mj-tour-focus');
-    const panel = overlay.querySelector('.mj-tour-panel');
     if (!rect) {
       overlay.classList.add('mj-tour-no-focus');
       focus.style.display = 'none';
-      panel.style.left = '50%';
-      panel.style.top = '50%';
-      panel.style.transform = 'translate(-50%, -50%)';
-      panel.style.bottom = 'auto';
+      if (!mobile) {
+        panel.style.left = '50%';
+        panel.style.top = '50%';
+        panel.style.transform = 'translate(-50%, -50%)';
+      }
       return;
     }
     overlay.classList.remove('mj-tour-no-focus');
@@ -226,6 +246,7 @@
     focus.style.top = rect.top + 'px';
     focus.style.width = rect.width + 'px';
     focus.style.height = rect.height + 'px';
+    if (mobile) return;
     panel.style.transform = 'none';
     const panelWidth = Math.min(400, innerWidth - 22);
     const panelHeight = panel.offsetHeight || 260;
@@ -235,14 +256,6 @@
     const left = limit(rect.left + rect.width / 2 - panelWidth / 2, 11, innerWidth - panelWidth - 11);
     panel.style.left = left + 'px';
     panel.style.top = top + 'px';
-    if (innerWidth <= 660) {
-      panel.style.left = '12px';
-      panel.style.top = 'auto';
-      panel.style.bottom = '12px';
-      panel.style.transform = 'none';
-    } else {
-      panel.style.bottom = 'auto';
-    }
   }
 
   async function routeTo(page) {
@@ -285,12 +298,6 @@
       }
       index = to;
       const step = steps[index];
-      const target = targetFor(step);
-      if (target?.el) {
-        try {
-          target.el.scrollIntoView({block:'center', inline:'nearest', behavior:'instant'});
-        } catch (_) { /* La guía puede avanzar aunque no se pueda desplazar. */ }
-      }
       byId('mjTourGroup').textContent = step.group;
       byId('mjTourTitle').textContent = step.title;
       byId('mjTourDescription').textContent = step.description;
@@ -302,7 +309,13 @@
       busy = false;
       byId('mjTourPrevious').disabled = false;
       byId('mjTourNext').disabled = false;
-      requestAnimationFrame(reposition);
+      requestAnimationFrame(() => {
+        if (!open) return;
+        // Actualizar panel antes de desplazar el documento dentro del iframe.
+        reposition();
+        scrollTargetIntoView(targetFor(steps[index]));
+        requestAnimationFrame(reposition);
+      });
     }
   }
 
@@ -328,6 +341,9 @@
     if (!steps.length) return;
     originalPage = window.MJShell?.currentPage || window.MJPermissions.landing(role);
     window.MJPortalTourActive = true;
+    // No abrir el menú para enseñar navegación en móvil. Forzar cierre
+    // visual antes del spotlight sin guardar una preferencia distinta.
+    document.dispatchEvent(new CustomEvent('mj:portal-tour-start'));
     createOverlay();
     overlay.hidden = false;
     open = true;
@@ -348,6 +364,7 @@
   function invite() {
     if (welcomeOpen || open || readSaved() || !SUPPORTED.has(role)) return;
     if (document.querySelector('.mj-child-modal-open, #mjPortalTourWelcome')) return;
+    document.dispatchEvent(new CustomEvent('mj:portal-tour-start'));
     const dialog = document.createElement('dialog');
     dialog.id = 'mjPortalTourWelcome';
     dialog.className = 'mj-tour-welcome';
