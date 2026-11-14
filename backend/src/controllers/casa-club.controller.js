@@ -230,14 +230,18 @@ async function solicitar(req,res){
     fechaLimitePago:avisos.limitePago(hoySolicitud,fecha,config.dias)},{transaction});
   });
   const pago={...avisos.instrucciones({...(row.toJSON?.()||row),casa:casaTransferencia},config),
-   enlaceCarga:accesoPublico.enlace(row.id,clavePublica.token)};
+   enlaceCarga:accesoPublico.enlace(row.id,clavePublica.token),
+   enlaceMisReservas:accesoPublico.enlaceMisReservas(row.id,row.correo)};
   const notificaciones=await avisos.notificar(row,pago,config);
+  // El historial por correo es un enlace de lectura privado que SOLO
+  // debe entregarse al buzón, no a quien realiza el POST público.
+  const {enlaceMisReservas:_soloCorreo,...pagoVisible}=pago;
   // Si Google falla después de confirmar MySQL no reintentamos crear la reserva:
   // el worker sincroniza el folio CC-id pendiente en el siguiente ciclo.
   try{await googleCasaClub.sync({force:true});}
   catch(syncError){console.error('[CasaClub Google] Reserva guardada, envío pendiente:',syncError.message);}
   res.setHeader('Cache-Control','no-store');
-  return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus:'PENDIENTE',pago,notificaciones},
+  return res.status(201).json({ok:true,data:{id:row.id,fecha,estatus:'PENDIENTE',pago:pagoVisible,notificaciones},
    message:'Solicitud recibida. Titan aprobará automáticamente el depósito cuando exista una coincidencia bancaria completa.'});
  }catch(e){
   if(e.name==='SequelizeUniqueConstraintError')return manejar(res,error(409,'La fecha elegida ya está ocupada o apartada. Selecciona otra disponible.',{codigo:'FECHA_OCUPADA',campos:['fecha']}));

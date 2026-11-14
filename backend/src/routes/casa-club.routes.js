@@ -20,6 +20,7 @@ const limiteConsulta=rateLimit({windowMs:60*1000,limit:20,standardHeaders:true,l
  message:{ok:false,message:'Espera unos segundos para consultar el estado.'}});
 router.post('/publico/comprobante',limiteComprobante,comprobante.reportar);
 router.post('/publico/comprobante/estado',limiteConsulta,comprobante.estado);
+router.post('/publico/mis-reservas',limiteConsulta,comprobante.misReservas);
 router.post('/publico/comprobante/reintentar',limiteComprobante,comprobante.reintentar);
 router.post('/publico/comprobante/recibo',limiteConsulta,comprobante.descargarRecibo);
 router.use(autenticarToken);

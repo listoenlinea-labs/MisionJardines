@@ -8,6 +8,8 @@ const pagoController=require('./pagos.controller');
 const reintentos=require('../services/pagos-reintento-validacion.service');
 const cuentaOficial=require('../services/pagos-cuenta-oficial.service');
 const {Casa}=require('../models');
+const Reserva=require('../models/ReservaCasaClub');
+const {fn,col,where}=require('sequelize');
 const {expirarReservas}=require('./casa-club.controller');
 
 const noCache=res=>res.setHeader('Cache-Control','private, no-store');
@@ -84,6 +86,41 @@ async function estado(req,res){
   }});
  }catch(e){return fallo(res,e);}
 }
+// La URL privada enviada al mismo buzón prueba posesión de un token aleatorio
+// de 256 bits. Nunca aceptar un correo arbitrario desde la petición del cliente.
+async function misReservas(req,res){
+ try{
+  // Esta clave se envía SOLO al correo. No es el enlace de comprobante
+  // que la API devuelve al navegador al registrar una solicitud.
+  const credencial=await acceso.verificarHistorial({
+   id:req.body?.reservaId,token:req.body?.claveAcceso
+  });
+  const email=String(credencial.correo||'').trim().toLowerCase();
+  if(!email||email.length>150)throw Object.assign(Error('El enlace no tiene correo asociado.'),{status:404});
+  await expirarReservas();
+  const rows=await Reserva.findAll({
+   where:where(fn('LOWER',fn('TRIM',col('correo'))),email),
+   attributes:['id','fecha','estatus','pagado','notas','creadoEn'],
+   order:[['fecha','DESC'],['id','DESC']],limit:200
+  });
+  const reservas=rows.map(row=>{
+   // No revelar anotaciones internas ni comprobantes: el usuario solo
+   // necesita el motivo comunicado en el rechazo.
+   const observacion=String(row.notas||'').split(' | ')[0].trim().slice(0,350);
+   return {
+    folio:'CC-'+row.id,
+    fecha:row.fecha,
+    estatus:row.estatus,
+    pagado:Boolean(row.pagado),
+    fechaSolicitud:row.creadoEn,
+    ...(row.estatus==='RECHAZADA'?{motivoRechazo:observacion||
+     'Administración no indicó un motivo. Contacta a Administración para aclararlo.'}:{})
+   };
+  });
+  noCache(res);
+  return res.json({ok:true,data:{correo:email,reservas}});
+ }catch(e){return fallo(res,e);}
+}
 async function reintentar(req,res){
  try{
   const reservaInicial=await leerReserva(req);
@@ -113,4 +150,4 @@ async function descargarRecibo(req,res){
   return res.send(pago.reciboPdfData);
  }catch(e){return fallo(res,e);}
 }
-module.exports={cuenta,reportar,estado,reintentar,descargarRecibo};
+module.exports={cuenta,reportar,estado,misReservas,reintentar,descargarRecibo};

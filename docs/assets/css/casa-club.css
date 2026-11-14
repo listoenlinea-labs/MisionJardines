@@ -736,3 +736,126 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
  content:'';position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
  width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;
 }
+
+
+/* La fecha de HOY se determina en JavaScript con America/Mexico_City.
+   Solo contorno azul pastel: sin modificar fondo, borde de estado ni texto. */
+#calendarDays button.today-mx{
+ outline:2px solid #88c5e9;
+ outline-offset:-3px;
+}
+
+/* Mantener los seis indicadores de Administración en una sola fila en escritorio. */
+@media (min-width:721px){
+ #tab-administracion #clubTotals.stat-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  align-items:stretch;
+ }
+ #tab-administracion #clubTotals.stat-grid .stat{
+  min-width:0;
+  height:100%;
+  min-height:88px;
+  padding:11px 12px;
+  flex-direction:column;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:8px;
+ }
+ #tab-administracion #clubTotals.stat-grid .stat small{
+  max-width:100%;
+  font-size:10px;
+  line-height:1.3;
+ }
+ #tab-administracion #clubTotals.stat-grid .stat strong{
+  font-size:clamp(15px,1.35vw,22px);
+  line-height:1.15;
+ }
+}
+/* En celulares: 2 columnas × 3 filas, sin dejar una tarjeta huérfana. */
+@media(max-width:720px){
+ #tab-administracion #clubTotals.stat-grid,
+ #tab-aprobacion .club-overview-stats{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+ }
+ #tab-administracion #clubTotals.stat-grid .stat{
+  min-width:0;
+  min-height:78px;
+  height:100%;
+  padding:11px 10px;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+ }
+ #tab-administracion #clubTotals.stat-grid .stat small{
+  max-width:100%;
+  font-size:10px;
+  line-height:1.3;
+ }
+ #tab-administracion #clubTotals.stat-grid .stat strong{
+  font-size:18px;
+  overflow-wrap:anywhere;
+ }
+}
+
+/* El indicador Drive va a la izquierda del botón Actualizar en el encabezado. */
+#tab-administracion .club-header-actions,
+#tab-aprobacion .club-header-actions{
+ display:flex;
+ align-items:center;
+ justify-content:flex-end;
+ flex-wrap:wrap;
+ gap:10px;
+ margin-left:auto;
+}
+#tab-administracion .club-header-actions .club-drive-status,
+#tab-aprobacion .club-header-actions .club-drive-status{
+ margin:0;
+ flex-shrink:0;
+}
+#tab-administracion .club-header-actions .soft,
+#tab-aprobacion .club-header-actions .soft{
+ min-height:38px;
+}
+@media(max-width:520px){
+ #tab-administracion .club-header-actions,
+ #tab-aprobacion .club-header-actions{width:100%;justify-content:flex-end}
+}
+
+
+/* Consulta privada de reservas asociadas al correo del enlace de confirmación. */
+.club-email-reservations .club-card{max-width:970px;margin:0 auto}
+.club-email-reservations .club-history-back{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.club-email-mailbox{
+ background:#f3f8fc;border:1px solid #dfecf5;border-radius:11px;
+ padding:12px 15px;margin:12px 0 18px;font-size:12px;font-weight:700;
+ color:#43637a;overflow-wrap:anywhere;
+}
+.club-email-reservations-status{margin:12px 0 17px;color:#63758c;font-size:13px}
+.club-email-reservations-status.error{color:#a73e50}
+.club-email-reservations-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.club-email-reservation{min-width:0;padding:18px;border:1px solid #e1e8ef;
+ border-radius:15px;background:#fff;box-shadow:0 4px 18px rgba(40,58,84,.04)}
+.club-email-reservation-head{display:flex;gap:12px;align-items:center;
+ justify-content:space-between;flex-wrap:wrap}
+.club-email-reservation-date{font-size:17px;color:#273a55}
+.club-email-state{font-weight:800;font-size:11px;padding:7px 11px;border-radius:999px}
+.club-email-state.pending{background:#fff3df;color:#aa7028}
+.club-email-state.approved{background:#e6f5eb;color:#257349}
+.club-email-state.rejected,.club-email-state.cancelled{background:#fdecee;color:#af4251}
+.club-email-state.unknown{background:#edf1f5;color:#536879}
+.club-email-reservation-folio{font-size:12px;color:#6c7e92;font-weight:650;margin:13px 0 7px}
+.club-email-reservation-detail{font-size:13px;color:#4e637e;line-height:1.6;margin:0}
+.club-email-rejection{background:#fff5f5;border:1px solid #f2dadd;border-radius:11px;
+ margin-top:14px;padding:12px 13px;color:#8e3444;font-size:12px;line-height:1.6}
+.club-email-rejection p{margin:5px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:650px){
+ .club-email-reservations-list{grid-template-columns:1fr}
+ .club-email-reservations .section-header{gap:12px}
+ .club-email-reservations .club-history-back{font-size:11px}
+ .club-email-reservation{padding:15px}
+}
