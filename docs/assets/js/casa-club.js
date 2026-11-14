@@ -226,9 +226,11 @@
    if(admin&&date<today()&&status)btn.classList.add('historic-entry');
    // Hoy según America/Mexico_City; solo añade contorno, conserva color de estado.
    if(date===today())btn.classList.add('today-mx');
+   // Fecha anterior a hoy (Guadalajara): solo color informativo, no cambia estado MySQL.
+   if(date<today())btn.classList.add('past-date-red');
    if(date===selectedDate)btn.classList.add('selected');
    btn.disabled=Boolean(status)||past||!googleVerificado;
-   btn.setAttribute('aria-label',fmt(date)+' · '+(
+   btn.setAttribute('aria-label',fmt(date)+(date<today()?' · Fecha pasada: no disponible':'')+' · '+(
     status==='APROBADA'?'Reservada':status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'En revisión':
     status==='HISTORICA_INACTIVA'?'Registro histórico cancelado o rechazado':
     past||!googleVerificado?'No disponible':'Disponible'));
