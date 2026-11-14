@@ -23,6 +23,7 @@ async function asegurarFinanzas(){
  if(!names.has('ambito'))await db.query("ALTER TABLE egresos_fraccionamiento ADD COLUMN ambito ENUM('MANTENIMIENTO','EXTRAORDINARIO','CASA_CLUB') NOT NULL DEFAULT 'MANTENIMIENTO'");
  if(!names.has('proyecto_id'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN proyecto_id BIGINT UNSIGNED NULL');
  if(!names.has('comprobante_archivo'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN comprobante_archivo VARCHAR(100) NULL');
+ if(!names.has('incluido_presupuesto'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN incluido_presupuesto TINYINT(1) NOT NULL DEFAULT 1');
  await db.query("UPDATE egresos_fraccionamiento SET ambito='EXTRAORDINARIO' WHERE categoria IN ('CUOTA_EXTRAORDINARIA','PROYECTOS','PROYECTO') AND ambito='MANTENIMIENTO'");
 }
 module.exports={asegurarFinanzas};
