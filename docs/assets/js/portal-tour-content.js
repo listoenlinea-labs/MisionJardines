@@ -61,7 +61,7 @@
   function club(role) {
     const admin = ['ADMINISTRADOR','SUPER_ADMIN'].includes(role);
     section('casa-club.html','Casa Club',[
-      ['#clubAvailabilityCard', 'Calendario y disponibilidad',
+      ['#clubAvailabilityCard .section-header', 'Calendario y disponibilidad',
        'Verde es disponible, amarillo indica en revisión o apartado, rojo es reservado y gris significa no disponible o fecha pasada. Las fechas ocupadas no se pueden elegir.'],
       ['#calendarDays', 'Cómo elegir el día',
        'Toca una fecha verde habilitada. La selección no confirma el evento. En teléfono se abre una ventana para completar y guardar la solicitud antes del envío definitivo.'],
@@ -100,7 +100,7 @@
 
   function admin() {
     section('index.html','Inicio',[
-      ['main', 'Panel principal',
+      ['.hl-welcome', 'Panel principal',
        'En Inicio tienes una visión general de la comunidad y sus noticias. Utiliza el menú para pasar a cuotas, pagos, residentes y control de acceso.']
     ]);
     section('analisis-cuotas.html','Análisis de cuotas',[

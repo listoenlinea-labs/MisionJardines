@@ -391,6 +391,10 @@
     if (!body || body.dataset.sharedSidebarReady === 'true') return;
     body.dataset.sharedSidebarReady = 'true';
     body.classList.add('mj-shared-sidebar-enabled');
+    // Evitar que una preferencia guardada de escritorio o una espera de API
+    // deje el menú cubriendo el portal al iniciar sesión en celular.
+    // Se aplica ANTES de montar la barra lateral y antes de cualquier await.
+    if (matchMedia(MOBILE).matches) body.classList.add('mj-shared-sidebar-collapsed');
     styles();
     if (!body.classList.contains('mj-home')) document.querySelector('body > header')?.remove();
     const aside = createSidebar();
@@ -456,13 +460,19 @@
 
     let stored = null;
     try { stored = localStorage.getItem(STORAGE_KEY); } catch (_) {}
-    let collapsed = stored === '1';
-    if (stored !== '1' && stored !== '0' && matchMedia(MOBILE).matches) collapsed = true;
+    // En cada carga móvil el menú inicia cerrado, aunque el usuario lo haya
+    // dejado abierto en una visita previa. En escritorio se conserva la elección.
+    let collapsed = matchMedia(MOBILE).matches || stored === '1';
     button.addEventListener('click', () => collapse(body, button, !body.classList.contains('mj-shared-sidebar-collapsed')));
     scrim.addEventListener('click', () => collapse(body, button, true));
     matchMedia(MOBILE).addEventListener('change', () => {
-      if (!matchMedia(MOBILE).matches) scrim.hidden = true;
-      else scrim.hidden = body.classList.contains('mj-shared-sidebar-collapsed');
+      if (matchMedia(MOBILE).matches) collapse(body, button, true, false);
+      else scrim.hidden = true;
+    });
+    // El tour debe mostrar el contenido, nunca un menú que tape las zonas
+    // resaltadas. No persistir este cierre: el usuario puede abrirlo manualmente.
+    document.addEventListener('mj:portal-tour-start', () => {
+      if (matchMedia(MOBILE).matches) collapse(body, button, true, false);
     });
     aside.addEventListener('click', event => {
       if (matchMedia(MOBILE).matches && event.target.closest('a')) collapse(body, button, true);

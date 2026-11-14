@@ -36,7 +36,10 @@
 .mj-tour-restart{width:calc(100% - 2px)!important;min-height:38px!important;flex:0 0 auto!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:9px!important;margin:5px 1px!important;padding:8px 11px!important;border:1px solid #bce0cf!important;border-radius:10px!important;background:linear-gradient(105deg,#edfaf2,#eff6ff)!important;color:#2c6955!important;font-family:Inter,system-ui,sans-serif!important;font-size:11px!important;font-weight:800!important;box-shadow:none!important;cursor:pointer!important}
 .mj-tour-restart:hover{border-color:#7fbe9c!important;background:#ddf4e6!important}
 @media(max-width:660px){
-  .mj-tour-panel{width:calc(100vw - 24px);max-height:min(56dvh,450px);padding:14px 15px 12px;border-radius:16px}
+  /* Dejar una zona superior útil para iluminar la sección, sin taparla con la explicación. */
+  .mj-tour-panel{width:calc(100vw - 24px);max-height:min(52dvh,420px);padding:14px 15px 12px;border-radius:16px;top:auto;bottom:max(12px,env(safe-area-inset-bottom));overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+  .mj-tour-focus{transition:none}
+  .mj-tour-copy{overflow-wrap:break-word}
   .mj-tour-panel h2{font-size:16px}
   .mj-tour-copy{font-size:12px;line-height:1.55}
   .mj-tour-panel .mj-tour-foot{align-items:flex-start}

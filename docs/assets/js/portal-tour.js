@@ -65,43 +65,98 @@
   }
 
   function targetFor(step) {
+    const mobile = matchMedia('(max-width: 820px)').matches;
     if (!step.page) {
-      let el = document.querySelector(step.selector);
-      // Cuando el menú está cerrado en celular, explicar la pestaña amarilla
-      // en lugar de resaltar coordenadas fuera de la pantalla.
-      if (visibleElement(el)) {
-        const rect = el.getBoundingClientRect();
-        if (rect.right <= 0 || rect.left >= innerWidth) el = null;
-      }
+      // En celular el menú está cerrado: resaltar su pestaña amarilla, NO
+      // un menú invisible que se encuentra fuera de la pantalla.
+      let el = mobile && step.selector.includes('.mj-side-nav')
+        ? document.querySelector('.mj-side-tab')
+        : document.querySelector(step.selector);
       if (!visibleElement(el)) el = document.querySelector('.mj-side-tab');
-      return visibleElement(el) ? {el, frame:null} : null;
+      if (!visibleElement(el)) return null;
+      const rect = el.getBoundingClientRect();
+      if (rect.right <= 0 || rect.left >= innerWidth) return null;
+      return {el, frame:null};
     }
     const frame = currentFrame();
-    if (!frame || !frame.contentDocument) return null;
-    let el = null;
-    try { el = frame.contentDocument.querySelector(step.selector); } catch (_) {}
-    // Algunos controles solo aparecen cuando se elige una pestaña,
-    // cuenta o concepto. No abrirlos ni modificar el estado para resaltarlos.
-    if (!visibleElement(el)) {
-      el = ['h1', '.club-hero', '.heading', '.hero', 'main h2', 'main']
-        .map(s => frame.contentDocument.querySelector(s)).find(visibleElement);
+    if (!frame?.contentDocument) return null;
+    let el;
+    try { el = frame.contentDocument.querySelector(step.selector); }
+    catch (_) { return null; }
+    // La pestaña puede existir pero estar oculta/inactiva: nunca iluminar
+    // un h1 o main aleatorio que no corresponde al paso explicado.
+    if (!visibleElement(el)) return null;
+    const bounds = el.getBoundingClientRect();
+    const maxHeight = Math.min(460, frame.clientHeight * .82);
+    if (el.matches('main, body, .dashboard') || bounds.height > maxHeight) {
+      const precise = el.querySelector(
+        ':scope > .section-header, :scope > .heading, :scope > .hl-welcome, ' +
+        '.finance-expense-panel-heading, .section-header, .hl-card-head, h1, h2'
+      );
+      if (visibleElement(precise)) el = precise;
+      // Si solo existe un contenedor gigante sin título, es mejor mostrar
+      // la explicación sin foco que iluminar una sección incorrecta.
+      else if (bounds.height > maxHeight) return null;
     }
-    return visibleElement(el) ? {el,frame} : null;
+    return {el, frame};
   }
 
   function screenRect(target) {
     if (!target) return null;
     const bounds = target.el.getBoundingClientRect();
-    const parent = target.frame?.getBoundingClientRect();
-    const left = bounds.left + (parent?.left || 0);
-    const top = bounds.top + (parent?.top || 0);
-    const width = Math.min(bounds.width, (parent?.width || innerWidth));
-    const height = Math.min(bounds.height, (parent?.height || innerHeight));
-    const x = limit(left - 5, 8, innerWidth - 34);
-    const y = limit(top - 5, 8, innerHeight - 34);
-    const right = limit(left + width + 5, x + 20, innerWidth - 8);
-    const bottom = limit(top + height + 5, y + 20, innerHeight - 8);
-    return {left:x, top:y, width:right-x, height:bottom-y};
+    const frame = target.frame?.getBoundingClientRect();
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const panel = overlay?.querySelector('.mj-tour-panel');
+    const mobile = innerWidth <= 660;
+    const panelTop = mobile && panel ? panel.getBoundingClientRect().top : innerHeight;
+    // Recortar a la parte visible del iframe Y al espacio libre sobre la
+    // tarjeta de la guía. Nunca dibujar un foco debajo del texto de ayuda.
+    const clipLeft = Math.max(8, frame?.left ?? 8);
+    const clipRight = Math.min(innerWidth - 8, frame?.right ?? innerWidth - 8);
+    const clipTop = Math.max(8, frame?.top ?? 8);
+    const clipBottom = Math.min(
+      innerHeight - 8, frame?.bottom ?? innerHeight - 8,
+      mobile ? panelTop - 14 : innerHeight - 8
+    );
+    const left = Math.max(clipLeft, bounds.left + frameLeft - 5);
+    const top = Math.max(clipTop, bounds.top + frameTop - 5);
+    const right = Math.min(clipRight, bounds.right + frameLeft + 5);
+    const bottom = Math.min(clipBottom, bounds.bottom + frameTop + 5);
+    if (right - left < 18 || bottom - top < 18) return null;
+    return {left, top, width:right - left, height:bottom - top};
+  }
+
+  function scrollTargetIntoView(target) {
+    if (!target?.frame || !visibleElement(target.el)) return;
+    const el = target.el;
+    try { el.scrollIntoView({block:'center', inline:'nearest', behavior:'instant'}); }
+    catch (_) { el.scrollIntoView(); }
+    if (innerWidth > 660) return;
+    // El scrollIntoView normal centra el elemento detrás de la tarjeta inferior.
+    // Subirlo al área utilizable mediante el contenedor con scroll más cercano.
+    const panelTop = overlay?.querySelector('.mj-tour-panel')?.getBoundingClientRect().top;
+    if (!Number.isFinite(panelTop)) return;
+    const frameTop = target.frame.getBoundingClientRect().top;
+    const usefulBottom = panelTop - frameTop - 20;
+    if (usefulBottom < 105) return;
+    const bounds = el.getBoundingClientRect();
+    const desiredCenter = 18 + (usefulBottom - 18) * .43;
+    const visibleTargetHeight = Math.min(bounds.height, 150);
+    const delta = bounds.top + visibleTargetHeight / 2 - desiredCenter;
+    if (Math.abs(delta) < 12) return;
+    const doc = el.ownerDocument;
+    let scrollable = el.parentElement;
+    while (scrollable && scrollable !== doc.body && scrollable !== doc.documentElement) {
+      const computed = doc.defaultView.getComputedStyle(scrollable);
+      if (/auto|scroll|overlay/.test(computed.overflowY) &&
+          scrollable.scrollHeight > scrollable.clientHeight + 1) break;
+      scrollable = scrollable.parentElement;
+    }
+    const root = doc.scrollingElement || doc.documentElement;
+    const chosen = scrollable && scrollable !== doc.body && scrollable !== doc.documentElement
+      ? scrollable : root;
+    chosen.scrollTop += delta;
   }
 
   function createOverlay() {
@@ -142,8 +197,27 @@
       event.preventDefault();
       finish('dismissed');
     });
-    window.addEventListener('resize', reposition, {passive:true});
+    const alignViewport = () => {
+      if (!open || busy) return;
+      requestAnimationFrame(() => {
+        if (!open || busy) return;
+        reposition();
+        scrollTargetIntoView(targetFor(steps[index]));
+        requestAnimationFrame(reposition);
+      });
+    };
+    window.addEventListener('resize', alignViewport, {passive:true});
     window.addEventListener('scroll', reposition, {passive:true});
+    window.visualViewport?.addEventListener('resize', alignViewport, {passive:true});
+    // Seguir el desplazamiento dentro de los marcos, no solo del shell.
+    document.querySelectorAll('.mj-app-frame').forEach(frame => {
+      const attachScroll = () => {
+        try { frame.contentWindow?.addEventListener('scroll', reposition, {passive:true}); }
+        catch (_) { /* Página inaccesible: no romper el recorrido. */ }
+      };
+      frame.addEventListener('load', attachScroll);
+      attachScroll(); // El iframe actual ya estaba cargado al abrir la guía.
+    });
     return root;
   }
 
@@ -151,18 +225,30 @@
     if (!open || !overlay || overlay.hidden || busy) return;
     const step = steps[index];
     if (!step) return;
+    const panel = overlay.querySelector('.mj-tour-panel');
+    const focus = overlay.querySelector('.mj-tour-focus');
+    const mobile = innerWidth <= 660;
     const target = targetFor(step);
     lastTarget = target;
+    // Colocar PRIMERO la tarjeta inferior. screenRect necesita su posición
+    // actual para no dibujar un foco debajo de ella.
+    if (mobile) {
+      panel.style.left = '12px';
+      panel.style.top = 'auto';
+      panel.style.bottom = 'max(12px, env(safe-area-inset-bottom))';
+      panel.style.transform = 'none';
+    } else {
+      panel.style.bottom = 'auto';
+    }
     const rect = screenRect(target);
-    const focus = overlay.querySelector('.mj-tour-focus');
-    const panel = overlay.querySelector('.mj-tour-panel');
     if (!rect) {
       overlay.classList.add('mj-tour-no-focus');
       focus.style.display = 'none';
-      panel.style.left = '50%';
-      panel.style.top = '50%';
-      panel.style.transform = 'translate(-50%, -50%)';
-      panel.style.bottom = 'auto';
+      if (!mobile) {
+        panel.style.left = '50%';
+        panel.style.top = '50%';
+        panel.style.transform = 'translate(-50%, -50%)';
+      }
       return;
     }
     overlay.classList.remove('mj-tour-no-focus');
@@ -171,6 +257,7 @@
     focus.style.top = rect.top + 'px';
     focus.style.width = rect.width + 'px';
     focus.style.height = rect.height + 'px';
+    if (mobile) return;
     panel.style.transform = 'none';
     const panelWidth = Math.min(400, innerWidth - 22);
     const panelHeight = panel.offsetHeight || 260;
@@ -180,14 +267,6 @@
     const left = limit(rect.left + rect.width / 2 - panelWidth / 2, 11, innerWidth - panelWidth - 11);
     panel.style.left = left + 'px';
     panel.style.top = top + 'px';
-    if (innerWidth <= 660) {
-      panel.style.left = '12px';
-      panel.style.top = 'auto';
-      panel.style.bottom = '12px';
-      panel.style.transform = 'none';
-    } else {
-      panel.style.bottom = 'auto';
-    }
   }
 
   async function routeTo(page) {
@@ -230,12 +309,6 @@
       }
       index = to;
       const step = steps[index];
-      const target = targetFor(step);
-      if (target?.el) {
-        try {
-          target.el.scrollIntoView({block:'center', inline:'nearest', behavior:'instant'});
-        } catch (_) { /* La guía puede avanzar aunque no se pueda desplazar. */ }
-      }
       byId('mjTourGroup').textContent = step.group;
       byId('mjTourTitle').textContent = step.title;
       byId('mjTourDescription').textContent = step.description;
@@ -247,7 +320,21 @@
       busy = false;
       byId('mjTourPrevious').disabled = false;
       byId('mjTourNext').disabled = false;
-      requestAnimationFrame(reposition);
+      requestAnimationFrame(() => {
+        if (!open) return;
+        // Actualizar panel antes de desplazar el documento dentro del iframe.
+        reposition();
+        scrollTargetIntoView(targetFor(steps[index]));
+        requestAnimationFrame(reposition);
+      });
+      // Algunos módulos muestran las tarjetas después de recibir datos.
+      // Reintentar el foco de ese paso sin seleccionar otra sección por error.
+      if (open) setTimeout(() => {
+        if (!open || busy || index !== to) return;
+        const target = targetFor(steps[index]);
+        if (target) scrollTargetIntoView(target);
+        reposition();
+      }, 650);
     }
   }
 
@@ -273,6 +360,9 @@
     if (!steps.length) return;
     originalPage = window.MJShell?.currentPage || window.MJPermissions.landing(role);
     window.MJPortalTourActive = true;
+    // No abrir el menú para enseñar navegación en móvil. Forzar cierre
+    // visual antes del spotlight sin guardar una preferencia distinta.
+    document.dispatchEvent(new CustomEvent('mj:portal-tour-start'));
     createOverlay();
     overlay.hidden = false;
     open = true;
@@ -293,6 +383,7 @@
   function invite() {
     if (welcomeOpen || open || readSaved() || !SUPPORTED.has(role)) return;
     if (document.querySelector('.mj-child-modal-open, #mjPortalTourWelcome')) return;
+    document.dispatchEvent(new CustomEvent('mj:portal-tour-start'));
     const dialog = document.createElement('dialog');
     dialog.id = 'mjPortalTourWelcome';
     dialog.className = 'mj-tour-welcome';
