@@ -114,7 +114,7 @@ function htmlPago(datos){
     '<div style="color:#f6a052;letter-spacing:.12em;font-size:12px;font-weight:bold">MISIÓN JARDINES · CASA CLUB</div>'+
     '<h1 style="font-size:24px;line-height:1.3;margin:12px 0 0">Solicitud de reservación recibida</h1>'+
     '<p style="font-size:13px;line-height:1.6;color:#d6e6eb;margin:10px 0 0">Tu fecha está apartada provisionalmente. Para confirmarla, necesitamos verificar el pago.</p>'+
-   '</header><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse"><tr><td style="padding:26px 32px 28px;vertical-align:top">'+
+   '</header><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse"><tr><td style="padding:26px 25px 28px 32px;vertical-align:top">'+
     '<p style="font-size:14px;line-height:1.65">Conserva este correo para identificar tu reservación y consultar su comprobante. El enlace de abajo es <b>exclusivo para tu vivienda y fecha</b>.</p>'+
     tarjeta('RESERVACIÓN',
       fila('Folio',datos.folio,true)+
@@ -139,7 +139,7 @@ function htmlPago(datos){
       '<a href="'+x(datos.enlaceMisReservas||'#')+'" style="display:inline-block;vertical-align:middle;margin:6px;border:1px solid #b9d0e5;background:#f0f7fd;padding:13px 19px;border-radius:11px;color:#284e73;font-size:14px;font-weight:bold;text-decoration:none">Ver mis reservaciones</a>'+
     '</div>'+
     '<p style="font-size:12px;line-height:1.65;color:#657488">El botón abre el expediente de tu solicitud y muestra la fecha y la vivienda antes de adjuntar el archivo. No compartas este enlace. La captura enviada no acredita por sí sola un depósito.</p>'+
-   '</td></tr></table><footer style="padding:17px 32px;background:#f6f9fa;border-top:1px solid #ecf0f2;color:#69798a;font-size:12px">Administración de Misión Jardines</footer>'+
+   '</td></tr></table><footer style="padding:17px 25px 17px 32px;background:#f6f9fa;border-top:1px solid #ecf0f2;color:#69798a;font-size:12px">Administración de Misión Jardines</footer>'+
   '</div></body></html>';
 }
 async function whatsapp(row,datos,config){
