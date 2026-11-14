@@ -141,7 +141,7 @@ async function execute(){
  const report=historical.build({sheetRows,casas,existing:[...existing,...createdRows],
   today:today(),houseId});
  latest={occupied,inserted,exported:rows.length,unresolved,conflicts,duplicates,
-  historialGoogle:report.historial,resumen:report.counts};
+  historialGoogle:report.historial,resumen:report.counts,syncedAt:new Date().toISOString()};
  lastRun=Date.now();
  if(unresolved||conflicts)console.warn('[CasaClub Google] Pendientes de conciliar:',
   {unresolved,conflicts,duplicates});
