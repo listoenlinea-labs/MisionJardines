@@ -634,3 +634,105 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
 @media(max-width:390px){
  #tab-aprobacion .club-review-filters{grid-template-columns:1fr}
 }
+
+/* Cifras consolidadas del formulario antiguo + Misión Jardines. */
+#tab-aprobacion .club-overview-stats{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:10px;margin:14px 0 18px;
+}
+#tab-aprobacion .club-overview-stat{
+ background:linear-gradient(135deg,#f8fbfe,#f7f7fd);
+ border:1px solid #e0e8f1;border-radius:13px;padding:14px;
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+}
+#tab-aprobacion .club-overview-stat small{
+ color:#60718a;font-size:11px;font-weight:700;
+}
+#tab-aprobacion .club-overview-stat strong{
+ font-size:23px;line-height:1.1;color:#243750;font-variant-numeric:tabular-nums;
+}
+#tab-administracion .club-history-info{
+ font-size:12px;color:#677b94;padding:0 0 12px;margin:0;line-height:1.5;
+}
+#tab-administracion .club-google-readonly{
+ display:inline-flex;align-items:center;border:1px solid #d7e2ea;
+ background:#f4f7fb;border-radius:9px;padding:7px 10px;
+ color:#527084;font-size:11px;font-weight:750;white-space:nowrap;
+}
+@media(max-width:900px){
+ #tab-aprobacion .club-overview-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){
+ #tab-aprobacion .club-overview-stat{padding:11px}
+ #tab-aprobacion .club-overview-stat strong{font-size:20px}
+ #tab-aprobacion .club-overview-stat small{font-size:10px}
+}
+
+
+/* Estado verificable de Google Drive, visible solo a administradores. */
+.club-drive-status{
+ display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;
+ padding:7px 12px;margin:12px 0 12px auto;border-radius:999px;
+ border:1px solid #a9dfbd;background:#ebfaf0;color:#216b43;
+ font-size:11px;font-weight:750;box-shadow:0 2px 8px rgba(20,105,45,.06);
+}
+.club-drive-status[hidden]{display:none!important}
+.club-drive-status .club-drive-dot{
+ width:8px;height:8px;flex:0 0 8px;border-radius:50%;
+ background:#1da655;box-shadow:0 0 0 3px rgba(29,166,85,.1);
+}
+.club-drive-status.offline{
+ border-color:#f0d9b1;background:#fff9ed;color:#886325;
+}
+.club-drive-status.offline .club-drive-dot{
+ background:#d3a149;box-shadow:0 0 0 3px rgba(211,161,73,.12);
+}
+.club-drive-status-review{margin:4px 0 10px auto}
+
+/* Historial de Administración: 10 registros por página escritorio,
+   3 tarjetas apiladas por página móvil. */
+#tab-administracion .club-admin-mobile-cards{display:none}
+#tab-administracion .club-admin-pagination{
+ display:flex;justify-content:center;align-items:center;
+ padding:15px 0 0;margin:15px 0 0;gap:12px;
+ border-top:1px solid #e5e9f0;font-size:12px;color:#60718a;
+}
+#tab-administracion .club-admin-pagination[hidden]{display:none!important}
+#tab-administracion .club-admin-pagination button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:720px), (orientation:landscape) and (max-height:550px) and (pointer:coarse){
+ #tab-administracion .club-admin-desktop-table{display:none}
+ #tab-administracion .club-admin-mobile-cards{display:grid;gap:11px}
+ #tab-administracion .club-admin-mobile-cards[hidden]{display:none!important}
+ #tab-administracion .club-admin-mobile-card{
+  background:#fff;border:1px solid #e0e7ef;border-radius:13px;
+  padding:10px 14px;box-shadow:0 2px 12px rgba(30,45,85,.025);
+ }
+ #tab-administracion .club-admin-mobile-line{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);
+  gap:12px;align-items:center;padding:10px 0;
+  border-bottom:1px solid #e8ecf2;font-size:12px;min-width:0;
+ }
+ #tab-administracion .club-admin-mobile-line span{
+  color:#6f8098;font-size:11px;font-weight:700;
+ }
+ #tab-administracion .club-admin-mobile-line strong{
+  color:#2c405a;text-align:right;font-size:12px;
+  overflow-wrap:anywhere;font-weight:750;min-width:0;
+ }
+ #tab-administracion .club-admin-mobile-actions{
+  display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;padding-top:12px;
+ }
+ #tab-administracion .club-admin-mobile-actions button{
+  min-height:38px;padding:7px 11px;font-size:11px;
+ }
+ #tab-administracion .club-admin-pagination{justify-content:space-between;gap:8px}
+}
+
+
+/* Un punto discreto distingue los días históricos registrados de los
+   demás días grises; solamente se aplica al calendario del administrador. */
+#calendarDays button.historic-entry{position:relative}
+#calendarDays button.historic-entry::after{
+ content:'';position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
+ width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;
+}

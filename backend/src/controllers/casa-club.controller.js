@@ -267,8 +267,13 @@ async function listar(req,res){
  if(!admin(req.usuario.rol))return res.status(403).json({ok:false,message:'Acceso exclusivo de administración'});
  try{
   // El botón Actualizar del administrador también relee las filas Google nuevas.
-  try{await googleCasaClub.sync({force:true});}
-  catch(e){console.warn('[CasaClub Google] Actualización administrativa parcial:',e.message);}
+  let googleResult={historialGoogle:[],resumen:null};
+  let googleDisponible=true;
+  try{
+   googleResult=await googleCasaClub.sync({force:true});
+   googleDisponible=!googleResult.disabled && Boolean(googleResult.syncedAt);
+  }
+  catch(e){googleDisponible=false;console.warn('[CasaClub Google] Actualización administrativa parcial:',e.message);}
   await expirarReservas();
   const estado=texto(req.query.estatus,15);
   if(estado&&!['PENDIENTE','APROBADA','RECHAZADA','CANCELADA'].includes(estado))throw error(400,'Estado inválido');
@@ -276,7 +281,12 @@ async function listar(req,res){
   const ids=[...new Set(rows.map(x=>x.casaId))],casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','calleCorrecta','numero']}):[];
   const mapa=new Map(casas.map(x=>[Number(x.id),x]));
   res.setHeader('Cache-Control','no-store');
-  return res.json({ok:true,data:rows.map(x=>({...reservaSegura(x),...cargosSolicitud(x),casa:mapa.get(Number(x.casaId))||null}))});
+  return res.json({ok:true,
+   data:rows.map(x=>({...reservaSegura(x),...cargosSolicitud(x),casa:mapa.get(Number(x.casaId))||null})),
+   historialGoogle:googleResult.historialGoogle||[],
+   resumenGoogle:googleResult.resumen||null,
+   googleDisponible,googleSincronizadoEn:googleDisponible?googleResult.syncedAt:null
+  });
  }catch(e){return manejar(res,e);}
 }
 async function pendientesResumen(req,res){
