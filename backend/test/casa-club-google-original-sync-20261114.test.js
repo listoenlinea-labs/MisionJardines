@@ -72,7 +72,7 @@ test('dos altas y consultas de calendario reutilizan sincronización y rechazo d
 test('idempotencia por folio y fecha, sin tocar registros existentes',()=>{
  const service=read('backend/src/services/casa-club-google-sync.service.js');
  assert.match(service,/byFolio\.get\(row\.folio\)/);
- assert.match(service,/occupiedByLocal\.has\(row\.fecha\)/);
+ assert.match(service,/occupiedByLocal\.get\(row\.fecha\)/);
  assert.match(service,/SequelizeUniqueConstraintError/);
  assert.match(service,/!folios\.has\('CC-'\+r\.id\)/);
  assert.match(service,/if\(rows\.length\)await sheets\.append\(rows\)/);
