@@ -97,8 +97,7 @@ async function updateSummary(summary){
  const snapshot=await query('GET','/values/'+address+'?valueRenderOption=FORMATTED_VALUE');
  const current=snapshot.values||[];
  const first=String(current[0]?.[0]||'').trim();
- const hasOtherContent=current.some((r,i)=>r.some((x,j)=>
-  String(x??'').trim() && !(i===0&&j===0&&first===summaryMarker)));
+ const hasOtherContent=current.some(r=>r.some(x=>String(x??'').trim()));
  if(first!==summaryMarker && hasOtherContent){
   console.warn('[CasaClub Google] Resumen omitido: las columnas K:L ya contienen información');
   return {skipped:true};
