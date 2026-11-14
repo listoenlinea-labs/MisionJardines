@@ -18,6 +18,20 @@
    <button type="button" id="clubMyRedCards" class="club-red-count-btn" hidden>Ver mis tarjetas rojas <strong id="clubMyRedCount">0</strong></button>
   </div>
   <div id="clubNotice" role="status" aria-live="polite" hidden></div>
+<section id="clubEmailReservationsView" class="club-panel club-email-reservations" hidden aria-labelledby="clubEmailReservationsTitle">
+ <article class="club-card">
+  <div class="section-header">
+   <div><span class="eyebrow">CASA CLUB · CONSULTA PERSONAL</span>
+    <h2 id="clubEmailReservationsTitle">Mis reservaciones</h2>
+    <p>Consulta las solicitudes registradas con el correo que recibió este enlace privado.</p>
+   </div>
+   <a class="soft club-history-back" href="casa-club.html">Volver al calendario</a>
+  </div>
+  <p id="clubEmailReservationsMailbox" class="club-email-mailbox" hidden></p>
+  <div id="clubEmailReservationsStatus" class="club-email-reservations-status" role="status" aria-live="polite">Consultando tus reservaciones…</div>
+  <div id="clubEmailReservationsList" class="club-email-reservations-list" aria-label="Historial de mis reservaciones"></div>
+ </article>
+</section>
 <section id="tab-reservar" class="club-panel">
 <div class="two-col">
 <article class="club-card" id="clubAvailabilityCard"><div class="section-header"><div><span class="eyebrow">DISPONIBILIDAD</span><h2>Elige una fecha</h2><p>Selecciona un día disponible.</p></div><div class="legend"><span><i class="available"></i>Disponible</span><span><i class="busy"></i>Reservada</span><span><i class="waiting"></i>En revisión</span><span><i class="elapsed"></i>No disponible</span></div></div>
@@ -265,5 +279,6 @@
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
 <script src="assets/js/casa-club-rojas-admin.js?v=20261112" defer></script>
-<script src="assets/js/casa-club.js?v=20261114-today-kpis-drive" defer></script>
+<script src="assets/js/casa-club.js?v=20261114-correo-mis-reservas" defer></script>
+<script src="assets/js/casa-club-mis-reservas.js?v=20261114-correo-mis-reservas" defer></script>
 </body></html>
