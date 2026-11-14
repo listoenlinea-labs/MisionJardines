@@ -27,7 +27,7 @@ const parseDateTime=v=>{
  const dt=new Date(Date.UTC(+m[3],+m[2]-1,+m[1],+m[4]+6,+m[5],+m[6]));
  return Number.isNaN(dt.getTime())?new Date():dt;
 };
-let pending=null,lastRun=0,latest={occupied:[],inserted:0,exported:0,unresolved:0,conflicts:0,historialGoogle:[],resumen:null};
+let pending=null,lastRun=0,lastSummaryKey='',latest={occupied:[],inserted:0,exported:0,unresolved:0,conflicts:0,historialGoogle:[],resumen:null};
 const fmtDateTime=d=>new Intl.DateTimeFormat('en-GB',{
  timeZone:TZ,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',
  minute:'2-digit',second:'2-digit',hour12:false
@@ -147,8 +147,15 @@ async function execute(){
   {unresolved,conflicts,duplicates});
  // El resumen vive en K:L de la misma pestaña; nunca modifica A:J.
  // Un fallo de la tarjeta de resumen no invalida el calendario.
- try{await sheets.updateSummary(report.counts);}
- catch(error){console.warn('[CasaClub Google] Resumen en hoja no disponible:',error.message);}
+ const summaryKey=JSON.stringify(report.counts);
+ if(summaryKey!==lastSummaryKey){
+  try{
+   const updated=await sheets.updateSummary(report.counts);
+   if(!updated?.skipped)lastSummaryKey=summaryKey;
+  }catch(error){
+   console.warn('[CasaClub Google] Resumen en hoja no disponible:',error.message);
+  }
+ }
  return latest;
 }
 async function sync({force=false}={}){
