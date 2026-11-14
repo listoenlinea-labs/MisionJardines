@@ -90,7 +90,11 @@ async function estado(req,res){
 // de 256 bits. Nunca aceptar un correo arbitrario desde la petición del cliente.
 async function misReservas(req,res){
  try{
-  const credencial=await leerReserva(req);
+  // Esta clave se envía SOLO al correo. No es el enlace de comprobante
+  // que la API devuelve al navegador al registrar una solicitud.
+  const credencial=await acceso.verificarHistorial({
+   id:req.body?.reservaId,token:req.body?.claveAcceso
+  });
   const email=String(credencial.correo||'').trim().toLowerCase();
   if(!email||email.length>150)throw Object.assign(Error('El enlace no tiene correo asociado.'),{status:404});
   await expirarReservas();
