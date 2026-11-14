@@ -306,7 +306,7 @@
     dialog.querySelector('h2').textContent = title;
     document.body.append(dialog);
     welcomeOpen = true;
-    save('invited');
+    // Recordar el consentimiento o el rechazo, no una invitación sin respuesta.
     dialog.querySelector('#mjWelcomeNotNow').addEventListener('click', () => {
       save('dismissed');
       closeWelcome();
