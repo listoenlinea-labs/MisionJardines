@@ -216,18 +216,20 @@
   const offset=(new Date(Date.UTC(year,month-1,1)).getUTCDay()+6)%7;
   for(let n=0;n<offset;n++){let gap=document.createElement('div');gap.className='calendar-blank';days.append(gap);}
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
-   const date=currentMonth+'-'+String(n).padStart(2,'0'),status=occupied.get(date),past=admin?date<today():date<tomorrow()||date>lastDay();
+   const date=currentMonth+'-'+String(n).padStart(2,'0'),status=occupied.get(date);
+   const pastDate=date<today(),past=admin?pastDate:date<tomorrow()||date>lastDay();
+   const historicReserved=admin&&pastDate&&status==='APROBADA';
    const btn=document.createElement('button');btn.type='button';
-   // La fecha ocupada conserva su color incluso si ya no permite reservar.
-   btn.className=status==='APROBADA'?'booked':
+   // Las fechas pasadas son grises para todos, salvo reservas aprobadas de administración.
+   // No alterar los colores de hoy ni de las fechas futuras.
+   btn.className=pastDate?(historicReserved?'booked':'past'):
+    status==='APROBADA'?'booked':
     status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'waiting':
     status==='HISTORICA_INACTIVA'?'past':
     past||!googleVerificado?'past':'available';
-   if(admin&&date<today()&&status)btn.classList.add('historic-entry');
+   if(historicReserved)btn.classList.add('historic-entry','past-reserved');
    // Hoy según America/Mexico_City; solo añade contorno, conserva color de estado.
    if(date===today())btn.classList.add('today-mx');
-   // Fecha anterior a hoy (Guadalajara): solo color informativo, no cambia estado MySQL.
-   if(date<today())btn.classList.add('past-date-red');
    if(date===selectedDate)btn.classList.add('selected');
    btn.disabled=Boolean(status)||past||!googleVerificado;
    btn.setAttribute('aria-label',fmt(date)+(date<today()?' · Fecha pasada: no disponible':'')+' · '+(
