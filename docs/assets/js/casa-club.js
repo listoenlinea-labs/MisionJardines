@@ -221,6 +221,8 @@
     (status==='APROBADA'?'booked':status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'waiting':'past'):
     past||(!status&&!googleVerificado)?'past':status==='APROBADA'?'booked':status?'waiting':'available';
    if(admin&&date<today()&&status)btn.classList.add('historic-entry');
+   // Hoy según America/Mexico_City; solo añade contorno, conserva color de estado.
+   if(date===today())btn.classList.add('today-mx');
    if(date===selectedDate)btn.classList.add('selected');
    btn.disabled=Boolean(status)||past||!googleVerificado;
    btn.setAttribute('aria-label',fmt(date)+' · '+(admin&&date<today()&&status?
@@ -676,13 +678,13 @@
        r.solicitante||'—',
        fmt(r.fecha),
        r.soloLectura?(r.fechaRegistroGoogle||'—'):fechaSolicitud(r.creadoEn),
-       r.soloLectura?'—':money(r.cuotaRecuperacion),
-       r.soloLectura?'—':money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
-       r.soloLectura?'—':money(r.limpieza),
+       r.soloLectura?money(1000):money(r.cuotaRecuperacion),
+       r.soloLectura?money(700):money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
+       r.soloLectura?money(300):money(r.limpieza),
        r.folio||'—',
        r.propietario?'Sí':'No',
        r.soloLectura?'No verificado en Google':paymentStatus(r),
-       r.soloLectura?'Formulario Google original: estado de pago no verificado.':r.motivo||'—',
+       r.soloLectura?'Tarifa de referencia $2,000 (1000/700/300); pago no verificado en Google.':r.motivo||'—',
        r.soloLectura?(r.estatus==='HISTORICA_GOOGLE'?'Histórica · Google':
         r.estatus==='CONFLICTO_GOOGLE'?'Conflicto · Google':'En revisión · Google'):r.estatus
       ];
@@ -700,11 +702,11 @@
     r.casa?.calleCorrecta||r.casa?.calle||'—',r.casa?.numero||'—',
     r.solicitante||'—',fmt(r.fecha),
     r.soloLectura?(r.fechaRegistroGoogle||'—'):fechaSolicitud(r.creadoEn),
-    r.soloLectura?'—':money(r.cuotaRecuperacion),
-    r.soloLectura?'—':money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
-    r.soloLectura?'—':money(r.limpieza),r.folio||'—',
+    r.soloLectura?money(1000):money(r.cuotaRecuperacion),
+    r.soloLectura?money(700):money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
+    r.soloLectura?money(300):money(r.limpieza),r.folio||'—',
     r.propietario?'Sí':'No',r.soloLectura?'No verificado en Google':paymentStatus(r),
-    r.soloLectura?'Formulario Google (solo consulta)':r.motivo||'—',
+    r.soloLectura?'Tarifa de referencia $2,000; pago no verificado (solo consulta)':r.motivo||'—',
     r.soloLectura?'Histórica · Google':r.estatus
    ];
    const details=labels.map((label,i)=>'<div class="club-admin-mobile-line"><span>'+
