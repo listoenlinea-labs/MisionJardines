@@ -2578,6 +2578,191 @@ let historicalExtraId=null;
   return activeConcept==='EXTRAORDINARIO'?
    data?.proyectosExtraordinarios?.find(x=>Number(x.id)===Number(activeProyectoId)):null;
  }
+
+ // Desglose de proyecto: mismo patrón de tabla con botón Editar utilizado por mantenimiento.
+ const projectBreakdownModal=$('financeProjectBreakdownModal');
+ let projectBreakdownFocus=null,projectBreakdownSaving=false,projectBreakdownProjectId=null;
+ function closeProjectBreakdown(){
+  if(projectBreakdownSaving)return;
+  projectBreakdownModal.hidden=true;
+  projectBreakdownModal.setAttribute('aria-hidden','true');
+  projectBreakdownProjectId=null;
+  if(projectBreakdownFocus?.isConnected&&!projectBreakdownFocus.closest('[hidden]'))
+   projectBreakdownFocus.focus();
+  projectBreakdownFocus=null;
+ }
+ function renderProjectBreakdown(){
+  if(projectBreakdownModal.hidden)return;
+  const project=selectedProject();
+  if(!project||Number(project.id)!==Number(projectBreakdownProjectId)){
+   closeProjectBreakdown();return;
+  }
+  const costs=window.MJCostosProyecto?.resumen(project);
+  const budget=Math.round(Number(costs?.presupuesto??project.presupuestoBase??project.totalEsperado??0));
+  const additional=Math.round(Number(costs?.adicionales??project.gastosAdicionales??0));
+  const total=budget+additional;
+  const concepts=project.gastosConceptos||[];
+  $('financeProjectBreakdownProject').textContent=project.nombre;
+  const line=(type,id,name,kind,amount,editable=true)=>{
+   const key=type==='expense'?Number(id):type;
+   const current=Math.round(Number(amount||0));
+   const code=String(key);
+   return '<tr data-project-breakdown-row="'+esc(code)+'" data-project-breakdown-type="'+type+'">'+
+    '<th scope="row">'+esc(name)+'</th><td>'+esc(kind)+'</td>'+
+    '<td class="finance-expense-month-cell"><span class="finance-expense-month-display">'+
+     '<strong>'+esc(fmt(current))+'</strong>'+
+     (editable?'<button type="button" class="soft finance-expense-month-edit-button" data-breakdown-edit="'+esc(code)+'">Editar</button>':'')+
+    '</span>'+
+    (editable?'<form class="finance-expense-month-form" data-breakdown-save="'+esc(code)+'" hidden>'+
+     '<label class="finance-expense-month-input-label">Importe MXN'+
+      '<input type="number" min="0" max="100000000" step="1" required inputmode="numeric" value="'+current+'" aria-label="Nuevo importe de '+esc(name)+'"></label>'+
+     '<div class="finance-expense-month-actions"><button type="submit" class="primary">Guardar</button>'+
+      '<button type="button" class="soft" data-breakdown-cancel>Cancelar</button></div>'+
+    '</form>':'')+
+    '<small class="finance-expense-month-feedback" aria-live="polite"></small></td></tr>';
+  };
+  let rows=line('budget',null,'Presupuesto base','Monto autorizado',budget);
+  rows+=concepts.map(e=>line('expense',e.id,e.concepto,
+   e.incluidoPresupuesto===false?'Adicional':'Incluido',e.monto)).join('');
+  $('financeProjectBreakdownRows').innerHTML=rows;
+  $('financeProjectBreakdownTotals').innerHTML=
+   '<tr><th>Costo total comprometido</th><td>Presupuesto + adicionales</td>'+
+    '<td class="finance-expense-month-cell"><span class="finance-expense-month-display"><strong>'+esc(fmt(total))+'</strong>'+
+     '<button type="button" class="soft finance-expense-month-edit-button" data-breakdown-edit="total">Editar</button></span>'+
+     '<form class="finance-expense-month-form" data-breakdown-save="total" hidden>'+
+      '<label class="finance-expense-month-input-label">Nuevo costo total MXN'+
+       '<input type="number" min="'+additional+'" max="100000000" step="1" required inputmode="numeric" value="'+total+'"></label>'+
+      '<div class="finance-expense-month-actions"><button type="submit" class="primary">Guardar</button>'+
+       '<button type="button" class="soft" data-breakdown-cancel>Cancelar</button></div></form>'+
+     '<small class="finance-expense-month-feedback" aria-live="polite"></small></td></tr>'+
+   '<tr><th>Gastos registrados</th><td>Incluidos + adicionales</td><td>'+esc(fmt(costs?.gastosReales??project.egresosReales??0))+'</td></tr>';
+ }
+ function openProjectBreakdown(trigger){
+  const project=selectedProject();
+  if(!project)return notice('Selecciona primero un proyecto extraordinario.');
+  if(!projectBreakdownModal.hidden)return;
+  projectBreakdownProjectId=Number(project.id);
+  projectBreakdownFocus=trigger||document.activeElement;
+  $('financeProjectBreakdownStatus').textContent='';
+  projectBreakdownModal.hidden=false;
+  projectBreakdownModal.setAttribute('aria-hidden','false');
+  renderProjectBreakdown();
+  $('financeProjectBreakdownClose').focus();
+ }
+ $('financeExpenseChart').addEventListener('click',e=>{
+  const budget=e.target.closest('[data-project-budget]');
+  if(budget&&activeConcept==='EXTRAORDINARIO')openProjectBreakdown(budget);
+ });
+ for(const id of ['financeExpenseFooter','financeBalanceExpense']){
+  $(id).addEventListener('click',e=>{
+   if(activeConcept==='EXTRAORDINARIO')openProjectBreakdown(e.currentTarget);
+  });
+  $(id).addEventListener('keydown',e=>{
+   if(activeConcept==='EXTRAORDINARIO'&&['Enter',' '].includes(e.key)){
+    e.preventDefault();openProjectBreakdown(e.currentTarget);
+   }
+  });
+ }
+ $('financeProjectBreakdownClose').addEventListener('click',closeProjectBreakdown);
+ $('financeProjectBreakdownDone').addEventListener('click',closeProjectBreakdown);
+ projectBreakdownModal.addEventListener('click',e=>{
+  if(e.target===projectBreakdownModal)closeProjectBreakdown();
+ });
+ document.addEventListener('keydown',e=>{
+  if(projectBreakdownModal.hidden)return;
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeProjectBreakdown();return;}
+  if(e.key!=='Tab')return;
+  const elements=[...projectBreakdownModal.querySelectorAll('button:not([hidden]):not([disabled]),input:not([disabled])')]
+   .filter(el=>el.getClientRects().length&&!el.closest('[hidden]'));
+  if(!elements.length)return;
+  const first=elements[0],last=elements[elements.length-1];
+  if(!projectBreakdownModal.contains(document.activeElement)){
+   e.preventDefault();(e.shiftKey?last:first).focus();
+  }else if(e.shiftKey&&document.activeElement===first){
+   e.preventDefault();last.focus();
+  }else if(!e.shiftKey&&document.activeElement===last){
+   e.preventDefault();first.focus();
+  }
+ });
+ function cancelProjectBreakdownRow(row){
+  row.querySelector('[data-breakdown-save]').hidden=true;
+  row.querySelector('.finance-expense-month-display').hidden=false;
+  row.querySelector('[data-breakdown-edit]')?.focus();
+ }
+ projectBreakdownModal.addEventListener('click',e=>{
+  if(projectBreakdownSaving)return;
+  const edit=e.target.closest('[data-breakdown-edit]');
+  const cancel=e.target.closest('[data-breakdown-cancel]');
+  if(!edit&&!cancel)return;
+  const row=e.target.closest('tr');
+  if(!row)return;
+  if(cancel){cancelProjectBreakdownRow(row);return;}
+  projectBreakdownModal.querySelectorAll('[data-breakdown-save]:not([hidden])').forEach(form=>{
+   cancelProjectBreakdownRow(form.closest('tr'));
+  });
+  row.querySelector('.finance-expense-month-display').hidden=true;
+  const form=row.querySelector('[data-breakdown-save]');form.hidden=false;
+  row.querySelector('.finance-expense-month-feedback').textContent='';
+  form.querySelector('input').focus();form.querySelector('input').select();
+ });
+ projectBreakdownModal.addEventListener('submit',async e=>{
+  const form=e.target.closest('[data-breakdown-save]');if(!form)return;
+  e.preventDefault();
+  if(projectBreakdownSaving)return;
+  const project=selectedProject();
+  if(!project||Number(project.id)!==projectBreakdownProjectId)return;
+  const kind=form.dataset.breakdownSave;
+  const row=form.closest('tr'),input=form.querySelector('input');
+  if(!input.reportValidity())return;
+  const amount=Number(input.value);
+  const currentCosts=window.MJCostosProyecto?.resumen(project);
+  const additional=Math.round(Number(currentCosts?.adicionales??project.gastosAdicionales??0));
+  const base=Math.round(Number(currentCosts?.presupuesto??project.presupuestoBase??project.totalEsperado??0));
+  const oldTotal=base+additional;
+  if(!/^\d+$/.test(input.value)||!Number.isSafeInteger(amount)||amount>100000000)
+   return notice('Ingresa pesos enteros válidos, sin centavos.');
+  const isExpense=kind!=='budget'&&kind!=='total';
+  const expense=isExpense?project.gastosConceptos?.find(item=>Number(item.id)===Number(kind)):null;
+  if(isExpense&&!expense)return notice('El concepto ya no está disponible.');
+  const old=isExpense?Math.round(Number(expense.monto)):kind==='total'?oldTotal:base;
+  const newBase=kind==='total'?amount-additional:amount;
+  if(newBase<0)return notice('El costo total no puede ser inferior a los conceptos adicionales: '+fmt(additional));
+  if(amount===old){cancelProjectBreakdownRow(row);return;}
+  const message=isExpense?
+   '¿Cambiar «'+expense.concepto+'» de '+fmt(old)+' a '+fmt(amount)+'?':
+   '¿Cambiar '+(kind==='total'?'costo total comprometido':'presupuesto base')+
+   ' de '+fmt(old)+' a '+fmt(amount)+'? Las cuotas de las viviendas NO se modifican.';
+  if(!window.confirm(message))return;
+  projectBreakdownSaving=true;
+  form.querySelectorAll('button,input').forEach(el=>el.disabled=true);
+  const feedback=row.querySelector('.finance-expense-month-feedback');
+  feedback.textContent='Guardando…';
+  const scroller=projectBreakdownModal.querySelector('.finance-project-breakdown-scroll');
+  const scrollTop=scroller.scrollTop;
+  try{
+   if(isExpense){
+    await request('/egresos/'+Number(expense.id)+'/monto',
+     {monto:amount,montoAnterior:old},'PATCH');
+   }else{
+    await request('/proyectos-extraordinarios/'+Number(project.id)+'/presupuesto',
+     {monto:newBase,montoAnterior:base},'PATCH');
+   }
+   const refreshed=await load();
+   if(refreshed){
+    renderProjectBreakdown();
+    scroller.scrollTop=scrollTop;
+    $('financeProjectBreakdownStatus').textContent='Cambios guardados en MySQL. Los cálculos se actualizaron.';
+   }else{
+    $('financeProjectBreakdownStatus').textContent='El cambio fue guardado, pero no se pudo actualizar la consulta. Recarga antes de intentar editar de nuevo.';
+   }
+  }catch(error){
+   feedback.textContent=error.message;
+   $('financeProjectBreakdownStatus').textContent=error.message;
+  }finally{
+   projectBreakdownSaving=false;
+   form.querySelectorAll('button,input').forEach(el=>el.disabled=false);
+  }
+ });
  async function editMaintenanceTotal(){
   if(expenseAmountSaving)return;
   const old=Math.round(Number(data?.finanzasAmbitos?.MANTENIMIENTO?.egresos||0));
