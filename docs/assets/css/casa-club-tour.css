@@ -73,6 +73,23 @@
 .club-tour-popover .driver-popover-close-btn { color: #738390; }
 .club-tour-popover .driver-popover-close-btn:hover { color: #263b49; }
 
+.club-tour-popover .driver-popover-footer-btns,
+.club-tour-popover .driver-popover-footer-buttons { flex-wrap: wrap; }
+.club-tour-popover .club-tour-skip {
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  color: #536d78;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.club-tour-popover .club-tour-skip:hover,
+.club-tour-popover .club-tour-skip:focus-visible { color: #285d58; }
+
+
 .club-tour-fallback {
   box-sizing: border-box;
   width: min(520px, calc(100vw - 24px));
