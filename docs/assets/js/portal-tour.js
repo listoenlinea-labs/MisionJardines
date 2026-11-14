@@ -65,43 +65,98 @@
   }
 
   function targetFor(step) {
+    const mobile = matchMedia('(max-width: 820px)').matches;
     if (!step.page) {
-      let el = document.querySelector(step.selector);
-      // Cuando el menú está cerrado en celular, explicar la pestaña amarilla
-      // en lugar de resaltar coordenadas fuera de la pantalla.
-      if (visibleElement(el)) {
-        const rect = el.getBoundingClientRect();
-        if (rect.right <= 0 || rect.left >= innerWidth) el = null;
-      }
+      // En celular el menú está cerrado: resaltar su pestaña amarilla, NO
+      // un menú invisible que se encuentra fuera de la pantalla.
+      let el = mobile && step.selector.includes('.mj-side-nav')
+        ? document.querySelector('.mj-side-tab')
+        : document.querySelector(step.selector);
       if (!visibleElement(el)) el = document.querySelector('.mj-side-tab');
-      return visibleElement(el) ? {el, frame:null} : null;
+      if (!visibleElement(el)) return null;
+      const rect = el.getBoundingClientRect();
+      if (rect.right <= 0 || rect.left >= innerWidth) return null;
+      return {el, frame:null};
     }
     const frame = currentFrame();
-    if (!frame || !frame.contentDocument) return null;
-    let el = null;
-    try { el = frame.contentDocument.querySelector(step.selector); } catch (_) {}
-    // Algunos controles solo aparecen cuando se elige una pestaña,
-    // cuenta o concepto. No abrirlos ni modificar el estado para resaltarlos.
-    if (!visibleElement(el)) {
-      el = ['h1', '.club-hero', '.heading', '.hero', 'main h2', 'main']
-        .map(s => frame.contentDocument.querySelector(s)).find(visibleElement);
+    if (!frame?.contentDocument) return null;
+    let el;
+    try { el = frame.contentDocument.querySelector(step.selector); }
+    catch (_) { return null; }
+    // La pestaña puede existir pero estar oculta/inactiva: nunca iluminar
+    // un h1 o main aleatorio que no corresponde al paso explicado.
+    if (!visibleElement(el)) return null;
+    const bounds = el.getBoundingClientRect();
+    const maxHeight = Math.min(460, frame.clientHeight * .82);
+    if (el.matches('main, body, .dashboard') || bounds.height > maxHeight) {
+      const precise = el.querySelector(
+        ':scope > .section-header, :scope > .heading, :scope > .hl-welcome, ' +
+        '.finance-expense-panel-heading, .section-header, .hl-card-head, h1, h2'
+      );
+      if (visibleElement(precise)) el = precise;
+      // Si solo existe un contenedor gigante sin título, es mejor mostrar
+      // la explicación sin foco que iluminar una sección incorrecta.
+      else if (bounds.height > maxHeight) return null;
     }
-    return visibleElement(el) ? {el,frame} : null;
+    return {el, frame};
   }
 
   function screenRect(target) {
     if (!target) return null;
     const bounds = target.el.getBoundingClientRect();
-    const parent = target.frame?.getBoundingClientRect();
-    const left = bounds.left + (parent?.left || 0);
-    const top = bounds.top + (parent?.top || 0);
-    const width = Math.min(bounds.width, (parent?.width || innerWidth));
-    const height = Math.min(bounds.height, (parent?.height || innerHeight));
-    const x = limit(left - 5, 8, innerWidth - 34);
-    const y = limit(top - 5, 8, innerHeight - 34);
-    const right = limit(left + width + 5, x + 20, innerWidth - 8);
-    const bottom = limit(top + height + 5, y + 20, innerHeight - 8);
-    return {left:x, top:y, width:right-x, height:bottom-y};
+    const frame = target.frame?.getBoundingClientRect();
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const panel = overlay?.querySelector('.mj-tour-panel');
+    const mobile = innerWidth <= 660;
+    const panelTop = mobile && panel ? panel.getBoundingClientRect().top : innerHeight;
+    // Recortar a la parte visible del iframe Y al espacio libre sobre la
+    // tarjeta de la guía. Nunca dibujar un foco debajo del texto de ayuda.
+    const clipLeft = Math.max(8, frame?.left ?? 8);
+    const clipRight = Math.min(innerWidth - 8, frame?.right ?? innerWidth - 8);
+    const clipTop = Math.max(8, frame?.top ?? 8);
+    const clipBottom = Math.min(
+      innerHeight - 8, frame?.bottom ?? innerHeight - 8,
+      mobile ? panelTop - 14 : innerHeight - 8
+    );
+    const left = Math.max(clipLeft, bounds.left + frameLeft - 5);
+    const top = Math.max(clipTop, bounds.top + frameTop - 5);
+    const right = Math.min(clipRight, bounds.right + frameLeft + 5);
+    const bottom = Math.min(clipBottom, bounds.bottom + frameTop + 5);
+    if (right - left < 18 || bottom - top < 18) return null;
+    return {left, top, width:right - left, height:bottom - top};
+  }
+
+  function scrollTargetIntoView(target) {
+    if (!target?.frame || !visibleElement(target.el)) return;
+    const el = target.el;
+    try { el.scrollIntoView({block:'center', inline:'nearest', behavior:'instant'}); }
+    catch (_) { el.scrollIntoView(); }
+    if (innerWidth > 660) return;
+    // El scrollIntoView normal centra el elemento detrás de la tarjeta inferior.
+    // Subirlo al área utilizable mediante el contenedor con scroll más cercano.
+    const panelTop = overlay?.querySelector('.mj-tour-panel')?.getBoundingClientRect().top;
+    if (!Number.isFinite(panelTop)) return;
+    const frameTop = target.frame.getBoundingClientRect().top;
+    const usefulBottom = panelTop - frameTop - 20;
+    if (usefulBottom < 105) return;
+    const bounds = el.getBoundingClientRect();
+    const desiredCenter = 18 + (usefulBottom - 18) * .43;
+    const visibleTargetHeight = Math.min(bounds.height, 150);
+    const delta = bounds.top + visibleTargetHeight / 2 - desiredCenter;
+    if (Math.abs(delta) < 12) return;
+    const doc = el.ownerDocument;
+    let scrollable = el.parentElement;
+    while (scrollable && scrollable !== doc.body && scrollable !== doc.documentElement) {
+      const computed = doc.defaultView.getComputedStyle(scrollable);
+      if (/auto|scroll|overlay/.test(computed.overflowY) &&
+          scrollable.scrollHeight > scrollable.clientHeight + 1) break;
+      scrollable = scrollable.parentElement;
+    }
+    const root = doc.scrollingElement || doc.documentElement;
+    const chosen = scrollable && scrollable !== doc.body && scrollable !== doc.documentElement
+      ? scrollable : root;
+    chosen.scrollTop += delta;
   }
 
   function createOverlay() {
