@@ -420,13 +420,23 @@ function render(){
  }
  function renderExpenses(){
  if(!data)return;
- const {proyecto:project,egresos:rows}=window.MJExpenseScope.egresosDelAmbito(
-  data,activeConcept,activeProyectoId);
  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const text=normalize($('expenseFilterConcept').value.trim()),category=$('expenseFilterCategory').value;
+ const consultaProyectos=activeConcept==='MANTENIMIENTO'&&category==='PROYECTO';
+ const {proyecto:project,egresos:rows}=window.MJExpenseScope.egresosDelAmbito(
+  data,activeConcept,activeProyectoId,category);
  const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value,order=$('expenseSort').value;
+ $('expenseHistoryTitle').textContent=consultaProyectos?'Movimientos de proyectos':
+  activeConcept==='EXTRAORDINARIO'?'Gastos del proyecto seleccionado':
+  activeConcept==='CASA_CLUB'?'Movimientos de Casa Club':'Movimientos de mantenimiento';
+ $('expenseHistoryScope').textContent=consultaProyectos
+  ?'Consulta de proyectos del período seleccionado. No se incluyen en los ingresos, egresos ni balance de mantenimiento.'
+  :activeConcept==='EXTRAORDINARIO'
+   ?(project?'Solo gastos registrados de «'+project.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
+   :activeConcept==='CASA_CLUB'?'Solo gastos de Casa Club; sin mantenimiento ni proyectos.'
+   :'Solo gastos de mantenimiento; selecciona Proyectos para consultar sus movimientos por separado.';
  const filtered=rows.filter(e=>(!text||normalize(e.concepto).includes(text))
-  &&(!category||canonicalExpenseCategory(e.categoria)===category)
+  &&(!category||consultaProyectos||canonicalExpenseCategory(e.categoria)===category)
   &&(!from||String(e.fecha).slice(0,10)>=from)
   &&(!to||String(e.fecha).slice(0,10)<=to));
  filtered.sort((a,b)=>{
@@ -444,16 +454,16 @@ function render(){
  expensePage=Math.max(1,Math.min(expensePage,pages));
  const first=(expensePage-1)*size,shown=filtered.slice(first,first+size);
  $('expenseResultCount').textContent='Mostrando '+(filtered.length?first+1:0)+'–'+(first+shown.length)+
-  ' de '+filtered.length+' egresos de '+(activeConcept==='EXTRAORDINARIO'?
-  (project?'«'+project.nombre+'»':'proyecto sin seleccionar'):
-  activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
+  ' de '+filtered.length+' registros de '+(consultaProyectos?'Proyectos (solo consulta)':
+   activeConcept==='EXTRAORDINARIO'?(project?'«'+project.nombre+'»':'proyecto sin seleccionar'):
+   activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
  const cell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
   cell('Concepto',esc(e.concepto))+cell('Referencia',esc(e.referencia||'—'))+
   cell('Monto',esc(fmt(e.monto)))+cell('Comprobante',e.comprobanteDisponible?
    '<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Descargar comprobante</button>':
-   (!e.esAjusteMensual&&e.categoria==='CUOTA_EXTRAORDINARIA'&&!e.tieneCuota?
+   (!consultaProyectos&&!e.esAjusteMensual&&e.categoria==='CUOTA_EXTRAORDINARIA'&&!e.tieneCuota?
    '<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>':'—'))+
   '</tr>').join(''):'<tr><td colspan="6">No hay egresos que coincidan con los filtros.</td></tr>';
  $('expensePageInfo').textContent='Página '+expensePage+' de '+pages;
@@ -712,7 +722,8 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   receiptSelectionScope=nextSelectionScope;
   const esProyecto=concepto==='EXTRAORDINARIO';
   for(const option of $('expenseFilterCategory').options){
-   const disponible=!option.value||(esProyecto?option.value==='PROYECTO':option.value!=='PROYECTO');
+   const disponible=!option.value||(esProyecto?option.value==='PROYECTO':
+    concepto==='MANTENIMIENTO'||option.value!=='PROYECTO');
    option.hidden=!disponible;option.disabled=!disponible;
   }
   $('expenseHistoryTitle').textContent=esProyecto?'Gastos del proyecto seleccionado':
@@ -720,7 +731,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   $('expenseHistoryScope').textContent=esProyecto
    ?(seleccionado?'Solo gastos registrados de «'+seleccionado.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
    :concepto==='CASA_CLUB'?'Solo gastos de Casa Club; sin mantenimiento ni proyectos.'
-   :'Solo gastos de mantenimiento; sin proyectos ni Casa Club.';
+   :'Solo gastos de mantenimiento; usa el filtro Proyectos para verlos por separado.';
   if(concepto==='CASA_CLUB')selectedReceiptHouseId=null;
   $('financeReceiptToolbar').hidden=concepto==='CASA_CLUB';
   $('financeHousePanel').classList.toggle('maintenance-receipt-active',concepto==='MANTENIMIENTO');
