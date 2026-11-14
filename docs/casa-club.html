@@ -176,7 +176,22 @@
  <span id="clubFilterCount" role="status" aria-live="polite"></span>
 </div>
 <div class="table-scroll"><table class="club-table"><thead><tr><th>Calle</th><th>No. casa</th><th>Nombre</th><th>Fecha del evento</th><th>Fecha y hora de solicitud</th><th>Pago recuperación</th><th>Depósito garantía</th><th>Limpieza</th><th>Folio</th><th>Propietario</th><th>Estatus pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="clubAdminRows"></tbody></table></div></article></section>
-<section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Puedes aprobar únicamente la fecha, o registrar manualmente un pago que hayas verificado. Los comprobantes enviados en Pagos se verifican automáticamente con Titan.</p></div><button class="soft" id="refreshReview">Actualizar</button></div><div id="clubRequests" class="reservation-grid"></div></article></section>
+<section id="tab-aprobacion" class="club-panel" hidden><article class="club-card"><div class="section-header"><div><span class="eyebrow">ACCESO CONTROLADO</span><h2>Aprobación de reservas</h2><p>Puedes aprobar únicamente la fecha, o registrar manualmente un pago que hayas verificado. Los comprobantes enviados en Pagos se verifican automáticamente con Titan.</p></div><button class="soft" id="refreshReview">Actualizar</button></div>
+<div class="club-review-filters" role="search" aria-label="Filtros de aprobación de reservas">
+ <label for="clubReviewSearch">Buscar por calle, número de casa o nombre
+  <input id="clubReviewSearch" type="search" placeholder="Ej. Gardenias 20 o nombre del solicitante" autocomplete="off">
+ </label>
+ <label for="clubReviewMonth">Mes de reservación
+  <select id="clubReviewMonth"><option value="">Todos los meses</option></select>
+ </label>
+</div>
+<p id="clubReviewCount" class="club-review-count" role="status" aria-live="polite"></p>
+<div id="clubRequests" class="reservation-grid"></div>
+<nav id="clubReviewPagination" class="club-review-pagination" aria-label="Páginas de solicitudes pendientes" hidden>
+ <button type="button" class="soft" id="clubReviewPrevious">Anterior</button>
+ <span id="clubReviewPageIndicator" aria-live="polite"></span>
+ <button type="button" class="soft" id="clubReviewNext">Siguiente</button>
+</nav></article></section>
 </main>
 <dialog id="clubPaymentInstructionsDialog" class="club-payment-dialog" aria-labelledby="clubPaymentInstructionsTitle">
  <div class="club-payment-dialog-head"><div><span class="eyebrow">DEPÓSITO OFICIAL</span><h2 id="clubPaymentInstructionsTitle">Instrucciones de pago</h2><p>Banco, cuenta, concepto y total del depósito. No transfieras antes de apartar tu fecha y recibir tu folio.</p></div><button type="button" class="xbtn" id="clubInstructionsClose" aria-label="Cerrar instrucciones">×</button></div>
@@ -238,5 +253,5 @@
 <script src="assets/js/casa-club-cuenta-oficial.js?v=20261112-cuenta-publica" defer></script>
 <script src="assets/js/casa-club-publico-comprobante.js?v=20261112-enlace-privado" defer></script>
 <script src="assets/js/casa-club-rojas-admin.js?v=20261112" defer></script>
-<script src="assets/js/casa-club.js?v=20261114-en-revision" defer></script>
+<script src="assets/js/casa-club.js?v=20261114-revision-paginada" defer></script>
 </body></html>
