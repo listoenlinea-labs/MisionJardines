@@ -44,12 +44,12 @@
    expenseFooter=Number(costos?.costoComprometido??project.egresosComprometidos??project.totalEsperado??0);
    const maxExpense=Math.max(1,Number(costos?.presupuesto??project.totalEsperado??0),...concepts.map(x=>Number(x.monto||0)));
    $('financeExpenseChart').innerHTML='<div class="project-budget-bar">'+
-    '<div class="finance-budget-edit" data-project-budget="'+Number(project.id)+'" title="Doble clic para editar presupuesto">'+
-    bar('Presupuesto base',Number(costos?.presupuesto??project.totalEsperado??0),maxExpense,true,fmt(costos?.presupuesto??project.totalEsperado))+'</div>'+'</div>'+
+    '<button type="button" class="finance-budget-edit finance-project-breakdown-trigger" data-project-budget="'+Number(project.id)+'" aria-haspopup="dialog" aria-controls="financeProjectBreakdownModal" title="Ver desglose y editar importes">'+
+    bar('Presupuesto base',Number(costos?.presupuesto??project.totalEsperado??0),maxExpense,true,fmt(costos?.presupuesto??project.totalEsperado))+'</button>'+'</div>'+
     concepts.map(e=>'<div class="project-expense-line finance-project-expense-visual" data-project-expense-detail="'+Number(e.id)+'"'+
      ' tabindex="0" role="button" aria-haspopup="dialog" aria-controls="financeProjectProofModal"'+
-     ' aria-label="Ver detalle y comprobante de '+esc(e.concepto)+'" title="Toca para ver comprobante; doble clic en el importe para editar">'+
-     '<div class="finance-project-concept-edit" data-expense-edit="'+Number(e.id)+'" title="Doble clic para editar importe">'+
+     ' aria-label="Ver detalle y comprobante de '+esc(e.concepto)+'" title="Ver detalle y comprobante del concepto">'+
+     '<div class="finance-project-concept-edit">'+
      bar(e.concepto+(e.incluidoPresupuesto===false?' · Adicional':' · Incluido'),Number(e.monto||0),maxExpense,true,fmt(e.monto))+'</div>'+
      '<span class="finance-project-proof-indicator" aria-hidden="true">'+(e.comprobanteDisponible?'Ver recibo':'Sin recibo')+'</span>'+
      '</div>').join('');
@@ -94,6 +94,33 @@
   $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
   $('financeExpenseFooter').querySelector('span').textContent=project?'Costo total comprometido':'Total de egresos';
+  const summaryTrigger=$('financeExpenseFooter');
+  summaryTrigger.tabIndex=project?0:-1;
+  if(project){
+   summaryTrigger.setAttribute('role','button');
+   summaryTrigger.setAttribute('aria-haspopup','dialog');
+   summaryTrigger.setAttribute('aria-controls','financeProjectBreakdownModal');
+   summaryTrigger.title='Ver desglose del costo total y editar conceptos';
+  }else{
+   summaryTrigger.removeAttribute('role');
+   summaryTrigger.removeAttribute('aria-haspopup');
+   summaryTrigger.removeAttribute('aria-controls');
+   summaryTrigger.removeAttribute('title');
+  }
+  const balanceExpense=$('financeBalanceExpense');
+  balanceExpense.tabIndex=project?0:-1;
+  if(project){
+   balanceExpense.setAttribute('role','button');
+   balanceExpense.setAttribute('aria-haspopup','dialog');
+   balanceExpense.setAttribute('aria-controls','financeProjectBreakdownModal');
+   balanceExpense.title='Ver desglose del costo comprometido';
+  }else{
+   balanceExpense.removeAttribute('role');
+   balanceExpense.removeAttribute('aria-haspopup');
+   balanceExpense.removeAttribute('aria-controls');
+   balanceExpense.removeAttribute('title');
+  }
+
   $('financeProjectExpenseSummary').hidden=!project;
   if(project){
    const totals=root.MJCostosProyecto?.resumen(project);
