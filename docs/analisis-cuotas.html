@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261113-landscape-costos">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261113-visor-comprobantes">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -73,6 +73,33 @@
  <span>Total de egresos</span><strong id="financeExpenseFooterTotal">—</strong>
 </div>
 </section></div>
+<!-- Visor protegido de comprobantes, aislado del carrusel móvil. -->
+<section id="financeProjectProofModal" class="finance-pay-overlay finance-project-proof-modal" hidden>
+ <div class="finance-pay-dialog finance-project-proof-dialog" role="dialog" aria-modal="true"
+  aria-labelledby="financeProjectProofTitle" aria-describedby="financeProjectProofDescription" tabindex="-1">
+  <div class="finance-pay-heading">
+   <div>
+    <span class="eyebrow">CUOTAS EXTRAORDINARIAS · COMPROBANTE</span>
+    <h2 id="financeProjectProofTitle">Detalle del egreso</h2>
+   </div>
+   <button id="financeProjectProofClose" type="button" class="soft" aria-label="Cerrar visor de comprobante">×</button>
+  </div>
+  <p class="finance-project-proof-project" id="financeProjectProofProject"></p>
+  <div class="finance-project-proof-details" id="financeProjectProofDescription">
+   <div><span>Concepto</span><strong id="financeProjectProofConcept"></strong></div>
+   <div><span>Monto</span><strong id="financeProjectProofAmount"></strong></div>
+   <div><span>Fecha</span><strong id="financeProjectProofDate"></strong></div>
+   <div><span>Tipo</span><strong id="financeProjectProofIncluded"></strong></div>
+   <div><span>Referencia</span><strong id="financeProjectProofReference"></strong></div>
+  </div>
+  <div id="financeProjectProofStatus" class="finance-project-proof-status" role="status" aria-live="polite"></div>
+  <div id="financeProjectProofPreview" class="finance-project-proof-preview" hidden></div>
+  <div class="finance-project-proof-actions">
+   <button type="button" class="soft" id="financeProjectProofDownload" hidden>Descargar comprobante</button>
+   <button type="button" class="primary" id="financeProjectProofDone">Cerrar</button>
+  </div>
+ </div>
+</section>
 <!-- El editor está fuera del carrusel para no recortarse en iPhone. -->
 <section id="financeProjectExpenseModal" class="finance-pay-overlay finance-project-expense-modal"
  hidden aria-labelledby="financeProjectExpenseModalTitle">
@@ -734,4 +761,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261113-presupuesto" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261113-presupuestos" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261113-presupuesto" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261113-edicion-egresos" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261113-presupuesto" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261113-presupuestos" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261113-visor-comprobantes" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261113-visor-comprobantes" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
