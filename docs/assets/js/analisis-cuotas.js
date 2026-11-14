@@ -461,7 +461,9 @@ function render(){
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
   cell('Concepto',esc(e.concepto))+cell('Referencia',esc(e.referencia||'—'))+
-  cell('Monto',e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
+  cell('Monto',activeConcept==='EXTRAORDINARIO'?
+   '<button type="button" class="soft finance-project-row-breakdown" data-open-project-breakdown title="Ver desglose del presupuesto y editar importes">'+esc(fmt(e.monto))+'</button>':
+   consultaProyectos||e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
    '<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
    '" data-amount="'+Number(e.monto)+'" tabindex="0" role="button" title="Doble clic o Enter para editar el monto">'+
    esc(fmt(e.monto))+'</span>')+cell('Comprobante',e.comprobanteDisponible?
@@ -2554,30 +2556,195 @@ let historicalExtraId=null;
   }catch(err){notice(err.message);}
   finally{expenseAmountSaving=false;}
  }
- async function editProjectBudget(project){
-  if(expenseAmountSaving||!project)return;
-  const extra=Number(project.gastosAdicionales||0);
-  const old=Math.round(Number(project.presupuestoBase??project.totalEsperado??0));
-  const input=window.prompt('Presupuesto base del proyecto (no modifica cuotas por vivienda)',String(old));
-  if(input===null)return;
-  const next=Number(input.trim());
-  if(!/^\d+$/.test(input.trim())||!Number.isSafeInteger(next)||next<0||next>100000000)
-   return notice('Introduce un presupuesto válido sin decimales');
-  if(old===next)return;
-  if(!window.confirm('¿Cambiar el presupuesto de '+fmt(old)+' a '+fmt(next)+'? Costo comprometido: '+fmt(next+extra)+
-    '. Las metas de las 231 viviendas no se modificarán.'))return;
-  expenseAmountSaving=true;
-  try{
-   await request('/proyectos-extraordinarios/'+Number(project.id)+'/presupuesto',
-    {monto:next,montoAnterior:old},'PATCH');
-   await load();notice('Presupuesto actualizado; las cuotas por vivienda no cambiaron.','success');
-  }catch(error){notice(error.message);}
-  finally{expenseAmountSaving=false;}
- }
  function selectedProject(){
   return activeConcept==='EXTRAORDINARIO'?
    data?.proyectosExtraordinarios?.find(x=>Number(x.id)===Number(activeProyectoId)):null;
  }
+
+ // Desglose de proyecto: mismo patrón de tabla con botón Editar utilizado por mantenimiento.
+ const projectBreakdownModal=$('financeProjectBreakdownModal');
+ let projectBreakdownFocus=null,projectBreakdownSaving=false,projectBreakdownProjectId=null;
+ function closeProjectBreakdown(){
+  if(projectBreakdownSaving)return;
+  projectBreakdownModal.hidden=true;
+  projectBreakdownModal.setAttribute('aria-hidden','true');
+  projectBreakdownProjectId=null;
+  if(projectBreakdownFocus?.isConnected&&!projectBreakdownFocus.closest('[hidden]'))
+   projectBreakdownFocus.focus();
+  projectBreakdownFocus=null;
+ }
+ function renderProjectBreakdown(){
+  if(projectBreakdownModal.hidden)return;
+  const project=selectedProject();
+  if(!project||Number(project.id)!==Number(projectBreakdownProjectId)){
+   closeProjectBreakdown();return;
+  }
+  const costs=window.MJCostosProyecto?.resumen(project);
+  const budget=Math.round(Number(costs?.presupuesto??project.presupuestoBase??project.totalEsperado??0));
+  const additional=Math.round(Number(costs?.adicionales??project.gastosAdicionales??0));
+  const total=budget+additional;
+  const concepts=project.gastosConceptos||[];
+  $('financeProjectBreakdownProject').textContent=project.nombre;
+  const line=(type,id,name,kind,amount,editable=true)=>{
+   const key=type==='expense'?Number(id):type;
+   const current=Math.round(Number(amount||0));
+   const code=String(key);
+   return '<tr data-project-breakdown-row="'+esc(code)+'" data-project-breakdown-type="'+type+'">'+
+    '<th scope="row">'+esc(name)+'</th><td>'+esc(kind)+'</td>'+
+    '<td class="finance-expense-month-cell"><span class="finance-expense-month-display">'+
+     '<strong>'+esc(fmt(current))+'</strong>'+
+     (editable?'<button type="button" class="soft finance-expense-month-edit-button" data-breakdown-edit="'+esc(code)+'">Editar</button>':'')+
+    '</span>'+
+    (editable?'<form class="finance-expense-month-form" data-breakdown-save="'+esc(code)+'" hidden>'+
+     '<label class="finance-expense-month-input-label">Importe MXN'+
+      '<input type="number" min="0" max="100000000" step="1" required inputmode="numeric" value="'+current+'" aria-label="Nuevo importe de '+esc(name)+'"></label>'+
+     '<div class="finance-expense-month-actions"><button type="submit" class="primary">Guardar</button>'+
+      '<button type="button" class="soft" data-breakdown-cancel>Cancelar</button></div>'+
+    '</form>':'')+
+    '<small class="finance-expense-month-feedback" aria-live="polite"></small></td></tr>';
+  };
+  let rows=line('budget',null,'Presupuesto base','Monto autorizado',budget);
+  rows+=concepts.map(e=>line('expense',e.id,e.concepto,
+   e.incluidoPresupuesto===false?'Adicional':'Incluido',e.monto)).join('');
+  $('financeProjectBreakdownRows').innerHTML=rows;
+  $('financeProjectBreakdownTotals').innerHTML=
+   '<tr><th>Costo total comprometido</th><td>Presupuesto + adicionales</td>'+
+    '<td class="finance-expense-month-cell"><span class="finance-expense-month-display"><strong>'+esc(fmt(total))+'</strong>'+
+     '<button type="button" class="soft finance-expense-month-edit-button" data-breakdown-edit="total">Editar</button></span>'+
+     '<form class="finance-expense-month-form" data-breakdown-save="total" hidden>'+
+      '<label class="finance-expense-month-input-label">Nuevo costo total MXN'+
+       '<input type="number" min="'+additional+'" max="100000000" step="1" required inputmode="numeric" value="'+total+'"></label>'+
+      '<div class="finance-expense-month-actions"><button type="submit" class="primary">Guardar</button>'+
+       '<button type="button" class="soft" data-breakdown-cancel>Cancelar</button></div></form>'+
+     '<small class="finance-expense-month-feedback" aria-live="polite"></small></td></tr>'+
+   '<tr><th>Gastos registrados</th><td>Incluidos + adicionales</td><td>'+esc(fmt(costs?.gastosReales??project.egresosReales??0))+'</td></tr>';
+ }
+ function openProjectBreakdown(trigger){
+  const project=selectedProject();
+  if(!project)return notice('Selecciona primero un proyecto extraordinario.');
+  if(!projectBreakdownModal.hidden)return;
+  projectBreakdownProjectId=Number(project.id);
+  projectBreakdownFocus=trigger||document.activeElement;
+  $('financeProjectBreakdownStatus').textContent='';
+  projectBreakdownModal.hidden=false;
+  projectBreakdownModal.setAttribute('aria-hidden','false');
+  renderProjectBreakdown();
+  $('financeProjectBreakdownClose').focus();
+ }
+ $('financeExpenseChart').addEventListener('click',e=>{
+  const budget=e.target.closest('[data-project-budget]');
+  if(budget&&activeConcept==='EXTRAORDINARIO')openProjectBreakdown(budget);
+ });
+ for(const id of ['financeExpenseFooter','financeBalanceExpense']){
+  $(id).addEventListener('click',e=>{
+   if(activeConcept==='EXTRAORDINARIO')openProjectBreakdown(e.currentTarget);
+  });
+  $(id).addEventListener('keydown',e=>{
+   if(activeConcept==='EXTRAORDINARIO'&&['Enter',' '].includes(e.key)){
+    e.preventDefault();openProjectBreakdown(e.currentTarget);
+   }
+  });
+ }
+ $('financeProjectBreakdownClose').addEventListener('click',closeProjectBreakdown);
+ $('financeProjectBreakdownDone').addEventListener('click',closeProjectBreakdown);
+ projectBreakdownModal.addEventListener('click',e=>{
+  if(e.target===projectBreakdownModal)closeProjectBreakdown();
+ });
+ document.addEventListener('keydown',e=>{
+  if(projectBreakdownModal.hidden)return;
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeProjectBreakdown();return;}
+  if(e.key!=='Tab')return;
+  const elements=[...projectBreakdownModal.querySelectorAll('button:not([hidden]):not([disabled]),input:not([disabled])')]
+   .filter(el=>el.getClientRects().length&&!el.closest('[hidden]'));
+  if(!elements.length)return;
+  const first=elements[0],last=elements[elements.length-1];
+  if(!projectBreakdownModal.contains(document.activeElement)){
+   e.preventDefault();(e.shiftKey?last:first).focus();
+  }else if(e.shiftKey&&document.activeElement===first){
+   e.preventDefault();last.focus();
+  }else if(!e.shiftKey&&document.activeElement===last){
+   e.preventDefault();first.focus();
+  }
+ });
+ function cancelProjectBreakdownRow(row){
+  row.querySelector('[data-breakdown-save]').hidden=true;
+  row.querySelector('.finance-expense-month-display').hidden=false;
+  row.querySelector('[data-breakdown-edit]')?.focus();
+ }
+ projectBreakdownModal.addEventListener('click',e=>{
+  if(projectBreakdownSaving)return;
+  const edit=e.target.closest('[data-breakdown-edit]');
+  const cancel=e.target.closest('[data-breakdown-cancel]');
+  if(!edit&&!cancel)return;
+  const row=e.target.closest('tr');
+  if(!row)return;
+  if(cancel){cancelProjectBreakdownRow(row);return;}
+  projectBreakdownModal.querySelectorAll('[data-breakdown-save]:not([hidden])').forEach(form=>{
+   cancelProjectBreakdownRow(form.closest('tr'));
+  });
+  row.querySelector('.finance-expense-month-display').hidden=true;
+  const form=row.querySelector('[data-breakdown-save]');form.hidden=false;
+  row.querySelector('.finance-expense-month-feedback').textContent='';
+  form.querySelector('input').focus();form.querySelector('input').select();
+ });
+ projectBreakdownModal.addEventListener('submit',async e=>{
+  const form=e.target.closest('[data-breakdown-save]');if(!form)return;
+  e.preventDefault();
+  if(projectBreakdownSaving)return;
+  const project=selectedProject();
+  if(!project||Number(project.id)!==projectBreakdownProjectId)return;
+  const kind=form.dataset.breakdownSave;
+  const row=form.closest('tr'),input=form.querySelector('input');
+  if(!input.reportValidity())return;
+  const amount=Number(input.value);
+  const currentCosts=window.MJCostosProyecto?.resumen(project);
+  const additional=Math.round(Number(currentCosts?.adicionales??project.gastosAdicionales??0));
+  const base=Math.round(Number(currentCosts?.presupuesto??project.presupuestoBase??project.totalEsperado??0));
+  const oldTotal=base+additional;
+  if(!/^\d+$/.test(input.value)||!Number.isSafeInteger(amount)||amount>100000000)
+   return notice('Ingresa pesos enteros válidos, sin centavos.');
+  const isExpense=kind!=='budget'&&kind!=='total';
+  const expense=isExpense?project.gastosConceptos?.find(item=>Number(item.id)===Number(kind)):null;
+  if(isExpense&&!expense)return notice('El concepto ya no está disponible.');
+  const old=isExpense?Math.round(Number(expense.monto)):kind==='total'?oldTotal:base;
+  const newBase=kind==='total'?amount-additional:amount;
+  if(newBase<0)return notice('El costo total no puede ser inferior a los conceptos adicionales: '+fmt(additional));
+  if(amount===old){cancelProjectBreakdownRow(row);return;}
+  const message=isExpense?
+   '¿Cambiar «'+expense.concepto+'» de '+fmt(old)+' a '+fmt(amount)+'?':
+   '¿Cambiar '+(kind==='total'?'costo total comprometido':'presupuesto base')+
+   ' de '+fmt(old)+' a '+fmt(amount)+'? Las cuotas de las viviendas NO se modifican.';
+  if(!window.confirm(message))return;
+  projectBreakdownSaving=true;
+  form.querySelectorAll('button,input').forEach(el=>el.disabled=true);
+  const feedback=row.querySelector('.finance-expense-month-feedback');
+  feedback.textContent='Guardando…';
+  const scroller=projectBreakdownModal.querySelector('.finance-project-breakdown-scroll');
+  const scrollTop=scroller.scrollTop;
+  try{
+   if(isExpense){
+    await request('/egresos/'+Number(expense.id)+'/monto',
+     {monto:amount,montoAnterior:old},'PATCH');
+   }else{
+    await request('/proyectos-extraordinarios/'+Number(project.id)+'/presupuesto',
+     {monto:newBase,montoAnterior:base},'PATCH');
+   }
+   const refreshed=await load();
+   if(refreshed){
+    renderProjectBreakdown();
+    scroller.scrollTop=scrollTop;
+    $('financeProjectBreakdownStatus').textContent='Cambios guardados en MySQL. Los cálculos se actualizaron.';
+   }else{
+    $('financeProjectBreakdownStatus').textContent='El cambio fue guardado, pero no se pudo actualizar la consulta. Recarga antes de intentar editar de nuevo.';
+   }
+  }catch(error){
+   feedback.textContent=error.message;
+   $('financeProjectBreakdownStatus').textContent=error.message;
+  }finally{
+   projectBreakdownSaving=false;
+   form.querySelectorAll('button,input').forEach(el=>el.disabled=false);
+  }
+ });
  async function editMaintenanceTotal(){
   if(expenseAmountSaving)return;
   const old=Math.round(Number(data?.finanzasAmbitos?.MANTENIMIENTO?.egresos||0));
@@ -2597,40 +2764,30 @@ let historicalExtraId=null;
   }catch(error){notice(error.message);}
   finally{expenseAmountSaving=false;}
  }
- async function handleExpenseDblclick(event){
-  const budget=event.target.closest('[data-project-budget]');
-  const footer=event.target.closest('#financeExpenseFooter');
-  if(footer&&activeConcept==='MANTENIMIENTO'){
-   await editMaintenanceTotal();
-   return;
-  }
-  if(budget||footer&&activeConcept==='EXTRAORDINARIO'){
-   const project=selectedProject();
-   if(project&&(!budget||Number(budget.dataset.projectBudget)===Number(project.id)))
-    await editProjectBudget(project);
-   return;
-  }
+ // La edición de Cuotas extraordinarias es exclusivamente desde el modal
+ // de desglose con botones Editar. Mantenimiento conserva su comportamiento anterior.
+ async function handleMaintenanceExpenseEdit(event){
+  if(activeConcept!=='MANTENIMIENTO'||$('expenseFilterCategory').value==='PROYECTO')return;
+  if(event.target.closest('#financeExpenseFooter')){await editMaintenanceTotal();return;}
   const target=event.target.closest('[data-expense-edit]');
   if(!target)return;
-  const id=Number(target.dataset.expenseEdit);
-  const item=activeConcept==='EXTRAORDINARIO'?
-   selectedProject()?.gastosConceptos?.find(x=>Number(x.id)===id):
-   data?.egresos?.find(x=>Number(x.id)===id);
+  const item=data?.egresos?.find(e=>Number(e.id)===Number(target.dataset.expenseEdit));
   if(item)await editExpenseAmount(item.id,item.monto);
  }
- $('financeExpenseChart').addEventListener('dblclick',handleExpenseDblclick);
- $('financeExpenseRows').addEventListener('dblclick',handleExpenseDblclick);
- $('financeExpenseFooter').addEventListener('dblclick',handleExpenseDblclick);
- $('financeBalanceExpense').addEventListener('dblclick',event=>{
+ $('financeExpenseRows').addEventListener('click',e=>{
+  if(activeConcept==='EXTRAORDINARIO'&&e.target.closest('[data-open-project-breakdown]'))
+   openProjectBreakdown(e.target.closest('[data-open-project-breakdown]'));
+ });
+ $('financeExpenseRows').addEventListener('dblclick',handleMaintenanceExpenseEdit);
+ $('financeExpenseFooter').addEventListener('dblclick',handleMaintenanceExpenseEdit);
+ $('financeBalanceExpense').addEventListener('dblclick',()=>{
   if(activeConcept==='MANTENIMIENTO')editMaintenanceTotal();
-  else if(activeConcept==='EXTRAORDINARIO')editProjectBudget(selectedProject());
  });
  $('financeExpenseRows').addEventListener('keydown',event=>{
-  if(event.key==='Enter'&&event.target.closest('[data-expense-edit]')){
-   event.preventDefault();handleExpenseDblclick(event);
+  if(activeConcept==='MANTENIMIENTO'&&event.key==='Enter'&&event.target.closest('[data-expense-edit]')){
+   event.preventDefault();handleMaintenanceExpenseEdit(event);
   }
  });
-
  $('financeExpenseRows').addEventListener('click',event=>{
   const proof=event.target.closest('[data-expense-proof]');if(proof){descargarComprobante(proof.dataset.expenseProof);return;}
   const b=event.target.closest('[data-extra-expense]');if(!b)return;
@@ -2692,6 +2849,128 @@ let historicalExtraId=null;
  finally{$('saveExpense').disabled=false;}
 });
  
+
+// Visor seguro de comprobantes de proyectos: no expone tokens ni enlaces públicos.
+const projectProofModal=$('financeProjectProofModal');
+const projectProofPreview=$('financeProjectProofPreview');
+const projectProofDownload=$('financeProjectProofDownload');
+let projectProofSource=null,projectProofUrl=null,projectProofMime=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
+let projectProofClickTimer=null;
+
+function closeProjectProofModal(){
+ if(projectProofModal.hidden)return;
+ projectProofModal.hidden=true;
+ ++projectProofSequence;
+ projectProofAbort?.abort();
+ projectProofAbort=null;
+ projectProofPreview.replaceChildren();
+ projectProofPreview.hidden=true;
+ projectProofDownload.hidden=true;
+ if(projectProofUrl)URL.revokeObjectURL(projectProofUrl);
+ projectProofUrl=null;projectProofMime=null;projectProofSource=null;
+ if(projectProofFocus?.isConnected&&!projectProofFocus.closest('[hidden]'))projectProofFocus.focus();
+ projectProofFocus=null;
+}
+async function openProjectProofModal(id,trigger){
+ const project=activeConcept==='EXTRAORDINARIO'?
+  data?.proyectosExtraordinarios?.find(p=>Number(p.id)===Number(activeProyectoId)):null;
+ const expense=project?.gastosConceptos?.find(e=>Number(e.id)===Number(id));
+ if(!project||!expense)return;
+ closeProjectProofModal();
+ projectProofFocus=trigger||document.activeElement;
+ projectProofSource=expense;
+ const seq=++projectProofSequence;
+ $('financeProjectProofProject').textContent=project.nombre;
+ $('financeProjectProofConcept').textContent=expense.concepto||'Sin concepto';
+ $('financeProjectProofAmount').textContent=fmt(expense.monto);
+ $('financeProjectProofDate').textContent=displayDate(expense.fecha);
+ $('financeProjectProofIncluded').textContent=expense.incluidoPresupuesto===false?'Adicional al presupuesto':'Incluido en presupuesto';
+ $('financeProjectProofReference').textContent=expense.referencia||'Sin referencia';
+ projectProofPreview.replaceChildren();projectProofPreview.hidden=true;projectProofDownload.hidden=true;
+ $('financeProjectProofStatus').textContent=expense.comprobanteDisponible?
+  'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
+ projectProofModal.hidden=false;
+ $('financeProjectProofClose').focus();
+ if(!expense.comprobanteDisponible)return;
+ const controller=new AbortController();projectProofAbort=controller;
+ try{
+  const response=await fetch(API+'/finanzas/egresos/'+Number(expense.id)+'/comprobante',{
+   headers:{Authorization:'Bearer '+token},signal:controller.signal,cache:'no-store'
+  });
+  if(!response.ok)throw Error(response.status===404?
+   'El comprobante indicado no está disponible en el servidor.':'No fue posible cargar el comprobante.');
+  const blob=await response.blob();
+  if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))
+   throw Error('El comprobante tiene un formato que no se puede previsualizar.');
+  if(seq!==projectProofSequence||projectProofModal.hidden)return;
+  projectProofUrl=URL.createObjectURL(blob);projectProofMime=blob.type;
+  const viewer=blob.type==='application/pdf'?document.createElement('iframe'):document.createElement('img');
+  viewer.src=projectProofUrl;
+  if(blob.type==='application/pdf'){
+   viewer.title='Vista previa del comprobante PDF';
+   viewer.setAttribute('aria-label','Comprobante PDF del egreso');
+  }else{
+   viewer.alt='Imagen del comprobante de '+expense.concepto;
+  }
+  projectProofPreview.replaceChildren(viewer);
+  projectProofPreview.hidden=false;
+  projectProofDownload.hidden=false;
+  $('financeProjectProofStatus').textContent='Comprobante adjunto al egreso.';
+ }catch(error){
+  if(controller.signal.aborted||seq!==projectProofSequence)return;
+  $('financeProjectProofStatus').textContent=error.message;
+ }finally{if(projectProofAbort===controller)projectProofAbort=null;}
+}
+$('financeProjectProofClose').addEventListener('click',closeProjectProofModal);
+$('financeProjectProofDone').addEventListener('click',closeProjectProofModal);
+projectProofModal.addEventListener('click',event=>{
+ if(event.target===projectProofModal)closeProjectProofModal();
+});
+document.addEventListener('keydown',event=>{
+ if(projectProofModal.hidden)return;
+ if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeProjectProofModal();return;}
+ if(event.key!=='Tab')return;
+ const elements=[...projectProofModal.querySelectorAll('button:not([hidden]):not([disabled])')]
+  .filter(el=>el.getClientRects().length);
+ if(!elements.length)return;
+ const first=elements[0],last=elements[elements.length-1];
+ if(!projectProofModal.contains(document.activeElement)){
+  event.preventDefault();(event.shiftKey?last:first).focus();
+ }else if(event.shiftKey&&document.activeElement===first){
+  event.preventDefault();last.focus();
+ }else if(!event.shiftKey&&document.activeElement===last){
+  event.preventDefault();first.focus();
+ }
+});
+projectProofDownload.addEventListener('click',()=>{
+ if(!projectProofUrl||!projectProofSource)return;
+ const extension=projectProofMime==='application/pdf'?'.pdf':
+  projectProofMime==='image/png'?'.png':'.jpg';
+ const anchor=document.createElement('a');
+ anchor.href=projectProofUrl;
+ anchor.download='comprobante-egreso-'+Number(projectProofSource.id)+extension;
+ document.body.append(anchor);anchor.click();anchor.remove();
+});
+// El doble clic de escritorio sigue reservado a la edición del importe.
+// Esperar el intervalo de doble clic evita abrir el visor por accidente.
+$('financeExpenseChart').addEventListener('click',event=>{
+ const row=event.target.closest('[data-project-expense-detail]');
+ if(!row||activeConcept!=='EXTRAORDINARIO')return;
+ if(projectProofClickTimer)clearTimeout(projectProofClickTimer);
+ projectProofClickTimer=setTimeout(()=>{
+  projectProofClickTimer=null;
+  openProjectProofModal(Number(row.dataset.projectExpenseDetail),row);
+ },240);
+});
+$('financeExpenseChart').addEventListener('dblclick',()=>{
+ if(projectProofClickTimer)clearTimeout(projectProofClickTimer);
+ projectProofClickTimer=null;
+});
+$('financeExpenseChart').addEventListener('keydown',event=>{
+ const row=event.target.closest('[data-project-expense-detail]');
+ if(!row||!['Enter',' '].includes(event.key))return;
+ event.preventDefault();openProjectProofModal(Number(row.dataset.projectExpenseDetail),row);
+});
 
 async function descargarComprobante(id){
  try{
