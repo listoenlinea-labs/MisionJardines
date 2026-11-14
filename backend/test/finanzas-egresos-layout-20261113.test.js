@@ -113,3 +113,43 @@ test('Cerrar modal no registra gastos y la acción de guardar conserva el backen
  assert.match(css,/\.finance-project-expense-modal/);
  assert.match(css,/@media\(max-width:700px\)/);
 });
+
+
+test('Mantenimiento permite consultar Proyectos solo al elegir ese filtro',()=>{
+ const normal=egresosDelAmbito(fixture,'MANTENIMIENTO',null);
+ const consulta=egresosDelAmbito(fixture,'MANTENIMIENTO',null,'PROYECTO');
+ assert.deepEqual(normal.egresos.map(e=>e.id),[1,2]);
+ assert.deepEqual(consulta.egresos.map(e=>e.id),[4,5,6,7]);
+ assert.equal(consulta.proyecto,null);
+ // La consulta no reasigna ámbitos, modifica ingresos ni duplica gastos.
+ assert.equal(fixture.egresos[3].ambito,'EXTRAORDINARIO');
+ assert.deepEqual(egresosDelAmbito(fixture,'MANTENIMIENTO',null,'CFE').egresos.map(e=>e.id),[1,2]);
+ assert.deepEqual(egresosDelAmbito(fixture,'CASA_CLUB',null,'PROYECTO').egresos.map(e=>e.id),[3]);
+});
+
+test('El filtro Proyectos reconoce categorías heredadas, egresos reales e ID del proyecto',()=>{
+ const {esMovimientoDeProyecto}=require('../../docs/assets/js/finanzas-egresos-ambito.js');
+ for(const e of [
+  {categoria:'PROYECTO',ambito:'EXTRAORDINARIO'},
+  {categoria:'PROYECTOS',ambito:'EXTRAORDINARIO'},
+  {categoria:'CUOTA_EXTRAORDINARIA',ambito:'EXTRAORDINARIO'},
+  {categoria:'SERVICIOS',ambito:'EXTRAORDINARIO'},
+  {categoria:'OTROS',ambito:'MANTENIMIENTO',proyectoId:9}
+ ])assert.equal(esMovimientoDeProyecto(e),true);
+ assert.equal(esMovimientoDeProyecto({categoria:'CFE',ambito:'MANTENIMIENTO'}),false);
+ assert.equal(esMovimientoDeProyecto({categoria:'OTROS',ambito:'CASA_CLUB'}),false);
+});
+
+test('Proyectos se habilita en Mantenimiento solo para consulta del período',()=>{
+ const html=read('docs/analisis-cuotas.html');
+ const js=read('docs/assets/js/analisis-cuotas.js');
+ const filter=html.slice(html.indexOf('id="expenseFilterCategory"'),html.indexOf('id="expenseFilterFrom"'));
+ const register=html.slice(html.indexOf('id="expenseCategory"'),html.indexOf('id="expenseScope"'));
+ assert.match(filter,/<option value="PROYECTO">Proyectos<\/option>/);
+ assert.match(register,/<option value="PROYECTO">Proyecto<\/option>/);
+ assert.match(js,/consultaProyectos=activeConcept==='MANTENIMIENTO'&&category==='PROYECTO'/);
+ assert.match(js,/!consultaProyectos&&!e\.esAjusteMensual/);
+ assert.match(js,/No se incluyen en los ingresos, egresos ni balance de mantenimiento/);
+ assert.match(js,/concepto==='MANTENIMIENTO'\|\|option\.value!=='PROYECTO'/);
+ assert.match(js,/matchMedia\('\(max-width:700px\)'\)\.matches\?3:10/);
+});
