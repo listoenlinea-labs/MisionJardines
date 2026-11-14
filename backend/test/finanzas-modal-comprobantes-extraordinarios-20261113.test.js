@@ -11,7 +11,7 @@ test('Los conceptos extraordinarios son seleccionables tengan o no comprobante',
  assert.match(ui,/aria-haspopup="dialog"/);
  assert.match(ui,/financeProjectProofModal/);
  assert.match(ui,/e\.comprobanteDisponible\?'Ver recibo':'Sin recibo'/);
- assert.match(ui,/data-expense-edit/);
+ assert.match(ui,/finance-project-concept-edit/);
 });
 
 test('Modal informa explícitamente si no hay comprobante visual',()=>{
@@ -43,11 +43,12 @@ test('La vista previa descarga PDF o imagen autenticados, libera recursos al cer
  assert.match(js,/projectProofSequence/);
 });
 
-test('Visor no impide doble clic para editar importe del concepto',()=>{
+test('Visor conserva consulta del concepto y la edición usa modal separado',()=>{
  const js=read('docs/assets/js/analisis-cuotas.js');
- assert.match(js,/setTimeout\(\(\)=>\{/);
- assert.match(js,/projectProofClickTimer\)clearTimeout\(projectProofClickTimer\)/);
- assert.match(js,/financeExpenseChart'\)\.addEventListener\('dblclick',handleExpenseDblclick\)/);
+ assert.match(js,/openProjectProofModal\(Number\(row\.dataset\.projectExpenseDetail\),row\)/);
+ assert.match(js,/openProjectBreakdown/);
+ assert.match(js,/data-breakdown-save/);
+ assert.doesNotMatch(js,/financeExpenseChart'\)\.addEventListener\('dblclick',handleExpenseDblclick\)/);
  assert.match(js,/financeExpenseChart'\)\.addEventListener\('keydown'/);
  assert.match(js,/if\(event\.key==='Escape'\)/);
 });
