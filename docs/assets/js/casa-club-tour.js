@@ -158,8 +158,12 @@
     try { hasToken = Boolean(localStorage.getItem('misionJardinesToken') ||
       sessionStorage.getItem('misionJardinesToken')); }
     catch (_) { /* Un navegador puede restringir storage. */ }
+    // En el portal autenticado hay un recorrido global por rol. Evitar un segundo
+    // inicio automático que se superponga al tour principal del shell.
+    const insidePortal = window.parent !== window &&
+      new URLSearchParams(location.search).has('_mjFrame');
     setTimeout(() => {
-      if (!hasSeen() && isVisible($('#tab-reservar')) && !document.querySelector('dialog[open]')) {
+      if (!insidePortal && !hasSeen() && isVisible($('#tab-reservar')) && !document.querySelector('dialog[open]')) {
         openTour();
       }
     }, hasToken ? 5600 : 1100);
