@@ -859,3 +859,14 @@ body.club-private-reservation-view .club-mobile-submit-area{display:none!importa
  .club-email-reservations .club-history-back{font-size:11px}
  .club-email-reservation{padding:15px}
 }
+
+/* Días anteriores a hoy en zona America/Mexico_City: rojo pastel informativo.
+   Solo presentación; el valor real del estatus permanece en MySQL. */
+#calendarDays button.past-date-red,
+#calendarDays button.past-date-red:disabled{
+ opacity:1;
+ color:#a83846;
+ background:#fff0f1;
+ border-color:#efbdc4;
+ cursor:not-allowed;
+}
