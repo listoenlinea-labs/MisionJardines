@@ -359,6 +359,58 @@ async function actualizarPresupuestoProyecto(req,res){
   return res.json({ok:true,...saved,message:'Presupuesto actualizado; las cuotas de las viviendas permanecen igual.'});
  }catch(e){return sendErr(res,e);}
 }
+// Cambiar el estado real de pago sin alterar el importe comprometido del proyecto.
+// Bloqueo de fila y versión esperada evitan sobrescribir cambios de otro administrador.
+async function actualizarPagoEgreso(req,res){
+ try{
+  const id=Number(req.params.id),pagado=req.body?.pagado,anterior=req.body?.pagadoAnterior;
+  if(!Number.isSafeInteger(id)||id<1||typeof pagado!=='boolean'||typeof anterior!=='boolean')
+   throw fail(400,'Indica egreso y estado de pago anterior/actual válidos.');
+  const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
+    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   if((row.pagado!==false)!==anterior)
+    throw fail(409,'El estado del pago cambió en otra sesión. Actualiza el análisis.');
+   if(pagado===anterior)return {id,pagado,sinCambio:true};
+   await row.update({pagado},{transaction});
+   await sequelize.query(
+    'INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['PAGO_CONCEPTO_PROYECTO',id,anterior?Number(row.monto):0,pagado?Number(row.monto):0,req.usuario.usuarioId,row.referencia||null],transaction});
+   return {id,pagado};
+  });
+  return res.json({ok:true,...result,message:pagado?'Concepto marcado como pagado.':'Concepto marcado como pendiente de pago.'});
+ }catch(e){return sendErr(res,e);}
+}
+
+// Subir o reemplazar el recibo de un gasto ya creado. Se conserva el archivo
+// previo si ocurre un error; el nuevo se elimina al fallar la transacción.
+async function adjuntarComprobanteEgreso(req,res){
+ let nuevo=null,anterior=null;
+ try{
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1)throw fail(400,'Egreso inválido.');
+  if(!req.body?.comprobante)throw fail(400,'Selecciona el archivo del comprobante.');
+  nuevo=await archivosEgresos.guardar(req.body.comprobante);
+  const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
+    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   anterior=row.comprobanteArchivo;
+   await row.update({comprobanteArchivo:nuevo},{transaction});
+   await sequelize.query(
+    'INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['COMPROBANTE_EGRESO',id,anterior?1:0,1,req.usuario.usuarioId,row.referencia||null],transaction});
+   return {id,comprobanteDisponible:true};
+  });
+  await archivosEgresos.eliminar(anterior);
+  return res.json({ok:true,...result,message:'Comprobante guardado para este concepto.'});
+ }catch(e){
+  await archivosEgresos.eliminar(nuevo);
+  return sendErr(res,e);
+ }
+}
+
 async function comprobanteEgreso(req,res){
  try{
   const id=Number(req.params.id);
@@ -452,4 +504,4 @@ async function modificarCuotaPorCobrar(req,res){
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
  }catch(error){return sendErr(res,error);}
 }
-module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
+module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPagoEgreso,adjuntarComprobanteEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
