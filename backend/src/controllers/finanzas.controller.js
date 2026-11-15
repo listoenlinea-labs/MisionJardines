@@ -420,7 +420,7 @@ function validarDatosConcepto(body){
  const fecha=String(body.fecha||'');
  const monto=Number(body.monto);
  if(!concepto||concepto.length>250||
-  !/^\\d{4}-\\d{2}-\\d{2}$/.test(fecha)||
+  !/^\d{4}-\d{2}-\d{2}$/.test(fecha)||
   !Number.isFinite(new Date(fecha+'T12:00:00Z').valueOf())||
   new Date(fecha+'T12:00:00Z').toISOString().slice(0,10)!==fecha||
   !Number.isSafeInteger(monto)||monto<1||monto>100000000||
