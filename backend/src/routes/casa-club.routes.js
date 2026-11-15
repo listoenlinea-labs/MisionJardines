@@ -43,6 +43,7 @@ router.get('/mias',club.mias);
 router.post('/reservas',limiteSolicitudes,(req,res)=>
  ['SUPER_ADMIN','ADMINISTRADOR'].includes(req.usuario.rol)?club.crear(req,res):club.solicitar(req,res));
 router.patch('/reservas/:id/cancelar',club.cancelar);
+router.get('/administracion/fecha/:fecha',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),require('../controllers/casa-club-detalle-fecha.controller'));
 router.get('/administracion',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.listar);
 router.get('/administracion/:id/comprobantes',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.comprobantes);
 router.get('/administracion/tarifas',autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'),club.obtenerTarifas);
