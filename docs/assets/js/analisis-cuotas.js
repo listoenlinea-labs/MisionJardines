@@ -356,6 +356,9 @@ let expensePage=1;
   $('financialSecondary').innerHTML=[
    ['Proyecto extraordinario',project.nombre],['Meta del proyecto',fmt(project.totalEsperado)],
    ['Recaudado',fmt(project.recaudado)],['Por recaudar',fmt(project.saldoPendiente)],
+   ['Presupuesto base',fmt(project.presupuestoBase)],['Costo comprometido',fmt(project.egresosComprometidos)],
+   ['Gastos pagados',fmt(project.gastosPagados)],['Presupuesto restante',fmt(project.presupuestoRestante)],
+   ['Fondos disponibles después de gastos',fmt(project.fondosDisponibles)],
    ['Saldo a favor',fmt(project.saldoFavor)],['Meta alcanzada',complete],
    ['Abonos parciales',partial],['Sin aportaciones',project.pendientes],
    ['No aplica',Number(project.noAplica||0)],['Casas con cuota',applied]
@@ -2605,7 +2608,8 @@ let historicalExtraId=null;
   };
   let rows=line('budget',null,'Presupuesto base','Monto autorizado',budget);
   rows+=concepts.map(e=>line('expense',e.id,e.concepto,
-   e.incluidoPresupuesto===false?'Adicional':'Incluido',e.monto)).join('');
+   (e.incluidoPresupuesto===false?'Adicional':'Incluido')+
+   (e.pagado===false?' · Pendiente':' · Pagado'),e.monto)).join('');
   $('financeProjectBreakdownRows').innerHTML=rows;
   $('financeProjectBreakdownTotals').innerHTML=
    '<tr><th>Costo total comprometido</th><td>Presupuesto + adicionales</td>'+
@@ -2617,7 +2621,9 @@ let historicalExtraId=null;
       '<div class="finance-expense-month-actions"><button type="submit" class="primary">Guardar</button>'+
        '<button type="button" class="soft" data-breakdown-cancel>Cancelar</button></div></form>'+
      '<small class="finance-expense-month-feedback" aria-live="polite"></small></td></tr>'+
-   '<tr><th>Gastos registrados</th><td>Incluidos + adicionales</td><td>'+esc(fmt(costs?.gastosReales??project.egresosReales??0))+'</td></tr>';
+   '<tr><th>Gastos registrados</th><td>Incluidos + adicionales</td><td>'+esc(fmt(costs?.gastosReales??project.egresosReales??0))+'</td></tr>'+
+   '<tr><th>Pagado a proveedores</th><td>Conceptos con estado Pagado</td><td>'+esc(fmt(costs?.pagados??project.gastosPagados??0))+'</td></tr>'+
+   '<tr><th>Presupuesto restante</th><td>Costo comprometido menos pagos</td><td><strong>'+esc(fmt(costs?.presupuestoRestante??project.presupuestoRestante??0))+'</strong></td></tr>';
  }
  function openProjectBreakdown(trigger){
   const project=selectedProject();
