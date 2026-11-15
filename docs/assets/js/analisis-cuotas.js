@@ -3006,7 +3006,7 @@ document.addEventListener('keydown',event=>{
  if(projectProofModal.hidden)return;
  if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeProjectProofModal();return;}
  if(event.key!=='Tab')return;
- const elements=[...projectProofModal.querySelectorAll('button:not([hidden]):not([disabled])')]
+ const elements=[...projectProofModal.querySelectorAll('button:not([hidden]):not([disabled]),input:not([hidden]):not([disabled])')]
   .filter(el=>el.getClientRects().length);
  if(!elements.length)return;
  const first=elements[0],last=elements[elements.length-1];
