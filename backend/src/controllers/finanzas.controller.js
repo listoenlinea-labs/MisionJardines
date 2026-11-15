@@ -152,7 +152,7 @@ async function analizar(req,res){
    if(!gastosPorProyecto.has(id))gastosPorProyecto.set(id,[]);
    gastosPorProyecto.get(id).push({id:Number(e.id),fecha:e.fecha,concepto:e.concepto,monto:num(e.monto),
     referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo,
-    incluidoPresupuesto:e.incluidoPresupuesto!==false});
+    incluidoPresupuesto:e.incluidoPresupuesto!==false,pagado:e.pagado!==false});
   }
   const cuotasPorId=new Map(cuotasExtras.map(p=>[Number(p.id),p]));
   for(const p of proyectosExtraordinarios){
@@ -162,7 +162,13 @@ async function analizar(req,res){
    p.egresosReales=p.gastosConceptos.reduce((sum,e)=>sum+e.monto,0);
    p.gastosIncluidos=p.gastosConceptos.filter(e=>e.incluidoPresupuesto).reduce((sum,e)=>sum+e.monto,0);
    p.gastosAdicionales=p.gastosConceptos.filter(e=>!e.incluidoPresupuesto).reduce((sum,e)=>sum+e.monto,0);
+   // El presupuesto base ya incluye los conceptos de tipo "incluido".
+   // Solo los conceptos adicionales incrementan el costo comprometido.
    p.egresosComprometidos=p.presupuestoBase+p.gastosAdicionales;
+   p.gastosPagados=p.gastosConceptos.filter(e=>e.pagado).reduce((sum,e)=>sum+e.monto,0);
+   p.gastosPendientes=p.gastosConceptos.filter(e=>!e.pagado).reduce((sum,e)=>sum+e.monto,0);
+   p.presupuestoRestante=Math.max(0,p.egresosComprometidos-p.gastosPagados);
+   p.fondosDisponibles=p.recaudado-p.gastosPagados;
    p.egresosPendientesDeComprobar=Math.max(0,p.presupuestoBase-p.gastosIncluidos);
   }
   const ingresosReportados={mantenimiento:0,extraordinarios:0,casaClub:0};
@@ -245,6 +251,9 @@ async function registrarEgreso(req,res){
    throw fail(400,'Completa fecha, categoría, concepto y monto entero válidos');
   const proyectoId=Number(req.body?.proyectoId||0);
   const incluidoPresupuesto=req.body?.incluidoPresupuesto!==false;
+  const pagado=req.body?.pagado!==false;
+  if(req.body?.pagado!==undefined&&typeof req.body.pagado!=='boolean')
+   throw fail(400,'El estado de pago debe ser verdadero o falso');
   if(req.body?.incluidoPresupuesto!==undefined&&typeof req.body.incluidoPresupuesto!=='boolean')
    throw fail(400,'Indica verdadero o falso para incluido en presupuesto');
   if(categoria==='PROYECTO'&&!proyectoId){
@@ -270,7 +279,7 @@ async function registrarEgreso(req,res){
   const saved=await sequelize.transaction(async transaction=>{
    const row=await Egreso.create({fecha,categoria,concepto,monto,ambito,
     proyectoId:proyectoId||null,comprobanteArchivo:archivo,referencia:null,
-    incluidoPresupuesto,
+    incluidoPresupuesto,pagado,
     registradoPor:req.usuario.usuarioId},{transaction});
    const referencia=referenciaEgreso(fecha,row.id);
    await row.update({referencia},{transaction});
