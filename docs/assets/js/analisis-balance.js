@@ -16,22 +16,18 @@
    diferencia:diff/100,estado:clasificar(diff),
    criterio:'Cuotas del mes cubierto menos egresos del mismo mes, únicamente de mantenimiento; no representa el saldo bancario.'};
  }
- // Los presupuestos no equivalen a dinero gastado. Comparar con egresos REALES.
+ // En la tarjeta central el balance es presupuestario: ingreso acumulado
+ // menos costo total comprometido, sin descontar pagos ya registrados de
+ // ninguno de los dos lados. La tarjeta de Egresos muestra por separado
+ // cuánto queda realmente por pagar.
  function proyecto(project){
   if(!project)return null;
-  const income=centavos(project.recaudado),expense=centavos(project.egresosComprometidos??project.totalEsperado),diff=income-expense;
-  // Evitar descontar dos veces lo pagado: reducir en la misma cantidad los
-  // fondos disponibles y el presupuesto pendiente mantiene el faltante real.
-  const tienePagos=project.gastosPagados!=null||project.presupuestoRestante!=null;
-  const paid=tienePagos?centavos(project.gastosPagados):0;
-  const available=income-paid;
-  const remaining=tienePagos?Math.max(0,expense-paid):expense;
-  return {tipo:'EXTRAORDINARIO',ingresos:available/100,egresos:remaining/100,
-   recaudado:income/100,pagado:paid/100,
+  const income=centavos(project.recaudado);
+  const expense=centavos(project.egresosComprometidos??project.totalEsperado);
+  const diff=income-expense;
+  return {tipo:'EXTRAORDINARIO',ingresos:income/100,egresos:expense/100,
    diferencia:diff/100,estado:clasificar(diff),
-   criterio:tienePagos?
-    'Recaudado menos gastos pagados = fondos disponibles. Costo comprometido menos gastos pagados = presupuesto pendiente. El faltante a financiar se mantiene consistente, sin descontar dos veces el mismo gasto; no equivale al saldo bancario.':
-    'Balance presupuestario: aportaciones acumuladas menos presupuesto base y costos adicionales; los gastos incluidos no se suman dos veces. No equivale al saldo bancario.'};
+   criterio:'Balance presupuestario: aportaciones acumuladas menos costo total comprometido (presupuesto base más gastos adicionales). Los conceptos incluidos no se suman dos veces. Lo ya pagado se descuenta solo del presupuesto restante en la tarjeta de Egresos; no representa el saldo bancario.'};
  }
  // Las garantías reembolsables del club no se consideran ingresos operativos.
  function casaClub(scope){
