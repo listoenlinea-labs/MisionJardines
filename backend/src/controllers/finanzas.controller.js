@@ -152,7 +152,7 @@ async function analizar(req,res){
    if(!gastosPorProyecto.has(id))gastosPorProyecto.set(id,[]);
    gastosPorProyecto.get(id).push({id:Number(e.id),fecha:e.fecha,concepto:e.concepto,monto:num(e.monto),
     referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo,
-    incluidoPresupuesto:e.incluidoPresupuesto!==false,pagado:e.pagado!==false});
+    incluidoPresupuesto:e.incluidoPresupuesto!==false,pagado:Boolean(Number(e.pagado))});
   }
   const cuotasPorId=new Map(cuotasExtras.map(p=>[Number(p.id),p]));
   for(const p of proyectosExtraordinarios){
@@ -370,7 +370,7 @@ async function actualizarPagoEgreso(req,res){
    const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
    if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
     throw fail(404,'No se encontró el concepto de ese proyecto.');
-   if((row.pagado!==false)!==anterior)
+   if(Boolean(Number(row.pagado))!==anterior)
     throw fail(409,'El estado del pago cambió en otra sesión. Actualiza el análisis.');
    if(pagado===anterior)return {id,pagado,sinCambio:true};
    await row.update({pagado},{transaction});
