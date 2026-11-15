@@ -2886,6 +2886,9 @@ async function openProjectProofModal(id,trigger){
  $('financeProjectProofDate').textContent=displayDate(expense.fecha);
  $('financeProjectProofIncluded').textContent=expense.incluidoPresupuesto===false?'Adicional al presupuesto':'Incluido en presupuesto';
  $('financeProjectProofReference').textContent=expense.referencia||'Sin referencia';
+ $('financeProjectProofPaymentStatus').textContent=expense.pagado===false?'Pendiente de pago':'Pagado';
+ $('financeProjectProofPaid').checked=expense.pagado!==false;
+ $('financeProjectProofUploadForm').reset();
  projectProofPreview.replaceChildren();projectProofPreview.hidden=true;projectProofDownload.hidden=true;
  $('financeProjectProofStatus').textContent=expense.comprobanteDisponible?
   'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
@@ -3006,6 +3009,8 @@ function openProjectExpenseModal(){
  if(!project)return notice('Selecciona un proyecto para agregar el gasto.');
  projectExpensePreviousFocus=document.activeElement;
  $('financeProjectExpenseForm').reset();
+ $('financeProjectExpenseIncluded').checked=true;
+ $('financeProjectExpensePaid').checked=true;
  $('financeProjectExpenseDate').value=$('expenseDate').value;
  $('financeProjectExpenseStatus').textContent='';
  $('financeProjectExpenseProjectName').textContent=project.nombre;
@@ -3048,7 +3053,8 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  const btn=$('financeProjectExpenseSave'),file=$('financeProjectExpenseProof').files?.[0];
  const body={fecha:$('financeProjectExpenseDate').value,categoria:'PROYECTO',proyectoId:activeProyectoId,
   concepto:$('financeProjectExpenseName').value.trim(),monto:Number($('financeProjectExpenseAmount').value),
-  incluidoPresupuesto:$('financeProjectExpenseIncluded').checked};
+  incluidoPresupuesto:$('financeProjectExpenseIncluded').checked,
+  pagado:$('financeProjectExpensePaid').checked};
  if(!Number.isInteger(body.monto)||body.monto<=0)return notice('El costo debe expresarse en pesos enteros.');
  if(file){
   if(file.size>1024*1024)return notice('El comprobante no puede superar 1 MB.');
@@ -3065,7 +3071,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   $('financeProjectExpenseDate').value=$('expenseDate').value;expensePage=1;
   closeProjectExpenseModal({force:true});
   await load();
-  notice('Gasto real registrado, sin afectar mantenimiento o Casa Club.','success');
+  notice(body.pagado?'Concepto pagado registrado y descontado del presupuesto pendiente.':'Concepto registrado como pendiente de pago.','success');
  }catch(error){$('financeProjectExpenseStatus').textContent=error.message;notice(error.message);}
  finally{projectExpenseSaving=false;btn.disabled=false;}
 });
