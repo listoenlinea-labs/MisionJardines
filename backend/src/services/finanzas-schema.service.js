@@ -24,6 +24,8 @@ async function asegurarFinanzas(){
  if(!names.has('proyecto_id'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN proyecto_id BIGINT UNSIGNED NULL');
  if(!names.has('comprobante_archivo'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN comprobante_archivo VARCHAR(100) NULL');
  if(!names.has('incluido_presupuesto'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN incluido_presupuesto TINYINT(1) NOT NULL DEFAULT 1');
+ // Por compatibilidad, los egresos existentes conservan la interpretación de pagados.
+ if(!names.has('pagado'))await db.query('ALTER TABLE egresos_fraccionamiento ADD COLUMN pagado TINYINT(1) NOT NULL DEFAULT 1');
  await db.query("UPDATE egresos_fraccionamiento SET ambito='EXTRAORDINARIO' WHERE categoria IN ('CUOTA_EXTRAORDINARIA','PROYECTOS','PROYECTO') AND ambito='MANTENIMIENTO'");
  await db.query(`CREATE TABLE IF NOT EXISTS finanzas_edicion_auditoria (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

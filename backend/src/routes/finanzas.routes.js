@@ -39,6 +39,8 @@ router.post('/viviendas/:id/registrar-residente',require('../controllers/residen
 router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorCobrar);
 router.post('/egresos',controller.registrarEgreso);
 router.patch('/egresos/:id/monto',controller.actualizarMontoEgreso);
+router.patch('/egresos/:id/pagado',controller.actualizarPagoEgreso);
+router.put('/egresos/:id/comprobante',controller.adjuntarComprobanteEgreso);
 router.put('/egresos/total-mantenimiento',controller.actualizarTotalMantenimiento);
 router.patch('/proyectos-extraordinarios/:id/presupuesto',controller.actualizarPresupuestoProyecto);
 router.get('/egresos/:id/comprobante',controller.comprobanteEgreso);

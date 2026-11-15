@@ -356,6 +356,9 @@ let expensePage=1;
   $('financialSecondary').innerHTML=[
    ['Proyecto extraordinario',project.nombre],['Meta del proyecto',fmt(project.totalEsperado)],
    ['Recaudado',fmt(project.recaudado)],['Por recaudar',fmt(project.saldoPendiente)],
+   ['Presupuesto base',fmt(project.presupuestoBase)],['Costo comprometido',fmt(project.egresosComprometidos)],
+   ['Gastos pagados',fmt(project.gastosPagados)],['Presupuesto restante',fmt(project.presupuestoRestante)],
+   ['Fondos disponibles después de gastos',fmt(project.fondosDisponibles)],
    ['Saldo a favor',fmt(project.saldoFavor)],['Meta alcanzada',complete],
    ['Abonos parciales',partial],['Sin aportaciones',project.pendientes],
    ['No aplica',Number(project.noAplica||0)],['Casas con cuota',applied]
@@ -2605,7 +2608,8 @@ let historicalExtraId=null;
   };
   let rows=line('budget',null,'Presupuesto base','Monto autorizado',budget);
   rows+=concepts.map(e=>line('expense',e.id,e.concepto,
-   e.incluidoPresupuesto===false?'Adicional':'Incluido',e.monto)).join('');
+   (e.incluidoPresupuesto===false?'Adicional':'Incluido')+
+   (e.pagado===false?' · Pendiente':' · Pagado'),e.monto)).join('');
   $('financeProjectBreakdownRows').innerHTML=rows;
   $('financeProjectBreakdownTotals').innerHTML=
    '<tr><th>Costo total comprometido</th><td>Presupuesto + adicionales</td>'+
@@ -2617,7 +2621,9 @@ let historicalExtraId=null;
       '<div class="finance-expense-month-actions"><button type="submit" class="primary">Guardar</button>'+
        '<button type="button" class="soft" data-breakdown-cancel>Cancelar</button></div></form>'+
      '<small class="finance-expense-month-feedback" aria-live="polite"></small></td></tr>'+
-   '<tr><th>Gastos registrados</th><td>Incluidos + adicionales</td><td>'+esc(fmt(costs?.gastosReales??project.egresosReales??0))+'</td></tr>';
+   '<tr><th>Gastos registrados</th><td>Incluidos + adicionales</td><td>'+esc(fmt(costs?.gastosReales??project.egresosReales??0))+'</td></tr>'+
+   '<tr><th>Pagado a proveedores</th><td>Conceptos con estado Pagado</td><td>'+esc(fmt(costs?.pagados??project.gastosPagados??0))+'</td></tr>'+
+   '<tr><th>Presupuesto restante</th><td>Costo comprometido menos pagos</td><td><strong>'+esc(fmt(costs?.presupuestoRestante??project.presupuestoRestante??0))+'</strong></td></tr>';
  }
  function openProjectBreakdown(trigger){
   const project=selectedProject();
@@ -2886,6 +2892,9 @@ async function openProjectProofModal(id,trigger){
  $('financeProjectProofDate').textContent=displayDate(expense.fecha);
  $('financeProjectProofIncluded').textContent=expense.incluidoPresupuesto===false?'Adicional al presupuesto':'Incluido en presupuesto';
  $('financeProjectProofReference').textContent=expense.referencia||'Sin referencia';
+ $('financeProjectProofPaymentStatus').textContent=expense.pagado===false?'Pendiente de pago':'Pagado';
+ $('financeProjectProofPaid').checked=expense.pagado!==false;
+ $('financeProjectProofUploadForm').reset();
  projectProofPreview.replaceChildren();projectProofPreview.hidden=true;projectProofDownload.hidden=true;
  $('financeProjectProofStatus').textContent=expense.comprobanteDisponible?
   'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
@@ -2921,6 +2930,73 @@ async function openProjectProofModal(id,trigger){
   $('financeProjectProofStatus').textContent=error.message;
  }finally{if(projectProofAbort===controller)projectProofAbort=null;}
 }
+// Los adjuntos pueden llegar después del alta del gasto. Se usa el mismo
+// almacenamiento privado y validación de tipos que el alta original.
+async function encodeProjectExpenseFile(file){
+ if(!file)throw Error('Selecciona el comprobante del concepto.');
+ if(file.size>1024*1024||file.size===0)
+  throw Error('El comprobante debe pesar entre 1 byte y 1 MB.');
+ if(!['image/jpeg','image/png','application/pdf'].includes(file.type))
+  throw Error('Solo se permiten archivos PDF, PNG, JPG o JPEG.');
+ const bytes=new Uint8Array(await file.arrayBuffer()),chunks=[];
+ for(let i=0;i<bytes.length;i+=8192)
+  chunks.push(String.fromCharCode(...bytes.subarray(i,i+8192)));
+ return {mime:file.type,base64:btoa(chunks.join(''))};
+}
+function findProjectExpenseTrigger(id){
+ return $('financeExpenseChart').querySelector('[data-project-expense-detail="'+Number(id)+'"]');
+}
+let projectProofUploadSaving=false,projectProofStatusSaving=false;
+$('financeProjectProofUploadForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(projectProofModal.hidden||projectProofUploadSaving||projectProofStatusSaving)return;
+ const id=Number(projectProofSource?.id);
+ if(!Number.isSafeInteger(id)||id<1)return;
+ const button=$('financeProjectProofUploadSave');
+ const file=$('financeProjectProofUploadFile').files?.[0];
+ const status=$('financeProjectProofStatus');
+ if(!file)return status.textContent='Selecciona un archivo PDF o imagen.';
+ if(projectProofSource.comprobanteDisponible &&
+  !confirm('Este concepto ya tiene un comprobante. ¿Deseas reemplazarlo?'))return;
+ projectProofUploadSaving=true;button.disabled=true;
+ try{
+  const comprobante=await encodeProjectExpenseFile(file);
+  status.textContent='Guardando comprobante en el servidor…';
+  await request('/egresos/'+id+'/comprobante',{comprobante},'PUT');
+  if(!projectProofModal.hidden)status.textContent='Comprobante guardado. Actualizando la vista…';
+  const ok=await load();
+  if(!ok)throw Error('Se guardó el comprobante, pero no se pudo actualizar el análisis. Recarga la página.');
+  if(!projectProofModal.hidden && Number(projectProofSource?.id)===id)
+   await openProjectProofModal(id,findProjectExpenseTrigger(id));
+  notice('Comprobante adjuntado al concepto.','success');
+ }catch(error){
+  if(!projectProofModal.hidden)status.textContent=error.message;
+  notice(error.message);
+ }finally{projectProofUploadSaving=false;button.disabled=false;}
+});
+$('financeProjectProofPaymentForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(projectProofModal.hidden||projectProofStatusSaving||projectProofUploadSaving)return;
+ const id=Number(projectProofSource?.id),old=projectProofSource?.pagado!==false;
+ const next=$('financeProjectProofPaid').checked;
+ if(!Number.isSafeInteger(id)||id<1)return;
+ if(next===old)return $('financeProjectProofStatus').textContent='El estado de pago no cambió.';
+ if(!confirm('¿Marcar este concepto como '+(next?'PAGADO':'PENDIENTE DE PAGO')+
+  '? El presupuesto restante se recalculará.'))return;
+ const button=$('financeProjectProofPaymentSave');
+ projectProofStatusSaving=true;button.disabled=true;
+ try{
+  await request('/egresos/'+id+'/pagado',{pagado:next,pagadoAnterior:old},'PATCH');
+  const ok=await load();
+  if(!ok)throw Error('Estado guardado; no se pudo refrescar el análisis.');
+  if(!projectProofModal.hidden && Number(projectProofSource?.id)===id)
+   await openProjectProofModal(id,findProjectExpenseTrigger(id));
+  notice('Estado del concepto actualizado.','success');
+ }catch(error){
+  $('financeProjectProofStatus').textContent=error.message;
+  notice(error.message);
+ }finally{projectProofStatusSaving=false;button.disabled=false;}
+});
 $('financeProjectProofClose').addEventListener('click',closeProjectProofModal);
 $('financeProjectProofDone').addEventListener('click',closeProjectProofModal);
 projectProofModal.addEventListener('click',event=>{
@@ -2930,7 +3006,7 @@ document.addEventListener('keydown',event=>{
  if(projectProofModal.hidden)return;
  if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeProjectProofModal();return;}
  if(event.key!=='Tab')return;
- const elements=[...projectProofModal.querySelectorAll('button:not([hidden]):not([disabled])')]
+ const elements=[...projectProofModal.querySelectorAll('button:not([hidden]):not([disabled]),input:not([hidden]):not([disabled])')]
   .filter(el=>el.getClientRects().length);
  if(!elements.length)return;
  const first=elements[0],last=elements[elements.length-1];
@@ -3006,6 +3082,8 @@ function openProjectExpenseModal(){
  if(!project)return notice('Selecciona un proyecto para agregar el gasto.');
  projectExpensePreviousFocus=document.activeElement;
  $('financeProjectExpenseForm').reset();
+ $('financeProjectExpenseIncluded').checked=true;
+ $('financeProjectExpensePaid').checked=true;
  $('financeProjectExpenseDate').value=$('expenseDate').value;
  $('financeProjectExpenseStatus').textContent='';
  $('financeProjectExpenseProjectName').textContent=project.nombre;
@@ -3048,7 +3126,8 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  const btn=$('financeProjectExpenseSave'),file=$('financeProjectExpenseProof').files?.[0];
  const body={fecha:$('financeProjectExpenseDate').value,categoria:'PROYECTO',proyectoId:activeProyectoId,
   concepto:$('financeProjectExpenseName').value.trim(),monto:Number($('financeProjectExpenseAmount').value),
-  incluidoPresupuesto:$('financeProjectExpenseIncluded').checked};
+  incluidoPresupuesto:$('financeProjectExpenseIncluded').checked,
+  pagado:$('financeProjectExpensePaid').checked};
  if(!Number.isInteger(body.monto)||body.monto<=0)return notice('El costo debe expresarse en pesos enteros.');
  if(file){
   if(file.size>1024*1024)return notice('El comprobante no puede superar 1 MB.');
@@ -3065,7 +3144,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   $('financeProjectExpenseDate').value=$('expenseDate').value;expensePage=1;
   closeProjectExpenseModal({force:true});
   await load();
-  notice('Gasto real registrado, sin afectar mantenimiento o Casa Club.','success');
+  notice(body.pagado?'Concepto pagado registrado y descontado del presupuesto pendiente.':'Concepto registrado como pendiente de pago.','success');
  }catch(error){$('financeProjectExpenseStatus').textContent=error.message;notice(error.message);}
  finally{projectExpenseSaving=false;btn.disabled=false;}
 });

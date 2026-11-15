@@ -21,7 +21,7 @@
    'Cuotas de recuperación y limpieza; las garantías no son ingresos.':
    'Los pagos anticipados se distribuyen por mensualidad cubierta, con recargo real.';
   $('financeExpenseCard').querySelector('.finance-chart-description').textContent=project?
-   'El costo total es presupuesto; los conceptos son egresos reales y no se suman dos veces.':
+   'Presupuesto base menos gastos pagados; los adicionales aumentan el costo comprometido una sola vez.':
    'Solo gastos de '+(club?'Casa Club.':'mantenimiento.');
   $('financeWarning').textContent='';
   if(project){
@@ -41,7 +41,7 @@
    const concepts=project.gastosConceptos||[];
    const costos=root.MJCostosProyecto?.resumen(project);
    const spent=Number(costos?.gastosReales??project.egresosReales??0);
-   expenseFooter=Number(costos?.costoComprometido??project.egresosComprometidos??project.totalEsperado??0);
+   expenseFooter=Number(costos?.presupuestoRestante??project.presupuestoRestante??project.egresosComprometidos??project.totalEsperado??0);
    const maxExpense=Math.max(1,Number(costos?.presupuesto??project.totalEsperado??0),...concepts.map(x=>Number(x.monto||0)));
    $('financeExpenseChart').innerHTML='<div class="project-budget-bar">'+
     '<button type="button" class="finance-budget-edit finance-project-breakdown-trigger" data-project-budget="'+Number(project.id)+'" aria-haspopup="dialog" aria-controls="financeProjectBreakdownModal" title="Ver desglose y editar importes">'+
@@ -50,7 +50,7 @@
      ' tabindex="0" role="button" aria-haspopup="dialog" aria-controls="financeProjectProofModal"'+
      ' aria-label="Ver detalle y comprobante de '+esc(e.concepto)+'" title="Ver detalle y comprobante del concepto">'+
      '<div class="finance-project-concept-edit">'+
-     bar(e.concepto+(e.incluidoPresupuesto===false?' · Adicional':' · Incluido'),Number(e.monto||0),maxExpense,true,fmt(e.monto))+'</div>'+
+     bar(e.concepto+(e.pagado===false?' · Pendiente':' · Pagado'),Number(e.monto||0),maxExpense,true,fmt(e.monto))+'</div>'+
      '<span class="finance-project-proof-indicator" aria-hidden="true">'+(e.comprobanteDisponible?'Ver recibo':'Sin recibo')+'</span>'+
      '</div>').join('');
   }else if(scope==='EXTRAORDINARIO'){
@@ -93,7 +93,7 @@
   }
   $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
-  $('financeExpenseFooter').querySelector('span').textContent=project?'Costo total comprometido':'Total de egresos';
+  $('financeExpenseFooter').querySelector('span').textContent=project?'Presupuesto restante por pagar':'Total de egresos';
   const summaryTrigger=$('financeExpenseFooter');
   summaryTrigger.tabIndex=project?0:-1;
   if(project){
@@ -113,7 +113,7 @@
    balanceExpense.setAttribute('role','button');
    balanceExpense.setAttribute('aria-haspopup','dialog');
    balanceExpense.setAttribute('aria-controls','financeProjectBreakdownModal');
-   balanceExpense.title='Ver desglose del costo comprometido';
+   balanceExpense.title='Ver desglose del presupuesto pendiente y pagos';
   }else{
    balanceExpense.removeAttribute('role');
    balanceExpense.removeAttribute('aria-haspopup');
@@ -124,18 +124,22 @@
   $('financeProjectExpenseSummary').hidden=!project;
   if(project){
    const totals=root.MJCostosProyecto?.resumen(project);
-   $('financeProjectExpenseSummary').textContent='Gastos registrados: '+fmt(totals?.gastosReales??project.egresosReales)+
-    ' · Incluidos: '+fmt(totals?.incluidos??0)+' · Adicionales: '+fmt(totals?.adicionales??0);
+   $('financeProjectExpenseSummary').textContent='Presupuesto: '+fmt(totals?.presupuesto??project.presupuestoBase)+
+    ' · Pagado: '+fmt(totals?.pagados??project.gastosPagados??0)+
+    ' · Pendiente: '+fmt(totals?.presupuestoRestante??project.presupuestoRestante??0)+
+    ' · Costo comprometido: '+fmt(totals?.costoComprometido??project.egresosComprometidos);
   }
   const balance=project?root.MJFinanceBalance?.proyecto(project):
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
-  $('financeBalanceSubtitle').textContent=project?'Proyecto · Aportaciones menos costo comprometido':
+  $('financeBalanceSubtitle').textContent=project?'Proyecto · Fondos disponibles y presupuesto pendiente':
    club?'Casa Club · Ingresos menos egresos':'Mantenimiento · Ingresos menos egresos';
-  $('financeBalanceExpenseLabel').textContent=project?'Costo comprometido':'Egresos';
+  $('financeBalanceExpenseLabel').textContent=project?'Presupuesto pendiente':'Egresos';
   $('financeBalanceDescription').textContent=project?
-   'Presupuesto base y gastos adicionales. Los conceptos incluidos no aumentan dos veces el total.':
+   'Lo pagado resta del presupuesto y de los fondos disponibles. El faltante permanece consistente.':
    club?'Sin garantías ni pagos de otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
+  $('financeBalanceIncome').parentElement?.querySelector('span')?.replaceChildren(
+   document.createTextNode(project?'Fondos disponibles':'Ingresos'));
   const card=$('financeBalanceCard');
   if(!balance){
    $('financeBalanceIncome').textContent='—';$('financeBalanceExpense').textContent='—';

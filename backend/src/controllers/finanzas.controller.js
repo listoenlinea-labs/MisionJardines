@@ -152,7 +152,7 @@ async function analizar(req,res){
    if(!gastosPorProyecto.has(id))gastosPorProyecto.set(id,[]);
    gastosPorProyecto.get(id).push({id:Number(e.id),fecha:e.fecha,concepto:e.concepto,monto:num(e.monto),
     referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo,
-    incluidoPresupuesto:e.incluidoPresupuesto!==false});
+    incluidoPresupuesto:e.incluidoPresupuesto!==false,pagado:Boolean(Number(e.pagado))});
   }
   const cuotasPorId=new Map(cuotasExtras.map(p=>[Number(p.id),p]));
   for(const p of proyectosExtraordinarios){
@@ -162,7 +162,13 @@ async function analizar(req,res){
    p.egresosReales=p.gastosConceptos.reduce((sum,e)=>sum+e.monto,0);
    p.gastosIncluidos=p.gastosConceptos.filter(e=>e.incluidoPresupuesto).reduce((sum,e)=>sum+e.monto,0);
    p.gastosAdicionales=p.gastosConceptos.filter(e=>!e.incluidoPresupuesto).reduce((sum,e)=>sum+e.monto,0);
+   // El presupuesto base ya incluye los conceptos de tipo "incluido".
+   // Solo los conceptos adicionales incrementan el costo comprometido.
    p.egresosComprometidos=p.presupuestoBase+p.gastosAdicionales;
+   p.gastosPagados=p.gastosConceptos.filter(e=>e.pagado).reduce((sum,e)=>sum+e.monto,0);
+   p.gastosPendientes=p.gastosConceptos.filter(e=>!e.pagado).reduce((sum,e)=>sum+e.monto,0);
+   p.presupuestoRestante=Math.max(0,p.egresosComprometidos-p.gastosPagados);
+   p.fondosDisponibles=p.recaudado-p.gastosPagados;
    p.egresosPendientesDeComprobar=Math.max(0,p.presupuestoBase-p.gastosIncluidos);
   }
   const ingresosReportados={mantenimiento:0,extraordinarios:0,casaClub:0};
@@ -245,6 +251,9 @@ async function registrarEgreso(req,res){
    throw fail(400,'Completa fecha, categoría, concepto y monto entero válidos');
   const proyectoId=Number(req.body?.proyectoId||0);
   const incluidoPresupuesto=req.body?.incluidoPresupuesto!==false;
+  const pagado=req.body?.pagado!==false;
+  if(req.body?.pagado!==undefined&&typeof req.body.pagado!=='boolean')
+   throw fail(400,'El estado de pago debe ser verdadero o falso');
   if(req.body?.incluidoPresupuesto!==undefined&&typeof req.body.incluidoPresupuesto!=='boolean')
    throw fail(400,'Indica verdadero o falso para incluido en presupuesto');
   if(categoria==='PROYECTO'&&!proyectoId){
@@ -270,7 +279,7 @@ async function registrarEgreso(req,res){
   const saved=await sequelize.transaction(async transaction=>{
    const row=await Egreso.create({fecha,categoria,concepto,monto,ambito,
     proyectoId:proyectoId||null,comprobanteArchivo:archivo,referencia:null,
-    incluidoPresupuesto,
+    incluidoPresupuesto,pagado,
     registradoPor:req.usuario.usuarioId},{transaction});
    const referencia=referenciaEgreso(fecha,row.id);
    await row.update({referencia},{transaction});
@@ -350,6 +359,58 @@ async function actualizarPresupuestoProyecto(req,res){
   return res.json({ok:true,...saved,message:'Presupuesto actualizado; las cuotas de las viviendas permanecen igual.'});
  }catch(e){return sendErr(res,e);}
 }
+// Cambiar el estado real de pago sin alterar el importe comprometido del proyecto.
+// Bloqueo de fila y versión esperada evitan sobrescribir cambios de otro administrador.
+async function actualizarPagoEgreso(req,res){
+ try{
+  const id=Number(req.params.id),pagado=req.body?.pagado,anterior=req.body?.pagadoAnterior;
+  if(!Number.isSafeInteger(id)||id<1||typeof pagado!=='boolean'||typeof anterior!=='boolean')
+   throw fail(400,'Indica egreso y estado de pago anterior/actual válidos.');
+  const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
+    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   if(Boolean(Number(row.pagado))!==anterior)
+    throw fail(409,'El estado del pago cambió en otra sesión. Actualiza el análisis.');
+   if(pagado===anterior)return {id,pagado,sinCambio:true};
+   await row.update({pagado},{transaction});
+   await sequelize.query(
+    'INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['PAGO_CONCEPTO_PROYECTO',id,anterior?Number(row.monto):0,pagado?Number(row.monto):0,req.usuario.usuarioId,row.referencia||null],transaction});
+   return {id,pagado};
+  });
+  return res.json({ok:true,...result,message:pagado?'Concepto marcado como pagado.':'Concepto marcado como pendiente de pago.'});
+ }catch(e){return sendErr(res,e);}
+}
+
+// Subir o reemplazar el recibo de un gasto ya creado. Se conserva el archivo
+// previo si ocurre un error; el nuevo se elimina al fallar la transacción.
+async function adjuntarComprobanteEgreso(req,res){
+ let nuevo=null,anterior=null;
+ try{
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1)throw fail(400,'Egreso inválido.');
+  if(!req.body?.comprobante)throw fail(400,'Selecciona el archivo del comprobante.');
+  nuevo=await archivosEgresos.guardar(req.body.comprobante);
+  const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
+    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   anterior=row.comprobanteArchivo;
+   await row.update({comprobanteArchivo:nuevo},{transaction});
+   await sequelize.query(
+    'INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['COMPROBANTE_EGRESO',id,anterior?1:0,1,req.usuario.usuarioId,row.referencia||null],transaction});
+   return {id,comprobanteDisponible:true};
+  });
+  await archivosEgresos.eliminar(anterior);
+  return res.json({ok:true,...result,message:'Comprobante guardado para este concepto.'});
+ }catch(e){
+  await archivosEgresos.eliminar(nuevo);
+  return sendErr(res,e);
+ }
+}
+
 async function comprobanteEgreso(req,res){
  try{
   const id=Number(req.params.id);
@@ -443,4 +504,4 @@ async function modificarCuotaPorCobrar(req,res){
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
  }catch(error){return sendErr(res,error);}
 }
-module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
+module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPagoEgreso,adjuntarComprobanteEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};

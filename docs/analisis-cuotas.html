@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261114-desglose-proyecto">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261114-pagados-v1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -91,9 +91,21 @@
    <div><span>Fecha</span><strong id="financeProjectProofDate"></strong></div>
    <div><span>Tipo</span><strong id="financeProjectProofIncluded"></strong></div>
    <div><span>Referencia</span><strong id="financeProjectProofReference"></strong></div>
+   <div><span>Estado de pago</span><strong id="financeProjectProofPaymentStatus"></strong></div>
   </div>
+  <form id="financeProjectProofPaymentForm" class="finance-project-proof-payment-form">
+   <label class="finance-project-compact-check"><input id="financeProjectProofPaid" type="checkbox">
+    <span>Este concepto ya se pagó</span></label>
+   <button type="submit" class="soft" id="financeProjectProofPaymentSave">Guardar estado</button>
+  </form>
   <div id="financeProjectProofStatus" class="finance-project-proof-status" role="status" aria-live="polite"></div>
   <div id="financeProjectProofPreview" class="finance-project-proof-preview" hidden></div>
+  <form id="financeProjectProofUploadForm" class="finance-project-proof-upload-form">
+   <label for="financeProjectProofUploadFile">Adjuntar comprobante de este concepto</label>
+   <p class="hint">PDF, PNG, JPG o JPEG · máximo 1 MB. Puedes agregarlo después de registrar el gasto.</p>
+   <input id="financeProjectProofUploadFile" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required>
+   <button id="financeProjectProofUploadSave" class="primary" type="submit">Guardar comprobante</button>
+  </form>
   <div class="finance-project-proof-actions">
    <button type="button" class="soft" id="financeProjectProofDownload" hidden>Descargar comprobante</button>
    <button type="button" class="primary" id="financeProjectProofDone">Cerrar</button>
@@ -147,8 +159,13 @@
    <label>Monto (MXN)<input id="financeProjectExpenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label>
    <label>Fecha<input id="financeProjectExpenseDate" type="date" required></label>
    <label>Recibo o comprobante (opcional)<input id="financeProjectExpenseProof" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
-   <label class="finance-project-included-check"><input id="financeProjectExpenseIncluded" type="checkbox" checked>
-    <span>Este concepto ya está incluido en el presupuesto total (no aumenta el costo comprometido)</span></label>
+   <div class="finance-project-concept-flags">
+    <label class="finance-project-compact-check"><input id="financeProjectExpenseIncluded" type="checkbox" checked>
+     <span>Este concepto ya está incluido en el presupuesto total.</span></label>
+    <label class="finance-project-compact-check"><input id="financeProjectExpensePaid" type="checkbox" checked>
+     <span>Este concepto ya se pagó.</span></label>
+    <p class="hint">Solo los conceptos pagados se descuentan del presupuesto restante. Los adicionales aumentan el costo comprometido, sin duplicar los incluidos.</p>
+   </div>
    <div class="finance-project-expense-actions">
     <button id="financeProjectExpenseCancel" type="button" class="soft">Cancelar</button>
     <button id="financeProjectExpenseSave" type="submit" class="primary">Guardar concepto</button>
@@ -788,4 +805,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261113-presupuesto" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261113-presupuestos" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261114-desglose-proyecto" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261114-desglose-proyecto" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261114-pagados-v1" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261114-pagados-v1" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261114-pagados-v1" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261114-pagados-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
