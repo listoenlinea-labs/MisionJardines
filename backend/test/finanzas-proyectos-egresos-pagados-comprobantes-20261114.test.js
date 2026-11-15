@@ -24,9 +24,12 @@ test('Ejemplo del barandal: 138600 menos 29300 pagados = 109300 restantes',()=>{
  assert.equal(c.presupuestoRestante,109300);
  assert.equal(c.fondosDisponibles,33400);
  const b=balance.proyecto({...p,egresosComprometidos:c.costoComprometido,gastosPagados:c.pagados});
- assert.equal(b.ingresos,33400);
- assert.equal(b.egresos,109300);
- assert.equal(b.diferencia,-75900); // sin duplicar el gasto en ambos lados
+ // La tarjeta central compara importes TOTALES, no fondos netos:
+ // $62,700 ingresados - $138,600 comprometidos = -$75,900.
+ // La derecha conserva los $109,300 que quedan por pagar.
+ assert.equal(b.ingresos,62700);
+ assert.equal(b.egresos,138600);
+ assert.equal(b.diferencia,-75900); // incluido una sola vez en el compromiso
  assert.equal(b.estado,'SALDO_EN_CONTRA');
 });
 

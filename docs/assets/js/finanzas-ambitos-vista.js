@@ -113,7 +113,7 @@
    balanceExpense.setAttribute('role','button');
    balanceExpense.setAttribute('aria-haspopup','dialog');
    balanceExpense.setAttribute('aria-controls','financeProjectBreakdownModal');
-   balanceExpense.title='Ver desglose del presupuesto pendiente y pagos';
+   balanceExpense.title='Ver desglose de egresos comprometidos y pagos';
   }else{
    balanceExpense.removeAttribute('role');
    balanceExpense.removeAttribute('aria-haspopup');
@@ -132,14 +132,14 @@
   const balance=project?root.MJFinanceBalance?.proyecto(project):
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
-  $('financeBalanceSubtitle').textContent=project?'Proyecto · Fondos disponibles y presupuesto pendiente':
+  $('financeBalanceSubtitle').textContent=project?'Proyecto · Ingresos menos egresos comprometidos':
    club?'Casa Club · Ingresos menos egresos':'Mantenimiento · Ingresos menos egresos';
-  $('financeBalanceExpenseLabel').textContent=project?'Presupuesto pendiente':'Egresos';
+  $('financeBalanceExpenseLabel').textContent='Egresos';
   $('financeBalanceDescription').textContent=project?
-   'Lo pagado resta del presupuesto y de los fondos disponibles. El faltante permanece consistente.':
+   'Egresos = presupuesto base más conceptos adicionales, sin sumar nuevamente los incluidos. Los pagos realizados solo reducen el presupuesto restante en la tarjeta derecha.':
    club?'Sin garantías ni pagos de otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   $('financeBalanceIncome').parentElement?.querySelector('span')?.replaceChildren(
-   document.createTextNode(project?'Fondos disponibles':'Ingresos'));
+   document.createTextNode('Ingresos'));
   const card=$('financeBalanceCard');
   if(!balance){
    $('financeBalanceIncome').textContent='—';$('financeBalanceExpense').textContent='—';
