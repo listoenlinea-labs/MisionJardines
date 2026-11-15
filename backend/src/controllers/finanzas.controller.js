@@ -411,6 +411,99 @@ async function adjuntarComprobanteEgreso(req,res){
  }
 }
 
+// Operaciones exclusivas de los conceptos registrados dentro de un proyecto.
+// El presupuesto base y sus cargos permanecen independientes de este registro.
+function validarDatosConcepto(body){
+ if(!body||typeof body!=='object'||Array.isArray(body))
+  throw fail(400,'Completa los datos del concepto.');
+ const concepto=String(body.concepto||'').trim();
+ const fecha=String(body.fecha||'');
+ const monto=Number(body.monto);
+ if(!concepto||concepto.length>250||
+  !/^\\d{4}-\\d{2}-\\d{2}$/.test(fecha)||
+  !Number.isFinite(new Date(fecha+'T12:00:00Z').valueOf())||
+  new Date(fecha+'T12:00:00Z').toISOString().slice(0,10)!==fecha||
+  !Number.isSafeInteger(monto)||monto<1||monto>100000000||
+  typeof body.incluidoPresupuesto!=='boolean'||typeof body.pagado!=='boolean')
+  throw fail(400,'Nombre, fecha, importe entero y estados de pago válidos son obligatorios.');
+ return {concepto,fecha,monto,incluidoPresupuesto:body.incluidoPresupuesto,pagado:body.pagado};
+}
+function estadoConcepto(row){
+ return {concepto:String(row.concepto||'').trim(),fecha:String(row.fecha||'').slice(0,10),
+  monto:Math.round(Number(row.monto)),incluidoPresupuesto:row.incluidoPresupuesto!==false,
+  pagado:Boolean(Number(row.pagado))};
+}
+function validarVersionConcepto(row,esperado){
+ const actual=estadoConcepto(row);
+ const cambia=Object.keys(actual).some(campo=>actual[campo]!==esperado[campo]);
+ if(cambia)throw fail(409,'Este concepto cambió en otra sesión. Actualiza el análisis y vuelve a intentarlo.');
+}
+async function conceptoEditableProyecto(id,proyectoId,transaction){
+ const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
+ if(!row||Number(row.proyectoId)!==proyectoId||
+  row.categoria!=='PROYECTO'||row.ambito!=='EXTRAORDINARIO')
+  throw fail(404,'No se encontró el concepto en el proyecto seleccionado.');
+ if(await CuotaExtraordinaria.findOne({where:{egresoId:id},transaction}))
+  throw fail(409,'Este egreso tiene cuotas vinculadas y no puede editarse ni eliminarse.');
+ return row;
+}
+function solicitudConcepto(req,editar){
+ const id=Number(req.params.id),proyectoId=Number(req.body?.proyectoId);
+ if(!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(proyectoId)||proyectoId<1)
+  throw fail(400,'Selecciona un concepto y proyecto válidos.');
+ const anterior=validarDatosConcepto(req.body?.anterior);
+ const nuevo=editar?validarDatosConcepto(req.body?.nuevo):null;
+ return {id,proyectoId,anterior,nuevo};
+}
+async function editarConceptoProyecto(req,res){
+ try{
+  const {id,proyectoId,anterior,nuevo}=solicitudConcepto(req,true);
+  const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const row=await conceptoEditableProyecto(id,proyectoId,transaction);
+   validarVersionConcepto(row,anterior);
+   const previo=estadoConcepto(row);
+   if(Object.keys(nuevo).every(campo=>previo[campo]===nuevo[campo]))
+    return {id,proyectoId,sinCambio:true};
+   await row.update(nuevo,{transaction});
+   const detalle=('Proyecto '+proyectoId+' · '+(row.referencia||'')+' · '+
+    previo.concepto+' -> '+nuevo.concepto+' · '+previo.fecha+' -> '+nuevo.fecha+
+    ' · incluido '+Number(previo.incluidoPresupuesto)+' -> '+Number(nuevo.incluidoPresupuesto)+
+    ' · pagado '+Number(previo.pagado)+' -> '+Number(nuevo.pagado)).slice(0,250);
+   await sequelize.query(
+    'INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['EDITAR_CONCEPTO_PROYECTO',id,previo.monto,nuevo.monto,req.usuario.usuarioId,detalle],transaction});
+   return {id,proyectoId,concepto:nuevo.concepto,monto:nuevo.monto};
+  });
+  return res.json({ok:true,...result,message:'Concepto actualizado; presupuesto y tarjetas recalculables.'});
+ }catch(e){return sendErr(res,e);}
+}
+async function eliminarConceptoProyecto(req,res){
+ let comprobante=null;
+ try{
+  const {id,proyectoId,anterior}=solicitudConcepto(req,false);
+  const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+   const row=await conceptoEditableProyecto(id,proyectoId,transaction);
+   validarVersionConcepto(row,anterior);
+   const previo=estadoConcepto(row);
+   const referencia=String(row.referencia||'');
+   comprobante=row.comprobanteArchivo;
+   const detalle=('Proyecto '+proyectoId+' · '+referencia+' · '+previo.concepto+
+    ' · '+previo.fecha+' · incluido '+Number(previo.incluidoPresupuesto)+
+    ' · pagado '+Number(previo.pagado)+
+    ' · comprobante '+Number(Boolean(comprobante))).slice(0,250);
+   await sequelize.query(
+    'INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+    {replacements:['ELIMINAR_CONCEPTO_PROYECTO',id,previo.monto,0,req.usuario.usuarioId,detalle],transaction});
+   await row.destroy({transaction});
+   return {id,proyectoId,referencia};
+  });
+  // Borrar el comprobante solamente después del commit. La referencia queda
+  // documentada en auditoría; otros proyectos y sus archivos no se alteran.
+  await archivosEgresos.eliminar(comprobante);
+  return res.json({ok:true,...result,message:'Concepto eliminado. Las cifras se actualizarán al recargar.'});
+ }catch(e){return sendErr(res,e);}
+}
+
 async function comprobanteEgreso(req,res){
  try{
   const id=Number(req.params.id);
@@ -504,4 +597,4 @@ async function modificarCuotaPorCobrar(req,res){
   return res.json({ok:true,data:resultado,message:'Cuota mensual de la vivienda actualizada. Los pagos y TAGs anteriores permanecen intactos.'});
  }catch(error){return sendErr(res,error);}
 }
-module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPagoEgreso,adjuntarComprobanteEgreso,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
+module.exports={analizar,registrarEgreso,actualizarTotalMantenimiento,actualizarMontoEgreso,actualizarPagoEgreso,adjuntarComprobanteEgreso,editarConceptoProyecto,eliminarConceptoProyecto,actualizarPresupuestoProyecto,comprobanteEgreso,activarCuotaExistente,modificarCuotaPorCobrar,ajustarTotalEgresoMensual};
