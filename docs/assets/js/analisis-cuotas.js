@@ -2924,6 +2924,73 @@ async function openProjectProofModal(id,trigger){
   $('financeProjectProofStatus').textContent=error.message;
  }finally{if(projectProofAbort===controller)projectProofAbort=null;}
 }
+// Los adjuntos pueden llegar después del alta del gasto. Se usa el mismo
+// almacenamiento privado y validación de tipos que el alta original.
+async function encodeProjectExpenseFile(file){
+ if(!file)throw Error('Selecciona el comprobante del concepto.');
+ if(file.size>1024*1024||file.size===0)
+  throw Error('El comprobante debe pesar entre 1 byte y 1 MB.');
+ if(!['image/jpeg','image/png','application/pdf'].includes(file.type))
+  throw Error('Solo se permiten archivos PDF, PNG, JPG o JPEG.');
+ const bytes=new Uint8Array(await file.arrayBuffer()),chunks=[];
+ for(let i=0;i<bytes.length;i+=8192)
+  chunks.push(String.fromCharCode(...bytes.subarray(i,i+8192)));
+ return {mime:file.type,base64:btoa(chunks.join(''))};
+}
+function findProjectExpenseTrigger(id){
+ return $('financeExpenseChart').querySelector('[data-project-expense-detail="'+Number(id)+'"]');
+}
+let projectProofUploadSaving=false,projectProofStatusSaving=false;
+$('financeProjectProofUploadForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(projectProofModal.hidden||projectProofUploadSaving||projectProofStatusSaving)return;
+ const id=Number(projectProofSource?.id);
+ if(!Number.isSafeInteger(id)||id<1)return;
+ const button=$('financeProjectProofUploadSave');
+ const file=$('financeProjectProofUploadFile').files?.[0];
+ const status=$('financeProjectProofStatus');
+ if(!file)return status.textContent='Selecciona un archivo PDF o imagen.';
+ if(projectProofSource.comprobanteDisponible &&
+  !confirm('Este concepto ya tiene un comprobante. ¿Deseas reemplazarlo?'))return;
+ projectProofUploadSaving=true;button.disabled=true;
+ try{
+  const comprobante=await encodeProjectExpenseFile(file);
+  status.textContent='Guardando comprobante en el servidor…';
+  await request('/egresos/'+id+'/comprobante',{comprobante},'PUT');
+  if(!projectProofModal.hidden)status.textContent='Comprobante guardado. Actualizando la vista…';
+  const ok=await load();
+  if(!ok)throw Error('Se guardó el comprobante, pero no se pudo actualizar el análisis. Recarga la página.');
+  if(!projectProofModal.hidden && Number(projectProofSource?.id)===id)
+   await openProjectProofModal(id,findProjectExpenseTrigger(id));
+  notice('Comprobante adjuntado al concepto.','success');
+ }catch(error){
+  if(!projectProofModal.hidden)status.textContent=error.message;
+  notice(error.message);
+ }finally{projectProofUploadSaving=false;button.disabled=false;}
+});
+$('financeProjectProofPaymentForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(projectProofModal.hidden||projectProofStatusSaving||projectProofUploadSaving)return;
+ const id=Number(projectProofSource?.id),old=projectProofSource?.pagado!==false;
+ const next=$('financeProjectProofPaid').checked;
+ if(!Number.isSafeInteger(id)||id<1)return;
+ if(next===old)return $('financeProjectProofStatus').textContent='El estado de pago no cambió.';
+ if(!confirm('¿Marcar este concepto como '+(next?'PAGADO':'PENDIENTE DE PAGO')+
+  '? El presupuesto restante se recalculará.'))return;
+ const button=$('financeProjectProofPaymentSave');
+ projectProofStatusSaving=true;button.disabled=true;
+ try{
+  await request('/egresos/'+id+'/pagado',{pagado:next,pagadoAnterior:old},'PATCH');
+  const ok=await load();
+  if(!ok)throw Error('Estado guardado; no se pudo refrescar el análisis.');
+  if(!projectProofModal.hidden && Number(projectProofSource?.id)===id)
+   await openProjectProofModal(id,findProjectExpenseTrigger(id));
+  notice('Estado del concepto actualizado.','success');
+ }catch(error){
+  $('financeProjectProofStatus').textContent=error.message;
+  notice(error.message);
+ }finally{projectProofStatusSaving=false;button.disabled=false;}
+});
 $('financeProjectProofClose').addEventListener('click',closeProjectProofModal);
 $('financeProjectProofDone').addEventListener('click',closeProjectProofModal);
 projectProofModal.addEventListener('click',event=>{
