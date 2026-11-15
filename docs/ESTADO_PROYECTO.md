@@ -1,23 +1,65 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 13/nov/2026, 23:29, America/Mexico_City.
-**SHA de main consultado:** `75e60a109524c05a4f54c0cf46ca35616f170464`.
+**Última revisión:** 14/nov/2026, 23:34, America/Mexico_City.
+**SHA de main consultado:** `ace4cc3434a605163a4081fa4dd155a97566778e`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `18e8c3e9164bcca9681f0ab4976b8f01c8792955`,
-historial de 96 commits, PR #414–#422, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `f3f415f31efb1bd71c46495ca66a63c0e75c5549`, dedicado exclusivamente
-a la bitácora anterior. Los nueve PR de producto están fusionados y no hay PR abiertos
-ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; los resultados
-locales declarados se conservan como evidencia limitada y no se presentan como CI.
-No se consultaron Hostinger, MySQL, Google Sheets, Titan o C3 directamente, no se
-ejecutaron migraciones, ediciones financieras, reservas, cargas de comprobantes ni
-pruebas físicas y no se publican credenciales, contactos, comprobantes o contenido
-privado del padrón.
+comparación de main desde `75e60a109524c05a4f54c0cf46ca35616f170464`,
+historial de 121 commits, PR #423–#432, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `0a1fce886e3beaa9e3c2ffa506b5a21e879402a0`, dedicado exclusivamente
+a la bitácora anterior. Los diez PR de producto están fusionados y no hay PR abiertos
+ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
+locales declaradas se conservan como evidencia limitada y no se presentan como CI.
+No se consultaron Hostinger, MySQL, Google Sheets, Drive, Titan o C3 directamente, no
+se ejecutaron migraciones, homologaciones de importes, ediciones/eliminaciones
+financieras, reservas, cargas de archivos ni pruebas físicas y no se publican
+credenciales, contactos, comprobantes o contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 14/nov/2026
+
+Los PR [#423](https://github.com/listoenlinea-labs/MisionJardines/pull/423)–[#427](https://github.com/listoenlinea-labs/MisionJardines/pull/427)
+amplían Casa Club con historial Google de solo lectura, contadores consolidados,
+paginación, meses anteriores, indicador de sincronización y consulta privada firmada de
+reservaciones MySQL. Las métricas financieras siguen usando solo MySQL; las filas Google
+no habilitan aprobar, cobrar, borrar o liberar. #424 añade una consulta SQL manual para
+homologar importes históricos, pero no fue ejecutada y puede recalcular KPI de registros
+pagados: debe cotejarse contra dinero realmente recibido y contra la migración previa
+antes de aplicarla. #427 deja como comportamiento final que Administración vea en rojo
+reservas pasadas aprobadas, pendientes o históricas Google; el público ve todo el pasado
+en gris. Son estados visuales, no cambios de estatus.
+
+Los PR [#428](https://github.com/listoenlinea-labs/MisionJardines/pull/428)–[#429](https://github.com/listoenlinea-labs/MisionJardines/pull/429)
+agregan recorridos guiados por rol y una guía de Casa Club. El tour general navega solo
+por módulos permitidos, no envía formularios ni opera pagos, ZKTeco o plumas. #429
+corrige foco, scroll, iframe y menú lateral cerrado en móvil, con geometría simulada a
+320×726. Falta desplegar y validar continuidad, accesibilidad y posicionamiento en
+navegadores Android/iPhone reales.
+
+Los PR [#430](https://github.com/listoenlinea-labs/MisionJardines/pull/430)–[#431](https://github.com/listoenlinea-labs/MisionJardines/pull/431)
+distinguen presupuesto base, costo comprometido, gastos pagados y presupuesto restante
+por pagar. Permiten marcar Pagado/Pendiente y adjuntar o reemplazar comprobantes
+privados después de crear el concepto, con migración idempotente y auditoría. #431
+corrige el balance central para mostrar aportaciones brutas y costo comprometido
+completo, conservando el restante solo en la tarjeta de Egresos. No cambia aportaciones,
+pagos de residentes, mantenimiento, Casa Club o C3.
+
+El PR [#432](https://github.com/listoenlinea-labs/MisionJardines/pull/432) permite editar
+o eliminar conceptos de egreso extraordinario desde su detalle, limitado a administración,
+con validación, bloqueo, comparación del estado anterior, auditoría y recálculo. Bloquea
+egresos con cuotas vinculadas; al eliminar, borra la fila en transacción y el archivo
+privado después del commit. La eliminación es irreversible en la UI y no fue ejecutada
+contra registros reales: requiere respaldo, staging y prueba de concurrencia antes de uso.
+
+GitHub devuelve cero runs y cero estados para los diez heads. #423 reporta 5 pruebas
+específicas; #424 declara sin pruebas extensas; #426–#427, 11 casos cada uno; #428 añade
+pruebas estáticas sin total; #429 una prueba geométrica y regresiones; #430 declara 6/6;
+#431, 10/10; y #432, 6/6. #425 solo confirma sintaxis. Ningún resultado acredita
+Hostinger, MySQL, Google Sheets/Drive, archivos privados, navegador real, Titan o C3
+físico.
 
 ## Implementado en main el 13/nov/2026
 
@@ -588,6 +630,10 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Historial y calendarios Casa Club | Implementado en main; Google/Drive e importes reales pendientes | #423–#427 consolidan históricos Google solo lectura, consulta privada, contadores y colores administrativos. No cambian estatus; el SQL manual de importes no se ejecutó y puede afectar KPI |
+| Tours guiados | Implementados por rol y Casa Club; dispositivos reales pendientes | #428–#429 navegan sin ejecutar operaciones y corrigen foco/menú móvil. Falta validar accesibilidad, iframes y 320 px en hosting/Android/iPhone |
+| Presupuesto y egresos pagados | Cálculos, estado y adjuntos implementados; migración y archivos reales pendientes | #430–#431 separan costo comprometido, pagado y restante; permiten adjuntar/reemplazar comprobantes privados. No alteran aportaciones ni pagos de residentes |
+| Edición/eliminación de conceptos | Implementada y auditada; uso real no verificado | #432 valida, bloquea concurrencia y recalcula, pero la eliminación es irreversible y borra el archivo tras commit. Requiere respaldo y staging |
 | Finanzas por ámbito | Separación y consulta implementadas; migración, almacenamiento y conciliación pendientes | #414–#417 aíslan Mantenimiento/Casa Club/proyectos, evitan duplicar presupuesto como gasto, agregan comprobantes privados y UI 10/3. No se probó con MySQL ni archivos reales |
 | Presupuesto, gastos y comprobantes | Edición auditada y visor implementados; staging obligatorio | #418–#419 permiten editar presupuesto/gastos con transacción y auditoría, y consultar PDF/JPG/PNG. No cambian cuotas/aportaciones; faltan respaldo, concurrencia, permisos y archivos reales |
 | Calendario Casa Club | Estados visuales implementados; datos no modificados | #420 usa Disponible/Reservada/En revisión/No disponible y bloquea fechas ocupadas; no sincroniza Google ni cambia MySQL |
@@ -690,6 +736,13 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 14/nov/2026 | PR #423–#432, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 10 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
+| 14/nov/2026 | #423, historial Google/contadores/idempotencia | **5 pruebas específicas** declaradas correctas; sintaxis de 5 módulos | Sin Sheet privado, Hostinger ni integración real |
+| 14/nov/2026 | #426–#427, estados por rol/fecha | **11 casos** declarados verificados en cada PR | Revisión dirigida de frontend; no modifica ni verifica MySQL |
+| 14/nov/2026 | #428–#429, tours por rol y móvil | Pruebas estáticas sin total; geometría aislada a **320×726** correcta | Falta navegador, iframe y dispositivos reales |
+| 14/nov/2026 | #430, presupuesto restante/pagado/adjuntos | **6/6** pruebas específicas aprobadas | No prueba migración, archivos o MySQL real |
+| 14/nov/2026 | #431, balance comprometido | **10/10** pruebas enfocadas y sintaxis JS | No prueba cifras reales ni presentación desplegada |
+| 14/nov/2026 | #432, edición/eliminación de conceptos | **6/6** pruebas enfocadas aprobadas | No se editó ni eliminó ningún registro real; falta integración y concurrencia |
 | 13/nov/2026 | PR #414–#422, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 9 heads | No hay CI observable; merge o pruebas añadidas no prueban despliegue |
 | 13/nov/2026 | #415, datos simulados de filtros/ámbitos/paneles/totales/CSS | **8 pruebas puntuales**, sin fallos declarados | Sin MySQL, Hostinger ni navegador real |
 | 13/nov/2026 | #416–#417, revisión de fuente y sintaxis | #416: **4** y luego **5** verificaciones; #417: **10** comprobaciones superadas | Evidencia estática/local; no prueba cifras ni móvil real |
@@ -857,6 +910,12 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Historial Google y Drive #423–#424 | Desplegar con sincronización aún controlada; cotejar MySQL, filas MJ/CC, contadores, K:L sin contenido ajeno, paginación 4/3 y estado Drive real. Confirmar que filas Google sigan solo lectura y no afecten ingresos |
+| Homologación de importes #424 | No ejecutar el SQL manual hasta comparar respaldo, tarifa nominal y cobros reales de cada reserva; revisar si la migración anterior ya lo hizo. Simular impacto en KPI, documentar rollback y nunca inferir dinero recibido por cambiar columnas |
+| Calendario/consulta privada #424–#427 | Validar zona America/Mexico_City, hoy, pasado por rol/estado, leyendas, modal de observaciones y firma privada. Confirmar que el público no reciba históricos ni pueda reservar fechas pasadas |
+| Tours #428–#429 | Publicar frontend, limpiar caché y recorrer cada rol en escritorio, Android e iPhone: permisos, 60/26/18 pasos, iframes, scroll, rotación, menú cerrado, Omitir/Repetir y ausencia de submits/fetch operativos |
+| Egresos pagados y adjuntos #430–#431 | Respaldar y ejecutar migración en clon; probar Pagado/Pendiente, incluido/adicional, restante, balance comprometido, archivo PDF/JPG/PNG, reemplazo atómico, MIME/tamaño, permisos, auditoría y rollback |
+| Editar/eliminar conceptos #432 | Antes de habilitar en producción, probar en staging autorización, fecha/monto/booleanos, bloqueo 409, cuotas vinculadas, auditoría, recálculo y eliminación del archivo solo después del commit. Mantener respaldo y procedimiento de recuperación, pues la UI no deshace |
 | Finanzas por ámbito #414–#417 | Respaldar y ejecutar migración en clon; desplegar backend/frontend juntos; comprobar 231 viviendas, separación Mantenimiento/Casa Club/proyecto, paginación 10/3, totales y modo Proyectos solo lectura. Conciliar manualmente históricos sin proyecto_id y asegurar almacenamiento privado persistente |
 | Edición financiera #418–#419 | En staging, probar permisos, bloqueo concurrente, auditoría, presupuesto base, incluidos/adicionales, costo comprometido, ajustes negativos controlados y rollback. Verificar que cuotas/aportaciones y pagos originales no cambien |
 | Comprobantes de egresos #414/#419 | Cargar archivos ficticios PDF/JPG/PNG dentro del límite, probar descarga autorizada, ausencia/archivo perdido, extensión correcta, limpieza de URL y privacidad. No usar comprobantes reales ni publicar storage |
@@ -960,6 +1019,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-14
+
+- Main consultado a las 23:34, America/Mexico_City, en `ace4cc3434a605163a4081fa4dd155a97566778e`, 121 commits por delante del SHA guardado.
+- Se excluyó `0a1fce8`, que solo actualizó esta bitácora. Como producto se verificaron diez PR fusionados: #423–#432; no hay PR abiertos ni revertidos nuevos.
+- Los diez heads devuelven cero workflows y cero estados. Se conservaron como evidencia limitada 5 pruebas de #423, 11 casos de #426/#427, simulaciones de tours, 6/6 de #430, 10/10 de #431 y 6/6 de #432; no hay CI verde observable.
+- No hubo confirmaciones nuevas accesibles de despliegue, Google Sheets/Drive, MySQL, homologación de importes, edición/eliminación financiera, archivos privados, navegador, Titan o C3.
+- Se actualizaron resumen y pendientes preservando historial solo lectura, separación contable, privacidad y auditoría. Ningún SQL manual, adjunto, edición o eliminación fue ejecutado por esta revisión.
 
 ### 2026-11-13
 
