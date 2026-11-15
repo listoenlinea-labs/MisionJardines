@@ -2324,3 +2324,64 @@ body.page-analisis #financeBalanceExpense[role="button"]:focus-visible{
  body.page-analisis .finance-project-breakdown-scroll table{min-width:565px}
  body.page-analisis .finance-project-breakdown-dialog .finance-pay-heading h2{font-size:17px}
 }
+
+
+/* PR: controles compactos de estado contable y comprobante del concepto. */
+body.page-analisis .finance-project-concept-flags{
+ grid-column:1/-1;display:grid;gap:9px;min-width:0;
+}
+body.page-analisis .finance-project-concept-flags .hint{
+ margin:0 2px;color:#6a7b8f;font-size:11px;line-height:1.5;
+}
+body.page-analisis .finance-project-compact-check{
+ display:flex!important;align-items:flex-start!important;justify-content:flex-start;
+ gap:9px!important;min-width:0;padding:10px 12px!important;
+ border:1px solid #d9e8dd;border-radius:10px;
+ background:#f6faf7;color:#314d45;cursor:pointer;
+ font-size:12px!important;font-weight:650;line-height:1.5;
+}
+body.page-analisis .finance-project-compact-check input[type="checkbox"]{
+ appearance:none;-webkit-appearance:none;display:grid!important;place-items:center;
+ box-sizing:border-box;flex:0 0 17px!important;width:17px!important;height:17px!important;
+ min-width:17px!important;min-height:17px!important;max-width:17px!important;
+ margin:1px 0 0!important;padding:0!important;border:1.5px solid #b1cbbd!important;
+ border-radius:5px!important;background:#fff!important;cursor:pointer;
+ box-shadow:none!important;
+}
+body.page-analisis .finance-project-compact-check input[type="checkbox"]:checked{
+ background:#328961!important;border-color:#328961!important;
+}
+body.page-analisis .finance-project-compact-check input[type="checkbox"]:checked::before{
+ content:"";width:8px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;
+ transform:rotate(-45deg) translateY(-1px);
+}
+body.page-analisis .finance-project-compact-check input[type="checkbox"]:focus-visible{
+ outline:2px solid #187c5b!important;outline-offset:3px;
+}
+body.page-analisis .finance-project-compact-check span{
+ flex:1 1 auto;min-width:0;line-height:1.5;
+}
+body.page-analisis .finance-project-proof-payment-form{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+ margin:0 0 14px;
+}
+body.page-analisis .finance-project-proof-payment-form .finance-project-compact-check{flex:1 1 220px}
+body.page-analisis .finance-project-proof-payment-form button{min-height:36px}
+body.page-analisis .finance-project-proof-upload-form{
+ display:grid;gap:9px;min-width:0;margin:15px 0 0;padding:15px;
+ border:1px dashed #cbded3;border-radius:12px;background:#fbfdfa;
+}
+body.page-analisis .finance-project-proof-upload-form label{
+ color:#325f4a;font-size:12px;font-weight:850;
+}
+body.page-analisis .finance-project-proof-upload-form .hint{margin:0;font-size:11px}
+body.page-analisis .finance-project-proof-upload-form input[type="file"]{
+ display:block;width:100%;min-width:0;padding:9px;border:1px solid #dbe4ef;
+ border-radius:9px;background:#fff;font-size:11px;color:#3b536b;
+}
+body.page-analisis .finance-project-proof-upload-form button{justify-self:end;min-height:38px}
+@media(max-width:700px){
+ body.page-analisis .finance-project-proof-upload-form{padding:12px}
+ body.page-analisis .finance-project-proof-upload-form button{width:100%}
+ body.page-analisis .finance-project-proof-payment-form button{flex:1 1 100%;width:100%}
+}
