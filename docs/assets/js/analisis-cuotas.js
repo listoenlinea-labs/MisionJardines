@@ -2860,7 +2860,7 @@ let historicalExtraId=null;
 const projectProofModal=$('financeProjectProofModal');
 const projectProofPreview=$('financeProjectProofPreview');
 const projectProofDownload=$('financeProjectProofDownload');
-let projectProofSource=null,projectProofUrl=null,projectProofMime=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
+let projectProofSource=null,projectProofProjectId=null,projectProofUrl=null,projectProofMime=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
 let projectProofClickTimer=null;
 
 function closeProjectProofModal(){
@@ -2873,7 +2873,10 @@ function closeProjectProofModal(){
  projectProofPreview.hidden=true;
  projectProofDownload.hidden=true;
  if(projectProofUrl)URL.revokeObjectURL(projectProofUrl);
- projectProofUrl=null;projectProofMime=null;projectProofSource=null;
+ projectProofUrl=null;projectProofMime=null;projectProofSource=null;projectProofProjectId=null;
+ $('financeProjectProofEditForm').hidden=true;
+ $('financeProjectProofEditOpen').setAttribute('aria-expanded','false');
+ $('financeProjectProofPaymentForm').hidden=false;
  if(projectProofFocus?.isConnected&&!projectProofFocus.closest('[hidden]'))projectProofFocus.focus();
  projectProofFocus=null;
 }
@@ -2885,6 +2888,7 @@ async function openProjectProofModal(id,trigger){
  closeProjectProofModal();
  projectProofFocus=trigger||document.activeElement;
  projectProofSource=expense;
+ projectProofProjectId=Number(project.id);
  const seq=++projectProofSequence;
  $('financeProjectProofProject').textContent=project.nombre;
  $('financeProjectProofConcept').textContent=expense.concepto||'Sin concepto';
@@ -2895,6 +2899,9 @@ async function openProjectProofModal(id,trigger){
  $('financeProjectProofPaymentStatus').textContent=expense.pagado===false?'Pendiente de pago':'Pagado';
  $('financeProjectProofPaid').checked=expense.pagado!==false;
  $('financeProjectProofUploadForm').reset();
+ $('financeProjectProofEditForm').hidden=true;
+ $('financeProjectProofEditOpen').setAttribute('aria-expanded','false');
+ $('financeProjectProofPaymentForm').hidden=false;
  projectProofPreview.replaceChildren();projectProofPreview.hidden=true;projectProofDownload.hidden=true;
  $('financeProjectProofStatus').textContent=expense.comprobanteDisponible?
   'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
