@@ -177,6 +177,44 @@
  }
  $('prevMonth').addEventListener('click',()=>monthShift(-1));
  $('nextMonth').addEventListener('click',()=>monthShift(1));
+
+ // Consulta privada: nunca se obtiene información personal desde la API pública.
+ async function verDetalleFechaAdmin(fecha){
+  let dialog=document.getElementById('clubAdminDateDetail');
+  if(!dialog){
+   dialog=document.createElement('dialog');dialog.id='clubAdminDateDetail';
+   dialog.style.cssText='border:1px solid #d9e2ee;border-radius:18px;padding:22px;width:min(94vw,580px);max-height:85dvh;overflow:auto;color:#203047;box-shadow:0 18px 60px #17243a44';
+   dialog.innerHTML='<div style="display:flex;justify-content:space-between;gap:16px;align-items:center"><h2 id="clubAdminDateTitle" style="margin:0;font-size:1.25rem"></h2><button type="button" id="clubAdminDateClose" aria-label="Cerrar detalle">✕</button></div><div id="clubAdminDateBody" style="margin-top:18px" aria-live="polite"></div>';
+   document.body.append(dialog);
+   dialog.querySelector('#clubAdminDateClose').addEventListener('click',()=>dialog.close());
+   dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
+  }
+  dialog.querySelector('#clubAdminDateTitle').textContent='Reservaciones · '+fmt(fecha);
+  const body=dialog.querySelector('#clubAdminDateBody');
+  body.textContent='Consultando información…';dialog.showModal();
+  const clean=v=>esc(String(v??'—'));
+  try{
+   const response=await api('/administracion/fecha/'+encodeURIComponent(fecha));
+   if(!dialog.open)return;
+   const rows=response.data||[];
+   if(!rows.length){body.textContent='No hay reservaciones locales registradas para esta fecha. Si el calendario muestra un registro histórico de Google Sheets, consulta el historial de administración.';return;}
+   body.innerHTML=rows.map(r=>{
+    const t=r.tarjetas||{},hist=t.historial||[];
+    const casa=r.casa?[r.casa.calle,r.casa.numero].filter(Boolean).join(' '):'Vivienda no vinculada';
+    return '<section style="padding:15px;margin-bottom:14px;border:1px solid #e1e7f0;border-radius:12px;background:#fafcff">'+
+     '<strong>'+clean(casa)+'</strong><p><b>Solicitante:</b> '+clean(r.solicitante)+'</p>'+
+     '<p><b>Propietario:</b> '+clean(r.propietario)+'</p>'+
+     '<p><b>Estado:</b> '+clean(r.estatus)+' · <b>Pago:</b> '+(r.pagado?'Registrado':'Sin confirmar')+'</p>'+
+     '<p><b>Fecha de solicitud:</b> '+clean(r.creadoEn?fechaSolicitud(r.creadoEn):null)+'</p>'+
+     '<p><b>Observaciones:</b> '+clean(r.observaciones)+'</p>'+
+     '<h3 style="font-size:1rem">Tarjetas rojas: '+Number(t.totalActivas||0)+' activas · '+Number(t.totalHistoricas||0)+' históricas</h3>'+
+     (t.bloqueada?'<p style="color:#a32939"><b>Bloqueo vigente hasta '+clean(t.bloqueadoHasta)+'</b></p>':'')+
+     (hist.length?'<ul style="padding-left:20px">'+hist.map(x=>'<li>Tarjeta #'+Number(x.id)+' · '+clean(x.motivo)+' · '+clean(x.asignadaEn?fechaSolicitud(x.asignadaEn):null)+' · '+(x.activa?'Activa':'Retirada')+'</li>').join('')+'</ul>':'<p>Sin tarjetas rojas registradas.</p>')+
+     '</section>';
+   }).join('');
+  }catch(e){body.textContent=e.message||'No fue posible consultar esta fecha.';}
+ }
+
  async function calendar(){
   const [year,month]=currentMonth.split('-').map(Number);
   const start=currentMonth+'-01',end=new Date(Date.UTC(year,month,0)).toISOString().slice(0,10);
@@ -232,13 +270,13 @@
    // Hoy según America/Mexico_City; solo añade contorno, conserva color de estado.
    if(date===today())btn.classList.add('today-mx');
    if(date===selectedDate)btn.classList.add('selected');
-   btn.disabled=Boolean(status)||past||!googleVerificado;
+   btn.disabled=!admin&&(Boolean(status)||past||!googleVerificado);
    btn.setAttribute('aria-label',fmt(date)+(date<today()?' · Fecha pasada: no disponible':'')+' · '+(
     status==='APROBADA'?'Reservada':status==='PENDIENTE'||status==='HISTORICA_GOOGLE'?'En revisión':
     status==='HISTORICA_INACTIVA'?'Registro histórico cancelado o rechazado':
     past||!googleVerificado?'No disponible':'Disponible'));
    btn.textContent=n;
-   btn.addEventListener('click',()=>{selectedDate=date;mobileDetailsSaved=false;
+   btn.addEventListener('click',()=>{if(admin&&(Boolean(status)||pastDate||!googleVerificado)){void verDetalleFechaAdmin(date);return;}selectedDate=date;mobileDetailsSaved=false;
     $('clubMobileSavedStatus').textContent='Completa y guarda los datos para enviar esta solicitud.';
     $('clubDate').value=fmt(date);days.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');syncSubmit();abrirSolicitudMovil();});
    days.append(btn);
