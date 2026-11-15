@@ -430,7 +430,7 @@ function validarDatosConcepto(body){
 }
 function estadoConcepto(row){
  return {concepto:String(row.concepto||'').trim(),fecha:String(row.fecha||'').slice(0,10),
-  monto:Math.round(Number(row.monto)),incluidoPresupuesto:row.incluidoPresupuesto!==false,
+  monto:Math.round(Number(row.monto)),incluidoPresupuesto:Boolean(Number(row.incluidoPresupuesto)),
   pagado:Boolean(Number(row.pagado))};
 }
 function validarVersionConcepto(row,esperado){
