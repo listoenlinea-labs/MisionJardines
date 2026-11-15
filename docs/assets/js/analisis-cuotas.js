@@ -2860,7 +2860,7 @@ let historicalExtraId=null;
 const projectProofModal=$('financeProjectProofModal');
 const projectProofPreview=$('financeProjectProofPreview');
 const projectProofDownload=$('financeProjectProofDownload');
-let projectProofSource=null,projectProofUrl=null,projectProofMime=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
+let projectProofSource=null,projectProofProjectId=null,projectProofUrl=null,projectProofMime=null,projectProofFocus=null,projectProofAbort=null,projectProofSequence=0;
 let projectProofClickTimer=null;
 
 function closeProjectProofModal(){
@@ -2873,7 +2873,10 @@ function closeProjectProofModal(){
  projectProofPreview.hidden=true;
  projectProofDownload.hidden=true;
  if(projectProofUrl)URL.revokeObjectURL(projectProofUrl);
- projectProofUrl=null;projectProofMime=null;projectProofSource=null;
+ projectProofUrl=null;projectProofMime=null;projectProofSource=null;projectProofProjectId=null;
+ $('financeProjectProofEditForm').hidden=true;
+ $('financeProjectProofEditOpen').setAttribute('aria-expanded','false');
+ $('financeProjectProofPaymentForm').hidden=false;
  if(projectProofFocus?.isConnected&&!projectProofFocus.closest('[hidden]'))projectProofFocus.focus();
  projectProofFocus=null;
 }
@@ -2885,6 +2888,7 @@ async function openProjectProofModal(id,trigger){
  closeProjectProofModal();
  projectProofFocus=trigger||document.activeElement;
  projectProofSource=expense;
+ projectProofProjectId=Number(project.id);
  const seq=++projectProofSequence;
  $('financeProjectProofProject').textContent=project.nombre;
  $('financeProjectProofConcept').textContent=expense.concepto||'Sin concepto';
@@ -2895,6 +2899,9 @@ async function openProjectProofModal(id,trigger){
  $('financeProjectProofPaymentStatus').textContent=expense.pagado===false?'Pendiente de pago':'Pagado';
  $('financeProjectProofPaid').checked=expense.pagado!==false;
  $('financeProjectProofUploadForm').reset();
+ $('financeProjectProofEditForm').hidden=true;
+ $('financeProjectProofEditOpen').setAttribute('aria-expanded','false');
+ $('financeProjectProofPaymentForm').hidden=false;
  projectProofPreview.replaceChildren();projectProofPreview.hidden=true;projectProofDownload.hidden=true;
  $('financeProjectProofStatus').textContent=expense.comprobanteDisponible?
   'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
@@ -2997,6 +3004,108 @@ $('financeProjectProofPaymentForm').addEventListener('submit',async event=>{
   notice(error.message);
  }finally{projectProofStatusSaving=false;button.disabled=false;}
 });
+// Edición y eliminación de un único concepto desde su detalle. Se envía una
+// copia de los valores originales para detectar modificaciones simultáneas.
+let projectProofMutationSaving=false;
+const projectProofSnapshot=expense=>({
+ concepto:String(expense.concepto||'').trim(),
+ fecha:String(expense.fecha||'').slice(0,10),
+ monto:Math.round(Number(expense.monto||0)),
+ incluidoPresupuesto:expense.incluidoPresupuesto!==false,
+ pagado:expense.pagado!==false
+});
+function projectProofEditing(openEditor){
+ const form=$('financeProjectProofEditForm');
+ if(openEditor&&!projectProofSource)return;
+ if(openEditor){
+  const source=projectProofSnapshot(projectProofSource);
+  $('financeProjectProofEditName').value=source.concepto;
+  $('financeProjectProofEditAmount').value=String(source.monto);
+  $('financeProjectProofEditDate').value=source.fecha;
+  $('financeProjectProofEditIncluded').checked=source.incluidoPresupuesto;
+  $('financeProjectProofEditPaid').checked=source.pagado;
+ }
+ form.hidden=!openEditor;
+ $('financeProjectProofPaymentForm').hidden=openEditor;
+ $('financeProjectProofEditOpen').setAttribute('aria-expanded',String(openEditor));
+ if(openEditor){
+  form.scrollIntoView({block:'nearest',behavior:'instant'});
+  $('financeProjectProofEditName').focus({preventScroll:true});
+ }else $('financeProjectProofEditOpen').focus({preventScroll:true});
+}
+function projectProofMutationControls(locked){
+ for(const id of ['financeProjectProofEditOpen','financeProjectProofDelete',
+  'financeProjectProofEditSave','financeProjectProofEditCancel',
+  'financeProjectProofPaymentSave','financeProjectProofUploadSave']){
+  $(id).disabled=locked;
+ }
+}
+$('financeProjectProofEditOpen').addEventListener('click',()=>{
+ if(projectProofModal.hidden||projectProofMutationSaving||projectProofUploadSaving||projectProofStatusSaving)return;
+ projectProofEditing($('financeProjectProofEditForm').hidden);
+});
+$('financeProjectProofEditCancel').addEventListener('click',()=>{
+ if(!projectProofMutationSaving)projectProofEditing(false);
+});
+$('financeProjectProofEditForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(projectProofModal.hidden||!projectProofSource||projectProofMutationSaving||
+  projectProofUploadSaving||projectProofStatusSaving)return;
+ const id=Number(projectProofSource.id),proyectoId=Number(projectProofProjectId);
+ const anterior=projectProofSnapshot(projectProofSource);
+ const nuevo={
+  concepto:$('financeProjectProofEditName').value.trim(),
+  fecha:$('financeProjectProofEditDate').value,
+  monto:Number($('financeProjectProofEditAmount').value),
+  incluidoPresupuesto:$('financeProjectProofEditIncluded').checked,
+  pagado:$('financeProjectProofEditPaid').checked
+ };
+ if(!nuevo.concepto||nuevo.concepto.length>250||!Number.isSafeInteger(nuevo.monto)||
+  nuevo.monto<1||nuevo.monto>100000000||!/^\d{4}-\d{2}-\d{2}$/.test(nuevo.fecha))
+  return $('financeProjectProofStatus').textContent='Completa nombre, fecha e importe entero válido.';
+ if(Object.keys(anterior).every(field=>anterior[field]===nuevo[field])){
+  projectProofEditing(false);
+  return $('financeProjectProofStatus').textContent='No hay cambios por guardar.';
+ }
+ if(!confirm('¿Guardar los cambios del concepto «'+anterior.concepto+
+  '»? Se actualizarán los cálculos y se registrará la edición.'))return;
+ projectProofMutationSaving=true;projectProofMutationControls(true);
+ try{
+  await request('/egresos/'+id+'/concepto',{proyectoId,anterior,nuevo},'PATCH');
+  const ok=await load();
+  if(!ok)throw Error('Los cambios se guardaron, pero el análisis no se actualizó. Recarga para ver los valores nuevos.');
+  if(!projectProofModal.hidden&&Number(projectProofSource?.id)===id)
+   await openProjectProofModal(id,findProjectExpenseTrigger(id));
+  notice('Concepto actualizado y cifras recalculadas.','success');
+ }catch(error){
+  if(!projectProofModal.hidden)$('financeProjectProofStatus').textContent=error.message;
+  notice(error.message);
+ }finally{projectProofMutationSaving=false;projectProofMutationControls(false);}
+});
+$('financeProjectProofDelete').addEventListener('click',async()=>{
+ if(projectProofModal.hidden||!projectProofSource||projectProofMutationSaving||
+  projectProofUploadSaving||projectProofStatusSaving)return;
+ const id=Number(projectProofSource.id),proyectoId=Number(projectProofProjectId);
+ const anterior=projectProofSnapshot(projectProofSource);
+ const project=data?.proyectosExtraordinarios?.find(p=>Number(p.id)===proyectoId);
+ const aviso='¿Eliminar definitivamente el concepto «'+anterior.concepto+'» por '+
+  fmt(anterior.monto)+' del proyecto «'+String(project?.nombre||'seleccionado')+'»?'+
+  '\n\nSe eliminará también su comprobante adjunto, si existe. La acción quedará auditada y no se puede deshacer. '+
+  'No se borrarán el presupuesto base ni los pagos de los residentes.';
+ if(!confirm(aviso))return;
+ projectProofMutationSaving=true;projectProofMutationControls(true);
+ try{
+  await request('/egresos/'+id+'/concepto',{proyectoId,anterior},'DELETE');
+  closeProjectProofModal();
+  const ok=await load();
+  if(!ok)throw Error('El concepto se eliminó, pero el análisis no se actualizó. Recarga para ver las cifras nuevas.');
+  notice('Concepto eliminado; balances y presupuesto restante actualizados.','success');
+ }catch(error){
+  if(!projectProofModal.hidden)$('financeProjectProofStatus').textContent=error.message;
+  notice(error.message);
+ }finally{projectProofMutationSaving=false;projectProofMutationControls(false);}
+});
+
 $('financeProjectProofClose').addEventListener('click',closeProjectProofModal);
 $('financeProjectProofDone').addEventListener('click',closeProjectProofModal);
 projectProofModal.addEventListener('click',event=>{

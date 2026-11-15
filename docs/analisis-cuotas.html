@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261114-pagados-v1">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261115-editar-eliminar-concepto-v1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -93,6 +93,26 @@
    <div><span>Referencia</span><strong id="financeProjectProofReference"></strong></div>
    <div><span>Estado de pago</span><strong id="financeProjectProofPaymentStatus"></strong></div>
   </div>
+  <form id="financeProjectProofEditForm" class="finance-project-proof-edit-form" hidden
+   aria-labelledby="financeProjectProofEditTitle">
+   <h3 id="financeProjectProofEditTitle">Editar concepto del proyecto</h3>
+   <p class="hint">Los cambios se registran en auditoría y recalculan las tarjetas; no modifican el presupuesto base ni las cuotas de las viviendas.</p>
+   <div class="finance-project-proof-edit-grid">
+    <label>Concepto<input id="financeProjectProofEditName" maxlength="250" required></label>
+    <label>Monto (MXN)<input id="financeProjectProofEditAmount" type="number" min="1" max="100000000" step="1" inputmode="numeric" required></label>
+    <label>Fecha<input id="financeProjectProofEditDate" type="date" required></label>
+    <div class="finance-project-proof-edit-flags">
+     <label class="finance-project-compact-check"><input id="financeProjectProofEditIncluded" type="checkbox">
+      <span>Incluido en el presupuesto base (no suma dos veces)</span></label>
+     <label class="finance-project-compact-check"><input id="financeProjectProofEditPaid" type="checkbox">
+      <span>Este concepto ya se pagó</span></label>
+    </div>
+   </div>
+   <div class="finance-project-proof-edit-actions">
+    <button id="financeProjectProofEditCancel" type="button" class="soft">Cancelar edición</button>
+    <button id="financeProjectProofEditSave" type="submit" class="primary">Guardar cambios</button>
+   </div>
+  </form>
   <form id="financeProjectProofPaymentForm" class="finance-project-proof-payment-form">
    <label class="finance-project-compact-check"><input id="financeProjectProofPaid" type="checkbox">
     <span>Este concepto ya se pagó</span></label>
@@ -107,6 +127,10 @@
    <button id="financeProjectProofUploadSave" class="primary" type="submit">Guardar comprobante</button>
   </form>
   <div class="finance-project-proof-actions">
+   <button type="button" class="soft finance-project-proof-edit-trigger" id="financeProjectProofEditOpen"
+    aria-controls="financeProjectProofEditForm" aria-expanded="false">Editar concepto</button>
+   <button type="button" class="soft finance-project-proof-delete-trigger" id="financeProjectProofDelete">Eliminar concepto</button>
+   <span class="finance-project-proof-action-spacer" aria-hidden="true"></span>
    <button type="button" class="soft" id="financeProjectProofDownload" hidden>Descargar comprobante</button>
    <button type="button" class="primary" id="financeProjectProofDone">Cerrar</button>
   </div>
@@ -805,4 +829,4 @@
   </aside>
  </div>
 </section>
-</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261114-balance-comprometido-v2" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261114-pagados-v1" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261114-balance-comprometido-v2" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261114-pagados-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261114-balance-comprometido-v2" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261114-pagados-v1" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261114-balance-comprometido-v2" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261115-editar-eliminar-concepto-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>

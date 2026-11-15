@@ -40,6 +40,8 @@ router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorC
 router.post('/egresos',controller.registrarEgreso);
 router.patch('/egresos/:id/monto',controller.actualizarMontoEgreso);
 router.patch('/egresos/:id/pagado',controller.actualizarPagoEgreso);
+router.patch('/egresos/:id/concepto',controller.editarConceptoProyecto);
+router.delete('/egresos/:id/concepto',controller.eliminarConceptoProyecto);
 router.put('/egresos/:id/comprobante',controller.adjuntarComprobanteEgreso);
 router.put('/egresos/total-mantenimiento',controller.actualizarTotalMantenimiento);
 router.patch('/proyectos-extraordinarios/:id/presupuesto',controller.actualizarPresupuestoProyecto);

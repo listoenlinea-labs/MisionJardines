@@ -2385,3 +2385,66 @@ body.page-analisis .finance-project-proof-upload-form button{justify-self:end;mi
  body.page-analisis .finance-project-proof-upload-form button{width:100%}
  body.page-analisis .finance-project-proof-payment-form button{flex:1 1 100%;width:100%}
 }
+
+
+/* Editar y eliminar un concepto desde su detalle, sin alterar otros modales. */
+body.page-analisis #financeProjectProofEditForm[hidden]{display:none!important}
+body.page-analisis .finance-project-proof-edit-form{
+ display:block;margin:14px 0 16px;padding:16px;
+ border:1px solid #cfe4d7;border-radius:13px;background:#f8fcf9;
+}
+body.page-analisis .finance-project-proof-edit-form h3{
+ margin:0 0 6px;color:#275a47;font-size:15px;font-weight:850;
+}
+body.page-analisis .finance-project-proof-edit-form .hint{
+ margin:0 0 13px;font-size:11px;line-height:1.55;
+}
+body.page-analisis .finance-project-proof-edit-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+}
+body.page-analisis .finance-project-proof-edit-grid>label{
+ display:grid;gap:6px;min-width:0;font-size:12px;font-weight:750;color:#38506a;
+}
+body.page-analisis .finance-project-proof-edit-grid>label:first-child{grid-column:1/-1}
+body.page-analisis .finance-project-proof-edit-grid>label input{
+ width:100%;min-width:0;min-height:42px;box-sizing:border-box;padding:8px 11px;
+ background:#fff;border:1px solid #cbdce5;border-radius:9px;
+ color:#243c51;font:600 13px/1.3 Inter,system-ui,sans-serif;
+}
+body.page-analisis .finance-project-proof-edit-flags{
+ grid-column:1/-1;display:grid;gap:8px;
+}
+body.page-analisis .finance-project-proof-edit-actions{
+ display:flex;justify-content:flex-end;flex-wrap:wrap;gap:9px;margin-top:15px;
+}
+body.page-analisis .finance-project-proof-edit-actions button{
+ min-height:39px;border-radius:9px;padding:8px 13px;font-size:12px;
+}
+body.page-analisis .finance-project-proof-action-spacer{flex:1 1 auto;min-width:8px}
+body.page-analisis .finance-project-proof-actions .finance-project-proof-edit-trigger{
+ border:1px solid #bfdcca;background:#f2faf5;color:#28694b;font-weight:800;
+}
+body.page-analisis .finance-project-proof-actions .finance-project-proof-edit-trigger:hover{
+ background:#e3f5e9;border-color:#8ecda8;
+}
+body.page-analisis .finance-project-proof-actions .finance-project-proof-delete-trigger{
+ border:1px solid #efc6c2;background:#fff6f5;color:#aa3e38;font-weight:800;
+}
+body.page-analisis .finance-project-proof-actions .finance-project-proof-delete-trigger:hover{
+ background:#ffebe9;border-color:#e6a9a4;
+}
+body.page-analisis .finance-project-proof-actions button:disabled,
+body.page-analisis .finance-project-proof-edit-actions button:disabled{
+ opacity:.55;cursor:wait;
+}
+@media(max-width:700px){
+ body.page-analisis .finance-project-proof-edit-form{padding:13px}
+ body.page-analisis .finance-project-proof-edit-grid{grid-template-columns:minmax(0,1fr)}
+ body.page-analisis .finance-project-proof-edit-grid>label:first-child{grid-column:1}
+ body.page-analisis .finance-project-proof-edit-flags{grid-column:1}
+ body.page-analisis .finance-project-proof-actions .finance-project-proof-edit-trigger,
+ body.page-analisis .finance-project-proof-actions .finance-project-proof-delete-trigger{
+  flex:1 1 calc(50% - 6px);min-width:120px;
+ }
+ body.page-analisis .finance-project-proof-action-spacer{display:none}
+}
