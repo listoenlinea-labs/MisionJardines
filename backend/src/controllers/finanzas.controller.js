@@ -239,8 +239,8 @@ async function analizar(req,res){
     const historical=await googleCasaClubClient.readPagos2026();
     const {movimientos,...base}=historical;
     const matched=conciliarMovimientos(movimientos||[],padron.casas,historical.excluidos||0);
-    // Corte anual de la hoja original: los 29 cobros generan 29 compromisos
-    // de limpieza de $300, sin inventar comprobantes ni egresos bancarios.
+    // Corte anual: sólo los cobros únicos generan compromisos de limpieza
+    // de $300, sin inventar comprobantes ni egresos bancarios.
     const costoLimpiezaUnitario=300;
     const limpiezaPrevista=Math.round(matched.registros*costoLimpiezaUnitario*100)/100;
     casaClubGoogle2026={...base,...matched,
