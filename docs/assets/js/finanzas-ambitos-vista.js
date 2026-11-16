@@ -57,25 +57,27 @@
    $('financeCashChart').textContent='Selecciona un proyecto para consultar sus aportaciones.';
    $('financeExpenseChart').textContent='Selecciona un proyecto para consultar sus gastos.';
   }else if(club){
-   const info=data.finanzasAmbitos?.CASA_CLUB||{},expenses=(data.egresos||[]).filter(e=>e.ambito==='CASA_CLUB');
-   incomeFooter=Number(info.ingresos||0);
-   expenseFooter=Number(info.egresos||0);
-   const categories=new Map();
-   for(const e of expenses)categories.set(String(e.categoria||'OTROS'),(categories.get(String(e.categoria||'OTROS'))||0)+Number(e.monto||0));
-   const limpiezaPendiente=Number(info.limpiezaPorProvisionar||0);
-   if(limpiezaPendiente>0)categories.set('Limpieza prevista (sin egreso registrado)',limpiezaPendiente);
-   const max=Math.max(1,...categories.values());
+   const info=data.finanzasAmbitos?.CASA_CLUB||{};
    const historical=data.casaClubGoogle2026||{};
-   const calles=historical.disponible===true?(historical.porCalle||[]):[];
+   const historicalReady=Number(data.anio)===2026&&historical.disponible===true;
+   const calles=historicalReady?(historical.porCalle||[]):[];
    const maxIncome=Math.max(1,...calles.map(x=>Number(x.monto||0)));
    $('financeCashChart').innerHTML=calles.length?
     calles.map(c=>bar(c.calle,Number(c.monto||0),maxIncome,false,fmt(c.monto))).join(''):
     '<p class="hint">No hay cobros históricos de Google Sheets para graficar.</p>';
-   // La gráfica es anual, pero el balance central sigue siendo del mes
-   // seleccionado; no sumar otra vez el histórico a la caja MySQL.
-   incomeFooter=historical.disponible===true?Number(historical.total||0):null;
-   $('financeWarning').textContent='Recuperación histórica 2026 por calle, según columna F de Google Sheets. Se respetan los cobros reales de $250, $700 y $1,000. La limpieza y las garantías no cuentan como ingresos. El histórico aún no está conciliado con MySQL.';
-   $('financeExpenseChart').innerHTML=[...categories].map(([name,value])=>bar(name,value,max,true,fmt(value))).join('')||'<p class="hint">Sin servicios de limpieza ni otros gastos registrados en este período.</p>';
+   incomeFooter=historicalReady?Number(historical.total||0):null;
+   $('financeWarning').textContent=historicalReady?
+    'Recuperación anual 2026 por calle (columna F de Google Sheets). Se respetan montos históricos de $250, $700 y $1,000. No incluye depósitos de garantía ni limpieza; no se suma a MySQL.':
+    'No se pudo consultar el histórico de Google Sheets; no se inventarán importes.';
+   if(historicalReady){
+    const cleaning=Number(historical.limpiezaPrevista||0);
+    expenseFooter=cleaning;
+    $('financeExpenseChart').innerHTML=bar('Limpieza prevista · '+Number(historical.registros||0)+' cobros × $'+
+     Number(historical.limpiezaUnitariaPrevista||300),cleaning,Math.max(1,cleaning),true,fmt(cleaning));
+   }else{
+    expenseFooter=null;
+    $('financeExpenseChart').textContent='No hay histórico conectado para estimar la limpieza anual.';
+   }
   }else{
    const income=data.ingresosMantenimientoCalles;
    if(income?.calles){
@@ -106,7 +108,7 @@
   const incomeFooterLabel=$('financeIncomeFooter').querySelector('span');
   if(incomeFooterLabel)incomeFooterLabel.textContent=club?'Total recuperación histórica 2026':'Total de ingresos';
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
-  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':club?'Limpieza prevista + gastos registrados':'Total de egresos';
+  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':club?'Total limpieza prevista 2026':'Total de egresos';
   const summaryTrigger=$('financeExpenseFooter');
   summaryTrigger.tabIndex=project?0:-1;
   if(project){
@@ -143,15 +145,19 @@
     ' · Por pagar (conceptos): '+fmt(totals?.pendientes??project.gastosPendientes??0)+
     ' · Resta para meta: '+fmt(Math.max(0,Number(totals?.presupuesto??project.presupuestoBase??0)-Number(totals?.gastosReales??project.egresosReales??0)));
   }
+  const clubHist=data.casaClubGoogle2026||{};
+  const clubAnnual=club&&Number(data.anio)===2026&&clubHist.disponible===true;
   const balance=project?root.MJFinanceBalance?.proyecto(project):
-   club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
+   club?root.MJFinanceBalance?.casaClub(clubAnnual?
+    {ingresos:clubHist.total,egresos:clubHist.limpiezaPrevista,
+     criterioHistorico:clubHist.criterioHistorico}:null):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
   $('financeBalanceSubtitle').textContent=project?'Proyecto · Ingresos menos egresos reales':
-   club?'Casa Club · Recuperación cobrada menos limpieza y gastos':'Mantenimiento · Ingresos menos egresos';
+   club?'Casa Club · Histórico 2026: recuperación menos limpieza prevista':'Mantenimiento · Ingresos menos egresos';
   $('financeBalanceExpenseLabel').textContent='Egresos';
   $('financeBalanceDescription').textContent=project?
    'Los egresos son la suma de conceptos reales, estén pagados o pendientes. La meta estimada nunca se resta como gasto.':
-   club?'El balance descuenta la limpieza prevista que aún no esté registrada como gasto. La garantía reembolsable y las autorizaciones sin depósito no se consideran ingresos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
+   club?'Histórico anual 2026: recuperación según Google Sheets menos $300 de limpieza prevista por cada cobro. No son egresos comprobados ni saldo bancario; el mes seleccionado sigue aplicando a los otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   $('financeBalanceIncome').parentElement?.querySelector('span')?.replaceChildren(
    document.createTextNode('Ingresos'));
   const card=$('financeBalanceCard');
