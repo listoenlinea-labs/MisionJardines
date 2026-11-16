@@ -21,7 +21,7 @@
    'Cuotas de recuperación y limpieza; las garantías no son ingresos.':
    'Los pagos anticipados se distribuyen por mensualidad cubierta, con recargo real.';
   $('financeExpenseCard').querySelector('.finance-chart-description').textContent=project?
-   'Presupuesto base menos gastos pagados; los adicionales aumentan el costo comprometido una sola vez.':
+   'La meta estimada es una referencia, no un egreso. Se muestran los conceptos realmente registrados.':
    'Solo gastos de '+(club?'Casa Club.':'mantenimiento.');
   $('financeWarning').textContent='';
   if(project){
@@ -41,11 +41,11 @@
    const concepts=project.gastosConceptos||[];
    const costos=root.MJCostosProyecto?.resumen(project);
    const spent=Number(costos?.gastosReales??project.egresosReales??0);
-   expenseFooter=Number(costos?.presupuestoRestante??project.presupuestoRestante??project.egresosComprometidos??project.totalEsperado??0);
+   expenseFooter=spent;
    const maxExpense=Math.max(1,Number(costos?.presupuesto??project.totalEsperado??0),...concepts.map(x=>Number(x.monto||0)));
    $('financeExpenseChart').innerHTML='<div class="project-budget-bar">'+
     '<button type="button" class="finance-budget-edit finance-project-breakdown-trigger" data-project-budget="'+Number(project.id)+'" aria-haspopup="dialog" aria-controls="financeProjectBreakdownModal" title="Ver desglose y editar importes">'+
-    bar('Presupuesto base',Number(costos?.presupuesto??project.totalEsperado??0),maxExpense,true,fmt(costos?.presupuesto??project.totalEsperado))+'</button>'+'</div>'+
+    bar('Meta estimada',Number(costos?.presupuesto??project.totalEsperado??0),maxExpense,true,fmt(costos?.presupuesto??project.totalEsperado))+'</button>'+'</div>'+
     concepts.map(e=>'<div class="project-expense-line finance-project-expense-visual" data-project-expense-detail="'+Number(e.id)+'"'+
      ' tabindex="0" role="button" aria-haspopup="dialog" aria-controls="financeProjectProofModal"'+
      ' aria-label="Ver detalle y comprobante de '+esc(e.concepto)+'" title="Ver detalle y comprobante del concepto">'+
@@ -93,7 +93,7 @@
   }
   $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
-  $('financeExpenseFooter').querySelector('span').textContent=project?'Presupuesto restante por pagar':'Total de egresos';
+  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':'Total de egresos';
   const summaryTrigger=$('financeExpenseFooter');
   summaryTrigger.tabIndex=project?0:-1;
   if(project){
@@ -113,7 +113,7 @@
    balanceExpense.setAttribute('role','button');
    balanceExpense.setAttribute('aria-haspopup','dialog');
    balanceExpense.setAttribute('aria-controls','financeProjectBreakdownModal');
-   balanceExpense.title='Ver desglose de egresos comprometidos y pagos';
+   balanceExpense.title='Ver desglose de egresos reales y pagos';
   }else{
    balanceExpense.removeAttribute('role');
    balanceExpense.removeAttribute('aria-haspopup');
@@ -132,11 +132,11 @@
   const balance=project?root.MJFinanceBalance?.proyecto(project):
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
-  $('financeBalanceSubtitle').textContent=project?'Proyecto · Ingresos menos egresos comprometidos':
+  $('financeBalanceSubtitle').textContent=project?'Proyecto · Ingresos menos egresos reales':
    club?'Casa Club · Ingresos menos egresos':'Mantenimiento · Ingresos menos egresos';
   $('financeBalanceExpenseLabel').textContent='Egresos';
   $('financeBalanceDescription').textContent=project?
-   'Egresos = presupuesto base más conceptos adicionales, sin sumar nuevamente los incluidos. Los pagos realizados solo reducen el presupuesto restante en la tarjeta derecha.':
+   'Los egresos son la suma de conceptos reales, estén pagados o pendientes. La meta estimada nunca se resta como gasto.':
    club?'Sin garantías ni pagos de otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   $('financeBalanceIncome').parentElement?.querySelector('span')?.replaceChildren(
    document.createTextNode('Ingresos'));
