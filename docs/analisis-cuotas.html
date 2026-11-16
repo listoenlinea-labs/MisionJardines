@@ -11,7 +11,7 @@
 <div id="financeNotice" hidden role="status"></div>
 <div id="financialSummary" class="metric-grid" aria-label="Indicadores principales"></div><p id="financeLiveStatus" class="hint" aria-live="polite">Actualización automática entre sesiones.</p><div class="finance-connection-status" aria-label="Conexiones de administración" role="group">
  <div id="financeSheetsState" class="finance-connection-item" data-state="checking" role="status">Google Sheets · Casa Club: comprobando conexión…</div>
- <div id="financeDriveState" class="finance-connection-item" data-state="checking" role="status">Google Drive · respaldos: comprobando vínculo…</div>
+
 </div><details class="analysis-more"><summary>Otros indicadores financieros</summary><div id="financialSecondary" class="metric-grid" aria-label="Indicadores adicionales"></div></details>
 <div class="analysis-columns"><section class="analysis-card analysis-chart-card"><button type="button" class="analysis-chart-toggle" aria-expanded="false" aria-controls="financeCompliancePanel"><span>Cumplimiento general</span><span class="analysis-chart-toggle-action"><span class="analysis-chart-toggle-label">Mostrar</span><span class="analysis-chart-toggle-arrow" aria-hidden="true"></span></span></button><div id="financeCompliancePanel" class="analysis-chart-panel" hidden><span class="eyebrow">CUMPLIMIENTO GENERAL</span><h2>Casas que pagaron</h2><div class="donut-wrapper"><div id="financeDonut" class="donut"><div id="financeDonutText"></div></div><div id="financeLegend" class="legend-block"></div></div><p class="hint">El porcentaje corresponde al período seleccionado y al estado de las cuotas del padrón.</p></div></section>
 <section class="analysis-card analysis-chart-card"><button type="button" class="analysis-chart-toggle" aria-expanded="false" aria-controls="financeStreetPanel"><span>Desglose por calle</span><span class="analysis-chart-toggle-action"><span class="analysis-chart-toggle-label">Mostrar</span><span class="analysis-chart-toggle-arrow" aria-hidden="true"></span></span></button><div id="financeStreetPanel" class="analysis-chart-panel" hidden><span class="eyebrow">DESGLOSE POR CALLE</span><h2>Porcentaje de viviendas pagadas</h2><div id="financeStreetChart" class="bars"></div><p id="financePadronNote" class="hint" role="status" hidden></p></div></section></div>
@@ -832,7 +832,17 @@
   </aside>
  </div>
 </section>
-</main><dialog id="fplanDialog" class="fplan-dialog" aria-labelledby="fplanTitle">
+<dialog id="financeClubGoogleHistory" class="finance-club-google-dialog" aria-labelledby="financeClubGoogleHistoryTitle">
+ <div class="finance-club-google-header">
+  <div><span class="eyebrow">CASA CLUB · GOOGLE SHEETS 2026</span>
+   <h2 id="financeClubGoogleHistoryTitle">Recuperación histórica</h2>
+   <p id="financeClubGoogleHistoryTotal"></p></div>
+  <button type="button" id="financeClubGoogleHistoryClose" class="soft" aria-label="Cerrar detalle histórico">Cerrar ×</button>
+ </div>
+ <p class="finance-club-google-note">Solo la columna «Pago recuperación». Las reservas y cobros originales de MySQL no se modifican.</p>
+ <div class="finance-club-google-scroll"><table><thead><tr><th>Mes</th><th>Fecha</th><th>Folio</th><th>Recuperación</th></tr></thead>
+  <tbody id="financeClubGoogleHistoryRows"></tbody></table></div>
+</dialog></main><dialog id="fplanDialog" class="fplan-dialog" aria-labelledby="fplanTitle">
  <div class="fplan-shell">
   <header class="fplan-header">
    <div class="fplan-header-copy"><span class="fplan-eyebrow">CONTROL FINANCIERO · MISIÓN JARDINES</span>
@@ -914,4 +924,4 @@
    <button type="button" class="fplan-btn" id="fplanSave">Guardar plan</button>
   </footer>
  </div>
-</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261116-recuperacion-limpieza-v2" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261116-recuperacion-limpieza-v2" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261116-recuperacion-limpieza-v2" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261116-toolbar-v2" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261116-recuperacion-limpieza-v2" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261116-club-historico-calles-v1" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261116-club-historico-calles-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261116-toolbar-v2" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
