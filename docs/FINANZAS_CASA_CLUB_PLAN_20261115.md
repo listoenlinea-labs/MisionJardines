@@ -104,3 +104,19 @@ La sincronización con Google no debe activarse sin revisar primero permisos de 
 - **Reservas solo autorizadas:** se muestran como `PAGADO` por autorización en la tabla y contribuyen a `Recuperación autorizada · vigente`, pero **no** al fondo de cobros efectivos, a la gráfica de ingreso cobrado ni a la provisión asociada a un pago efectivo. El compromiso de limpieza para todas las autorizadas se muestra aparte en los indicadores secundarios.
 - **No reescribir historiales Google:** los $25,550 de la columna F de la hoja son recuperación histórica, sin duplicarlos en el flujo bancario MySQL. El historial bancario bruto por recibo puede incluir recuperación, limpieza y garantía, y no se altera ni se reemplaza por un importe inventado.
 - Si los egresos reales de limpieza se registran con un concepto que **no menciona «limpieza» ni «aseo»**, deben reclasificarse/conciliarse antes de comparar con la provisión, pues el sistema no puede asociarlos de manera fiable a una reserva específica solo por el importe.
+
+## Corrección histórica de Casa Club por vivienda y calle · 16-nov-2026
+- Se consultó la hoja original `MISION JARDINES 2026`, rango A1:L75, sin modificarla. Se confirmaron **29 cobros PAGADO** de la columna F `PAGO RECUPERACIÓN` por **$25,550**, y una reserva CANCELADO excluida. Las tarifas antiguas ($250 y $700) son válidas: NO sustituir sus importes por $1,000.
+- El backend extrae únicamente calle (B), número (A), mes (D), fecha (E), monto (F), folio (G) y estado (L). Normaliza mayúsculas, tildes, espacios y el prefijo `Misión`; cruza por **calle + número** con el padrón oficial de MySQL. Si el cruce es inexistente o ambiguo, se mantiene como **sin conciliar**: nunca atribuir dinero a otra vivienda por aproximación.
+- Los 29 cobros son **movimientos**, no necesariamente 29 viviendas distintas: varias viviendas tienen varios cobros en el año. Cada fila de la tabla Casa Club muestra la recuperación **acumulada por vivienda en 2026**, o `No recuperado`. Al pulsar el importe se abre el desglose de cobros de esa vivienda (mes, fecha, folio e importe). No muestra nombres/correos/teléfonos de los formularios de Google.
+- El tablero tiene **cuatro** indicadores: `Recaudación histórica 2026 · Google`, `Casas en padrón`, `Recuperación autorizada · vigente` y `Limpieza`. La última considera la provisión de limpieza más los gastos de limpieza ya clasificados, no ingresos ni garantías.
+- La tarjeta Ingresos de Casa Club muestra **recuperación histórica 2026 agrupada por calle**:
+  - Jardines: $10,800
+  - Gardenias: $6,400
+  - Lirios: $3,950
+  - Magnolias: $2,400
+  - Rosas: $2,000
+  - **Total: $25,550**.
+- El texto de estado se simplifica a `Google Sheets conectado · 29 registros` cuando la hoja responde. Se oculta el estado de Google Drive de respaldos en el indicador superior; el botón de vinculación para **respaldos** conserva su función independiente.
+- **No combinar un total anual histórico con el balance mensual:** el pie de la gráfica Ingresos identifica el total anual; el balance central mantiene el período seleccionado y solo el flujo MySQL conciliado. Los $25,550 no se vuelven a acreditar y no están disponibles como fuente de dinero del modal Administrar hasta conciliación bancaria.
+- No hay migraciones, pagos nuevos, modificación de Casa Club ni cambios en Google Sheets. Los estados históricos son de **consulta** y no alteran la base de datos. El cruce queda cacheado junto con Google por 2 minutos.
