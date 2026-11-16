@@ -34,7 +34,7 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
     if(!Number.isSafeInteger(cents)||cents<0)return;
     if(pagado){
       if(soloAutorizacion&&period<=elegido)row.autorizacionSinAcreditar=true;
-      if(period===elegido)row.montoPagadoCentavos+=cents;
+      if(period===elegido&&!soloAutorizacion)row.montoPagadoCentavos+=cents;
       if(!row.ultimoPeriodo||period>row.ultimoPeriodo)row.ultimoPeriodo=period;
     }
     if(period<=elegido){
