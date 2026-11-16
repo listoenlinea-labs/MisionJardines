@@ -1,0 +1,51 @@
+.finance-plan-top-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.fplan-dialog{width:min(1400px,calc(100vw - 28px));max-width:none;max-height:94vh;border:0;border-radius:22px;padding:0;background:#f9fbff;color:#243750;box-shadow:0 24px 90px #1d385343}
+.fplan-dialog::backdrop{background:rgba(16,33,53,.55);backdrop-filter:blur(4px)}
+.fplan-dialog button,.fplan-dialog input,.fplan-dialog select,.fplan-dialog textarea{font:inherit}
+.fplan-shell{padding:22px 25px;max-height:92vh;overflow:auto}
+.fplan-header,.fplan-tools,.fplan-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.fplan-header h2{margin:2px 0 5px;font-size:1.45rem;color:#18304e}
+.fplan-eyebrow{font-size:.74rem;letter-spacing:.08em;color:#c86d13;font-weight:800;text-transform:uppercase}
+.fplan-help{font-size:.82rem;color:#62748e;line-height:1.55}
+.fplan-tools{padding:17px 0}
+.fplan-tools label{font-size:.78rem;display:grid;gap:6px;font-weight:700;color:#52617a}
+.fplan-tools input,.fplan-tools select,.fplan-tools textarea{border:1px solid #d6e0ea;border-radius:10px;padding:9px 12px;background:#fff;color:#1e3851;min-width:120px}
+.fplan-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:10px 0 14px}
+.fplan-kpi{padding:15px;border:1px solid #d3eadd;border-radius:14px;background:#eaf8f0}
+.fplan-kpi[data-tone=expense]{background:#fff0ef;border-color:#f6d7d4}
+.fplan-kpi[data-tone=total]{background:#e4f4e9;border-color:#bfe5cf}
+.fplan-kpi small{display:block;font-size:.76rem;color:#49647c}
+.fplan-kpi strong{display:block;font-size:1.28rem;color:#146647;margin-top:6px}
+.fplan-kpi[data-tone=expense] strong{color:#b64f45}
+.fplan-historic{background:#fff8ed;border:1px solid #eadbb9;color:#795e36;border-radius:10px;padding:10px 13px;font-size:.79rem;margin-bottom:14px}
+.fplan-columns{display:grid;grid-template-columns:minmax(300px,42%) minmax(400px,58%);gap:14px}
+.fplan-panel{padding:16px;background:white;border:1px solid #e1e8f1;border-radius:16px;min-width:0}
+.fplan-panel h3{font-size:1.08rem;margin:0 0 7px;color:#182f4b}
+.fplan-bucket{padding:11px 12px;background:#effaf3;border:1px solid #d2e9db;border-radius:12px;margin:9px 0;cursor:grab}
+.fplan-bucket:focus-visible,.fplan-expense:focus-within{outline:3px solid #82addb}
+.fplan-bucket strong,.fplan-expense strong{display:block;font-size:.84rem}
+.fplan-bucket span,.fplan-expense span{font-size:.76rem;color:#63748c}
+.fplan-bucket .fplan-number{font-size:1.05rem;color:#17734d;font-weight:800;float:right}
+.fplan-bucket button,.fplan-expense button{font-size:.77rem;border:1px solid #c9dbe8;background:#fff;color:#28516d;border-radius:9px;padding:7px 10px;cursor:pointer;margin-top:5px}
+.fplan-source-label{margin:14px 0 7px;font-size:.78rem;font-weight:800;letter-spacing:.06em;color:#4a6479;text-transform:uppercase}
+.fplan-expense{background:#fff7f5;border:1px solid #f2dcd8;border-radius:12px;padding:12px;margin:9px 0}
+.fplan-expense[data-target=true]{outline:2px solid #e9a18f}
+.fplan-expense .fplan-number{float:right;font-size:1.05rem;color:#bd544b;font-weight:800}
+.fplan-expense .fplan-expense-meta{clear:both;color:#64748b;padding-top:4px;font-size:.75rem}
+.fplan-allocation{display:inline-flex;align-items:center;gap:5px;border-radius:20px;background:#e9f4ee;border:1px solid #cce8d9;padding:2px 8px;margin:5px 4px 0 0;font-size:.73rem}
+.fplan-allocation button{margin:0;padding:0 5px;border:0;background:transparent;color:#a33;font-weight:900}
+.fplan-expense-sort{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+.fplan-expense-sort input{flex:1;min-width:100px}
+.fplan-expense-sort select{max-width:170px}
+.fplan-allocator{border:1px solid #b6d7c8;background:#edf9f1;border-radius:14px;padding:14px;margin-top:14px}
+.fplan-allocator input{width:130px;min-width:0}
+.fplan-allocator .fplan-actions{justify-content:flex-start;margin-top:11px}
+.fplan-message{font-size:.83rem;color:#435d75;min-height:1.3em}
+.fplan-message[data-error=true]{color:#b13d33;font-weight:700}
+.fplan-actions{margin-top:16px}
+.fplan-btn{background:#ed870d;color:white!important;border:0;border-radius:11px;padding:10px 17px;font-weight:800;cursor:pointer}
+.fplan-btn-secondary{background:#fff;color:#335169;border:1px solid #d1dbe6;border-radius:11px;padding:10px 15px;cursor:pointer}
+.fplan-note{width:100%;min-height:65px;resize:vertical}
+.fplan-empty{font-size:.8rem;color:#77869c;padding:14px 7px}
+@media(max-width:950px){.fplan-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.fplan-columns{grid-template-columns:1fr}.fplan-shell{padding:15px}.finance-plan-top-actions{justify-content:flex-start}}
+@media(max-width:420px){.fplan-overview{gap:7px}.fplan-kpi{padding:10px}.fplan-kpi strong{font-size:1.05rem}}
