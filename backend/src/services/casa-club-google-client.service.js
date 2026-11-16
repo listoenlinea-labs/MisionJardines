@@ -135,13 +135,13 @@ async function readPagos2026(){
    const estatus=String(row[11]||'').trim().toUpperCase();
    if(estatus==='CANCELADO'){excluidos++;continue;}
    if(estatus!=='PAGADO')continue;
-   const texto=String(row[5]??'').replace(/[^\\d.,-]/g,'').replace(/,/g,'');
+   const texto=String(row[5]??'').replace(/[^\d.,-]/g,'').replace(/,/g,'');
    const monto=Number(texto);
    if(!Number.isFinite(monto)||monto<=0)continue;
    const value=Math.round(monto*100);
    centavos+=value;registros++;
    // MES corresponde a la fecha del evento, no a la fecha del depósito.
-   const nombre=String(row[3]||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().trim();
+   const nombre=String(row[3]||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
    const mes=meses.indexOf(nombre)+1;
    if(mes)porMesEvento[String(mes).padStart(2,'0')]=(porMesEvento[String(mes).padStart(2,'0')]||0)+value/100;
   }
