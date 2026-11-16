@@ -115,14 +115,22 @@ async function updateSummary(summary){
 // Histórico económico de la pestaña original, de solo lectura. No acredita depósitos.
 let historialCache=null,historialPendiente=null;
 async function readPagos2026(){
- if(!enabled())return {disponible:false,total:0,registros:0,porMesEvento:{}};
+ // La cuenta de servicio de solo lectura existente es el primer origen de consulta.
+ // No es necesario activar escrituras ni la sincronización bidireccional.
+ const readOnlyConfigured=Boolean(process.env.GOOGLE_SHEETS_SPREADSHEET_ID&&
+  process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON_BASE64);
+ if(!readOnlyConfigured&&!enabled())return {disponible:false,total:0,registros:0,porMesEvento:{}};
  if(historialCache&&Date.now()-historialCache.at<120000)return historialCache.data;
  if(historialPendiente)return historialPendiente;
  historialPendiente=(async()=>{
-  const {id}=config();
-  const location=encodeURIComponent("'MISION JARDINES 2026'!A1:L1000");
-  const response=await query('GET','/values/'+location+'?valueRenderOption=FORMATTED_VALUE');
-  const rows=response.values||[];
+  let rows=[];
+  if(readOnlyConfigured){
+   rows=await require('./google-sheets.service').readCasaClub2026();
+  }else{
+   const location=encodeURIComponent("'MISION JARDINES 2026'!A1:L1000");
+   const response=await query('GET','/values/'+location+'?valueRenderOption=FORMATTED_VALUE');
+   rows=response.values||[];
+  }
   const header=rows[1]||[];
   if(!String(header[5]||'').toUpperCase().includes('PAGO RECUPERACI')||
      !String(header[11]||'').toUpperCase().includes('ESTATUS PAGO'))
