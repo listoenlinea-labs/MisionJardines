@@ -9,7 +9,9 @@ function resumenAutorizaciones({reservas=[],reportados=[],manuales=[],anio,mes}=
   p.estatus==='VALIDADO'&&p.reservaCasaClubId).map(p=>String(p.reservaCasaClubId)));
  const recibos=new Set(manuales.filter(p=>p.tipoPago==='CASA_CLUB'&&
   p.reservaCasaClubId).map(p=>String(p.reservaCasaClubId)));
- const result={periodo,aprobadas:0,recuperacionAutorizada:0,limpiezaAutorizada:0,
+ const result={periodo,aprobadas:0,aprobadasVigentes:0,ingresosAutorizadosVigentes:0,
+  ingresosNoAcreditadosVigentes:0,garantiasComprometidasVigentes:0,
+  recuperacionAutorizada:0,limpiezaAutorizada:0,
   ingresosAutorizados:0,garantiasComprometidas:0,
   ingresosNoAcreditados:0,ingresosConAcreditacion:0,
   aprobadasSinComprobante:0,
@@ -21,15 +23,19 @@ function resumenAutorizaciones({reservas=[],reportados=[],manuales=[],anio,mes}=
   if(!key||visited.has(key))continue;
   visited.add(key);
   // El mes del cargo coincide con el usado en la consulta por vivienda.
-  if(mesDe(r.fechaLimitePago||r.fecha)!==periodo)continue;
   const recovery=cents(r.cuotaRecuperacion),clean=cents(r.limpieza),guarantee=cents(r.depositoGarantia);
   if(![recovery,clean,guarantee].every(v=>Number.isSafeInteger(v)&&v>=0))continue;
   const nonRefundable=recovery+clean;
+  const verified=Boolean(r.pagado)||validados.has(key)||recibos.has(key);
+  result.aprobadasVigentes++;
+  result.ingresosAutorizadosVigentes+=nonRefundable;
+  result.garantiasComprometidasVigentes+=guarantee;
+  if(!verified)result.ingresosNoAcreditadosVigentes+=nonRefundable;
+  if(mesDe(r.fechaLimitePago||r.fecha)!==periodo)continue;
   result.aprobadas++;
   result.recuperacionAutorizada+=recovery;
   result.limpiezaAutorizada+=clean;
   result.garantiasComprometidas+=guarantee;
-  const verified=Boolean(r.pagado)||validados.has(key)||recibos.has(key);
   if(verified)result.ingresosConAcreditacion+=nonRefundable;
   else{
    result.ingresosNoAcreditados+=nonRefundable;
@@ -37,7 +43,8 @@ function resumenAutorizaciones({reservas=[],reportados=[],manuales=[],anio,mes}=
   }
  }
  const attrs=['recuperacionAutorizada','limpiezaAutorizada','garantiasComprometidas',
-  'ingresosNoAcreditados','ingresosConAcreditacion'];
+  'ingresosNoAcreditados','ingresosConAcreditacion',
+  'ingresosAutorizadosVigentes','ingresosNoAcreditadosVigentes','garantiasComprometidasVigentes'];
  for(const name of attrs)result[name]=result[name]/100;
  result.ingresosAutorizados=result.recuperacionAutorizada+result.limpiezaAutorizada;
  return result;
