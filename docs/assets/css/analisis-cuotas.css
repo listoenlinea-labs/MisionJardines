@@ -2448,3 +2448,18 @@ body.page-analisis .finance-project-proof-edit-actions button:disabled{
  }
  body.page-analisis .finance-project-proof-action-spacer{display:none}
 }
+
+/* Detalle de cobros históricos Google: sin desbordamiento en móvil. */
+.finance-club-google-dialog{box-sizing:border-box;width:min(760px,calc(100vw - 30px));max-width:calc(100vw - 30px);max-height:85dvh;border:1px solid #dfe7ef;border-radius:18px;padding:20px;background:#fff;color:#263b54;box-shadow:0 20px 55px #243f5a4d}
+.finance-club-google-dialog::backdrop{background:rgba(22,40,59,.55)}
+.finance-club-google-header{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+.finance-club-google-header h2{font-size:1.18rem;color:#19334e;margin:5px 0}
+.finance-club-google-header p{font-weight:800;color:#187045;margin:4px 0}
+.finance-club-google-header button{flex:none}
+.finance-club-google-note{font-size:.8rem;line-height:1.4;color:#718198;margin:12px 0}
+.finance-club-google-scroll{max-height:55dvh;overflow:auto;border:1px solid #e6ebf3;border-radius:11px}
+.finance-club-google-scroll table{width:100%;border-collapse:collapse;font-size:.82rem}
+.finance-club-google-scroll th{position:sticky;top:0;background:#f7f2fa;color:#624c78;text-align:left;padding:11px}
+.finance-club-google-scroll td{padding:11px;border-bottom:1px solid #e8edf2}
+.finance-club-google-amount{font-weight:800;color:#1f754d;white-space:nowrap}
+@media(max-width:620px){.finance-club-google-dialog{padding:12px;width:calc(100vw - 18px);max-width:none}.finance-club-google-scroll td,.finance-club-google-scroll th{padding:8px 6px;font-size:.73rem}}

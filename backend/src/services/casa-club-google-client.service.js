@@ -115,6 +115,7 @@ async function updateSummary(summary){
 // Histórico económico de la pestaña original, de solo lectura. No acredita depósitos.
 let historialCache=null,historialPendiente=null;
 function resumenPagos2026(rows){
+ const {payments}=require('./casa-club-historico-viviendas.service').extraerMovimientos(rows);
  const encabezado=rows?.[1]||[];
  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
  if(!normalize(encabezado[5]).includes('PAGO RECUPERACION')||
@@ -140,7 +141,7 @@ function resumenPagos2026(rows){
    (porMesEvento[String(mes).padStart(2,'0')]||0)+value/100;
  }
  return {disponible:true,codigo:'CONECTADO',total:centavos/100,registros,
-  excluidos,porMesEvento,origen:'Google Sheets · MISION JARDINES 2026',
+  excluidos,porMesEvento,movimientos:payments,origen:'Google Sheets · MISION JARDINES 2026',
   conciliado:false,actualizadoEn:new Date().toISOString()};
 }
 async function readPagos2026(){
