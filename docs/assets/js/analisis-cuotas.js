@@ -441,7 +441,8 @@ let expensePage=1;
    ['Google Sheets',en2026?(conectado?'Conectado automáticamente · solo lectura':'Conexión pendiente'):'Histórico disponible para 2026'],
    ['Limpieza comprometida · autorizadas',fmt(scope.limpiezaComprometidaVigente||0)],
    ['Garantías reembolsables · autorizadas',fmt(scope.garantiasComprometidasVigentes||0)],
-   ...(conectado?[['Cobros históricos registrados',Number(historico.registros||0)]]:[])
+   ...(conectado?[['Cobros históricos únicos',Number(historico.registros||0)],
+    ['Registros duplicados excluidos',Number(historico.duplicados||0)]]:[])
   ].map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent','0%');
   $('financeDonutText').innerHTML='Club<small>Independiente</small>';
@@ -450,7 +451,8 @@ let expensePage=1;
   $('financePadronNote').hidden=false;
   $('financePadronNote').textContent=conectado
    ?'Google Sheets: '+Number(historico.registros||0)+' cobros históricos de '+Number(historico.viviendasConRecuperacion||0)+
-    ' viviendas vinculadas ('+Number(historico.cantidadSinConciliar||0)+' sin coincidencia segura). Total 2026: '+fmt(historico.total)+'. Consultado: '+
+    ' viviendas vinculadas ('+Number(historico.cantidadSinConciliar||0)+' sin coincidencia segura; '+
+    Number(historico.duplicados||0)+' duplicado(s) excluido(s)). Total 2026: '+fmt(historico.total)+'. Consultado: '+
     new Date(historico.actualizadoEn||Date.now()).toLocaleString('es-MX')+
     '. Histórico pendiente de conciliar: no se suma a los cobros MySQL.'
    :en2026
