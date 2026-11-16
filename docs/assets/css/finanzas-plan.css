@@ -180,3 +180,5 @@
 .fplan-unverified-note{color:#64798b!important;font-size:.76rem!important}
 .fplan-allocation{line-height:1.45;overflow-wrap:anywhere}
 @media(max-width:700px){.fplan-project-choice{padding:9px}.fplan-source-detail{padding:10px}.fplan-source-detail p{font-size:.77rem}}
+
+.finance-connection-status[hidden],.finance-connection-item[hidden]{display:none!important}
