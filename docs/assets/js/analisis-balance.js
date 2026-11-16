@@ -32,7 +32,7 @@
   const income=centavos(scope.ingresos),expense=centavos(scope.egresos),diff=income-expense;
   return {tipo:'CASA_CLUB',ingresos:income/100,egresos:expense/100,
    diferencia:diff/100,estado:clasificar(diff),
-   criterio:'Recuperación y limpieza cobradas menos gastos registrados de Casa Club en el período, excluyendo garantías.'};
+   criterio:'Sólo recuperación cobrada menos gastos registrados y limpieza prevista no registrada (para no duplicarla). Garantías reembolsables excluidas; no equivale a saldo bancario.'};
  }
  const api={mensual,proyecto,casaClub,clasificar,importe};
  if(typeof module==='object'&&module.exports)module.exports=api;
