@@ -79,17 +79,19 @@ function historicoError(code,message,status){
 }
 function historicoCredenciales(){
  const variables=['CASA_CLUB_GOOGLE_CREDENTIALS_BASE64','GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON_BASE64'];
- const candidates=[];
+ const candidates=[];let configured=false;
  for(const name of variables){
   const raw=String(process.env[name]||'').trim();
   if(!raw)continue;
+  configured=true;
   try{
    const key=JSON.parse(Buffer.from(raw,'base64').toString('utf8'));
    if(key.type==='service_account'&&key.client_email&&key.private_key&&
       key.token_uri==='https://oauth2.googleapis.com/token')candidates.push(key);
   }catch(_){} // Se intentará la siguiente cuenta; jamás registrar la clave.
  }
- if(!candidates.length)throw historicoError('CREDENCIALES_PENDIENTES',
+ if(!candidates.length)throw historicoError(configured?'CREDENCIALES_INVALIDAS':'CREDENCIALES_PENDIENTES',
+  configured?'Las credenciales de Google de Casa Club no son un JSON válido de cuenta de servicio':
   'Falta configurar una cuenta de servicio de Google con acceso de lectura a Casa Club');
  return candidates;
 }
