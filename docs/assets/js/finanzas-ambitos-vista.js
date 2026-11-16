@@ -9,7 +9,7 @@
   for(const id of ['financeIncomeCard','financeBalanceCard','financeExpenseCard'])
    $(id).querySelector('.eyebrow').textContent=scopeName;
   $('financeIncomeSubtitle').textContent=project?project.nombre:
-   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Ingresos del período':'Mantenimiento · Ingresos por calle';
+   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Autorizaciones y cobros registrados':'Mantenimiento · Ingresos por calle';
   $('financeExpenseSubtitle').textContent=project?project.nombre:
    scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Gastos por concepto':'Mantenimiento · Gastos por concepto';
   $('financeIncomeSubtitle').title=$('financeExpenseSubtitle').title=project?project.nombre:scopeName;
@@ -18,7 +18,7 @@
   $('financeExpenseCard').querySelector('.finance-graph-help').hidden=!!project||club;
   $('financeIncomeCard').querySelector('.finance-chart-description').textContent=project?
    'Aportaciones acumuladas de este proyecto distribuidas por calle.':club?
-   'Cuotas de recuperación y limpieza; las garantías no son ingresos.':
+   'Importes autorizados por administración frente a cobros realmente verificados; garantías excluidas.':
    'Los pagos anticipados se distribuyen por mensualidad cubierta, con recargo real.';
   $('financeExpenseCard').querySelector('.finance-chart-description').textContent=project?
    'La meta estimada es una referencia, no un egreso. Se muestran los conceptos realmente registrados.':
@@ -63,7 +63,10 @@
    const categories=new Map();
    for(const e of expenses)categories.set(String(e.categoria||'OTROS'),(categories.get(String(e.categoria||'OTROS'))||0)+Number(e.monto||0));
    const max=Math.max(1,...categories.values());
-   $('financeCashChart').innerHTML=bar('Recuperación y limpieza',Number(info.ingresos||0),Math.max(1,Number(info.ingresos||0)),false,fmt(info.ingresos));
+   const maxIncome=Math.max(1,Number(info.ingresosAutorizados||0),Number(info.ingresos||0));
+   $('financeCashChart').innerHTML=bar('Autorizado · pendiente de conciliación',Number(info.ingresosAutorizados||0),maxIncome,false,fmt(info.ingresosAutorizados))+
+    bar('Cobros registrados en MySQL',Number(info.ingresos||0),maxIncome,false,fmt(info.ingresos));
+   $('financeWarning').textContent='Las autorizaciones cuentan para seguimiento, pero no son depósitos bancarios ni fondos disponibles; las garantías reembolsables se excluyen.';
    $('financeExpenseChart').innerHTML=[...categories].map(([name,value])=>bar(name,value,max,true,fmt(value))).join('')||'<p class="hint">Sin gastos en Casa Club durante el período.</p>';
   }else{
    const income=data.ingresosMantenimientoCalles;
@@ -92,6 +95,8 @@
    }else{$('financeExpenseChart').textContent='No hay datos de egresos disponibles para este período.';}
   }
   $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
+  const incomeFooterLabel=$('financeIncomeFooter').querySelector('span');
+  if(incomeFooterLabel)incomeFooterLabel.textContent=club?'Cobros verificados (MySQL)':'Total de ingresos';
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
   $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':'Total de egresos';
   const summaryTrigger=$('financeExpenseFooter');
@@ -134,11 +139,11 @@
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
   $('financeBalanceSubtitle').textContent=project?'Proyecto · Ingresos menos egresos reales':
-   club?'Casa Club · Ingresos menos egresos':'Mantenimiento · Ingresos menos egresos';
+   club?'Casa Club · Cobros verificados menos egresos':'Mantenimiento · Ingresos menos egresos';
   $('financeBalanceExpenseLabel').textContent='Egresos';
   $('financeBalanceDescription').textContent=project?
    'Los egresos son la suma de conceptos reales, estén pagados o pendientes. La meta estimada nunca se resta como gasto.':
-   club?'Sin garantías ni pagos de otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
+   club?'Balance de cobros confirmados de Casa Club. Las autorizaciones aún no conciliadas no son caja ni garantía disponible.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   $('financeBalanceIncome').parentElement?.querySelector('span')?.replaceChildren(
    document.createTextNode('Ingresos'));
   const card=$('financeBalanceCard');
