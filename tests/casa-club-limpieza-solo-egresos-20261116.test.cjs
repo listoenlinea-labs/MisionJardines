@@ -50,5 +50,22 @@ test('la interfaz comunica que limpieza es informativa y excluye su importe del 
  assert.match(source,/egresos:window\.MJClubAnnualExpense\?\.otros\?\?0/);
  assert.match(source,/Egresos sin limpieza/);
  assert.match(source,/La limpieza registrada o prevista se muestra exclusivamente en Egresos/);
- assert.match(source,/Gastos registrados \+ limpieza pendiente 2026/);
+ assert.match(source,/Total de egresos sin limpieza/);
+ assert.match(source,/expenseFooter=expense\.otros/);
+ assert.match(source,/Casa Club · gastos registrados/);
+ assert.match(source,/Limpieza prevista sin registrar · informativa/);
+});
+
+
+test('el total de Egresos excluye limpieza sin ocultar otros gastos registrados',()=>{
+ const gasto=resumenEgresosCasaClub([
+  {concepto:'Limpieza del salón',categoria:'SERVICIOS',monto:800,pagado:true},
+  {concepto:'Reparación de techo',categoria:'MANTENIMIENTO',monto:1200,pagado:true},
+  {concepto:'Pintura de muros',categoria:'OTROS',monto:300,pagado:false}
+ ],8400);
+ assert.equal(gasto.limpiezaRegistrada,800);
+ assert.equal(gasto.limpiezaPendiente,7600);
+ assert.equal(gasto.total,9900); // Sólo desglose informativo, NO total visual
+ assert.equal(gasto.otros,1500); // Total visible en la tarjeta derecha
+ assert.equal(diferencia(24550,gasto).diferencia,23050);
 });
