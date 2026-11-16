@@ -49,3 +49,25 @@
 .fplan-empty{font-size:.8rem;color:#77869c;padding:14px 7px}
 @media(max-width:950px){.fplan-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.fplan-columns{grid-template-columns:1fr}.fplan-shell{padding:15px}.finance-plan-top-actions{justify-content:flex-start}}
 @media(max-width:420px){.fplan-overview{gap:7px}.fplan-kpi{padding:10px}.fplan-kpi strong{font-size:1.05rem}}
+
+.fplan-recommend-actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0 15px}
+.fplan-recommend-actions .fplan-help{flex:1;min-width:240px}
+.fplan-recommend-btn{background:linear-gradient(110deg,#ec8c20,#cd6814);box-shadow:0 3px 10px #d99e6540}
+.fplan-recommendation{background:#fff;border:1px solid #e8d2bd;border-radius:16px;padding:17px;margin:12px 0 20px}
+.fplan-recommend-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.fplan-recommend-heading h3{margin:5px 0 10px;color:#233b55;font-size:1.1rem}
+.fplan-recommend-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+.fplan-recommend-metric{border-radius:12px;padding:11px;background:#edf8f1;border:1px solid #d4eade}
+.fplan-recommend-metric[data-warn=true]{background:#fff0ee;border-color:#f2dad7}
+.fplan-recommend-metric span{display:block;font-size:.76rem;color:#51647b}
+.fplan-recommend-metric strong{display:block;font-size:1.16rem;color:#236748;margin-top:4px}
+.fplan-recommend-metric[data-warn=true] strong{color:#b54e48}
+.fplan-reason{background:#f7fafc;border:1px solid #e3eaf0;border-radius:12px;padding:11px 13px;margin:8px 0;line-height:1.5}
+.fplan-reason strong{font-size:.86rem;color:#253950}
+.fplan-reason p{margin:6px 0 0;font-size:.78rem;color:#51647d}
+.fplan-reason-amount{color:#176f4b;font-size:.87rem;font-weight:800}
+.fplan-reason[data-temporary=true]{background:#fff7ed;border-color:#f2d5b2}
+.fplan-reason[data-uncovered=true]{background:#fff0ef;border-color:#f1d2cd}
+.fplan-recommend-section-title{font-size:.87rem;margin:13px 0 7px;color:#354b63}
+.fplan-recommend-caution{padding:12px;border-radius:10px;background:#fff9ef;border:1px solid #efdfbf;font-size:.8rem;line-height:1.5;color:#765c34}
+@media(max-width:650px){.fplan-recommend-metrics{grid-template-columns:1fr}.fplan-recommend-heading button{width:100%}}
