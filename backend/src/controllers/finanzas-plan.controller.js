@@ -20,8 +20,16 @@ const analizar=async periodo=>{
  return response.data;
 };
 const fuenteMonto=(a,data)=>{
- if(a.origen==='MANTENIMIENTO')return cents(data?.ingresosMantenimientoCalles?.recibidoMes||0);
- if(a.origen==='CASA_CLUB')return cents(data?.finanzasAmbitos?.CASA_CLUB?.ingresos||0);
+ if(a.origen==='MANTENIMIENTO')return cents(data?.ingresosMantenimientoCalles?.mes||0);
+ if(a.origen==='CASA_CLUB'){
+  if(a.origenPeriodo==='ACUMULADO'){
+   const source=data?.casaClubGoogle2026;
+   if(Number(data?.anio)!==2026||source?.disponible!==true)
+    throw fail(409,'El histórico de Casa Club no está disponible o aún no se pudo consultar.');
+   return cents(source.total);
+  }
+  return cents(data?.finanzasAmbitos?.CASA_CLUB?.ingresos||0);
+ }
  if(/^PROYECTO:[1-9]\d*$/.test(a.origen))
   return cents((data?.proyectosExtraordinarios||[])
    .find(x=>Number(x.id)===Number(a.origen.slice(9)))?.recaudado||0);
@@ -62,7 +70,8 @@ async function guardar(req,res){
     origenPeriodo=String(x?.origenPeriodo||''),monto=Number(x?.monto);
    if(!Number.isSafeInteger(egresoId)||egresoId<1||
       !/^(MANTENIMIENTO|CASA_CLUB|PROYECTO:[1-9]\d*)$/.test(origen)||
-      !(origen.startsWith('PROYECTO:')?origenPeriodo==='ACUMULADO':validPeriodo(origenPeriodo)&&origenPeriodo<=periodo)||
+      !(origen.startsWith('PROYECTO:')||(origen==='CASA_CLUB'&&origenPeriodo==='ACUMULADO')?
+       origenPeriodo==='ACUMULADO':validPeriodo(origenPeriodo)&&origenPeriodo<=periodo)||
       !Number.isSafeInteger(monto)||monto<=0||monto>100000000)
     throw fail(400,'Cada asignación requiere egreso, fuente, periodo e importe válido');
    return {egresoId,origen,origenPeriodo,monto};
@@ -99,6 +108,15 @@ async function guardar(req,res){
    const periods=[...new Set(sources.map(x=>x.origenPeriodo).filter(p=>p!=='ACUMULADO'))];
    if(periods.length>18)throw fail(400,'Demasiados periodos de origen');
    const analyzed=new Map(await Promise.all(periods.map(async p=>[p,await analizar(p)])));
+   // Los cobros de Casa Club por mes ya se reflejan en el histórico anual.
+   // Las asignaciones viejas y las nuevas consumen una sola bolsa contable.
+   const clubAllocated=combined.filter(x=>x.origen==='CASA_CLUB')
+    .reduce((sum,x)=>sum+cents(x.monto),0);
+   if(clubAllocated>0&&Number(targetData?.anio)===2026&&targetData.casaClubGoogle2026?.disponible){
+    const annual=cents(targetData.casaClubGoogle2026.total);
+    if(clubAllocated>annual)
+     throw fail(409,'El total asignado de Casa Club supera la recuperación histórica sin duplicados. Revisa asignaciones anteriores.');
+   }
    for(const source of sources){
     const period=source.origenPeriodo;
     const data=period==='ACUMULADO'?targetData:analyzed.get(period);

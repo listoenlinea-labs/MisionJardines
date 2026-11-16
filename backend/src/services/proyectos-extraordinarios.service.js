@@ -243,4 +243,29 @@ async function ajustarCuotasProyecto(proyectoId,input,actor){
  });
 }
 
-module.exports={juntar,leerProyectos,previsualizar,crearLote,crearProyecto,ajustarCuota,ajustarCuotasProyecto};
+
+async function renombrarProyecto(proyectoId,body,actor){
+ const id=Number(proyectoId),usuario=Number(actor);
+ const nombre=String(body?.nombre||'').trim().replace(/\s+/g,' ');
+ const nombreAnterior=String(body?.nombreAnterior||'').trim();
+ if(!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(usuario)||usuario<1||
+   !nombre||nombre.length>300||!nombreAnterior||nombreAnterior.length>300)
+  throw fail(400,'Indica el nombre anterior y el nuevo nombre del proyecto.');
+ return db.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
+  const proyecto=await Proyecto.findOne({where:{id,activo:true},transaction,lock:transaction.LOCK.UPDATE});
+  if(!proyecto)throw fail(404,'Proyecto extraordinario no encontrado.');
+  if(proyecto.concepto!==nombreAnterior)
+   throw fail(409,'El nombre del proyecto cambió en otra sesión. Actualiza antes de guardar.');
+  if(nombre===nombreAnterior)return {id,nombre,sinCambio:true};
+  const otros=await Proyecto.findAll({where:{activo:true,id:{[Op.ne]:id}},attributes:['id','concepto'],transaction});
+  if(otros.some(x=>norm(x.concepto)===norm(nombre)))
+   throw fail(409,'Ya existe otro proyecto activo con ese nombre.');
+  await proyecto.update({concepto:nombre,actualizadoEn:new Date()},{transaction});
+  await db.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
+   {transaction,replacements:['RENOMBRAR_PROYECTO',id,0,0,usuario,
+    (nombreAnterior+' → '+nombre).slice(0,250)]});
+  return {id,nombre,nombreAnterior};
+ });
+}
+
+module.exports={renombrarProyecto,juntar,leerProyectos,previsualizar,crearLote,crearProyecto,ajustarCuota,ajustarCuotasProyecto};

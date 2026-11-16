@@ -9,7 +9,7 @@
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const labelMonth=p=>months[Number(p.slice(5))-1]+' '+p.slice(0,4);
  const validMonth=p=>/^20\d\d-(0[1-9]|1[0-2])$/.test(p);
- let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0;
+ let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,projectFilterId='';
  const panel=$('fplanSources'),expenses=$('fplanExpenses'),notice=$('fplanStatus');
  function msg(text,error=false){notice.textContent=text;notice.dataset.error=error?'true':'false';}
  async function api(path,options={}){
@@ -52,22 +52,27 @@
  }
  function currentUsed(source){
   const all=allPlans.filter(x=>x.periodo!==period).flatMap(x=>x.asignaciones||[]).concat(assignments);
-  return all.filter(x=>x.origen===source.origen&&x.origenPeriodo===source.origenPeriodo)
+  return all.filter(x=>x.origen===source.origen&&
+   (source.origen==='CASA_CLUB'&&source.origenPeriodo==='ACUMULADO'||x.origenPeriodo===source.origenPeriodo))
    .reduce((s,x)=>s+Number(x.monto||0),0);
  }
  function pools(){
   if(!origin||!target)return [];
+  const historical=origin.casaClubGoogle2026;
+  const annualClub=Number(origin.anio)===2026&&historical?.disponible===true;
   const items=[
    {origen:'MANTENIMIENTO',origenPeriodo:sourceMonth,tipo:'Mantenimiento',
-    name:'Cuotas recibidas · '+labelMonth(sourceMonth),
-    total:Number(origin.ingresosMantenimientoCalles?.recibidoMes||0)},
-   {origen:'CASA_CLUB',origenPeriodo:sourceMonth,tipo:'Casa Club',
-    name:'Cobros registrados · '+labelMonth(sourceMonth),
-    total:Number(origin.finanzasAmbitos?.CASA_CLUB?.ingresos||0)}
+    name:'Cuotas cubiertas del mes · '+labelMonth(sourceMonth),
+    total:Number(origin.ingresosMantenimientoCalles?.mes||0)},
+   {origen:'CASA_CLUB',origenPeriodo:annualClub?'ACUMULADO':sourceMonth,tipo:'Casa Club',
+    name:annualClub?'Recuperación histórica 2026 · Google (sin conciliar)':'Recuperación registrada · '+labelMonth(sourceMonth),
+    total:annualClub?Number(historical.total||0):Number(origin.finanzasAmbitos?.CASA_CLUB?.ingresos||0),
+    sinConciliar:annualClub}
   ];
-  (target.proyectosExtraordinarios||[]).forEach(p=>items.push({
-   origen:'PROYECTO:'+Number(p.id),origenPeriodo:'ACUMULADO',tipo:'Cuotas extraordinarias',
-   name:p.nombre,total:Number(p.recaudado||0)}));
+  const selected=(target.proyectosExtraordinarios||[]).find(p=>String(p.id)===String(projectFilterId));
+  if(selected)items.push({
+   origen:'PROYECTO:'+Number(selected.id),origenPeriodo:'ACUMULADO',tipo:'Cuotas extraordinarias',
+   name:selected.nombre,total:Number(selected.recaudado||0)});
   return items.map(p=>({...p,used:currentUsed(p),free:Math.max(0,p.total-currentUsed(p)),
    id:p.origen+'|'+p.origenPeriodo}));
  }
@@ -81,6 +86,15 @@
      e.ambito==='CASA_CLUB'?'Casa Club':'Mantenimiento',
     pagado:e.pagado!==false,proyectoId:e.proyectoId})); 
  }
+ function labelSource(a){
+  if(a.origen==='MANTENIMIENTO')return 'Mantenimiento · '+labelMonth(a.origenPeriodo);
+  if(a.origen==='CASA_CLUB')return a.origenPeriodo==='ACUMULADO'?'Casa Club · recuperación histórica 2026':'Casa Club · '+labelMonth(a.origenPeriodo);
+  if(a.origen.startsWith('PROYECTO:')){
+   const project=(target?.proyectosExtraordinarios||[]).find(p=>String(p.id)===a.origen.slice(9));
+   return 'Proyecto · '+(project?.nombre||'#'+a.origen.slice(9));
+  }
+  return a.origen+' · '+a.origenPeriodo;
+ }
  function spend(id){return assignments.filter(x=>x.egresoId===id).reduce((s,x)=>s+Number(x.monto||0),0);}
  function render(){
   if(!target){
@@ -90,6 +104,8 @@
    return;
   }
   const sources=pools(),rows=expenseRows();
+  const selectedProject=(target.proyectosExtraordinarios||[]).find(p=>String(p.id)===String(projectFilterId));
+  $('fplanProjectFilter').title=selectedProject?'Proyecto seleccionado: '+selectedProject.nombre:'Selecciona un proyecto';
   const order=$('fplanIncomeSort').value;
   sources.sort((a,b)=>order==='asc'?a.total-b.total:order==='name'?a.name.localeCompare(b.name,'es'):b.total-a.total);
   const grouped=['Mantenimiento','Cuotas extraordinarias','Casa Club'];
@@ -120,8 +136,8 @@
       '<div class="fplan-expense-meta">'+esc(x.fecha)+' · '+esc(x.categoria)+' · '+
       (x.pagado?'Registrado como pagado':'Pendiente de pagar')+
       ' · Sin fuente asignada: <b>'+money(remaining)+'</b></div>'+
-      attached.map(a=>'<span class="fplan-allocation">'+esc(a.origen.replace('PROYECTO:','Proyecto #'))+
-       ' ('+esc(a.origenPeriodo)+') '+money(a.monto)+
+      attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
+       ' · '+money(a.monto)+
        '<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join('')+
       '<div><button type="button" data-choose="'+x.id+'"'+(planReady?'':' disabled')+'>Asignar fondos</button></div></article>';
     }).join('');
@@ -154,7 +170,7 @@
    msg('Primero carga la información financiera del mes.',true);return;
   }
   recommendation=engine.recommend({
-   sources:pools(),expenses:expenseRows(),assignments,period,reservePercent:20
+   sources:pools().filter(x=>!x.sinConciliar),expenses:expenseRows(),assignments,period,reservePercent:20
   });
   const {details,uncovered,summary}=recommendation;
   const kpi=(label,value,warn=false)=>'<div class="fplan-recommend-metric"'+(warn?' data-warn="true"':'')+
@@ -196,13 +212,19 @@
   if(!planReady){msg('El plan está en modo consulta. Reintenta la carga para asignar dinero.',true);return;}
   const row=expenseRows().find(x=>x.id===id);
   if(!row)return;
-  const source=selectedSource||pools().find(x=>x.free>0);
-  if(!source){msg('No hay dinero disponible en las fuentes visibles. Cambia el mes de origen.',true);return;}
+  const source=selectedSource;
+  if(!source){msg('Elige primero una fuente concreta en «Origen del dinero». Nunca seleccionaremos una fuente automáticamente.',true);panel.querySelector('[data-source]')?.focus();return;}
   if(source.free<=0){msg('Esta fuente ya está totalmente asignada.',true);return;}
   const available=Math.min(source.free,Math.max(0,row.monto-spend(id)));
   if(available<=0){msg('Este gasto ya tiene asignada la totalidad de su importe.',true);return;}
   selectedSource=source;editorExpense=row;
-  $('fplanAllocatorTitle').textContent='Asignar '+source.name+' a '+row.nombre;
+  $('fplanAllocatorTitle').textContent='Asignar fondos a '+row.nombre;
+  $('fplanSourceDetail').innerHTML='<p><b>Origen exacto:</b> '+esc(source.name)+'</p>'+
+   '<p><b>Ámbito:</b> '+esc(source.tipo)+' · <b>Periodo de origen:</b> '+
+   esc(source.origenPeriodo==='ACUMULADO'?'Acumulado del proyecto o 2026 de Casa Club':labelMonth(source.origenPeriodo))+'</p>'+
+   '<p><b>Registrado:</b> '+money(source.total)+' · <b>Ya asignado:</b> '+money(source.used)+
+   ' · <b>Disponible para planificar:</b> '+money(source.free)+'</p>'+
+   '<p class="fplan-unverified-note">Esta es una asignación presupuestaria interna. No confirma saldo de banco ni ejecuta una transferencia.</p>';
   $('fplanAmount').max=String(Math.floor(available));$('fplanAmount').value=String(Math.floor(available));
   $('fplanAllocator').hidden=false;$('fplanAmount').focus();
  }
@@ -247,6 +269,16 @@
     render();return;
    }
    target=result[0].value;
+   const options=(target.proyectosExtraordinarios||[]);
+   if(!options.some(x=>String(x.id)===String(projectFilterId))){
+    const preferred=window.MJFinanceSelectedProject?.();
+    projectFilterId=String(options.find(x=>Number(x.id)===Number(preferred))?.id||options[0]?.id||'');
+   }
+   $('fplanProjectFilter').replaceChildren(...options.map(p=>{
+    const option=document.createElement('option');option.value=String(p.id);
+    option.textContent=p.nombre+' · '+money(p.recaudado);return option;
+   }));
+   $('fplanProjectFilter').value=projectFilterId;
    if(result[1].status==='fulfilled'){
     const plan=result[1].value;
     planReady=true;version=Number(plan.version||0);
@@ -291,6 +323,7 @@
   const year=Number($('financeYear')?.value),month=Number($('financeMonth')?.value);
   const current=year>=2020&&month>=1&&month<=12?year+'-'+String(month).padStart(2,'0'):
    new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit'}).format(new Date());
+  projectFilterId=String(window.MJFinanceSelectedProject?.()||'');
   sourceMonth=current;$('fplanTargetMonth').value=current;
   dialog.showModal();$('fplanContent').scrollTop=0;void load();
  });
@@ -310,6 +343,7 @@
  $('fplanSourceMonth').addEventListener('change',()=>void loadSource().catch(e=>msg(e.message,true)));
  $('fplanSearch').addEventListener('input',render);
  $('fplanIncomeSort').addEventListener('change',render);
+ $('fplanProjectFilter').addEventListener('change',()=>{projectFilterId=$('fplanProjectFilter').value;selectedSource=null;render();msg('Proyecto seleccionado como origen: '+$('fplanProjectFilter').selectedOptions[0]?.textContent);});
  $('fplanExpenseSort').addEventListener('change',render);
  panel.addEventListener('click',e=>{const x=e.target.closest('[data-pick]');
   if(x)chooseSource(x.dataset.pick);
@@ -338,7 +372,7 @@
   assignments.push({egresoId:editorExpense.id,origen:selectedSource.origen,
    origenPeriodo:selectedSource.origenPeriodo,monto:amount});
   $('fplanAllocator').hidden=true;editorExpense=null;
-  render();msg('Asignación añadida al borrador. Recuerda guardar el plan.');
+  const from=selectedSource.name;render();msg('Asignación de '+money(amount)+' desde «'+from+'» añadida al borrador. Revisa y guarda el plan.');
  });
  $('fplanCancelAllocation').addEventListener('click',()=>{$('fplanAllocator').hidden=true;editorExpense=null;});
  $('fplanSave').addEventListener('click',async()=>{

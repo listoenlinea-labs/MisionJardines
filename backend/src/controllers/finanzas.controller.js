@@ -64,6 +64,9 @@ async function analizar(req,res){
    Egreso.findAll({where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto','ambito'],raw:true}),
    Egreso.findAll({where:{ambito:'EXTRAORDINARIO',proyectoId:{[Op.ne]:null}},order:[['fecha','DESC'],['id','DESC']]})
   ]);
+  const gastosCasaClubAnuales=anio===2026?
+   await Egreso.findAll({where:{ambito:'CASA_CLUB',fecha:{[Op.between]:['2026-01-01','2026-12-31']}},
+    order:[['fecha','DESC'],['id','DESC']],limit:2000}):[];
   const registros=ultimosRegistrosPago({reportados:require('../services/pagos-reparto-datos').desglosar(foliosRegistrados),cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   // La vivienda de prueba se muestra solamente en Análisis. El padrón y las
@@ -206,6 +209,8 @@ async function analizar(req,res){
    garantiasPorDevolver:flujoClub.garantiasPorDevolver};
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
   const pagadas=residencesOficiales.filter(h=>String(h.estatus)==='PAGADO').length; // Cumplimiento, no simples ingresos.
+  const conPagoRegistrado=residencesOficiales.filter(h=>h.pagada===true||num(h.montoPagado)>0).length;
+  const sinPagoRegistrado=residencesOficiales.length-conPagoRegistrado;
   // Desglose sin paginación ni filtros del navegador para los cuatro Excel del tablero.
   // Estos movimientos se consultaron ya para construir los mismos indicadores.
   const viviendasPorId=new Map(residences.map(h=>[String(h.casaId),h]));
@@ -234,8 +239,8 @@ async function analizar(req,res){
     const historical=await googleCasaClubClient.readPagos2026();
     const {movimientos,...base}=historical;
     const matched=conciliarMovimientos(movimientos||[],padron.casas,historical.excluidos||0);
-    // Corte anual de la hoja original: los 29 cobros generan 29 compromisos
-    // de limpieza de $300, sin inventar comprobantes ni egresos bancarios.
+    // Corte anual: sólo los cobros únicos generan compromisos de limpieza
+    // de $300, sin inventar comprobantes ni egresos bancarios.
     const costoLimpiezaUnitario=300;
     const limpiezaPrevista=Math.round(matched.registros*costoLimpiezaUnitario*100)/100;
     casaClubGoogle2026={...base,...matched,
@@ -275,6 +280,7 @@ async function analizar(req,res){
   return res.json({ok:true,data:{
    anio,mes,periodo:mesName+' '+anio,casaClubGoogle2026,
    casas:residencesOficiales.length,pagadas,pendientes:residencesOficiales.length-pagadas,
+   conPagoRegistrado,sinPagoRegistrado,
    porcentaje:residencesOficiales.length?Math.round(pagadas/residencesOficiales.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,proyectosExtraordinarios,
    cuotasPeriodoDetalle,pagosPeriodoDetalle,manualesConceptoPeriodoDetalle,
@@ -292,7 +298,10 @@ async function analizar(req,res){
      garantiasPorDevolver:flujoClub.garantiasPorDevolver,
      reservasPagadas:reservasClub.length,...aprobacionesClub}},
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
-   egresosCategorias:categoriasGasto,egresos:egresos.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();return {...row,
+   egresosCategorias:categoriasGasto,
+   egresosCasaClubAnuales:gastosCasaClubAnuales.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();
+    return {...row,comprobanteDisponible:Boolean(comprobanteArchivo)};}),
+   egresos:egresos.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();return {...row,
     ambito:ambitoDeEgreso(e),comprobanteDisponible:!!comprobanteArchivo,
     esAjusteMensual:esAjuste(e),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))};}),
    avisoConciliacion:'Los ingresos por calle se asignan a la mensualidad cubierta (con recargo efectivamente pagado). El saldo de caja se calcula por fecha del cobro, sin duplicar depósitos. Los movimientos sin período requieren conciliación.'
@@ -334,7 +343,7 @@ async function registrarEgreso(req,res){
    const existe=await CuotaExtraordinaria.findOne({where:{id:proyectoId,activo:true}});
    if(!existe)throw fail(404,'Selecciona un proyecto extraordinario vigente');
   }
-  if(req.body?.comprobante&&!proyectoId)throw fail(400,'Selecciona el proyecto del comprobante');
+  if(req.body?.comprobante&&!proyectoId&&String(req.body?.ambito||'')!=='CASA_CLUB')throw fail(400,'Selecciona el proyecto del comprobante');
   archivo=await archivosEgresos.guardar(req.body?.comprobante);
   const saved=await sequelize.transaction(async transaction=>{
    const row=await Egreso.create({fecha,categoria,concepto,monto,ambito,
@@ -428,8 +437,9 @@ async function actualizarPagoEgreso(req,res){
    throw fail(400,'Indica egreso y estado de pago anterior/actual válidos.');
   const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
    const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
-   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
-    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   if(!row||!((row.categoria==='PROYECTO'&&row.proyectoId&&row.ambito==='EXTRAORDINARIO')||
+     (row.ambito==='CASA_CLUB'&&!row.proyectoId)))
+    throw fail(404,'No se encontró el concepto de ese ámbito.');
    if(Boolean(Number(row.pagado))!==anterior)
     throw fail(409,'El estado del pago cambió en otra sesión. Actualiza el análisis.');
    if(pagado===anterior)return {id,pagado,sinCambio:true};
@@ -454,8 +464,9 @@ async function adjuntarComprobanteEgreso(req,res){
   nuevo=await archivosEgresos.guardar(req.body.comprobante);
   const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
    const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
-   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
-    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   if(!row||!((row.categoria==='PROYECTO'&&row.proyectoId&&row.ambito==='EXTRAORDINARIO')||
+     (row.ambito==='CASA_CLUB'&&!row.proyectoId)))
+    throw fail(404,'No se encontró el concepto de ese ámbito.');
    anterior=row.comprobanteArchivo;
    await row.update({comprobanteArchivo:nuevo},{transaction});
    await sequelize.query(

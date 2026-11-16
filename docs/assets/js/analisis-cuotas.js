@@ -66,6 +66,9 @@ $('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpens
   syncExpenseDateDisplay(input);
  });
  let data=null;
+ // Puente de lectura acotado al editor de gastos de Casa Club.
+ window.MJFinanceClubExpenseContext=()=>({activeConcept,data,request,load,fmt});
+ window.MJFinanceSelectedProject=()=>activeProyectoId;
  let lastSuccessfulFinanceLoad=Date.now(),lastRevisionSeen=null,revisionBusy=false;
  async function refreshWhenChanged(){
   if(revisionBusy||document.visibilityState==='hidden'||!data||
@@ -322,18 +325,22 @@ let expensePage=1;
 
  function renderMaintenanceDashboard(){
   const houses=data.casas||0;
+  const conPago=Number((data.conPagoRegistrado??data.pagadas)||0);
+  const sinPago=houses-conPago;
+  const porcentajePagado=houses?Math.round(conPago*10000/houses)/100:0;
+  const porcentajePendiente=houses?Math.round((100-porcentajePagado)*100)/100:0;
   const financialCards=[
-   ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Cuotas cubiertas del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
+   ['Casas en padrón',houses],['Con pago registrado',conPago+' · '+porcentajePagado.toFixed(2)+'%'],
+   ['Sin pago registrado',sinPago+' · '+porcentajePendiente.toFixed(2)+'%'],['Total de cuotas recaudadas',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Egresos de mantenimiento',fmt(data.finanzasAmbitos?.MANTENIMIENTO?.egresos)],
    ['Diferencia de mantenimiento',fmt(Number(data.finanzasAmbitos?.MANTENIMIENTO?.ingresos||0)-Number(data.finanzasAmbitos?.MANTENIMIENTO?.egresos||0))]
   ];
   $('financialSummary').innerHTML=financialCards.slice(0,4).map(([n,v],i)=>downloadableFinancialCard(n,v,['padron','pagadas','pendientes','historicas'][i])).join('');
   $('financialSecondary').innerHTML=financialCards.slice(4).map(([n,v])=>financialCard(n,v)).join('');
-  $('financeDonut').style.setProperty('--percent',data.porcentaje+'%');
-  $('financeDonutText').innerHTML=esc(data.porcentaje)+'%<small>Casas pagadas</small>';
-  $('financeLegend').innerHTML='<div>Pagadas <b>'+data.pagadas+'</b></div><div>Pendientes <b>'+data.pendientes+'</b></div><div>Total <b>'+houses+'</b></div>';
+  $('financeDonut').style.setProperty('--percent',porcentajePagado+'%');
+  $('financeDonutText').innerHTML=esc(porcentajePagado.toFixed(2))+'%<small>Con pago registrado</small>';
+  $('financeLegend').innerHTML='<div>Con pago <b>'+conPago+'</b></div><div>Sin pago registrado <b>'+sinPago+'</b></div><div>Total <b>'+houses+'</b></div>';
   $('financeStreetChart').innerHTML=data.calles.length?data.calles.map(c=>bar(c.calle,c.porcentaje,100,false,c.pagadas+'/'+c.total)).join(''):'Sin datos';
   const padronNote=$('financePadronNote');
   if(padronNote){padronNote.textContent=data.avisoPadron||'';padronNote.hidden=!data.avisoPadron;}
@@ -347,9 +354,10 @@ let expensePage=1;
   const partial=Number(project.parciales||0),registered=complete+partial;
   const incomplete=Number(project.pendientes||0)+partial;
   const pct=applied?Math.round(registered/applied*10000)/100:0;
+  const pctSinRegistro=applied?Math.round((100-pct)*100)/100:0;
   const cards=[['Casas en padrón',houses.length],
-   ['Meta alcanzada',complete+' · '+(houses.length?Math.round(complete*100/houses.length):0)+'%'],
-   ['Sin meta alcanzada',(houses.length-complete)+' · '+(houses.length?Math.round((houses.length-complete)*100/houses.length):0)+'%'],
+   ['Con pago registrado',registered+' · '+pct.toFixed(2)+'%'],
+   ['Sin pago completo',Number(project.pendientes||0)+' · '+pctSinRegistro.toFixed(2)+'%'],
    ['Recaudado del proyecto',fmt(project.recaudado)]];
   $('financialSummary').innerHTML=cards.map(([name,val],index)=>
    downloadableFinancialCard(name,val,['padron','pagadas','pendientes','historicas'][index])).join('');
@@ -359,7 +367,7 @@ let expensePage=1;
    ['Presupuesto base',fmt(project.presupuestoBase)],['Costo comprometido',fmt(project.egresosComprometidos)],
    ['Gastos pagados',fmt(project.gastosPagados)],['Presupuesto restante',fmt(project.presupuestoRestante)],
    ['Fondos disponibles después de gastos',fmt(project.fondosDisponibles)],
-   ['Saldo a favor',fmt(project.saldoFavor)],['Meta alcanzada',complete],
+   ['Saldo a favor',fmt(project.saldoFavor)],['Cuotas completas',complete],
    ['Abonos parciales',partial],['Sin aportaciones',project.pendientes],
    ['No aplica',Number(project.noAplica||0)],['Casas con cuota',applied]
   ].map(([n,v])=>financialCard(n,v)).join('');
@@ -391,6 +399,9 @@ let expensePage=1;
  let driveIntegration=null,driveIntegrationAt=0,driveIntegrationBusy=false;
  function updateFinanceConnections(){
   const sheets=$('financeSheetsState');
+  sheets.hidden=activeConcept!=='CASA_CLUB';
+  if(sheets.parentElement)sheets.parentElement.hidden=sheets.hidden;
+  if(sheets.hidden)return;
   const historical=data?.casaClubGoogle2026,year=Number(data?.anio);
   const sheetsConnected=year===2026&&historical?.disponible===true;
   sheets.dataset.state=sheetsConnected?'connected':historical?.codigo==='FUERA_DE_PERIODO'?'checking':'disconnected';
@@ -420,7 +431,6 @@ let expensePage=1;
   const conectado=en2026&&historico.disponible===true;
   const resumen=[['Recaudación histórica 2026 · Google',conectado?fmt(historico.total):'No disponible'],
    ['Casas en padrón',houses],
-   ['Recuperación autorizada · vigente',fmt(scope.ingresosAutorizadosVigentes||0)],
    ['Limpieza',conectado?fmt(historico.limpiezaPrevista):fmt(Number(scope.limpiezaRegistrada||0)+Number(scope.limpiezaPorProvisionar||0))]];
   $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
   $('financialSecondary').innerHTML=[
@@ -431,7 +441,8 @@ let expensePage=1;
    ['Google Sheets',en2026?(conectado?'Conectado automáticamente · solo lectura':'Conexión pendiente'):'Histórico disponible para 2026'],
    ['Limpieza comprometida · autorizadas',fmt(scope.limpiezaComprometidaVigente||0)],
    ['Garantías reembolsables · autorizadas',fmt(scope.garantiasComprometidasVigentes||0)],
-   ...(conectado?[['Cobros históricos registrados',Number(historico.registros||0)]]:[])
+   ...(conectado?[['Cobros históricos únicos',Number(historico.registros||0)],
+    ['Registros duplicados excluidos',Number(historico.duplicados||0)]]:[])
   ].map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent','0%');
   $('financeDonutText').innerHTML='Club<small>Independiente</small>';
@@ -440,7 +451,8 @@ let expensePage=1;
   $('financePadronNote').hidden=false;
   $('financePadronNote').textContent=conectado
    ?'Google Sheets: '+Number(historico.registros||0)+' cobros históricos de '+Number(historico.viviendasConRecuperacion||0)+
-    ' viviendas vinculadas ('+Number(historico.cantidadSinConciliar||0)+' sin coincidencia segura). Total 2026: '+fmt(historico.total)+'. Consultado: '+
+    ' viviendas vinculadas ('+Number(historico.cantidadSinConciliar||0)+' sin coincidencia segura; '+
+    Number(historico.duplicados||0)+' duplicado(s) excluido(s)). Total 2026: '+fmt(historico.total)+'. Consultado: '+
     new Date(historico.actualizadoEn||Date.now()).toLocaleString('es-MX')+
     '. Histórico pendiente de conciliar: no se suma a los cobros MySQL.'
    :en2026
@@ -742,6 +754,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    $('financeProjectSelect').dataset.hasSelection=String(Boolean(seleccionado));
    $('financeProjectSelect').title=seleccionado?'Proyecto seleccionado: '+seleccionado.nombre:'Selecciona un proyecto';
    $('financeProjectRulesEdit').disabled=!seleccionado;
+   $('financeProjectRenameOpen').disabled=!seleccionado;
    $('financeProjectRulesEdit').title=seleccionado?'Modificar las cuotas de '+seleccionado.nombre:'Selecciona un proyecto para editar sus importes';
    $('financeProjectMetrics').innerHTML=seleccionado?[
     ['Meta',fmt(seleccionado.totalEsperado)],
@@ -796,6 +809,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   $('financeHousePanel').classList.toggle('extraordinary-receipt-active',concepto==='EXTRAORDINARIO'&&!!seleccionado);
   data.viviendas=data.viviendasMantenimiento.filter(h=>concepto==='MANTENIMIENTO'||!h.esPrueba).map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
+  updateFinanceConnections();
   if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
   else if(concepto==='CASA_CLUB')renderClubDashboard();
   else renderMaintenanceDashboard();
@@ -3357,6 +3371,36 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   const id=Number($('financeProjectSelect').value);
   activeProyectoId=Number.isSafeInteger(id)&&id>0?id:null;expensePage=1;
   elegirConcepto('EXTRAORDINARIO');
+ });
+
+ const renameModal=$('financeProjectRenameModal');
+ let renameProjectId=0,renameProjectBefore='',renameSaving=false;
+ const closeRename=()=>{if(!renameSaving&&renameModal.open)renameModal.close();};
+ $('financeProjectRenameOpen').addEventListener('click',()=>{
+  const project=(data?.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(activeProyectoId));
+  if(!project)return notice('Selecciona un proyecto para modificar su nombre.');
+  renameProjectId=Number(project.id);renameProjectBefore=String(project.nombre||'');
+  $('financeProjectRenameName').value=renameProjectBefore;
+  $('financeProjectRenameStatus').textContent='';
+  renameModal.showModal();$('financeProjectRenameName').focus();
+ });
+ $('financeProjectRenameClose').addEventListener('click',closeRename);
+ $('financeProjectRenameCancel').addEventListener('click',closeRename);
+ $('financeProjectRenameForm').addEventListener('submit',async event=>{
+  event.preventDefault();if(renameSaving)return;
+  const name=$('financeProjectRenameName').value.trim().replace(/\s+/g,' ');
+  if(!name||name.length>300)return $('financeProjectRenameStatus').textContent='Ingresa un nombre de hasta 300 caracteres.';
+  if(name===renameProjectBefore)return closeRename();
+  renameSaving=true;$('financeProjectRenameSave').disabled=true;
+  try{
+   await request('/proyectos-extraordinarios/'+renameProjectId+'/nombre',
+    {nombreAnterior:renameProjectBefore,nombre:name},'PATCH');
+   renameModal.close();
+   const loaded=await load();
+   if(!loaded)notice('Nombre guardado. Actualiza el análisis para ver el cambio.');
+   else notice('Nombre del proyecto actualizado en todas las tarjetas.','success');
+  }catch(error){$('financeProjectRenameStatus').textContent=error.message;}
+  finally{renameSaving=false;$('financeProjectRenameSave').disabled=false;}
  });
 
  const projectModal=$('financeProjectRulesModal');

@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261115-editar-eliminar-concepto-v1"><link rel="stylesheet" href="assets/css/finanzas-plan.css?v=20261116-club-drive-state-v1">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261116-cuotas-club-conceptos-v3"><link rel="stylesheet" href="assets/css/finanzas-plan.css?v=20261116-club-drive-state-v1">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -22,7 +22,8 @@
   <label>Proyecto extraordinario<select id="financeProjectSelect" aria-label="Seleccionar proyecto extraordinario" data-has-selection="false"><option value="">Sin proyectos configurados</option></select></label>
   <div class="finance-project-actions">
     <button type="button" id="financeNewProjectToggle" class="primary">Nuevo proyecto</button>
-    <button type="button" id="financeProjectRulesEdit" class="soft" disabled title="Selecciona un proyecto para editar sus importes">Importes por vivienda</button>
+    <button type="button" id="financeProjectRenameOpen" class="soft" disabled title="Editar el nombre del proyecto seleccionado">Editar</button>
+     <button type="button" id="financeProjectRulesEdit" class="soft" disabled title="Selecciona un proyecto para editar sus importes">Importes por vivienda</button>
    </div>
  </div>
  <details id="financeProjectDetails" class="finance-project-details">
@@ -31,6 +32,45 @@
   <p id="financeProjectInfo" class="finance-project-info" role="status"></p>
  </details>
 </section>
+<dialog id="financeProjectRenameModal" class="finance-project-name-dialog" aria-labelledby="financeProjectRenameTitle">
+ <form id="financeProjectRenameForm">
+  <div class="finance-project-name-heading"><div><span class="eyebrow">CUOTAS EXTRAORDINARIAS</span><h2 id="financeProjectRenameTitle">Editar nombre del proyecto</h2></div>
+   <button type="button" class="soft" id="financeProjectRenameClose" aria-label="Cerrar editor">×</button></div>
+  <p class="hint">Solo se modifica el nombre. Las aportaciones, cuotas por vivienda, conceptos y comprobantes conservan sus referencias.</p>
+  <label for="financeProjectRenameName">Nombre del proyecto</label>
+  <textarea id="financeProjectRenameName" maxlength="300" rows="3" required></textarea>
+  <p id="financeProjectRenameStatus" role="status" aria-live="polite"></p>
+  <div class="finance-project-name-actions"><button type="button" class="soft" id="financeProjectRenameCancel">Cancelar</button>
+   <button type="submit" class="primary" id="financeProjectRenameSave">Guardar nombre</button></div>
+ </form>
+</dialog>
+<dialog id="financeClubExpenseModal" class="finance-club-expense-dialog" aria-labelledby="financeClubExpenseTitle">
+ <div class="finance-club-expense-heading">
+  <div><span class="eyebrow">CASA CLUB · EGRESOS</span><h2 id="financeClubExpenseTitle">Registrar concepto</h2></div>
+  <button type="button" id="financeClubExpenseClose" class="soft" aria-label="Cerrar">×</button>
+ </div>
+ <p class="hint" id="financeClubExpenseHint">Registra un gasto real de Casa Club. La limpieza prevista del histórico se reduce al registrar los servicios pagados o pendientes correspondientes.</p>
+ <form id="financeClubExpenseForm">
+  <div class="finance-club-expense-grid">
+   <label>Concepto<input id="financeClubExpenseConcept" maxlength="250" required placeholder="Ej. Limpieza de salón de usos múltiples"></label>
+   <label>Monto (MXN)<input id="financeClubExpenseAmount" type="number" min="1" max="100000000" step="1" required inputmode="numeric"></label>
+   <label>Fecha<input id="financeClubExpenseDate" type="date" required></label>
+   <label>Categoría<select id="financeClubExpenseCategory"><option value="OTROS">Otros</option><option value="SERVICIOS">Servicios</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="CFE">CFE</option><option value="SIAPA">SIAPA</option><option value="INTERNET">Internet</option><option value="JARDINERIA">Jardinería</option></select></label>
+  </div>
+  <label class="finance-club-expense-check"><input type="checkbox" id="financeClubExpensePaid" checked> Este concepto ya se pagó</label>
+  <label>Comprobante opcional (PDF, JPG, PNG · máximo 1 MB)<input id="financeClubExpenseFile" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
+  <p id="financeClubExpenseStatus" role="status" aria-live="polite"></p>
+  <div class="finance-club-expense-actions">
+   <button id="financeClubExpenseDelete" class="soft" type="button" hidden>Eliminar concepto</button>
+   <button id="financeClubExpenseCancel" type="button" class="soft">Cancelar</button>
+   <button id="financeClubExpenseSave" type="submit" class="primary">Guardar concepto</button>
+  </div>
+ </form>
+ <div class="finance-club-expense-proof" id="financeClubExpenseProofArea" hidden>
+  <button type="button" class="soft" id="financeClubExpenseShowProof">Ver comprobante registrado</button>
+  <div id="financeClubExpensePreview" class="finance-project-proof-preview" hidden></div>
+ </div>
+</dialog>
 <p id="financeConceptHint" class="finance-concept-hint" role="status">Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.</p>
 <div class="filters residences-filter"><label>Buscar casa o residente<input id="financeSearch" type="search" placeholder="Ej. Gardenias, 5, nombre"></label><label>Calle<select id="financeStreet"><option value="">Todas las calles</option></select></label><label>Estado<select id="financeStatus"><option value="">Todos</option><option value="PAGADO">Pagadas</option><option value="PENDIENTE">Pendientes</option><option value="NO_APLICA" hidden disabled>No aplica</option><option value="PAGO_ANUAL">Pago anual</option><option value="ABONO_CON_ADEUDO">Abono con adeudo</option><option value="ADVERTENCIAS">Advertencias</option></select></label><fieldset class="paid-through-filter"><legend>Último mes pagado</legend><div class="paid-through-controls"><select id="financeLastPaidMonth" aria-label="Mes del último pago mínimo"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select><select id="financeLastPaidYear" aria-label="Año del último pago mínimo"></select></div></fieldset><label class="finance-register-order">Fecha de registro<select id="financeRegistrationOrder" aria-label="Ordenar por fecha y hora del último registro de pago"><option value="">Orden habitual</option><option value="registro_desc">Más reciente primero</option><option value="registro_asc">Más antiguo primero</option></select></label><button id="financeClear" type="button" class="soft">Limpiar</button></div>
 <div class="house-sort-mobile"><label>Ordenar por<select id="financeColumnSort"><option value="calle">Calle</option><option value="numero">Casa</option><option value="nombre">Residente registrado</option><option value="estatus">Estado</option><option value="pagado">Pagado</option><option value="registro">Fecha de registro</option><option value="mes">Último mes pagado</option><option value="saldo">Saldo pendiente</option><option value="tags">TAGs</option><option value="pago">Pago</option></select></label><button type="button" id="financeColumnDirection" class="soft">Ascendente ↑</button></div><p id="financeSortStatus" class="finance-visually-hidden" role="status" aria-live="polite">Orden de viviendas actualizado.</p>
@@ -63,6 +103,10 @@
   <button type="button" id="financeProjectExpenseOpen" class="finance-project-concept-trigger"
    aria-haspopup="dialog" aria-controls="financeProjectExpenseModal" aria-expanded="false"
    title="Agregar concepto de gasto al proyecto seleccionado"><span aria-hidden="true">+</span> Concepto</button>
+ </div>
+ <div id="financeClubExpenseEntry" class="finance-project-expense-entry" hidden>
+  <button type="button" id="financeClubExpenseOpen" class="finance-project-concept-trigger"
+   title="Agregar un concepto real de gasto de Casa Club"><span aria-hidden="true">+</span> Concepto</button>
  </div>
 </div>
 <p class="finance-card-subtitle" id="financeExpenseSubtitle">Mantenimiento · Gastos por concepto</p>
@@ -877,7 +921,9 @@
       <label class="fplan-field"><span>Ordenar</span><select id="fplanIncomeSort" aria-label="Ordenar ingresos">
         <option value="desc">Mayor importe</option><option value="asc">Menor importe</option><option value="name">Por nombre</option></select></label>
      </div>
-     <p class="fplan-section-help">Selecciona un fondo o arrástralo al gasto. Las aportaciones a proyectos se muestran acumuladas.</p>
+     <label class="fplan-field fplan-project-choice"><span>Proyecto extraordinario del plan</span><select id="fplanProjectFilter" aria-label="Seleccionar proyecto como origen de fondos"></select>
+ <small>Solo se incluyen las aportaciones del proyecto elegido. Puedes cambiarlo para asignar dinero de otro proyecto.</small></label>
+ <p class="fplan-section-help">Selecciona un origen antes de elegir el gasto; no se asigna automáticamente dinero de otro fondo.</p>
      <div id="fplanSources" aria-live="polite"></div>
     </section>
     <section class="fplan-panel fplan-expense-panel" aria-labelledby="fplanExpenseTitle">
@@ -896,6 +942,7 @@
    </div>
    <section id="fplanAllocator" class="fplan-allocator" hidden>
     <h3 id="fplanAllocatorTitle">Asignar fondos</h3>
+    <div id="fplanSourceDetail" class="fplan-source-detail" aria-live="polite"></div>
     <label class="fplan-field">Monto a asignar (MXN)<input id="fplanAmount" type="number" inputmode="numeric" min="1" step="1"></label>
     <div class="fplan-inline-actions"><button id="fplanApply" type="button" class="fplan-btn">Agregar asignación</button>
      <button id="fplanCancelAllocation" type="button" class="fplan-btn-secondary">Cancelar</button></div>
@@ -924,4 +971,4 @@
    <button type="button" class="fplan-btn" id="fplanSave">Guardar plan</button>
   </footer>
  </div>
-</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261116-club-balance-anual-v1" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261116-club-balance-anual-v1" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261116-club-balance-anual-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261116-toolbar-v2" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261116-club-balance-anual-v1" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261116-cuotas-club-conceptos-v3" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261116-cuotas-club-fondos-v3" defer></script><script src="assets/js/finanzas-casa-club-conceptos.js?v=20261116-v3" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261116-origen-club-fondos-v3" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
