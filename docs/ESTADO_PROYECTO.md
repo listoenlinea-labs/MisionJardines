@@ -1,23 +1,66 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 14/nov/2026, 23:34, America/Mexico_City.
-**SHA de main consultado:** `ace4cc3434a605163a4081fa4dd155a97566778e`.
+**Última revisión:** 15/nov/2026, 23:33, America/Mexico_City.
+**SHA de main consultado:** `0bdfb37f4cbabf37ebea2f3b9be712c694560771`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `75e60a109524c05a4f54c0cf46ca35616f170464`,
-historial de 121 commits, PR #423–#432, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `0a1fce886e3beaa9e3c2ffa506b5a21e879402a0`, dedicado exclusivamente
-a la bitácora anterior. Los diez PR de producto están fusionados y no hay PR abiertos
+comparación de main desde `ace4cc3434a605163a4081fa4dd155a97566778e`,
+historial de 65 commits, PR #433–#436, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `684636c40e470c3410c4572f06edfd8fddbf433f`, dedicado exclusivamente
+a la bitácora anterior. Los cuatro PR de producto están fusionados y no hay PR abiertos
 ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
-locales declaradas se conservan como evidencia limitada y no se presentan como CI.
-No se consultaron Hostinger, MySQL, Google Sheets, Drive, Titan o C3 directamente, no
-se ejecutaron migraciones, homologaciones de importes, ediciones/eliminaciones
-financieras, reservas, cargas de archivos ni pruebas físicas y no se publican
-credenciales, contactos, comprobantes o contenido privado del padrón.
+declaradas y los casos presentes en el código se conservan como evidencia limitada y
+no se presentan como CI.
+No se consultaron Hostinger, MySQL, Google Sheets/Drive, Titan o C3 directamente, no
+se ejecutaron migraciones, planes financieros, transferencias, reservas, cargas de
+archivos ni pruebas físicas. El cotejo de Google descrito por #434 se atribuye al PR y
+no a una lectura independiente de esta revisión. No se publican credenciales, contactos,
+comprobantes o contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 15/nov/2026
+
+El PR [#433](https://github.com/listoenlinea-labs/MisionJardines/pull/433) permite a
+Administración consultar desde cualquier fecha del calendario las reservaciones locales,
+vivienda, estado, pago, observaciones y tarjetas rojas mediante un endpoint privado sin
+caché. El endpoint público no recibe esos datos y las fechas futuras disponibles conservan
+el flujo de nueva reservación. Los días que solo existen en el histórico Google no
+adquieren una reserva MySQL; remiten al historial administrativo. No cambia sincronización,
+pagos ni estados y no se ejecutó la suite completa.
+
+Los PR [#434](https://github.com/listoenlinea-labs/MisionJardines/pull/434)–[#435](https://github.com/listoenlinea-labs/MisionJardines/pull/435)
+corrigen disponibilidad por fecha local, liberan solicitudes futuras rechazadas/canceladas,
+calculan el balance extraordinario con egresos reales en vez de la meta estimada y agregan
+un plan mensual administrativo de fuentes y egresos. El backend valida importes y fuentes,
+limita asignaciones acumuladas, usa versión y transacción; el plan no mueve dinero, no
+acredita pagos y no representa saldo bancario. #435 hace el modal adaptable, conserva el
+análisis aunque falle el plan y auto-inicializa sus tablas de forma idempotente; si el
+usuario MySQL no puede crear tablas, aún requiere el SQL manual documentado. No se
+modificó MySQL de producción ni se probó navegador real.
+
+#434 también declara un cotejo de la hoja original 2026 con $25,550 MXN en 29 filas
+`PAGADO` y una `CANCELADO` excluida. El valor queda separado de los ingresos MySQL,
+pendiente de conciliación, y no es prueba de depósito ni caja. El PR identifica siete pares
+históricos con folios de distinto prefijo para la misma vivienda/fecha, cuatro con nombre
+diferente; evita duplicados nuevos, pero no borra ni normaliza el histórico.
+
+El PR [#436](https://github.com/listoenlinea-labs/MisionJardines/pull/436) separa la
+lectura automática y de solo lectura del histórico Casa Club del OAuth de respaldos Drive
+y del interruptor de sincronización de reservas. El backend usa una cuenta de servicio,
+consulta el documento específico, valida columnas F/L, excluye cancelados, aplica caché
+de dos minutos y devuelve diagnósticos seguros sin impedir las finanzas MySQL. Requiere
+credencial configurada, API habilitada y permiso de Lector; el PR no los concede y no se
+verificó desde el backend de producción.
+
+GitHub devuelve cero runs y cero estados para los cuatro heads. #433 declara revisión
+focalizada sin suite completa. En main hay 8 casos de fuente para #434 (3 de calendario,
+balance y folios, más 5 de recomendación), 4 para #435 y 5 para #436; los PR declaran
+sintaxis y verificaciones focalizadas, pero no publican una ejecución CI ni salida completa.
+Ningún resultado acredita Hostinger, MySQL, Google Sheets/Drive en producción, navegador
+real, Titan o C3 físico.
 
 ## Implementado en main el 14/nov/2026
 
@@ -630,6 +673,9 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Detalle administrativo Casa Club | Implementado en main; privacidad y datos reales pendientes | #433 permite consultar reservas locales y tarjetas rojas por fecha solo a Administración. No cambia pagos/sincronización ni prueba datos de producción |
+| Plan mensual de fondos | Implementado y auto-inicializable; no equivale a banco | #434–#435 asignan fuentes a egresos con límites, versión y transacción; no mueven dinero. Falta MySQL, concurrencia, permisos CREATE, navegador y recuperación real |
+| Histórico Google Casa Club | Lector automático de solo lectura implementado; acceso y conciliación pendientes | #434 declara $25,550/29 pagados/1 cancelado; #436 separa la lectura de Drive y sync. No se verificaron credenciales, permisos ni backend de producción y no se suma a MySQL |
 | Historial y calendarios Casa Club | Implementado en main; Google/Drive e importes reales pendientes | #423–#427 consolidan históricos Google solo lectura, consulta privada, contadores y colores administrativos. No cambian estatus; el SQL manual de importes no se ejecutó y puede afectar KPI |
 | Tours guiados | Implementados por rol y Casa Club; dispositivos reales pendientes | #428–#429 navegan sin ejecutar operaciones y corrigen foco/menú móvil. Falta validar accesibilidad, iframes y 320 px en hosting/Android/iPhone |
 | Presupuesto y egresos pagados | Cálculos, estado y adjuntos implementados; migración y archivos reales pendientes | #430–#431 separan costo comprometido, pagado y restante; permiten adjuntar/reemplazar comprobantes privados. No alteran aportaciones ni pagos de residentes |
@@ -736,6 +782,11 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 15/nov/2026 | PR #433–#436, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 4 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
+| 15/nov/2026 | #433, revisión focalizada del detalle privado por fecha | PR declara revisión focalizada; **suite completa no ejecutada** | No prueba permisos, privacidad, MySQL ni móvil real |
+| 15/nov/2026 | #434, archivos de prueba de plan/recomendación | **8 casos presentes** (3 + 5); PR declara sintaxis y ejemplo de importes verificados, sin salida completa | No prueba migración, fondos, Sheet, Hostinger ni conciliación real |
+| 15/nov/2026 | #435, estructura UI y esquema auto-inicializable | **4 casos presentes**; PR declara sintaxis, IDs únicos y dobles de DB verificados | No prueba CREATE en Hostinger, recuperación ni navegador real |
+| 15/nov/2026 | #436, parser y lector Google automático simulado | **5 casos presentes**; PR declara sintaxis/parser comprobados | Usa cuenta/HTTP simulados; no prueba credenciales, permiso o documento en producción |
 | 14/nov/2026 | PR #423–#432, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 10 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
 | 14/nov/2026 | #423, historial Google/contadores/idempotencia | **5 pruebas específicas** declaradas correctas; sintaxis de 5 módulos | Sin Sheet privado, Hostinger ni integración real |
 | 14/nov/2026 | #426–#427, estados por rol/fecha | **11 casos** declarados verificados en cada PR | Revisión dirigida de frontend; no modifica ni verifica MySQL |
@@ -910,6 +961,9 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Detalle privado Casa Club #433 | Desplegar frontend/backend juntos y probar con datos ficticios roles 200/403, fecha válida, caché privada, reservas múltiples, vivienda faltante, tarjetas activas/históricas, modal móvil y ausencia de datos personales en API pública |
+| Plan mensual #434–#435 | Respaldar y probar en clon la auto-inicialización con/sin permiso CREATE y el SQL alternativo; validar versión 409, límites por fuente/egreso, meses, caída parcial, reintento, iPhone/escritorio y rollback. No usar el plan como evidencia bancaria ni ejecutar transferencias |
+| Histórico Google #434/#436 | Desplegar backend/frontend y reiniciar Node; verificar API, cuenta de servicio y permiso Lector sin publicar credenciales. Releer total/filas, conciliar los siete pares históricos y su banco/MySQL antes de sumar, borrar o normalizar; confirmar que Drive y sincronización siguen independientes |
 | Historial Google y Drive #423–#424 | Desplegar con sincronización aún controlada; cotejar MySQL, filas MJ/CC, contadores, K:L sin contenido ajeno, paginación 4/3 y estado Drive real. Confirmar que filas Google sigan solo lectura y no afecten ingresos |
 | Homologación de importes #424 | No ejecutar el SQL manual hasta comparar respaldo, tarifa nominal y cobros reales de cada reserva; revisar si la migración anterior ya lo hizo. Simular impacto en KPI, documentar rollback y nunca inferir dinero recibido por cambiar columnas |
 | Calendario/consulta privada #424–#427 | Validar zona America/Mexico_City, hoy, pasado por rol/estado, leyendas, modal de observaciones y firma privada. Confirmar que el público no reciba históricos ni pueda reservar fechas pasadas |
@@ -1019,6 +1073,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-15
+
+- Main consultado a las 23:33, America/Mexico_City, en `0bdfb37f4cbabf37ebea2f3b9be712c694560771`, 65 commits por delante del SHA guardado.
+- Se excluyó `684636c`, que solo actualizó esta bitácora. Como producto se verificaron cuatro PR fusionados: #433–#436; no hay PR abiertos ni revertidos nuevos.
+- Los cuatro heads devuelven cero workflows y cero estados. Se registraron como evidencia limitada la revisión focalizada de #433 y los 8, 4 y 5 casos presentes para #434, #435 y #436; no hay CI verde observable.
+- #434 declara haber cotejado $25,550 MXN en 29 filas pagadas y una cancelada de la hoja original; esta revisión no accedió a Google ni confirma depósito, conciliación, MySQL o despliegue. No hubo confirmaciones nuevas accesibles del usuario sobre DB o pruebas físicas.
+- No se consultaron ni modificaron Hostinger, MySQL, Google Sheets/Drive, Titan o C3; no se ejecutaron SQL, planes, transferencias, reservas ni pruebas físicas. Se preservaron privacidad, separación contable y pendientes de conciliación.
 
 ### 2026-11-14
 
