@@ -209,6 +209,8 @@ async function analizar(req,res){
    garantiasPorDevolver:flujoClub.garantiasPorDevolver};
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
   const pagadas=residencesOficiales.filter(h=>String(h.estatus)==='PAGADO').length; // Cumplimiento, no simples ingresos.
+  const conPagoRegistrado=residencesOficiales.filter(h=>h.pagada===true||num(h.montoPagado)>0).length;
+  const sinPagoRegistrado=residencesOficiales.length-conPagoRegistrado;
   // Desglose sin paginación ni filtros del navegador para los cuatro Excel del tablero.
   // Estos movimientos se consultaron ya para construir los mismos indicadores.
   const viviendasPorId=new Map(residences.map(h=>[String(h.casaId),h]));
@@ -278,6 +280,7 @@ async function analizar(req,res){
   return res.json({ok:true,data:{
    anio,mes,periodo:mesName+' '+anio,casaClubGoogle2026,
    casas:residencesOficiales.length,pagadas,pendientes:residencesOficiales.length-pagadas,
+   conPagoRegistrado,sinPagoRegistrado,
    porcentaje:residencesOficiales.length?Math.round(pagadas/residencesOficiales.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,proyectosExtraordinarios,
    cuotasPeriodoDetalle,pagosPeriodoDetalle,manualesConceptoPeriodoDetalle,
