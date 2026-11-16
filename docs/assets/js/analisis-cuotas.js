@@ -367,7 +367,7 @@ let expensePage=1;
    ['Presupuesto base',fmt(project.presupuestoBase)],['Costo comprometido',fmt(project.egresosComprometidos)],
    ['Gastos pagados',fmt(project.gastosPagados)],['Presupuesto restante',fmt(project.presupuestoRestante)],
    ['Fondos disponibles después de gastos',fmt(project.fondosDisponibles)],
-   ['Saldo a favor',fmt(project.saldoFavor)],['Meta alcanzada',complete],
+   ['Saldo a favor',fmt(project.saldoFavor)],['Cuotas completas',complete],
    ['Abonos parciales',partial],['Sin aportaciones',project.pendientes],
    ['No aplica',Number(project.noAplica||0)],['Casas con cuota',applied]
   ].map(([n,v])=>financialCard(n,v)).join('');
