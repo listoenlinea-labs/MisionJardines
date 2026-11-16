@@ -47,4 +47,11 @@ async function movimientosExportacion(req,res){
     fecha:x.fecha,monto:x.monto,formaPago:x.formaPago,origen:x.origen}))}});
  }catch(e){return error(res,e);}
 }
-module.exports={previsualizar,importar,crear,ajustar,ajustarProyecto,movimientosExportacion};
+async function renombrar(req,res){
+ try{
+  const data=await svc.renombrarProyecto(req.params.id,req.body,req.usuario.usuarioId);
+  res.setHeader('Cache-Control','no-store');
+  return res.json({ok:true,data,message:'Nombre actualizado; los pagos, cargos y egresos conservan sus referencias.'});
+ }catch(e){return error(res,e);}
+}
+module.exports={renombrar,previsualizar,importar,crear,ajustar,ajustarProyecto,movimientosExportacion};
