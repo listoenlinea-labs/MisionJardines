@@ -82,7 +82,7 @@
     $('financeExpenseChart').innerHTML=actual.map(e=>
      '<button type="button" class="finance-club-expense-row" data-club-expense-detail="'+Number(e.id)+'" aria-label="Ver detalle de '+esc(e.concepto)+'">'+
      bar(String(e.concepto||'Gasto'),Number(e.monto||0),highest,true,fmt(e.monto))+
-     '<small>'+(e.pagado?'Pagado':'Pendiente')+(e.comprobanteDisponible?' · Con comprobante':' · Sin comprobante')+'</small></button>'
+     '<small>'+(Number(e.pagado)?'Pagado':'Pendiente')+(e.comprobanteDisponible?' · Con comprobante':' · Sin comprobante')+'</small></button>'
     ).join('')+
      (limpiezaPendiente>0?bar('Limpieza prevista sin registrar',limpiezaPendiente,highest,true,fmt(limpiezaPendiente)):'');
     if(!actual.length&&!limpiezaPendiente)$('financeExpenseChart').textContent='Sin gastos de Casa Club registrados.';
