@@ -1754,7 +1754,7 @@ function renderHouses(){
   backupPeriod.parentElement.hidden=mode==='connect';
   backupPeriodHint.hidden=mode==='connect';
   $('financeDriveConfig').hidden=mode!=='connect';
-  $('financeBackupTitle').textContent=mode==='zip'?'Descargar todos los recibos':mode==='drive'?'Generar respaldo en Google Drive':'Conectar con Google Drive';
+  $('financeBackupTitle').textContent=mode==='zip'?'Descargar todos los recibos':mode==='drive'?'Generar respaldo en Google Drive':'Vincular Drive para respaldos';
   $('financeBackupDescription').textContent=mode==='zip'
    ?'Elige el mes para descargar los PDF de '+(activeConcept==='EXTRAORDINARIO'?'aportaciones del proyecto':'mantenimiento')+'.'
    :mode==='drive'
@@ -1819,7 +1819,7 @@ function renderHouses(){
    const state=(await request('/drive/status')).data;
    if(backupAction!=='drive'||backupModal.hidden)return;
    el.textContent=!state.connected
-    ?'Primero conecta tu cuenta Google con el botón Conectar con Google Drive.'
+    ?'Para guardar respaldos, vincula tu cuenta desde «Vincular Drive para respaldos».'
     :state.folderConfigured
      ?'Destino autorizado: Mision Jardines - Administración / 02_Recibos_PDF / 2026.'
      :'Cuenta conectada. Ahora selecciona la carpeta 02_Recibos_PDF de tu Drive para autorizarla.';
@@ -1967,7 +1967,7 @@ function renderHouses(){
     setBackupStatus('Descarga iniciada: '+count+' PDF de '+periodo+'.','success');
    }else{
     const estado=(await request('/drive/status')).data;
-    if(!estado?.connected)throw Error('Primero usa "Conectar con Google Drive" y autoriza tu cuenta.');
+    if(!estado?.connected)throw Error('Para respaldos, usa "Vincular Drive para respaldos" y autoriza tu cuenta.');
     if(!estado.folderConfigured)throw Error('Antes de respaldar pulsa "Elegir carpeta 02_Recibos_PDF".');
     const summary=await respaldarPdfDrive(periodo,backupAllMonths.checked);
     if(activeConcept==='EXTRAORDINARIO')setBackupStatus('Respaldo del proyecto terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados).','success');
