@@ -424,7 +424,7 @@ let expensePage=1;
   const en2026=Number(data.anio)===2026;
   const conectado=en2026&&historico.disponible===true;
   const resumen=[['Casas en padrón',houses],
-   ['Ingresos autorizados · mes del cargo',fmt(scope.ingresosAutorizados||0)],
+   ['Ingresos autorizados · vigentes',fmt(scope.ingresosAutorizadosVigentes||0)],
    ['Cobros verificados (MySQL)',fmt(scope.ingresos)],
    ['Egresos Casa Club',fmt(scope.egresos)]];
   if(conectado)resumen.unshift(['Recaudación histórica 2026 · Google',fmt(historico.total)]);
@@ -432,13 +432,14 @@ let expensePage=1;
   $('financialSecondary').innerHTML=[
    ['Ámbito','Casa Club · contabilidad independiente'],
    ['Diferencia de cobros verificados',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))],
-   ['Autorizado sin acreditación',fmt(scope.ingresosNoAcreditados||0)],
+   ['Autorizado del mes de cargo',fmt(scope.ingresosAutorizados||0)],
+   ['Autorizado vigente sin acreditación',fmt(scope.ingresosNoAcreditadosVigentes||0)],
    ['Google Sheets',en2026?(conectado?'Conectado automáticamente · solo lectura':'Conexión pendiente'):'Histórico disponible para 2026'],
    ...(conectado?[['Cobros históricos registrados',Number(historico.registros||0)]]:[])
   ].map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent','0%');
   $('financeDonutText').innerHTML='Club<small>Independiente</small>';
-  $('financeLegend').innerHTML='<div>Reservaciones autorizadas del período <b>'+Number(scope.aprobadas||0)+'</b></div>';
+  $('financeLegend').innerHTML='<div>Reservaciones autorizadas vigentes <b>'+Number(scope.aprobadasVigentes||0)+'</b></div>';
   $('financeStreetChart').textContent='Importe autorizado = recuperación + limpieza. La garantía no es ingreso y una autorización no confirma depósito bancario.';
   $('financePadronNote').hidden=false;
   $('financePadronNote').textContent=conectado
