@@ -424,23 +424,25 @@ let expensePage=1;
   const en2026=Number(data.anio)===2026;
   const conectado=en2026&&historico.disponible===true;
   const resumen=[['Casas en padrón',houses],
-   ['Ingresos autorizados · vigentes',fmt(scope.ingresosAutorizadosVigentes||0)],
-   ['Cobros verificados (MySQL)',fmt(scope.ingresos)],
-   ['Egresos Casa Club',fmt(scope.egresos)]];
+   ['Recuperación autorizada · vigente',fmt(scope.ingresosAutorizadosVigentes||0)],
+   ['Recuperación cobrada (MySQL)',fmt(scope.ingresos)],
+   ['Limpieza y otros egresos',fmt(scope.egresos)]];
   if(conectado)resumen.unshift(['Recaudación histórica 2026 · Google',fmt(historico.total)]);
   $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
   $('financialSecondary').innerHTML=[
    ['Ámbito','Casa Club · contabilidad independiente'],
    ['Diferencia de cobros verificados',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))],
-   ['Autorizado del mes de cargo',fmt(scope.ingresosAutorizados||0)],
-   ['Autorizado vigente sin acreditación',fmt(scope.ingresosNoAcreditadosVigentes||0)],
+   ['Recuperación autorizada del mes',fmt(scope.ingresosAutorizados||0)],
+   ['Recuperación aún sin acreditar',fmt(scope.ingresosNoAcreditadosVigentes||0)],
    ['Google Sheets',en2026?(conectado?'Conectado automáticamente · solo lectura':'Conexión pendiente'):'Histórico disponible para 2026'],
+   ['Limpieza comprometida · autorizadas',fmt(scope.limpiezaComprometidaVigente||0)],
+   ['Garantías reembolsables · autorizadas',fmt(scope.garantiasComprometidasVigentes||0)],
    ...(conectado?[['Cobros históricos registrados',Number(historico.registros||0)]]:[])
   ].map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent','0%');
   $('financeDonutText').innerHTML='Club<small>Independiente</small>';
   $('financeLegend').innerHTML='<div>Reservaciones autorizadas vigentes <b>'+Number(scope.aprobadasVigentes||0)+'</b></div>';
-  $('financeStreetChart').textContent='Importe autorizado = recuperación + limpieza. La garantía no es ingreso y una autorización no confirma depósito bancario.';
+  $('financeStreetChart').textContent='Solo recuperación es ingreso. Limpieza se reserva para pagar el servicio; los depósitos de garantía se mantienen para posibles devoluciones.';
   $('financePadronNote').hidden=false;
   $('financePadronNote').textContent=conectado
    ?'Google Sheets conectado automáticamente: '+Number(historico.registros||0)+
@@ -453,7 +455,7 @@ let expensePage=1;
       ' No necesitas usar el botón de respaldos de Drive.'
     :'El histórico de Casa Club se consulta automáticamente para 2026.';
   // La aprobación es crédito de visualización, no un movimiento bancario.
-  $('financeConceptHint').textContent='Casa Club: las solicitudes APROBADAS aparecen como PAGADO en esta consulta administrativa. Los importes autorizados no son depósitos verificados. La garantía es reembolsable.';
+  $('financeConceptHint').textContent='Casa Club: PAGADO por autorización administrativa es un estado de gestión. Solo la cuota de recuperación cuenta como ingreso, la limpieza es un costo previsto y la garantía es reembolsable. El pago bancario se confirma por separado.';
   updateFinanceConnections();
   document.querySelector('#financeCompliancePanel h2').textContent='Actividad de Casa Club';
   document.querySelector('#financeStreetPanel h2').textContent='Movimientos de Casa Club';
@@ -981,8 +983,9 @@ function renderHouses(){
   const clubApprovalBadge=h=>activeConcept==='CASA_CLUB'&&h.autorizacionSinAcreditar&&String(h.estatus)==='PAGADO'
    ?'<small class="finance-club-approval-note" title="Aprobada por administración; no significa comprobante bancario validado">Autorización administrativa · pendiente de conciliar</small>':'';
   const clubApprovedAmount=h=>Number(h.montoAutorizado||0)>0
-   ?fmt(h.montoAutorizado)+' (autorizado)'
-   :Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos';
+   ?fmt(h.montoAutorizado)+' · recuperación autorizada'
+   :Number(h.ultimoPago?.monto||0)>0
+    ?fmt(h.montoAutorizado||0)+' · recuperación (consultar cobro)':'Sin recuperación autorizada';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',residentCell(h))+
