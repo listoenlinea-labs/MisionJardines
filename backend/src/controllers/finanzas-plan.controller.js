@@ -3,6 +3,7 @@
 const db=require('../config/database');
 const {QueryTypes,Transaction,Op}=require('sequelize');
 const Egreso=require('../models/Egreso');
+const {asegurarPlanes}=require('../services/finanzas-planes-schema.service');
 const finanzas=require('./finanzas.controller');
 const fail=(status,message)=>Object.assign(Error(message),{status});
 const validPeriodo=x=>typeof x==='string'&&/^(20[2-9][0-9])-(0[1-9]|1[0-2])$/.test(x);
