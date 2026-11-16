@@ -400,6 +400,7 @@ let expensePage=1;
  function updateFinanceConnections(){
   const sheets=$('financeSheetsState');
   sheets.hidden=activeConcept!=='CASA_CLUB';
+  if(sheets.parentElement)sheets.parentElement.hidden=sheets.hidden;
   if(sheets.hidden)return;
   const historical=data?.casaClubGoogle2026,year=Number(data?.anio);
   const sheetsConnected=year===2026&&historical?.disponible===true;
