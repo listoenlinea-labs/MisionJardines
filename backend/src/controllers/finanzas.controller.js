@@ -13,6 +13,7 @@ const {referenciaEgreso}=require('../services/egreso-referencia.service');
 const {validarCambio,categoriasEquivalentes,prepararAjuste,esAjuste}=require('../services/ajuste-egresos-mensuales.service');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
 const googleCasaClubClient=require('../services/casa-club-google-client.service');
+const {conciliarMovimientos}=require('../services/casa-club-historico-viviendas.service');
 const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
 const {resumenAutorizaciones}=require('../services/casa-club-autorizaciones-finanzas.service');
@@ -229,7 +230,21 @@ async function analizar(req,res){
   // Los cobros históricos Google no son nuevos ingresos bancarios.
   let casaClubGoogle2026={disponible:false,codigo:'FUERA_DE_PERIODO',total:0,registros:0};
   if(anio===2026){
-   try{casaClubGoogle2026=await googleCasaClubClient.readPagos2026();}
+   try{
+    const historical=await googleCasaClubClient.readPagos2026();
+    const {movimientos,...base}=historical;
+    const matched=conciliarMovimientos(movimientos||[],padron.casas,historical.excluidos||0);
+    casaClubGoogle2026={...base,...matched};
+    // Sólo una vista de consulta: NO se toca el estatus en MySQL, ni se
+    // considera el histórico como nuevo depósito del período.
+    for(const row of viviendasConceptos.CASA_CLUB){
+     const paid=matched.porCasa[String(row.casaId)];
+     row.recuperacionHistoricaGoogle=paid?.monto||0;
+     row.recuperacionesHistoricasGoogle=paid?.cantidad||0;
+     row.movimientosHistoricosGoogle=paid?.registros||[];
+     if(paid?.monto>0&&row.estatus==='SIN CARGOS')row.estatus='PAGADO';
+    }
+   }
    catch(e){
     const allowed=new Set(['CREDENCIALES_PENDIENTES','CREDENCIALES_INVALIDAS',
      'SIN_PERMISO','RANGO_INVALIDO','COLUMNAS_INVALIDAS','ID_INVALIDO','GOOGLE_NO_DISPONIBLE']);
