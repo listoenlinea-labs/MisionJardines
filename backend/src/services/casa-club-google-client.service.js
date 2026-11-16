@@ -114,49 +114,45 @@ async function updateSummary(summary){
 }
 // Histórico económico de la pestaña original, de solo lectura. No acredita depósitos.
 let historialCache=null,historialPendiente=null;
+function resumenPagos2026(rows){
+ const encabezado=rows?.[1]||[];
+ const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+ if(!normalize(encabezado[5]).includes('PAGO RECUPERACION')||
+    !normalize(encabezado[11]).includes('ESTATUS PAGO')){
+  const e=new Error('El histórico Casa Club no contiene las columnas esperadas F y L');
+  e.code='COLUMNAS_INVALIDAS';throw e;
+ }
+ const meses=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+  'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+ let centavos=0,registros=0,excluidos=0;
+ const porMesEvento={};
+ for(const row of rows.slice(2)){
+  const status=normalize(row[11]);
+  if(status==='CANCELADO'){excluidos++;continue;}
+  if(status!=='PAGADO')continue;
+  const texto=String(row[5]??'').replace(/[^\d.,-]/g,'').replace(/,/g,'');
+  const monto=Number(texto);
+  if(!Number.isFinite(monto)||monto<=0)continue;
+  const value=Math.round(monto*100);
+  centavos+=value;registros++;
+  const mes=meses.indexOf(normalize(row[3]))+1;
+  if(mes)porMesEvento[String(mes).padStart(2,'0')]=
+   (porMesEvento[String(mes).padStart(2,'0')]||0)+value/100;
+ }
+ return {disponible:true,codigo:'CONECTADO',total:centavos/100,registros,
+  excluidos,porMesEvento,origen:'Google Sheets · MISION JARDINES 2026',
+  conciliado:false,actualizadoEn:new Date().toISOString()};
+}
 async function readPagos2026(){
- // La cuenta de servicio de solo lectura existente es el primer origen de consulta.
- // No es necesario activar escrituras ni la sincronización bidireccional.
- const readOnlyConfigured=Boolean(process.env.GOOGLE_SHEETS_SPREADSHEET_ID&&
-  process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON_BASE64);
- if(!readOnlyConfigured&&!enabled())return {disponible:false,total:0,registros:0,porMesEvento:{}};
+ // No depende de CASA_CLUB_GOOGLE_SYNC_ENABLED, Drive OAuth ni clicks.
  if(historialCache&&Date.now()-historialCache.at<120000)return historialCache.data;
  if(historialPendiente)return historialPendiente;
  historialPendiente=(async()=>{
-  let rows=[];
-  if(readOnlyConfigured){
-   rows=await require('./google-sheets.service').readCasaClub2026();
-  }else{
-   const location=encodeURIComponent("'MISION JARDINES 2026'!A1:L1000");
-   const response=await query('GET','/values/'+location+'?valueRenderOption=FORMATTED_VALUE');
-   rows=response.values||[];
-  }
-  const header=rows[1]||[];
-  if(!String(header[5]||'').toUpperCase().includes('PAGO RECUPERACI')||
-     !String(header[11]||'').toUpperCase().includes('ESTATUS PAGO'))
-   throw Error('La hoja económica Casa Club cambió sus columnas F/L');
-  const meses=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
-   'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-  let centavos=0,registros=0,excluidos=0;
-  const porMesEvento={};
-  for(const row of rows.slice(2)){
-   const estatus=String(row[11]||'').trim().toUpperCase();
-   if(estatus==='CANCELADO'){excluidos++;continue;}
-   if(estatus!=='PAGADO')continue;
-   const texto=String(row[5]??'').replace(/[^\d.,-]/g,'').replace(/,/g,'');
-   const monto=Number(texto);
-   if(!Number.isFinite(monto)||monto<=0)continue;
-   const value=Math.round(monto*100);
-   centavos+=value;registros++;
-   // MES corresponde a la fecha del evento, no a la fecha del depósito.
-   const nombre=String(row[3]||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
-   const mes=meses.indexOf(nombre)+1;
-   if(mes)porMesEvento[String(mes).padStart(2,'0')]=(porMesEvento[String(mes).padStart(2,'0')]||0)+value/100;
-  }
-  const data={disponible:true,total:centavos/100,registros,excluidos,porMesEvento,
-   origen:'Google Sheets · MISION JARDINES 2026',conciliado:false};
-  historialCache={at:Date.now(),data};return data;
+  const rows=await require('./google-sheets.service').readCasaClub2026();
+  const data=resumenPagos2026(rows);
+  historialCache={at:Date.now(),data};
+  return data;
  })();
  try{return await historialPendiente;}finally{historialPendiente=null;}
 }
-module.exports={enabled,config,read,append,updateSummary,readPagos2026};
+module.exports={enabled,config,read,append,updateSummary,readPagos2026,resumenPagos2026};
