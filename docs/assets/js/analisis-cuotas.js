@@ -394,21 +394,22 @@ let expensePage=1;
   const en2026=Number(data.anio)===2026;
   const conectado=en2026&&historico.disponible===true;
   const resumen=[['Casas en padrón',houses],
-   ['Reservas pagadas en MySQL',Number(scope.reservasPagadas||0)],
-   ['Ingresos Casa Club (MySQL)',fmt(scope.ingresos)],
+   ['Ingresos autorizados · mes del cargo',fmt(scope.ingresosAutorizados||0)],
+   ['Cobros verificados (MySQL)',fmt(scope.ingresos)],
    ['Egresos Casa Club',fmt(scope.egresos)]];
   if(conectado)resumen.unshift(['Recaudación histórica 2026 · Google',fmt(historico.total)]);
   $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
   $('financialSecondary').innerHTML=[
    ['Ámbito','Casa Club · contabilidad independiente'],
-   ['Diferencia MySQL',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))],
+   ['Diferencia de cobros verificados',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))],
+   ['Autorizado sin acreditación',fmt(scope.ingresosNoAcreditados||0)],
    ['Google Sheets',en2026?(conectado?'Conectado automáticamente · solo lectura':'Conexión pendiente'):'Histórico disponible para 2026'],
    ...(conectado?[['Cobros históricos registrados',Number(historico.registros||0)]]:[])
   ].map(([n,v])=>financialCard(n,v)).join('');
   $('financeDonut').style.setProperty('--percent','0%');
   $('financeDonutText').innerHTML='Club<small>Independiente</small>';
-  $('financeLegend').innerHTML='<div>Reservas pagadas en MySQL <b>'+Number(scope.reservasPagadas||0)+'</b></div>';
-  $('financeStreetChart').textContent='Los cobros de Casa Club no son mantenimiento ni proyectos.';
+  $('financeLegend').innerHTML='<div>Reservaciones autorizadas del período <b>'+Number(scope.aprobadas||0)+'</b></div>';
+  $('financeStreetChart').textContent='Importe autorizado = recuperación + limpieza. La garantía no es ingreso y una autorización no confirma depósito bancario.';
   $('financePadronNote').hidden=false;
   $('financePadronNote').textContent=conectado
    ?'Google Sheets conectado automáticamente: '+Number(historico.registros||0)+
@@ -420,6 +421,9 @@ let expensePage=1;
       'No hay información del histórico. Verifica los permisos de la cuenta de servicio en Hostinger.')+
       ' No necesitas usar el botón de respaldos de Drive.'
     :'El histórico de Casa Club se consulta automáticamente para 2026.';
+  // La aprobación es crédito de visualización, no un movimiento bancario.
+  $('financeConceptHint').textContent='Casa Club: las solicitudes APROBADAS aparecen como PAGADO en esta consulta administrativa. Los importes autorizados no son depósitos verificados. La garantía es reembolsable.';
+  updateFinanceConnections();
   document.querySelector('#financeCompliancePanel h2').textContent='Actividad de Casa Club';
   document.querySelector('#financeStreetPanel h2').textContent='Movimientos de Casa Club';
  }
@@ -942,6 +946,10 @@ function renderHouses(){
        : 'Vivienda seleccionada: '+selected.calle+' '+selected.numero+' · '+(selected.nombre||'Sin residente'))
     : 'Selecciona una sola vivienda para generar el recibo de su último pago registrado.';
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
+  const clubApprovalBadge=h=>activeConcept==='CASA_CLUB'&&h.autorizacionSinAcreditar&&String(h.estatus)==='PAGADO'
+   ?'<small class="finance-club-approval-note" title="Aprobada por administración; no significa comprobante bancario validado">Autorización administrativa · pendiente de conciliar</small>':'';
+  const clubApprovedAmount=h=>activeConcept==='CASA_CLUB'&&Number(h.montoAutorizado||0)>0
+   ?fmt(h.montoAutorizado)+' (autorizado)':'Sin pagos';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',residentCell(h))+
@@ -949,10 +957,11 @@ function renderHouses(){
       ?'<span class="house-abono-debt-tag" title="Tiene un pago registrado y todavía conserva adeudos pendientes">Abono con adeudo</span>'
       :'<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
-       :h.estatus)+'</span>')+
+       :h.estatus)+'</span>'+clubApprovalBadge(h))+
     houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)?' is-no-aplica':h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?(isProjectNoAplica(h)?'No aplica':Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
-       :(Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos'))+'</strong></button>')+
+       :(activeConcept==='CASA_CLUB'?clubApprovedAmount(h):
+         (Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos')))+'</strong></button>')+
     houseCell('Último mes pagado',activeConcept==='EXTRAORDINARIO'&&activeProyectoId
      ?esc(isProjectNoAplica(h)?'No aplica':h.ultimoPago?.fecha?displayDate(h.ultimoPago.fecha):'Sin abono')
      :h.ultimoMesPagado?.pagoAnual?
