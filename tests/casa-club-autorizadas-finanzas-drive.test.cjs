@@ -20,7 +20,9 @@ test('APROBADA sin comprobante muestra PAGADO con marca administrativa pero sin 
  const x=detail([reserva(1)]);
  assert.equal(x.estatus,'PAGADO');
  assert.equal(x.saldoPendiente,0);
- assert.equal(x.montoAutorizado,2000);
+ assert.equal(x.montoAutorizado,1000);
+ assert.equal(x.limpiezaAsignada,300);
+ assert.equal(x.garantiaReembolsable,700);
  assert.equal(x.autorizacionSinAcreditar,true);
  assert.equal(x.montoPagado,0);
 });
@@ -28,19 +30,22 @@ test('el mes de autorización permite visualizar futura reserva, sin adelantar e
  const r=reserva(2);
  assert.equal(detail([r],11).estatus,'PAGADO');
  const totals=resumenAutorizaciones({reservas:[r],anio:2026,mes:11});
- assert.equal(totals.ingresosAutorizadosVigentes,1300);
+ assert.equal(totals.ingresosAutorizadosVigentes,1000);
+ assert.equal(totals.limpiezaComprometidaVigente,300);
  assert.equal(totals.ingresosAutorizados,0);
- assert.equal(totals.ingresosNoAcreditadosVigentes,1300);
+ assert.equal(totals.ingresosNoAcreditadosVigentes,1000);
  assert.equal(totals.garantiasComprometidasVigentes,700);
  const dec=resumenAutorizaciones({reservas:[r],anio:2026,mes:12});
- assert.equal(dec.ingresosAutorizados,1300);
+ assert.equal(dec.ingresosAutorizados,1000);
+ assert.equal(dec.limpiezaAutorizada,300);
  assert.equal(dec.aprobadas,1);
 });
 test('no duplicar reservas, excluir rechazadas y no sumar garantías como ingresos',()=>{
  const r=reserva(7,{fecha:'2026-11-22',fechaLimitePago:'2026-11-21'});
  const totals=resumenAutorizaciones({reservas:[r,r,reserva(8,{estatus:'RECHAZADA'})],anio:2026,mes:11});
  assert.equal(totals.aprobadasVigentes,1);
- assert.equal(totals.ingresosAutorizadosVigentes,1300);
+ assert.equal(totals.ingresosAutorizadosVigentes,1000);
+ assert.equal(totals.limpiezaComprometidaVigente,300);
  assert.equal(totals.garantiasComprometidasVigentes,700);
 });
 test('un pago verificado permanece separado de la autorización visual',()=>{
@@ -49,7 +54,7 @@ test('un pago verificado permanece separado de la autorización visual',()=>{
  assert.equal(row.montoPagado,2000);
  assert.equal(row.autorizacionSinAcreditar,false);
  const totals=resumenAutorizaciones({reservas:[r],anio:2026,mes:11});
- assert.equal(totals.ingresosConAcreditacion,1300);
+ assert.equal(totals.ingresosConAcreditacion,1000);
  assert.equal(totals.ingresosNoAcreditados,0);
 });
 test('sin el flag, se conserva el criterio original de pago bancario',()=>{
@@ -61,11 +66,11 @@ test('UI elimina la tarjeta antigua, muestra fuentes diferenciadas y estado Driv
  const html=fs.readFileSync(path.join(__dirname,'../docs/analisis-cuotas.html'),'utf8');
  const chart=fs.readFileSync(path.join(__dirname,'../docs/assets/js/finanzas-ambitos-vista.js'),'utf8');
  assert.doesNotMatch(js,/Reservas pagadas en MySQL/);
- assert.match(js,/Ingresos autorizados · vigentes/);
- assert.match(js,/Cobros verificados \(MySQL\)/);
+ assert.match(js,/Recuperación autorizada · vigente/);
+ assert.match(js,/Recuperación cobrada \(MySQL\)/);
  assert.match(js,/Google Drive · respaldos:/);
  assert.match(js,/mj_casa_club_aprobacion_revision/);
  assert.match(html,/id="financeSheetsState"/);
  assert.match(html,/id="financeDriveState"/);
- assert.match(chart,/Autorizado · pendiente de conciliación/);
+ assert.match(chart,/Recuperación autorizada/);
 });
