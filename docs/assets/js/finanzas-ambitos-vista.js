@@ -124,10 +124,11 @@
   $('financeProjectExpenseSummary').hidden=!project;
   if(project){
    const totals=root.MJCostosProyecto?.resumen(project);
-   $('financeProjectExpenseSummary').textContent='Presupuesto: '+fmt(totals?.presupuesto??project.presupuestoBase)+
+   $('financeProjectExpenseSummary').textContent='Meta estimada: '+fmt(totals?.presupuesto??project.presupuestoBase)+
+    ' · Egresos reales: '+fmt(totals?.gastosReales??project.egresosReales??0)+
     ' · Pagado: '+fmt(totals?.pagados??project.gastosPagados??0)+
-    ' · Pendiente: '+fmt(totals?.presupuestoRestante??project.presupuestoRestante??0)+
-    ' · Costo comprometido: '+fmt(totals?.costoComprometido??project.egresosComprometidos);
+    ' · Por pagar (conceptos): '+fmt(totals?.pendientes??project.gastosPendientes??0)+
+    ' · Resta para meta: '+fmt(Math.max(0,Number(totals?.presupuesto??project.presupuestoBase??0)-Number(totals?.gastosReales??project.egresosReales??0)));
   }
   const balance=project?root.MJFinanceBalance?.proyecto(project):
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
