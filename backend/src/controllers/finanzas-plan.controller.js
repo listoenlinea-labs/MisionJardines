@@ -35,12 +35,13 @@ async function leerPlanes(options={}){
 const error=(res,e)=>{
  if(!e.status)console.error('[Finanzas plan]',e);
  return res.status(e.status||503).json({ok:false,message:e.status?e.message:
-  'El plan no está disponible; verifica que se haya aplicado la migración SQL.'});
+  'La base no pudo preparar el plan. Verifica permisos de tablas en MySQL Hostinger y reinicia el backend.'});
 };
 async function consultar(req,res){
  try{
   const periodo=String(req.query.periodo||'');
   if(!validPeriodo(periodo))throw fail(400,'Elige un periodo YYYY-MM válido');
+  await asegurarPlanes();
   const planes=await leerPlanes();
   const plan=planes.find(p=>p.periodo===periodo);
   res.setHeader('Cache-Control','no-store');
@@ -66,6 +67,7 @@ async function guardar(req,res){
     throw fail(400,'Cada asignación requiere egreso, fuente, periodo e importe válido');
    return {egresoId,origen,origenPeriodo,monto};
   });
+  await asegurarPlanes();
   const ids=[...new Set(clean.map(x=>x.egresoId))];
   const gastos=ids.length?await Egreso.findAll({where:{id:{[Op.in]:ids}},attributes:['id','fecha','monto','ambito','proyectoId']}):[];
   const gastosById=new Map(gastos.map(g=>[Number(g.id),g]));
