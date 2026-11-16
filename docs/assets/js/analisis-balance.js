@@ -16,10 +16,7 @@
    diferencia:diff/100,estado:clasificar(diff),
    criterio:'Cuotas del mes cubierto menos egresos del mismo mes, únicamente de mantenimiento; no representa el saldo bancario.'};
  }
- // En la tarjeta central el balance es presupuestario: ingreso acumulado
- // menos costo total comprometido, sin descontar pagos ya registrados de
- // ninguno de los dos lados. La tarjeta de Egresos muestra por separado
- // cuánto queda realmente por pagar.
+ // El saldo compara aportaciones con conceptos reales, no contra la meta estimada.
  function proyecto(project){
   if(!project)return null;
   const income=centavos(project.recaudado);
