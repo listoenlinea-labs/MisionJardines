@@ -9,7 +9,7 @@
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const labelMonth=p=>months[Number(p.slice(5))-1]+' '+p.slice(0,4);
  const validMonth=p=>/^20\d\d-(0[1-9]|1[0-2])$/.test(p);
- let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false;
+ let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0;
  const panel=$('fplanSources'),expenses=$('fplanExpenses'),notice=$('fplanStatus');
  function msg(text,error=false){notice.textContent=text;notice.dataset.error=error?'true':'false';}
  async function api(path,options={}){
@@ -24,6 +24,31 @@
  async function getAnalysis(p){
   const [y,m]=p.split('-');const r=await api('/analisis?anio='+y+'&mes='+Number(m));
   return r.data;
+ }
+ function monthStep(p,delta){
+  const [year,month]=String(p||'').split('-').map(Number);
+  if(!Number.isInteger(year)||!Number.isInteger(month)||month<1||month>12)return '2026-11';
+  const d=new Date(Date.UTC(year,month-1+delta,1));
+  return d.toISOString().slice(0,7);
+ }
+ function sourceMonthOptions(preferred){
+  const sel=$('fplanSourceMonth'),values=[];
+  for(let p=period,count=0;validMonth(p)&&p>='2026-01'&&count<60;count++,p=monthStep(p,-1))values.push(p);
+  sel.replaceChildren(...values.map(p=>{
+   const o=document.createElement('option');o.value=p;o.textContent=labelMonth(p);return o;
+  }));
+  sourceMonth=values.includes(preferred)?preferred:period;
+  sel.value=sourceMonth;
+ }
+ function loadAlert(title,message){
+  $('fplanLoadTitle').textContent=title;
+  $('fplanLoadMessage').textContent=message;
+  $('fplanLoadNotice').hidden=false;
+ }
+ function clearAlert(){$('fplanLoadNotice').hidden=true;}
+ function actionState(){
+  $('fplanSave').disabled=!planReady||loading;
+  $('fplanRecommend').disabled=!planReady||loading||!target;
  }
  function currentUsed(source){
   const all=allPlans.filter(x=>x.periodo!==period).flatMap(x=>x.asignaciones||[]).concat(assignments);
@@ -58,7 +83,12 @@
  }
  function spend(id){return assignments.filter(x=>x.egresoId===id).reduce((s,x)=>s+Number(x.monto||0),0);}
  function render(){
-  if(!target)return;
+  if(!target){
+   panel.innerHTML='<p class="fplan-empty">No hay ingresos disponibles para mostrar.</p>';
+   expenses.innerHTML='<p class="fplan-empty">No se pudieron cargar los egresos.</p>';
+   $('fplanOverview').replaceChildren();
+   return;
+  }
   const sources=pools(),rows=expenseRows();
   const order=$('fplanIncomeSort').value;
   sources.sort((a,b)=>order==='asc'?a.total-b.total:order==='name'?a.name.localeCompare(b.name,'es'):b.total-a.total);
@@ -70,8 +100,8 @@
      '<article class="fplan-bucket" draggable="true" tabindex="0" data-source="'+esc(x.id)+'" aria-label="Arrastra este dinero a un egreso">'+
      '<span class="fplan-number">'+money(x.free)+'</span><strong>'+esc(x.name)+'</strong>'+
      '<span>Fuente '+money(x.total)+' · Asignado '+money(x.used)+'</span>'+
-     '<div><button type="button" data-pick="'+esc(x.id)+'">Usar esta fuente</button></div></article>').join(''):
-    '<p class="fplan-empty">Sin fondos registrados</p>');
+     '<div><button type="button" data-pick="'+esc(x.id)+'"'+(planReady?'':' disabled')+'>Asignar fondos</button></div></article>').join(''):
+    '<p class="fplan-empty">Sin fondos registrados en este origen.</p>');
   }).join('');
   const query=$('fplanSearch').value.trim().toLocaleLowerCase('es');
   let visible=rows.filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo).toLocaleLowerCase('es').includes(query));
@@ -93,15 +123,15 @@
       attached.map(a=>'<span class="fplan-allocation">'+esc(a.origen.replace('PROYECTO:','Proyecto #'))+
        ' ('+esc(a.origenPeriodo)+') '+money(a.monto)+
        '<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join('')+
-      '<div><button type="button" data-choose="'+x.id+'">Asignar fondos</button></div></article>';
+      '<div><button type="button" data-choose="'+x.id+'"'+(planReady?'':' disabled')+'>Asignar fondos</button></div></article>';
     }).join('');
-  }).join('')||'<p class="fplan-empty">Sin egresos que coincidan con los filtros.</p>';
+  }).join('')||'<p class="fplan-empty">No hay egresos registrados para este mes o filtro.</p>';
   const totalByGroup=grouped.map(group=>sources.filter(s=>s.tipo===group).reduce((t,s)=>t+s.free,0));
   const total=totalByGroup.reduce((s,n)=>s+n,0);
   const totalUnassigned=rows.reduce((n,e)=>n+Math.max(0,e.monto-spend(e.id)),0);
   const labels=['Mantenimiento','Cuotas extraordinarias','Casa Club'];
   $('fplanOverview').innerHTML=totalByGroup.map((n,i)=>'<div class="fplan-kpi"><small>Sin asignar · '+labels[i]+'</small><strong>'+money(n)+'</strong></div>').join('')+
-   '<div class="fplan-kpi" data-tone="total"><small>Fondos no asignados en el plan (no bancario)</small><strong>'+money(total)+'</strong></div>';
+   '<div class="fplan-kpi" data-tone="total"><small>'+(planReady?'Total aún sin asignar':'Ingresos reportados (no conciliados)')+'</small><strong>'+money(total)+'</strong></div>';
   const pendientes=rows.filter(x=>!x.pagado).reduce((t,x)=>t+x.monto,0);
   $('fplanExpenseTotal').textContent='Egresos registrados '+money(rows.reduce((t,x)=>t+x.monto,0))+
    ' · Pendientes de pago '+money(pendientes)+' · Sin financiación asignada '+money(totalUnassigned);
@@ -120,7 +150,7 @@
  }
  function showRecommendation(){
   const engine=window.MJFinanceRecommendation;
-  if(!engine?.recommend||!target||loading){
+  if(!engine?.recommend||!target||loading||!planReady){
    msg('Primero carga la información financiera del mes.',true);return;
   }
   recommendation=engine.recommend({
@@ -158,10 +188,12 @@
   msg('Recomendación calculada. Revisa cada motivo antes de aplicarla al borrador.');
  }
  function chooseSource(id){
+  if(!planReady){msg('El plan está en modo consulta. Reintenta la carga para asignar dinero.',true);return;}
   selectedSource=pools().find(x=>x.id===id);
   msg(selectedSource?'Fuente seleccionada: '+selectedSource.name+'. Selecciona el egreso que deseas cubrir.':'Fuente no disponible',!selectedSource);
  }
  function chooseExpense(id){
+  if(!planReady){msg('El plan está en modo consulta. Reintenta la carga para asignar dinero.',true);return;}
   const row=expenseRows().find(x=>x.id===id);
   if(!row)return;
   const source=selectedSource||pools().find(x=>x.free>0);
@@ -175,33 +207,73 @@
   $('fplanAllocator').hidden=false;$('fplanAmount').focus();
  }
  async function loadSource(){
-  hideRecommendation();
-  const p=$('fplanSourceMonth').value;
-  if(!validMonth(p)||p>period){msg('El origen debe ser el mes actual del plan o uno anterior.',true);return;}
-  sourceMonth=p;origin=p===period?target:await getAnalysis(p);selectedSource=null;render();
+  const requested=$('fplanSourceMonth').value;
+  if(!validMonth(requested)||requested>period){msg('Selecciona un mes de origen válido, igual o anterior al plan.',true);return;}
+  const previous=sourceMonth;
+  hideRecommendation();selectedSource=null;
+  try{
+   const nextOrigin=requested===period?target:await getAnalysis(requested);
+   sourceMonth=requested;origin=nextOrigin;render();
+   msg('Origen actualizado: '+labelMonth(sourceMonth)+'. Puedes combinarlo con los gastos del plan '+labelMonth(period)+'.');
+  }catch(e){
+   $('fplanSourceMonth').value=previous;
+   msg('No fue posible leer los fondos de '+labelMonth(requested)+': '+e.message,true);
+  }
  }
  async function load(){
-  hideRecommendation();
-  if(loading)return;loading=true;
-  msg('Consultando ingresos, egresos y planes guardados...');
+  const myRequest=++requestIndex;
+  loading=true;planReady=false;hideRecommendation();actionState();clearAlert();
+  selectedSource=null;editorExpense=null;$('fplanAllocator').hidden=true;
+  const chosen=$('fplanTargetMonth').value;
+  if(!validMonth(chosen)){msg('Selecciona un periodo válido.',true);loading=false;actionState();return;}
+  period=chosen;
+  const lastSource=sourceMonth||period;
+  sourceMonthOptions(lastSource>period?period:lastSource);
+  target=null;origin=null;assignments=[];allPlans=[];notes='';version=0;
+  panel.innerHTML='<p class="fplan-empty">Consultando fuentes de ingresos…</p>';
+  expenses.innerHTML='<p class="fplan-empty">Consultando egresos por concepto…</p>';
+  $('fplanOverview').replaceChildren();
+  msg('Cargando información del plan y movimientos…');
   try{
-   const selected=$('fplanTargetMonth').value;
-   if(!validMonth(selected))throw Error('Selecciona un mes válido');
-   period=selected;$('fplanSourceMonth').max=period;
-   if(!$('fplanSourceMonth').value||$('fplanSourceMonth').value>period)
-    $('fplanSourceMonth').value=period;
-   sourceMonth=$('fplanSourceMonth').value;
-   const results=await Promise.all([getAnalysis(period),
-    api('/plan-mensual?periodo='+encodeURIComponent(period))]);
-   target=results[0];version=Number(results[1].version||0);
-   assignments=(results[1].asignaciones||[]).map(x=>({...x}));
-   allPlans=results[1].planes||[];notes=results[1].observaciones||'';
-   $('fplanNotes').value=notes;
-   origin=sourceMonth===period?target:await getAnalysis(sourceMonth);
-   selectedSource=null;editorExpense=null;$('fplanAllocator').hidden=true;
-   render();msg('Plan '+labelMonth(period)+' listo. Las asignaciones no realizan transferencias bancarias.');
-  }catch(e){msg(e.message,true);}
-  finally{loading=false;}
+   // La consulta contable no depende de que la tabla de planes esté creada.
+   const result=await Promise.allSettled([
+    getAnalysis(period),api('/plan-mensual?periodo='+encodeURIComponent(period))
+   ]);
+   if(myRequest!==requestIndex)return;
+   if(result[0].status!=='fulfilled'){
+    loadAlert('No se pudo consultar el análisis de cuotas',String(result[0].reason?.message||'Error del servidor'));
+    msg('No hay movimientos disponibles para el mes solicitado.',true);
+    render();return;
+   }
+   target=result[0].value;
+   if(result[1].status==='fulfilled'){
+    const plan=result[1].value;
+    planReady=true;version=Number(plan.version||0);
+    assignments=(plan.asignaciones||[]).map(x=>({...x}));
+    allPlans=plan.planes||[];notes=plan.observaciones||'';
+    $('fplanNotes').value=notes;
+   }else{
+    planReady=false;
+    $('fplanNotes').value='';
+    loadAlert('Los movimientos están disponibles, pero no el plan guardado',
+     'No se pudieron consultar las asignaciones existentes. '+String(result[1].reason?.message||'')+
+     ' Reinicia el backend actualizado para crear las tablas automáticamente; si faltan permisos de MySQL, ejecuta la migración SQL incluida en el repositorio.');
+   }
+   try{origin=sourceMonth===period?target:await getAnalysis(sourceMonth);}
+   catch(e){
+    if(myRequest!==requestIndex)return;
+    origin=target;sourceMonthOptions(period);
+    msg('No se encontró el mes de origen solicitado; se muestran los datos del mes del plan.',true);
+   }
+   if(myRequest!==requestIndex)return;
+   render();
+   if(planReady)msg('Plan de '+labelMonth(period)+' cargado. Selecciona una fuente y después el egreso.');
+   else msg('Vista de consulta: los movimientos se muestran, pero asignar y guardar requiere conexión con el plan.',true);
+  }catch(e){
+   if(myRequest===requestIndex){loadAlert('Error al cargar el plan',e.message);msg('Revisa la conexión con el servidor.',true);}
+  }finally{
+   if(myRequest===requestIndex){loading=false;actionState();}
+  }
  }
  $('fplanRecommend').addEventListener('click',showRecommendation);
  $('fplanRecommendationClose').addEventListener('click',hideRecommendation);
@@ -218,9 +290,20 @@
   const year=Number($('financeYear')?.value),month=Number($('financeMonth')?.value);
   const current=year>=2020&&month>=1&&month<=12?year+'-'+String(month).padStart(2,'0'):
    new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit'}).format(new Date());
-  $('fplanTargetMonth').value=current;$('fplanSourceMonth').value=current;dialog.showModal();
-  void load();
+  sourceMonth=current;$('fplanTargetMonth').value=current;
+  dialog.showModal();void load();
  });
+ $('fplanPrevMonth').addEventListener('click',()=>{
+  const next=monthStep($('fplanTargetMonth').value,-1);
+  if(next<'2026-01')return;
+  $('fplanTargetMonth').value=next;sourceMonth=next;void load();
+ });
+ $('fplanNextMonth').addEventListener('click',()=>{
+  const next=monthStep($('fplanTargetMonth').value,1);
+  if(next>'2100-12')return;
+  $('fplanTargetMonth').value=next;sourceMonth=next;void load();
+ });
+ $('fplanReload').addEventListener('click',()=>void load());
  $('fplanClose').addEventListener('click',()=>dialog.close());
  $('fplanTargetMonth').addEventListener('change',()=>void load());
  $('fplanSourceMonth').addEventListener('change',()=>void loadSource().catch(e=>msg(e.message,true)));
@@ -258,6 +341,7 @@
  });
  $('fplanCancelAllocation').addEventListener('click',()=>{$('fplanAllocator').hidden=true;editorExpense=null;});
  $('fplanSave').addEventListener('click',async()=>{
+  if(!planReady){msg('Primero debes cargar el plan y sus asignaciones actuales.',true);return;}
   const btn=$('fplanSave');btn.disabled=true;msg('Guardando y validando fondos en el servidor...');
   try{
    const result=await api('/plan-mensual',{method:'PUT',body:JSON.stringify({
