@@ -322,9 +322,11 @@ let expensePage=1;
 
  function renderMaintenanceDashboard(){
   const houses=data.casas||0;
+  const porcentajePagado=houses?Math.round(Number(data.pagadas||0)*10000/houses)/100:0;
+  const porcentajePendiente=houses?Math.round((100-porcentajePagado)*100)/100:0;
   const financialCards=[
-   ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+data.porcentaje+'%'],
-   ['Sin pago completo',data.pendientes+' · '+(houses>0?Math.round(Number(data.pendientes||0)*100/houses):0)+'%'],['Cuotas cubiertas del mes',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
+   ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+porcentajePagado.toFixed(2)+'%'],
+   ['Sin pago registrado',data.pendientes+' · '+porcentajePendiente.toFixed(2)+'%'],['Total de cuotas recaudadas',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Egresos de mantenimiento',fmt(data.finanzasAmbitos?.MANTENIMIENTO?.egresos)],
    ['Diferencia de mantenimiento',fmt(Number(data.finanzasAmbitos?.MANTENIMIENTO?.ingresos||0)-Number(data.finanzasAmbitos?.MANTENIMIENTO?.egresos||0))]
@@ -347,9 +349,10 @@ let expensePage=1;
   const partial=Number(project.parciales||0),registered=complete+partial;
   const incomplete=Number(project.pendientes||0)+partial;
   const pct=applied?Math.round(registered/applied*10000)/100:0;
+  const pctSinRegistro=applied?Math.round((100-pct)*100)/100:0;
   const cards=[['Casas en padrón',houses.length],
-   ['Meta alcanzada',complete+' · '+(houses.length?Math.round(complete*100/houses.length):0)+'%'],
-   ['Sin meta alcanzada',(houses.length-complete)+' · '+(houses.length?Math.round((houses.length-complete)*100/houses.length):0)+'%'],
+   ['Con pago registrado',registered+' · '+pct.toFixed(2)+'%'],
+   ['Sin pago completo',Number(project.pendientes||0)+' · '+pctSinRegistro.toFixed(2)+'%'],
    ['Recaudado del proyecto',fmt(project.recaudado)]];
   $('financialSummary').innerHTML=cards.map(([name,val],index)=>
    downloadableFinancialCard(name,val,['padron','pagadas','pendientes','historicas'][index])).join('');
@@ -391,6 +394,8 @@ let expensePage=1;
  let driveIntegration=null,driveIntegrationAt=0,driveIntegrationBusy=false;
  function updateFinanceConnections(){
   const sheets=$('financeSheetsState');
+  sheets.hidden=activeConcept!=='CASA_CLUB';
+  if(sheets.hidden)return;
   const historical=data?.casaClubGoogle2026,year=Number(data?.anio);
   const sheetsConnected=year===2026&&historical?.disponible===true;
   sheets.dataset.state=sheetsConnected?'connected':historical?.codigo==='FUERA_DE_PERIODO'?'checking':'disconnected';
@@ -420,7 +425,6 @@ let expensePage=1;
   const conectado=en2026&&historico.disponible===true;
   const resumen=[['Recaudación histórica 2026 · Google',conectado?fmt(historico.total):'No disponible'],
    ['Casas en padrón',houses],
-   ['Recuperación autorizada · vigente',fmt(scope.ingresosAutorizadosVigentes||0)],
    ['Limpieza',conectado?fmt(historico.limpiezaPrevista):fmt(Number(scope.limpiezaRegistrada||0)+Number(scope.limpiezaPorProvisionar||0))]];
   $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
   $('financialSecondary').innerHTML=[
@@ -796,6 +800,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   $('financeHousePanel').classList.toggle('extraordinary-receipt-active',concepto==='EXTRAORDINARIO'&&!!seleccionado);
   data.viviendas=data.viviendasMantenimiento.filter(h=>concepto==='MANTENIMIENTO'||!h.esPrueba).map(h=>concepto==='MANTENIMIENTO'?h:{...h,...financial.get(String(h.casaId)),
    ...(concepto==='EXTRAORDINARIO'&&seleccionado?{ultimoMesPagado:null}: {})}); 
+  updateFinanceConnections();
   if(concepto==='EXTRAORDINARIO'&&seleccionado)renderProjectDashboard(seleccionado);
   else if(concepto==='CASA_CLUB')renderClubDashboard();
   else renderMaintenanceDashboard();
