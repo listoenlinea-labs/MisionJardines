@@ -69,17 +69,60 @@ async function readSheet(tipo) {
   return {tipo,encabezados,filas,total:filas.length,range,spreadsheetId};
 }
 
-// Lectura dirigida a la pestaña de Casa Club; utiliza las credenciales de SOLO LECTURA
-// del conector financiero existente, sin habilitar sincronización bidireccional.
+// Histórico Casa Club: acceso automático del backend, independiente del OAuth
+// de Drive (respaldos) y del interruptor de sincronización de RESERVACIONES.
+// El ID proviene del archivo original compartido por el cliente. Es un ID
+// de recurso, NO una credencial, y puede sobrescribirse por entorno.
+const CASA_CLUB_HISTORICO_ID='11v3DX6lEiAs9Azps8k3l_Is_-lxvR8g01MTIDwsgKIY';
+function historicoError(code,message,status){
+ const e=new Error(message);e.code=code;e.status=status||503;return e;
+}
+function historicoCredenciales(){
+ const variables=['CASA_CLUB_GOOGLE_CREDENTIALS_BASE64','GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON_BASE64'];
+ const candidates=[];
+ for(const name of variables){
+  const raw=String(process.env[name]||'').trim();
+  if(!raw)continue;
+  try{
+   const key=JSON.parse(Buffer.from(raw,'base64').toString('utf8'));
+   if(key.type==='service_account'&&key.client_email&&key.private_key&&
+      key.token_uri==='https://oauth2.googleapis.com/token')candidates.push(key);
+  }catch(_){} // Se intentará la siguiente cuenta; jamás registrar la clave.
+ }
+ if(!candidates.length)throw historicoError('CREDENCIALES_PENDIENTES',
+  'Falta configurar una cuenta de servicio de Google con acceso de lectura a Casa Club');
+ return candidates;
+}
 async function readCasaClub2026(){
- const {spreadsheetId,key}=config();
- const bearer=await accessToken(key);
- const range="'MISION JARDINES 2026'!A1:L1000";
- const response=await fetchSafe(BASE+encodeURIComponent(spreadsheetId)+
-  '/values/'+encodeURIComponent(range)+'?valueRenderOption=FORMATTED_VALUE',{
-   headers:{Authorization:'Bearer '+bearer}});
- if(!response.ok)throw Error('Google Sheets histórico Casa Club no accesible: HTTP '+response.status);
- const body=await response.json();
- return body.values||[];
+ const spreadsheetId=String(process.env.CASA_CLUB_HISTORICO_SPREADSHEET_ID||CASA_CLUB_HISTORICO_ID).trim();
+ if(!/^[a-zA-Z0-9_-]{20,130}$/.test(spreadsheetId))
+  throw historicoError('ID_INVALIDO','El ID de Google Sheets de Casa Club no es válido');
+ const candidates=historicoCredenciales(),range="'MISION JARDINES 2026'!A1:L1000";
+ const url=BASE+encodeURIComponent(spreadsheetId)+'/values/'+encodeURIComponent(range)+
+  '?valueRenderOption=FORMATTED_VALUE';
+ let last=null;
+ for(const key of candidates){
+  try{
+   const bearer=await accessToken(key);
+   const response=await fetchSafe(url,{headers:{Authorization:'Bearer '+bearer}});
+   if(!response.ok){
+    const code=response.status===403||response.status===404?'SIN_PERMISO':
+     response.status===400?'RANGO_INVALIDO':'GOOGLE_NO_DISPONIBLE';
+    const message=code==='SIN_PERMISO'
+     ?'Comparte el documento de Casa Club con la cuenta de servicio usada por el backend'
+     :code==='RANGO_INVALIDO'?'No existe la pestaña MISION JARDINES 2026 o cambió su nombre'
+     :'Google Sheets no respondió correctamente';
+    last=historicoError(code,message,502);
+    continue;
+   }
+   const body=await response.json();
+   if(!Array.isArray(body.values))throw historicoError('FORMATO_INVALIDO','Google devolvió un rango sin filas');
+   return body.values;
+  }catch(e){
+   last=e.code?e:historicoError('GOOGLE_NO_DISPONIBLE',
+    'No se pudo consultar la hoja Casa Club. Revisa el acceso y la red del backend',502);
+  }
+ }
+ throw last||historicoError('GOOGLE_NO_DISPONIBLE','No se pudo consultar Google Sheets');
 }
 module.exports={readSheet,assertType,config,readCasaClub2026};
