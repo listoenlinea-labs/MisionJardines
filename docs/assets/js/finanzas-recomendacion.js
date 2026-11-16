@@ -47,7 +47,7 @@
     if(same)matched+=amount;else crossed+=amount;
     const reason=same?
      'Se utiliza primero dinero de su mismo ámbito para evitar préstamos entre partidas.':
-     'El gasto está pendiente y es esencial; se propone apoyo temporal de mantenimiento, conservando una reserva preventiva del '+reservePercent+'% de esta fuente visible.';
+     'El gasto está pendiente; se propone apoyo temporal del fondo de mantenimiento, conservando una reserva preventiva del '+reservePercent+'% de esta fuente visible.';
     const item={egresoId:expense.id,origen:source.origen,
      origenPeriodo:source.origenPeriodo,monto:amount};
     proposed.push(item);
