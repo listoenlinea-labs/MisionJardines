@@ -980,8 +980,9 @@ function renderHouses(){
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
   const clubApprovalBadge=h=>activeConcept==='CASA_CLUB'&&h.autorizacionSinAcreditar&&String(h.estatus)==='PAGADO'
    ?'<small class="finance-club-approval-note" title="Aprobada por administración; no significa comprobante bancario validado">Autorización administrativa · pendiente de conciliar</small>':'';
-  const clubApprovedAmount=h=>activeConcept==='CASA_CLUB'&&Number(h.montoAutorizado||0)>0
-   ?fmt(h.montoAutorizado)+' (autorizado)':'Sin pagos';
+  const clubApprovedAmount=h=>Number(h.montoAutorizado||0)>0
+   ?fmt(h.montoAutorizado)+' (autorizado)'
+   :Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',residentCell(h))+
