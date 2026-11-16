@@ -980,10 +980,10 @@ function renderHouses(){
        : 'Vivienda seleccionada: '+selected.calle+' '+selected.numero+' · '+(selected.nombre||'Sin residente'))
     : 'Selecciona una sola vivienda para generar el recibo de su último pago registrado.';
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
-  const clubApprovalBadge=h=>activeConcept==='CASA_CLUB'&&h.autorizacionSinAcreditar&&String(h.estatus)==='PAGADO'
-   ?'<small class="finance-club-approval-note" title="Aprobada por administración; no significa comprobante bancario validado">Autorización administrativa · pendiente de conciliar</small>':'';
-  const clubApprovedAmount=h=>Number(h.recuperacionHistoricaGoogle||0)>0
-   ?fmt(h.recuperacionHistoricaGoogle):'No recuperado';
+  const clubApprovalBadge=()=>''; 
+  const clubApprovedAmount=h=>data?.casaClubGoogle2026?.disponible!==true?'No disponible':
+   Number(h.recuperacionHistoricaGoogle||0)>0?fmt(h.recuperacionHistoricaGoogle):'No recuperado';
+  const clubLastRecovery=h=>(h.movimientosHistoricosGoogle||[]).at(-1)?.mes||'';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',residentCell(h))+
@@ -992,15 +992,20 @@ function renderHouses(){
       :'<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
        :h.estatus)+'</span>'+clubApprovalBadge(h))+
-    houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)?' is-no-aplica':h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="Consultar historial de pagos"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+    houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)?' is-no-aplica':h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="'+(activeConcept==='CASA_CLUB'&&Number(h.recuperacionesHistoricasGoogle)>0?
+      esc(String(h.recuperacionesHistoricasGoogle)+' cobro(s) de Google Sheets 2026'):
+      'Consultar historial de pagos')+'"><strong>'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
        ?(isProjectNoAplica(h)?'No aplica':Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
        :(activeConcept==='CASA_CLUB'?clubApprovedAmount(h):
          (Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos')))+'</strong></button>')+
-    houseCell(activeConcept==='CASA_CLUB'?'Mes autorizado':'Último mes pagado',activeConcept==='EXTRAORDINARIO'&&activeProyectoId
-     ?esc(isProjectNoAplica(h)?'No aplica':h.ultimoPago?.fecha?displayDate(h.ultimoPago.fecha):'Sin abono')
-     :h.ultimoMesPagado?.pagoAnual?
-      '<span class="house-annual-label" title="Hasta diciembre de '+esc(h.ultimoMesPagado.anio)+'">Pago anual</span>':
-      esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
+    houseCell(activeConcept==='CASA_CLUB'?'Última recuperación':'Último mes pagado',
+     activeConcept==='CASA_CLUB'?
+      esc(clubLastRecovery(h)?clubLastRecovery(h)+' 2026':'Sin recuperación'):
+     activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+      ?esc(isProjectNoAplica(h)?'No aplica':h.ultimoPago?.fecha?displayDate(h.ultimoPago.fecha):'Sin abono')
+      :h.ultimoMesPagado?.pagoAnual?
+       '<span class="house-annual-label" title="Hasta diciembre de '+esc(h.ultimoMesPagado.anio)+'">Pago anual</span>':
+       esc(h.ultimoMesPagado?h.ultimoMesPagado.mes+' '+h.ultimoMesPagado.anio:'Sin pago'))+
     houseCell('Saldo pendiente',isProjectNoAplica(h)
       ?'<span class="house-amount-no-aplica">No aplica</span>'
       :'<span class="house-amount'+(String(h.estatus||'').toUpperCase()==='PENDIENTE'&&Number(h.saldoPendiente)>0?' is-overdue':'')+'">'+esc(fmt(h.saldoPendiente))+'</span>')+
@@ -2380,11 +2385,31 @@ function renderHouses(){
      $('housePaymentStatus').textContent=error.message;
    }finally{btn.disabled=true;}
  }
+ function openClubGoogleHistory(house){
+  const dialog=$('financeClubGoogleHistory');
+  $('financeClubGoogleHistoryTitle').textContent='Recuperación histórica · '+house.calle+' '+house.numero;
+  $('financeClubGoogleHistoryTotal').textContent=fmt(house.recuperacionHistoricaGoogle||0)+
+   ' · '+Number(house.recuperacionesHistoricasGoogle||0)+' cobro(s) de 2026';
+  $('financeClubGoogleHistoryRows').innerHTML=(house.movimientosHistoricosGoogle||[]).map(m=>
+   '<tr><td>'+esc(m.mes||'—')+'</td><td>'+esc(m.fecha||'—')+'</td><td>'+esc(m.folio||'—')+
+   '</td><td class="finance-club-google-amount">'+esc(fmt(m.monto))+'</td></tr>').join('');
+  dialog.showModal();
+ }
+ $('financeClubGoogleHistoryClose').addEventListener('click',()=>$('financeClubGoogleHistory').close());
+ $('financeClubGoogleHistory').addEventListener('click',event=>{
+  if(event.target===$('financeClubGoogleHistory'))event.target.close();
+ });
  $('financeHouseRows').addEventListener('click',async event=>{
   const registerButton=event.target.closest('[data-resident-register]');
   if(registerButton){openResidentRegistration(registerButton.dataset.residentRegister,registerButton);return;}
   const historyButton=event.target.closest('[data-paid-history]');
-  if(historyButton){void openHouseHistory(historyButton.dataset.paidHistory,historyButton);return;}
+  if(historyButton){
+   const house=data?.viviendas?.find(h=>Number(h.casaId)===Number(historyButton.dataset.paidHistory));
+   if(activeConcept==='CASA_CLUB'&&house?.movimientosHistoricosGoogle?.length){
+    openClubGoogleHistory(house);return;
+   }
+   void openHouseHistory(historyButton.dataset.paidHistory,historyButton);return;
+  }
   const tagButton=event.target.closest('[data-tags-house]');
   if(tagButton){openHouseTags(tagButton.dataset.tagsHouse);return;}
   const btn=event.target.closest('[data-pay-house]');
