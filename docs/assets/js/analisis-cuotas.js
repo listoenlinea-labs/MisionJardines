@@ -325,20 +325,22 @@ let expensePage=1;
 
  function renderMaintenanceDashboard(){
   const houses=data.casas||0;
-  const porcentajePagado=houses?Math.round(Number(data.pagadas||0)*10000/houses)/100:0;
+  const conPago=Number((data.conPagoRegistrado??data.pagadas)||0);
+  const sinPago=houses-conPago;
+  const porcentajePagado=houses?Math.round(conPago*10000/houses)/100:0;
   const porcentajePendiente=houses?Math.round((100-porcentajePagado)*100)/100:0;
   const financialCards=[
-   ['Casas en padrón',houses],['Con pago registrado',data.pagadas+' · '+porcentajePagado.toFixed(2)+'%'],
-   ['Sin pago registrado',data.pendientes+' · '+porcentajePendiente.toFixed(2)+'%'],['Total de cuotas recaudadas',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
+   ['Casas en padrón',houses],['Con pago registrado',conPago+' · '+porcentajePagado.toFixed(2)+'%'],
+   ['Sin pago registrado',sinPago+' · '+porcentajePendiente.toFixed(2)+'%'],['Total de cuotas recaudadas',data.ingresosMantenimientoCalles?fmt(data.ingresosMantenimientoCalles.mes):'Actualiza API'],
    ['Mantenimiento bancario validado',fmt(data.ingresosReportados.mantenimiento)],
    ['Egresos de mantenimiento',fmt(data.finanzasAmbitos?.MANTENIMIENTO?.egresos)],
    ['Diferencia de mantenimiento',fmt(Number(data.finanzasAmbitos?.MANTENIMIENTO?.ingresos||0)-Number(data.finanzasAmbitos?.MANTENIMIENTO?.egresos||0))]
   ];
   $('financialSummary').innerHTML=financialCards.slice(0,4).map(([n,v],i)=>downloadableFinancialCard(n,v,['padron','pagadas','pendientes','historicas'][i])).join('');
   $('financialSecondary').innerHTML=financialCards.slice(4).map(([n,v])=>financialCard(n,v)).join('');
-  $('financeDonut').style.setProperty('--percent',data.porcentaje+'%');
-  $('financeDonutText').innerHTML=esc(data.porcentaje)+'%<small>Casas pagadas</small>';
-  $('financeLegend').innerHTML='<div>Pagadas <b>'+data.pagadas+'</b></div><div>Pendientes <b>'+data.pendientes+'</b></div><div>Total <b>'+houses+'</b></div>';
+  $('financeDonut').style.setProperty('--percent',porcentajePagado+'%');
+  $('financeDonutText').innerHTML=esc(porcentajePagado.toFixed(2))+'%<small>Con pago registrado</small>';
+  $('financeLegend').innerHTML='<div>Con pago <b>'+conPago+'</b></div><div>Sin pago registrado <b>'+sinPago+'</b></div><div>Total <b>'+houses+'</b></div>';
   $('financeStreetChart').innerHTML=data.calles.length?data.calles.map(c=>bar(c.calle,c.porcentaje,100,false,c.pagadas+'/'+c.total)).join(''):'Sin datos';
   const padronNote=$('financePadronNote');
   if(padronNote){padronNote.textContent=data.avisoPadron||'';padronNote.hidden=!data.avisoPadron;}
