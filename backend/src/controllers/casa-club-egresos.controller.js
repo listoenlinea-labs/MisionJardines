@@ -11,8 +11,9 @@ const clean=x=>{
  if(!x||typeof x!=='object'||Array.isArray(x))throw bad(400,'Datos del gasto inválidos.');
  const concepto=String(x.concepto||'').trim(),fecha=String(x.fecha||'');
  const monto=Number(x.monto),pagado=x.pagado;
+ const parsed=new Date(fecha+'T12:00:00Z');
  if(!concepto||concepto.length>250||!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||
-  new Date(fecha+'T12:00:00Z').toISOString().slice(0,10)!==fecha||
+  !Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==fecha||
   !Number.isSafeInteger(monto)||monto<1||monto>100000000||typeof pagado!=='boolean')
   throw bad(400,'Nombre, fecha, monto entero y estado de pago válidos son obligatorios.');
  return {concepto,fecha,monto,pagado};
