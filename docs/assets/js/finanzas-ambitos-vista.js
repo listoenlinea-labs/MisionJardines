@@ -14,6 +14,7 @@
    scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Limpieza y gastos registrados':'Mantenimiento · Gastos por concepto';
   $('financeIncomeSubtitle').title=$('financeExpenseSubtitle').title=project?project.nombre:scopeName;
   $('financeProjectExpenseEntry').hidden=!project;
+  $('financeClubExpenseEntry').hidden=!club;
   $('financeIncomeCard').querySelector('.finance-graph-help').hidden=!!project||club;
   $('financeExpenseCard').querySelector('.finance-graph-help').hidden=!!project||club;
   $('financeIncomeCard').querySelector('.finance-chart-description').textContent=project?
@@ -70,12 +71,24 @@
     'Recuperación anual 2026 por calle (columna F de Google Sheets). Se respetan montos históricos de $250, $700 y $1,000. No incluye depósitos de garantía ni limpieza; no se suma a MySQL.':
     'No se pudo consultar el histórico de Google Sheets; no se inventarán importes.';
    if(historicalReady){
-    const cleaning=Number(historical.limpiezaPrevista||0);
-    expenseFooter=cleaning;
-    $('financeExpenseChart').innerHTML=bar('Limpieza prevista · '+Number(historical.registros||0)+' cobros × $'+
-     Number(historical.limpiezaUnitariaPrevista||300),cleaning,Math.max(1,cleaning),true,fmt(cleaning));
+    const actual=(data.egresosCasaClubAnuales||[]).filter(e=>Number(e.monto)>0);
+    const limpiezaRegistrada=actual.filter(e=>
+     /LIMPIEZA|ASEO/i.test(String(e.concepto||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''))).
+     reduce((sum,e)=>sum+Number(e.monto||0),0);
+    const limpiezaPendiente=Math.max(0,Number(historical.limpiezaPrevista||0)-limpiezaRegistrada);
+    const registrado=actual.reduce((sum,e)=>sum+Number(e.monto||0),0);
+    expenseFooter=registrado+limpiezaPendiente;
+    const highest=Math.max(1,limpiezaPendiente,...actual.map(e=>Number(e.monto||0)));
+    $('financeExpenseChart').innerHTML=actual.map(e=>
+     '<button type="button" class="finance-club-expense-row" data-club-expense-detail="'+Number(e.id)+'" aria-label="Ver detalle de '+esc(e.concepto)+'">'+
+     bar(String(e.concepto||'Gasto'),Number(e.monto||0),highest,true,fmt(e.monto))+
+     '<small>'+(e.pagado?'Pagado':'Pendiente')+(e.comprobanteDisponible?' · Con comprobante':' · Sin comprobante')+'</small></button>'
+    ).join('')+
+     (limpiezaPendiente>0?bar('Limpieza prevista sin registrar',limpiezaPendiente,highest,true,fmt(limpiezaPendiente)):'');
+    if(!actual.length&&!limpiezaPendiente)$('financeExpenseChart').textContent='Sin gastos de Casa Club registrados.';
+    window.MJClubAnnualExpense={registrado,limpiezaRegistrada,limpiezaPendiente,total:expenseFooter};
    }else{
-    expenseFooter=null;
+    expenseFooter=null;window.MJClubAnnualExpense=null;
     $('financeExpenseChart').textContent='No hay histórico conectado para estimar la limpieza anual.';
    }
   }else{
@@ -108,7 +121,7 @@
   const incomeFooterLabel=$('financeIncomeFooter').querySelector('span');
   if(incomeFooterLabel)incomeFooterLabel.textContent=club?'Total recuperación histórica 2026':'Total de ingresos';
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
-  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':club?'Total limpieza prevista 2026':'Total de egresos';
+  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':club?'Gastos registrados + limpieza pendiente 2026':'Total de egresos';
   const summaryTrigger=$('financeExpenseFooter');
   summaryTrigger.tabIndex=project?0:-1;
   if(project){
@@ -149,15 +162,15 @@
   const clubAnnual=club&&Number(data.anio)===2026&&clubHist.disponible===true;
   const balance=project?root.MJFinanceBalance?.proyecto(project):
    club?root.MJFinanceBalance?.casaClub(clubAnnual?
-    {ingresos:clubHist.total,egresos:clubHist.limpiezaPrevista,
-     criterioHistorico:clubHist.criterioHistorico}:null):
+    {ingresos:clubHist.total,egresos:window.MJClubAnnualExpense?.total??clubHist.limpiezaPrevista,
+     criterioHistorico:'Recuperación histórica de 2026 menos gastos reales registrados y limpieza prevista restante. Los gastos ya registrados de limpieza no se restan dos veces; no equivale a saldo bancario.'}:null):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
   $('financeBalanceSubtitle').textContent=project?'Proyecto · Ingresos menos egresos reales':
    club?'Casa Club · Histórico 2026: recuperación menos limpieza prevista':'Mantenimiento · Ingresos menos egresos';
   $('financeBalanceExpenseLabel').textContent='Egresos';
   $('financeBalanceDescription').textContent=project?
    'Los egresos son la suma de conceptos reales, estén pagados o pendientes. La meta estimada nunca se resta como gasto.':
-   club?'Histórico anual 2026: recuperación según Google Sheets menos $300 de limpieza prevista por cada cobro. No son egresos comprobados ni saldo bancario; el mes seleccionado sigue aplicando a los otros ámbitos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
+   club?'Histórico anual 2026: recuperación menos gastos registrados y limpieza pendiente de registrar (sin duplicar pagos). No equivale a caja bancaria.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   $('financeBalanceIncome').parentElement?.querySelector('span')?.replaceChildren(
    document.createTextNode('Ingresos'));
   const card=$('financeBalanceCard');
