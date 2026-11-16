@@ -22,7 +22,8 @@
   <label>Proyecto extraordinario<select id="financeProjectSelect" aria-label="Seleccionar proyecto extraordinario" data-has-selection="false"><option value="">Sin proyectos configurados</option></select></label>
   <div class="finance-project-actions">
     <button type="button" id="financeNewProjectToggle" class="primary">Nuevo proyecto</button>
-    <button type="button" id="financeProjectRulesEdit" class="soft" disabled title="Selecciona un proyecto para editar sus importes">Importes por vivienda</button>
+    <button type="button" id="financeProjectRenameOpen" class="soft" disabled title="Editar el nombre del proyecto seleccionado">Editar</button>
+     <button type="button" id="financeProjectRulesEdit" class="soft" disabled title="Selecciona un proyecto para editar sus importes">Importes por vivienda</button>
    </div>
  </div>
  <details id="financeProjectDetails" class="finance-project-details">
@@ -31,6 +32,18 @@
   <p id="financeProjectInfo" class="finance-project-info" role="status"></p>
  </details>
 </section>
+<dialog id="financeProjectRenameModal" class="finance-project-name-dialog" aria-labelledby="financeProjectRenameTitle">
+ <form id="financeProjectRenameForm">
+  <div class="finance-project-name-heading"><div><span class="eyebrow">CUOTAS EXTRAORDINARIAS</span><h2 id="financeProjectRenameTitle">Editar nombre del proyecto</h2></div>
+   <button type="button" class="soft" id="financeProjectRenameClose" aria-label="Cerrar editor">×</button></div>
+  <p class="hint">Solo se modifica el nombre. Las aportaciones, cuotas por vivienda, conceptos y comprobantes conservan sus referencias.</p>
+  <label for="financeProjectRenameName">Nombre del proyecto</label>
+  <textarea id="financeProjectRenameName" maxlength="300" rows="3" required></textarea>
+  <p id="financeProjectRenameStatus" role="status" aria-live="polite"></p>
+  <div class="finance-project-name-actions"><button type="button" class="soft" id="financeProjectRenameCancel">Cancelar</button>
+   <button type="submit" class="primary" id="financeProjectRenameSave">Guardar nombre</button></div>
+ </form>
+</dialog>
 <p id="financeConceptHint" class="finance-concept-hint" role="status">Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.</p>
 <div class="filters residences-filter"><label>Buscar casa o residente<input id="financeSearch" type="search" placeholder="Ej. Gardenias, 5, nombre"></label><label>Calle<select id="financeStreet"><option value="">Todas las calles</option></select></label><label>Estado<select id="financeStatus"><option value="">Todos</option><option value="PAGADO">Pagadas</option><option value="PENDIENTE">Pendientes</option><option value="NO_APLICA" hidden disabled>No aplica</option><option value="PAGO_ANUAL">Pago anual</option><option value="ABONO_CON_ADEUDO">Abono con adeudo</option><option value="ADVERTENCIAS">Advertencias</option></select></label><fieldset class="paid-through-filter"><legend>Último mes pagado</legend><div class="paid-through-controls"><select id="financeLastPaidMonth" aria-label="Mes del último pago mínimo"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select><select id="financeLastPaidYear" aria-label="Año del último pago mínimo"></select></div></fieldset><label class="finance-register-order">Fecha de registro<select id="financeRegistrationOrder" aria-label="Ordenar por fecha y hora del último registro de pago"><option value="">Orden habitual</option><option value="registro_desc">Más reciente primero</option><option value="registro_asc">Más antiguo primero</option></select></label><button id="financeClear" type="button" class="soft">Limpiar</button></div>
 <div class="house-sort-mobile"><label>Ordenar por<select id="financeColumnSort"><option value="calle">Calle</option><option value="numero">Casa</option><option value="nombre">Residente registrado</option><option value="estatus">Estado</option><option value="pagado">Pagado</option><option value="registro">Fecha de registro</option><option value="mes">Último mes pagado</option><option value="saldo">Saldo pendiente</option><option value="tags">TAGs</option><option value="pago">Pago</option></select></label><button type="button" id="financeColumnDirection" class="soft">Ascendente ↑</button></div><p id="financeSortStatus" class="finance-visually-hidden" role="status" aria-live="polite">Orden de viviendas actualizado.</p>
