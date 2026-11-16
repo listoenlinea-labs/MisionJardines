@@ -3380,7 +3380,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  $('financeProjectRenameCancel').addEventListener('click',closeRename);
  $('financeProjectRenameForm').addEventListener('submit',async event=>{
   event.preventDefault();if(renameSaving)return;
-  const name=$('financeProjectRenameName').value.trim().replace(/\\s+/g,' ');
+  const name=$('financeProjectRenameName').value.trim().replace(/\s+/g,' ');
   if(!name||name.length>300)return $('financeProjectRenameStatus').textContent='Ingresa un nombre de hasta 300 caracteres.';
   if(name===renameProjectBefore)return closeRename();
   renameSaving=true;$('financeProjectRenameSave').disabled=true;
