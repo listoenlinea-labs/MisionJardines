@@ -140,3 +140,17 @@
 .fplan-month-current span:after{content:" ▾";color:#ab721f;font-size:.72rem}
 .fplan-dialog .fplan-month-current input[type=month]{position:absolute;inset:0;width:100%;height:100%;opacity:.01;z-index:1;cursor:pointer}
 @media(max-width:700px){.fplan-month-current{min-width:132px;font-size:.75rem;height:37px}}
+
+@media(max-width:700px){
+ /* La búsqueda necesita todo el ancho: evita el texto cortado visto en iPhone. */
+ .fplan-expense-panel .fplan-panel-toolbar{grid-template-columns:1fr}
+ .fplan-expense-panel .fplan-field-search{width:100%}
+ .fplan-expense-panel .fplan-panel-toolbar .fplan-field:last-child{max-width:100%}
+ .fplan-panel-toolbar .fplan-field{min-width:0}
+ .fplan-dialog .fplan-field :is(input,select){font-size:16px}
+ .fplan-dialog input[type=search]{-webkit-appearance:none;appearance:none}
+ .fplan-panel-head{align-items:flex-start}
+ .fplan-legend-dot{font-size:.66rem}
+ .fplan-bucket strong,.fplan-expense strong{margin-right:0}
+ .fplan-bucket .fplan-number,.fplan-expense .fplan-number{margin-bottom:6px}
+}
