@@ -66,7 +66,8 @@
     total:Number(origin.ingresosMantenimientoCalles?.mes||0)},
    {origen:'CASA_CLUB',origenPeriodo:annualClub?'ACUMULADO':sourceMonth,tipo:'Casa Club',
     name:annualClub?'Recuperación histórica 2026 · Google (sin conciliar)':'Recuperación registrada · '+labelMonth(sourceMonth),
-    total:annualClub?Number(historical.total||0):Number(origin.finanzasAmbitos?.CASA_CLUB?.ingresos||0)}
+    total:annualClub?Number(historical.total||0):Number(origin.finanzasAmbitos?.CASA_CLUB?.ingresos||0),
+    sinConciliar:annualClub}
   ];
   const selected=(target.proyectosExtraordinarios||[]).find(p=>String(p.id)===String(projectFilterId));
   if(selected)items.push({
@@ -169,7 +170,7 @@
    msg('Primero carga la información financiera del mes.',true);return;
   }
   recommendation=engine.recommend({
-   sources:pools(),expenses:expenseRows(),assignments,period,reservePercent:20
+   sources:pools().filter(x=>!x.sinConciliar),expenses:expenseRows(),assignments,period,reservePercent:20
   });
   const {details,uncovered,summary}=recommendation;
   const kpi=(label,value,warn=false)=>'<div class="fplan-recommend-metric"'+(warn?' data-warn="true"':'')+
