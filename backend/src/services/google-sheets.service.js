@@ -68,4 +68,18 @@ async function readSheet(tipo) {
   })).filter(v=>v.valores.some(Boolean));
   return {tipo,encabezados,filas,total:filas.length,range,spreadsheetId};
 }
-module.exports={readSheet,assertType,config};
+
+// Lectura dirigida a la pestaña de Casa Club; utiliza las credenciales de SOLO LECTURA
+// del conector financiero existente, sin habilitar sincronización bidireccional.
+async function readCasaClub2026(){
+ const {spreadsheetId,key}=config();
+ const bearer=await accessToken(key);
+ const range="'MISION JARDINES 2026'!A1:L1000";
+ const response=await fetchSafe(BASE+encodeURIComponent(spreadsheetId)+
+  '/values/'+encodeURIComponent(range)+'?valueRenderOption=FORMATTED_VALUE',{
+   headers:{Authorization:'Bearer '+bearer}});
+ if(!response.ok)throw Error('Google Sheets histórico Casa Club no accesible: HTTP '+response.status);
+ const body=await response.json();
+ return body.values||[];
+}
+module.exports={readSheet,assertType,config,readCasaClub2026};
