@@ -15,6 +15,8 @@ const ReservaCasaClub=require('../models/ReservaCasaClub');
 const googleCasaClubClient=require('../services/casa-club-google-client.service');
 const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
+const {resumenAutorizaciones}=require('../services/casa-club-autorizaciones-finanzas.service');
+const {resumenFinancieroClub}=require('../services/casa-club-contabilidad-costos.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
 const {reciboDelPeriodo}=require('../services/recibo-periodo-excel.service');
 const {ultimoAbonoConAdeudo}=require('../services/abono-con-adeudo-resumen.service');
@@ -41,7 +43,7 @@ async function analizar(req,res){
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
    PagoReportado.findAll({where:{estatus:'VALIDADO',fechaOperacion:{[Op.between]:[start,end]}},attributes:['id','tipoPago','monto','recargo','casaId','fechaOperacion','folioReporte','folioOperacion','aplicacionCuotas']}),
    Egreso.findAll({where:{fecha:{[Op.between]:[start,end]}},order:[['fecha','DESC']],limit:2000}),
-   ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus']}),
+   ReservaCasaClub.findAll({where:{pagado:true,fechaPago:{[Op.between]:[start,end]}},attributes:['id','cuotaRecuperacion','depositoGarantia','limpieza','garantiaDevuelta','estatus','pagado']}),
    sequelize.query('SELECT tipo, concepto, monto, fecha, referencia FROM ingresos_fraccionamiento WHERE fecha BETWEEN :start AND :end ORDER BY fecha, id',{replacements:{start,end},type:QueryTypes.SELECT}),
    // Historial íntegro para identificar pagos adelantados en 2027 y años posteriores.
    // El saldo sigue limitado al corte pedido por calcularAdeudoVivienda.
@@ -52,7 +54,7 @@ async function analizar(req,res){
    CargoExtraordinario.findAll({attributes:['id','cuotaExtraordinariaId','casaId','periodo','monto'],include:[{model:CuotaExtraordinaria,as:'cuota',attributes:[],required:true,where:{activo:true}}]}),
    PagoReportado.findAll({where:{tipoPago:{[Op.in]:['EXTRAORDINARIO','CASA_CLUB']},estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','cargoExtraordinarioId','reservaCasaClubId','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoManualConcepto.findAll({attributes:['id','casaId','tipoPago','cargoExtraordinarioId','reservaCasaClubId','monto','formaPago','referencia','creadoEn']}),
-   ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado']}),
+   ReservaCasaClub.findAll({where:{estatus:'APROBADA'},attributes:['id','casaId','fecha','fechaLimitePago','estatus','cuotaRecuperacion','depositoGarantia','limpieza','pagado','actualizadoEn']}),
    PagoReportado.findAll({where:{tipoPago:'MANTENIMIENTO',estatus:'VALIDADO'},attributes:['id','casaId','tipoPago','estatus','monto','recargo','folioReporte','folioOperacion','fechaOperacion','aplicacionCuotas']}),
    PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']}),
     AportacionExtraordinaria.findAll({attributes:['id','cuotaExtraordinariaId','cargoExtraordinarioId','casaId','fecha','monto','referencia','origen']})
@@ -125,7 +127,8 @@ async function analizar(req,res){
   const residencesOficiales=residences.filter(h=>!h.esPrueba);
   const calls=[...streets.values()].map(x=>({...x,porcentaje:x.total?Math.round(x.pagadas/x.total*10000)/100:0})).sort((a,b)=>a.calle.localeCompare(b.calle,'es-MX',{numeric:true,sensitivity:'base'}));
   const viviendasConceptos=resumenConceptos({viviendas:residencesOficiales,cargos:cargosExtraordinarios,reportados:pagosConceptoHistoricos,
-   manuales:manualesConceptoHistoricos,aportaciones:aportacionesExtraordinarias,reservas:reservasAprobadas,anio,mes});
+   manuales:manualesConceptoHistoricos,aportaciones:aportacionesExtraordinarias,reservas:reservasAprobadas,anio,mes,
+    aprobacionCuentaComoPagoVisual:true});
   const proyectosExtraordinarios=require('../services/proyectos-extraordinarios.service').juntar(
    cuotasExtras.filter(p=>p.activo),cargosExtraordinarios,aportacionesExtraordinarias,
    manualesConceptoHistoricos,pagosConceptoHistoricos,residencesOficiales);
@@ -146,7 +149,10 @@ async function analizar(req,res){
   const egresosAcumulados=resumenEgresos(egresosHistoricos.filter(e=>ambitoDeEgreso(e)==='MANTENIMIENTO'),start,end);
   const egresosCasaClub=egresos.filter(e=>ambitoDeEgreso(e)==='CASA_CLUB');
   const egresosMantenimiento=egresos.filter(e=>ambitoDeEgreso(e)==='MANTENIMIENTO');
-  const egresosClubTotal=egresosCasaClub.reduce((sum,e)=>sum+num(e.monto),0);
+  // La limpieza tiene destino específico: provisionar el costo sólo si no
+  // existe ya un egreso de limpieza equivalente en el período.
+  const flujoClub=resumenFinancieroClub({reservasPagadas:reservasClub,egresos:egresosCasaClub});
+  const egresosClubTotal=flujoClub.egresos;
   const gastosPorProyecto=new Map();
   for(const e of gastosProyectos){
    const id=Number(e.proyectoId);
@@ -192,8 +198,11 @@ async function analizar(req,res){
     .filter(x=>x.origen!=='EXCEL_HISTORICO'&&String(x.fecha).slice(0,10)>=start&&String(x.fecha).slice(0,10)<=end)
     .reduce((sum,x)=>sum+num(x.monto),0);
   const ingresosParaBalance=ingresosBase+ingresosAdicionales+totalManualConcepto+ingresosAportacionesExtraordinarias;
-  const casaClub={recuperacion:0,limpieza:0,garantiasRecibidas:0,garantiasDevueltas:0};
-  for(const r of reservasClub){casaClub.recuperacion+=num(r.cuotaRecuperacion);casaClub.limpieza+=num(r.limpieza);casaClub.garantiasRecibidas+=num(r.depositoGarantia);if(r.garantiaDevuelta)casaClub.garantiasDevueltas+=num(r.depositoGarantia);}
+  const aprobacionesClub=resumenAutorizaciones({reservas:reservasAprobadas,
+   reportados:pagosConceptoHistoricos,manuales:manualesConceptoHistoricos,anio,mes});
+  const casaClub={recuperacion:flujoClub.recuperacion,limpieza:flujoClub.limpiezaRecaudada,
+   garantiasRecibidas:flujoClub.garantiasRecibidas,garantiasDevueltas:flujoClub.garantiasDevueltas,
+   garantiasPorDevolver:flujoClub.garantiasPorDevolver};
   const totalEgresos=Object.values(categoriasGasto).reduce((a,v)=>a+v,0);
   const pagadas=residencesOficiales.filter(h=>String(h.estatus)==='PAGADO').length; // Cumplimiento, no simples ingresos.
   // Desglose sin paginación ni filtros del navegador para los cuatro Excel del tablero.
@@ -253,7 +262,12 @@ async function analizar(req,res){
    ingresosParaBalance,ingresosAdicionales,totalManualConcepto,ingresosAportacionesExtraordinarias,saldoInicial,ingresosManuales,
    ingresosReportados,ingresosValidados,manualesCasaClub,casaClub,totalEgresos,balanceReportado:cobranzaMantenimiento.recibidoMes+ingresosAdicionales+saldoInicial-totalEgresos,
    finanzasAmbitos:{MANTENIMIENTO:{ingresos:cobranzaMantenimiento.mes,egresos:totalEgresos},
-    CASA_CLUB:{ingresos:casaClub.recuperacion+casaClub.limpieza,egresos:egresosClubTotal,reservasPagadas:reservasClub.length}},
+    CASA_CLUB:{ingresos:flujoClub.ingresos,egresos:egresosClubTotal,
+     egresosRegistrados:flujoClub.egresosRegistrados,limpiezaRegistrada:flujoClub.limpiezaRegistrada,
+     limpiezaPorProvisionar:flujoClub.limpiezaPorProvisionar,
+     limpiezaRecaudada:flujoClub.limpiezaRecaudada,
+     garantiasPorDevolver:flujoClub.garantiasPorDevolver,
+     reservasPagadas:reservasClub.length,...aprobacionesClub}},
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
    egresosCategorias:categoriasGasto,egresos:egresos.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();return {...row,
     ambito:ambitoDeEgreso(e),comprobanteDisponible:!!comprobanteArchivo,

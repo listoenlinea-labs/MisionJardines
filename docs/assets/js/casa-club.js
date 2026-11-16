@@ -650,6 +650,10 @@
   reviewing=true;syncReview();
   try{
    await api('/administracion/'+Number(r.id),'PATCH',info);
+   // Notificar a Análisis de cuotas en otras pestañas del mismo dominio.
+   // No se transmiten nombres, importes ni otros datos personales.
+   try{localStorage.setItem('mj_casa_club_aprobacion_revision',String(Date.now()));}catch(_){}
+
    if(reviewModal.open&&activeReview===r)editReview({...r,estatus:approve?'APROBADA':'RECHAZADA',
     pagado:approve&&info.pagoVerificado,fechaPago:approve&&info.pagoVerificado?today():null,folio:approve&&info.pagoVerificado?info.folio:null,notas:info.notas});
    notify(approve?(info.pagoVerificado?'Pago manual registrado y reservación confirmada.':'Fecha aprobada sin pago. El residente podrá pagar desde Pagos.'):'Solicitud rechazada. La fecha se liberó.');

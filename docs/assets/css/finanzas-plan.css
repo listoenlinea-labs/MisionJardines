@@ -154,3 +154,19 @@
  .fplan-bucket strong,.fplan-expense strong{margin-right:0}
  .fplan-bucket .fplan-number,.fplan-expense .fplan-number{margin-bottom:6px}
 }
+
+/* Indicadores de integración permanentes en Análisis de cuotas. No son botones. */
+.finance-connection-status{display:flex;flex-wrap:wrap;gap:9px;margin:5px 0 15px}
+.finance-connection-item{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;
+ background:#f8fafc;border:1px solid #e4eaf1;border-radius:11px;
+ color:#51657b;font-size:.75rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.finance-connection-item:before{content:"";display:block;flex:none;width:8px;height:8px;
+ border-radius:50%;background:#c8a467;box-shadow:0 0 0 3px #f8f0df}
+.finance-connection-item[data-state="connected"]{background:#eff9f3;color:#206542;border-color:#cee7d9}
+.finance-connection-item[data-state="connected"]:before{background:#68b28a;box-shadow:0 0 0 3px #ddf2e5}
+.finance-connection-item[data-state="disconnected"]{background:#fff7f5;color:#87594b;border-color:#ecd9d5}
+.finance-connection-item[data-state="disconnected"]:before{background:#cc8579;box-shadow:0 0 0 3px #f7e3df}
+.finance-club-approval-note{display:block;margin-top:3px!important;color:#557e68!important;
+ font-size:.64rem!important;font-weight:700;line-height:1.35!important}
+@media(max-width:720px){.finance-connection-status{gap:7px;margin-bottom:11px}
+.finance-connection-item{width:100%;font-size:.71rem;padding:8px 10px}}
