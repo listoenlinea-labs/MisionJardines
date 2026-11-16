@@ -421,7 +421,7 @@ let expensePage=1;
   const resumen=[['Recaudación histórica 2026 · Google',conectado?fmt(historico.total):'No disponible'],
    ['Casas en padrón',houses],
    ['Recuperación autorizada · vigente',fmt(scope.ingresosAutorizadosVigentes||0)],
-   ['Limpieza',fmt(Number(scope.limpiezaRegistrada||0)+Number(scope.limpiezaPorProvisionar||0))]];
+   ['Limpieza',conectado?fmt(historico.limpiezaPrevista):fmt(Number(scope.limpiezaRegistrada||0)+Number(scope.limpiezaPorProvisionar||0))]];
   $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
   $('financialSecondary').innerHTML=[
    ['Ámbito','Casa Club · contabilidad independiente'],
@@ -954,7 +954,16 @@ function renderHouses(){
    const hay=[h.calle,h.numero,h.nombre].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
    return (!query||hay.includes(query))&&(!street||h.calle===street)&&
      houseMatchesStatus(h,status)&&cumpleUltimoPago(h,ultimoMes,ultimoAnio);
-  }).sort((a,b)=>window.MJHouseSort.compareHouses(a,b,houseSort));
+  }).sort((a,b)=>{
+   if(activeConcept==='CASA_CLUB'){
+    // Prioridad exclusiva para Casa Club: cobros conciliados al inicio.
+    const paidA=Number(a.recuperacionHistoricaGoogle||0);
+    const paidB=Number(b.recuperacionHistoricaGoogle||0);
+    if(Boolean(paidA)!==Boolean(paidB))return paidA>0?-1:1;
+    if(paidA!==paidB)return paidB-paidA;
+   }
+   return window.MJHouseSort.compareHouses(a,b,houseSort);
+  });
   syncHouseSort();
   const pageSize=housePageSize();
   const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));
@@ -1005,7 +1014,10 @@ function renderHouses(){
       :'<span class="house-amount'+(String(h.estatus||'').toUpperCase()==='PENDIENTE'&&Number(h.saldoPendiente)>0?' is-overdue':'')+'">'+esc(fmt(h.saldoPendiente))+'</span>')+
     houseCell('TAGs',renderHouseTagCell(h))+
     houseCell('Pago',renderHousePayCell(h))+'</tr>').join(''):'<tr><td colspan="9">No hay viviendas que coincidan con estos filtros.</td></tr>';
-  $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas' : 'Sin resultados';
+  $('financePageInfo').textContent=filtered.length ? 'Página '+housePage+' de '+totalPages+' · '+filtered.length+' viviendas'+
+   (activeConcept==='CASA_CLUB'&&data?.casaClubGoogle2026?.disponible
+     ?' · '+Number(data.casaClubGoogle2026.viviendasConRecuperacion||0)+' casas con recuperación':'')
+    : 'Sin resultados';
   $('financePrev').disabled=housePage===1;
   $('financeNext').disabled=housePage>=totalPages;
  }
