@@ -39,6 +39,7 @@ async function asegurarFinanzas(){
   INDEX ix_finanzas_audit_tipo (tipo,entidad_id),
   INDEX ix_finanzas_audit_fecha (creado_en)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-  await require('./finanzas-planes-schema.service').asegurarPlanes();
+  try{await require('./finanzas-planes-schema.service').asegurarPlanes();}
+  catch(e){console.warn('[Finanzas] Plan mensual no inicializado, se intentará al consultarlo:',e.message);} 
 }
 module.exports={asegurarFinanzas};
