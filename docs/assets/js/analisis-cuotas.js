@@ -391,11 +391,12 @@ let expensePage=1;
  let driveIntegration=null,driveIntegrationAt=0,driveIntegrationBusy=false;
  function updateFinanceConnections(){
   const sheets=$('financeSheetsState'),drive=$('financeDriveState');
+  if(drive)drive.hidden=true;
   const historical=data?.casaClubGoogle2026,year=Number(data?.anio);
   const sheetsConnected=year===2026&&historical?.disponible===true;
   sheets.dataset.state=sheetsConnected?'connected':historical?.codigo==='FUERA_DE_PERIODO'?'checking':'disconnected';
   sheets.textContent=sheetsConnected
-   ?'Google Sheets · Casa Club: conectado automáticamente · solo lectura · '+Number(historical.registros||0)+' registros'
+   ?'Google Sheets conectado · '+Number(historical.registros||0)+' registros'
    :year!==2026?'Google Sheets · Casa Club: histórico disponible para 2026'
    :'Google Sheets · Casa Club: '+String(historical?.mensaje||'Sin conexión confirmada');
   drive.dataset.state=driveIntegration===null?'checking':driveIntegration.connected?'connected':'disconnected';
@@ -423,11 +424,10 @@ let expensePage=1;
   const historico=data?.casaClubGoogle2026||{};
   const en2026=Number(data.anio)===2026;
   const conectado=en2026&&historico.disponible===true;
-  const resumen=[['Casas en padrón',houses],
+  const resumen=[['Recaudación histórica 2026 · Google',conectado?fmt(historico.total):'No disponible'],
+   ['Casas en padrón',houses],
    ['Recuperación autorizada · vigente',fmt(scope.ingresosAutorizadosVigentes||0)],
-   ['Recuperación cobrada (MySQL)',fmt(scope.ingresos)],
-   ['Limpieza y otros egresos',fmt(scope.egresos)]];
-  if(conectado)resumen.unshift(['Recaudación histórica 2026 · Google',fmt(historico.total)]);
+   ['Limpieza',fmt(Number(scope.limpiezaRegistrada||0)+Number(scope.limpiezaPorProvisionar||0))]];
   $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
   $('financialSecondary').innerHTML=[
    ['Ámbito','Casa Club · contabilidad independiente'],
@@ -442,11 +442,11 @@ let expensePage=1;
   $('financeDonut').style.setProperty('--percent','0%');
   $('financeDonutText').innerHTML='Club<small>Independiente</small>';
   $('financeLegend').innerHTML='<div>Reservaciones autorizadas vigentes <b>'+Number(scope.aprobadasVigentes||0)+'</b></div>';
-  $('financeStreetChart').textContent='Solo recuperación es ingreso. Limpieza se reserva para pagar el servicio; los depósitos de garantía se mantienen para posibles devoluciones.';
+  $('financeStreetChart').textContent='Consulta el desglose acumulado por calle en la tarjeta de Ingresos. Se incluyen únicamente los importes reales de recuperación registrados en Google Sheets.';
   $('financePadronNote').hidden=false;
   $('financePadronNote').textContent=conectado
-   ?'Google Sheets conectado automáticamente: '+Number(historico.registros||0)+
-    ' registros pagados en 2026 por '+fmt(historico.total)+'. Consultado: '+
+   ?'Google Sheets: '+Number(historico.registros||0)+' cobros históricos de '+Number(historico.viviendasConRecuperacion||0)+
+    ' viviendas vinculadas ('+Number(historico.cantidadSinConciliar||0)+' sin coincidencia segura). Total 2026: '+fmt(historico.total)+'. Consultado: '+
     new Date(historico.actualizadoEn||Date.now()).toLocaleString('es-MX')+
     '. Histórico pendiente de conciliar: no se suma a los cobros MySQL.'
    :en2026
@@ -982,10 +982,8 @@ function renderHouses(){
   const houseCell=(label,value)=>'<td data-label="'+label+'"><span class="house-field-value">'+value+'</span></td>';
   const clubApprovalBadge=h=>activeConcept==='CASA_CLUB'&&h.autorizacionSinAcreditar&&String(h.estatus)==='PAGADO'
    ?'<small class="finance-club-approval-note" title="Aprobada por administración; no significa comprobante bancario validado">Autorización administrativa · pendiente de conciliar</small>':'';
-  const clubApprovedAmount=h=>Number(h.montoAutorizado||0)>0
-   ?fmt(h.montoAutorizado)+' · recuperación autorizada'
-   :Number(h.ultimoPago?.monto||0)>0
-    ?'Consultar cobro confirmado':'Sin recuperación autorizada';
+  const clubApprovedAmount=h=>Number(h.recuperacionHistoricaGoogle||0)>0
+   ?fmt(h.recuperacionHistoricaGoogle):'No recuperado';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',residentCell(h))+
