@@ -69,7 +69,7 @@
     (groupRows.length?groupRows.map(x=>
      '<article class="fplan-bucket" draggable="true" tabindex="0" data-source="'+esc(x.id)+'" aria-label="Arrastra este dinero a un egreso">'+
      '<span class="fplan-number">'+money(x.free)+'</span><strong>'+esc(x.name)+'</strong>'+
-     '<span>Disponible de '+money(x.total)+' · Asignado '+money(x.used)+'</span>'+
+     '<span>Fuente '+money(x.total)+' · Asignado '+money(x.used)+'</span>'+
      '<div><button type="button" data-pick="'+esc(x.id)+'">Usar esta fuente</button></div></article>').join(''):
     '<p class="fplan-empty">Sin fondos registrados</p>');
   }).join('');
@@ -100,10 +100,11 @@
   const total=totalByGroup.reduce((s,n)=>s+n,0);
   const totalUnassigned=rows.reduce((n,e)=>n+Math.max(0,e.monto-spend(e.id)),0);
   const labels=['Mantenimiento','Cuotas extraordinarias','Casa Club'];
-  $('fplanOverview').innerHTML=totalByGroup.map((n,i)=>'<div class="fplan-kpi"><small>Disponible · '+labels[i]+'</small><strong>'+money(n)+'</strong></div>').join('')+
-   '<div class="fplan-kpi" data-tone="total"><small>Total disponible de fuentes visibles</small><strong>'+money(total)+'</strong></div>';
-  $('fplanExpenseTotal').textContent='Egresos del mes '+money(rows.reduce((t,x)=>t+x.monto,0))+
-   ' · Falta asignar '+money(totalUnassigned);
+  $('fplanOverview').innerHTML=totalByGroup.map((n,i)=>'<div class="fplan-kpi"><small>Sin asignar · '+labels[i]+'</small><strong>'+money(n)+'</strong></div>').join('')+
+   '<div class="fplan-kpi" data-tone="total"><small>Fondos no asignados en el plan (no bancario)</small><strong>'+money(total)+'</strong></div>';
+  const pendientes=rows.filter(x=>!x.pagado).reduce((t,x)=>t+x.monto,0);
+  $('fplanExpenseTotal').textContent='Egresos registrados '+money(rows.reduce((t,x)=>t+x.monto,0))+
+   ' · Pendientes de pago '+money(pendientes)+' · Sin financiación asignada '+money(totalUnassigned);
   const historical=target.casaClubGoogle2026;
   $('fplanHistoric').textContent=historical?.disponible&&target.anio===2026
    ?'Casa Club histórico 2026 (Google): '+money(historical.total)+' · '+historical.registros+
