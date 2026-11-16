@@ -137,14 +137,26 @@ async function execute(){
    throw e;
   }
  }
- // Solo solicitudes del sistema, nunca volver a escribir las filas importadas.
- const outbound=existing.filter(r=>r.fecha>=today()&&
-  ['PENDIENTE','APROBADA'].includes(r.estatus)&&
-  !/^MJ-\d{8}-\d{5,12}$/.test(String(r.folio||''))&&
-  !folios.has('CC-'+r.id)&&!folios.has(folioExterno(r)));
+ // No volver a exportar la misma vivienda/fecha, aunque el formulario
+ // antiguo utilice un folio MJ diferente o haya capturado otro solicitante.
  const houseById=new Map(casas.map(c=>[Number(c.id),c]));
- const rows=outbound.map(r=>houseById.get(Number(r.casaId))?toSheet(r,houseById.get(Number(r.casaId))):null)
-  .filter(Boolean);
+ const houseDate=row=>{
+  const number=normal(row.numero),street=road(row.calle);
+  return number&&street&&row.fecha?street+'|'+number+'|'+row.fecha:null;
+ };
+ const sheetHouseDates=new Set(sheetRows.map(r=>houseDate({
+  numero:r.values?.[3],calle:r.values?.[4],fecha:date(r.values?.[8])
+ })).filter(Boolean));
+ const outbound=existing.filter(r=>{
+  if(!(r.fecha>=today()&&['PENDIENTE','APROBADA'].includes(r.estatus))||
+   /^MJ-\d{8}-\d{5,12}$/.test(String(r.folio||''))||
+   folios.has('CC-'+r.id)||folios.has(folioExterno(r)))return false;
+  const casa=houseById.get(Number(r.casaId));
+  return casa&&!sheetHouseDates.has(houseDate({
+   numero:casa.numero,calle:casa.calleCorrecta||casa.calle,fecha:r.fecha
+  }));
+ });
+ const rows=outbound.map(r=>toSheet(r,houseById.get(Number(r.casaId))));
  // Una sola operación de append, nunca reescribir la hoja original.
  if(rows.length)await sheets.append(rows);
  // Historial de Google: incluye fechas pasadas en modo SOLO CONSULTA.
