@@ -839,6 +839,18 @@
    <label>Mes de origen del dinero<input id="fplanSourceMonth" type="month" min="2026-01" required></label>
    <p class="fplan-help">Los proyectos muestran aportaciones acumuladas; las demás fuentes corresponden a cobros por mes.</p>
   </div>
+  <div class="fplan-recommend-actions">
+    <button type="button" id="fplanRecommend" class="fplan-btn fplan-recommend-btn">✦ Recomendación inteligente</button>
+    <p class="fplan-help">Obtén una propuesta explicada paso a paso: prioridades, fondos empleados, razones y gastos sin cubrir. Nunca modifica el plan sin tu aprobación.</p>
+   </div>
+   <section id="fplanRecommendation" class="fplan-recommendation" aria-label="Justificación de la recomendación" aria-live="polite" hidden>
+    <div class="fplan-recommend-heading"><div><span class="fplan-eyebrow">PROPUESTA EXPLICADA</span><h3>¿Por qué se recomienda esta distribución?</h3></div>
+    <button type="button" id="fplanRecommendationClose" class="fplan-btn-secondary">Ocultar explicación</button></div>
+    <div id="fplanRecommendationSummary"></div>
+    <div id="fplanRecommendationReasons"></div>
+    <div class="fplan-actions"><button type="button" id="fplanRecommendationApply" class="fplan-btn" disabled>Aplicar al borrador (sin guardar)</button>
+    <button type="button" id="fplanRecommendationDiscard" class="fplan-btn-secondary">Descartar propuesta</button></div>
+   </section>
   <div class="fplan-overview" id="fplanOverview" aria-live="polite"></div>
   <p class="fplan-historic" id="fplanHistoric"></p>
   <div class="fplan-columns">
@@ -865,4 +877,4 @@
    <button type="button" class="fplan-btn" id="fplanSave">Guardar plan del mes</button></div>
   <p class="fplan-help">Importante: este plan es una asignación presupuestaria interna. No genera transferencias, pagos, devoluciones ni saldos bancarios conciliados.</p>
  </div>
-</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261115-egresos-reales" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261115-egresos-reales" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261115-plan-club-historico-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261115-fondos-v1" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261115-egresos-reales" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261115-egresos-reales" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261115-plan-club-historico-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261115-explicable-v2" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
