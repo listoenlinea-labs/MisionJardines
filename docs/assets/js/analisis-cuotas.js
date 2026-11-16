@@ -390,8 +390,7 @@ let expensePage=1;
 
  let driveIntegration=null,driveIntegrationAt=0,driveIntegrationBusy=false;
  function updateFinanceConnections(){
-  const sheets=$('financeSheetsState'),drive=$('financeDriveState');
-  if(drive)drive.hidden=true;
+  const sheets=$('financeSheetsState');
   const historical=data?.casaClubGoogle2026,year=Number(data?.anio);
   const sheetsConnected=year===2026&&historical?.disponible===true;
   sheets.dataset.state=sheetsConnected?'connected':historical?.codigo==='FUERA_DE_PERIODO'?'checking':'disconnected';
@@ -399,12 +398,7 @@ let expensePage=1;
    ?'Google Sheets conectado · '+Number(historical.registros||0)+' registros'
    :year!==2026?'Google Sheets · Casa Club: histórico disponible para 2026'
    :'Google Sheets · Casa Club: '+String(historical?.mensaje||'Sin conexión confirmada');
-  drive.dataset.state=driveIntegration===null?'checking':driveIntegration.connected?'connected':'disconnected';
-  drive.textContent=driveIntegration===null?'Google Drive · respaldos: verificando cuenta…':
-   driveIntegration.error?'Google Drive · respaldos: no se pudo consultar el estado':
-   !driveIntegration.connected?'Google Drive · respaldos: no vinculado':
-   driveIntegration.folderConfigured?'Google Drive · respaldos: conectado · carpeta configurada':
-   'Google Drive · respaldos: cuenta vinculada, falta elegir carpeta';
+
  }
  async function refreshDriveIntegration(force=false){
   if(driveIntegrationBusy)return;
@@ -807,7 +801,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   else renderMaintenanceDashboard();
   if(['MANTENIMIENTO','CASA_CLUB'].includes(concepto)){$('expenseScope').value=concepto;syncExtraExpense();}
   renderBalanceCard();renderExpenses();
-  $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':concepto==='CASA_CLUB'?'Mes de reserva autorizada':'Último mes pagado';
+  $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':concepto==='CASA_CLUB'?'Última recuperación':'Último mes pagado';
   if(concepto==='EXTRAORDINARIO'){
    $('financeLastPaidMonth').value='';
    const periodFilter=document.querySelector('.paid-through-filter');
