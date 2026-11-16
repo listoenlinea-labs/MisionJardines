@@ -64,6 +64,9 @@ async function analizar(req,res){
    Egreso.findAll({where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto','ambito'],raw:true}),
    Egreso.findAll({where:{ambito:'EXTRAORDINARIO',proyectoId:{[Op.ne]:null}},order:[['fecha','DESC'],['id','DESC']]})
   ]);
+  const gastosCasaClubAnuales=anio===2026?
+   await Egreso.findAll({where:{ambito:'CASA_CLUB',fecha:{[Op.between]:['2026-01-01','2026-12-31']}},
+    order:[['fecha','DESC'],['id','DESC']],limit:2000}):[];
   const registros=ultimosRegistrosPago({reportados:require('../services/pagos-reparto-datos').desglosar(foliosRegistrados),cuotas:historialCuotas,manuales:manualesConceptoHistoricos});
   const byHouse=new Map(cuotas.map(x=>[String(x.casaId),x]));
   // La vivienda de prueba se muestra solamente en Análisis. El padrón y las
@@ -292,7 +295,10 @@ async function analizar(req,res){
      garantiasPorDevolver:flujoClub.garantiasPorDevolver,
      reservasPagadas:reservasClub.length,...aprobacionesClub}},
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
-   egresosCategorias:categoriasGasto,egresos:egresos.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();return {...row,
+   egresosCategorias:categoriasGasto,
+   egresosCasaClubAnuales:gastosCasaClubAnuales.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();
+    return {...row,comprobanteDisponible:Boolean(comprobanteArchivo)};}),
+   egresos:egresos.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();return {...row,
     ambito:ambitoDeEgreso(e),comprobanteDisponible:!!comprobanteArchivo,
     esAjusteMensual:esAjuste(e),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))};}),
    avisoConciliacion:'Los ingresos por calle se asignan a la mensualidad cubierta (con recargo efectivamente pagado). El saldo de caja se calcula por fecha del cobro, sin duplicar depósitos. Los movimientos sin período requieren conciliación.'
