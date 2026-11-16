@@ -66,6 +66,8 @@ $('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpens
   syncExpenseDateDisplay(input);
  });
  let data=null;
+ // Puente de lectura acotado al editor de gastos de Casa Club.
+ window.MJFinanceClubExpenseContext=()=>({activeConcept,data,request,load,fmt});
  let lastSuccessfulFinanceLoad=Date.now(),lastRevisionSeen=null,revisionBusy=false;
  async function refreshWhenChanged(){
   if(revisionBusy||document.visibilityState==='hidden'||!data||
