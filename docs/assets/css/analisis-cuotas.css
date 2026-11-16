@@ -2463,3 +2463,22 @@ body.page-analisis .finance-project-proof-edit-actions button:disabled{
 .finance-club-google-scroll td{padding:11px;border-bottom:1px solid #e8edf2}
 .finance-club-google-amount{font-weight:800;color:#1f754d;white-space:nowrap}
 @media(max-width:620px){.finance-club-google-dialog{padding:12px;width:calc(100vw - 18px);max-width:none}.finance-club-google-scroll td,.finance-club-google-scroll th{padding:8px 6px;font-size:.73rem}}
+
+/* Edición de proyectos y conceptos reales de Casa Club fuera del carrusel. */
+.finance-project-name-dialog,.finance-club-expense-dialog{box-sizing:border-box;width:min(650px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:88dvh;overflow:auto;border:1px solid #dfe5ed;border-radius:20px;padding:22px;background:#fff;color:#233c54;box-shadow:0 22px 65px #172b4340}
+.finance-project-name-dialog::backdrop,.finance-club-expense-dialog::backdrop{background:rgba(22,35,57,.55)}
+.finance-project-name-heading,.finance-club-expense-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.finance-project-name-heading h2,.finance-club-expense-heading h2{margin:5px 0 0;font-size:1.24rem}
+.finance-project-name-dialog textarea,.finance-club-expense-dialog input:not([type="checkbox"]),.finance-club-expense-dialog select{width:100%;min-width:0;box-sizing:border-box;border-radius:12px;border:1px solid #cfdaea;padding:12px;background:white;color:#283c56;font:inherit}
+.finance-project-name-dialog label,.finance-club-expense-dialog label{display:block;font-size:.83rem;font-weight:700;margin:10px 0;color:#3d536c}
+.finance-club-expense-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+.finance-club-expense-check{display:flex!important;align-items:center;gap:9px}
+.finance-club-expense-actions,.finance-project-name-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:18px}
+.finance-project-name-actions .primary,.finance-club-expense-actions .primary{background:#e9820e;color:white}
+.finance-club-expense-proof{border-top:1px solid #e2e9f1;margin-top:17px;padding-top:12px}
+.finance-club-expense-proof img{max-width:100%;height:auto}
+.finance-club-expense-proof iframe{width:100%;min-height:340px;border:0}
+.finance-club-expense-row{display:block;width:100%;padding:9px 5px;border:0;border-bottom:1px solid #e6edf2;background:transparent;text-align:inherit;color:inherit;cursor:pointer;border-radius:8px}
+.finance-club-expense-row:hover,.finance-club-expense-row:focus-visible{background:#fbf6ef;outline:2px solid #f2cfa7}
+.finance-club-expense-row small{display:block;color:#55716d;margin:1px 0 5px;padding-left:7px}
+@media(max-width:700px){.finance-project-name-dialog,.finance-club-expense-dialog{width:calc(100vw - 18px);max-width:none;padding:15px;max-height:85dvh}.finance-club-expense-grid{grid-template-columns:1fr}.finance-project-name-actions,.finance-club-expense-actions{justify-content:stretch}.finance-project-name-actions button,.finance-club-expense-actions button{flex:1}}
