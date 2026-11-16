@@ -837,13 +837,13 @@
    </div>
    <button type="button" id="fplanClose" class="fplan-close" aria-label="Cerrar administración de fondos">×</button>
   </header>
-  <div class="fplan-content">
+  <div class="fplan-content" id="fplanContent">
    <div class="fplan-commandbar" aria-label="Acciones del plan mensual">
     <div class="fplan-period-group">
      <span class="fplan-command-label">Plan mensual</span>
      <div class="fplan-period-nav">
       <button id="fplanPrevMonth" type="button" class="fplan-period-arrow" aria-label="Ver mes anterior">‹</button>
-      <input id="fplanTargetMonth" type="month" min="2026-01" aria-label="Seleccionar mes del plan" required>
+      <label class="fplan-month-current" for="fplanTargetMonth"><span id="fplanPeriodText">Noviembre 2026</span><input id="fplanTargetMonth" type="month" min="2026-01" aria-label="Seleccionar mes del plan" required></label>
       <button id="fplanNextMonth" type="button" class="fplan-period-arrow" aria-label="Ver mes siguiente">›</button>
      </div>
     </div>
