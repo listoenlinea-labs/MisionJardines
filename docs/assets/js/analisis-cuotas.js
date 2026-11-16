@@ -388,6 +388,36 @@ let expensePage=1;
   document.querySelector('#financeStreetPanel h2').textContent='Cumplimiento del proyecto por calle';
  }
 
+ let driveIntegration=null,driveIntegrationAt=0,driveIntegrationBusy=false;
+ function updateFinanceConnections(){
+  const sheets=$('financeSheetsState'),drive=$('financeDriveState');
+  const historical=data?.casaClubGoogle2026,year=Number(data?.anio);
+  const sheetsConnected=year===2026&&historical?.disponible===true;
+  sheets.dataset.state=sheetsConnected?'connected':historical?.codigo==='FUERA_DE_PERIODO'?'checking':'disconnected';
+  sheets.textContent=sheetsConnected
+   ?'Google Sheets · Casa Club: conectado automáticamente · solo lectura · '+Number(historical.registros||0)+' registros'
+   :year!==2026?'Google Sheets · Casa Club: histórico disponible para 2026'
+   :'Google Sheets · Casa Club: '+String(historical?.mensaje||'Sin conexión confirmada');
+  drive.dataset.state=driveIntegration===null?'checking':driveIntegration.connected?'connected':'disconnected';
+  drive.textContent=driveIntegration===null?'Google Drive · respaldos: verificando cuenta…':
+   driveIntegration.error?'Google Drive · respaldos: no se pudo consultar el estado':
+   !driveIntegration.connected?'Google Drive · respaldos: no vinculado':
+   driveIntegration.folderConfigured?'Google Drive · respaldos: conectado · carpeta configurada':
+   'Google Drive · respaldos: cuenta vinculada, falta elegir carpeta';
+ }
+ async function refreshDriveIntegration(force=false){
+  if(driveIntegrationBusy)return;
+  if(!force&&driveIntegration&&Date.now()-driveIntegrationAt<60000)return;
+  driveIntegrationBusy=true;
+  try{
+   const {data:state}=await request('/drive/status');
+   driveIntegration={connected:Boolean(state?.connected),folderConfigured:Boolean(state?.folderConfigured)};
+  }catch(error){driveIntegration={connected:false,folderConfigured:false,error:true};}
+  finally{
+   driveIntegrationAt=Date.now();driveIntegrationBusy=false;
+   updateFinanceConnections();
+  }
+ }
  function renderClubDashboard(){
   const scope=data?.finanzasAmbitos?.CASA_CLUB||{},houses=Number(data.casas||0);
   const historico=data?.casaClubGoogle2026||{};
@@ -432,6 +462,7 @@ let expensePage=1;
 }
 function render(){
   if(!data)return;
+  updateFinanceConnections();
   renderMaintenanceDashboard();
   renderBalanceCard();
   renderExpenseHistory();
@@ -1826,6 +1857,8 @@ function renderHouses(){
   updateDriveFolderLink(null);
   try{
    const state=(await request('/drive/status')).data;
+   driveIntegration={connected:Boolean(state?.connected),folderConfigured:Boolean(state?.folderConfigured)};
+   driveIntegrationAt=Date.now();updateFinanceConnections();
    if(backupAction!=='drive'||backupModal.hidden)return;
    el.textContent=!state.connected
     ?'Para guardar respaldos, vincula tu cuenta desde «Vincular Drive para respaldos».'
@@ -3670,6 +3703,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   activeProyectoId=Number.isSafeInteger(pid)&&pid>0?pid:null;
  }
  await load();
+ void refreshDriveIntegration();
  if(returnState&&data){
   $('financeSearch').value=String(returnState.search||'').slice(0,160);
   $('financeStreet').value=String(returnState.street||'');
@@ -3688,7 +3722,14 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  // Respaldo cada 10 min si hay varias instancias en Hostinger.
  setInterval(()=>{void refreshWhenChanged();},20000);
  document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible')void refreshWhenChanged();
+  if(document.visibilityState==='visible'){
+   void refreshWhenChanged();void refreshDriveIntegration();
+  }
+ });
+ window.addEventListener('focus',()=>{void refreshDriveIntegration(true);});
+ window.addEventListener('storage',event=>{
+  if(event.key!=='mj_casa_club_aprobacion_revision'||document.visibilityState==='hidden')return;
+  void load();
  });
 })();
 
