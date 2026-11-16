@@ -66,7 +66,7 @@ test('los fondos del plan distinguen mensualidad, proyecto y Google sin concilia
  const server=source('backend/src/controllers/finanzas-plan.controller.js');
  assert.match(ui,/ingresosMantenimientoCalles\?\.mes/);
  assert.match(server,/ingresosMantenimientoCalles\?\.mes/);
- assert.match(ui,/selected\?\.id/);
+ assert.match(ui,/const selected=\(target\.proyectosExtraordinarios/);
  assert.match(ui,/projectFilterId/);
  assert.match(ui,/sinConciliar:annualClub/);
  assert.match(ui,/Elige primero una fuente concreta/);
