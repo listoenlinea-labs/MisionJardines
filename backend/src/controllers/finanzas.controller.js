@@ -234,7 +234,15 @@ async function analizar(req,res){
     const historical=await googleCasaClubClient.readPagos2026();
     const {movimientos,...base}=historical;
     const matched=conciliarMovimientos(movimientos||[],padron.casas,historical.excluidos||0);
-    casaClubGoogle2026={...base,...matched};
+    // Corte anual de la hoja original: los 29 cobros generan 29 compromisos
+    // de limpieza de $300, sin inventar comprobantes ni egresos bancarios.
+    const costoLimpiezaUnitario=300;
+    const limpiezaPrevista=Math.round(matched.registros*costoLimpiezaUnitario*100)/100;
+    casaClubGoogle2026={...base,...matched,
+     limpiezaUnitariaPrevista:costoLimpiezaUnitario,
+     limpiezaPrevista,ingresosHistoricos:matched.total,
+     diferenciaHistorica:Math.round((matched.total-limpiezaPrevista)*100)/100,
+     criterioHistorico:'Recuperación histórica Google 2026 menos $300 de limpieza prevista por cada cobro pagado. No equivale a egresos efectivamente pagados ni a saldo bancario.'};
     // Sólo una vista de consulta: NO se toca el estatus en MySQL, ni se
     // considera el histórico como nuevo depósito del período.
     for(const row of viviendasConceptos.CASA_CLUB){
