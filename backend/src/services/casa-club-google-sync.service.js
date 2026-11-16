@@ -46,12 +46,16 @@ function legacy(row){
   numero:String(a[3]||''),calle:String(a[4]||''),solicitante:String(a[5]||'').slice(0,180),
   telefono:String(a[6]||'').slice(0,25),propietario:/^(SI|SÍ)$/i.test(String(a[7]||'').trim())};
 }
+const folioExterno=r=>{
+ const day=fmtDateTime(r.creadoEn||new Date()).slice(0,10).split('/');
+ return 'MJ-'+day[2]+day[1]+day[0]+'-'+String(r.id).padStart(5,'0');
+};
 const toSheet=(r,c)=>{
  const d=new Date(r.creadoEn||Date.now()),iso=String(r.fecha);
  const [year,month]=iso.split('-');
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto',
   'Septiembre','Octubre','Noviembre','Diciembre'];
- return ['CC-'+r.id,fmtDateTime(d),r.correo||'',String(c.numero||''),
+ return [folioExterno(r),fmtDateTime(d),r.correo||'',String(c.numero||''),
   c.calleCorrecta||c.calle||'',r.solicitante||'',r.telefono||'',
   r.propietario?'SÍ':'NO',iso,months[Number(month)-1]||''];
 };
@@ -68,6 +72,7 @@ async function execute(){
   order:[['id','ASC']],limit:5001});
  if(existing.length>5000)throw Error('Casa Club excede 5000 reservas; revisar paginación de sincronización');
  const byFolio=new Map(existing.filter(x=>x.folio).map(x=>[x.folio,x]));
+ const exportedByFolio=new Map(existing.map(r=>[folioExterno(r),r]));
  const occupiedByLocal=new Map(existing.filter(x=>x.fechaBloqueada&&
   ['PENDIENTE','APROBADA'].includes(x.estatus)).map(x=>[x.fechaBloqueada,x]));
  const tariff=await tarifas();
@@ -75,6 +80,12 @@ async function execute(){
  const createdRows=[];
  const occupied=[];
  for(const row of external){
+   // Nunca importar como solicitud un espejo MJ de nuestra propia base.
+   if(exportedByFolio.has(row.folio)){
+    const mine=exportedByFolio.get(row.folio);
+    if(String(mine.fecha)===row.fecha){duplicates++;continue;}
+    conflicts++;continue;
+   }
   // PRECEDENCIA ABSOLUTA: MySQL es el calendario oficial.
   // Si existe reserva local activa para la fecha, no importar ni pintar
   // amarillo por un registro diferente o desactualizado de Google.
@@ -126,14 +137,26 @@ async function execute(){
    throw e;
   }
  }
- // Solo solicitudes del sistema, nunca volver a escribir las filas importadas.
- const outbound=existing.filter(r=>r.fecha>=today()&&
-  ['PENDIENTE','APROBADA'].includes(r.estatus)&&
-  !/^MJ-\d{8}-\d{5,12}$/.test(String(r.folio||''))&&
-  !folios.has('CC-'+r.id));
+ // No volver a exportar la misma vivienda/fecha, aunque el formulario
+ // antiguo utilice un folio MJ diferente o haya capturado otro solicitante.
  const houseById=new Map(casas.map(c=>[Number(c.id),c]));
- const rows=outbound.map(r=>houseById.get(Number(r.casaId))?toSheet(r,houseById.get(Number(r.casaId))):null)
-  .filter(Boolean);
+ const houseDate=row=>{
+  const number=normal(row.numero),street=road(row.calle);
+  return number&&street&&row.fecha?street+'|'+number+'|'+row.fecha:null;
+ };
+ const sheetHouseDates=new Set(sheetRows.map(r=>houseDate({
+  numero:r.values?.[3],calle:r.values?.[4],fecha:date(r.values?.[8])
+ })).filter(Boolean));
+ const outbound=existing.filter(r=>{
+  if(!(r.fecha>=today()&&['PENDIENTE','APROBADA'].includes(r.estatus))||
+   /^MJ-\d{8}-\d{5,12}$/.test(String(r.folio||''))||
+   folios.has('CC-'+r.id)||folios.has(folioExterno(r)))return false;
+  const casa=houseById.get(Number(r.casaId));
+  return casa&&!sheetHouseDates.has(houseDate({
+   numero:casa.numero,calle:casa.calleCorrecta||casa.calle,fecha:r.fecha
+  }));
+ });
+ const rows=outbound.map(r=>toSheet(r,houseById.get(Number(r.casaId))));
  // Una sola operación de append, nunca reescribir la hoja original.
  if(rows.length)await sheets.append(rows);
  // Historial de Google: incluye fechas pasadas en modo SOLO CONSULTA.
@@ -179,4 +202,4 @@ function start(){
   console.error('[CasaClub Google] Error de sincronización:',e.message)),120000);
  timer.unref?.();
 }
-module.exports={sync,beforeBooking,start,legacy,houseId,toSheet,date};
+module.exports={sync,beforeBooking,start,legacy,houseId,toSheet,folioExterno,date};

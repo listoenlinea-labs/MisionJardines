@@ -16,10 +16,10 @@
   const costoComprometido=presupuesto+adicionales;
   const ingresos=amount(project.recaudado);
   const presupuestoRestante=Math.max(0,costoComprometido-pagados);
-  return {presupuesto,gastosReales:reales,incluidos,adicionales,
+  return {presupuesto,metaEstimada:presupuesto,gastosReales:reales,incluidos,adicionales,
    costoComprometido,pagados,pendientes,presupuestoRestante,
    fondosDisponibles:ingresos-pagados,
-   ingresos,diferencia:ingresos-costoComprometido,
+   ingresos,diferencia:ingresos-reales,metaRestante:Math.max(0,presupuesto-reales),
    porJustificar:Math.max(0,presupuesto-incluidos)};
  }
  const api={resumen};

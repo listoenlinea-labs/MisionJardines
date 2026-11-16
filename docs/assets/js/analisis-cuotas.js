@@ -390,12 +390,18 @@ let expensePage=1;
 
  function renderClubDashboard(){
  const scope=data?.finanzasAmbitos?.CASA_CLUB||{},houses=Number(data.casas||0);
- $('financialSummary').innerHTML=[
-  ['Casas en padrón',houses],['Reservas pagadas',Number(scope.reservasPagadas||0)],
-  ['Ingresos Casa Club',fmt(scope.ingresos)],['Egresos Casa Club',fmt(scope.egresos)]]
-  .map(([n,v])=>financialCard(n,v)).join('');
+ const historico=data?.casaClubGoogle2026||{};
+ const resumen=[['Casas en padrón',houses],
+  ['Reservas pagadas en MySQL',Number(scope.reservasPagadas||0)],
+  ['Ingresos Casa Club (MySQL)',fmt(scope.ingresos)],
+  ['Egresos Casa Club',fmt(scope.egresos)]];
+ if(historico.disponible&&Number(data.anio)===2026)
+  resumen.unshift(['Recaudación histórica 2026 · Google',fmt(historico.total)]);
+ $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
  $('financialSecondary').innerHTML=[['Ámbito','Casa Club · contabilidad independiente'],
-  ['Diferencia',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))]]
+  ['Diferencia MySQL',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))],
+  ['Histórico Google (sin conciliar)',historico.disponible?
+    historico.registros+' registros · no sumar a MySQL':'No disponible']]
   .map(([n,v])=>financialCard(n,v)).join('');
  $('financeDonut').style.setProperty('--percent','0%');
  $('financeDonutText').innerHTML='Club<small>Independiente</small>';

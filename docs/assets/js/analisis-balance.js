@@ -16,18 +16,15 @@
    diferencia:diff/100,estado:clasificar(diff),
    criterio:'Cuotas del mes cubierto menos egresos del mismo mes, únicamente de mantenimiento; no representa el saldo bancario.'};
  }
- // En la tarjeta central el balance es presupuestario: ingreso acumulado
- // menos costo total comprometido, sin descontar pagos ya registrados de
- // ninguno de los dos lados. La tarjeta de Egresos muestra por separado
- // cuánto queda realmente por pagar.
+ // El saldo compara aportaciones con conceptos reales, no contra la meta estimada.
  function proyecto(project){
   if(!project)return null;
   const income=centavos(project.recaudado);
-  const expense=centavos(project.egresosComprometidos??project.totalEsperado);
+  const expense=centavos(project.egresosReales??(project.gastosConceptos||[]).reduce((s,c)=>s+Number(c.monto||0),0));
   const diff=income-expense;
   return {tipo:'EXTRAORDINARIO',ingresos:income/100,egresos:expense/100,
    diferencia:diff/100,estado:clasificar(diff),
-   criterio:'Balance presupuestario: aportaciones acumuladas menos costo total comprometido (presupuesto base más gastos adicionales). Los conceptos incluidos no se suman dos veces. Lo ya pagado se descuenta solo del presupuesto restante en la tarjeta de Egresos; no representa el saldo bancario.'};
+   criterio:'Aportaciones acumuladas menos conceptos de gasto realmente registrados. La meta estimada no se considera gasto. No equivale al saldo bancario.'};
  }
  // Las garantías reembolsables del club no se consideran ingresos operativos.
  function casaClub(scope){

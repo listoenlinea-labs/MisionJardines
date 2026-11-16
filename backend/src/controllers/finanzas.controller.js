@@ -12,6 +12,7 @@ const Egreso=require('../models/Egreso');
 const {referenciaEgreso}=require('../services/egreso-referencia.service');
 const {validarCambio,categoriasEquivalentes,prepararAjuste,esAjuste}=require('../services/ajuste-egresos-mensuales.service');
 const ReservaCasaClub=require('../models/ReservaCasaClub');
+const googleCasaClubClient=require('../services/casa-club-google-client.service');
 const {crearPorEgreso}=require('../services/cargos-extraordinarios.service');
 const {resumenConceptos}=require('../services/resumen-conceptos-analisis.service');
 const {historialMantenimiento,historialConcepto}=require('../services/historial-pagos-vivienda.service');
@@ -216,9 +217,15 @@ async function analizar(req,res){
    tipo:p.tipoPago,monto:num(p.monto),formaPago:p.formaPago||'',
    referencia:p.referencia||'',fecha:p.creadoEn||null
   }));
+  // Los cobros históricos Google no son nuevos ingresos bancarios.
+  let casaClubGoogle2026={disponible:false,total:0,registros:0};
+  if(anio===2026){
+   try{casaClubGoogle2026=await googleCasaClubClient.readPagos2026();}
+   catch(e){console.warn('[Finanzas] Histórico Casa Club no disponible:',e.message);}
+  }
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,data:{
-   anio,mes,periodo:mesName+' '+anio,
+   anio,mes,periodo:mesName+' '+anio,casaClubGoogle2026,
    casas:residencesOficiales.length,pagadas,pendientes:residencesOficiales.length-pagadas,
    porcentaje:residencesOficiales.length?Math.round(pagadas/residencesOficiales.length*10000)/100:0,
    calles:calls,viviendas:residences.sort(compararDirecciones),viviendasConceptos,proyectosExtraordinarios,

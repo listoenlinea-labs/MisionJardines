@@ -240,7 +240,7 @@
     if(r.estatus==='APROBADA')occupied.set(r.fecha,'APROBADA');
     else if(r.estatus==='PENDIENTE')occupied.set(r.fecha,'PENDIENTE');
     else if(r.soloLectura)occupied.set(r.fecha,'HISTORICA_GOOGLE');
-    else if(['RECHAZADA','CANCELADA'].includes(r.estatus))
+    else if(r.fecha<today()&&['RECHAZADA','CANCELADA'].includes(r.estatus))
      occupied.set(r.fecha,'HISTORICA_INACTIVA');
    }
   }
@@ -255,7 +255,7 @@
   for(let n=0;n<offset;n++){let gap=document.createElement('div');gap.className='calendar-blank';days.append(gap);}
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
    const date=currentMonth+'-'+String(n).padStart(2,'0'),status=occupied.get(date);
-   const pastDate=date<today(),past=admin?pastDate:date<tomorrow()||date>lastDay();
+   const pastDate=date<today(),past=admin?pastDate:date<today()||date>lastDay();
    // Una reservación histórica puede seguir en revisión: no exige aprobación.
    const historicReserved=admin&&pastDate&&['APROBADA','PENDIENTE','HISTORICA_GOOGLE'].includes(status);
    const btn=document.createElement('button');btn.type='button';

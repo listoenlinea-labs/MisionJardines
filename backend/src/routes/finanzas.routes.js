@@ -6,6 +6,9 @@ const pagosManuales=require('../controllers/pagos-manuales-analisis.controller')
 const recibosMantenimiento=require('../controllers/recibos-mantenimiento-analisis.controller');
 router.use(autenticarToken,autorizarRoles('SUPER_ADMIN','ADMINISTRADOR'));
 router.get('/analisis',controller.analizar);
+const plan=require('../controllers/finanzas-plan.controller');
+router.get('/plan-mensual',plan.consultar);
+router.put('/plan-mensual',plan.guardar);
 const recibosManuales=require('../controllers/recibos-manuales.controller');
 router.get('/recibos-manuales',recibosManuales.listar);
 router.post('/recibos-manuales',recibosManuales.crear);

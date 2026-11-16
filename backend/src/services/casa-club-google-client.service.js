@@ -112,4 +112,51 @@ async function updateSummary(summary){
  return query('PUT','/values/'+address+'?valueInputOption=RAW',
   {range:"'"+tab.replace(/'/g,"''")+"'!K1:L5",majorDimension:'ROWS',values:rows});
 }
-module.exports={enabled,config,read,append,updateSummary};
+// Histórico económico de la pestaña original, de solo lectura. No acredita depósitos.
+let historialCache=null,historialPendiente=null;
+async function readPagos2026(){
+ // La cuenta de servicio de solo lectura existente es el primer origen de consulta.
+ // No es necesario activar escrituras ni la sincronización bidireccional.
+ const readOnlyConfigured=Boolean(process.env.GOOGLE_SHEETS_SPREADSHEET_ID&&
+  process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON_BASE64);
+ if(!readOnlyConfigured&&!enabled())return {disponible:false,total:0,registros:0,porMesEvento:{}};
+ if(historialCache&&Date.now()-historialCache.at<120000)return historialCache.data;
+ if(historialPendiente)return historialPendiente;
+ historialPendiente=(async()=>{
+  let rows=[];
+  if(readOnlyConfigured){
+   rows=await require('./google-sheets.service').readCasaClub2026();
+  }else{
+   const location=encodeURIComponent("'MISION JARDINES 2026'!A1:L1000");
+   const response=await query('GET','/values/'+location+'?valueRenderOption=FORMATTED_VALUE');
+   rows=response.values||[];
+  }
+  const header=rows[1]||[];
+  if(!String(header[5]||'').toUpperCase().includes('PAGO RECUPERACI')||
+     !String(header[11]||'').toUpperCase().includes('ESTATUS PAGO'))
+   throw Error('La hoja económica Casa Club cambió sus columnas F/L');
+  const meses=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+   'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  let centavos=0,registros=0,excluidos=0;
+  const porMesEvento={};
+  for(const row of rows.slice(2)){
+   const estatus=String(row[11]||'').trim().toUpperCase();
+   if(estatus==='CANCELADO'){excluidos++;continue;}
+   if(estatus!=='PAGADO')continue;
+   const texto=String(row[5]??'').replace(/[^\d.,-]/g,'').replace(/,/g,'');
+   const monto=Number(texto);
+   if(!Number.isFinite(monto)||monto<=0)continue;
+   const value=Math.round(monto*100);
+   centavos+=value;registros++;
+   // MES corresponde a la fecha del evento, no a la fecha del depósito.
+   const nombre=String(row[3]||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+   const mes=meses.indexOf(nombre)+1;
+   if(mes)porMesEvento[String(mes).padStart(2,'0')]=(porMesEvento[String(mes).padStart(2,'0')]||0)+value/100;
+  }
+  const data={disponible:true,total:centavos/100,registros,excluidos,porMesEvento,
+   origen:'Google Sheets · MISION JARDINES 2026',conciliado:false};
+  historialCache={at:Date.now(),data};return data;
+ })();
+ try{return await historialPendiente;}finally{historialPendiente=null;}
+}
+module.exports={enabled,config,read,append,updateSummary,readPagos2026};
