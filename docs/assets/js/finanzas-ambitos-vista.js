@@ -9,16 +9,16 @@
   for(const id of ['financeIncomeCard','financeBalanceCard','financeExpenseCard'])
    $(id).querySelector('.eyebrow').textContent=scopeName;
   $('financeIncomeSubtitle').textContent=project?project.nombre:
-   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Autorizaciones y cobros registrados':'Mantenimiento · Ingresos por calle';
+   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Recuperación autorizada y cobrada':'Mantenimiento · Ingresos por calle';
   $('financeExpenseSubtitle').textContent=project?project.nombre:
-   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Gastos por concepto':'Mantenimiento · Gastos por concepto';
+   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Limpieza y gastos registrados':'Mantenimiento · Gastos por concepto';
   $('financeIncomeSubtitle').title=$('financeExpenseSubtitle').title=project?project.nombre:scopeName;
   $('financeProjectExpenseEntry').hidden=!project;
   $('financeIncomeCard').querySelector('.finance-graph-help').hidden=!!project||club;
   $('financeExpenseCard').querySelector('.finance-graph-help').hidden=!!project||club;
   $('financeIncomeCard').querySelector('.finance-chart-description').textContent=project?
    'Aportaciones acumuladas de este proyecto distribuidas por calle.':club?
-   'Importes autorizados por administración frente a cobros realmente verificados; garantías excluidas.':
+   'Sólo la recuperación es ingreso; limpieza es costo y garantía es reembolsable.':
    'Los pagos anticipados se distribuyen por mensualidad cubierta, con recargo real.';
   $('financeExpenseCard').querySelector('.finance-chart-description').textContent=project?
    'La meta estimada es una referencia, no un egreso. Se muestran los conceptos realmente registrados.':
@@ -62,12 +62,14 @@
    expenseFooter=Number(info.egresos||0);
    const categories=new Map();
    for(const e of expenses)categories.set(String(e.categoria||'OTROS'),(categories.get(String(e.categoria||'OTROS'))||0)+Number(e.monto||0));
+   const limpiezaPendiente=Number(info.limpiezaPorProvisionar||0);
+   if(limpiezaPendiente>0)categories.set('Limpieza prevista (sin egreso registrado)',limpiezaPendiente);
    const max=Math.max(1,...categories.values());
    const maxIncome=Math.max(1,Number(info.ingresosAutorizados||0),Number(info.ingresos||0));
-   $('financeCashChart').innerHTML=bar('Autorizado · pendiente de conciliación',Number(info.ingresosAutorizados||0),maxIncome,false,fmt(info.ingresosAutorizados))+
-    bar('Cobros registrados en MySQL',Number(info.ingresos||0),maxIncome,false,fmt(info.ingresos));
-   $('financeWarning').textContent='Las autorizaciones cuentan para seguimiento, pero no son depósitos bancarios ni fondos disponibles; las garantías reembolsables se excluyen.';
-   $('financeExpenseChart').innerHTML=[...categories].map(([name,value])=>bar(name,value,max,true,fmt(value))).join('')||'<p class="hint">Sin gastos en Casa Club durante el período.</p>';
+   $('financeCashChart').innerHTML=bar('Recuperación autorizada',Number(info.ingresosAutorizados||0),maxIncome,false,fmt(info.ingresosAutorizados))+
+    bar('Recuperación cobrada',Number(info.ingresos||0),maxIncome,false,fmt(info.ingresos));
+   $('financeWarning').textContent='Recuperación = ingreso operativo. Limpieza ($300 por reserva según tarifa) = costo previsto; garantía de $700 = reembolsable. Sólo los cobros verificados son dinero disponible.';
+   $('financeExpenseChart').innerHTML=[...categories].map(([name,value])=>bar(name,value,max,true,fmt(value))).join('')||'<p class="hint">Sin servicios de limpieza ni otros gastos registrados en este período.</p>';
   }else{
    const income=data.ingresosMantenimientoCalles;
    if(income?.calles){
@@ -96,9 +98,9 @@
   }
   $('financeIncomeFooterTotal').textContent=incomeFooter===null?'—':fmt(incomeFooter);
   const incomeFooterLabel=$('financeIncomeFooter').querySelector('span');
-  if(incomeFooterLabel)incomeFooterLabel.textContent=club?'Cobros verificados (MySQL)':'Total de ingresos';
+  if(incomeFooterLabel)incomeFooterLabel.textContent=club?'Total recuperación cobrada':'Total de ingresos';
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
-  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':'Total de egresos';
+  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':club?'Limpieza prevista + gastos registrados':'Total de egresos';
   const summaryTrigger=$('financeExpenseFooter');
   summaryTrigger.tabIndex=project?0:-1;
   if(project){
@@ -139,11 +141,11 @@
    club?root.MJFinanceBalance?.casaClub(data.finanzasAmbitos?.CASA_CLUB):
    scope==='MANTENIMIENTO'?root.MJFinanceBalance?.mensual(data):null;
   $('financeBalanceSubtitle').textContent=project?'Proyecto · Ingresos menos egresos reales':
-   club?'Casa Club · Cobros verificados menos egresos':'Mantenimiento · Ingresos menos egresos';
+   club?'Casa Club · Recuperación cobrada menos limpieza y gastos':'Mantenimiento · Ingresos menos egresos';
   $('financeBalanceExpenseLabel').textContent='Egresos';
   $('financeBalanceDescription').textContent=project?
    'Los egresos son la suma de conceptos reales, estén pagados o pendientes. La meta estimada nunca se resta como gasto.':
-   club?'Balance de cobros confirmados de Casa Club. Las autorizaciones aún no conciliadas no son caja ni garantía disponible.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
+   club?'El balance descuenta la limpieza prevista que aún no esté registrada como gasto. La garantía reembolsable y las autorizaciones sin depósito no se consideran ingresos.':'Del mes seleccionado, sin gastos de proyectos ni Casa Club.';
   $('financeBalanceIncome').parentElement?.querySelector('span')?.replaceChildren(
    document.createTextNode('Ingresos'));
   const card=$('financeBalanceCard');
