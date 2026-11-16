@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261115-editar-eliminar-concepto-v1"><link rel="stylesheet" href="assets/css/finanzas-plan.css?v=20261115-fondos-v1">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261115-editar-eliminar-concepto-v1"><link rel="stylesheet" href="assets/css/finanzas-plan.css?v=20261116-responsive-v2">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -831,50 +831,84 @@
 </section>
 </main><dialog id="fplanDialog" class="fplan-dialog" aria-labelledby="fplanTitle">
  <div class="fplan-shell">
-  <header class="fplan-header"><div><span class="fplan-eyebrow">CONTROL DE FONDOS DEL FRACCIONAMIENTO</span><h2 id="fplanTitle">Administrar ingresos y egresos</h2>
-   <p class="fplan-help">Organiza un plan mensual. Puedes aplicar recursos recaudados en meses anteriores a gastos posteriores, sin cambiar cuotas, pagos ni cuentas bancarias.</p></div>
-   <button type="button" id="fplanClose" class="fplan-btn-secondary" aria-label="Cerrar administración de fondos">Cerrar ×</button></header>
-  <div class="fplan-tools">
-   <label>Mes del plan<input id="fplanTargetMonth" type="month" min="2026-01" required></label>
-   <label>Mes de origen del dinero<input id="fplanSourceMonth" type="month" min="2026-01" required></label>
-   <p class="fplan-help">Los proyectos muestran aportaciones acumuladas; las demás fuentes corresponden a cobros por mes.</p>
-  </div>
-  <div class="fplan-recommend-actions">
-    <button type="button" id="fplanRecommend" class="fplan-btn fplan-recommend-btn">✦ Recomendación inteligente</button>
-    <p class="fplan-help">Obtén una propuesta explicada paso a paso: prioridades, fondos empleados, razones y gastos sin cubrir. Nunca modifica el plan sin tu aprobación.</p>
+  <header class="fplan-header">
+   <div class="fplan-header-copy"><span class="fplan-eyebrow">CONTROL FINANCIERO · MISIÓN JARDINES</span>
+    <h2 id="fplanTitle">Administrar fondos</h2><p>Distribuye ingresos y egresos sin alterar los pagos registrados.</p>
    </div>
+   <button type="button" id="fplanClose" class="fplan-close" aria-label="Cerrar administración de fondos">×</button>
+  </header>
+  <div class="fplan-content" id="fplanContent">
+   <div class="fplan-commandbar" aria-label="Acciones del plan mensual">
+    <div class="fplan-period-group">
+     <span class="fplan-command-label">Plan mensual</span>
+     <div class="fplan-period-nav">
+      <button id="fplanPrevMonth" type="button" class="fplan-period-arrow" aria-label="Ver mes anterior">‹</button>
+      <label class="fplan-month-current" for="fplanTargetMonth"><span id="fplanPeriodText">Noviembre 2026</span><input id="fplanTargetMonth" type="month" min="2026-01" aria-label="Seleccionar mes del plan" required></label>
+      <button id="fplanNextMonth" type="button" class="fplan-period-arrow" aria-label="Ver mes siguiente">›</button>
+     </div>
+    </div>
+    <button type="button" id="fplanRecommend" class="fplan-btn fplan-recommend-btn">✦ Recomendación inteligente</button>
+   </div>
+   <div id="fplanLoadNotice" class="fplan-alert" role="alert" hidden>
+    <div><strong id="fplanLoadTitle">No se pudo consultar el plan</strong><p id="fplanLoadMessage"></p></div>
+    <button id="fplanReload" type="button" class="fplan-btn-secondary">Reintentar</button>
+   </div>
+   <div class="fplan-overview" id="fplanOverview" aria-live="polite"></div>
+   <div class="fplan-columns">
+    <section class="fplan-panel fplan-income-panel" aria-labelledby="fplanIncomeTitle">
+     <header class="fplan-panel-head"><div><span class="fplan-panel-kicker">ORIGEN DEL DINERO</span><h3 id="fplanIncomeTitle">Ingresos disponibles</h3></div>
+      <span class="fplan-legend-dot fplan-green">Ingresos</span>
+     </header>
+     <div class="fplan-panel-toolbar">
+      <label class="fplan-field"><span>Mes de los fondos</span><select id="fplanSourceMonth" aria-label="Mes de origen de los fondos"></select></label>
+      <label class="fplan-field"><span>Ordenar</span><select id="fplanIncomeSort" aria-label="Ordenar ingresos">
+        <option value="desc">Mayor importe</option><option value="asc">Menor importe</option><option value="name">Por nombre</option></select></label>
+     </div>
+     <p class="fplan-section-help">Selecciona un fondo o arrástralo al gasto. Las aportaciones a proyectos se muestran acumuladas.</p>
+     <div id="fplanSources" aria-live="polite"></div>
+    </section>
+    <section class="fplan-panel fplan-expense-panel" aria-labelledby="fplanExpenseTitle">
+     <header class="fplan-panel-head"><div><span class="fplan-panel-kicker">DESTINO DEL DINERO</span><h3 id="fplanExpenseTitle">Egresos por concepto</h3></div>
+      <span class="fplan-legend-dot fplan-red">Egresos</span>
+     </header>
+     <div class="fplan-panel-toolbar fplan-expense-sort">
+      <label class="fplan-field fplan-field-search"><span>Buscar concepto</span>
+       <input id="fplanSearch" type="search" placeholder="Seguridad, luz, barandal…" aria-label="Buscar egreso"></label>
+      <label class="fplan-field"><span>Ordenar</span><select id="fplanExpenseSort" aria-label="Ordenar egresos">
+       <option value="desc">Mayor importe</option><option value="asc">Menor importe</option><option value="name">Por nombre</option></select></label>
+     </div>
+     <p id="fplanExpenseTotal" class="fplan-section-help"></p>
+     <div id="fplanExpenses" aria-live="polite"></div>
+    </section>
+   </div>
+   <section id="fplanAllocator" class="fplan-allocator" hidden>
+    <h3 id="fplanAllocatorTitle">Asignar fondos</h3>
+    <label class="fplan-field">Monto a asignar (MXN)<input id="fplanAmount" type="number" inputmode="numeric" min="1" step="1"></label>
+    <div class="fplan-inline-actions"><button id="fplanApply" type="button" class="fplan-btn">Agregar asignación</button>
+     <button id="fplanCancelAllocation" type="button" class="fplan-btn-secondary">Cancelar</button></div>
+   </section>
    <section id="fplanRecommendation" class="fplan-recommendation" aria-label="Justificación de la recomendación" aria-live="polite" hidden>
-    <div class="fplan-recommend-heading"><div><span class="fplan-eyebrow">PROPUESTA EXPLICADA</span><h3>¿Por qué se recomienda esta distribución?</h3></div>
-    <button type="button" id="fplanRecommendationClose" class="fplan-btn-secondary">Ocultar explicación</button></div>
+    <div class="fplan-recommend-heading"><div><span class="fplan-panel-kicker">PROPUESTA EXPLICADA</span>
+     <h3>¿Por qué se recomienda esta distribución?</h3></div>
+     <button type="button" id="fplanRecommendationClose" class="fplan-btn-secondary">Ocultar</button></div>
     <div id="fplanRecommendationSummary"></div>
     <div id="fplanRecommendationReasons"></div>
-    <div class="fplan-actions"><button type="button" id="fplanRecommendationApply" class="fplan-btn" disabled>Aplicar al borrador (sin guardar)</button>
-    <button type="button" id="fplanRecommendationDiscard" class="fplan-btn-secondary">Descartar propuesta</button></div>
+    <div class="fplan-inline-actions"><button type="button" id="fplanRecommendationApply" class="fplan-btn" disabled>Aplicar al borrador</button>
+     <button type="button" id="fplanRecommendationDiscard" class="fplan-btn-secondary">Descartar</button></div>
    </section>
-  <div class="fplan-overview" id="fplanOverview" aria-live="polite"></div>
-  <p class="fplan-historic" id="fplanHistoric"></p>
-  <div class="fplan-columns">
-   <section class="fplan-panel" aria-label="Fuentes de ingresos"><h3>Ingresos disponibles</h3>
-    <p class="fplan-help">Arrastra una fuente de dinero a un egreso o pulsa «Usar esta fuente». Se descuenta lo asignado en otros planes.</p>
-    <div class="fplan-expense-sort"><label>Ordenar ingresos<select id="fplanIncomeSort"><option value="desc">Mayor primero</option><option value="asc">Menor primero</option><option value="name">Nombre</option></select></label></div>
-    <div id="fplanSources"></div>
-   </section>
-   <section class="fplan-panel" aria-label="Egresos para financiar"><h3>Egresos por concepto</h3>
-    <p id="fplanExpenseTotal" class="fplan-help"></p>
-    <div class="fplan-expense-sort"><input id="fplanSearch" type="search" placeholder="Buscar CFE, seguridad, barandal…" aria-label="Buscar egreso">
-      <select id="fplanExpenseSort" aria-label="Ordenar egresos"><option value="desc">Mayor primero</option><option value="asc">Menor primero</option><option value="name">Nombre</option></select></div>
-    <div id="fplanExpenses"></div>
-   </section>
+   <details class="fplan-details">
+    <summary>Notas del plan de acción <span>Opcional</span></summary>
+    <label class="fplan-field" for="fplanNotes">Observaciones para el mes</label>
+    <textarea id="fplanNotes" class="fplan-note" maxlength="1200" placeholder="Ej. Reponer en diciembre los fondos prestados al proyecto"></textarea>
+   </details>
+   <details class="fplan-details fplan-historic-details">
+    <summary>Conciliación histórica de Casa Club <span>Consultar</span></summary>
+    <p class="fplan-historic" id="fplanHistoric"></p>
+   </details>
+   <p class="fplan-footnote">Estas asignaciones son un plan interno. No realizan transferencias ni representan saldos bancarios conciliados.</p>
   </div>
-  <section id="fplanAllocator" class="fplan-allocator" hidden><h3 id="fplanAllocatorTitle">Asignar fondos</h3>
-   <label>Importe a asignar (MXN) <input id="fplanAmount" type="number" inputmode="numeric" min="1" step="1"></label>
-   <div class="fplan-actions"><button id="fplanApply" type="button" class="fplan-btn">Agregar asignación</button>
-    <button id="fplanCancelAllocation" type="button" class="fplan-btn-secondary">Cancelar</button></div>
-  </section>
-  <div class="fplan-tools"><label style="width:100%">Notas del plan de acción del mes
-   <textarea id="fplanNotes" class="fplan-note" maxlength="1200" placeholder="Ej. Aplicar temporalmente fondos de mantenimiento al barandal y reponer en diciembre"></textarea></label></div>
-  <div class="fplan-actions"><p id="fplanStatus" class="fplan-message" role="status" aria-live="polite"></p>
-   <button type="button" class="fplan-btn" id="fplanSave">Guardar plan del mes</button></div>
-  <p class="fplan-help">Importante: este plan es una asignación presupuestaria interna. No genera transferencias, pagos, devoluciones ni saldos bancarios conciliados.</p>
+  <footer class="fplan-footer"><p id="fplanStatus" class="fplan-message" role="status" aria-live="polite"></p>
+   <button type="button" class="fplan-btn" id="fplanSave">Guardar plan</button>
+  </footer>
  </div>
-</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261115-egresos-reales" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261115-egresos-reales" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261115-plan-club-historico-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261115-explicable-v2" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
+</dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261115-egresos-reales" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261115-egresos-reales" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261115-plan-club-historico-v1" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261116-toolbar-v2" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
