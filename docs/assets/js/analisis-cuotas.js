@@ -746,6 +746,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    $('financeProjectSelect').dataset.hasSelection=String(Boolean(seleccionado));
    $('financeProjectSelect').title=seleccionado?'Proyecto seleccionado: '+seleccionado.nombre:'Selecciona un proyecto';
    $('financeProjectRulesEdit').disabled=!seleccionado;
+   $('financeProjectRenameOpen').disabled=!seleccionado;
    $('financeProjectRulesEdit').title=seleccionado?'Modificar las cuotas de '+seleccionado.nombre:'Selecciona un proyecto para editar sus importes';
    $('financeProjectMetrics').innerHTML=seleccionado?[
     ['Meta',fmt(seleccionado.totalEsperado)],
@@ -3362,6 +3363,36 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   const id=Number($('financeProjectSelect').value);
   activeProyectoId=Number.isSafeInteger(id)&&id>0?id:null;expensePage=1;
   elegirConcepto('EXTRAORDINARIO');
+ });
+
+ const renameModal=$('financeProjectRenameModal');
+ let renameProjectId=0,renameProjectBefore='',renameSaving=false;
+ const closeRename=()=>{if(!renameSaving&&renameModal.open)renameModal.close();};
+ $('financeProjectRenameOpen').addEventListener('click',()=>{
+  const project=(data?.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(activeProyectoId));
+  if(!project)return notice('Selecciona un proyecto para modificar su nombre.');
+  renameProjectId=Number(project.id);renameProjectBefore=String(project.nombre||'');
+  $('financeProjectRenameName').value=renameProjectBefore;
+  $('financeProjectRenameStatus').textContent='';
+  renameModal.showModal();$('financeProjectRenameName').focus();
+ });
+ $('financeProjectRenameClose').addEventListener('click',closeRename);
+ $('financeProjectRenameCancel').addEventListener('click',closeRename);
+ $('financeProjectRenameForm').addEventListener('submit',async event=>{
+  event.preventDefault();if(renameSaving)return;
+  const name=$('financeProjectRenameName').value.trim().replace(/\\s+/g,' ');
+  if(!name||name.length>300)return $('financeProjectRenameStatus').textContent='Ingresa un nombre de hasta 300 caracteres.';
+  if(name===renameProjectBefore)return closeRename();
+  renameSaving=true;$('financeProjectRenameSave').disabled=true;
+  try{
+   await request('/proyectos-extraordinarios/'+renameProjectId+'/nombre',
+    {nombreAnterior:renameProjectBefore,nombre:name},'PATCH');
+   renameModal.close();
+   const loaded=await load();
+   if(!loaded)notice('Nombre guardado. Actualiza el análisis para ver el cambio.');
+   else notice('Nombre del proyecto actualizado en todas las tarjetas.','success');
+  }catch(error){$('financeProjectRenameStatus').textContent=error.message;}
+  finally{renameSaving=false;$('financeProjectRenameSave').disabled=false;}
  });
 
  const projectModal=$('financeProjectRulesModal');
