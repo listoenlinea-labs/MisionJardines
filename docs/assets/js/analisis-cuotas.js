@@ -389,29 +389,41 @@ let expensePage=1;
  }
 
  function renderClubDashboard(){
- const scope=data?.finanzasAmbitos?.CASA_CLUB||{},houses=Number(data.casas||0);
- const historico=data?.casaClubGoogle2026||{};
- const resumen=[['Casas en padrón',houses],
-  ['Reservas pagadas en MySQL',Number(scope.reservasPagadas||0)],
-  ['Ingresos Casa Club (MySQL)',fmt(scope.ingresos)],
-  ['Egresos Casa Club',fmt(scope.egresos)]];
- if(historico.disponible&&Number(data.anio)===2026)
-  resumen.unshift(['Recaudación histórica 2026 · Google',fmt(historico.total)]);
- $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
- $('financialSecondary').innerHTML=[['Ámbito','Casa Club · contabilidad independiente'],
-  ['Diferencia MySQL',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))],
-  ['Histórico Google (sin conciliar)',historico.disponible?
-    historico.registros+' registros · no sumar a MySQL':'No disponible']]
-  .map(([n,v])=>financialCard(n,v)).join('');
- $('financeDonut').style.setProperty('--percent','0%');
- $('financeDonutText').innerHTML='Club<small>Independiente</small>';
- $('financeLegend').innerHTML='<div>Reservas pagadas <b>'+Number(scope.reservasPagadas||0)+'</b></div>';
- $('financeStreetChart').textContent='Los cobros de Casa Club no son mantenimiento ni proyectos.';
- $('financePadronNote').hidden=true;
- document.querySelector('#financeCompliancePanel h2').textContent='Actividad de Casa Club';
- document.querySelector('#financeStreetPanel h2').textContent='Movimientos de Casa Club';
-}
-function renderBalanceCard(){
+  const scope=data?.finanzasAmbitos?.CASA_CLUB||{},houses=Number(data.casas||0);
+  const historico=data?.casaClubGoogle2026||{};
+  const en2026=Number(data.anio)===2026;
+  const conectado=en2026&&historico.disponible===true;
+  const resumen=[['Casas en padrón',houses],
+   ['Reservas pagadas en MySQL',Number(scope.reservasPagadas||0)],
+   ['Ingresos Casa Club (MySQL)',fmt(scope.ingresos)],
+   ['Egresos Casa Club',fmt(scope.egresos)]];
+  if(conectado)resumen.unshift(['Recaudación histórica 2026 · Google',fmt(historico.total)]);
+  $('financialSummary').innerHTML=resumen.map(([n,v])=>financialCard(n,v)).join('');
+  $('financialSecondary').innerHTML=[
+   ['Ámbito','Casa Club · contabilidad independiente'],
+   ['Diferencia MySQL',fmt(Number(scope.ingresos||0)-Number(scope.egresos||0))],
+   ['Google Sheets',en2026?(conectado?'Conectado automáticamente · solo lectura':'Conexión pendiente'):'Histórico disponible para 2026'],
+   ...(conectado?[['Cobros históricos registrados',Number(historico.registros||0)]]:[])
+  ].map(([n,v])=>financialCard(n,v)).join('');
+  $('financeDonut').style.setProperty('--percent','0%');
+  $('financeDonutText').innerHTML='Club<small>Independiente</small>';
+  $('financeLegend').innerHTML='<div>Reservas pagadas en MySQL <b>'+Number(scope.reservasPagadas||0)+'</b></div>';
+  $('financeStreetChart').textContent='Los cobros de Casa Club no son mantenimiento ni proyectos.';
+  $('financePadronNote').hidden=false;
+  $('financePadronNote').textContent=conectado
+   ?'Google Sheets conectado automáticamente: '+Number(historico.registros||0)+
+    ' registros pagados en 2026 por '+fmt(historico.total)+'. Consultado: '+
+    new Date(historico.actualizadoEn||Date.now()).toLocaleString('es-MX')+
+    '. Histórico pendiente de conciliar: no se suma a los cobros MySQL.'
+   :en2026
+    ?'Google Sheets Casa Club: '+String(historico.mensaje||
+      'No hay información del histórico. Verifica los permisos de la cuenta de servicio en Hostinger.')+
+      ' No necesitas usar el botón de respaldos de Drive.'
+    :'El histórico de Casa Club se consulta automáticamente para 2026.';
+  document.querySelector('#financeCompliancePanel h2').textContent='Actividad de Casa Club';
+  document.querySelector('#financeStreetPanel h2').textContent='Movimientos de Casa Club';
+ }
+ function renderBalanceCard(){
  window.MJFinanceAmbitosUI?.render({data,scope:activeConcept,projectId:activeProyectoId,$,fmt,esc,bar});
 }
 function render(){
