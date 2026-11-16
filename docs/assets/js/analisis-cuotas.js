@@ -805,7 +805,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   else renderMaintenanceDashboard();
   if(['MANTENIMIENTO','CASA_CLUB'].includes(concepto)){$('expenseScope').value=concepto;syncExtraExpense();}
   renderBalanceCard();renderExpenses();
-  $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':'Último mes pagado';
+  $('financeLastPeriodTitle').textContent=concepto==='EXTRAORDINARIO'&&seleccionado?'Último abono':concepto==='CASA_CLUB'?'Mes de reserva autorizada':'Último mes pagado';
   if(concepto==='EXTRAORDINARIO'){
    $('financeLastPaidMonth').value='';
    const periodFilter=document.querySelector('.paid-through-filter');
@@ -994,7 +994,7 @@ function renderHouses(){
        ?(isProjectNoAplica(h)?'No aplica':Number(h.montoPagado)>0?fmt(h.montoPagado):'Sin pagos')
        :(activeConcept==='CASA_CLUB'?clubApprovedAmount(h):
          (Number(h.ultimoPago?.monto||0)>0?fmt(h.ultimoPago.monto):'Sin pagos')))+'</strong></button>')+
-    houseCell('Último mes pagado',activeConcept==='EXTRAORDINARIO'&&activeProyectoId
+    houseCell(activeConcept==='CASA_CLUB'?'Mes autorizado':'Último mes pagado',activeConcept==='EXTRAORDINARIO'&&activeProyectoId
      ?esc(isProjectNoAplica(h)?'No aplica':h.ultimoPago?.fecha?displayDate(h.ultimoPago.fecha):'Sin abono')
      :h.ultimoMesPagado?.pagoAnual?
       '<span class="house-annual-label" title="Hasta diciembre de '+esc(h.ultimoMesPagado.anio)+'">Pago anual</span>':
