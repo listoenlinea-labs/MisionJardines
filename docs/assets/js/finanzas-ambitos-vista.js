@@ -25,7 +25,7 @@
   $('financeIncomeSubtitle').textContent=project?project.nombre:
    scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Recuperación histórica por calle (2026)':'Mantenimiento · Ingresos por calle';
   $('financeExpenseSubtitle').textContent=project?project.nombre:
-   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · Limpieza y gastos registrados':'Mantenimiento · Gastos por concepto';
+   scope==='EXTRAORDINARIO'?'Selecciona un proyecto':club?'Casa Club · gastos registrados':'Mantenimiento · Gastos por concepto';
   $('financeIncomeSubtitle').title=$('financeExpenseSubtitle').title=project?project.nombre:scopeName;
   $('financeProjectExpenseEntry').hidden=!project;
   $('financeClubExpenseEntry').hidden=!club;
@@ -37,7 +37,7 @@
    'Los pagos anticipados se distribuyen por mensualidad cubierta, con recargo real.';
   $('financeExpenseCard').querySelector('.finance-chart-description').textContent=project?
    'La meta estimada es una referencia, no un egreso. Se muestran los conceptos realmente registrados.':
-   'Solo gastos de '+(club?'Casa Club. La limpieza aparece aquí como información, pero no se descuenta de la diferencia central.':'mantenimiento.');
+   'Solo gastos de '+(club?'Casa Club. La limpieza se muestra únicamente como referencia, sin sumarse al total de egresos ni descontarse de la diferencia central.':'mantenimiento.');
   $('financeWarning').textContent='';
   if(project){
    const houses=new Map((data.viviendasMantenimiento||[]).filter(h=>!h.esPrueba)
@@ -87,14 +87,15 @@
    if(historicalReady){
     const expense=resumenEgresosCasaClub(data.egresosCasaClubAnuales,historical.limpiezaPrevista);
     const {actual,limpiezaPendiente}=expense;
-    expenseFooter=expense.total;
+    // La limpieza se grafica como información, pero no forma parte del total contable.
+    expenseFooter=expense.otros;
     const highest=Math.max(1,limpiezaPendiente,...actual.map(e=>Number(e.monto||0)));
     $('financeExpenseChart').innerHTML=actual.map(e=>
      '<button type="button" class="finance-club-expense-row" data-club-expense-detail="'+Number(e.id)+'" aria-label="Ver detalle de '+esc(e.concepto)+'">'+
      bar(String(e.concepto||'Gasto'),Number(e.monto||0),highest,true,fmt(e.monto))+
      '<small>'+(Number(e.pagado)?'Pagado':'Pendiente')+(e.comprobanteDisponible?' · Con comprobante':' · Sin comprobante')+'</small></button>'
     ).join('')+
-     (limpiezaPendiente>0?bar('Limpieza prevista sin registrar',limpiezaPendiente,highest,true,fmt(limpiezaPendiente)):'');
+     (limpiezaPendiente>0?bar('Limpieza prevista sin registrar · informativa',limpiezaPendiente,highest,true,fmt(limpiezaPendiente)):'');
     if(!actual.length&&!limpiezaPendiente)$('financeExpenseChart').textContent='Sin gastos de Casa Club registrados.';
     window.MJClubAnnualExpense=expense;
    }else{
@@ -131,7 +132,7 @@
   const incomeFooterLabel=$('financeIncomeFooter').querySelector('span');
   if(incomeFooterLabel)incomeFooterLabel.textContent=club?'Total recuperación histórica 2026':'Total de ingresos';
   $('financeExpenseFooterTotal').textContent=expenseFooter===null?'—':fmt(expenseFooter);
-  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':club?'Gastos registrados + limpieza pendiente 2026':'Total de egresos';
+  $('financeExpenseFooter').querySelector('span').textContent=project?'Total de egresos reales':club?'Total de egresos sin limpieza':'Total de egresos';
   const summaryTrigger=$('financeExpenseFooter');
   summaryTrigger.tabIndex=project?0:-1;
   if(project){
