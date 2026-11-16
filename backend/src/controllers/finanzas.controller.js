@@ -218,10 +218,26 @@ async function analizar(req,res){
    referencia:p.referencia||'',fecha:p.creadoEn||null
   }));
   // Los cobros históricos Google no son nuevos ingresos bancarios.
-  let casaClubGoogle2026={disponible:false,total:0,registros:0};
+  let casaClubGoogle2026={disponible:false,codigo:'FUERA_DE_PERIODO',total:0,registros:0};
   if(anio===2026){
    try{casaClubGoogle2026=await googleCasaClubClient.readPagos2026();}
-   catch(e){console.warn('[Finanzas] Histórico Casa Club no disponible:',e.message);}
+   catch(e){
+    const allowed=new Set(['CREDENCIALES_PENDIENTES','CREDENCIALES_INVALIDAS',
+     'SIN_PERMISO','RANGO_INVALIDO','COLUMNAS_INVALIDAS','ID_INVALIDO','GOOGLE_NO_DISPONIBLE']);
+    const codigo=allowed.has(e.code)?e.code:'GOOGLE_NO_DISPONIBLE';
+    const messages={
+     CREDENCIALES_PENDIENTES:'Falta configurar la cuenta de servicio de Casa Club en Hostinger.',
+     CREDENCIALES_INVALIDAS:'Revisa el JSON Base64 de la cuenta de servicio de Google.',
+     SIN_PERMISO:'Comparte el archivo de Casa Club con el correo de la cuenta de servicio del servidor.',
+     RANGO_INVALIDO:'No se encontró la pestaña MISION JARDINES 2026.',
+     COLUMNAS_INVALIDAS:'La hoja cambió las columnas F (Pago recuperación) y L (Estatus pago).',
+     ID_INVALIDO:'Revisa el ID del archivo de Casa Club configurado en Hostinger.',
+     GOOGLE_NO_DISPONIBLE:'No fue posible consultar Google Sheets; revisa la conexión del servidor.'
+    };
+    console.warn('[Finanzas] Histórico Casa Club:',codigo,e.message);
+    casaClubGoogle2026={disponible:false,codigo,mensaje:messages[codigo],total:0,registros:0,
+     conciliado:false,origen:'Google Sheets · MISION JARDINES 2026'};
+   }
   }
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,data:{
