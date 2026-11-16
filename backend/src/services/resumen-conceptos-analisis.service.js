@@ -7,10 +7,10 @@ const centavos=value=>Math.round(Number(value||0)*100);
 const id=value=>String(value??'');
 const mesDe=value=>String(value||'').slice(0,7);
 
-function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],aportaciones=[],reservas=[],anio,mes}){
+function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],aportaciones=[],reservas=[],anio,mes,aprobacionCuentaComoPagoVisual=false}){
   const elegido=anio+'-'+String(mes).padStart(2,'0');
   const ids=new Set(viviendas.map(v=>id(v.casaId)));
-  const nuevo=()=>({montoPagadoCentavos:0,saldoCentavos:0,conCargos:false,ultimoPeriodo:null,parcial:false});
+  const nuevo=()=>({montoPagadoCentavos:0,saldoCentavos:0,conCargos:false,ultimoPeriodo:null,parcial:false,autorizacionSinAcreditar:false});
   const extra=new Map([...ids].map(k=>[k,nuevo()]));
   const club=new Map([...ids].map(k=>[k,nuevo()]));
   // Un depósito validado de $200 sobre una meta de $1,000 NO significa PAGADO.
@@ -26,13 +26,14 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
   const validosClub=new Set(reportados.filter(p=>p.tipoPago==='CASA_CLUB'&&p.estatus==='VALIDADO'&&p.reservaCasaClubId).map(p=>id(p.reservaCasaClubId)));
   const manualesClub=new Set(manuales.filter(p=>p.tipoPago==='CASA_CLUB'&&p.reservaCasaClubId).map(p=>id(p.reservaCasaClubId)));
 
-  function incluir(map,casaId,periodo,monto,pagado){
+  function incluir(map,casaId,periodo,monto,pagado,soloAutorizacion=false){
     const row=map.get(id(casaId));
     const period=mesDe(periodo);
     if(!row||!/^\d{4}-(0[1-9]|1[0-2])$/.test(period))return;
     const cents=centavos(monto);
     if(!Number.isSafeInteger(cents)||cents<0)return;
     if(pagado){
+      if(soloAutorizacion&&period<=elegido)row.autorizacionSinAcreditar=true;
       if(period===elegido)row.montoPagadoCentavos+=cents;
       if(!row.ultimoPeriodo||period>row.ultimoPeriodo)row.ultimoPeriodo=period;
     }
@@ -63,9 +64,13 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
   for(const reserva of reservas){
     if(reserva.estatus!=='APROBADA')continue;
     // La fecha de vencimiento, y no la fecha del evento, determina el corte de deuda.
+    const pagoComprobado=Boolean(reserva.pagado)||validosClub.has(id(reserva.id))||manualesClub.has(id(reserva.id));
+    // La aprobación equivale a «PAGADO» solo en la consulta administrativa;
+    // no se modifica pagado/fechaPago ni se acredita ningún depósito real.
     incluir(club,reserva.casaId,reserva.fechaLimitePago||reserva.fecha,
       Number(reserva.cuotaRecuperacion||0)+Number(reserva.depositoGarantia||0)+Number(reserva.limpieza||0),
-      Boolean(reserva.pagado)||validosClub.has(id(reserva.id))||manualesClub.has(id(reserva.id)));
+      pagoComprobado||aprobacionCuentaComoPagoVisual,
+      aprobacionCuentaComoPagoVisual&&!pagoComprobado);
   }
 
   function exportar(map){
@@ -75,6 +80,7 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
       return {casaId:v.casaId,
         estatus:row.saldoCentavos>0?(row.parcial?'PAGO_PARCIAL':'PENDIENTE'):row.conCargos?'PAGADO':'SIN CARGOS',
         montoPagado:row.montoPagadoCentavos/100,
+        autorizacionSinAcreditar:row.autorizacionSinAcreditar,
         saldoPendiente:row.saldoCentavos/100,
         ultimoMesPagado:date?{mes:MESES[Number(date.slice(5,7))-1],anio:Number(date.slice(0,4))}:null};
     });
