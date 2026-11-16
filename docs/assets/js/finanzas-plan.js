@@ -227,6 +227,7 @@
   const chosen=$('fplanTargetMonth').value;
   if(!validMonth(chosen)){msg('Selecciona un periodo válido.',true);loading=false;actionState();return;}
   period=chosen;
+  $('fplanPeriodText').textContent=labelMonth(period);
   const lastSource=sourceMonth||period;
   sourceMonthOptions(lastSource>period?period:lastSource);
   target=null;origin=null;assignments=[];allPlans=[];notes='';version=0;
@@ -291,7 +292,7 @@
   const current=year>=2020&&month>=1&&month<=12?year+'-'+String(month).padStart(2,'0'):
    new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit'}).format(new Date());
   sourceMonth=current;$('fplanTargetMonth').value=current;
-  dialog.showModal();void load();
+  dialog.showModal();$('fplanContent').scrollTop=0;void load();
  });
  $('fplanPrevMonth').addEventListener('click',()=>{
   const next=monthStep($('fplanTargetMonth').value,-1);
