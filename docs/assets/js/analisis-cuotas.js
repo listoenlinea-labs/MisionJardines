@@ -985,7 +985,7 @@ function renderHouses(){
   const clubApprovedAmount=h=>Number(h.montoAutorizado||0)>0
    ?fmt(h.montoAutorizado)+' · recuperación autorizada'
    :Number(h.ultimoPago?.monto||0)>0
-    ?fmt(h.montoAutorizado||0)+' · recuperación (consultar cobro)':'Sin recuperación autorizada';
+    ?'Consultar cobro confirmado':'Sin recuperación autorizada';
   $('financeHouseRows').innerHTML=visible.length?visible.map(h=>'<tr data-receipt-row="'+Number(h.casaId)+'"'+' class="'+[(Number(h.casaId)===selectedReceiptHouseId?'house-receipt-selected':''),(activeConcept==='MANTENIMIENTO'&&Number(h.saldoPendiente)>0&&String(h.estatus||'').toUpperCase()!=='PAGADO'?'house-row-overdue':'')].filter(Boolean).join(' ')+'"'+(selectionAvailable?' tabindex="0" aria-selected="'+(Number(h.casaId)===selectedReceiptHouseId)+'" aria-label="Seleccionar vivienda '+esc(h.calle+' '+h.numero)+' para generar recibo"':'')+'>'+
     houseCell('Calle',esc(h.calle))+houseCell('Casa',esc(h.numero))+
     houseCell('Residente',residentCell(h))+
