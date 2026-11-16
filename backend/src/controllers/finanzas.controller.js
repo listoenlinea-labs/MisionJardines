@@ -334,7 +334,7 @@ async function registrarEgreso(req,res){
    const existe=await CuotaExtraordinaria.findOne({where:{id:proyectoId,activo:true}});
    if(!existe)throw fail(404,'Selecciona un proyecto extraordinario vigente');
   }
-  if(req.body?.comprobante&&!proyectoId)throw fail(400,'Selecciona el proyecto del comprobante');
+  if(req.body?.comprobante&&!proyectoId&&String(req.body?.ambito||'')!=='CASA_CLUB')throw fail(400,'Selecciona el proyecto del comprobante');
   archivo=await archivosEgresos.guardar(req.body?.comprobante);
   const saved=await sequelize.transaction(async transaction=>{
    const row=await Egreso.create({fecha,categoria,concepto,monto,ambito,
@@ -428,8 +428,9 @@ async function actualizarPagoEgreso(req,res){
    throw fail(400,'Indica egreso y estado de pago anterior/actual válidos.');
   const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
    const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
-   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
-    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   if(!row||!((row.categoria==='PROYECTO'&&row.proyectoId&&row.ambito==='EXTRAORDINARIO')||
+     (row.ambito==='CASA_CLUB'&&!row.proyectoId)))
+    throw fail(404,'No se encontró el concepto de ese ámbito.');
    if(Boolean(Number(row.pagado))!==anterior)
     throw fail(409,'El estado del pago cambió en otra sesión. Actualiza el análisis.');
    if(pagado===anterior)return {id,pagado,sinCambio:true};
@@ -454,8 +455,9 @@ async function adjuntarComprobanteEgreso(req,res){
   nuevo=await archivosEgresos.guardar(req.body.comprobante);
   const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
    const row=await Egreso.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});
-   if(!row||row.categoria!=='PROYECTO'||!row.proyectoId||row.ambito!=='EXTRAORDINARIO')
-    throw fail(404,'No se encontró el concepto de ese proyecto.');
+   if(!row||!((row.categoria==='PROYECTO'&&row.proyectoId&&row.ambito==='EXTRAORDINARIO')||
+     (row.ambito==='CASA_CLUB'&&!row.proyectoId)))
+    throw fail(404,'No se encontró el concepto de ese ámbito.');
    anterior=row.comprobanteArchivo;
    await row.update({comprobanteArchivo:nuevo},{transaction});
    await sequelize.query(
