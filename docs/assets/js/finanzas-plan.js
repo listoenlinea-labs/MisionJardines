@@ -111,6 +111,52 @@
     ' cobros registrados. Se consulta por separado: no se suma a los fondos disponibles hasta conciliarlo con MySQL y el banco.'
    :'Casa Club Google: histórico no disponible para conciliación. Solo se distribuyen importes presentes en MySQL.';
  }
+ // El recomendador solo propone en memoria; cada decisión es trazable y editable.
+ let recommendation=null;
+ const recommendationPanel=$('fplanRecommendation');
+ function hideRecommendation(){
+  recommendation=null;recommendationPanel.hidden=true;
+  $('fplanRecommendationApply').disabled=true;
+ }
+ function showRecommendation(){
+  const engine=window.MJFinanceRecommendation;
+  if(!engine?.recommend||!target||loading){
+   msg('Primero carga la información financiera del mes.',true);return;
+  }
+  recommendation=engine.recommend({
+   sources:pools(),expenses:expenseRows(),assignments,period,reservePercent:20
+  });
+  const {details,uncovered,summary}=recommendation;
+  const kpi=(label,value,warn=false)=>'<div class="fplan-recommend-metric"'+(warn?' data-warn="true"':'')+
+   '><span>'+esc(label)+'</span><strong>'+money(value)+'</strong></div>';
+  $('fplanRecommendationSummary').innerHTML=
+   '<div class="fplan-recommend-metrics">'+
+    kpi('Se propone asignar',summary.totalProposed)+
+    kpi('Apoyo temporal entre ámbitos',summary.crossArea,summary.crossArea>0)+
+    kpi('Gastos todavía sin cobertura',summary.uncoveredExpenses,summary.uncoveredExpenses>0)+
+   '</div>'+
+   '<p class="fplan-help"><b>Regla de priorización:</b> '+esc(summary.priority)+'</p>'+
+   '<p class="fplan-recommend-caution"><b>Limitaciones:</b> '+esc(summary.disclaimer)+
+   ' No usa los $25,550 históricos de Google sin conciliación; tampoco considera depósitos de garantía reembolsables. '+
+   'Los gastos no tienen fechas exactas de vencimiento en este plan, así que no se inventa esa prioridad.</p>';
+  const reasons='<h4 class="fplan-recommend-section-title">Justificación de cada asignación ('+details.length+')</h4>'+
+   (details.length?details.map((a,i)=>
+    '<article class="fplan-reason"'+(a.temporary?' data-temporary="true"':'')+'>'+
+    '<strong>'+(i+1)+'. '+esc(a.expense)+'</strong> · <span class="fplan-reason-amount">'+money(a.amount)+'</span>'+
+    '<p><b>Dinero de:</b> '+esc(a.source)+'</p><p><b>¿Por qué?</b> '+esc(a.reason)+'</p>'+
+    '<p>Queda en esa fuente: <b>'+money(a.sourceRemaining)+'</b> · Sin cubrir del gasto: <b>'+money(a.expenseRemaining)+'</b></p>'+
+    (a.temporary?'<p><b>Advertencia:</b> préstamo interno propuesto; requiere que el administrador revise la reposición y la liquidez real.</p>':'')+
+    '</article>').join(''):
+    '<p class="fplan-empty">No se encontró una asignación adicional segura con los fondos de este mes de origen.</p>');
+  const missing=uncovered.length?'<h4 class="fplan-recommend-section-title">¿Qué queda sin cubrir?</h4>'+
+   uncovered.map(a=>'<article class="fplan-reason" data-uncovered="true"><strong>'+esc(a.expense)+
+    '</strong> · '+money(a.amount)+'<p>'+esc(a.reason)+'</p></article>').join(''):'';
+  $('fplanRecommendationReasons').innerHTML=reasons+missing;
+  $('fplanRecommendationApply').disabled=!recommendation.proposed.length;
+  recommendationPanel.hidden=false;
+  recommendationPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  msg('Recomendación calculada. Revisa cada motivo antes de aplicarla al borrador.');
+ }
  function chooseSource(id){
   selectedSource=pools().find(x=>x.id===id);
   msg(selectedSource?'Fuente seleccionada: '+selectedSource.name+'. Selecciona el egreso que deseas cubrir.':'Fuente no disponible',!selectedSource);
@@ -129,11 +175,13 @@
   $('fplanAllocator').hidden=false;$('fplanAmount').focus();
  }
  async function loadSource(){
+  hideRecommendation();
   const p=$('fplanSourceMonth').value;
   if(!validMonth(p)||p>period){msg('El origen debe ser el mes actual del plan o uno anterior.',true);return;}
   sourceMonth=p;origin=p===period?target:await getAnalysis(p);selectedSource=null;render();
  }
  async function load(){
+  hideRecommendation();
   if(loading)return;loading=true;
   msg('Consultando ingresos, egresos y planes guardados...');
   try{
@@ -155,6 +203,17 @@
   }catch(e){msg(e.message,true);}
   finally{loading=false;}
  }
+ $('fplanRecommend').addEventListener('click',showRecommendation);
+ $('fplanRecommendationClose').addEventListener('click',hideRecommendation);
+ $('fplanRecommendationDiscard').addEventListener('click',()=>{hideRecommendation();msg('Propuesta descartada. Tu borrador no cambió.');});
+ $('fplanRecommendationApply').addEventListener('click',()=>{
+  if(!recommendation?.proposed.length)return;
+  // La aplicación NO guarda: el servidor revisará el borrador cuando se pulse Guardar.
+  assignments.push(...recommendation.proposed.map(item=>({...item})));
+  const total=recommendation.summary.totalProposed;
+  hideRecommendation();render();
+  msg('Se agregaron '+money(total)+' al borrador. Revisa la tabla y pulsa Guardar plan del mes si estás de acuerdo.');
+ });
  open.addEventListener('click',()=>{
   const year=Number($('financeYear')?.value),month=Number($('financeMonth')?.value);
   const current=year>=2020&&month>=1&&month<=12?year+'-'+String(month).padStart(2,'0'):
@@ -182,7 +241,7 @@
  });
  expenses.addEventListener('click',e=>{
   const remove=e.target.closest('[data-remove]');
-  if(remove){assignments.splice(Number(remove.dataset.remove),1);render();msg('Asignación retirada del borrador. Guarda para conservar el cambio.');return;}
+  if(remove){hideRecommendation();assignments.splice(Number(remove.dataset.remove),1);render();msg('Asignación retirada del borrador. Guarda para conservar el cambio.');return;}
   const row=e.target.closest('[data-choose]');if(row)chooseExpense(Number(row.dataset.choose));
  });
  $('fplanApply').addEventListener('click',()=>{
@@ -191,6 +250,7 @@
   const available=Math.min(pools().find(x=>x.id===selectedSource.id)?.free||0,
    Math.max(0,editorExpense.monto-spend(editorExpense.id)));
   if(!Number.isSafeInteger(amount)||amount<=0||amount>available){msg('Indica un importe entero mayor a cero, sin exceder el dinero disponible.',true);return;}
+  hideRecommendation();
   assignments.push({egresoId:editorExpense.id,origen:selectedSource.origen,
    origenPeriodo:selectedSource.origenPeriodo,monto:amount});
   $('fplanAllocator').hidden=true;editorExpense=null;
