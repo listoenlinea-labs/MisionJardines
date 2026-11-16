@@ -48,8 +48,7 @@ function extraerMovimientos(rows){
  }
  return {payments,unknown,excluded};
 }
-function conciliarHistorico(rows,houses){
- const {payments,unknown,excluded}=extraerMovimientos(rows);
+function conciliarMovimientos(payments,houses,excludedCount=0){
  const houseIndex=new Map();
  for(const house of houses||[]){
   const k=key(house.calleCorrecta||house.calle,house.numero);
@@ -83,8 +82,12 @@ function conciliarHistorico(rows,houses){
  })).sort((a,b)=>b.monto-a.monto||a.calle.localeCompare(b.calle,'es-MX'));
  return {porCasa,porCalle,coincidencias:matched,viviendasConRecuperacion:grouped.size,
   sinConciliar:unmatched,cantidadSinConciliar:unmatched.length,
-  registros:payments.length,excluidos:excluded.length,
+  registros:payments.length,excluidos:excludedCount,
   total:payments.reduce((sum,p)=>sum+Math.round(p.monto*100),0)/100,
   notas:'Montos históricos de Google 2026, no constituyen nuevos depósitos MySQL.'};
 }
-module.exports={calle,numero,amount,extraerMovimientos,conciliarHistorico};
+function conciliarHistorico(rows,houses){
+ const parsed=extraerMovimientos(rows);
+ return conciliarMovimientos(parsed.payments,houses,parsed.excluded.length);
+}
+module.exports={calle,numero,amount,extraerMovimientos,conciliarMovimientos,conciliarHistorico};
