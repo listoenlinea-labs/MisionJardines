@@ -10,7 +10,7 @@ const mesDe=value=>String(value||'').slice(0,7);
 function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],aportaciones=[],reservas=[],anio,mes,aprobacionCuentaComoPagoVisual=false}){
   const elegido=anio+'-'+String(mes).padStart(2,'0');
   const ids=new Set(viviendas.map(v=>id(v.casaId)));
-  const nuevo=()=>({montoPagadoCentavos:0,saldoCentavos:0,conCargos:false,ultimoPeriodo:null,parcial:false,autorizacionSinAcreditar:false,montoAutorizadoCentavos:0});
+  const nuevo=()=>({montoPagadoCentavos:0,saldoCentavos:0,conCargos:false,ultimoPeriodo:null,parcial:false,autorizacionSinAcreditar:false,montoAutorizadoCentavos:0,limpiezaAsignadaCentavos:0,garantiaReembolsableCentavos:0});
   const extra=new Map([...ids].map(k=>[k,nuevo()]));
   const club=new Map([...ids].map(k=>[k,nuevo()]));
   // Un depósito validado de $200 sobre una meta de $1,000 NO significa PAGADO.
@@ -65,6 +65,8 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
     if(reserva.estatus!=='APROBADA')continue;
     // La fecha de vencimiento, y no la fecha del evento, determina el corte de deuda.
     const pagoComprobado=Boolean(reserva.pagado)||validosClub.has(id(reserva.id))||manualesClub.has(id(reserva.id));
+    // El cargo total ($1,000 + $700 + $300) se conserva en el saldo de reserva.
+    // Para ingresos operativos sólo se desglosa cuotaRecuperacion.
     const importe=Number(reserva.cuotaRecuperacion||0)+Number(reserva.depositoGarantia||0)+Number(reserva.limpieza||0);
     // La aprobación equivale a «PAGADO» solo en la consulta administrativa;
     // no se modifica pagado/fechaPago ni se acredita ningún depósito real.
@@ -80,7 +82,9 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
       const row=club.get(id(reserva.casaId));
       if(row&&/^\d{4}-(0[1-9]|1[0-2])$/.test(month)&&month<=elegido){
         row.conCargos=true;
-        row.montoAutorizadoCentavos+=centavos(importe);
+        row.montoAutorizadoCentavos+=centavos(reserva.cuotaRecuperacion||0);
+        row.limpiezaAsignadaCentavos+=centavos(reserva.limpieza||0);
+        row.garantiaReembolsableCentavos+=centavos(reserva.depositoGarantia||0);
         if(!pagoComprobado)row.autorizacionSinAcreditar=true;
       }
     }
@@ -95,6 +99,8 @@ function resumenConceptos({viviendas=[],cargos=[],reportados=[],manuales=[],apor
         montoPagado:row.montoPagadoCentavos/100,
         autorizacionSinAcreditar:row.autorizacionSinAcreditar,
         montoAutorizado:row.montoAutorizadoCentavos/100,
+        limpiezaAsignada:row.limpiezaAsignadaCentavos/100,
+        garantiaReembolsable:row.garantiaReembolsableCentavos/100,
         saldoPendiente:row.saldoCentavos/100,
         ultimoMesPagado:date?{mes:MESES[Number(date.slice(5,7))-1],anio:Number(date.slice(0,4))}:null};
     });
