@@ -30,7 +30,7 @@
 - Es **asistencia administrativa basada en reglas**, no pronóstico financiero ni optimización de liquidez auditada: no conoce vencimientos precisos, saldos bancarios conciliados, obligaciones de garantía o convenios de reembolso. Los préstamos internos deben verificarse y autorizarse humanamente.
 
 ### Despliegue seguro
-1. Respaldar la BD en Hostinger. Aplicar **una vez** `backend/sql/2026-11-15-finanzas-planes-mensuales.sql` antes de usar «Guardar plan».
+1. Respaldar la BD en Hostinger. Desde el ajuste del 16/nov/2026, el backend **crea automáticamente** y de forma idempotente `finanzas_planes_mutex` y `finanzas_planes_mensuales` al iniciar y reintenta en consulta/guardado. Si la cuenta de MySQL no tiene permiso de creación, ejecutar manualmente `backend/sql/2026-11-15-finanzas-planes-mensuales.sql` con un usuario autorizado y reiniciar el backend.
 2. Publicar juntos el backend y el frontend de este PR.
 3. Verificar los roles: un condómino no debe consultar ni guardar `/api/finanzas/plan-mensual`.
 4. Probar con valores pequeños en staging; recargar y editar un mismo plan con dos sesiones para comprobar HTTP 409 cuando la versión cambió. No usar pagos de producción como ensayo.
@@ -67,3 +67,11 @@ La sincronización con Google no debe activarse sin revisar primero permisos de 
 ## Validación
 - Compilación de ocho archivos JS de front/backend revisada en el runtime de desarrollo; prueba de cálculo de $53,732 y +$8,968 verificada.
 - No hubo conexión a MySQL Hostinger, banco, correo ni ejecución de migraciones o cambios de Google Sheets en vivo. Es indispensable probar en staging y luego con administrador en navegador real.
+
+
+## Ajuste responsive y disponibilidad del plan (16-nov-2026)
+- Se retiraron los dos grandes campos mensuales de la cabecera. **Mes del plan** vive dentro de la barra compacta de acciones sobre las dos tablas; se puede cambiar con flechas o abrir el selector mensual nativo. **Mes de origen** vive dentro de los filtros del panel de ingresos.
+- El encabezado y botón Guardar permanecen visibles mientras se navegan las filas en iPhone. El modal ocupa el alto de la pantalla del iframe, con tarjetas apiladas y búsqueda de egresos a ancho completo. Se unificaron controles, jerarquías y tonos pastel con el portal.
+- Si MySQL no puede consultar las tablas de planes, los ingresos y egresos se siguen cargando desde el análisis con un aviso específico y botón Reintentar. Mientras el plan no esté verificado, se deshabilitan asignaciones, sugerencias y guardado para no sobrescribir operaciones existentes.
+- Las tablas de planes se preparan automáticamente sin migraciones destructivas, mediante `backend/src/services/finanzas-planes-schema.service.js`, y se reintenta si falló el arranque. No cambia cobros, Casa Club, ZKTeco ni registros financieros existentes.
+- Para activar el cambio se debe desplegar **el backend actualizado y el frontend juntos**; refrescar solo la web estática no creará las tablas en Hostinger. No se ejecutó directamente ningún SQL en la BD de producción durante el desarrollo.
