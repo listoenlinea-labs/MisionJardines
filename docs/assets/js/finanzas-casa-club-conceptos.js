@@ -8,7 +8,7 @@
  const status=text=>{$('financeClubExpenseStatus').textContent=text;};
  const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const snapshot=x=>({concepto:String(x.concepto||'').trim(),fecha:String(x.fecha||'').slice(0,10),
-  monto:Math.round(Number(x.monto||0)),pagado:x.pagado!==false&&x.pagado!==0});
+  monto:Math.round(Number(x.monto||0)),pagado:Boolean(Number(x.pagado))});
  function resetProof(){
   const area=$('financeClubExpensePreview');
   area.replaceChildren();area.hidden=true;
@@ -22,7 +22,7 @@
   $('financeClubExpenseConcept').value=editing?String(row.concepto||''):'';
   $('financeClubExpenseAmount').value=editing?String(Math.round(Number(row.monto||0))):'';
   $('financeClubExpenseDate').value=editing?String(row.fecha||'').slice(0,10):today();
-  $('financeClubExpensePaid').checked=editing?row.pagado!==false&&row.pagado!==0:true;
+  $('financeClubExpensePaid').checked=editing?Boolean(Number(row.pagado)):true;
   $('financeClubExpenseCategory').value=editing?String(row.categoria||'OTROS'):'OTROS';
   $('financeClubExpenseCategory').disabled=editing;
   $('financeClubExpenseDelete').hidden=!editing;
