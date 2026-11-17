@@ -17,4 +17,14 @@ async function elegirCarpeta(req,res){
 async function recibos(req,res){
  try{return res.json({ok:true,data:await s.subirRecibos(req.body||{})});}catch(e){return error(res,e);}
 }
-module.exports={status,link,callback,backup,selector,elegirCarpeta,recibos};
+async function iniciarRespaldo(req,res){
+ try{const result=await require('../services/drive-respaldos-jobs.service').start(req.body,req.usuario.usuarioId);
+  res.set('Cache-Control','no-store');return res.status(202).json({ok:true,data:result});}
+ catch(e){return error(res,e);}
+}
+async function estadoRespaldo(req,res){
+ try{const result=require('../services/drive-respaldos-jobs.service').find(req.params.id,req.usuario.usuarioId);
+  res.set('Cache-Control','no-store');return res.json({ok:true,data:result});}
+ catch(e){return error(res,e);}
+}
+module.exports={status,link,callback,backup,selector,elegirCarpeta,recibos,iniciarRespaldo,estadoRespaldo};
