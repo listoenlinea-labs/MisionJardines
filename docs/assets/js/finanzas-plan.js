@@ -194,13 +194,27 @@
    (expenseRowsPage.map(x=>{
     const includedIn=parentOf(x.id);
     const parent=allRows.find(e=>e.id===includedIn);
+    // Cada gasto incluido se representa VISUALMENTE dentro de su gasto principal.
+    // Las tarjetas internas tienen altura fija y carrusel horizontal; no alteran
+    // el alto original de la fila ni la alineación de Importe / Sin asignar.
+    const children=agrupaciones.filter(g=>g.padreId===x.id)
+     .map(g=>allRows.find(e=>e.id===g.hijoId)).filter(Boolean);
+    const nested=children.length?
+     '<div class="fplan-subexpenses" role="group" aria-label="'+children.length+' conceptos incluidos en '+esc(x.nombre)+'">'+
+      children.map(child=>'<span class="fplan-subexpense" title="'+esc(child.nombre)+' · '+money(child.monto)+'">'+
+       '<span class="fplan-subexpense-label">'+esc(child.nombre)+'</span>'+
+       '<span class="fplan-subexpense-amount">'+money(child.monto)+'</span></span>').join('')+
+     '</div>':'';
     const removed=excluded.includes(x.id),remaining=includedIn?0:Math.max(0,x.monto-spend(x.id));
     const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
     return '<tr data-expense="'+x.id+'" draggable="'+(!removed&&!includedIn)+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed&&!includedIn)+'"'+
-     (removed||includedIn?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
-     '</strong><small>'+esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+
-     (includedIn?' · Incluido en: '+esc(parent?.nombre||'#'+includedIn)+' · No suma por separado':' · Arrastra sobre otro egreso para agrupar')+
-     '</small></td><td class="fplan-number-cell">'+money(x.monto)+'</td>'+
+     (removed||includedIn?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+
+     '><td'+(children.length?' class="fplan-parent-expense"':'')+'><div class="fplan-expense-copy"><strong>'+esc(x.nombre)+
+     '</strong><small title="'+esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+'">'+
+     esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+
+     (includedIn?' · Incluido en: '+esc(parent?.nombre||'#'+includedIn)+' · No suma por separado':'')+
+     (children.length?' · '+children.length+' concepto(s) incluido(s)':'')+
+     '</small>'+nested+'</div></td><td class="fplan-number-cell">'+money(x.monto)+'</td>'+
      '<td class="fplan-remaining-cell"><span class="fplan-remaining-amount">'+
      (removed?'Excluido del plan':includedIn?'Incluido':money(remaining))+'</span>'+
      (removed?'':attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
