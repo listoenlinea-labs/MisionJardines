@@ -119,8 +119,8 @@
    .filter(x=>(x.name+' '+x.tipo).toLocaleLowerCase('es').includes(searchIn));
   // Cada página tiene 10 espacios visuales en ambas tablas; los vacíos no son registros.
   const pageLimit=10;
-  const emptyPageRows=(missing,message='')=>Array.from({length:Math.max(0,missing)},(_,i)=>
-   '<tr class="fplan-empty-row" aria-hidden="true"><td colspan="3">'+
+  const emptyPageRows=(missing,message='',columns=3)=>Array.from({length:Math.max(0,missing)},(_,i)=>
+   '<tr class="fplan-empty-row" aria-hidden="true"><td colspan="'+columns+'">'+
     (i===0&&message?esc(message):'&nbsp;')+'</td></tr>').join('');
   const inPages=Math.max(1,Math.ceil(visibleSources.length/pageLimit));
   incomePage=Math.max(1,Math.min(incomePage,inPages));
@@ -143,23 +143,24 @@
   const outPages=Math.max(1,Math.ceil(visibleExpenses.length/pageLimit));
   expensePage=Math.max(1,Math.min(expensePage,outPages));
   const expenseRowsPage=visibleExpenses.slice((expensePage-1)*pageLimit,expensePage*pageLimit);
-  expenses.innerHTML='<table class="fplan-data-table"><thead><tr><th>Egreso / proyecto</th><th>Importe</th><th>Sin asignar / acciones</th></tr></thead><tbody>'+
+  expenses.innerHTML='<table class="fplan-data-table"><thead><tr><th>Egreso / proyecto</th><th>Importe</th><th>Sin asignar</th><th>Acciones</th></tr></thead><tbody>'+
    (expenseRowsPage.map(x=>{
     const removed=excluded.includes(x.id),remaining=Math.max(0,x.monto-spend(x.id));
     const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
     return '<tr data-expense="'+x.id+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed)+'"'+
      (removed?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
      '</strong><small>'+esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+
-     '</small></td><td class="fplan-number-cell">'+money(x.monto)+'</td><td><small>'+
-     (removed?'Excluido del plan':'Sin asignar: '+money(remaining))+'</small>'+
+     '</small></td><td class="fplan-number-cell">'+money(x.monto)+'</td>'+
+     '<td class="fplan-remaining-cell"><span class="fplan-remaining-amount">'+
+     (removed?'Excluido del plan':money(remaining))+'</span>'+
      (removed?'':attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
        ' · '+money(a.monto)+'<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join(''))+
+     '</td><td class="fplan-actions-cell">'+
      '<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'" aria-label="'+
       (removed?'Restaurar egreso en el plan':'Borrar egreso del plan')+'">'+
-      '<span class="fplan-exclude-icon" aria-hidden="true">'+(removed?'↺':'×')+'</span>'+
-      '<span>'+(removed?'Restaurar':'Borrar')+'</span></button></td></tr>';
+      (removed?'Restaurar':'Borrar')+'</button></td></tr>';
    }).join('')+
-   emptyPageRows(pageLimit-expenseRowsPage.length,expenseRowsPage.length?'':'No hay egresos con ese filtro.'))+'</tbody></table>';
+   emptyPageRows(pageLimit-expenseRowsPage.length,expenseRowsPage.length?'':'No hay egresos con ese filtro.',4))+'</tbody></table>';
   $('fplanExpensePagination').textContent='Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos';
   $('fplanExpensePrev').disabled=expensePage===1;$('fplanExpenseNext').disabled=expensePage===outPages;
   const groupsTotal=grouped.map(group=>sources.filter(x=>x.tipo===group).reduce((sum,x)=>sum+x.free,0));
