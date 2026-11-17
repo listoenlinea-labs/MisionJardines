@@ -103,7 +103,7 @@ function evaluar(pago,avisos,autenticados){
        ', pero no se pudieron extraer identificadores del correo bancario de remitente autorizado.'
      : !tiposComprobante.length
        ? 'No se pudo recuperar del OCR guardado una clave de rastreo, referencia o folio verificable.'
-       : 'El comprobante y los correos de remitente autorizado no contienen un mismo tipo de identificador bancario para comparar.';
+       : 'Aún no existe un identificador bancario del mismo tipo en el comprobante y los avisos compatibles de Titan. Esto no indica que el depósito haya fallado: puede estar pendiente su notificación o faltar la referencia legible. No es necesario subir otro comprobante; el sistema seguirá revisando el buzón.';
   return resultado('SIN_COINCIDENCIA',diagnostico+
    ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
  }
