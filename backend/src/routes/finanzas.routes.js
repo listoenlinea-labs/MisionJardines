@@ -42,6 +42,7 @@ router.post('/pagos-vivienda/:casaId/anulacion',reversion.anular);
 router.post('/viviendas/:id/registrar-residente',require('../controllers/residentes.controller').registrarRapido);
 router.patch('/viviendas/:casaId/cuota-por-cobrar',controller.modificarCuotaPorCobrar);
 router.post('/egresos',controller.registrarEgreso);
+router.delete('/egresos/:id/mantenimiento',require('../controllers/egresos-administracion.controller').eliminarMantenimiento);
 router.patch('/egresos/:id/monto',controller.actualizarMontoEgreso);
 router.patch('/egresos/:id/pagado',controller.actualizarPagoEgreso);
 router.patch('/egresos/:id/concepto',controller.editarConceptoProyecto);
