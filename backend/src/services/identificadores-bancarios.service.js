@@ -1,7 +1,7 @@
 'use strict';
-// Comparar SOLO campos del mismo tipo, extraídos del OCR leído por el servidor.
-// Las referencias numéricas admiten ceros iniciales (0910260 === 910260),
-// mientras clave de rastreo y folio requieren coincidencia alfanumérica exacta.
+// Comparar identificadores provenientes del OCR del servidor con avisos bancarios.
+// Las referencias numéricas admiten ceros iniciales (0910260 === 910260).
+// Excepción acotada: un rastreo Titan CPO + código numérico OCR completo.
 const parser=require('./comprobante-parser');
 const normal=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const referencia=v=>{
@@ -78,13 +78,20 @@ function identificadoresAviso(aviso){
 function coinciden(pago,aviso){
  const a=identificadoresPago(pago),b=identificadoresAviso(aviso);
  if(['claveRastreo','referencia','folio'].some(tipo=>a[tipo]&&b[tipo]&&a[tipo]===b[tipo]))return true;
- // Mercado Pago rotula "Comprobante #188..." y también puede mostrar la
- // clave de rastreo "CPO188...". Relacionar únicamente esa transformación
- // exacta, con recibo explícito de Mercado Pago leído por nuestro servidor.
- // El banco seguirá exigiendo cuenta, fecha, importe y aviso autorizado.
- if(/MERCADO\s*PAGO/i.test(String(pago?.textoOcr||'')) &&
-    /^\d{10,17}$/.test(a.folio) &&
-    b.claveRastreo==='CPO'+a.folio)return true;
+ // Titan puede anteponer CPO a la clave numérica mostrada por el banco
+ // emisor o por Banxico/CEP. Comparar TODO el número (10-17 dígitos), no un
+ // fragmento arbitrario, y solo contra códigos leídos/guardados por OCR servidor.
+ // Se mantienen aparte las verificaciones de remitente, importe, fecha,
+ // cuenta destino y aviso único que hace la conciliación bancaria.
+ const tracking=b.claveRastreo;
+ if(/^CPO\d{10,17}$/.test(tracking)){
+  const numero=tracking.slice(3);
+  const meta=pago?.identificadoresVerificados;
+  const verificado=meta&&meta.origen==='OCR_SERVIDOR'&&[1,2].includes(meta.version);
+  const ocrDisponible=Boolean(String(pago?.textoOcr||'').trim());
+  if((verificado||ocrDisponible)&&
+     [a.claveRastreo,a.referencia,a.folio,...(a.candidatos||[])].some(v=>v===numero))return true;
+ }
  // Candidatos OCR sin etiqueta, contra valores con etiqueta EXPLÍCITA de Titan.
  // No transformar un campo folio etiquetado en una referencia distinta.
  const etiquetados=[a.claveRastreo,a.referencia,a.folio].filter(Boolean);
