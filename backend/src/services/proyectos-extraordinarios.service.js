@@ -139,7 +139,31 @@ async function crearLote(body,admin,{aceptarDiferencias=false,confirmarTarifas=f
 }
 async function crearProyecto(input,actor){
  let cuotaBase=input?.cuotaBase,tarifasEspeciales=input?.tarifasEspeciales||[];
- if(input?.montoTotal!==undefined){
+ if(input?.cuotaPorCasa!==undefined){
+  // La meta se deriva exclusivamente de las cuotas: 0 significa No aplica.
+  // Crear 231 cargos mantiene trazabilidad aunque solo 230 viviendas paguen.
+  const base=cents(input.cuotaPorCasa);
+  if(base<=0||base%100!==0)throw fail(400,'Ingresa una cuota general positiva en pesos enteros.');
+  const padron=await padronOficial(),byId=new Map(padron.map(h=>[Number(h.id),h]));
+  const overrides=new Map();
+  if(!Array.isArray(input.excepciones)||input.excepciones.length>231)
+   throw fail(400,'Las reglas especiales no son válidas.');
+  for(const row of input.excepciones){
+   const id=Number(row?.casaId),amount=cents(row?.monto);
+   if(!byId.has(id)||overrides.has(id)||amount%100!==0)
+    throw fail(400,'Vivienda de excepción duplicada, desconocida o con centavos.');
+   overrides.set(id,amount);
+  }
+  const amounts=padron.map(h=>overrides.get(Number(h.id))??base);
+  if(!amounts.some(n=>n>0))throw fail(400,'El proyecto debe incluir al menos una vivienda.');
+  const total=amounts.reduce((a,b)=>a+b,0);
+  if(!Number.isSafeInteger(total)||total>1000000000)
+   throw fail(400,'La meta estimada no puede exceder $10,000,000.');
+  cuotaBase=base/100;
+  tarifasEspeciales=[...overrides].filter(([,amount])=>amount!==base).map(([id,amount])=>{
+   const h=byId.get(id);return {calle:h.calleCorrecta||h.calle,numero:String(h.numero),monto:amount/100};
+  });
+ }else if(input?.montoTotal!==undefined){
   // La API recalcula el presupuesto: no acepta montos calculados en el navegador.
   const padron=await padronOficial();
   const distribuido=distribuirPresupuesto(padron,input.montoTotal,input.excepciones||[]);
