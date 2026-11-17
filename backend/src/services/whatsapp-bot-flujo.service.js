@@ -121,8 +121,7 @@ async function handle(message){
    HOME+'app.html?page=pagos.html\nNo envíes tu contraseña por WhatsApp. El enlace de sesión para recibir el PDF aquí se incorporará después.');
   if(word==='3')return send(phone,'🔐 Para reportar pagos de mantenimiento o proyectos, abre '+
    HOME+'app.html?page=pagos.html\nTu comprobante se verificará con OCR y Titan; no se acredita automáticamente al subirlo.');
-  if(word==='4')return send(phone,'🔐 Para registrar una visita, primero valida tu identidad en '+
-   HOME+'app.html?page=visitas.html\nLa autorización directa en el chat requiere vincular la cuenta con seguridad.');
+  if(word==='4')return send(phone,'🔐 *Registrar una visita* requiere comprobar la identidad del residente y la vivienda antes de autorizar el acceso.\nEsta función todavía no está habilitada en el piloto de WhatsApp. Por ahora solicita el registro a Administración o Seguridad; no compartas tu contraseña por chat.');
   return send(phone,MENU);
  }
  if(s.state==='FECHA'){
