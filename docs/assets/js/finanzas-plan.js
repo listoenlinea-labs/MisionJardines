@@ -9,7 +9,7 @@
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const labelMonth=p=>months[Number(p.slice(5))-1]+' '+p.slice(0,4);
  const validMonth=p=>/^20\d\d-(0[1-9]|1[0-2])$/.test(p);
- let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],incomePage=1,expensePage=1;
+ let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],agrupaciones=[],incomePage=1,expensePage=1;
  const panel=$('fplanSources'),expenses=$('fplanExpenses'),notice=$('fplanStatus');
  function msg(text,error=false){notice.textContent=text;notice.dataset.error=error?'true':'false';}
  async function api(path,options={}){
@@ -81,12 +81,13 @@
   return items.map(p=>({...p,used:currentUsed(p),free:Math.max(0,p.total-currentUsed(p)),
    id:p.origen+'|'+p.origenPeriodo}));
  }
+ const parentOf=id=>agrupaciones.find(g=>Number(g.hijoId)===Number(id))?.padreId||null;
  function expenseRows(includeExcluded=false){
   return (target?.egresos||[]).filter(e=>String(e.fecha||'').slice(0,7)===period&&
    Number(e.monto)>0&&!e.esAjusteMensual&&
    !['CUOTA_EXTRAORDINARIA','PROYECTOS'].includes(String(e.categoria))&&
    !(e.categoria==='PROYECTO'&&!Number(e.proyectoId))&&
-   (includeExcluded||!excluded.includes(Number(e.id))))
+   (includeExcluded||(!excluded.includes(Number(e.id))&&!parentOf(Number(e.id)))))
    .map(e=>({id:Number(e.id),monto:Number(e.monto),fecha:e.fecha,
     nombre:String(e.concepto||e.categoria||'Egreso'),categoria:e.categoria,
     grupo:e.ambito==='EXTRAORDINARIO'?'Cuotas extraordinarias':
@@ -135,33 +136,49 @@
   $('fplanIncomePagination').textContent='Página '+incomePage+' de '+inPages+' · '+visibleSources.length+' fuentes';
   $('fplanIncomePrev').disabled=incomePage===1;$('fplanIncomeNext').disabled=incomePage===inPages;
   const searchOut=$('fplanSearch').value.trim().toLocaleLowerCase('es'),outSort=$('fplanExpenseSort').value;
-  let visibleExpenses=allRows.filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo+' '+x.proyectoNombre).toLocaleLowerCase('es').includes(searchOut))
+  const scope=$('fplanExpenseScope').value||'TODOS';
+  let visibleExpenses=allRows.filter(x=>scope==='TODOS'||
+    (scope==='MANTENIMIENTO'&&x.grupo==='Mantenimiento')||
+    (scope==='PROYECTOS'&&x.grupo==='Cuotas extraordinarias')||
+    (scope==='CASA_CLUB'&&x.grupo==='Casa Club'))
+   .filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo+' '+x.proyectoNombre).toLocaleLowerCase('es').includes(searchOut))
    .filter(x=>!$('fplanOnlyUnassigned').checked||
       (!excluded.includes(x.id)&&x.monto>spend(x.id)));
   visibleExpenses.sort((a,b)=>outSort==='asc'?a.monto-b.monto:outSort==='name'?a.nombre.localeCompare(b.nombre,'es'):b.monto-a.monto);
   visibleExpenses=grouped.flatMap(group=>visibleExpenses.filter(x=>x.grupo===group));
-  const outPages=Math.max(1,Math.ceil(visibleExpenses.length/pageLimit));
+  // Todos: igualar el NÚMERO REAL de filas de la página de ingresos (máx. 10).
+  // Ámbito seleccionado: mostrar todos sus movimientos en una sola hoja.
+  const expenseLimit=scope==='TODOS'?Math.max(1,incomeRows.length):Math.max(1,visibleExpenses.length);
+  const outPages=scope==='TODOS'?Math.max(1,Math.ceil(visibleExpenses.length/expenseLimit)):1;
   expensePage=Math.max(1,Math.min(expensePage,outPages));
-  const expenseRowsPage=visibleExpenses.slice((expensePage-1)*pageLimit,expensePage*pageLimit);
+  const expenseRowsPage=visibleExpenses.slice((expensePage-1)*expenseLimit,expensePage*expenseLimit);
+  $('fplanExpensePrev').parentElement.hidden=scope!=='TODOS';
   expenses.innerHTML='<table class="fplan-data-table"><thead><tr><th>Egreso / proyecto</th><th>Importe</th><th>Sin asignar</th><th>Acciones</th></tr></thead><tbody>'+
    (expenseRowsPage.map(x=>{
-    const removed=excluded.includes(x.id),remaining=Math.max(0,x.monto-spend(x.id));
+    const includedIn=parentOf(x.id);
+    const parent=allRows.find(e=>e.id===includedIn);
+    const removed=excluded.includes(x.id),remaining=includedIn?0:Math.max(0,x.monto-spend(x.id));
     const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
-    return '<tr data-expense="'+x.id+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed)+'"'+
-     (removed?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
+    return '<tr data-expense="'+x.id+'" draggable="'+(!removed&&!includedIn)+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed&&!includedIn)+'"'+
+     (removed||includedIn?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
      '</strong><small>'+esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+
+     (includedIn?' · Incluido en: '+esc(parent?.nombre||'#'+includedIn)+' · No suma por separado':' · Arrastra sobre otro egreso para agrupar')+
      '</small></td><td class="fplan-number-cell">'+money(x.monto)+'</td>'+
      '<td class="fplan-remaining-cell"><span class="fplan-remaining-amount">'+
-     (removed?'Excluido del plan':money(remaining))+'</span>'+
+     (removed?'Excluido del plan':includedIn?'Incluido':money(remaining))+'</span>'+
      (removed?'':attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
        ' · '+money(a.monto)+'<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join(''))+
      '</td><td class="fplan-actions-cell">'+
-     '<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'" aria-label="'+
-      (removed?'Restaurar egreso en el plan':'Borrar egreso del plan')+'">'+
-      (removed?'Restaurar':'Borrar')+'</button></td></tr>';
+     (includedIn
+       ?'<button type="button" class="fplan-ungroup-button" data-ungroup="'+x.id+'" aria-label="Separar egreso del gasto principal">Separar</button>'
+       :'<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'" aria-label="'+
+        (removed?'Restaurar egreso en el plan':'Borrar egreso del plan')+'">'+
+        (removed?'Restaurar':'Borrar')+'</button>')+'</td></tr>';
    }).join('')+
-   emptyPageRows(pageLimit-expenseRowsPage.length,expenseRowsPage.length?'':'No hay egresos con ese filtro.',4))+'</tbody></table>';
-  $('fplanExpensePagination').textContent='Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos';
+   emptyPageRows((scope==='TODOS'?incomeRows.length:0)-expenseRowsPage.length,expenseRowsPage.length?'':'No hay egresos con ese filtro.',4))+'</tbody></table>';
+  $('fplanExpensePagination').textContent=scope==='TODOS'
+   ?'Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos · '+expenseLimit+' por página'
+   :visibleExpenses.length+' egresos de '+$('fplanExpenseScope').selectedOptions[0].text+' · sin paginación';
   $('fplanExpensePrev').disabled=expensePage===1;$('fplanExpenseNext').disabled=expensePage===outPages;
   const groupsTotal=grouped.map(group=>sources.filter(x=>x.tipo===group).reduce((sum,x)=>sum+x.free,0));
   const total=groupsTotal.reduce((sum,x)=>sum+x,0);
@@ -173,7 +190,8 @@
   const pending=rows.filter(x=>!x.pagado).reduce((sum,x)=>sum+x.monto,0);
   $('fplanExpenseTotal').textContent='Egresos considerados '+money(rows.reduce((sum,x)=>sum+x.monto,0))+
    ' · Pendientes de pago '+money(pending)+' · Sin financiación '+money(remaining)+
-   (excluded.length?' · Excluidos del plan: '+excluded.length:'');
+   (excluded.length?' · Excluidos del plan: '+excluded.length:'')+
+   (agrupaciones.length?' · Incluidos en otros gastos: '+agrupaciones.length:'');
   const historical=target.casaClubGoogle2026;
   $('fplanHistoric').textContent=historical?.disponible&&target.anio===2026
    ?'Casa Club Google 2026: '+money(historical.total)+' · '+historical.registros+
