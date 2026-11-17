@@ -228,8 +228,8 @@
 .fplan-data-table td>small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 .fplan-data-table .fplan-empty-row{pointer-events:none;background:#fcfdff}
 .fplan-data-table .fplan-empty-row td{border-bottom:1px solid #eef2f6}
-.fplan-income-panel .fplan-data-table :is(th,td):nth-child(1){width:59%}
-.fplan-income-panel .fplan-data-table :is(th,td):nth-child(2){width:19%;text-align:center}
+.fplan-income-panel .fplan-data-table :is(th,td):nth-child(1){width:54%}
+.fplan-income-panel .fplan-data-table :is(th,td):nth-child(2){width:24%;text-align:center}
 .fplan-income-panel .fplan-data-table :is(th,td):nth-child(3){width:22%}
 .fplan-income-panel .fplan-data-table td.fplan-number-cell{text-align:center;font-variant-numeric:tabular-nums}
 .fplan-income-panel .fplan-data-table th:nth-child(2){white-space:nowrap}
@@ -256,7 +256,33 @@
 }
 @media (max-width:520px){
  .fplan-data-table .fplan-exclude-button{padding:6px 8px!important;gap:5px}
- .fplan-income-panel .fplan-data-table :is(th,td):nth-child(1){width:54%}
- .fplan-income-panel .fplan-data-table :is(th,td):nth-child(2){width:23%}
+ .fplan-income-panel .fplan-data-table :is(th,td):nth-child(1){width:49%}
+ .fplan-income-panel .fplan-data-table :is(th,td):nth-child(2){width:28%}
  .fplan-income-panel .fplan-data-table :is(th,td):nth-child(3){width:23%}
+}
+
+/* Cuatro columnas reales en egresos: Acciones independiente de Sin asignar. */
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(1){width:45%}
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(2){width:16%}
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(3){width:23%}
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(4){width:16%;text-align:center}
+.fplan-expense-panel .fplan-data-table td.fplan-remaining-cell,
+.fplan-expense-panel .fplan-data-table td.fplan-actions-cell{vertical-align:middle}
+.fplan-expense-panel .fplan-remaining-amount{display:block;color:#50647c;font-size:.74rem;line-height:1.4;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fplan-expense-panel .fplan-actions-cell{white-space:nowrap}
+.fplan-expense-panel .fplan-data-table .fplan-exclude-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  margin:0;padding:8px 14px!important;min-height:36px;
+  background:#fff9fb!important;color:#ad263c!important;
+  border:1px solid #efb7c4!important;border-radius:11px!important;
+  box-shadow:none!important;font-size:.76rem!important;font-weight:700!important;
+}
+.fplan-expense-panel .fplan-data-table .fplan-exclude-button:hover:not(:disabled){
+  background:#fff0f3!important;border-color:#e78b9f!important;box-shadow:0 2px 7px #b4435a14!important;
+}
+.fplan-income-panel .fplan-data-table :is(th,td):nth-child(2){font-variant-numeric:tabular-nums}
+.fplan-income-panel .fplan-data-table th:nth-child(2){font-size:.7rem}
+@media(max-width:750px){
+  .fplan-expense-panel .fplan-data-table{min-width:630px}
+  .fplan-income-panel .fplan-data-table{min-width:480px}
 }
