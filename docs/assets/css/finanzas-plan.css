@@ -182,3 +182,32 @@
 @media(max-width:700px){.fplan-project-choice{padding:9px}.fplan-source-detail{padding:10px}.fplan-source-detail p{font-size:.77rem}}
 
 .finance-connection-status[hidden],.finance-connection-item[hidden]{display:none!important}
+
+
+/* Tablas financieras: máximo 10 movimientos por columna, selección accesible */
+.fplan-table-area{width:100%;overflow-x:auto;border:1px solid #e1e8ef;border-radius:12px;min-height:74px}
+.fplan-data-table{width:100%;border-collapse:collapse;table-layout:fixed;background:white}
+.fplan-data-table th{background:#f8f4fa;color:#765e87;text-align:left;font-size:.72rem;padding:10px 9px;border-bottom:1px solid #e8e0eb}
+.fplan-data-table td{padding:10px 9px;vertical-align:top;border-bottom:1px solid #e5ecf2;font-size:.78rem;overflow-wrap:anywhere}
+.fplan-data-table tbody tr:last-child td{border-bottom:0}
+.fplan-data-table tbody tr[data-source],.fplan-data-table tbody tr[data-expense]{cursor:pointer;transition:background-color .16s}
+.fplan-data-table tbody tr[data-source]:hover,.fplan-data-table tbody tr[data-expense]:hover{background:#eef9f2}
+.fplan-data-table tbody tr.is-selected{background:#e2f3e9;box-shadow:inset 3px 0 #20945d}
+.fplan-data-table tbody tr.is-excluded{background:#faf6f6;opacity:.76}
+.fplan-data-table tr:focus-visible{outline:2px solid #247a9a;outline-offset:-2px}
+.fplan-data-table strong{display:block;color:#213951;font-size:.8rem;font-weight:750;line-height:1.4}
+.fplan-data-table small{display:block;font-size:.69rem;color:#6b8094;margin-top:4px;line-height:1.4}
+.fplan-data-table .fplan-number-cell{font-weight:800;color:#237552;text-align:right;white-space:nowrap}
+.fplan-data-table td:last-child{text-align:left}
+.fplan-data-table .fplan-allocation{white-space:normal;display:flex;padding:4px 6px;margin:4px 0;align-items:center;flex-wrap:wrap}
+.fplan-data-table .fplan-allocation button{margin-left:auto}
+.fplan-exclude-button{font-size:.68rem!important;min-height:30px;padding:4px 10px!important;color:#a64743!important;border-color:#e7bcbc!important;margin-top:6px}
+.fplan-page-nav{display:flex;gap:12px;align-items:center;justify-content:center;padding:10px 4px;font-size:.76rem;color:#607389}
+.fplan-page-nav button{border:1px solid #d6e3ed;border-radius:8px;background:#fff;color:#23415b;padding:7px 12px;font-weight:700}
+.fplan-page-nav button:disabled{opacity:.45;cursor:default}
+.fplan-filter-inline{display:flex;gap:8px;align-items:center;padding:8px 4px;font-size:.76rem;color:#51657d}
+.fplan-filter-inline input{width:17px;height:17px;flex:none}
+.fplan-footer-actions{display:flex;align-items:center;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.fplan-footer-actions button{min-height:43px}
+@media(max-width:850px){.fplan-data-table th,.fplan-data-table td{padding:8px 6px}.fplan-data-table strong{font-size:.73rem}.fplan-footer-actions{width:100%}.fplan-footer-actions button{flex:1}}
+

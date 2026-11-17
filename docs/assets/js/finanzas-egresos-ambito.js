@@ -31,7 +31,22 @@
    e.ambito===ambito&&!esMovimientoDeProyecto(e));
   return {proyecto:null,egresos};
  }
- const api={egresosDelAmbito,categoriaDeProyecto,esMovimientoDeProyecto};
+ // Desglose consolidado de conceptos realmente registrados, sin presupuestos duplicados.
+ // Un mismo ID de gasto solo aparece una vez en todo el historial.
+ function egresosTodosProyectos(data){
+  const known=new Set(),rows=[];
+  for(const p of data?.proyectosExtraordinarios||[]){
+   for(const x of p.gastosConceptos||[]){
+    const id=Number(x.id);
+    if(!Number.isSafeInteger(id)||id<1||known.has(id))continue;
+    known.add(id);
+    rows.push({...x,ambito:'EXTRAORDINARIO',categoria:'PROYECTO',
+     proyectoId:Number(p.id),proyectoNombre:p.nombre});
+   }
+  }
+  return rows;
+ }
+ const api={egresosDelAmbito,egresosTodosProyectos,categoriaDeProyecto,esMovimientoDeProyecto};
  if(typeof module==='object'&&module.exports)module.exports=api;
  else root.MJExpenseScope=api;
 })(typeof window==='undefined'?globalThis:window);

@@ -483,21 +483,30 @@ function render(){
   actualizarAniosUltimoPago();
   renderHouses();
  }
+ let showAllProjectExpenses=false;
  function renderExpenses(){
  if(!data)return;
  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const text=normalize($('expenseFilterConcept').value.trim()),category=$('expenseFilterCategory').value;
  const consultaProyectos=activeConcept==='MANTENIMIENTO'&&category==='PROYECTO';
- const {proyecto:project,egresos:rows}=window.MJExpenseScope.egresosDelAmbito(
+ const {proyecto:project,egresos:projectRows}=window.MJExpenseScope.egresosDelAmbito(
   data,activeConcept,activeProyectoId,category);
+ const allProjects=activeConcept==='EXTRAORDINARIO'&&showAllProjectExpenses;
+ const rows=allProjects?window.MJExpenseScope.egresosTodosProyectos(data):projectRows;
+ const toggle=$('financeAllProjectsExpenses');
+ toggle.hidden=activeConcept!=='EXTRAORDINARIO';
+ toggle.textContent=allProjects?'Ver proyecto seleccionado':'Ver todos los proyectos';
+ toggle.setAttribute('aria-pressed',String(allProjects));
  const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value,order=$('expenseSort').value;
  $('expenseHistoryTitle').textContent=consultaProyectos?'Movimientos de proyectos':
+  allProjects?'Gastos de todos los proyectos':
   activeConcept==='EXTRAORDINARIO'?'Gastos del proyecto seleccionado':
   activeConcept==='CASA_CLUB'?'Movimientos de Casa Club':'Movimientos de mantenimiento';
  $('expenseHistoryScope').textContent=consultaProyectos
   ?'Consulta de proyectos del período seleccionado. No se incluyen en los ingresos, egresos ni balance de mantenimiento.'
   :activeConcept==='EXTRAORDINARIO'
-   ?(project?'Solo gastos registrados de «'+project.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
+   ?(allProjects?'Conceptos registrados en todos los proyectos, sin sumar presupuestos como pagos.':
+      project?'Solo gastos registrados de «'+project.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
    :activeConcept==='CASA_CLUB'?'Solo gastos de Casa Club; sin mantenimiento ni proyectos.'
    :'Solo gastos de mantenimiento; selecciona Proyectos para consultar sus movimientos por separado.';
  const filtered=rows.filter(e=>(!text||normalize(e.concepto).includes(text))
@@ -520,13 +529,15 @@ function render(){
  const first=(expensePage-1)*size,shown=filtered.slice(first,first+size);
  $('expenseResultCount').textContent='Mostrando '+(filtered.length?first+1:0)+'–'+(first+shown.length)+
   ' de '+filtered.length+' registros de '+(consultaProyectos?'Proyectos (solo consulta)':
+   allProjects?'todos los proyectos':
    activeConcept==='EXTRAORDINARIO'?(project?'«'+project.nombre+'»':'proyecto sin seleccionar'):
    activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
  const cell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
-  cell('Concepto',esc(e.concepto))+cell('Referencia',esc(e.referencia||'—'))+
-  cell('Monto',activeConcept==='EXTRAORDINARIO'?
+  cell('Concepto',esc(e.concepto)+(allProjects?'<small class="expense-project-context">'+esc(e.proyectoNombre||'Proyecto sin nombre')+'</small>':''))+
+  cell('Referencia',esc(e.referencia||'—'))+
+  cell('Monto',activeConcept==='EXTRAORDINARIO'&&!allProjects?
    '<button type="button" class="soft finance-project-row-breakdown" data-open-project-breakdown title="Ver desglose del presupuesto y editar importes">'+esc(fmt(e.monto))+'</button>':
    consultaProyectos||e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
    '<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
@@ -535,7 +546,11 @@ function render(){
    '<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Descargar comprobante</button>':
    (!consultaProyectos&&!e.esAjusteMensual&&e.categoria==='CUOTA_EXTRAORDINARIA'&&!e.tieneCuota?
    '<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>':'—'))+
-  '</tr>').join(''):'<tr><td colspan="6">No hay egresos que coincidan con los filtros.</td></tr>';
+  cell('Acciones',activeConcept==='MANTENIMIENTO'&&!consultaProyectos&&
+   !e.esAjusteMensual&&!e.tieneCuota&&e.ambito==='MANTENIMIENTO'?
+   '<button type="button" class="soft" data-delete-maint-expense="'+Number(e.id)+
+    '" title="Eliminar este concepto con auditoría">Borrar</button>':'—')+
+  '</tr>').join(''):'<tr><td colspan="7">No hay egresos que coincidan con los filtros.</td></tr>';
  $('expensePageInfo').textContent='Página '+expensePage+' de '+pages;
  $('expensePrev').disabled=expensePage===1;$('expenseNext').disabled=expensePage===pages;
 }
@@ -589,7 +604,10 @@ function render(){
      String(h.estatus||'').toUpperCase()==='PAGADO';
    const pagadoCompleto=String(h.estatus||'').toUpperCase()==='PAGADO';
    if(status==='PAGADO')return pagadoCompleto;
-   if(status==='PENDIENTE')return ['PENDIENTE','PAGO_PARCIAL'].includes(String(h.estatus||'').toUpperCase());
+   if(status==='PAGO_PARCIAL')return activeConcept==='EXTRAORDINARIO'&&String(h.estatus||'').toUpperCase()==='PAGO_PARCIAL';
+   if(status==='PENDIENTE')return activeConcept==='EXTRAORDINARIO'
+    ?String(h.estatus||'').toUpperCase()==='PENDIENTE'
+    :['PENDIENTE','PAGO_PARCIAL'].includes(String(h.estatus||'').toUpperCase());
    return false;
  }
  function renderHouseTagCell(h){
@@ -831,6 +849,14 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     tab.tabIndex=selected?0:-1;
     if(selected)$('financeHousePanel').setAttribute('aria-labelledby',tab.id);
   });
+  // El filtro usa los mismos estados visibles de la columna Estado.
+  const projectStatuses=concepto==='EXTRAORDINARIO';
+  const paidOption=$('financeStatus').querySelector('option[value="PAGADO"]');
+  const pendingOption=$('financeStatus').querySelector('option[value="PENDIENTE"]');
+  const partialOption=$('financeStatus').querySelector('option[value="PAGO_PARCIAL"]');
+  paidOption.textContent=projectStatuses?'Meta alcanzada':'Pagadas';
+  pendingOption.textContent=projectStatuses?'Sin aportes':'Pendientes';
+  partialOption.hidden=!projectStatuses;partialOption.disabled=!projectStatuses;
   const noAplicaOption=$('financeStatus').querySelector('option[value="NO_APLICA"]');
   if(noAplicaOption){
    noAplicaOption.hidden=concepto!=='EXTRAORDINARIO';
@@ -840,7 +866,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    const option=$('financeStatus').querySelector('option[value="'+choice+'"]');
    if(option)option.disabled=concepto!=='MANTENIMIENTO';
   }
-  if(concepto!=='EXTRAORDINARIO'&&$('financeStatus').value==='NO_APLICA')$('financeStatus').value='';
+  if(concepto!=='EXTRAORDINARIO'&&['NO_APLICA','PAGO_PARCIAL'].includes($('financeStatus').value))$('financeStatus').value='';
   if(concepto!=='MANTENIMIENTO'&&['ADVERTENCIAS','PAGO_ANUAL','ABONO_CON_ADEUDO'].includes($('financeStatus').value))
    $('financeStatus').value='';
   $('financeConceptHint').textContent={
@@ -848,6 +874,11 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     EXTRAORDINARIO:'Selecciona un proyecto para consultar sus aportaciones, cuotas especiales y saldos. El proyecto es independiente de mantenimiento y TAGs.',
     CASA_CLUB:'Casa club: solo reservas aprobadas. El saldo vence en la fecha límite de pago, no en la fecha del evento.'
   }[concepto];
+  // En extraordinarias y Casa Club se ocultan indicadores secundarios; Casa Club tampoco usa gráficas de cumplimiento.
+  const extras=document.querySelector('.analysis-more');
+  const charts=document.querySelector('.analysis-columns');
+  if(extras)extras.hidden=concepto!=='MANTENIMIENTO';
+  if(charts)charts.hidden=concepto==='CASA_CLUB';
   // Cambio explícito de pestaña: página 1. La recarga de datos tras
   // editar, anular o registrar un pago preserva la página actual.
   if(resetPage)housePage=1;
@@ -2001,6 +2032,38 @@ function renderHouses(){
   return {pdfCount,created,updated,months:months.length};
  }
 
+ const backupJobStorageKey='mj_drive_backup_job_20261116';
+ let backupJobId=null,backupJobChecking=false;
+ try{backupJobId=sessionStorage.getItem(backupJobStorageKey);}catch(_){}
+ async function refreshBackupJob(){
+  if(!backupJobId||backupJobChecking||document.visibilityState==='hidden')return;
+  backupJobChecking=true;
+  const banner=$('financeBackupJobBanner'),info=$('financeBackupJobText'),link=$('financeBackupJobLink');
+  banner.hidden=false;
+  try{
+   const {data:job}=await request('/drive/respaldos-estado/'+encodeURIComponent(backupJobId));
+   info.textContent=job.estado==='COMPLETADO'
+    ?'Respaldo verificado: '+job.verificados+' PDF en Drive'+(job.excelGuardado?' y Excel del padrón.':'.')
+    :job.estado==='ERROR'
+     ?'Respaldo incompleto ('+job.verificados+' PDF verificados): '+job.error
+     :'Respaldo en segundo plano · '+job.actual+' · '+job.verificados+' PDF verificados.';
+   banner.dataset.status=job.estado;
+   const folderUrl=job.carpetaUrl||job.excelUrl;
+   if(/^https:\/\/drive\.google\.com\/drive\/folders\/[A-Za-z0-9_-]{12,150}$/.test(String(folderUrl||''))){
+    link.href=folderUrl;link.hidden=false;
+   }else link.hidden=true;
+   if(job.estado!=='EN_PROCESO'){
+    backupJobId=null;
+    try{sessionStorage.removeItem(backupJobStorageKey);}catch(_){}
+   }
+  }catch(err){
+   info.textContent='No fue posible verificar el progreso del respaldo: '+err.message;
+   banner.dataset.status='ERROR';backupJobId=null;
+  }finally{backupJobChecking=false;}
+ }
+ if(backupJobId)void refreshBackupJob();
+ window.setInterval(()=>{if(backupJobId)void refreshBackupJob();},5000);
+ document.addEventListener('visibilitychange',()=>{if(backupJobId&&!document.hidden)void refreshBackupJob();});
  $('financeDownloadAllReceipts').addEventListener('click',()=>openBackupModal('zip'));
  $('financeDriveConnect').addEventListener('click',()=>openBackupModal('connect'));
  $('financeDriveBackup').addEventListener('click',()=>openBackupModal('drive'));
@@ -2039,14 +2102,22 @@ function renderHouses(){
     const estado=(await request('/drive/status')).data;
     if(!estado?.connected)throw Error('Para respaldos, usa "Vincular Drive para respaldos" y autoriza tu cuenta.');
     if(!estado.folderConfigured)throw Error('Antes de respaldar pulsa "Elegir carpeta 02_Recibos_PDF".');
-    const summary=await respaldarPdfDrive(periodo,backupAllMonths.checked);
-    if(activeConcept==='EXTRAORDINARIO')setBackupStatus('Respaldo del proyecto terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados).','success');
-    else{
-     setBackupStatus('PDF terminados: '+summary.pdfCount+' de '+summary.months+' mes(es). Guardando Excel…');
-     const xlsx=await excelForDrive(periodo);
-     await request('/drive/respaldo',{periodo,xlsx,soloExcel:true});
-     setBackupStatus('Respaldo terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados) en carpetas por año y Excel del padrón guardado.','success');
-    }
+    const months=backupAllMonths.checked?backupAvailablePeriods.slice().sort():[periodo];
+    if(!months.length)throw Error('No hay meses con recibos disponibles.');
+    setBackupStatus('Preparando el respaldo; después podrás seguir usando la plataforma…');
+    const projectId=activeConcept==='EXTRAORDINARIO'?activeProyectoId:null;
+    const xlsx=projectId?null:await excelForDrive(periodo);
+    const result=await request('/drive/respaldos-iniciar',{
+     periodos:months,proyectoId:projectId,periodoExcel:periodo,xlsx
+    });
+    backupJobId=result.data?.id;
+    if(!backupJobId)throw Error('El servidor no devolvió el identificador del respaldo.');
+    try{sessionStorage.setItem(backupJobStorageKey,backupJobId);}catch(_){}
+    backupModal.hidden=true;backupAction=null;
+    $('financeBackupJobBanner').hidden=false;
+    $('financeBackupJobText').textContent='Respaldo iniciado en segundo plano. Verificando PDF en Drive…';
+    void refreshBackupJob();
+    notice('Respaldo iniciado. Puedes seguir usando la página; revisa el progreso junto a la tabla.','success');
    }
   }catch(error){
    if(googleTab&&!googleTab.closed)googleTab.close();
@@ -2888,6 +2959,26 @@ let historicalExtraId=null;
   const item=data?.egresos?.find(e=>Number(e.id)===Number(target.dataset.expenseEdit));
   if(item)await editExpenseAmount(item.id,item.monto);
  }
+ $('financeExpenseRows').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-delete-maint-expense]');
+  if(!button||activeConcept!=='MANTENIMIENTO')return;
+  const item=data?.egresos?.find(e=>Number(e.id)===Number(button.dataset.deleteMaintExpense));
+  if(!item||item.ambito!=='MANTENIMIENTO'||item.proyectoId||item.esAjusteMensual||item.tieneCuota)
+   return notice('Este egreso no puede eliminarse desde mantenimiento.');
+  if(!window.confirm('¿Eliminar definitivamente el concepto «'+item.concepto+'» por '+fmt(item.monto)+
+   '? Quedará constancia en auditoría. No se borrarán pagos de viviendas.'))return;
+  button.disabled=true;
+  try{
+   await request('/egresos/'+Number(item.id)+'/mantenimiento',
+    {anterior:{monto:Number(item.monto),fecha:String(item.fecha).slice(0,10),concepto:item.concepto}},'DELETE');
+   await load();notice('Egreso eliminado y documentado en auditoría.','success');
+  }catch(error){notice(error.message);button.disabled=false;}
+ });
+ $('financeAllProjectsExpenses').addEventListener('click',()=>{
+  if(activeConcept!=='EXTRAORDINARIO')return;
+  showAllProjectExpenses=!showAllProjectExpenses;
+  expensePage=1;renderExpenses();
+ });
  $('financeExpenseRows').addEventListener('click',e=>{
   if(activeConcept==='EXTRAORDINARIO'&&e.target.closest('[data-open-project-breakdown]'))
    openProjectBreakdown(e.target.closest('[data-open-project-breakdown]'));
@@ -3412,17 +3503,16 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  let projectExceptions=new Map(),projectPreview=null,projectSaving=false,projectPreviousFocus=null;
  const projectBudgetValid=value=>{
   const n=Number(value);
-  return String(value??'').trim()!==''&&Number.isFinite(n)&&Number.isInteger(n)&&n>=3&&n<=10000000&&
-   Math.abs(n*100-Math.round(n*100))<0.001;
+  return String(value??'').trim()!==''&&Number.isFinite(n)&&Number.isInteger(n)&&n>0&&n<=10000000;
  };
  function computeProjectPreview(){
-  if(!projectBudgetValid($('financeRulesBudget').value))return null;
-  if(!window.MJProjectBudget?.distribuir)throw Error('El cálculo de presupuesto no está disponible. Actualiza la página.');
+  if(!projectBudgetValid($('financeRulesQuota').value))return null;
+  if(!window.MJProjectBudget?.distribuirPorCuota)throw Error('El reparto de cuotas no está disponible. Actualiza la página.');
   const exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto}));
-  if(exceptions.some(({monto})=>!Number.isInteger(Number(monto))))
+  if(exceptions.some(({monto})=>String(monto).trim()===''||!Number.isInteger(Number(monto))))
    throw Error('Las cuotas excepcionales deben expresarse en pesos enteros.');
-  return window.MJProjectBudget.distribuir(
-   projectHouses(),Number($('financeRulesBudget').value),exceptions
+  return window.MJProjectBudget.distribuirPorCuota(
+   projectHouses(),Number($('financeRulesQuota').value),exceptions
   );
  }
  function renderProjectModal(){
@@ -3432,11 +3522,11 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   try{projectPreview=computeProjectPreview();}catch(e){projectPreview=null;error=e.message;}
   const amounts=new Map((projectPreview?.rows||[]).map(r=>[r.casaId,r]));
   $('financeRulesBudgetDisplay').textContent=projectPreview
-   ?projectMoneyText(projectPreview.totalCentavos/100)
-   :projectBudgetValid($('financeRulesBudget').value)?'Revisar importe':'Pendiente';
-  $('financeRulesHouses').textContent=String(houses.length);
+   ?projectMoneyText(projectPreview.totalCentavos/100):'Pendiente';
+  $('financeRulesBudget').value=projectPreview?String(projectPreview.totalCentavos/100):'';
+  $('financeRulesHouses').textContent=projectPreview?String(projectPreview.casasIncluidas):'—';
   $('financeRulesSpecialCount').textContent=String(projectExceptions.size);
-  $('financeRulesDiff').textContent=projectPreview?fmt(0):'Pendiente';
+  $('financeRulesDiff').textContent=projectPreview?String(projectPreview.noAplica):'Pendiente';
   $('financeRulesRows').innerHTML=houses.filter(h=>
    (h.calle+' '+h.numero+' '+(h.nombre||'')).toLocaleLowerCase('es').includes(term))
    .map(h=>{
@@ -3466,6 +3556,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   projectExceptions=new Map();projectSaving=false;projectPreview=null;
   $('financeNewProjectName').value='';
   $('financeRulesBudget').value='';
+  $('financeRulesQuota').value='';
   $('financeNewProjectMonth').value=$('expenseDate').value.slice(0,7);
   $('financeRulesSearch').value='';
   $('financeRulesStatus').textContent='';
@@ -3489,7 +3580,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
    e.preventDefault();(e.shiftKey?last:first).focus();
   }else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
  });
- for(const field of ['financeNewProjectName','financeRulesBudget','financeNewProjectMonth','financeRulesSearch'])
+ for(const field of ['financeNewProjectName','financeRulesQuota','financeNewProjectMonth','financeRulesSearch'])
   $(field).addEventListener('input',renderProjectModal);
  $('financeNewProjectMonth').addEventListener('change',renderProjectModal);
  $('financeRulesRows').addEventListener('click',e=>{
@@ -3520,9 +3611,11 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   catch(err){$('financeRulesStatus').textContent=err.message;}
   projectPreview=preview;
   $('financeRulesSpecialCount').textContent=String(projectExceptions.size);
-  $('financeRulesDiff').textContent=preview?fmt(0):'Pendiente';
+  $('financeRulesDiff').textContent=preview?String(preview.noAplica):'Pendiente';
+  $('financeRulesHouses').textContent=preview?String(preview.casasIncluidas):'—';
+  $('financeRulesBudget').value=preview?String(preview.totalCentavos/100):'';
   $('financeRulesBudgetDisplay').textContent=preview
-   ?projectMoneyText(preview.totalCentavos/100):'Revisar importe';
+   ?projectMoneyText(preview.totalCentavos/100):'Pendiente';
   // Mostrar en vivo el nuevo reparto de las demás viviendas sin reemplazar
   // el input que se está editando (mantiene el foco y el valor 0).
   const amounts=new Map((preview?.rows||[]).map(h=>[h.casaId,h.montoCentavos]));
@@ -3545,22 +3638,23 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   const name=$('financeNewProjectName').value.trim(),month=$('financeNewProjectMonth').value;
   if(!projectPreview||projectHouses().length!==231||name.length<8||
      !/^20\d{2}-(?:0[1-9]|1[0-2])$/.test(month)){
-   $('financeRulesStatus').textContent='Completa el nombre (mínimo 8 caracteres), el costo total, el mes y las excepciones válidas.';
+   $('financeRulesStatus').textContent='Completa el nombre (mínimo 8 caracteres), la cuota por casa, el mes y las excepciones válidas.';
    return;
   }
-  const budget=projectPreview.totalCentavos/100,exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto:Number(monto)}));
-  if(!confirm('¿Crear «'+name+'» por '+projectMoneyText(budget)+' para 231 viviendas con '+exceptions.length+
-   ' excepciones? El saldo se reparte entre las demás casas. Esta acción generará los 231 cargos.'))return;
+  const budget=projectPreview.totalCentavos/100,quota=Number($('financeRulesQuota').value),
+   count=projectPreview.casasIncluidas,exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto:Number(monto)}));
+  if(!confirm('¿Crear «'+name+'» con meta de '+projectMoneyText(budget)+' para '+count+
+   ' casas que pagan y '+projectPreview.noAplica+' No aplica? Se crearán 231 cargos, incluidos los $0.'))return;
   projectSaving=true;renderProjectModal();
   $('financeRulesStatus').textContent='Guardando proyecto y cuotas de las 231 viviendas…';
   try{
    const result=await request('/proyectos-extraordinarios',{
-    nombre:name,fechaInicio:month+'-01',montoTotal:budget,excepciones
+    nombre:name,fechaInicio:month+'-01',cuotaPorCasa:quota,excepciones
    });
    activeProyectoId=result.data?.proyectos?.[0]?.id||null;
    projectSaving=false;closeProjectModal();
    const refreshed=await load();
-   notice(refreshed?'Proyecto creado. Se guardaron 231 cuotas y las excepciones configuradas.':
+   notice(refreshed?'Proyecto creado. Se guardaron las cuotas y exenciones, con la meta recalculada.':
     'El proyecto se guardó, pero la tabla no se pudo actualizar. Vuelve a consultar antes de intentar crearlo otra vez.','success');
   }catch(err){$('financeRulesStatus').textContent=err.message;notice(err.message);}
   finally{projectSaving=false;renderProjectModal();}
@@ -3602,7 +3696,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  function bulkSummary(){
   const computed=bulkCompute(),houses=bulkHouses();
   $('financeBulkTotal').textContent=computed
-   ?houses.length+' viviendas · '+bulkExceptions.size+' excepciones · Meta: '+fmt(computed.total/100)
+   ?houses.length+' en padrón · '+houses.filter(h=>bulkAmount(h.casaId)>0).length+' que pagan · '+bulkExceptions.size+' excepciones · Meta: '+fmt(computed.total/100)
    :houses.length+' viviendas · Revisa la cuota general y las excepciones antes de guardar.';
   $('financeBulkApply').disabled=bulkSaving||!computed;
   return computed;

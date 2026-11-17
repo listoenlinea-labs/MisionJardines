@@ -36,7 +36,35 @@
   if(rows.reduce((sum,r)=>sum+r.montoCentavos,0)!==total)return fail('El reparto no coincide con el costo del proyecto.');
   return {rows,totalCentavos:total,cuotaBaseCentavos:base,excepciones:fixed.size};
  }
- const api={distribuir};
+
+// Para proyectos nuevos, el administrador define la cuota ordinaria por casa.
+// Cada excepción cambia la meta estimada; NO redistribuye silenciosamente su diferencia.
+function distribuirPorCuota(houses,cuotaPorCasa,exceptions=[]){
+ if(!Array.isArray(houses)||houses.length!==231)return fail('El padrón debe contener las 231 viviendas oficiales.');
+ const base=cents(cuotaPorCasa);
+ if(base<=0||base%100!==0)return fail('La cuota general debe ser un importe positivo en pesos enteros.');
+ const ids=houses.map(h=>Number(h.casaId??h.id));
+ if(new Set(ids).size!==231||ids.some(id=>!Number.isSafeInteger(id)||id<1))
+  return fail('El padrón contiene viviendas inválidas o duplicadas.');
+ const allowed=new Set(ids),fixed=new Map();
+ if(!Array.isArray(exceptions)||exceptions.length>231)return fail('Las excepciones son inválidas.');
+ for(const item of exceptions){
+  const id=Number(item.casaId),amount=cents(item.monto);
+  if(!allowed.has(id)||fixed.has(id)||amount%100!==0)return fail('Hay una excepción duplicada, desconocida o con centavos.');
+  fixed.set(id,amount);
+ }
+ const rows=ids.map(casaId=>({
+  casaId,montoCentavos:fixed.has(casaId)?fixed.get(casaId):base,esExcepcion:fixed.has(casaId)
+ }));
+ const totalCentavos=rows.reduce((sum,row)=>sum+row.montoCentavos,0);
+ const casasIncluidas=rows.filter(row=>row.montoCentavos>0).length;
+ if(!casasIncluidas)return fail('El proyecto debe incluir por lo menos una vivienda con cuota.');
+ if(!Number.isSafeInteger(totalCentavos)||totalCentavos>1000000000)
+  return fail('La meta estimada no puede exceder $10,000,000.');
+ return {rows,totalCentavos,cuotaBaseCentavos:base,excepciones:fixed.size,
+  casasIncluidas,noAplica:rows.length-casasIncluidas};
+}
+ const api={distribuir,distribuirPorCuota};
  if(root)root.MJProjectBudget=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(typeof window==='undefined'?null:window);

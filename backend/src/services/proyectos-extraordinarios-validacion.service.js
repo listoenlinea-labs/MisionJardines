@@ -71,13 +71,14 @@ function validarPaquete(body,padron){
   }
   const abonado=new Map();
   for(const a of aportaciones)abonado.set(a.casaId,(abonado.get(a.casaId)||0)+a.montoCentavos);
-  let esperado=0,total=0,saldo=0,favor=0,cumplidos=0,parciales=0,pendientes=0;
+  let esperado=0,total=0,saldo=0,favor=0,cumplidos=0,parciales=0,pendientes=0,noAplica=0;
   for(const c of cargos){
    const paid=abonado.get(c.casaId)||0;
    esperado+=c.montoCentavos;total+=paid;
    saldo+=Math.max(0,c.montoCentavos-paid);
    favor+=Math.max(0,paid-c.montoCentavos);
-   if(paid>=c.montoCentavos)cumplidos++;
+   if(c.montoCentavos===0&&paid===0)noAplica++;
+   else if(paid>=c.montoCentavos)cumplidos++;
    else if(paid>0)parciales++;
    else pendientes++;
   }
@@ -96,7 +97,8 @@ function validarPaquete(body,padron){
   return {codigo,nombre,fechaInicio:raw.fechaInicio,cuotaBaseCentavos:cuotaBase,cargos,aportaciones,errors,warnings,
    cuotasEspeciales:overrides.size,tarifasPorConfirmar:sinConfirmar,sourceDifference:Boolean(summaryDifference),
    resumen:{viviendas:padron.length,cuotasEspeciales:overrides.size,abonaron:abonado.size,
-    cumplidos,parciales,pendientes,totalEsperado:esperado/100,recaudado:total/100,
+    cumplidos,parciales,pendientes,noAplica,casasIncluidas:padron.length-noAplica,
+    totalEsperado:esperado/100,recaudado:total/100,
     saldoPendiente:saldo/100,saldoFavor:favor/100,ausentesEnPagos:sinPago}};
  });
  return {proyectos,errors:proyectos.flatMap(p=>p.errors),warnings:proyectos.flatMap(p=>p.warnings)};

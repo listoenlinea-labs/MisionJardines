@@ -2482,3 +2482,21 @@ body.page-analisis .finance-project-proof-edit-actions button:disabled{
 .finance-club-expense-row:hover,.finance-club-expense-row:focus-visible{background:#fbf6ef;outline:2px solid #f2cfa7}
 .finance-club-expense-row small{display:block;color:#55716d;margin:1px 0 5px;padding-left:7px}
 @media(max-width:700px){.finance-project-name-dialog,.finance-club-expense-dialog{width:calc(100vw - 18px);max-width:none;padding:15px;max-height:85dvh}.finance-club-expense-grid{grid-template-columns:1fr}.finance-project-name-actions,.finance-club-expense-actions{justify-content:stretch}.finance-project-name-actions button,.finance-club-expense-actions button{flex:1}}
+
+
+/* Modales de proyecto: cuota general y meta calculada, sin truncar los campos */
+body.page-analisis .finance-rules-controls{grid-template-columns:minmax(210px,2fr) repeat(3,minmax(140px,1fr));}
+body.page-analisis #financeRulesBudget[readonly]{background:#eef7f1;color:#1c6b4c;font-weight:800;cursor:default}
+body.page-analisis .analysis-more[hidden],body.page-analisis .analysis-columns[hidden]{display:none!important}
+@media(max-width:980px){body.page-analisis .finance-rules-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){body.page-analisis .finance-rules-controls{grid-template-columns:1fr}}
+
+
+/* Respaldo remoto no bloqueante y trazabilidad del historial de proyectos */
+.finance-backup-job{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;
+ margin:10px 0 14px;padding:12px 15px;border-radius:12px;border:1px solid #bddcce;background:#eff8f2;
+ color:#215b44;font-size:12px;font-weight:700}
+.finance-backup-job[data-status="ERROR"]{border-color:#f0c6c0;background:#fff2f1;color:#ad4545}
+.finance-backup-job a{color:#1966a2;text-decoration:underline;font-weight:750}
+.expense-project-context{display:block;color:#697c95;font-size:10px;margin-top:4px;line-height:1.4}
+#financeAllProjectsExpenses{margin-top:8px}

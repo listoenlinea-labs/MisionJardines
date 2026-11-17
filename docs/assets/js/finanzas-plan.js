@@ -9,7 +9,7 @@
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const labelMonth=p=>months[Number(p.slice(5))-1]+' '+p.slice(0,4);
  const validMonth=p=>/^20\d\d-(0[1-9]|1[0-2])$/.test(p);
- let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,projectFilterId='';
+ let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],incomePage=1,expensePage=1;
  const panel=$('fplanSources'),expenses=$('fplanExpenses'),notice=$('fplanStatus');
  function msg(text,error=false){notice.textContent=text;notice.dataset.error=error?'true':'false';}
  async function api(path,options={}){
@@ -49,6 +49,10 @@
  function actionState(){
   $('fplanSave').disabled=!planReady||loading;
   $('fplanRecommend').disabled=!planReady||loading||!target;
+  const source=selectedSource&&pools().find(x=>x.id===selectedSource.id);
+  const expense=expenseRows().find(x=>x.id===selectedExpenseId);
+  $('fplanAssignFooter').disabled=!planReady||loading||!source||source.free<=0||
+   !expense||expense.monto<=spend(expense.id);
  }
  function currentUsed(source){
   const all=allPlans.filter(x=>x.periodo!==period).flatMap(x=>x.asignaciones||[]).concat(assignments);
@@ -69,22 +73,27 @@
     total:annualClub?Number(historical.total||0):Number(origin.finanzasAmbitos?.CASA_CLUB?.ingresos||0),
     sinConciliar:annualClub}
   ];
-  const selected=(target.proyectosExtraordinarios||[]).find(p=>String(p.id)===String(projectFilterId));
-  if(selected)items.push({
-   origen:'PROYECTO:'+Number(selected.id),origenPeriodo:'ACUMULADO',tipo:'Cuotas extraordinarias',
-   name:selected.nombre,total:Number(selected.recaudado||0)});
+  for(const project of target.proyectosExtraordinarios||[]){
+   if(!Number.isSafeInteger(Number(project.id))||Number(project.id)<1)continue;
+   items.push({origen:'PROYECTO:'+Number(project.id),origenPeriodo:'ACUMULADO',
+    tipo:'Cuotas extraordinarias',name:project.nombre,total:Number(project.recaudado||0)});
+  }
   return items.map(p=>({...p,used:currentUsed(p),free:Math.max(0,p.total-currentUsed(p)),
    id:p.origen+'|'+p.origenPeriodo}));
  }
- function expenseRows(){
+ function expenseRows(includeExcluded=false){
   return (target?.egresos||[]).filter(e=>String(e.fecha||'').slice(0,7)===period&&
    Number(e.monto)>0&&!e.esAjusteMensual&&
-   !(e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS'))
+   !['CUOTA_EXTRAORDINARIA','PROYECTOS'].includes(String(e.categoria))&&
+   !(e.categoria==='PROYECTO'&&!Number(e.proyectoId))&&
+   (includeExcluded||!excluded.includes(Number(e.id))))
    .map(e=>({id:Number(e.id),monto:Number(e.monto),fecha:e.fecha,
     nombre:String(e.concepto||e.categoria||'Egreso'),categoria:e.categoria,
     grupo:e.ambito==='EXTRAORDINARIO'?'Cuotas extraordinarias':
      e.ambito==='CASA_CLUB'?'Casa Club':'Mantenimiento',
-    pagado:e.pagado!==false,proyectoId:e.proyectoId})); 
+    pagado:e.pagado!==false,proyectoId:e.proyectoId,
+    proyectoNombre:(target?.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(e.proyectoId))?.nombre||
+      (e.ambito==='EXTRAORDINARIO'?'Sin proyecto asociado':'')})); 
  }
  function labelSource(a){
   if(a.origen==='MANTENIMIENTO')return 'Mantenimiento · '+labelMonth(a.origenPeriodo);
@@ -98,64 +107,70 @@
  function spend(id){return assignments.filter(x=>x.egresoId===id).reduce((s,x)=>s+Number(x.monto||0),0);}
  function render(){
   if(!target){
-   panel.innerHTML='<p class="fplan-empty">No hay ingresos disponibles para mostrar.</p>';
-   expenses.innerHTML='<p class="fplan-empty">No se pudieron cargar los egresos.</p>';
-   $('fplanOverview').replaceChildren();
-   return;
+   panel.innerHTML='<p class="fplan-empty">No hay ingresos disponibles.</p>';
+   expenses.innerHTML='<p class="fplan-empty">No hay egresos disponibles.</p>';
+   $('fplanOverview').replaceChildren();return;
   }
-  const sources=pools(),rows=expenseRows();
-  const selectedProject=(target.proyectosExtraordinarios||[]).find(p=>String(p.id)===String(projectFilterId));
-  $('fplanProjectFilter').title=selectedProject?'Proyecto seleccionado: '+selectedProject.nombre:'Selecciona un proyecto';
-  const order=$('fplanIncomeSort').value;
-  sources.sort((a,b)=>order==='asc'?a.total-b.total:order==='name'?a.name.localeCompare(b.name,'es'):b.total-a.total);
   const grouped=['Mantenimiento','Cuotas extraordinarias','Casa Club'];
-  panel.innerHTML=grouped.map(group=>{
-   const groupRows=sources.filter(x=>x.tipo===group);
-   return '<h4 class="fplan-source-label">'+esc(group)+'</h4>'+
-    (groupRows.length?groupRows.map(x=>
-     '<article class="fplan-bucket" draggable="true" tabindex="0" data-source="'+esc(x.id)+'" aria-label="Arrastra este dinero a un egreso">'+
-     '<span class="fplan-number">'+money(x.free)+'</span><strong>'+esc(x.name)+'</strong>'+
-     '<span>Fuente '+money(x.total)+' · '+(planReady?'Asignado '+money(x.used):'Asignaciones por verificar')+'</span>'+
-     '<div><button type="button" data-pick="'+esc(x.id)+'"'+(planReady?'':' disabled')+'>Asignar fondos</button></div></article>').join(''):
-    '<p class="fplan-empty">Sin fondos registrados en este origen.</p>');
-  }).join('');
-  const query=$('fplanSearch').value.trim().toLocaleLowerCase('es');
-  let visible=rows.filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo).toLocaleLowerCase('es').includes(query));
-  const sort=$('fplanExpenseSort').value;
-  visible.sort((a,b)=>sort==='asc'?a.monto-b.monto:sort==='name'?a.nombre.localeCompare(b.nombre,'es'):b.monto-a.monto);
-  expenses.innerHTML=grouped.map(group=>{
-   const subset=visible.filter(x=>x.grupo===group);
-   if(!subset.length)return '';
-   return '<h4 class="fplan-source-label">'+esc(group)+'</h4>'+
-    subset.map(x=>{
-     const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
-     const remaining=Math.max(0,x.monto-spend(x.id));
-     return '<article class="fplan-expense" data-expense="'+x.id+'" tabindex="0">'+
-      '<span class="fplan-number">'+money(x.monto)+'</span>'+
-      '<strong>'+esc(x.nombre)+'</strong>'+
-      '<div class="fplan-expense-meta">'+esc(x.fecha)+' · '+esc(x.categoria)+' · '+
-      (x.pagado?'Registrado como pagado':'Pendiente de pagar')+
-      ' · Sin fuente asignada: <b>'+money(remaining)+'</b></div>'+
-      attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
-       ' · '+money(a.monto)+
-       '<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join('')+
-      '<div><button type="button" data-choose="'+x.id+'"'+(planReady?'':' disabled')+'>Asignar fondos</button></div></article>';
-    }).join('');
-  }).join('')||'<p class="fplan-empty">No hay egresos registrados para este mes o filtro.</p>';
-  const totalByGroup=grouped.map(group=>sources.filter(s=>s.tipo===group).reduce((t,s)=>t+s.free,0));
-  const total=totalByGroup.reduce((s,n)=>s+n,0);
-  const totalUnassigned=rows.reduce((n,e)=>n+Math.max(0,e.monto-spend(e.id)),0);
-  const labels=['Mantenimiento','Cuotas extraordinarias','Casa Club'];
-  $('fplanOverview').innerHTML=totalByGroup.map((n,i)=>'<div class="fplan-kpi"><small>'+(planReady?'Sin asignar':'Ingresos reportados')+' · '+labels[i]+'</small><strong>'+money(n)+'</strong></div>').join('')+
-   '<div class="fplan-kpi" data-tone="total"><small>'+(planReady?'Total aún sin asignar':'Ingresos reportados (no conciliados)')+'</small><strong>'+money(total)+'</strong></div>';
-  const pendientes=rows.filter(x=>!x.pagado).reduce((t,x)=>t+x.monto,0);
-  $('fplanExpenseTotal').textContent='Egresos registrados '+money(rows.reduce((t,x)=>t+x.monto,0))+
-   ' · Pendientes de pago '+money(pendientes)+(planReady?' · Sin financiación asignada '+money(totalUnassigned):' · Asignaciones por verificar');
+  const sources=pools(),rows=expenseRows(),allRows=expenseRows(true);
+  const sort=$('fplanIncomeSort').value,searchIn=$('fplanIncomeSearch').value.trim().toLocaleLowerCase('es');
+  sources.sort((a,b)=>sort==='asc'?a.total-b.total:sort==='name'?a.name.localeCompare(b.name,'es'):b.total-a.total);
+  const visibleSources=grouped.flatMap(group=>sources.filter(x=>x.tipo===group))
+   .filter(x=>(x.name+' '+x.tipo).toLocaleLowerCase('es').includes(searchIn));
+  const pageLimit=10,inPages=Math.max(1,Math.ceil(visibleSources.length/pageLimit));
+  incomePage=Math.max(1,Math.min(incomePage,inPages));
+  const incomeRows=visibleSources.slice((incomePage-1)*pageLimit,incomePage*pageLimit);
+  panel.innerHTML='<table class="fplan-data-table"><thead><tr><th>Ingreso / proyecto</th><th>Disponible</th><th>Asignado</th></tr></thead><tbody>'+
+   (incomeRows.map(x=>'<tr data-source="'+esc(x.id)+'" tabindex="0" role="button" aria-selected="'+(selectedSource?.id===x.id)+'"'+
+     (selectedSource?.id===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.name)+
+     '</strong><small>'+esc(x.tipo)+(x.sinConciliar?' · histórico sin conciliación':'')+'</small></td>'+
+     '<td class="fplan-number-cell">'+money(x.free)+'</td><td>'+money(x.used)+
+     '<small>Recibido: '+money(x.total)+'</small></td></tr>').join('')||
+    '<tr><td colspan="3">No hay ingresos con ese filtro.</td></tr>')+'</tbody></table>';
+  $('fplanIncomePagination').textContent='Página '+incomePage+' de '+inPages+' · '+visibleSources.length+' fuentes';
+  $('fplanIncomePrev').disabled=incomePage===1;$('fplanIncomeNext').disabled=incomePage===inPages;
+  const searchOut=$('fplanSearch').value.trim().toLocaleLowerCase('es'),outSort=$('fplanExpenseSort').value;
+  let visibleExpenses=allRows.filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo+' '+x.proyectoNombre).toLocaleLowerCase('es').includes(searchOut))
+   .filter(x=>!$('fplanOnlyUnassigned').checked||
+      (!excluded.includes(x.id)&&x.monto>spend(x.id)));
+  visibleExpenses.sort((a,b)=>outSort==='asc'?a.monto-b.monto:outSort==='name'?a.nombre.localeCompare(b.nombre,'es'):b.monto-a.monto);
+  visibleExpenses=grouped.flatMap(group=>visibleExpenses.filter(x=>x.grupo===group));
+  const outPages=Math.max(1,Math.ceil(visibleExpenses.length/pageLimit));
+  expensePage=Math.max(1,Math.min(expensePage,outPages));
+  const expenseRowsPage=visibleExpenses.slice((expensePage-1)*pageLimit,expensePage*pageLimit);
+  expenses.innerHTML='<table class="fplan-data-table"><thead><tr><th>Egreso / proyecto</th><th>Importe</th><th>Sin asignar / acciones</th></tr></thead><tbody>'+
+   (expenseRowsPage.map(x=>{
+    const removed=excluded.includes(x.id),remaining=Math.max(0,x.monto-spend(x.id));
+    const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
+    return '<tr data-expense="'+x.id+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed)+'"'+
+     (removed?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
+     '</strong><small>'+esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+
+     '</small></td><td class="fplan-number-cell">'+money(x.monto)+'</td><td><small>'+
+     (removed?'Excluido del plan':'Sin asignar: '+money(remaining))+'</small>'+
+     (removed?'':attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
+       ' · '+money(a.monto)+'<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join(''))+
+     '<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'">'+(removed?'Restaurar':'Borrar')+
+     '</button></td></tr>';
+   }).join('')||'<tr><td colspan="3">No hay egresos con ese filtro.</td></tr>')+'</tbody></table>';
+  $('fplanExpensePagination').textContent='Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos';
+  $('fplanExpensePrev').disabled=expensePage===1;$('fplanExpenseNext').disabled=expensePage===outPages;
+  const groupsTotal=grouped.map(group=>sources.filter(x=>x.tipo===group).reduce((sum,x)=>sum+x.free,0));
+  const total=groupsTotal.reduce((sum,x)=>sum+x,0);
+  $('fplanOverview').innerHTML=groupsTotal.map((n,i)=>'<div class="fplan-kpi"><small>'+
+   (planReady?'Sin asignar':'Ingresos reportados')+' · '+esc(grouped[i])+
+   '</small><strong>'+money(n)+'</strong></div>').join('')+
+   '<div class="fplan-kpi" data-tone="total"><small>Total aún sin asignar</small><strong>'+money(total)+'</strong></div>';
+  const remaining=rows.reduce((sum,x)=>sum+Math.max(0,x.monto-spend(x.id)),0);
+  const pending=rows.filter(x=>!x.pagado).reduce((sum,x)=>sum+x.monto,0);
+  $('fplanExpenseTotal').textContent='Egresos considerados '+money(rows.reduce((sum,x)=>sum+x.monto,0))+
+   ' · Pendientes de pago '+money(pending)+' · Sin financiación '+money(remaining)+
+   (excluded.length?' · Excluidos del plan: '+excluded.length:'');
   const historical=target.casaClubGoogle2026;
   $('fplanHistoric').textContent=historical?.disponible&&target.anio===2026
-   ?'Casa Club histórico 2026 (Google): '+money(historical.total)+' · '+historical.registros+
-    ' cobros registrados. Se consulta por separado: no se suma a los fondos disponibles hasta conciliarlo con MySQL y el banco.'
-   :'Casa Club Google: histórico no disponible para conciliación. Solo se distribuyen importes presentes en MySQL.';
+   ?'Casa Club Google 2026: '+money(historical.total)+' · '+historical.registros+
+    ' cobros históricos. No equivalen a un saldo bancario conciliado.'
+   :'Histórico de Casa Club pendiente de conciliación.';
+  actionState();
  }
  // El recomendador solo propone en memoria; cada decisión es trazable y editable.
  let recommendation=null;
@@ -206,7 +221,7 @@
  function chooseSource(id){
   if(!planReady){msg('El plan está en modo consulta. Reintenta la carga para asignar dinero.',true);return;}
   selectedSource=pools().find(x=>x.id===id);
-  msg(selectedSource?'Fuente seleccionada: '+selectedSource.name+'. Selecciona el egreso que deseas cubrir.':'Fuente no disponible',!selectedSource);
+  render();msg(selectedSource?'Origen elegido: '+selectedSource.name+'. Selecciona un egreso y pulsa Asignar.':'Fuente no disponible',!selectedSource);
  }
  function chooseExpense(id){
   if(!planReady){msg('El plan está en modo consulta. Reintenta la carga para asignar dinero.',true);return;}
@@ -245,7 +260,7 @@
  async function load(){
   const myRequest=++requestIndex;
   loading=true;planReady=false;hideRecommendation();actionState();clearAlert();
-  selectedSource=null;editorExpense=null;$('fplanAllocator').hidden=true;
+  selectedSource=null;selectedExpenseId=null;editorExpense=null;excluded=[];incomePage=1;expensePage=1;$('fplanAllocator').hidden=true;
   const chosen=$('fplanTargetMonth').value;
   if(!validMonth(chosen)){msg('Selecciona un periodo válido.',true);loading=false;actionState();return;}
   period=chosen;
@@ -269,20 +284,12 @@
     render();return;
    }
    target=result[0].value;
-   const options=(target.proyectosExtraordinarios||[]);
-   if(!options.some(x=>String(x.id)===String(projectFilterId))){
-    const preferred=window.MJFinanceSelectedProject?.();
-    projectFilterId=String(options.find(x=>Number(x.id)===Number(preferred))?.id||options[0]?.id||'');
-   }
-   $('fplanProjectFilter').replaceChildren(...options.map(p=>{
-    const option=document.createElement('option');option.value=String(p.id);
-    option.textContent=p.nombre+' · '+money(p.recaudado);return option;
-   }));
-   $('fplanProjectFilter').value=projectFilterId;
+   // Se incluyen todos los proyectos extraordinarios por separado.
    if(result[1].status==='fulfilled'){
     const plan=result[1].value;
     planReady=true;version=Number(plan.version||0);
     assignments=(plan.asignaciones||[]).map(x=>({...x}));
+    excluded=(plan.excluidos||[]).map(Number);
     allPlans=plan.planes||[];notes=plan.observaciones||'';
     $('fplanNotes').value=notes;
    }else{
@@ -323,7 +330,6 @@
   const year=Number($('financeYear')?.value),month=Number($('financeMonth')?.value);
   const current=year>=2020&&month>=1&&month<=12?year+'-'+String(month).padStart(2,'0'):
    new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit'}).format(new Date());
-  projectFilterId=String(window.MJFinanceSelectedProject?.()||'');
   sourceMonth=current;$('fplanTargetMonth').value=current;
   dialog.showModal();$('fplanContent').scrollTop=0;void load();
  });
@@ -341,13 +347,18 @@
  $('fplanClose').addEventListener('click',()=>dialog.close());
  $('fplanTargetMonth').addEventListener('change',()=>void load());
  $('fplanSourceMonth').addEventListener('change',()=>void loadSource().catch(e=>msg(e.message,true)));
- $('fplanSearch').addEventListener('input',render);
+ $('fplanSearch').addEventListener('input',()=>{expensePage=1;render();});
  $('fplanIncomeSort').addEventListener('change',render);
- $('fplanProjectFilter').addEventListener('change',()=>{projectFilterId=$('fplanProjectFilter').value;selectedSource=null;render();msg('Proyecto seleccionado como origen: '+$('fplanProjectFilter').selectedOptions[0]?.textContent);});
+ $('fplanIncomeSearch').addEventListener('input',()=>{incomePage=1;render();});
+ $('fplanOnlyUnassigned').addEventListener('change',()=>{expensePage=1;render();});
+ $('fplanIncomePrev').addEventListener('click',()=>{incomePage--;render();});
+ $('fplanIncomeNext').addEventListener('click',()=>{incomePage++;render();});
+ $('fplanExpensePrev').addEventListener('click',()=>{expensePage--;render();});
+ $('fplanExpenseNext').addEventListener('click',()=>{expensePage++;render();});
+ $('fplanAssignFooter').addEventListener('click',()=>{if(selectedExpenseId)chooseExpense(selectedExpenseId);});
  $('fplanExpenseSort').addEventListener('change',render);
- panel.addEventListener('click',e=>{const x=e.target.closest('[data-pick]');
-  if(x)chooseSource(x.dataset.pick);
- });
+ panel.addEventListener('click',e=>{const x=e.target.closest('[data-source]');if(x)chooseSource(x.dataset.source);});
+ panel.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)&&e.target.matches('[data-source]')){e.preventDefault();chooseSource(e.target.dataset.source);}});
  panel.addEventListener('dragstart',e=>{const x=e.target.closest('[data-source]');
   if(x)e.dataTransfer.setData('text/plain',x.dataset.source);
  });
@@ -360,7 +371,29 @@
  expenses.addEventListener('click',e=>{
   const remove=e.target.closest('[data-remove]');
   if(remove){hideRecommendation();assignments.splice(Number(remove.dataset.remove),1);render();msg('Asignación retirada del borrador. Guarda para conservar el cambio.');return;}
-  const row=e.target.closest('[data-choose]');if(row)chooseExpense(Number(row.dataset.choose));
+  const toggle=e.target.closest('[data-exclude]');
+  if(toggle){
+   const id=Number(toggle.dataset.exclude);
+   if(excluded.includes(id)){excluded=excluded.filter(x=>x!==id);msg('Gasto restaurado; pulsa Guardar plan.');}
+   else{
+    const row=expenseRows(true).find(x=>x.id===id);
+    if(!row||!window.confirm('¿Borrar «'+row.nombre+'» del plan? Se excluirá del cálculo, pero el movimiento original y su comprobante se conservarán.'))return;
+    assignments=assignments.filter(a=>a.egresoId!==id);excluded.push(id);
+    if(selectedExpenseId===id)selectedExpenseId=null;
+    msg('Egreso excluido del plan; pulsa Guardar plan.');
+   }
+   hideRecommendation();render();return;
+  }
+  const row=e.target.closest('[data-expense]');
+  if(row&&!excluded.includes(Number(row.dataset.expense))){
+   selectedExpenseId=Number(row.dataset.expense);render();
+   msg('Egreso seleccionado. Elige un ingreso y pulsa Asignar en el footer.');
+  }
+ });
+ expenses.addEventListener('keydown',e=>{
+  if(['Enter',' '].includes(e.key)&&e.target.matches('[data-expense]')&&!excluded.includes(Number(e.target.dataset.expense))){
+   e.preventDefault();selectedExpenseId=Number(e.target.dataset.expense);render();
+  }
  });
  $('fplanApply').addEventListener('click',()=>{
   if(!selectedSource||!editorExpense)return;
@@ -380,10 +413,10 @@
   const btn=$('fplanSave');btn.disabled=true;msg('Guardando y validando fondos en el servidor...');
   try{
    const result=await api('/plan-mensual',{method:'PUT',body:JSON.stringify({
-    periodo:period,version,asignaciones,observaciones:$('fplanNotes').value})});
+    periodo:period,version,asignaciones,excluidos,observaciones:$('fplanNotes').value})});
    version=result.version;
    const fresh=await api('/plan-mensual?periodo='+encodeURIComponent(period));
-   allPlans=fresh.planes||[];assignments=fresh.asignaciones||[];
+   allPlans=fresh.planes||[];assignments=fresh.asignaciones||[];excluded=(fresh.excluidos||[]).map(Number);
    render();msg(result.message||'Plan guardado correctamente.');
   }catch(e){msg(e.message,true);}
   finally{btn.disabled=false;}

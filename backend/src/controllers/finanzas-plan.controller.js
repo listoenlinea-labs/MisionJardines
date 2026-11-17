@@ -36,9 +36,9 @@ const fuenteMonto=(a,data)=>{
  throw fail(400,'Fuente de dinero inválida');
 };
 async function leerPlanes(options={}){
- const rows=await db.query('SELECT periodo,version,asignaciones,observaciones,actualizado_en FROM finanzas_planes_mensuales ORDER BY periodo',
+ const rows=await db.query('SELECT periodo,version,asignaciones,excluidos,observaciones,actualizado_en FROM finanzas_planes_mensuales ORDER BY periodo',
   {type:QueryTypes.SELECT,...options});
- return rows.map(x=>({...x,asignaciones:json(x.asignaciones)}));
+ return rows.map(x=>({...x,asignaciones:json(x.asignaciones),excluidos:json(x.excluidos)}));
 }
 const error=(res,e)=>{
  if(!e.status)console.error('[Finanzas plan]',e);
@@ -54,16 +54,18 @@ async function consultar(req,res){
   const plan=planes.find(p=>p.periodo===periodo);
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,periodo,version:plan?.version||0,
-   asignaciones:plan?.asignaciones||[],observaciones:plan?.observaciones||'',
+   asignaciones:plan?.asignaciones||[],excluidos:plan?.excluidos||[],observaciones:plan?.observaciones||'',
    planes:planes.map(p=>({periodo:p.periodo,version:p.version,asignaciones:p.asignaciones}))});
  }catch(e){return error(res,e);}
 }
 async function guardar(req,res){
  try{
   const periodo=req.body?.periodo,version=Number(req.body?.version);
-  const asignaciones=req.body?.asignaciones,observaciones=String(req.body?.observaciones||'').trim();
+  const asignaciones=req.body?.asignaciones,observaciones=String(req.body?.observaciones||'').trim(),
+   excluidos=req.body?.excluidos??[];
   if(!validPeriodo(periodo)||!Number.isSafeInteger(version)||version<0||
-    !Array.isArray(asignaciones)||asignaciones.length>250||observaciones.length>1200)
+    !Array.isArray(asignaciones)||asignaciones.length>250||observaciones.length>1200||
+    !Array.isArray(excluidos)||excluidos.length>500)
    throw fail(400,'Plan o versión inválidos');
   const clean=asignaciones.map(x=>{
    const egresoId=Number(x?.egresoId),origen=String(x?.origen||''),
@@ -76,10 +78,20 @@ async function guardar(req,res){
     throw fail(400,'Cada asignación requiere egreso, fuente, periodo e importe válido');
    return {egresoId,origen,origenPeriodo,monto};
   });
+  const cleanExcluded=excluidos.map(Number);
+  if(cleanExcluded.some(id=>!Number.isSafeInteger(id)||id<1)||
+     new Set(cleanExcluded).size!==cleanExcluded.length||
+     clean.some(a=>cleanExcluded.includes(a.egresoId)))
+   throw fail(400,'Una exclusión debe referirse a un egreso válido sin fondos asignados.');
   await asegurarPlanes();
-  const ids=[...new Set(clean.map(x=>x.egresoId))];
+  const ids=[...new Set(clean.map(x=>x.egresoId).concat(cleanExcluded))];
   const gastos=ids.length?await Egreso.findAll({where:{id:{[Op.in]:ids}},attributes:['id','fecha','monto','ambito','proyectoId']}):[];
   const gastosById=new Map(gastos.map(g=>[Number(g.id),g]));
+  for(const id of cleanExcluded){
+   const e=gastosById.get(id);
+   if(!e||String(e.fecha).slice(0,7)!==periodo)
+    throw fail(409,'Un egreso excluido ya no corresponde a este periodo.');
+  }
   const porEgreso=new Map();
   for(const x of clean){
    const egreso=gastosById.get(x.egresoId);
@@ -126,12 +138,12 @@ async function guardar(req,res){
    }
    const next=version+1;
    await db.query(`INSERT INTO finanzas_planes_mensuales
-     (periodo,version,asignaciones,observaciones,actualizado_por)
-     VALUES (:periodo,:next,:asignaciones,:observaciones,:usuario)
+     (periodo,version,asignaciones,excluidos,observaciones,actualizado_por)
+     VALUES (:periodo,:next,:asignaciones,:excluidos,:observaciones,:usuario)
      ON DUPLICATE KEY UPDATE version=VALUES(version),asignaciones=VALUES(asignaciones),
-       observaciones=VALUES(observaciones),actualizado_por=VALUES(actualizado_por)`,
+       excluidos=VALUES(excluidos),observaciones=VALUES(observaciones),actualizado_por=VALUES(actualizado_por)`,
     {transaction,replacements:{periodo,next,asignaciones:JSON.stringify(clean),
-     observaciones,usuario:Number(req.usuario.usuarioId)}});
+     excluidos:JSON.stringify(cleanExcluded),observaciones,usuario:Number(req.usuario.usuarioId)}});
    return {version:next};
   });
   res.setHeader('Cache-Control','no-store');
