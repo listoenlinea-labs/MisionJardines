@@ -483,21 +483,30 @@ function render(){
   actualizarAniosUltimoPago();
   renderHouses();
  }
+ let showAllProjectExpenses=false;
  function renderExpenses(){
  if(!data)return;
  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const text=normalize($('expenseFilterConcept').value.trim()),category=$('expenseFilterCategory').value;
  const consultaProyectos=activeConcept==='MANTENIMIENTO'&&category==='PROYECTO';
- const {proyecto:project,egresos:rows}=window.MJExpenseScope.egresosDelAmbito(
+ const {proyecto:project,egresos:projectRows}=window.MJExpenseScope.egresosDelAmbito(
   data,activeConcept,activeProyectoId,category);
+ const allProjects=activeConcept==='EXTRAORDINARIO'&&showAllProjectExpenses;
+ const rows=allProjects?window.MJExpenseScope.egresosTodosProyectos(data):projectRows;
+ const toggle=$('financeAllProjectsExpenses');
+ toggle.hidden=activeConcept!=='EXTRAORDINARIO';
+ toggle.textContent=allProjects?'Ver proyecto seleccionado':'Ver todos los proyectos';
+ toggle.setAttribute('aria-pressed',String(allProjects));
  const from=$('expenseFilterFrom').value,to=$('expenseFilterTo').value,order=$('expenseSort').value;
  $('expenseHistoryTitle').textContent=consultaProyectos?'Movimientos de proyectos':
+  allProjects?'Gastos de todos los proyectos':
   activeConcept==='EXTRAORDINARIO'?'Gastos del proyecto seleccionado':
   activeConcept==='CASA_CLUB'?'Movimientos de Casa Club':'Movimientos de mantenimiento';
  $('expenseHistoryScope').textContent=consultaProyectos
   ?'Consulta de proyectos del período seleccionado. No se incluyen en los ingresos, egresos ni balance de mantenimiento.'
   :activeConcept==='EXTRAORDINARIO'
-   ?(project?'Solo gastos registrados de «'+project.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
+   ?(allProjects?'Conceptos registrados en todos los proyectos, sin sumar presupuestos como pagos.':
+      project?'Solo gastos registrados de «'+project.nombre+'».':'Selecciona un proyecto para consultar sus gastos.')
    :activeConcept==='CASA_CLUB'?'Solo gastos de Casa Club; sin mantenimiento ni proyectos.'
    :'Solo gastos de mantenimiento; selecciona Proyectos para consultar sus movimientos por separado.';
  const filtered=rows.filter(e=>(!text||normalize(e.concepto).includes(text))
@@ -520,13 +529,15 @@ function render(){
  const first=(expensePage-1)*size,shown=filtered.slice(first,first+size);
  $('expenseResultCount').textContent='Mostrando '+(filtered.length?first+1:0)+'–'+(first+shown.length)+
   ' de '+filtered.length+' registros de '+(consultaProyectos?'Proyectos (solo consulta)':
+   allProjects?'todos los proyectos':
    activeConcept==='EXTRAORDINARIO'?(project?'«'+project.nombre+'»':'proyecto sin seleccionar'):
    activeConcept==='CASA_CLUB'?'Casa Club':'Mantenimiento');
  const cell=(label,value)=>'<td data-label="'+label+'"><span class="expense-field-value">'+value+'</span></td>';
  $('financeExpenseRows').innerHTML=shown.length?shown.map(e=>'<tr>'+
   cell('Fecha',esc(displayDate(e.fecha)))+cell('Categoría',esc(expenseLabel(e.categoria)))+
-  cell('Concepto',esc(e.concepto))+cell('Referencia',esc(e.referencia||'—'))+
-  cell('Monto',activeConcept==='EXTRAORDINARIO'?
+  cell('Concepto',esc(e.concepto)+(allProjects?'<small class="expense-project-context">'+esc(e.proyectoNombre||'Proyecto sin nombre')+'</small>':''))+
+  cell('Referencia',esc(e.referencia||'—'))+
+  cell('Monto',activeConcept==='EXTRAORDINARIO'&&!allProjects?
    '<button type="button" class="soft finance-project-row-breakdown" data-open-project-breakdown title="Ver desglose del presupuesto y editar importes">'+esc(fmt(e.monto))+'</button>':
    consultaProyectos||e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
    '<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
@@ -2962,6 +2973,11 @@ let historicalExtraId=null;
     {anterior:{monto:Number(item.monto),fecha:String(item.fecha).slice(0,10),concepto:item.concepto}},'DELETE');
    await load();notice('Egreso eliminado y documentado en auditoría.','success');
   }catch(error){notice(error.message);button.disabled=false;}
+ });
+ $('financeAllProjectsExpenses').addEventListener('click',()=>{
+  if(activeConcept!=='EXTRAORDINARIO')return;
+  showAllProjectExpenses=!showAllProjectExpenses;
+  expensePage=1;renderExpenses();
  });
  $('financeExpenseRows').addEventListener('click',e=>{
   if(activeConcept==='EXTRAORDINARIO'&&e.target.closest('[data-open-project-breakdown]'))
