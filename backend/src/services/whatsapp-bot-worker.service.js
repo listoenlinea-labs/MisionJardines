@@ -59,12 +59,21 @@ async function pollConfirmed(){
  }catch(e){console.warn('[WhatsApp Bot] Notificaciones no disponibles:',String(e.message).slice(0,90));}
  finally{polling=false;}
 }
+async function cleanup(){
+ if(!enabled())return;
+ try{
+  // Borrar datos de mensajes y sesiones antiguos, sin tocar recibos del piloto anterior.
+  await db.query("DELETE FROM whatsapp_bot_eventos WHERE estado IN ('PROCESADO','ERROR') AND creado_en<DATE_SUB(NOW(),INTERVAL 30 DAY)");
+  await db.query("DELETE FROM whatsapp_bot_sesiones WHERE actualizado_en<DATE_SUB(NOW(),INTERVAL 30 DAY)");
+ }catch(e){console.warn('[WhatsApp Bot] Limpieza pendiente:',String(e.message).slice(0,110));}
+}
 function start(){
  if(!enabled()||timer)return;
  if(!process.env.WHATSAPP_BOT_SESSION_SECRET||process.env.WHATSAPP_BOT_SESSION_SECRET.length<32){
   console.error('[WhatsApp Bot] Falta secreto de sesiones; piloto deshabilitado');return;
  }
  timer=setInterval(()=>void work(),15000);timer.unref?.();
+ const cleanupTimer=setInterval(()=>void cleanup(),24*60*60*1000);cleanupTimer.unref?.();
  const statusTimer=setInterval(()=>void pollConfirmed(),120000);statusTimer.unref?.();
  void work();
 }
