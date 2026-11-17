@@ -10,7 +10,7 @@ async function enqueue(message){
  if(!enabled())return;
  if(!/^wamid\.[\w+/=-]{1,249}$/.test(String(message?.id||''))||
   !/^\d{8,32}$/.test(String(message.from||''))||
-  !['text','interactive','image','document'].includes(message.type))return;
+  !['text','interactive','image','document','audio','video','sticker','location','contacts','button'].includes(message.type))return;
  const payload=JSON.stringify(message);
  if(payload.length>100000)return;
  await db.query('INSERT INTO whatsapp_bot_eventos(mensaje_id,remitente,tipo,payload) VALUES(:id,:from,:type,:payload) ON DUPLICATE KEY UPDATE mensaje_id=mensaje_id',
