@@ -84,6 +84,20 @@ function evaluar(pago,avisos,autenticados){
      coincideFormularioAviso:!!(referenciaFormulario&&avisoConReferencia.some(a=>ids.identificadoresAviso(a).referencia===referenciaFormulario))
    }
  };
+ const completas=coincidenciasCompletas(pago,autenticados);
+ if(completas.length>1)return resultado('COINCIDENCIA_AMBIGUA',
+  'Hay más de una notificación compatible con los datos del depósito. Se mantiene en revisión para evitar acreditaciones duplicadas.',
+  {...auditoria,coincidencias:completas.length});
+ if(completas.length===1){
+  const aviso=completas[0],porIdentificador=ids.coinciden(pago,aviso);
+  return resultado('COINCIDENCIA_VERIFICADA',
+   porIdentificador
+    ? 'Se encontró una notificación compatible en identificador, importe, fecha y destino.'
+    : 'Se encontró una única notificación que identifica a esta vivienda en el concepto, con importe, fecha y cuenta destino compatibles. No fue necesario cotejar el folio.',
+   {...auditoria,coincidencias:1,
+    metodoVinculo:porIdentificador?'IDENTIFICADOR':'VIVIENDA_CONCEPTO',
+    verificaciones:{...evidencia(pago,aviso),vivienda:banco.viviendaEnConcepto(pago,aviso)}});
+ }
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
   const problemas={DESTINO:'Ningún aviso de remitente autorizado pasó la comprobación de cuenta destino.',IMPORTE:!avisosImporteLegible.length
@@ -107,15 +121,6 @@ function evaluar(pago,avisos,autenticados){
   return resultado('SIN_COINCIDENCIA',diagnostico+
    ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
  }
- const completas=coincidenciasCompletas(pago,autenticados);
- // Otra notificación con mismo identificador y monto/fecha/cuenta diferentes
- // no invalida la ÚNICA operación que sí pasó TODOS los filtros.
- if(completas.length>1)return resultado('COINCIDENCIA_AMBIGUA',
-  'Existen varias notificaciones bancarias enteramente compatibles; se requiere distinguir operaciones para prevenir acreditaciones duplicadas.',
-  {...auditoria,coincidencias:completas.length});
- if(completas.length===1)return resultado('COINCIDENCIA_VERIFICADA',
-  'Se encontró exactamente una notificación que coincide en identificador, importe, fecha y cuenta destino. Se descartaron las coincidencias parciales.',
-  {...auditoria,coincidencias:1,verificaciones:evidencia(pago,completas[0])});
  if(vinculados.length!==1)return resultado('COINCIDENCIA_AMBIGUA',
   'Existen varios avisos con identificador relacionado, pero ninguno cumple todas las verificaciones. Continúa en revisión.',
   {...auditoria,coincidencias:vinculados.length});
