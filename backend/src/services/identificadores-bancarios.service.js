@@ -99,6 +99,27 @@ function identificadoresPago(pago){
 function identificadoresAviso(aviso){
  return {claveRastreo:normal(aviso?.tracking),referencia:referencia(aviso?.referencia),folio:normal(aviso?.folio)};
 }
+// Cotejo sobre texto OCR bruto si el lector detectó los dígitos pero el
+// extractor no los clasificó como clave. No acepta subcadenas, números de
+// cuentas, CLABEs ni valores escritos manualmente en el formulario.
+function rastreoEnTextoOcr(texto,numero){
+ if(!/^\d{10,17}$/.test(numero))return false;
+ const excluir=/\b(?:CLABE|CUENTA|TARJETA|DESTINO|ORIGEN|BENEFICIARIO|SALDO|TELEFONO|CELULAR)\b/;
+ const rastreos=new Set();
+ const lines=String(texto||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toUpperCase().split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ for(const line of lines){
+  if(excluir.test(line))continue;
+  // Acepta un código de 12 dígitos aislado o separado en bloques por el OCR.
+  // Sus fronteras no pueden tocar otros números ni letras.
+  const tokens=line.match(/(?<![A-Z0-9])(?:\d[\d -]{8,24}\d)(?![A-Z0-9])/g)||[];
+  for(const token of tokens){
+   const limpio=token.replace(/\D/g,'');
+   if(/^\d{10,17}$/.test(limpio))rastreos.add(limpio);
+  }
+ }
+ return rastreos.size===1&&rastreos.has(numero);
+}
 function coinciden(pago,aviso){
  const a=identificadoresPago(pago),b=identificadoresAviso(aviso);
  if(['claveRastreo','referencia','folio'].some(tipo=>a[tipo]&&b[tipo]&&a[tipo]===b[tipo]))return true;
@@ -114,7 +135,8 @@ function coinciden(pago,aviso){
   const verificado=meta&&meta.origen==='OCR_SERVIDOR'&&[1,2].includes(meta.version);
   const ocrDisponible=Boolean(String(pago?.textoOcr||'').trim());
   if((verificado||ocrDisponible)&&
-     [a.claveRastreo,a.referencia,a.folio,...(a.candidatos||[])].some(v=>normal(v)===numero))return true;
+     ([a.claveRastreo,a.referencia,a.folio,...(a.candidatos||[])].some(v=>normal(v)===numero)
+       ||rastreoEnTextoOcr(pago?.textoOcr,numero)))return true;
  }
  // Candidatos OCR sin etiqueta, contra valores con etiqueta EXPLÍCITA de Titan.
  // No transformar un campo folio etiquetado en una referencia distinta.
@@ -126,4 +148,4 @@ function coinciden(pago,aviso){
 function disponibles(v){
  return ['claveRastreo','referencia','folio'].filter(k=>v[k]);
 }
-module.exports={normal,referencia,extraer,almacenarVerificados,identificadoresPago,identificadoresAviso,coinciden,disponibles,rastreosNumericosOcr};
+module.exports={normal,referencia,extraer,almacenarVerificados,identificadoresPago,identificadoresAviso,coinciden,disponibles,rastreosNumericosOcr,rastreoEnTextoOcr};

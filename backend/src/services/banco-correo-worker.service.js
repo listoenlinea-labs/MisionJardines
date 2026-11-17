@@ -47,6 +47,65 @@ function registrarImporteRelacionado(pago,autenticados){
   ' identificadorCoincide='+identificadorCoincide+
   ' (solo diagnostico: NO confirma deposito)');
 }
+// Rescate puntual: si un pago sigue bloqueado en etapa 5 después de
+// pulsar Actualizar, intentar recuperar el rastreo de la MISMA imagen
+// original. No rehace ni invalida los pasos ya aprobados, ni acredita sin
+// comprobar el aviso bancario real. Evita releerla cada 15 segundos.
+async function rescatarRastreoOcr(pago,autenticados,revision){
+ const info=revision?.cotejoAvisos||{};
+ const previo=datosReintento(pago.verificacionBancaria);
+ if(revision?.etapa!=='SIN_COINCIDENCIA'||previo.etapa!=='REINTENTO_TITAN'||
+    !info.avisosRastreoCpo||!info.cuenta||!info.importe||!info.fecha)return false;
+ const before=Date.parse(previo.ultimoRescateOcrEn||'');
+ if(Number.isFinite(before)&&Date.now()-before<10*60*1000)return false;
+ const candidatos=autenticados.filter(aviso=>{
+  const check=banco.chequeosAviso(pago,aviso);
+  return check.cuenta&&check.importe&&check.fecha&&/^CPO\d{10,17}$/.test(String(aviso.tracking||''));
+ });
+ if(!candidatos.length)return false;
+ const cuando=new Date().toISOString();
+ // Marcar ANTES de iniciar el OCR para evitar relecturas simultáneas.
+ const inicio={...previo,ultimoRescateOcrEn:cuando,origenRescate:'COMPROBANTE_ORIGINAL',
+  rescateOcrEstado:'EN_CURSO'};
+ await PagoReportado.update({verificacionBancaria:inicio},{where:{id:pago.id,estatus:'PENDIENTE_VALIDACION'}});
+ pago.setDataValue('verificacionBancaria',inicio);
+ try{
+  const original=await PagoReportado.findByPk(pago.id,{attributes:['comprobanteData']});
+  if(!original?.comprobanteData)throw Error('Comprobante original no disponible');
+  const texto=await require('./comprobante-lector.service').reconocerImagen(original.comprobanteData);
+  const ids=require('./identificadores-bancarios.service');
+  const encontrados=[...new Set(candidatos.filter(a=>{
+   const num=String(a.tracking).slice(3);
+   return ids.rastreosNumericosOcr(texto).includes(num)||
+    ids.rastreoEnTextoOcr(texto,num);
+  }).map(a=>String(a.tracking).slice(3)))];
+  // Nunca elegir un rastreo arbitrario si la imagen parece contener varios.
+  if(encontrados.length!==1)throw Error('No apareció una clave bancaria única en el nuevo OCR');
+  const meta=pago.identificadoresVerificados;
+  const previoMeta=meta&&typeof meta==='object'&&meta.origen==='OCR_SERVIDOR'?meta:null;
+  const nuevo={version:2,origen:'OCR_SERVIDOR',
+   tipo:previoMeta?.tipo||'candidato',
+   claveRastreo:previoMeta?.claveRastreo||'',
+   referencia:previoMeta?.referencia||'',
+   folio:previoMeta?.folio||'',
+   candidatos:[...new Set([...(previoMeta?.candidatos||[]),...encontrados])].slice(0,30)};
+  await PagoReportado.update({identificadoresVerificados:nuevo},{
+   where:{id:pago.id,estatus:'PENDIENTE_VALIDACION'}});
+  pago.setDataValue('identificadoresVerificados',nuevo);
+  inicio.rescateOcrEstado='RASTREO_RECUPERADO';
+  console.info('[Bancos][OCR] Se recuperó un rastreo verificable para pago ID='+pago.id);
+  return true;
+ }catch(error){
+  inicio.rescateOcrEstado='SIN_RASTREO';
+  console.warn('[Bancos][OCR] Pago '+pago.id+' requiere cotejo bancario manual; no se recuperó identificador único.');
+  return false;
+ }finally{
+  pago.setDataValue('verificacionBancaria',inicio);
+  await PagoReportado.update({verificacionBancaria:inicio},{
+   where:{id:pago.id,estatus:'PENDIENTE_VALIDACION'}});
+ }
+}
+
 let ocupado=false,programado=false,timer=null,revisionSolicitada=false;
 function datosReintento(raw){
  if(typeof raw==='string'){try{raw=JSON.parse(raw)}catch{return {}}}
@@ -60,6 +119,8 @@ async function persistir(pago,revision,fallido=false){
    ...revision,
    reintentos:Math.max(0,Number(anterior.reintentos)||0),
    ultimaConsultaManualEn:anterior.ultimaConsultaManualEn||null,
+   ultimoRescateOcrEn:anterior.ultimoRescateOcrEn||null,
+   rescateOcrEstado:anterior.rescateOcrEstado||null,
    ultimoReintentoEn:anterior.ultimoReintentoEn||null,
    historialReintentos:Array.isArray(anterior.historialReintentos)?anterior.historialReintentos:[]
  },actualizadoEn:new Date()};
@@ -91,7 +152,13 @@ async function ejecutarRevision(){
     // No evaluar contra Titan antes de concluir la lectura OCR del reintento.
     // Evita que un worker periódico use datos bancarios anteriores.
     if(datosReintento(pago.verificacionBancaria).etapa==='REINTENTO_OCR')continue;
-    const revision=diagnostico.evaluar(pago,avisos,autenticados);
+    let revision=diagnostico.evaluar(pago,avisos,autenticados);
+    if(await rescatarRastreoOcr(pago,autenticados,revision)){
+     revision=diagnostico.evaluar(pago,avisos,autenticados);
+    }else if(revision.etapa==='SIN_COINCIDENCIA' &&
+      datosReintento(pago.verificacionBancaria).rescateOcrEstado==='SIN_RASTREO'){
+     revision.detalle+=' Se intentó recuperar el número desde la imagen original sin hallar una clave completa que vincule un único aviso. Administración puede revisar el depósito directamente en el banco.';
+    }
     if(revision.cotejoAvisos?.filtroBloqueante==='IMPORTE')
       registrarImporteRelacionado(pago,autenticados);
     if(revision.etapa==='FALLIDO'){
