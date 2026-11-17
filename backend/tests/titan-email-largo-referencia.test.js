@@ -92,3 +92,26 @@ test('Titan admite etiqueta alternativa y rastreo en la línea siguiente sin inv
  assert.equal(parseo.rastreoEtiquetado('CUENTA DESTINO 123456789012345678'),'');
  assert.equal(parseo.rastreoEtiquetado('CLAVE DE RASTREO 123456789012\nCLAVE DE RASTREO 111111111111'),'');
 });
+
+
+test('comparación flexible usa vivienda explícita con importe, fecha y cuenta exactos',()=>{
+ const correo=require('../src/services/banco-correo.service');
+ const pago={casa:{calle:'Jardines',numero:'319'},
+  monto:350,fechaOperacion:'2026-11-16',horaOperacion:'19:26:00',
+  folioOperacion:'SINREF-PRUEBA319',textoOcr:''};
+ const aviso={id:'titan-j319',autorizado:true,reciente:true,concepto:'Jardines 319',
+  monto:350,fecha:'2026-11-16',cuenta:'4409',tracking:'',referencia:'',folio:''};
+ const config={PAGOS_DESTINO_ULTIMOS4:'4409'};
+ assert.equal(correo.corresponde(pago,aviso,config),true);
+ for(const otro of [
+  {...aviso,concepto:'Jardines 318'},
+  {...aviso,monto:300},{...aviso,fecha:'2026-11-15'},
+  {...aviso,cuenta:'8844'},{...aviso,autorizado:false},
+  {...aviso,concepto:''}
+ ])assert.equal(correo.corresponde(pago,otro,config),false);
+ // Si hay una referencia rotulada de igual tipo pero contradictoria,
+ // la similitud del concepto no permite atribuirse otro movimiento.
+ const conReferencia={...pago,identificadoresVerificados:{
+  version:2,origen:'OCR_SERVIDOR',tipo:'referencia',referencia:'112233',claveRastreo:'',folio:''}};
+ assert.equal(correo.corresponde(conReferencia,{...aviso,referencia:'445566'},config),false);
+});
