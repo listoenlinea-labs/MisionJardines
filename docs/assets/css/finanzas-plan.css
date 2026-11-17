@@ -286,3 +286,43 @@
   .fplan-expense-panel .fplan-data-table{min-width:630px}
   .fplan-income-panel .fplan-data-table{min-width:480px}
 }
+
+/* Ajuste final de las cuatro columnas de Egresos en Administrar fondos.
+   Se da al botón Borrar su propio espacio, sin desbordar el panel. */
+.fplan-expense-panel .fplan-table-area{min-width:0;overflow-x:hidden}
+.fplan-expense-panel .fplan-data-table{width:100%;min-width:0;table-layout:fixed}
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(1){width:44%}
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(2){width:17%;text-align:center}
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(3){width:16%;text-align:center}
+.fplan-expense-panel .fplan-data-table :is(th,td):nth-child(4){width:23%;text-align:center}
+.fplan-expense-panel .fplan-data-table td.fplan-number-cell{
+ text-align:center;font-variant-numeric:tabular-nums;
+}
+.fplan-expense-panel .fplan-data-table td.fplan-remaining-cell{
+ text-align:center;font-variant-numeric:tabular-nums;overflow-wrap:normal;
+}
+.fplan-expense-panel .fplan-remaining-amount{
+ display:block;text-align:center;font-weight:700;color:#50647c;
+ white-space:nowrap;font-size:.76rem;
+}
+.fplan-expense-panel .fplan-data-table td.fplan-actions-cell{
+ text-align:center;padding-inline:5px;
+}
+.fplan-expense-panel .fplan-data-table .fplan-exclude-button{
+ max-width:100%;min-width:0;padding-inline:10px!important;
+}
+@media(max-width:750px){
+ .fplan-expense-panel .fplan-data-table{min-width:0}
+}
+@media(max-width:520px){
+ .fplan-expense-panel .fplan-data-table :is(th,td){padding-inline:4px;font-size:.68rem}
+ .fplan-expense-panel .fplan-data-table :is(th,td):nth-child(1){width:38%}
+ .fplan-expense-panel .fplan-data-table :is(th,td):nth-child(2){width:20%}
+ .fplan-expense-panel .fplan-data-table :is(th,td):nth-child(3){width:20%}
+ .fplan-expense-panel .fplan-data-table :is(th,td):nth-child(4){width:22%}
+ .fplan-expense-panel .fplan-remaining-amount{font-size:.67rem;letter-spacing:-.025em}
+ .fplan-expense-panel .fplan-data-table td.fplan-number-cell{font-size:.68rem;letter-spacing:-.025em}
+ .fplan-expense-panel .fplan-data-table .fplan-exclude-button{
+  min-height:31px;padding:5px 7px!important;font-size:.68rem!important;
+ }
+}
