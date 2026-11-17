@@ -34,6 +34,19 @@ function fechaDeAviso(text){
  if(date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day)return '';
  return year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
 }
+// Leer la hora de LA OPERACIÓN en el bloque del abono, no la hora
+// del correo reenviado. Para comparar, los segundos son opcionales.
+function horaBancaria(text){
+ const s=normal(text);
+ const blocks=[...s.matchAll(/\bRECIBISTE\s+DE\s+(?:OTRO\s+BANCO|OTRA\s+CUENTA)\b([\s\S]{0,600}?)\bA\s+TU\s+CUENTA\b/g)];
+ const found=new Set();
+ for(const block of blocks){
+  // Buscar únicamente la hora a continuación de la fecha de depósito.
+  const m=block[1].match(/\b\d{1,2}\s*(?:[\/.-]|\s+DE\s+|\s+)(?:\d{1,2}|NOV(?:IEMBRE)?|ENE(?:RO)?|FEB(?:RERO)?|MAR(?:ZO)?|ABR(?:IL)?|MAY(?:O)?|JUN(?:IO)?|JUL(?:IO)?|AGO(?:STO)?|SEP(?:TIEMBRE)?|OCT(?:UBRE)?|DIC(?:IEMBRE)?)\s*(?:[\/.-]|\s+DE\s+|\s+)20\d{2}\s*(?:,|A\s+LAS)?\s*(\d{1,2}):([0-5]\d)(?::[0-5]\d)?\b/);
+  if(m&&Number(m[1])<=23)found.add(String(Number(m[1])).padStart(2,'0')+':'+m[2]);
+ }
+ return found.size===1?[...found][0]:'';
+}
 function fechaBancaria(text){
  const s=normal(text);
  // El encabezado «Enviado» del reenvío no es la fecha del depósito.
@@ -130,6 +143,7 @@ function datosAviso(mensaje,config=process.env){
  const cuentas=[...new Set([...upper.matchAll(/\bA\s+TU\s+CUENTA\s*\*{2,}\s*(\d{3,4})(?!\d)/g)].map(m=>m[1]))];
  const cuenta=cuentas.length===1?cuentas[0]:'';
  const fecha=fechaBancaria(upper);
+ const hora=horaBancaria(upper);
  const conceptoMatch=upper.match(/\bCONCEPTO\s*[:\-]?\s*([^\n]{2,150})/);
  const concepto=conceptoMatch?conceptoMatch[1].trim():'';
  const id=String(mensaje?.id||'');
@@ -137,7 +151,7 @@ function datosAviso(mensaje,config=process.env){
  const received=Date.parse(mensaje?.receivedDateTime||'');
  const reciente=Number.isFinite(received)&&Date.now()-received<=Math.min(14,Math.max(1,limite))*86400000
   &&received<=Date.now()+300000;
- return {autorizado,origenVerificado:autorizado?origen:null,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',referencia,folio,monto,cuenta,fecha,concepto,id,reciente};
+ return {autorizado,origenVerificado:autorizado?origen:null,tracking:tracking.length>=12&&tracking.length<=90?tracking:'',referencia,folio,monto,cuenta,fecha,hora,concepto,id,reciente};
 }
 function coincideCuenta(detectada,esperada){
  // Cuatro dígitos visibles deben coincidir completos; nunca reducir una
@@ -179,15 +193,30 @@ function viviendaEnConcepto(pago,noticia){
  const invertido=new RegExp('(?:^|\\s)CASA\\s+'+numero+'\\s+'+escaped+'(?:\\s|$)');
  return exacto.test(concepto)||invertido.test(concepto);
 }
+// Respaldo automático cuando el OCR inicial verificó fecha/hora/importe
+// pero no logró extraer el número de comprobante. Requiere una notificación
+// auténtica de Titan con CPO y misma hora y minuto de la operación.
+// El diagnóstico y el worker exigen además importe, fecha operativa, cuenta,
+// aviso único, y que no haya más pagos candidatos ni aviso ya utilizado.
+function coincideHoraOperacion(pago,noticia){
+ const visible=String(noticia?.hora||'').trim();
+ const capturada=String(pago?.horaOperacion||'').trim();
+ const meta=pago?.identificadoresVerificados;
+ return Boolean(meta&&meta.origen==='OCR_SERVIDOR'&&
+  /^CPO\d{10,17}$/.test(String(noticia?.tracking||''))&&
+  /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(visible)&&
+  /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(capturada)&&
+  capturada.slice(0,5)===visible);
+}
 function corresponde(pago,noticia,config=process.env){
  if(!coincideDatosBancarios(pago,noticia,config))return false;
  if(idsBanco.coinciden(pago,noticia))return true;
  const capturado=idsBanco.identificadoresPago(pago);
  const aviso=idsBanco.identificadoresAviso(noticia);
- // Si existen identificadores etiquetados del MISMO tipo que contradicen
- // el comprobante, no sustituirlos por un concepto parecido.
+ // Un identificador del mismo tipo que contradice el aviso no se ignora.
  if(idsBanco.disponibles(capturado).some(tipo=>aviso[tipo]&&capturado[tipo]!==aviso[tipo]))return false;
- return viviendaEnConcepto(pago,noticia);
+ if(viviendaEnConcepto(pago,noticia))return true;
+ return coincideHoraOperacion(pago,noticia);
 }
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
@@ -206,4 +235,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_IMAP_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,montoRecibido,corresponde,viviendaEnConcepto,coincideDatosBancarios,chequeosAviso,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso,rastreoEtiquetado};
+module.exports={datosAviso,montoRecibido,corresponde,viviendaEnConcepto,coincideDatosBancarios,chequeosAviso,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso,horaBancaria,coincideHoraOperacion,rastreoEtiquetado};
