@@ -322,6 +322,7 @@
   $('fplanAllocator').hidden=false;$('fplanAmount').focus();
  }
  async function loadSource(){
+  if(saving){msg('Termina de guardar antes de cambiar el origen.',true);return;}
   const requested=$('fplanSourceMonth').value;
   if(!validMonth(requested)||requested>period){msg('Selecciona un mes de origen válido, igual o anterior al plan.',true);return;}
   const previous=sourceMonth;
@@ -336,6 +337,7 @@
   }
  }
  async function load(){
+  if(saving){msg('Termina de guardar antes de cambiar el periodo.',true);return;}
   const myRequest=++requestIndex;
   loading=true;planReady=false;resetUndo();hideRecommendation();actionState();clearAlert();
   selectedSource=null;selectedExpenseId=null;editorExpense=null;excluded=[];agrupaciones=[];incomePage=1;expensePage=1;$('fplanAllocator').hidden=true;
@@ -559,10 +561,13 @@
     periodo:period,version,asignaciones,excluidos,agrupaciones,
     observaciones:$('fplanNotes').value})});
    version=result.version;
+   // Guardado confirmado: aquí acaba el historial local, incluso si falla
+   // después la recarga del plan. Deshacer nunca revierte el servidor.
+   resetUndo();
    const fresh=await api('/plan-mensual?periodo='+encodeURIComponent(period));
    allPlans=fresh.planes||[];assignments=fresh.asignaciones||[];excluded=(fresh.excluidos||[]).map(Number);
    agrupaciones=(fresh.agrupaciones||[]).map(x=>({hijoId:Number(x.hijoId),padreId:Number(x.padreId)}));
-   resetUndo();render();msg(result.message||'Plan guardado correctamente.');
+   render();msg(result.message||'Plan guardado correctamente.');
   }catch(e){msg(e.message,true);}
   finally{saving=false;btn.disabled=false;updateUndoButton();}
  });
