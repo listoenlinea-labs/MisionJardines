@@ -23,6 +23,7 @@ function coincide(a, b) {
 }
 
 webhook.use((req, res, next) => {
+    if (process.env.WHATSAPP_BOT_ENABLED === 'true' && process.env.WHATSAPP_ZERO_COST_MODE !== 'true') return res.sendStatus(503);
     if (process.env.WHATSAPP_COMPROBANTES_ENABLED !== 'true' && process.env.WHATSAPP_BOT_ENABLED !== 'true') return res.sendStatus(404);
     if (process.env.WHATSAPP_BOT_ENABLED==='true' &&
         (process.env.WHATSAPP_BOT_SESSION_SECRET||'').length<32) return res.sendStatus(503);
@@ -139,6 +140,16 @@ administracion.get('/', async (req, res) => {
     res.json({ comprobantes });
 });
 
+// Estado de presupuesto, protegido con JWT de administración.
+administracion.get('/presupuesto', async (req,res)=>{
+    try{
+        res.json({ok:true, ...(await require('../services/whatsapp-presupuesto-cero.service').usage()),
+          clase:'Mensajes de servicio (solo respuestas), ventana móvil 31 días',
+          advertencia:'El uso de otros sistemas o del panel Meta no está incluido.'});
+    }catch(_){
+        res.status(503).json({ok:false,message:'No se pudo consultar presupuesto de WhatsApp.'});
+    }
+});
 administracion.get('/:id', async (req, res) => {
     if (!/^\d{1,10}$/.test(req.params.id)) return res.sendStatus(400);
     const [comprobante] = await sequelize.query(
