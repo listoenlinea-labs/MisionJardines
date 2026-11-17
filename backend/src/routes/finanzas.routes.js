@@ -31,6 +31,8 @@ router.get('/drive/status',drive.status);
 router.get('/drive/selector',drive.selector);
 router.post('/drive/carpeta',drive.elegirCarpeta);
 router.post('/drive/recibos',drive.recibos);
+router.post('/drive/respaldos-iniciar',drive.iniciarRespaldo);
+router.get('/drive/respaldos-estado/:id',drive.estadoRespaldo);
 router.get('/drive/conectar',drive.link);
 router.post('/drive/respaldo',drive.backup);
 const reversion=require('../controllers/reversion-pagos.controller');
