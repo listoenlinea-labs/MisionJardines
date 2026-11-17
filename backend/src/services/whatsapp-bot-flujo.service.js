@@ -170,7 +170,8 @@ async function handle(message){
   if(word!=='ACEPTO')return send(phone,'Escribe *ACEPTO* solo después de leer el reglamento o MENÚ para cancelar.');
   try{
    const result=await api('publico/solicitudes',{fecha:s.ctx.date,calle:s.ctx.street,numero:s.ctx.house,
-    solicitante:s.ctx.name,correo:s.ctx.email,telefono:phone,propietario:false,
+    solicitante:s.ctx.name,correo:s.ctx.email,
+    telefono:/^521\d{10}$/.test(phone)?'52'+phone.slice(3):phone,propietario:false,
     motivo:'Reservación solicitada desde WhatsApp',aceptaReglamento:true});
    const link=result.data?.pago?.enlaceCarga;
    const token=link?decodeURIComponent(new URL(link).hash.split('=').slice(1).join('=')).split('.').at(-1):'';
