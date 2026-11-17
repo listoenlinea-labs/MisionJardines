@@ -61,11 +61,12 @@ async function status(phone,s){
  if(['RECHAZADA','CANCELADA'].includes(x.estatusReserva)){
   await save(phone,'MENU',{});return send(phone,'La reservación '+x.folio+' está '+x.estatusReserva.toLowerCase()+'. Escribe MENÚ para comenzar.');
  }
- await save(phone,'REVISION_CLUB',s.ctx);
+ await save(phone,x.comprobante?'REVISION_CLUB':'PAGO_CLUB',
+  {...s.ctx,lastInboundAt:new Date().toISOString()});
  return send(phone,'🟡 *'+x.folio+' en revisión.* '+
   (x.comprobante?.estado==='PENDIENTE_VALIDACION'?'El comprobante fue recibido; Titan todavía no confirma el depósito.':
    'Aún falta registrar y verificar el comprobante.')+
-  '\nEscribe ESTADO cuando quieras consultar nuevamente.');
+  '\nEscribe ESTADO para consultar nuevamente. Si aún no has enviado el comprobante, puedes mandar la foto en este chat.');
 }
 async function getMedia(mediaId){
  if(!/^\d{5,32}$/.test(mediaId||''))throw Error('Adjunto inválido');
