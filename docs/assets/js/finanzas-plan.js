@@ -9,9 +9,45 @@
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const labelMonth=p=>months[Number(p.slice(5))-1]+' '+p.slice(0,4);
  const validMonth=p=>/^20\d\d-(0[1-9]|1[0-2])$/.test(p);
- let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],agrupaciones=[],incomePage=1,expensePage=1;
+ let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,saving=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],agrupaciones=[],incomePage=1,expensePage=1;
+ const undoHistory=[],undoMax=40;
  const panel=$('fplanSources'),expenses=$('fplanExpenses'),notice=$('fplanStatus');
  function msg(text,error=false){notice.textContent=text;notice.dataset.error=error?'true':'false';}
+ // Historial local de modificaciones, no de navegación o filtros.
+ function updateUndoButton(){
+  const button=$('fplanUndo');
+  if(!button)return;
+  button.disabled=!undoHistory.length||!planReady||loading||saving;
+  button.title=undoHistory.length
+   ?'Deshacer: '+undoHistory[undoHistory.length-1].label+' (Ctrl+Z fuera de campos de texto)'
+   :'Sin cambios pendientes para deshacer';
+  button.setAttribute('aria-label',button.title);
+ }
+ function rememberChange(label){
+  if(!planReady||loading||saving)return false;
+  undoHistory.push({label,period,assignments:assignments.map(x=>({...x})),
+   excluded:[...excluded],agrupaciones:agrupaciones.map(x=>({...x})),
+   selectedSourceId:selectedSource?.id||null,selectedExpenseId});
+  if(undoHistory.length>undoMax)undoHistory.shift();
+  updateUndoButton();
+  return true;
+ }
+ function resetUndo(){undoHistory.length=0;updateUndoButton();}
+ function undoLast(){
+  if(!planReady||loading||saving||!undoHistory.length)return;
+  const step=undoHistory.pop();
+  if(step.period!==period){resetUndo();return;}
+  assignments=step.assignments.map(x=>({...x}));
+  excluded=[...step.excluded];
+  agrupaciones=step.agrupaciones.map(x=>({...x}));
+  selectedExpenseId=step.selectedExpenseId;
+  selectedSource=pools().find(x=>x.id===step.selectedSourceId)||null;
+  editorExpense=null;$('fplanAllocator').hidden=true;
+  hideRecommendation();
+  render();updateUndoButton();
+  msg('Deshecho: '+step.label+'. Pulsa Guardar plan para conservar este estado.');
+ }
+
  async function api(path,options={}){
   const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
   if(!token)throw Error('Inicia sesión como administrador para consultar el plan.');
@@ -48,7 +84,8 @@
  function clearAlert(){$('fplanLoadNotice').hidden=true;}
  function actionState(){
   $('fplanSave').disabled=!planReady||loading;
-  $('fplanRecommend').disabled=!planReady||loading||!target;
+  $('fplanRecommend').disabled=!planReady||loading||saving||!target;
+  updateUndoButton();
   const source=selectedSource&&pools().find(x=>x.id===selectedSource.id);
   const expense=expenseRows().find(x=>x.id===selectedExpenseId);
   $('fplanAssignFooter').disabled=!planReady||loading||!source||source.free<=0||
@@ -286,7 +323,7 @@
  }
  async function load(){
   const myRequest=++requestIndex;
-  loading=true;planReady=false;hideRecommendation();actionState();clearAlert();
+  loading=true;planReady=false;resetUndo();hideRecommendation();actionState();clearAlert();
   selectedSource=null;selectedExpenseId=null;editorExpense=null;excluded=[];agrupaciones=[];incomePage=1;expensePage=1;$('fplanAllocator').hidden=true;
   const chosen=$('fplanTargetMonth').value;
   if(!validMonth(chosen)){msg('Selecciona un periodo válido.',true);loading=false;actionState();return;}
@@ -349,6 +386,7 @@
  $('fplanRecommendationApply').addEventListener('click',()=>{
   if(!recommendation?.proposed.length)return;
   // La aplicación NO guarda: el servidor revisará el borrador cuando se pulse Guardar.
+  if(!rememberChange('aplicar recomendación inteligente'))return;
   assignments.push(...recommendation.proposed.map(item=>({...item})));
   const total=recommendation.summary.totalProposed;
   hideRecommendation();render();
@@ -374,6 +412,15 @@
  });
  $('fplanReload').addEventListener('click',()=>void load());
  $('fplanClose').addEventListener('click',()=>dialog.close());
+ $('fplanUndo').addEventListener('click',undoLast);
+ dialog.addEventListener('keydown',event=>{
+  if(!(event.ctrlKey||event.metaKey)||event.altKey||event.shiftKey||
+   String(event.key).toLowerCase()!=='z'||event.defaultPrevented)return;
+  if(event.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+  if(!undoHistory.length)return;
+  event.preventDefault();undoLast();
+ });
+ dialog.addEventListener('close',resetUndo);
  $('fplanTargetMonth').addEventListener('change',()=>void load());
  $('fplanSourceMonth').addEventListener('change',()=>void loadSource().catch(e=>msg(e.message,true)));
  $('fplanSearch').addEventListener('input',()=>{expensePage=1;render();});
@@ -427,6 +474,7 @@
    }
    if(!window.confirm('¿Confirmas que «'+child.nombre+'» YA ESTÁ incluido en el importe de «'+parent.nombre+
     '»? Se guardará la relación y no se sumará dos veces en este plan. El egreso original no se elimina.'))return;
+   if(!rememberChange('agrupar «'+child.nombre+'» dentro de «'+parent.nombre+'»'))return;
    agrupaciones.push({hijoId:childId,padreId:expenseId});
    if(selectedExpenseId===childId)selectedExpenseId=null;
    hideRecommendation();render();msg('Relación agregada. Pulsa Guardar plan para conservarla.');
@@ -439,23 +487,25 @@
   const ungroup=e.target.closest('[data-ungroup]');
   if(ungroup){
    const childId=Number(ungroup.dataset.ungroup);
+   if(!rememberChange('separar egreso agrupado'))return;
    agrupaciones=agrupaciones.filter(g=>g.hijoId!==childId);
    hideRecommendation();render();
    msg('Gasto separado. Volverá a sumarse por separado cuando guardes el plan.');
    return;
   }
   const remove=e.target.closest('[data-remove]');
-  if(remove){hideRecommendation();assignments.splice(Number(remove.dataset.remove),1);render();msg('Asignación retirada del borrador. Guarda para conservar el cambio.');return;}
+  if(remove){if(!rememberChange('quitar asignación de fondos'))return;hideRecommendation();assignments.splice(Number(remove.dataset.remove),1);render();msg('Asignación retirada del borrador. Guarda para conservar el cambio.');return;}
   const toggle=e.target.closest('[data-exclude]');
   if(toggle){
    const id=Number(toggle.dataset.exclude);
    if(agrupaciones.some(g=>g.padreId===id)){
     msg('Primero separa los conceptos incluidos en este gasto antes de excluirlo del plan.',true);return;
    }
-   if(excluded.includes(id)){excluded=excluded.filter(x=>x!==id);msg('Gasto restaurado; pulsa Guardar plan.');}
+   if(excluded.includes(id)){if(!rememberChange('restaurar egreso del plan'))return;excluded=excluded.filter(x=>x!==id);msg('Gasto restaurado; pulsa Guardar plan.');}
    else{
     const row=expenseRows(true).find(x=>x.id===id);
     if(!row||!window.confirm('¿Borrar «'+row.nombre+'» del plan? Se excluirá del cálculo, pero el movimiento original y su comprobante se conservarán.'))return;
+    if(!rememberChange('excluir egreso del plan'))return;
     assignments=assignments.filter(a=>a.egresoId!==id);excluded.push(id);
     if(selectedExpenseId===id)selectedExpenseId=null;
     msg('Egreso excluido del plan; pulsa Guardar plan.');
@@ -479,6 +529,7 @@
   const available=Math.min(pools().find(x=>x.id===selectedSource.id)?.free||0,
    Math.max(0,editorExpense.monto-spend(editorExpense.id)));
   if(!Number.isSafeInteger(amount)||amount<=0||amount>available){msg('Indica un importe entero mayor a cero, sin exceder el dinero disponible.',true);return;}
+  if(!rememberChange('asignar ingreso al egreso «'+editorExpense.nombre+'»'))return;
   hideRecommendation();
   assignments.push({egresoId:editorExpense.id,origen:selectedSource.origen,
    origenPeriodo:selectedSource.origenPeriodo,monto:amount});
@@ -487,8 +538,8 @@
  });
  $('fplanCancelAllocation').addEventListener('click',()=>{$('fplanAllocator').hidden=true;editorExpense=null;});
  $('fplanSave').addEventListener('click',async()=>{
-  if(!planReady){msg('Primero debes cargar el plan y sus asignaciones actuales.',true);return;}
-  const btn=$('fplanSave');btn.disabled=true;msg('Guardando y validando fondos en el servidor...');
+  if(!planReady||saving){msg('Primero carga el plan o termina de guardar los cambios anteriores.',true);return;}
+  saving=true;const btn=$('fplanSave');btn.disabled=true;updateUndoButton();msg('Guardando y validando fondos en el servidor...');
   try{
    const result=await api('/plan-mensual',{method:'PUT',body:JSON.stringify({
     periodo:period,version,asignaciones,excluidos,agrupaciones,
@@ -497,8 +548,8 @@
    const fresh=await api('/plan-mensual?periodo='+encodeURIComponent(period));
    allPlans=fresh.planes||[];assignments=fresh.asignaciones||[];excluded=(fresh.excluidos||[]).map(Number);
    agrupaciones=(fresh.agrupaciones||[]).map(x=>({hijoId:Number(x.hijoId),padreId:Number(x.padreId)}));
-   render();msg(result.message||'Plan guardado correctamente.');
+   resetUndo();render();msg(result.message||'Plan guardado correctamente.');
   }catch(e){msg(e.message,true);}
-  finally{btn.disabled=false;}
+  finally{saving=false;btn.disabled=false;updateUndoButton();}
  });
 })();
