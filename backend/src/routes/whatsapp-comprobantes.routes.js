@@ -2,6 +2,7 @@ const express = require('express');
 const { createHmac, timingSafeEqual } = require('node:crypto');
 const { QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const bot=require('../services/whatsapp-bot-worker.service');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
 
@@ -22,7 +23,9 @@ function coincide(a, b) {
 }
 
 webhook.use((req, res, next) => {
-    if (process.env.WHATSAPP_COMPROBANTES_ENABLED !== 'true') return res.sendStatus(404);
+    if (process.env.WHATSAPP_COMPROBANTES_ENABLED !== 'true' && process.env.WHATSAPP_BOT_ENABLED !== 'true') return res.sendStatus(404);
+    if (process.env.WHATSAPP_BOT_ENABLED==='true' &&
+        (process.env.WHATSAPP_BOT_SESSION_SECRET||'').length<32) return res.sendStatus(503);
     if (!process.env.WHATSAPP_APP_SECRET || !process.env.WHATSAPP_VERIFY_TOKEN ||
         !process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN ||
         !/^v\d+\.\d+$/.test(process.env.WHATSAPP_GRAPH_VERSION || '')) {
@@ -86,6 +89,10 @@ webhook.post('/', express.raw({ type: 'application/json', limit: '256kb', inflat
                 if (cambio.field !== 'messages' ||
                     valor?.metadata?.phone_number_id !== process.env.WHATSAPP_PHONE_NUMBER_ID) continue;
                 for (const mensaje of valor.messages || []) {
+                    // Entrada conversacional: recepción idempotente en MySQL, respuesta
+                    // por worker después del 200 de Meta. El archivo se guarda aparte.
+                    if(process.env.WHATSAPP_BOT_ENABLED==='true')await bot.enqueue(mensaje);
+                    if(process.env.WHATSAPP_COMPROBANTES_ENABLED!=='true')continue;
                     const id = mensaje[mensaje.type]?.id;
                     if (!['image', 'document'].includes(mensaje.type) ||
                         !/^\d+$/.test(id || '') || !/^\d{5,32}$/.test(mensaje.from || '') ||

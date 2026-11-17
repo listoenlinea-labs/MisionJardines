@@ -42,6 +42,8 @@ app.use(helmet());
 
 // Meta firma los bytes originales, antes de convertir el cuerpo a JSON.
 app.use('/api/webhooks/whatsapp-comprobantes', whatsappComprobantes.webhook);
+// El bot permanece deshabilitado hasta configurar Meta y ejecutar su SQL.
+if(process.env.WHATSAPP_BOT_ENABLED==='true')require('./services/whatsapp-bot-worker.service').start();
 
 // El frontend envía JSON/formularios sin Content-Encoding. Rechazar cuerpos
 // HTTP comprimidos antes de abrir un descompresor (GHSA-27r3-jxmh-p828).
