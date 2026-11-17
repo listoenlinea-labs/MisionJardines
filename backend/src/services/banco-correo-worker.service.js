@@ -96,6 +96,18 @@ async function ejecutarRevision(){
       {avisosConsultados:avisos.length,avisosAutenticados:autenticados.length}));
      continue;
     }
+    // Sin clave compartida, no asignar el mismo aviso por coincidencia de
+    // concepto a varios comprobantes pendientes (misma vivienda/importe/fecha).
+    if(!identificadores.coinciden(pago,aviso)){
+     const candidatas=pendientes.filter(otro=>banco.corresponde(otro,aviso));
+     if(candidatas.length!==1){
+      await persistir(pago,diagnostico.resultado('COINCIDENCIA_AMBIGUA',
+       'Hay más de un comprobante pendiente compatible con el mismo aviso bancario. Se requiere revisión para evitar aplicar el depósito dos veces.',
+       {avisosConsultados:avisos.length,avisosAutenticados:autenticados.length,
+        coincidencias:candidatas.length}));
+      continue;
+     }
+    }
     const hash=banco.huellaMensaje(aviso.id);
     const usado=await PagoReportado.findOne({where:{correoBancarioHash:hash},attributes:['id']});
     if(usado){

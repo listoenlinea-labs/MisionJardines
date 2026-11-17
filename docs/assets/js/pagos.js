@@ -13,6 +13,14 @@
     const reservaSolicitada=Number(new URLSearchParams(location.search).get('reserva'));
 
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
+    async function mostrarConfirmacionReporte(){
+      const success=$('paymentReportSuccess');
+      success.hidden=false;
+      // La confirmación aparece en el centro ANTES del <dialog>, que se renderiza por encima de la página.
+      await new Promise(resolve=>window.setTimeout(resolve,950));
+      success.hidden=true;
+    }
+
     async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) {
       const error = Error(d.message || 'No fue posible completar la solicitud');
       error.httpStatus = r.status;
@@ -348,12 +356,14 @@
       const mensaje=String(v.detalle||p.observacionesRevision||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
       const refInfo=v.diagnosticoReferencia;
       const bloqueante=v.cotejoAvisos?.filtroBloqueante||'';
-      const detallesReferencia=refInfo&&etapa==='SIN_COINCIDENCIA'
-        ? ' Referencia guardada y OCR: '+(refInfo.coincideFormularioOcr?'coinciden':'no coincide o no se pudo leer')
+      const detallesReferencia=refInfo&&etapa==='SIN_COINCIDENCIA'&&refInfo.reconocidaEnOcr
+        ? ' Referencia identificada en la imagen: '+(refInfo.coincideFormularioOcr?'coincide con la registrada':'no coincide con el dato registrado')
           +(bloqueante && bloqueante!=='IDENTIFICADOR'
-            ? '. Referencia bancaria: pendiente de cotejar porque antes falta validar '+({DESTINO:'la cuenta',IMPORTE:'el importe',FECHA:'la fecha',VIVIENDA:'la vivienda'}[bloqueante]||'otros datos')+'.'
-            : '. Referencia guardada y aviso Titan: '+(refInfo.coincideFormularioAviso?'coinciden':'no coinciden')+'.')
-        : '';
+            ? '. Aún falta verificar '+({DESTINO:'la cuenta destino',IMPORTE:'el importe',FECHA:'la fecha'}[bloqueante]||'otros datos')+' antes de cotejarla con Titan.'
+            : '. Cotejo con Titan: '+(refInfo.coincideFormularioAviso?'coincide':'todavía sin coincidencia')+'.')
+        : refInfo&&etapa==='SIN_COINCIDENCIA'&&refInfo.capturadaComoReferencia
+          ? ' El OCR no encontró una referencia verificable en la imagen. Esto no significa que el depósito haya fallado.':'';
+
       const formatPaso=(n,nombre,detalle,estado)=>{
         const sym=estado==='done'?'✓':estado==='failed'?'!':estado==='current'?'•':String(n);
         return '<li class="'+esc(estado)+'"><span class="receipt-step-circle">'+esc(sym)+'</span><div class="receipt-step-content"><strong>'+
@@ -370,9 +380,9 @@
           buzonError?'La conexión o la aplicación de la consulta tuvo un problema; se reintentará.':
           revisado?'Última revisión: '+fechaTexto:'Se programó la búsqueda de avisos bancarios.',
           releyendo?'waiting':consultandoReintento||buzonError?'current':revisado?'done':'current'),
-        formatPaso(4,'Remitente del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) coinciden con el remitente autorizado.':revisado?'No hay avisos del remitente autorizado utilizables todavía.':'Esperando un aviso del remitente autorizado.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
-        formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se ha encontrado al menos un identificador relacionado.'):etapa==='SIN_COINCIDENCIA'?mensaje+detallesReferencia:'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
-        formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'Todavía no existe evidencia suficiente para confirmar o rechazar el depósito.',fallido?'failed':validado?'done':'waiting')
+        formatPaso(4,'Remitente del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) del remitente autorizado encontrados en el buzón. No significa que correspondan a este depósito.':revisado?'No hay avisos recientes del remitente autorizado utilizables todavía.':'Esperando un aviso del remitente autorizado.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
+        formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se encontró una notificación bancaria relacionada con este pago.'):etapa==='SIN_COINCIDENCIA'?mensaje+detallesReferencia:'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
+        formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'El comprobante ya está guardado y sigue en revisión. No lo vuelvas a subir. Titan comprobará automáticamente el depósito cuando exista una notificación bancaria compatible.',fallido?'failed':validado?'done':'waiting')
       ];
       el.innerHTML='<section class="receipt-check-header" aria-live="polite"><div class="receipt-check-top"><div><small class="eyebrow">SEGUIMIENTO BANCARIO</small><h3>'+
         esc(titulo)+'</h3><p>'+esc(mensaje)+'</p></div><div class="receipt-check-actions">'+
@@ -886,7 +896,22 @@
         return toast('Para esta cuenta de prueba el comprobante debe ser de $10 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe ser de al menos $1.');
-    } const payload = { ...(repartoUI.activo(paymentType)?{reparto:repartoUI.datos()}:{}), tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); reportBusy=true; btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras(),...(repartoUI.activo(paymentType)?[repartoUI.cargar().catch(e=>toast(e.message))]:[])]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) {
+    } const payload = { ...(repartoUI.activo(paymentType)?{reparto:repartoUI.datos()}:{}), tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); reportBusy=true; btn.disabled = true; btn.textContent = 'Generando recibo…'; try {
+      const d=await api('/pagos',{method:'POST',headers:headers(true),body:JSON.stringify(payload)});
+      // La subida fue recibida; NO implica que Titan haya acreditado el depósito.
+      const aviso=mostrarConfirmacionReporte();
+      const historialCargado=await loadReceipts({preserveOnError:true});
+      await aviso;
+      const receiptId=Number(d.data?.id);
+      if(historialCargado&&Number.isSafeInteger(receiptId)&&receiptItems.some(p=>Number(p.id)===receiptId)){
+        await openReceiptDetails(receiptId);
+      }else{
+        toast('El comprobante se guardó, pero no se pudo abrir el detalle automáticamente. Consúltalo en Mis recibos.');
+      }
+      // No retrasar el detalle esperando otras consultas no relacionadas.
+      void Promise.allSettled([loadValidity(),loadDebts(),loadExtras(),
+        ...(repartoUI.activo(paymentType)?[repartoUI.cargar()]:[])]);
+      $('paymentForm').reset();resetProof();selectedExtra=null;selectedClub=null;updatePaymentSummary(); } catch (err) {
       if (err.code === 'COMPROBANTE_INCOMPLETO' || err.code === 'COMPROBANTE_NO_CONCILIABLE'
         || err.code === 'FOLIO_NO_PRESENTE_EN_CORREO' || err.code === 'BUZON_NO_VERIFICABLE'
         || err.code === 'FOLIO_SIN_RESPALDO_BANCARIO') {

@@ -811,6 +811,22 @@
       font-size: 9px
     }
 
+
+/* Confirmación visible en el centro antes de mostrar el detalle del pago. */
+.payment-report-success[hidden]{display:none!important}
+.payment-report-success{
+ position:fixed;z-index:99999;top:50%;left:50%;transform:translate(-50%,-50%);
+ width:max-content;max-width:calc(100vw - 36px);box-sizing:border-box;
+ display:flex;align-items:center;gap:12px;padding:18px 24px;
+ border-radius:17px;background:#e9f9ed;border:2px solid #8ad3a6;
+ color:#17633b;box-shadow:0 17px 65px #183f2d3f;
+ font-weight:850;font-size:15px;line-height:1.35;text-align:left;
+}
+.payment-report-check{width:39px;height:39px;display:grid;place-items:center;
+ border-radius:50%;background:#21844e;color:white;font-size:25px;flex:none}
+.payment-report-success small{display:block;margin-top:4px;font-size:12px;font-weight:600;color:#3a7653}
+@media(max-width:520px){.payment-report-success{width:calc(100vw - 38px);padding:15px 17px;font-size:14px}}
+
     .toast {
       position: fixed;
       right: 20px;
@@ -1390,6 +1406,10 @@
 
 
   <div id="toast" class="toast"></div>
+  <div id="paymentReportSuccess" class="payment-report-success" role="status" aria-live="polite" hidden>
+    <span class="payment-report-check" aria-hidden="true">✓</span>
+    <span>¡Comprobante recibido correctamente!<small>Tu pago está en revisión bancaria.</small></span>
+  </div>
 <dialog id="missingProofModal" class="mj-missing-proof" aria-labelledby="missingProofTitle" aria-describedby="missingProofExplanation">
   <div class="mj-missing-head">
     <div><span class="eyebrow">COMPROBANTE BANCARIO</span><h2 id="missingProofTitle">No podemos verificar esta captura</h2></div>
@@ -1459,7 +1479,7 @@
   <script src="assets/js/comprobante-parser.js?v=20261112-ocr-flexible"></script>
   <script src="assets/js/pagos-reparto-calculo.js?v=20261026-reparto"></script>
   <script src="assets/js/pagos-reparto-ui.js?v=20261109-pesos-enteros-v1"></script>
-  <script src="assets/js/pagos.js?v=20261112-sin-beneficiario"></script>
+  <script src="assets/js/pagos.js?v=20261117-pagos-seguimiento-success-v3"></script>
   <script src="assets/js/pagos-historial.js?v=20261109-pesos-enteros-v1"></script>
 
   <script src="assets/js/site-sidebar.js?v=20261111-condomino-pagos"></script>

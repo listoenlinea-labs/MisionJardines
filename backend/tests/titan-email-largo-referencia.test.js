@@ -72,3 +72,58 @@ test('Si no coinciden, explica tipos vistos sin publicar sus valores',()=>{
  assert.ok(d.tiposAviso.includes('referencia'));
  assert.ok(!d.detalle.includes('910260'));
 });
+
+
+test('Titan admite etiqueta alternativa y rastreo en la línea siguiente sin inventar IDs',()=>{
+ const parseo=require('../src/services/banco-correo.service');
+ const message={
+  id:'titan:formatted',subject:'Notificación Banco Azteca',
+  receivedDateTime:new Date().toISOString(),
+  from:{emailAddress:{address:'admin@ejemplo.test'}},
+  body:{content:'Recibiste de otro banco $350 16/Nov/2026, 19:26:00 A tu cuenta ****4409\n'+
+   'Número de referencia\n00910260\nClave de rastreo\nMBAN01002610260078204229'}
+ };
+ const aviso=parseo.datosAviso(message,{PAGOS_BANK_FORWARD_FROM_ADDRESS:'admin@ejemplo.test',
+  PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',PAGOS_BANK_MAIL_MAX_DIAS:7});
+ assert.equal(aviso.referencia,'00910260');
+ assert.equal(aviso.tracking,'MBAN01002610260078204229');
+ assert.equal(aviso.monto,350);
+ assert.equal(aviso.cuenta,'4409');
+ assert.equal(parseo.rastreoEtiquetado('CUENTA DESTINO 123456789012345678'),'');
+ assert.equal(parseo.rastreoEtiquetado('CLAVE DE RASTREO 123456789012\nCLAVE DE RASTREO 111111111111'),'');
+});
+
+
+test('comparación flexible usa vivienda explícita con importe, fecha y cuenta exactos',()=>{
+ const correo=require('../src/services/banco-correo.service');
+ const pago={casa:{calle:'Jardines',numero:'319'},
+  monto:350,fechaOperacion:'2026-11-16',horaOperacion:'19:26:00',
+  folioOperacion:'SINREF-PRUEBA319',textoOcr:''};
+ const aviso={id:'titan-j319',autorizado:true,reciente:true,concepto:'Jardines 319',
+  monto:350,fecha:'2026-11-16',cuenta:'4409',tracking:'',referencia:'',folio:''};
+ const config={PAGOS_DESTINO_ULTIMOS4:'4409'};
+ assert.equal(correo.corresponde(pago,aviso,config),true);
+ for(const otro of [
+  {...aviso,concepto:'Jardines 318'},
+  {...aviso,monto:300},{...aviso,fecha:'2026-11-15'},
+  {...aviso,cuenta:'8844'},{...aviso,autorizado:false},
+  {...aviso,concepto:''}
+ ])assert.equal(correo.corresponde(pago,otro,config),false);
+ // Si hay una referencia rotulada de igual tipo pero contradictoria,
+ // la similitud del concepto no permite atribuirse otro movimiento.
+ const conReferencia={...pago,identificadoresVerificados:{
+  version:2,origen:'OCR_SERVIDOR',tipo:'referencia',referencia:'112233',claveRastreo:'',folio:''}};
+ assert.equal(correo.corresponde(conReferencia,{...aviso,referencia:'445566'},config),false);
+});
+
+
+test('CEP numérico OCR 190057077496 coincide con rastreo Titan CPO190057077496',()=>{
+ const p={folioOperacion:'190057077496',textoOcr:'Comprobante bancario\\n190057077496',
+  identificadoresVerificados:{version:2,origen:'OCR_SERVIDOR',tipo:'candidato',
+   claveRastreo:'',referencia:'',folio:'',candidatos:['190057077496']}};
+ assert.equal(ids.coinciden(p,{tracking:'CPO190057077496',referencia:'7077496'}),true);
+ assert.equal(ids.coinciden(p,{tracking:'CPO190057077497',referencia:'7077496'}),false);
+ assert.equal(ids.coinciden(p,{tracking:'OTRO190057077496',referencia:'7077496'}),false);
+ assert.equal(ids.coinciden({...p,textoOcr:'',identificadoresVerificados:null},
+  {tracking:'CPO190057077496',referencia:'7077496'}),false);
+});
