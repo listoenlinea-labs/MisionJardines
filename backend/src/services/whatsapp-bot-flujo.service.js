@@ -4,6 +4,7 @@ const db=require('../config/database');
 const {QueryTypes}=require('sequelize');
 const parser=require('./comprobante-parser');
 const {reconocerImagen}=require('./comprobante-lector.service');
+const {REGLAMENTO_VERSION}=require('./casa-club-acceso-publico.service');
 const free=require('./whatsapp-presupuesto-cero.service');
 const HOME='https://listoenlinea-labs.github.io/MisionJardines/';
 const MENU='🌿 *Misión Jardines*\n\nElige una opción:\n1. Reservar Casa Club\n2. Revisar mis deudas\n3. Reportar un pago\n4. Registrar una visita\n\nResponde con un número o escribe *MENÚ*.';
@@ -169,12 +170,29 @@ async function handle(message){
  if(s.state==='CORREO'){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(text)||text.length>150)
    return send(phone,'Escribe un correo electrónico válido.');
-  await save(phone,'REGLAMENTO',{...s.ctx,email:text.toLowerCase()});
-  return send(phone,'📜 Debes leer el reglamento antes de solicitar: '+HOME+
-   'reglamento-casa-club.html\n\nSi estás de acuerdo, escribe *ACEPTO*.');
+  // Cada solicitud requiere aceptación independiente de la versión oficial vigente.
+  await save(phone,'REGLAMENTO',{...s.ctx,email:text.toLowerCase(),
+   reglamentoVersion:REGLAMENTO_VERSION});
+  return send(phone,'📜 *Lectura y aceptación obligatoria*\n\n'+
+   'Antes de solicitar Casa Club, lee el *reglamento oficial y términos y condiciones completos*, '+ 
+   'los mismos que se muestran en la plataforma:\n'+HOME+'reglamento-casa-club.html\n\n'+
+   'Entre otras disposiciones: debes estar al corriente en tus cuotas; respetar el horario autorizado; '+
+   'responsabilizarte de tus invitados, la limpieza y cualquier daño; y cumplir las prohibiciones del reglamento.\n\n'+
+   'Cuando hayas leído el documento completo y aceptes todas sus condiciones, responde exactamente *ACEPTO*.\n'+
+   'Si no aceptas, escribe *MENÚ*. *Sin aceptación no se enviará la reservación.*');
  }
  if(s.state==='REGLAMENTO'){
-  if(word!=='ACEPTO')return send(phone,'Escribe *ACEPTO* solo después de leer el reglamento o MENÚ para cancelar.');
+  // Si cambiaron las reglas durante la conversación, exigir leer la nueva
+  // versión antes de permitir cualquier solicitud.
+  if(s.ctx.reglamentoVersion!==REGLAMENTO_VERSION){
+   await save(phone,'REGLAMENTO',{...s.ctx,reglamentoVersion:REGLAMENTO_VERSION});
+   return send(phone,'El reglamento de Casa Club se actualizó. Para continuar debes leer la versión vigente: '+
+    HOME+'reglamento-casa-club.html\n\nDespués de leerla, escribe *ACEPTO*.');
+  }
+  if(word!=='ACEPTO')
+   return send(phone,'Tu reservación no puede enviarse sin aceptar los términos y condiciones. '+
+    'Lee el reglamento completo en '+HOME+'reglamento-casa-club.html'+
+    ' y responde *ACEPTO* únicamente si estás de acuerdo. O escribe *MENÚ* para cancelar.');
   try{
    const result=await api('publico/solicitudes',{fecha:s.ctx.date,calle:s.ctx.street,numero:s.ctx.house,
     solicitante:s.ctx.name,correo:s.ctx.email,
