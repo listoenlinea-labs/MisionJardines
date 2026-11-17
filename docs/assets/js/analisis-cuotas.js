@@ -2021,6 +2021,38 @@ function renderHouses(){
   return {pdfCount,created,updated,months:months.length};
  }
 
+ const backupJobStorageKey='mj_drive_backup_job_20261116';
+ let backupJobId=null,backupJobChecking=false;
+ try{backupJobId=sessionStorage.getItem(backupJobStorageKey);}catch(_){}
+ async function refreshBackupJob(){
+  if(!backupJobId||backupJobChecking||document.visibilityState==='hidden')return;
+  backupJobChecking=true;
+  const banner=$('financeBackupJobBanner'),info=$('financeBackupJobText'),link=$('financeBackupJobLink');
+  banner.hidden=false;
+  try{
+   const {data:job}=await request('/drive/respaldos-estado/'+encodeURIComponent(backupJobId));
+   info.textContent=job.estado==='COMPLETADO'
+    ?'Respaldo verificado: '+job.verificados+' PDF en Drive'+(job.excelGuardado?' y Excel del padrón.':'.')
+    :job.estado==='ERROR'
+     ?'Respaldo incompleto ('+job.verificados+' PDF verificados): '+job.error
+     :'Respaldo en segundo plano · '+job.actual+' · '+job.verificados+' PDF verificados.';
+   banner.dataset.status=job.estado;
+   const folderUrl=job.carpetaUrl||job.excelUrl;
+   if(/^https:\/\/drive\.google\.com\/drive\/folders\/[A-Za-z0-9_-]{12,150}$/.test(String(folderUrl||''))){
+    link.href=folderUrl;link.hidden=false;
+   }else link.hidden=true;
+   if(job.estado!=='EN_PROCESO'){
+    backupJobId=null;
+    try{sessionStorage.removeItem(backupJobStorageKey);}catch(_){}
+   }
+  }catch(err){
+   info.textContent='No fue posible verificar el progreso del respaldo: '+err.message;
+   banner.dataset.status='ERROR';backupJobId=null;
+  }finally{backupJobChecking=false;}
+ }
+ if(backupJobId)void refreshBackupJob();
+ window.setInterval(()=>{if(backupJobId)void refreshBackupJob();},5000);
+ document.addEventListener('visibilitychange',()=>{if(backupJobId&&!document.hidden)void refreshBackupJob();});
  $('financeDownloadAllReceipts').addEventListener('click',()=>openBackupModal('zip'));
  $('financeDriveConnect').addEventListener('click',()=>openBackupModal('connect'));
  $('financeDriveBackup').addEventListener('click',()=>openBackupModal('drive'));
@@ -2059,14 +2091,22 @@ function renderHouses(){
     const estado=(await request('/drive/status')).data;
     if(!estado?.connected)throw Error('Para respaldos, usa "Vincular Drive para respaldos" y autoriza tu cuenta.');
     if(!estado.folderConfigured)throw Error('Antes de respaldar pulsa "Elegir carpeta 02_Recibos_PDF".');
-    const summary=await respaldarPdfDrive(periodo,backupAllMonths.checked);
-    if(activeConcept==='EXTRAORDINARIO')setBackupStatus('Respaldo del proyecto terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados).','success');
-    else{
-     setBackupStatus('PDF terminados: '+summary.pdfCount+' de '+summary.months+' mes(es). Guardando Excel…');
-     const xlsx=await excelForDrive(periodo);
-     await request('/drive/respaldo',{periodo,xlsx,soloExcel:true});
-     setBackupStatus('Respaldo terminado: '+summary.pdfCount+' PDF ('+summary.created+' nuevos, '+summary.updated+' actualizados) en carpetas por año y Excel del padrón guardado.','success');
-    }
+    const months=backupAllMonths.checked?backupAvailablePeriods.slice().sort():[periodo];
+    if(!months.length)throw Error('No hay meses con recibos disponibles.');
+    setBackupStatus('Preparando el respaldo; después podrás seguir usando la plataforma…');
+    const projectId=activeConcept==='EXTRAORDINARIO'?activeProyectoId:null;
+    const xlsx=projectId?null:await excelForDrive(periodo);
+    const result=await request('/drive/respaldos-iniciar',{
+     periodos:months,proyectoId:projectId,periodoExcel:periodo,xlsx
+    });
+    backupJobId=result.data?.id;
+    if(!backupJobId)throw Error('El servidor no devolvió el identificador del respaldo.');
+    try{sessionStorage.setItem(backupJobStorageKey,backupJobId);}catch(_){}
+    backupModal.hidden=true;backupAction=null;
+    $('financeBackupJobBanner').hidden=false;
+    $('financeBackupJobText').textContent='Respaldo iniciado en segundo plano. Verificando PDF en Drive…';
+    void refreshBackupJob();
+    notice('Respaldo iniciado. Puedes seguir usando la página; revisa el progreso junto a la tabla.','success');
    }
   }catch(error){
    if(googleTab&&!googleTab.closed)googleTab.close();
