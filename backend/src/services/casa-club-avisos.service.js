@@ -143,6 +143,9 @@ function htmlPago(datos){
   '</div></body></html>';
 }
 async function whatsapp(row,datos,config){
+ // En modo $0 no emitir plantillas: pueden cobrar incluso con cuota de servicio.
+ if(process.env.WHATSAPP_ZERO_COST_MODE==='true')
+  throw Error('Plantilla de WhatsApp deshabilitada por presupuesto $0. Se mantiene correo electrónico.');
  const response=await fetch('https://graph.facebook.com/'+config.version+'/'+config.telefonoId+'/messages',{
   method:'POST',headers:{Authorization:'Bearer '+config.token,'Content-Type':'application/json'},
   signal:AbortSignal.timeout(10000),

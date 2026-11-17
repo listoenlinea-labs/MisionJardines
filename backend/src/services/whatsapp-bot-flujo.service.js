@@ -4,6 +4,8 @@ const db=require('../config/database');
 const {QueryTypes}=require('sequelize');
 const parser=require('./comprobante-parser');
 const {reconocerImagen}=require('./comprobante-lector.service');
+const {REGLAMENTO_VERSION}=require('./casa-club-acceso-publico.service');
+const free=require('./whatsapp-presupuesto-cero.service');
 const HOME='https://listoenlinea-labs.github.io/MisionJardines/';
 const MENU='🌿 *Misión Jardines*\n\nElige una opción:\n1. Reservar Casa Club\n2. Revisar mis deudas\n3. Reportar un pago\n4. Registrar una visita\n\nResponde con un número o escribe *MENÚ*.';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -27,13 +29,7 @@ async function save(phone,state,ctx={}){
  await db.query('INSERT INTO whatsapp_bot_sesiones(remitente,estado,contexto) VALUES(:phone,:state,:ctx) ON DUPLICATE KEY UPDATE estado=VALUES(estado),contexto=VALUES(contexto),actualizado_en=NOW()',
  {replacements:{phone,state,ctx:seal(ctx)}});
 }
-async function send(phone,text){
- const response=await fetch('https://graph.facebook.com/'+process.env.WHATSAPP_GRAPH_VERSION+'/'+process.env.WHATSAPP_PHONE_NUMBER_ID+'/messages',
- {method:'POST',headers:{Authorization:'Bearer '+process.env.WHATSAPP_ACCESS_TOKEN,'Content-Type':'application/json'},
-  body:JSON.stringify({messaging_product:'whatsapp',to:phone,type:'text',text:{body:String(text).slice(0,4000),preview_url:false}}),
-  signal:AbortSignal.timeout(15000)});
- if(!response.ok)throw Error('WhatsApp no pudo entregar respuesta: '+response.status);
-}
+async function send(phone,text){return free.send(phone,text);}
 async function api(path,body){
  const url=new URL('/api/casa-club/'+path,process.env.APP_BASE_URL||'https://api-misionjardines.listoenlinea.host');
  const res=await fetch(url,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},
@@ -110,7 +106,19 @@ async function handle(message){
  const text=String(t==='text'?message.text?.body||'':
   t==='interactive'?(message.interactive?.list_reply?.id||message.interactive?.button_reply?.id||''):'').trim().slice(0,400);
  const word=norm(text);
+ // $0 preventivo: cuando quedan menos de 25 respuestas, desviar una sola vez
+ // por usuario al portal, antes de seguir procesando trámites.
+ // Si se pierde la tabla del presupuesto, no enviar nada (fail closed).
+ const balance=await free.usage();
  let s=await load(phone);
+ if(balance.used>=free.SOFT_CAP){
+  if(s.state==='LIMITE_GRATIS')return false;
+  await save(phone,'LIMITE_GRATIS',{});
+  return send(phone,free.fallback);
+ }
+ if(s.state==='LIMITE_GRATIS'){
+  await save(phone,'MENU',{});s={state:'MENU',ctx:{}};
+ }
  if(['MENU','MENÚ','INICIO','CANCELAR','0'].includes(word)){await save(phone,'MENU',{});return send(phone,MENU);}
  if(['PAGO_CLUB','REVISION_CLUB'].includes(s.state)&&word==='ESTADO')return status(phone,s);
  if(s.state==='MENU'){
@@ -162,12 +170,29 @@ async function handle(message){
  if(s.state==='CORREO'){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(text)||text.length>150)
    return send(phone,'Escribe un correo electrónico válido.');
-  await save(phone,'REGLAMENTO',{...s.ctx,email:text.toLowerCase()});
-  return send(phone,'📜 Debes leer el reglamento antes de solicitar: '+HOME+
-   'reglamento-casa-club.html\n\nSi estás de acuerdo, escribe *ACEPTO*.');
+  // Cada solicitud requiere aceptación independiente de la versión oficial vigente.
+  await save(phone,'REGLAMENTO',{...s.ctx,email:text.toLowerCase(),
+   reglamentoVersion:REGLAMENTO_VERSION});
+  return send(phone,'📜 *Lectura y aceptación obligatoria*\n\n'+
+   'Antes de solicitar Casa Club, lee el *reglamento oficial y términos y condiciones completos*, '+ 
+   'los mismos que se muestran en la plataforma:\n'+HOME+'reglamento-casa-club.html\n\n'+
+   'Entre otras disposiciones: debes estar al corriente en tus cuotas; respetar el horario autorizado; '+
+   'responsabilizarte de tus invitados, la limpieza y cualquier daño; y cumplir las prohibiciones del reglamento.\n\n'+
+   'Cuando hayas leído el documento completo y aceptes todas sus condiciones, responde exactamente *ACEPTO*.\n'+
+   'Si no aceptas, escribe *MENÚ*. *Sin aceptación no se enviará la reservación.*');
  }
  if(s.state==='REGLAMENTO'){
-  if(word!=='ACEPTO')return send(phone,'Escribe *ACEPTO* solo después de leer el reglamento o MENÚ para cancelar.');
+  // Si cambiaron las reglas durante la conversación, exigir leer la nueva
+  // versión antes de permitir cualquier solicitud.
+  if(s.ctx.reglamentoVersion!==REGLAMENTO_VERSION){
+   await save(phone,'REGLAMENTO',{...s.ctx,reglamentoVersion:REGLAMENTO_VERSION});
+   return send(phone,'El reglamento de Casa Club se actualizó. Para continuar debes leer la versión vigente: '+
+    HOME+'reglamento-casa-club.html\n\nDespués de leerla, escribe *ACEPTO*.');
+  }
+  if(word!=='ACEPTO')
+   return send(phone,'Tu reservación no puede enviarse sin aceptar los términos y condiciones. '+
+    'Lee el reglamento completo en '+HOME+'reglamento-casa-club.html'+
+    ' y responde *ACEPTO* únicamente si estás de acuerdo. O escribe *MENÚ* para cancelar.');
   try{
    const result=await api('publico/solicitudes',{fecha:s.ctx.date,calle:s.ctx.street,numero:s.ctx.house,
     solicitante:s.ctx.name,correo:s.ctx.email,
@@ -206,9 +231,10 @@ async function notifyIfConfirmed(phone){
  if(!Number.isFinite(last)||Date.now()-last>23*60*60*1000)return false;
  const x=(await api('publico/comprobante/estado',{reservaId:s.ctx.id,claveAcceso:s.ctx.token})).data;
  if(x.estatusReserva!=='APROBADA'||!x.pagado)return false;
- await send(phone,'✅ *¡Reservación de Casa Club confirmada!*'+
+ const delivered=await send(phone,'✅ *¡Reservación de Casa Club confirmada!*'+
   '\nFolio: '+x.folio+'\nFecha: '+x.fecha+
   '\nTitan confirmó el depósito. Tu solicitud ha quedado completada.');
+ if(!delivered)return false;
  await save(phone,'MENU',{});
  return true;
 }
