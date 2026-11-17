@@ -221,7 +221,7 @@
  function chooseSource(id){
   if(!planReady){msg('El plan está en modo consulta. Reintenta la carga para asignar dinero.',true);return;}
   selectedSource=pools().find(x=>x.id===id);
-  msg(selectedSource?'Fuente seleccionada: '+selectedSource.name+'. Selecciona el egreso que deseas cubrir.':'Fuente no disponible',!selectedSource);
+  render();msg(selectedSource?'Origen elegido: '+selectedSource.name+'. Selecciona un egreso y pulsa Asignar.':'Fuente no disponible',!selectedSource);
  }
  function chooseExpense(id){
   if(!planReady){msg('El plan está en modo consulta. Reintenta la carga para asignar dinero.',true);return;}
@@ -260,7 +260,7 @@
  async function load(){
   const myRequest=++requestIndex;
   loading=true;planReady=false;hideRecommendation();actionState();clearAlert();
-  selectedSource=null;editorExpense=null;$('fplanAllocator').hidden=true;
+  selectedSource=null;selectedExpenseId=null;editorExpense=null;excluded=[];incomePage=1;expensePage=1;$('fplanAllocator').hidden=true;
   const chosen=$('fplanTargetMonth').value;
   if(!validMonth(chosen)){msg('Selecciona un periodo válido.',true);loading=false;actionState();return;}
   period=chosen;
@@ -284,20 +284,12 @@
     render();return;
    }
    target=result[0].value;
-   const options=(target.proyectosExtraordinarios||[]);
-   if(!options.some(x=>String(x.id)===String(projectFilterId))){
-    const preferred=window.MJFinanceSelectedProject?.();
-    projectFilterId=String(options.find(x=>Number(x.id)===Number(preferred))?.id||options[0]?.id||'');
-   }
-   $('fplanProjectFilter').replaceChildren(...options.map(p=>{
-    const option=document.createElement('option');option.value=String(p.id);
-    option.textContent=p.nombre+' · '+money(p.recaudado);return option;
-   }));
-   $('fplanProjectFilter').value=projectFilterId;
+   // Se incluyen todos los proyectos extraordinarios por separado.
    if(result[1].status==='fulfilled'){
     const plan=result[1].value;
     planReady=true;version=Number(plan.version||0);
     assignments=(plan.asignaciones||[]).map(x=>({...x}));
+    excluded=(plan.excluidos||[]).map(Number);
     allPlans=plan.planes||[];notes=plan.observaciones||'';
     $('fplanNotes').value=notes;
    }else{
@@ -338,7 +330,6 @@
   const year=Number($('financeYear')?.value),month=Number($('financeMonth')?.value);
   const current=year>=2020&&month>=1&&month<=12?year+'-'+String(month).padStart(2,'0'):
    new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit'}).format(new Date());
-  projectFilterId=String(window.MJFinanceSelectedProject?.()||'');
   sourceMonth=current;$('fplanTargetMonth').value=current;
   dialog.showModal();$('fplanContent').scrollTop=0;void load();
  });
@@ -356,9 +347,15 @@
  $('fplanClose').addEventListener('click',()=>dialog.close());
  $('fplanTargetMonth').addEventListener('change',()=>void load());
  $('fplanSourceMonth').addEventListener('change',()=>void loadSource().catch(e=>msg(e.message,true)));
- $('fplanSearch').addEventListener('input',render);
+ $('fplanSearch').addEventListener('input',()=>{expensePage=1;render();});
  $('fplanIncomeSort').addEventListener('change',render);
- $('fplanProjectFilter').addEventListener('change',()=>{projectFilterId=$('fplanProjectFilter').value;selectedSource=null;render();msg('Proyecto seleccionado como origen: '+$('fplanProjectFilter').selectedOptions[0]?.textContent);});
+ $('fplanIncomeSearch').addEventListener('input',()=>{incomePage=1;render();});
+ $('fplanOnlyUnassigned').addEventListener('change',()=>{expensePage=1;render();});
+ $('fplanIncomePrev').addEventListener('click',()=>{incomePage--;render();});
+ $('fplanIncomeNext').addEventListener('click',()=>{incomePage++;render();});
+ $('fplanExpensePrev').addEventListener('click',()=>{expensePage--;render();});
+ $('fplanExpenseNext').addEventListener('click',()=>{expensePage++;render();});
+ $('fplanAssignFooter').addEventListener('click',()=>{if(selectedExpenseId)chooseExpense(selectedExpenseId);});
  $('fplanExpenseSort').addEventListener('change',render);
  panel.addEventListener('click',e=>{const x=e.target.closest('[data-pick]');
   if(x)chooseSource(x.dataset.pick);
