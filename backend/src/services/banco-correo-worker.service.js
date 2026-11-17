@@ -153,8 +153,12 @@ async function ejecutarRevision(){
     // Evita que un worker periódico use datos bancarios anteriores.
     if(datosReintento(pago.verificacionBancaria).etapa==='REINTENTO_OCR')continue;
     let revision=diagnostico.evaluar(pago,avisos,autenticados);
-    if(await rescatarRastreoOcr(pago,autenticados,revision))
+    if(await rescatarRastreoOcr(pago,autenticados,revision)){
      revision=diagnostico.evaluar(pago,avisos,autenticados);
+    }else if(revision.etapa==='SIN_COINCIDENCIA' &&
+      datosReintento(pago.verificacionBancaria).rescateOcrEstado==='SIN_RASTREO'){
+     revision.detalle+=' Se intentó recuperar el número desde la imagen original sin hallar una clave completa que vincule un único aviso. Administración puede revisar el depósito directamente en el banco.';
+    }
     if(revision.cotejoAvisos?.filtroBloqueante==='IMPORTE')
       registrarImporteRelacionado(pago,autenticados);
     if(revision.etapa==='FALLIDO'){
