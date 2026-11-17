@@ -195,4 +195,20 @@ async function handle(message){
  if(s.state==='REVISION_CLUB')return send(phone,'El comprobante sigue en revisión bancaria. Escribe *ESTADO* para consultar o *MENÚ* para comenzar.');
  await save(phone,'MENU',{});return send(phone,MENU);
 }
-module.exports={handle,send,load,save,status,dateISO,MENU};
+// Notificación automática: solo si el vecino escribió dentro de las
+// últimas 24 horas, para no infringir la ventana de mensajes de Meta.
+// Fuera de esa ventana se requiere plantilla aprobada o nuevo mensaje.
+async function notifyIfConfirmed(phone){
+ const s=await load(phone);
+ if(s.state!=='REVISION_CLUB'||!s.ctx.id||!s.ctx.token)return false;
+ const last=new Date(s.ctx.lastInboundAt||'').getTime();
+ if(!Number.isFinite(last)||Date.now()-last>23*60*60*1000)return false;
+ const x=(await api('publico/comprobante/estado',{reservaId:s.ctx.id,claveAcceso:s.ctx.token})).data;
+ if(x.estatusReserva!=='APROBADA'||!x.pagado)return false;
+ await send(phone,'✅ *¡Reservación de Casa Club confirmada!*'+
+  '\nFolio: '+x.folio+'\nFecha: '+x.fecha+
+  '\nTitan confirmó el depósito. Tu solicitud ha quedado completada.');
+ await save(phone,'MENU',{});
+ return true;
+}
+module.exports={handle,send,load,save,status,notifyIfConfirmed,dateISO,MENU};
