@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_bot_eventos (
  payload JSON NOT NULL,
  estado ENUM('PENDIENTE','PROCESANDO','PROCESADO','ERROR') NOT NULL DEFAULT 'PENDIENTE',
  intentos TINYINT UNSIGNED NOT NULL DEFAULT 0,
+ procesando_en DATETIME NULL,
  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
  procesado_en DATETIME NULL,
  UNIQUE KEY uq_whatsapp_bot_mensaje (mensaje_id),
