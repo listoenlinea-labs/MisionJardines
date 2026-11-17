@@ -9,7 +9,6 @@ const {
     reportarPago,
     reintentarValidacion,
     actualizarVerificacion,
-    cotejarClaveAsistida,
     descargarRecibo, obtenerComprobantePropio, cotizacionMantenimiento, obtenerVigencia, inicializarVigencia, listarPendientes, obtenerComprobante
 } = require('../controllers/pagos.controller');
 const { autenticarToken } = require('../middlewares/auth.middleware');
@@ -47,7 +46,6 @@ router.get('/:id/recibo', lecturaPagos, descargarRecibo);
 router.get('/:id/comprobante-mio', lecturaPagos, obtenerComprobantePropio);
 router.post('/:id/reintentar-validacion', lecturaPagos, reintentarValidacion);
 router.post('/:id/actualizar-verificacion', lecturaPagos, actualizarVerificacion);
-router.post('/:id/cotejar-clave-asistida', soloAdministracion, cotejarClaveAsistida);
 router.get('/extraordinarias', lecturaPagos, listarCuotasExtraordinarias);
 router.post('/extraordinarias', soloAdministracion, crearCuotaExtraordinaria);
 router.patch('/extraordinarias/:id/archivar', soloAdministracion, desactivarCuotaExtraordinaria);
