@@ -1,7 +1,8 @@
 'use strict';
 const cuentaOficial=require('./pagos-cuenta-oficial.service');
-// Sólo lectura. El correo bancario es evidencia secundaria: la aprobación exige
-// IMAP TLS, From autorizado (sin autenticar), identificador, monto, fecha y destino.
+// Solo lectura. El correo bancario es evidencia secundaria: la aprobación exige
+// IMAP TLS, remitente autorizado, importe, fecha, destino y relación única.
+// Si el OCR no leyó folio, puede relacionarse por hora/minuto de la operación.
 const {createHash}=require('node:crypto');
 const {leerBuzon}=require('./correo-bancario-mail.service');
 const { equivaleFechaSpei }=require('./fecha-operativa-spei.service');
