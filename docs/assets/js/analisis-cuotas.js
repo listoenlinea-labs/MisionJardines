@@ -589,7 +589,10 @@ function render(){
      String(h.estatus||'').toUpperCase()==='PAGADO';
    const pagadoCompleto=String(h.estatus||'').toUpperCase()==='PAGADO';
    if(status==='PAGADO')return pagadoCompleto;
-   if(status==='PENDIENTE')return ['PENDIENTE','PAGO_PARCIAL'].includes(String(h.estatus||'').toUpperCase());
+   if(status==='PAGO_PARCIAL')return activeConcept==='EXTRAORDINARIO'&&String(h.estatus||'').toUpperCase()==='PAGO_PARCIAL';
+   if(status==='PENDIENTE')return activeConcept==='EXTRAORDINARIO'
+    ?String(h.estatus||'').toUpperCase()==='PENDIENTE'
+    :['PENDIENTE','PAGO_PARCIAL'].includes(String(h.estatus||'').toUpperCase());
    return false;
  }
  function renderHouseTagCell(h){
@@ -831,6 +834,14 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     tab.tabIndex=selected?0:-1;
     if(selected)$('financeHousePanel').setAttribute('aria-labelledby',tab.id);
   });
+  // El filtro usa los mismos estados visibles de la columna Estado.
+  const projectStatuses=concepto==='EXTRAORDINARIO';
+  const paidOption=$('financeStatus').querySelector('option[value="PAGADO"]');
+  const pendingOption=$('financeStatus').querySelector('option[value="PENDIENTE"]');
+  const partialOption=$('financeStatus').querySelector('option[value="PAGO_PARCIAL"]');
+  paidOption.textContent=projectStatuses?'Meta alcanzada':'Pagadas';
+  pendingOption.textContent=projectStatuses?'Sin aportes':'Pendientes';
+  partialOption.hidden=!projectStatuses;partialOption.disabled=!projectStatuses;
   const noAplicaOption=$('financeStatus').querySelector('option[value="NO_APLICA"]');
   if(noAplicaOption){
    noAplicaOption.hidden=concepto!=='EXTRAORDINARIO';
@@ -840,7 +851,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
    const option=$('financeStatus').querySelector('option[value="'+choice+'"]');
    if(option)option.disabled=concepto!=='MANTENIMIENTO';
   }
-  if(concepto!=='EXTRAORDINARIO'&&$('financeStatus').value==='NO_APLICA')$('financeStatus').value='';
+  if(concepto!=='EXTRAORDINARIO'&&['NO_APLICA','PAGO_PARCIAL'].includes($('financeStatus').value))$('financeStatus').value='';
   if(concepto!=='MANTENIMIENTO'&&['ADVERTENCIAS','PAGO_ANUAL','ABONO_CON_ADEUDO'].includes($('financeStatus').value))
    $('financeStatus').value='';
   $('financeConceptHint').textContent={
@@ -848,6 +859,11 @@ function elegirConcepto(concepto,{resetPage=true}={}){
     EXTRAORDINARIO:'Selecciona un proyecto para consultar sus aportaciones, cuotas especiales y saldos. El proyecto es independiente de mantenimiento y TAGs.',
     CASA_CLUB:'Casa club: solo reservas aprobadas. El saldo vence en la fecha límite de pago, no en la fecha del evento.'
   }[concepto];
+  // En extraordinarias y Casa Club se ocultan indicadores secundarios; Casa Club tampoco usa gráficas de cumplimiento.
+  const extras=document.querySelector('.analysis-more');
+  const charts=document.querySelector('.analysis-columns');
+  if(extras)extras.hidden=concepto!=='MANTENIMIENTO';
+  if(charts)charts.hidden=concepto==='CASA_CLUB';
   // Cambio explícito de pestaña: página 1. La recarga de datos tras
   // editar, anular o registrar un pago preserva la página actual.
   if(resetPage)housePage=1;
