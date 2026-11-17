@@ -5,6 +5,21 @@ const diagnostico=require('./banco-diagnostico.service');
 const identificadores=require('./identificadores-bancarios.service');
 // Un único log por pago y valores detectados: no inundar los logs de Hostinger.
 const importesYaDiagnosticados=new Map();
+const cotejosYaDiagnosticados=new Map();
+function registrarFasePendiente(pago,revision){
+ const x=revision.cotejoAvisos||{};
+ const summary=[revision.etapa,x.filtroBloqueante,x.cuenta,x.importe,x.fecha,
+  x.avisosRastreoCpo,x.avisosIdentificadorComparable].join('|');
+ if(cotejosYaDiagnosticados.get(pago.id)===summary)return;
+ if(cotejosYaDiagnosticados.size>500)cotejosYaDiagnosticados.clear();
+ cotejosYaDiagnosticados.set(pago.id,summary);
+ // Sólo números de avisos por filtro; nunca publicar referencias bancarias.
+ console.info('[Bancos][Cotejo pendiente] pago ID='+pago.id+
+  ' fase='+String(x.filtroBloqueante||revision.etapa)+
+  ' cuenta='+Number(x.cuenta||0)+' importe='+Number(x.importe||0)+
+  ' fecha='+Number(x.fecha||0)+' rastreosCPO='+Number(x.avisosRastreoCpo||0)+
+  ' identificadores='+Number(x.avisosIdentificadorComparable||0));
+}
 function registrarImporteRelacionado(pago,autenticados){
  const relacionados=autenticados.filter(aviso=>{
   const comprobacion=banco.chequeosAviso(pago,aviso);
@@ -86,6 +101,8 @@ async function ejecutarRevision(){
     }
     if(revision.etapa!=='COINCIDENCIA_VERIFICADA'){
      await persistir(pago,revision);
+     if(revision.etapa==='SIN_COINCIDENCIA'||revision.etapa==='DATOS_INCOMPLETOS')
+      registrarFasePendiente(pago,revision);
      console.info('[Bancos] Pago '+pago.id+' '+revision.etapa);
      continue;
     }
