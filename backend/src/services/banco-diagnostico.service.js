@@ -97,13 +97,17 @@ function evaluar(pago,avisos,autenticados){
   {...auditoria,coincidencias:completas.length});
  if(completas.length===1){
   const aviso=completas[0],porIdentificador=ids.coinciden(pago,aviso);
+  const porVivienda=!porIdentificador&&banco.viviendaEnConcepto(pago,aviso);
+  const porHora=!porIdentificador&&!porVivienda&&banco.coincideHoraOperacion(pago,aviso);
   return resultado('COINCIDENCIA_VERIFICADA',
    porIdentificador
     ? 'Se encontró una notificación compatible en identificador, importe, fecha y destino.'
-    : 'Se encontró una única notificación que identifica a esta vivienda en el concepto, con importe, fecha y cuenta destino compatibles. No fue necesario cotejar el folio.',
+    : porVivienda
+      ? 'Se encontró una única notificación compatible con la vivienda, el importe, la fecha y la cuenta destino.'
+      : 'El aviso de Titan coincide con el importe, la cuenta y el día operativo del depósito, además de la hora y minuto de la transferencia. El OCR no necesita leer el folio.',
    {...auditoria,coincidencias:1,
-    metodoVinculo:porIdentificador?'IDENTIFICADOR':'VIVIENDA_CONCEPTO',
-    verificaciones:{...evidencia(pago,aviso),vivienda:banco.viviendaEnConcepto(pago,aviso)}});
+    metodoVinculo:porIdentificador?'IDENTIFICADOR':porVivienda?'VIVIENDA_CONCEPTO':'HORA_OPERACION_UNICA',
+    verificaciones:{...evidencia(pago,aviso),vivienda:porVivienda,hora:porHora}});
  }
  const vinculados=autenticados.filter(a=>ids.coinciden(pago,a));
  if(!vinculados.length){
