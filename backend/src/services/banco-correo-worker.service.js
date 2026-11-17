@@ -32,7 +32,7 @@ function registrarImporteRelacionado(pago,autenticados){
   ' identificadorCoincide='+identificadorCoincide+
   ' (solo diagnostico: NO confirma deposito)');
 }
-let ocupado=false,programado=false,timer=null;
+let ocupado=false,programado=false,timer=null,revisionSolicitada=false;
 function datosReintento(raw){
  if(typeof raw==='string'){try{raw=JSON.parse(raw)}catch{return {}}}
  return raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
@@ -44,6 +44,7 @@ async function persistir(pago,revision,fallido=false){
  const cambios={verificacionBancaria:{
    ...revision,
    reintentos:Math.max(0,Number(anterior.reintentos)||0),
+   ultimaConsultaManualEn:anterior.ultimaConsultaManualEn||null,
    ultimoReintentoEn:anterior.ultimoReintentoEn||null,
    historialReintentos:Array.isArray(anterior.historialReintentos)?anterior.historialReintentos:[]
  },actualizadoEn:new Date()};
@@ -137,10 +138,17 @@ async function ejecutarRevision(){
     'No fue posible consultar el buzón bancario Titan. El depósito sigue en revisión y se reintentará.'))}
    catch(e){console.error('[Bancos] Error guardando estado IMAP, pago ID='+pago.id+': '+e.name)}
   }
- }finally{ocupado=false}
+ }finally{
+  ocupado=false;
+  // Si un usuario pulsó Actualizar durante otra consulta IMAP,
+  // cumplir también su solicitud al terminar, sin solapar ejecuciones.
+  if(revisionSolicitada){revisionSolicitada=false;programarRevision()}
+ }
 }
 function programarRevision(){
- if(!banco.configurado()||programado)return;
+ if(!banco.configurado())return;
+ if(ocupado){revisionSolicitada=true;return;}
+ if(programado)return;
  programado=true;
  setImmediate(()=>{programado=false;void ejecutarRevision();});
 }
