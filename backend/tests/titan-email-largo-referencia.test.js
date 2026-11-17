@@ -115,3 +115,15 @@ test('comparación flexible usa vivienda explícita con importe, fecha y cuenta 
   version:2,origen:'OCR_SERVIDOR',tipo:'referencia',referencia:'112233',claveRastreo:'',folio:''}};
  assert.equal(correo.corresponde(conReferencia,{...aviso,referencia:'445566'},config),false);
 });
+
+
+test('CEP numérico OCR 190057077496 coincide con rastreo Titan CPO190057077496',()=>{
+ const p={folioOperacion:'190057077496',textoOcr:'Comprobante bancario\\n190057077496',
+  identificadoresVerificados:{version:2,origen:'OCR_SERVIDOR',tipo:'candidato',
+   claveRastreo:'',referencia:'',folio:'',candidatos:['190057077496']}};
+ assert.equal(ids.coinciden(p,{tracking:'CPO190057077496',referencia:'7077496'}),true);
+ assert.equal(ids.coinciden(p,{tracking:'CPO190057077497',referencia:'7077496'}),false);
+ assert.equal(ids.coinciden(p,{tracking:'OTRO190057077496',referencia:'7077496'}),false);
+ assert.equal(ids.coinciden({...p,textoOcr:'',identificadoresVerificados:null},
+  {tracking:'CPO190057077496',referencia:'7077496'}),false);
+});
