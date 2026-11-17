@@ -155,8 +155,30 @@ function chequeosAviso(pago,noticia,config=process.env){
 function coincideDatosBancarios(pago,noticia,config=process.env){
  return Object.values(chequeosAviso(pago,noticia,config)).every(Boolean);
 }
+// Conciliación alternativa sin folio: la propia NOTIFICACIÓN bancaria debe
+// identificar sin ambigüedad a la vivienda, además de monto, fecha y cuenta.
+// Nunca basta con que el remitente esté autorizado ni con que solo coincida $350.
+const conceptoNormal=v=>normal(v).replace(/[^A-Z0-9]+/g,' ').trim();
+function viviendaEnConcepto(pago,noticia){
+ const casa=pago?.casa;
+ const calle=conceptoNormal(casa?.calleCorrecta||casa?.calle);
+ const numero=conceptoNormal(casa?.numero);
+ const concepto=conceptoNormal(noticia?.concepto);
+ if(!calle||!numero||!concepto||!/^[A-Z0-9]+$/.test(numero))return false;
+ const escaped=calle.split(' ').join('\\s+');
+ const exacto=new RegExp('(?:^|\\s)'+escaped+'\\s+(?:(?:CASA|NUMERO|NO)\\s+)?'+numero+'(?:\\s|$)');
+ const invertido=new RegExp('(?:^|\\s)CASA\\s+'+numero+'\\s+'+escaped+'(?:\\s|$)');
+ return exacto.test(concepto)||invertido.test(concepto);
+}
 function corresponde(pago,noticia,config=process.env){
- return coincideDatosBancarios(pago,noticia,config) && idsBanco.coinciden(pago,noticia);
+ if(!coincideDatosBancarios(pago,noticia,config))return false;
+ if(idsBanco.coinciden(pago,noticia))return true;
+ const capturado=idsBanco.identificadoresPago(pago);
+ const aviso=idsBanco.identificadoresAviso(noticia);
+ // Si existen identificadores etiquetados del MISMO tipo que contradicen
+ // el comprobante, no sustituirlos por un concepto parecido.
+ if(idsBanco.disponibles(capturado).some(tipo=>aviso[tipo]&&capturado[tipo]!==aviso[tipo]))return false;
+ return viviendaEnConcepto(pago,noticia);
 }
 function configurado(env=process.env){
  return env.PAGOS_BANK_AUTO_VALIDATE==='true'
@@ -175,4 +197,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_IMAP_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,montoRecibido,corresponde,coincideDatosBancarios,chequeosAviso,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso,rastreoEtiquetado};
+module.exports={datosAviso,montoRecibido,corresponde,viviendaEnConcepto,coincideDatosBancarios,chequeosAviso,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso,rastreoEtiquetado};
