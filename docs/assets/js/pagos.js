@@ -398,16 +398,39 @@
         (fallido?'<p class="receipt-check-warning" role="alert"><strong>Motivo específico del fallo:</strong> '+esc(mensaje)+'</p>':'')+
         '<h3 class="receipt-timeline-heading">Etapas de la comprobación</h3><ol class="receipt-timeline">'+pasos.join('')+'</ol>';
     }
+    let receiptCheckRefreshBusy=false;
     $('receiptDetailsBody').addEventListener('click',async event=>{
-      const b=event.target.closest('[data-check-refresh]');if(!b||activeReceiptId===null)return;
-      b.disabled=true;b.textContent='Consultando…';
+      const b=event.target.closest('[data-check-refresh]');
+      if(!b||activeReceiptId===null||receiptCheckRefreshBusy)return;
+      const id=activeReceiptId;
+      receiptCheckRefreshBusy=true;b.disabled=true;b.textContent='Consultando Titan…';
       try{
+        const previo=receiptItems.find(x=>Number(x.id)===id);
+        if(previo?.estatus==='PENDIENTE_VALIDACION'){
+          // Actualizar estado SÍ solicita una nueva conciliación. Nunca crea
+          // otro reporte ni cambia por sí mismo el estado a VALIDADO.
+          const intento=await api('/pagos/'+id+'/actualizar-verificacion',{
+            method:'POST',headers:headers(true),body:'{}'
+          });
+          retryFeedback(intento.message||
+            'Nueva consulta a Titan solicitada. Los pasos se actualizarán automáticamente.');
+        }
         const ok=await loadReceipts({preserveOnError:true});
         if(!ok)throw Error('No se pudo consultar el estado. Intenta nuevamente.');
-        const actual=receiptItems.find(x=>Number(x.id)===activeReceiptId);
-        if($('receiptDetailsModal').open&&actual)renderReceiptStatus(actual);
-      }catch(error){toast(error.message)}
-      finally{if(b.isConnected){b.disabled=false;b.textContent='Actualizar estado ↻'}}
+        const actual=receiptItems.find(x=>Number(x.id)===id);
+        if($('receiptDetailsModal').open&&activeReceiptId===id&&actual){
+          renderReceiptStatus(actual);
+          if(actual.estatus==='VALIDADO')retryFeedback('¡Depósito validado por el banco!');
+        }
+      }catch(error){
+        const detail=error.httpStatus===404
+          ?'Es necesario desplegar el backend actualizado para volver a verificar desde este botón.'
+          :String(error.message||'No se pudo consultar el estado.');
+        retryFeedback(detail,true);
+      }finally{
+        receiptCheckRefreshBusy=false;
+        if(b.isConnected){b.disabled=false;b.textContent='Actualizar estado ↻'}
+      }
     });
     // El estado visible se consulta mientras el modal esté abierto.
     // No depende de un mensaje toast oculto detrás del <dialog>.
