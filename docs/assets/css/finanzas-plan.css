@@ -396,3 +396,66 @@
  .fplan-expense-panel .fplan-panel-toolbar{grid-template-columns:1fr}
  .fplan-expense-panel .fplan-field-search{grid-column:auto}
 }
+
+
+/* Historial de cambios de la sesión. No modifica cobros ni deshace guardados. */
+.fplan-footer-actions .fplan-undo-button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-width:104px;border:1px solid #dccdea;background:#f8f3fd;
+ color:#704b8d;font-size:.78rem;font-weight:760;
+}
+.fplan-footer-actions .fplan-undo-button span{font-size:1.15rem;line-height:1}
+.fplan-footer-actions .fplan-undo-button:hover:not(:disabled){background:#f0e6fa;border-color:#cbb6df}
+.fplan-footer-actions .fplan-undo-button:disabled{opacity:.48;cursor:not-allowed}
+@media(max-width:700px){
+ .fplan-footer-actions{flex-wrap:wrap}
+ .fplan-footer-actions .fplan-undo-button{min-width:80px;flex:1 1 25%}
+}
+
+/* Gastos contenidos: mini tarjetas dentro del PRIMER td de la fila padre.
+   Ancho y altura de la fila de egreso permanecen invariables (112px). */
+.fplan-expense-panel .fplan-data-table tbody tr:has(.fplan-subexpenses),
+.fplan-expense-panel .fplan-data-table tbody tr:has(.fplan-subexpenses) td{
+ height:112px;max-height:112px;
+}
+.fplan-expense-panel .fplan-data-table td.fplan-parent-expense{
+ padding:5px 8px;overflow:hidden;vertical-align:middle;
+}
+.fplan-expense-panel .fplan-data-table .fplan-parent-expense .fplan-expense-copy{
+ display:flex;flex-direction:column;justify-content:center;gap:3px;
+ height:98px;max-height:98px;min-width:0;overflow:hidden;
+}
+.fplan-expense-panel .fplan-parent-expense .fplan-expense-copy>strong{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+ max-height:34px;overflow:hidden;font-size:.73rem;line-height:1.25;
+}
+.fplan-expense-panel .fplan-parent-expense .fplan-expense-copy>small{
+ display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ max-height:15px;margin:0;line-height:1.2;font-size:.63rem;
+}
+.fplan-expense-panel .fplan-subexpenses{
+ display:flex;align-items:center;gap:5px;width:100%;height:39px;
+ max-height:39px;min-width:0;overflow-x:auto;overflow-y:hidden;
+ scrollbar-width:thin;scroll-snap-type:x proximity;overscroll-behavior-x:contain;
+ padding-bottom:2px;
+}
+.fplan-expense-panel .fplan-subexpense{
+ display:flex;align-items:center;gap:6px;flex:0 0 min(215px,94%);
+ min-width:0;height:35px;max-height:35px;padding:5px 7px;
+ border:1px solid #bde1ca;border-left:3px solid #309666;
+ border-radius:8px;background:#edfaf2;box-shadow:0 1px 2px #14593c10;
+ color:#2a5c43;font-size:.65rem;line-height:1.1;scroll-snap-align:start;
+}
+.fplan-expense-panel .fplan-subexpense-label{
+ display:block;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;font-weight:730;
+}
+.fplan-expense-panel .fplan-subexpense-amount{
+ display:block;flex:none;font-variant-numeric:tabular-nums;
+ font-size:.64rem;font-weight:850;white-space:nowrap;color:#207048;
+}
+@media(max-width:700px){
+ .fplan-expense-panel .fplan-data-table td.fplan-parent-expense{padding-inline:4px}
+ .fplan-expense-panel .fplan-subexpense{flex-basis:min(185px,96%);padding-inline:5px;font-size:.6rem}
+ .fplan-expense-panel .fplan-subexpense-amount{font-size:.6rem}
+}
