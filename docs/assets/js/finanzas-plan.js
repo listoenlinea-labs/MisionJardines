@@ -143,7 +143,7 @@
     (scope==='CASA_CLUB'&&x.grupo==='Casa Club'))
    .filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo+' '+x.proyectoNombre).toLocaleLowerCase('es').includes(searchOut))
    .filter(x=>!$('fplanOnlyUnassigned').checked||
-      (!excluded.includes(x.id)&&x.monto>spend(x.id)));
+      (!excluded.includes(x.id)&&!parentOf(x.id)&&x.monto>spend(x.id)));
   visibleExpenses.sort((a,b)=>outSort==='asc'?a.monto-b.monto:outSort==='name'?a.nombre.localeCompare(b.nombre,'es'):b.monto-a.monto);
   visibleExpenses=grouped.flatMap(group=>visibleExpenses.filter(x=>x.grupo===group));
   // Todos: igualar el NÚMERO REAL de filas de la página de ingresos (máx. 10).
@@ -449,6 +449,9 @@
   const toggle=e.target.closest('[data-exclude]');
   if(toggle){
    const id=Number(toggle.dataset.exclude);
+   if(agrupaciones.some(g=>g.padreId===id)){
+    msg('Primero separa los conceptos incluidos en este gasto antes de excluirlo del plan.',true);return;
+   }
    if(excluded.includes(id)){excluded=excluded.filter(x=>x!==id);msg('Gasto restaurado; pulsa Guardar plan.');}
    else{
     const row=expenseRows(true).find(x=>x.id===id);
