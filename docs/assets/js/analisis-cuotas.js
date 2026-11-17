@@ -535,7 +535,11 @@ function render(){
    '<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Descargar comprobante</button>':
    (!consultaProyectos&&!e.esAjusteMensual&&e.categoria==='CUOTA_EXTRAORDINARIA'&&!e.tieneCuota?
    '<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>':'—'))+
-  '</tr>').join(''):'<tr><td colspan="6">No hay egresos que coincidan con los filtros.</td></tr>';
+  cell('Acciones',activeConcept==='MANTENIMIENTO'&&!consultaProyectos&&
+   !e.esAjusteMensual&&!e.tieneCuota&&e.ambito==='MANTENIMIENTO'?
+   '<button type="button" class="soft" data-delete-maint-expense="'+Number(e.id)+
+    '" title="Eliminar este concepto con auditoría">Borrar</button>':'—')+
+  '</tr>').join(''):'<tr><td colspan="7">No hay egresos que coincidan con los filtros.</td></tr>';
  $('expensePageInfo').textContent='Página '+expensePage+' de '+pages;
  $('expensePrev').disabled=expensePage===1;$('expenseNext').disabled=expensePage===pages;
 }
@@ -2904,6 +2908,21 @@ let historicalExtraId=null;
   const item=data?.egresos?.find(e=>Number(e.id)===Number(target.dataset.expenseEdit));
   if(item)await editExpenseAmount(item.id,item.monto);
  }
+ $('financeExpenseRows').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-delete-maint-expense]');
+  if(!button||activeConcept!=='MANTENIMIENTO')return;
+  const item=data?.egresos?.find(e=>Number(e.id)===Number(button.dataset.deleteMaintExpense));
+  if(!item||item.ambito!=='MANTENIMIENTO'||item.proyectoId||item.esAjusteMensual||item.tieneCuota)
+   return notice('Este egreso no puede eliminarse desde mantenimiento.');
+  if(!window.confirm('¿Eliminar definitivamente el concepto «'+item.concepto+'» por '+fmt(item.monto)+
+   '? Quedará constancia en auditoría. No se borrarán pagos de viviendas.'))return;
+  button.disabled=true;
+  try{
+   await request('/egresos/'+Number(item.id)+'/mantenimiento',
+    {anterior:{monto:Number(item.monto),fecha:String(item.fecha).slice(0,10),concepto:item.concepto}},'DELETE');
+   await load();notice('Egreso eliminado y documentado en auditoría.','success');
+  }catch(error){notice(error.message);button.disabled=false;}
+ });
  $('financeExpenseRows').addEventListener('click',e=>{
   if(activeConcept==='EXTRAORDINARIO'&&e.target.closest('[data-open-project-breakdown]'))
    openProjectBreakdown(e.target.closest('[data-open-project-breakdown]'));
