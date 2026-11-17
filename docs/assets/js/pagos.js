@@ -348,12 +348,14 @@
       const mensaje=String(v.detalle||p.observacionesRevision||'Recibimos el comprobante y estamos esperando el resultado de la consulta a Titan.');
       const refInfo=v.diagnosticoReferencia;
       const bloqueante=v.cotejoAvisos?.filtroBloqueante||'';
-      const detallesReferencia=refInfo&&etapa==='SIN_COINCIDENCIA'&&(refInfo.capturadaComoReferencia||refInfo.reconocidaEnOcr)
-        ? ' Referencia guardada y OCR: '+(refInfo.coincideFormularioOcr?'coinciden':'no coincide o no se pudo leer')
+      const detallesReferencia=refInfo&&etapa==='SIN_COINCIDENCIA'&&refInfo.reconocidaEnOcr
+        ? ' Referencia identificada en la imagen: '+(refInfo.coincideFormularioOcr?'coincide con la registrada':'no coincide con el dato registrado')
           +(bloqueante && bloqueante!=='IDENTIFICADOR'
-            ? '. Referencia bancaria: pendiente de cotejar porque antes falta validar '+({DESTINO:'la cuenta',IMPORTE:'el importe',FECHA:'la fecha',VIVIENDA:'la vivienda'}[bloqueante]||'otros datos')+'.'
-            : '. Referencia guardada y aviso Titan: '+(refInfo.coincideFormularioAviso?'coinciden':'no coinciden')+'.')
-        : '';
+            ? '. Aún falta verificar '+({DESTINO:'la cuenta destino',IMPORTE:'el importe',FECHA:'la fecha'}[bloqueante]||'otros datos')+' antes de cotejarla con Titan.'
+            : '. Cotejo con Titan: '+(refInfo.coincideFormularioAviso?'coincide':'todavía sin coincidencia')+'.')
+        : refInfo&&etapa==='SIN_COINCIDENCIA'&&refInfo.capturadaComoReferencia
+          ? ' El OCR no encontró una referencia verificable en la imagen. Esto no significa que el depósito haya fallado.':'';
+
       const formatPaso=(n,nombre,detalle,estado)=>{
         const sym=estado==='done'?'✓':estado==='failed'?'!':estado==='current'?'•':String(n);
         return '<li class="'+esc(estado)+'"><span class="receipt-step-circle">'+esc(sym)+'</span><div class="receipt-step-content"><strong>'+
