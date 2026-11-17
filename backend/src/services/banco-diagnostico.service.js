@@ -58,6 +58,10 @@ function evaluar(pago,avisos,autenticados){
  const avisosConMonto=avisosConCuenta.filter(a=>banco.chequeosAviso(pago,a).importe);
  const avisosConFecha=avisosConMonto.filter(a=>banco.chequeosAviso(pago,a).fecha);
  const avisosRelacionados=avisosConFecha;
+ // Cotejar primero datos ya comprobados (cuenta/importe/fecha). El mensaje
+ // al residente no revela referencias de correos de otras viviendas.
+ const avisosRastreoCpo=avisosRelacionados.filter(a=>/^CPO\d{10,17}$/.test(ids.identificadoresAviso(a).claveRastreo));
+ const avisosIdRelacionados=avisosRelacionados.filter(a=>ids.coinciden(pago,a));
  const filtroBloqueante=!avisosConCuenta.length?'DESTINO':!avisosConMonto.length?'IMPORTE':!avisosConFecha.length?'FECHA':'IDENTIFICADOR';
  const tiposAviso=Array.from(new Set(avisosRelacionados.flatMap(a=>ids.disponibles(ids.identificadoresAviso(a)))));
  const tiposEnAmbas=tiposComprobante.filter(t=>tiposAviso.includes(t));
@@ -71,7 +75,10 @@ function evaluar(pago,avisos,autenticados){
      filtroBloqueante,
      referenciaMismaCuenta:avisosPorReferencia.length,
      referenciaFechaCompatible:avisosPorFecha.length,
-     importeLegibleReferencia:importesLeidosRelacionados.length
+     importeLegibleReferencia:importesLeidosRelacionados.length,
+     avisosRastreoCpo:avisosRastreoCpo.length,
+     avisosIdentificadorComparable:avisosIdRelacionados.length,
+     fasePendiente:'COMPARACION_BANCARIA'
    },
    tiposComprobante:tiposComprobante.map(t=>nombres[t]),
    tiposAviso:tiposAviso.map(t=>nombres[t]),
@@ -115,9 +122,11 @@ function evaluar(pago,avisos,autenticados){
    : tiposComprobante.length&&!tiposAviso.length
      ? 'El OCR identificó '+tiposComprobante.map(t=>nombres[t]).join(' y ')+
        ', pero no se pudieron extraer identificadores del correo bancario de remitente autorizado.'
-     : !tiposComprobante.length
-       ? 'No se pudo recuperar del OCR guardado una clave de rastreo, referencia o folio verificable.'
-       : 'Aún no existe un identificador bancario del mismo tipo en el comprobante y los avisos compatibles de Titan. Esto no indica que el depósito haya fallado: puede estar pendiente su notificación o faltar la referencia legible. No es necesario subir otro comprobante; el sistema seguirá revisando el buzón.';
+     : avisosRastreoCpo.length
+       ? 'Titan tiene una o más claves de rastreo con prefijo CPO entre los avisos compatibles por cuenta, importe y fecha, pero todavía no se identificó el mismo número completo en el OCR guardado. Se revisaron las variantes del prefijo sin reiniciar los pasos anteriores. El depósito sigue en revisión.'
+       : !tiposComprobante.length
+         ? 'No se recuperó un identificador completo del OCR guardado para cotejar el aviso bancario. No significa que el depósito haya fallado.'
+         : 'Ninguno de los avisos con cuenta, importe y fecha compatibles coincidió con el identificador del comprobante. Se mantiene en revisión hasta localizar la operación correcta.';
   return resultado('SIN_COINCIDENCIA',diagnostico+
    ' El reporte continúa En revisión hasta obtener una coincidencia bancaria segura.',auditoria);
  }
