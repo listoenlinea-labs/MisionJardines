@@ -13,6 +13,14 @@
     const reservaSolicitada=Number(new URLSearchParams(location.search).get('reserva'));
 
     function toast(msg) { $('toast').textContent = msg; $('toast').style.display = 'block'; clearTimeout(window.payToast); window.payToast = setTimeout(() => $('toast').style.display = 'none', 3600) }
+    async function mostrarConfirmacionReporte(){
+      const success=$('paymentReportSuccess');
+      success.hidden=false;
+      // La confirmación aparece en el centro ANTES del <dialog>, que se renderiza por encima de la página.
+      await new Promise(resolve=>window.setTimeout(resolve,950));
+      success.hidden=true;
+    }
+
     async function api(path, options = {}) { const r = await fetch(API + path, options); let d = {}; try { d = await r.json() } catch { } if (r.status === 401) { location.replace('login.html'); throw Error('La sesión expiró') } if (!r.ok || d.ok === false) {
       const error = Error(d.message || 'No fue posible completar la solicitud');
       error.httpStatus = r.status;
@@ -888,7 +896,22 @@
         return toast('Para esta cuenta de prueba el comprobante debe ser de $10 exactos.');
       if (Math.round(amount * 100) < Math.round(quote.minimoReporte * 100))
         return toast('El abono debe ser de al menos $1.');
-    } const payload = { ...(repartoUI.activo(paymentType)?{reparto:repartoUI.datos()}:{}), tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); reportBusy=true; btn.disabled = true; btn.textContent = 'Generando recibo…'; try { const d = await api('/pagos', { method: 'POST', headers: headers(true), body: JSON.stringify(payload) }); toast(d.vigencia?.pendienteConfiguracion ? 'Pago validado sin TAGs destinatarios; Administración debe revisar el acceso.' : (d.data?.estatus === 'VALIDADO' ? 'Pago validado correctamente.' : 'Pago reportado correctamente; pendiente de validación bancaria.')); await Promise.all([loadReceipts(), loadValidity(),loadDebts(),loadExtras(),...(repartoUI.activo(paymentType)?[repartoUI.cargar().catch(e=>toast(e.message))]:[])]); if (d.data?.id && d.data?.estatus==='VALIDADO' && d.data?.tieneReciboPdf) await openReceipt(d.data.id); $('paymentForm').reset(); resetProof(); selectedExtra = null;selectedClub=null; updatePaymentSummary() } catch (err) {
+    } const payload = { ...(repartoUI.activo(paymentType)?{reparto:repartoUI.datos()}:{}), tipoPago: paymentType, cuotaExtraordinariaId: selectedExtra?.cuotaExtraordinariaId || null, cargoExtraordinarioId:selectedExtra?.id||null,reservaCasaClubId:selectedClub?.id||null, folioOperacion: $('operationFolio').value.trim(), fechaOperacion: $('operationDate').value, horaOperacion: normalizeTime($('operationTime').value), monto: amount, comprobanteData: proofData, comprobanteNombre: proofMeta.name, comprobanteMime: proofMeta.mime, textoOcr: ocrText }; const btn = $('submitPayment'); reportBusy=true; btn.disabled = true; btn.textContent = 'Generando recibo…'; try {
+      const d=await api('/pagos',{method:'POST',headers:headers(true),body:JSON.stringify(payload)});
+      // La subida fue recibida; NO implica que Titan haya acreditado el depósito.
+      const aviso=mostrarConfirmacionReporte();
+      const historialCargado=await loadReceipts({preserveOnError:true});
+      await aviso;
+      const receiptId=Number(d.data?.id);
+      if(historialCargado&&Number.isSafeInteger(receiptId)&&receiptItems.some(p=>Number(p.id)===receiptId)){
+        await openReceiptDetails(receiptId);
+      }else{
+        toast('El comprobante se guardó, pero no se pudo abrir el detalle automáticamente. Consúltalo en Mis recibos.');
+      }
+      // No retrasar el detalle esperando otras consultas no relacionadas.
+      void Promise.allSettled([loadValidity(),loadDebts(),loadExtras(),
+        ...(repartoUI.activo(paymentType)?[repartoUI.cargar()]:[])]);
+      $('paymentForm').reset();resetProof();selectedExtra=null;selectedClub=null;updatePaymentSummary(); } catch (err) {
       if (err.code === 'COMPROBANTE_INCOMPLETO' || err.code === 'COMPROBANTE_NO_CONCILIABLE'
         || err.code === 'FOLIO_NO_PRESENTE_EN_CORREO' || err.code === 'BUZON_NO_VERIFICABLE'
         || err.code === 'FOLIO_SIN_RESPALDO_BANCARIO') {
