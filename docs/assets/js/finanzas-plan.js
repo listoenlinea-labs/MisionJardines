@@ -9,7 +9,7 @@
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const labelMonth=p=>months[Number(p.slice(5))-1]+' '+p.slice(0,4);
  const validMonth=p=>/^20\d\d-(0[1-9]|1[0-2])$/.test(p);
- let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],incomePage=1,expensePage=1;
+ let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],agrupaciones=[],incomePage=1,expensePage=1;
  const panel=$('fplanSources'),expenses=$('fplanExpenses'),notice=$('fplanStatus');
  function msg(text,error=false){notice.textContent=text;notice.dataset.error=error?'true':'false';}
  async function api(path,options={}){
@@ -81,12 +81,13 @@
   return items.map(p=>({...p,used:currentUsed(p),free:Math.max(0,p.total-currentUsed(p)),
    id:p.origen+'|'+p.origenPeriodo}));
  }
+ const parentOf=id=>agrupaciones.find(g=>Number(g.hijoId)===Number(id))?.padreId||null;
  function expenseRows(includeExcluded=false){
   return (target?.egresos||[]).filter(e=>String(e.fecha||'').slice(0,7)===period&&
    Number(e.monto)>0&&!e.esAjusteMensual&&
    !['CUOTA_EXTRAORDINARIA','PROYECTOS'].includes(String(e.categoria))&&
    !(e.categoria==='PROYECTO'&&!Number(e.proyectoId))&&
-   (includeExcluded||!excluded.includes(Number(e.id))))
+   (includeExcluded||(!excluded.includes(Number(e.id))&&!parentOf(Number(e.id)))))
    .map(e=>({id:Number(e.id),monto:Number(e.monto),fecha:e.fecha,
     nombre:String(e.concepto||e.categoria||'Egreso'),categoria:e.categoria,
     grupo:e.ambito==='EXTRAORDINARIO'?'Cuotas extraordinarias':
@@ -131,37 +132,53 @@
      '</strong><small>'+esc(x.tipo)+(x.sinConciliar?' · histórico sin conciliación':'')+'</small></td>'+
      '<td class="fplan-number-cell">'+money(x.free)+'</td><td>'+money(x.used)+
      '<small>Recibido: '+money(x.total)+'</small></td></tr>').join('')+
-    emptyPageRows(pageLimit-incomeRows.length,incomeRows.length?'':'No hay ingresos con ese filtro.'))+'</tbody></table>';
+    emptyPageRows(incomeRows.length?0:1,incomeRows.length?'':'No hay ingresos con ese filtro.'))+'</tbody></table>';
   $('fplanIncomePagination').textContent='Página '+incomePage+' de '+inPages+' · '+visibleSources.length+' fuentes';
   $('fplanIncomePrev').disabled=incomePage===1;$('fplanIncomeNext').disabled=incomePage===inPages;
   const searchOut=$('fplanSearch').value.trim().toLocaleLowerCase('es'),outSort=$('fplanExpenseSort').value;
-  let visibleExpenses=allRows.filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo+' '+x.proyectoNombre).toLocaleLowerCase('es').includes(searchOut))
+  const scope=$('fplanExpenseScope').value||'TODOS';
+  let visibleExpenses=allRows.filter(x=>scope==='TODOS'||
+    (scope==='MANTENIMIENTO'&&x.grupo==='Mantenimiento')||
+    (scope==='PROYECTOS'&&x.grupo==='Cuotas extraordinarias')||
+    (scope==='CASA_CLUB'&&x.grupo==='Casa Club'))
+   .filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo+' '+x.proyectoNombre).toLocaleLowerCase('es').includes(searchOut))
    .filter(x=>!$('fplanOnlyUnassigned').checked||
-      (!excluded.includes(x.id)&&x.monto>spend(x.id)));
+      (!excluded.includes(x.id)&&!parentOf(x.id)&&x.monto>spend(x.id)));
   visibleExpenses.sort((a,b)=>outSort==='asc'?a.monto-b.monto:outSort==='name'?a.nombre.localeCompare(b.nombre,'es'):b.monto-a.monto);
   visibleExpenses=grouped.flatMap(group=>visibleExpenses.filter(x=>x.grupo===group));
-  const outPages=Math.max(1,Math.ceil(visibleExpenses.length/pageLimit));
+  // Todos: igualar el NÚMERO REAL de filas de la página de ingresos (máx. 10).
+  // Ámbito seleccionado: mostrar todos sus movimientos en una sola hoja.
+  const expenseLimit=scope==='TODOS'?Math.max(1,incomeRows.length):Math.max(1,visibleExpenses.length);
+  const outPages=scope==='TODOS'?Math.max(1,Math.ceil(visibleExpenses.length/expenseLimit)):1;
   expensePage=Math.max(1,Math.min(expensePage,outPages));
-  const expenseRowsPage=visibleExpenses.slice((expensePage-1)*pageLimit,expensePage*pageLimit);
+  const expenseRowsPage=visibleExpenses.slice((expensePage-1)*expenseLimit,expensePage*expenseLimit);
+  $('fplanExpensePrev').parentElement.hidden=scope!=='TODOS';
   expenses.innerHTML='<table class="fplan-data-table"><thead><tr><th>Egreso / proyecto</th><th>Importe</th><th>Sin asignar</th><th>Acciones</th></tr></thead><tbody>'+
    (expenseRowsPage.map(x=>{
-    const removed=excluded.includes(x.id),remaining=Math.max(0,x.monto-spend(x.id));
+    const includedIn=parentOf(x.id);
+    const parent=allRows.find(e=>e.id===includedIn);
+    const removed=excluded.includes(x.id),remaining=includedIn?0:Math.max(0,x.monto-spend(x.id));
     const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
-    return '<tr data-expense="'+x.id+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed)+'"'+
-     (removed?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
+    return '<tr data-expense="'+x.id+'" draggable="'+(!removed&&!includedIn)+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed&&!includedIn)+'"'+
+     (removed||includedIn?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
      '</strong><small>'+esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+
+     (includedIn?' · Incluido en: '+esc(parent?.nombre||'#'+includedIn)+' · No suma por separado':' · Arrastra sobre otro egreso para agrupar')+
      '</small></td><td class="fplan-number-cell">'+money(x.monto)+'</td>'+
      '<td class="fplan-remaining-cell"><span class="fplan-remaining-amount">'+
-     (removed?'Excluido del plan':money(remaining))+'</span>'+
+     (removed?'Excluido del plan':includedIn?'Incluido':money(remaining))+'</span>'+
      (removed?'':attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
        ' · '+money(a.monto)+'<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join(''))+
      '</td><td class="fplan-actions-cell">'+
-     '<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'" aria-label="'+
-      (removed?'Restaurar egreso en el plan':'Borrar egreso del plan')+'">'+
-      (removed?'Restaurar':'Borrar')+'</button></td></tr>';
+     (includedIn
+       ?'<button type="button" class="fplan-ungroup-button" data-ungroup="'+x.id+'" aria-label="Separar egreso del gasto principal">Separar</button>'
+       :'<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'" aria-label="'+
+        (removed?'Restaurar egreso en el plan':'Borrar egreso del plan')+'">'+
+        (removed?'Restaurar':'Borrar')+'</button>')+'</td></tr>';
    }).join('')+
-   emptyPageRows(pageLimit-expenseRowsPage.length,expenseRowsPage.length?'':'No hay egresos con ese filtro.',4))+'</tbody></table>';
-  $('fplanExpensePagination').textContent='Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos';
+   emptyPageRows((scope==='TODOS'?incomeRows.length:0)-expenseRowsPage.length,expenseRowsPage.length?'':'No hay egresos con ese filtro.',4))+'</tbody></table>';
+  $('fplanExpensePagination').textContent=scope==='TODOS'
+   ?'Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos · '+expenseLimit+' por página'
+   :visibleExpenses.length+' egresos de '+$('fplanExpenseScope').selectedOptions[0].text+' · sin paginación';
   $('fplanExpensePrev').disabled=expensePage===1;$('fplanExpenseNext').disabled=expensePage===outPages;
   const groupsTotal=grouped.map(group=>sources.filter(x=>x.tipo===group).reduce((sum,x)=>sum+x.free,0));
   const total=groupsTotal.reduce((sum,x)=>sum+x,0);
@@ -173,7 +190,8 @@
   const pending=rows.filter(x=>!x.pagado).reduce((sum,x)=>sum+x.monto,0);
   $('fplanExpenseTotal').textContent='Egresos considerados '+money(rows.reduce((sum,x)=>sum+x.monto,0))+
    ' · Pendientes de pago '+money(pending)+' · Sin financiación '+money(remaining)+
-   (excluded.length?' · Excluidos del plan: '+excluded.length:'');
+   (excluded.length?' · Excluidos del plan: '+excluded.length:'')+
+   (agrupaciones.length?' · Incluidos en otros gastos: '+agrupaciones.length:'');
   const historical=target.casaClubGoogle2026;
   $('fplanHistoric').textContent=historical?.disponible&&target.anio===2026
    ?'Casa Club Google 2026: '+money(historical.total)+' · '+historical.registros+
@@ -269,7 +287,7 @@
  async function load(){
   const myRequest=++requestIndex;
   loading=true;planReady=false;hideRecommendation();actionState();clearAlert();
-  selectedSource=null;selectedExpenseId=null;editorExpense=null;excluded=[];incomePage=1;expensePage=1;$('fplanAllocator').hidden=true;
+  selectedSource=null;selectedExpenseId=null;editorExpense=null;excluded=[];agrupaciones=[];incomePage=1;expensePage=1;$('fplanAllocator').hidden=true;
   const chosen=$('fplanTargetMonth').value;
   if(!validMonth(chosen)){msg('Selecciona un periodo válido.',true);loading=false;actionState();return;}
   period=chosen;
@@ -299,6 +317,7 @@
     planReady=true;version=Number(plan.version||0);
     assignments=(plan.asignaciones||[]).map(x=>({...x}));
     excluded=(plan.excluidos||[]).map(Number);
+    agrupaciones=(plan.agrupaciones||[]).map(x=>({hijoId:Number(x.hijoId),padreId:Number(x.padreId)}));
     allPlans=plan.planes||[];notes=plan.observaciones||'';
     $('fplanNotes').value=notes;
    }else{
@@ -340,6 +359,7 @@
   const current=year>=2020&&month>=1&&month<=12?year+'-'+String(month).padStart(2,'0'):
    new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit'}).format(new Date());
   sourceMonth=current;$('fplanTargetMonth').value=current;
+  $('fplanExpenseScope').value='TODOS';
   dialog.showModal();$('fplanContent').scrollTop=0;void load();
  });
  $('fplanPrevMonth').addEventListener('click',()=>{
@@ -360,6 +380,7 @@
  $('fplanIncomeSort').addEventListener('change',render);
  $('fplanIncomeSearch').addEventListener('input',()=>{incomePage=1;render();});
  $('fplanOnlyUnassigned').addEventListener('change',()=>{expensePage=1;render();});
+ $('fplanExpenseScope').addEventListener('change',()=>{expensePage=1;render();});
  $('fplanIncomePrev').addEventListener('click',()=>{incomePage--;render();});
  $('fplanIncomeNext').addEventListener('click',()=>{incomePage++;render();});
  $('fplanExpensePrev').addEventListener('click',()=>{expensePage--;render();});
@@ -371,18 +392,66 @@
  panel.addEventListener('dragstart',e=>{const x=e.target.closest('[data-source]');
   if(x)e.dataTransfer.setData('text/plain',x.dataset.source);
  });
- expenses.addEventListener('dragover',e=>{if(e.target.closest('[data-expense]'))e.preventDefault();});
+ expenses.addEventListener('dragstart',e=>{
+  const row=e.target.closest('[data-expense]');
+  if(!row||row.getAttribute('draggable')!=='true'){e.preventDefault();return;}
+  // MIME específico: nunca confundir un gasto arrastrado con un ingreso.
+  e.dataTransfer.setData('application/x-mj-egreso',row.dataset.expense);
+  e.dataTransfer.effectAllowed='move';
+ });
+ expenses.addEventListener('dragover',e=>{
+  const targetRow=e.target.closest('[data-expense]');if(!targetRow)return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+ });
  expenses.addEventListener('drop',e=>{
-  const x=e.target.closest('[data-expense]');if(!x)return;
-  e.preventDefault();chooseSource(e.dataTransfer.getData('text/plain'));
-  chooseExpense(Number(x.dataset.expense));
+  const row=e.target.closest('[data-expense]');if(!row)return;
+  e.preventDefault();
+  const expenseId=Number(row.dataset.expense);
+  if(Array.from(e.dataTransfer.types||[]).includes('application/x-mj-egreso')){
+   const childId=Number(e.dataTransfer.getData('application/x-mj-egreso'));
+   const all=expenseRows(true);
+   const child=all.find(x=>x.id===childId),parent=all.find(x=>x.id===expenseId);
+   if(!child||!parent||childId===expenseId){msg('Arrastra un egreso distinto encima de su gasto principal.',true);return;}
+   if(excluded.includes(childId)||excluded.includes(expenseId)||parentOf(childId)||parentOf(expenseId)||
+     child.grupo!==parent.grupo||Number(child.proyectoId||0)!==Number(parent.proyectoId||0)){
+    msg('Solo puedes agrupar egresos activos del mismo ámbito y proyecto, sin relaciones previas.',true);return;
+   }
+   const childrenTotal=agrupaciones.filter(x=>x.padreId===expenseId)
+    .reduce((sum,g)=>sum+Number(all.find(x=>x.id===g.hijoId)?.monto||0),0);
+   if(childrenTotal+child.monto>parent.monto){
+    msg('Los gastos incluidos no pueden superar el importe del gasto principal.',true);return;
+   }
+   if(assignments.some(x=>x.egresoId===childId)){
+    msg('Quita antes las asignaciones del gasto que deseas incluir en otro.',true);return;
+   }
+   if(!window.confirm('¿Confirmas que «'+child.nombre+'» YA ESTÁ incluido en el importe de «'+parent.nombre+
+    '»? Se guardará la relación y no se sumará dos veces en este plan. El egreso original no se elimina.'))return;
+   agrupaciones.push({hijoId:childId,padreId:expenseId});
+   if(selectedExpenseId===childId)selectedExpenseId=null;
+   hideRecommendation();render();msg('Relación agregada. Pulsa Guardar plan para conservarla.');
+   return;
+  }
+  chooseSource(e.dataTransfer.getData('text/plain'));
+  chooseExpense(expenseId);
  });
  expenses.addEventListener('click',e=>{
+  const ungroup=e.target.closest('[data-ungroup]');
+  if(ungroup){
+   const childId=Number(ungroup.dataset.ungroup);
+   agrupaciones=agrupaciones.filter(g=>g.hijoId!==childId);
+   hideRecommendation();render();
+   msg('Gasto separado. Volverá a sumarse por separado cuando guardes el plan.');
+   return;
+  }
   const remove=e.target.closest('[data-remove]');
   if(remove){hideRecommendation();assignments.splice(Number(remove.dataset.remove),1);render();msg('Asignación retirada del borrador. Guarda para conservar el cambio.');return;}
   const toggle=e.target.closest('[data-exclude]');
   if(toggle){
    const id=Number(toggle.dataset.exclude);
+   if(agrupaciones.some(g=>g.padreId===id)){
+    msg('Primero separa los conceptos incluidos en este gasto antes de excluirlo del plan.',true);return;
+   }
    if(excluded.includes(id)){excluded=excluded.filter(x=>x!==id);msg('Gasto restaurado; pulsa Guardar plan.');}
    else{
     const row=expenseRows(true).find(x=>x.id===id);
@@ -394,13 +463,13 @@
    hideRecommendation();render();return;
   }
   const row=e.target.closest('[data-expense]');
-  if(row&&!excluded.includes(Number(row.dataset.expense))){
+  if(row&&!excluded.includes(Number(row.dataset.expense))&&!parentOf(Number(row.dataset.expense))){
    selectedExpenseId=Number(row.dataset.expense);render();
    msg('Egreso seleccionado. Elige un ingreso y pulsa Asignar en el footer.');
   }
  });
  expenses.addEventListener('keydown',e=>{
-  if(['Enter',' '].includes(e.key)&&e.target.matches('[data-expense]')&&!excluded.includes(Number(e.target.dataset.expense))){
+  if(['Enter',' '].includes(e.key)&&e.target.matches('[data-expense]')&&!excluded.includes(Number(e.target.dataset.expense))&&!parentOf(Number(e.target.dataset.expense))){
    e.preventDefault();selectedExpenseId=Number(e.target.dataset.expense);render();
   }
  });
@@ -422,10 +491,12 @@
   const btn=$('fplanSave');btn.disabled=true;msg('Guardando y validando fondos en el servidor...');
   try{
    const result=await api('/plan-mensual',{method:'PUT',body:JSON.stringify({
-    periodo:period,version,asignaciones,excluidos,observaciones:$('fplanNotes').value})});
+    periodo:period,version,asignaciones,excluidos,agrupaciones,
+    observaciones:$('fplanNotes').value})});
    version=result.version;
    const fresh=await api('/plan-mensual?periodo='+encodeURIComponent(period));
    allPlans=fresh.planes||[];assignments=fresh.asignaciones||[];excluded=(fresh.excluidos||[]).map(Number);
+   agrupaciones=(fresh.agrupaciones||[]).map(x=>({hijoId:Number(x.hijoId),padreId:Number(x.padreId)}));
    render();msg(result.message||'Plan guardado correctamente.');
   }catch(e){msg(e.message,true);}
   finally{btn.disabled=false;}

@@ -36,9 +36,10 @@ const fuenteMonto=(a,data)=>{
  throw fail(400,'Fuente de dinero inválida');
 };
 async function leerPlanes(options={}){
- const rows=await db.query('SELECT periodo,version,asignaciones,excluidos,observaciones,actualizado_en FROM finanzas_planes_mensuales ORDER BY periodo',
+ const rows=await db.query('SELECT periodo,version,asignaciones,excluidos,agrupaciones,observaciones,actualizado_en FROM finanzas_planes_mensuales ORDER BY periodo',
   {type:QueryTypes.SELECT,...options});
- return rows.map(x=>({...x,asignaciones:json(x.asignaciones),excluidos:json(x.excluidos)}));
+ return rows.map(x=>({...x,asignaciones:json(x.asignaciones),excluidos:json(x.excluidos),
+  agrupaciones:json(x.agrupaciones)}));
 }
 const error=(res,e)=>{
  if(!e.status)console.error('[Finanzas plan]',e);
@@ -54,7 +55,8 @@ async function consultar(req,res){
   const plan=planes.find(p=>p.periodo===periodo);
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,periodo,version:plan?.version||0,
-   asignaciones:plan?.asignaciones||[],excluidos:plan?.excluidos||[],observaciones:plan?.observaciones||'',
+   asignaciones:plan?.asignaciones||[],excluidos:plan?.excluidos||[],
+   agrupaciones:plan?.agrupaciones||[],observaciones:plan?.observaciones||'',
    planes:planes.map(p=>({periodo:p.periodo,version:p.version,asignaciones:p.asignaciones}))});
  }catch(e){return error(res,e);}
 }
@@ -62,10 +64,11 @@ async function guardar(req,res){
  try{
   const periodo=req.body?.periodo,version=Number(req.body?.version);
   const asignaciones=req.body?.asignaciones,observaciones=String(req.body?.observaciones||'').trim(),
-   excluidos=req.body?.excluidos??[];
+   excluidos=req.body?.excluidos??[],agrupaciones=req.body?.agrupaciones??[];
   if(!validPeriodo(periodo)||!Number.isSafeInteger(version)||version<0||
     !Array.isArray(asignaciones)||asignaciones.length>250||observaciones.length>1200||
-    !Array.isArray(excluidos)||excluidos.length>500)
+    !Array.isArray(excluidos)||excluidos.length>500||
+    !Array.isArray(agrupaciones)||agrupaciones.length>250)
    throw fail(400,'Plan o versión inválidos');
   const clean=asignaciones.map(x=>{
    const egresoId=Number(x?.egresoId),origen=String(x?.origen||''),
@@ -83,14 +86,44 @@ async function guardar(req,res){
      new Set(cleanExcluded).size!==cleanExcluded.length||
      clean.some(a=>cleanExcluded.includes(a.egresoId)))
    throw fail(400,'Una exclusión debe referirse a un egreso válido sin fondos asignados.');
+  // Cada relación indica que el gasto hijo YA está incluido en el importe
+  // del padre. Solo afecta el plan mensual; no altera egresos originales.
+  const cleanGroups=agrupaciones.map(x=>{
+   const hijoId=Number(x?.hijoId),padreId=Number(x?.padreId);
+   if(!Number.isSafeInteger(hijoId)||!Number.isSafeInteger(padreId)||
+      hijoId<=0||padreId<=0||hijoId===padreId)
+    throw fail(400,'La agrupación necesita dos egresos distintos válidos.');
+   return {hijoId,padreId};
+  });
+  const childIds=cleanGroups.map(x=>x.hijoId);
+  if(new Set(childIds).size!==childIds.length||
+     cleanGroups.some(x=>childIds.includes(x.padreId))||
+     cleanGroups.some(x=>cleanExcluded.includes(x.hijoId)||cleanExcluded.includes(x.padreId))||
+     clean.some(x=>childIds.includes(x.egresoId)))
+   throw fail(400,'Un gasto incluido no puede tener fondos asignados, estar excluido o contener otro gasto.');
   await asegurarPlanes();
-  const ids=[...new Set(clean.map(x=>x.egresoId).concat(cleanExcluded))];
+  const ids=[...new Set(clean.map(x=>x.egresoId).concat(cleanExcluded,
+   cleanGroups.flatMap(x=>[x.hijoId,x.padreId])))];
   const gastos=ids.length?await Egreso.findAll({where:{id:{[Op.in]:ids}},attributes:['id','fecha','monto','ambito','proyectoId']}):[];
   const gastosById=new Map(gastos.map(g=>[Number(g.id),g]));
   for(const id of cleanExcluded){
    const e=gastosById.get(id);
    if(!e||String(e.fecha).slice(0,7)!==periodo)
     throw fail(409,'Un egreso excluido ya no corresponde a este periodo.');
+  }
+  // Agrupar solamente egresos del mismo ámbito/proyecto y del mismo mes.
+  // No contar dos veces importes ya incluidos en otro gasto.
+  const groupedTotals=new Map();
+  for(const g of cleanGroups){
+   const child=gastosById.get(g.hijoId),parent=gastosById.get(g.padreId);
+   if(!child||!parent||String(child.fecha).slice(0,7)!==periodo||
+      String(parent.fecha).slice(0,7)!==periodo||
+      child.ambito!==parent.ambito||
+      Number(child.proyectoId||0)!==Number(parent.proyectoId||0))
+    throw fail(409,'Solo puedes agrupar conceptos del mismo ámbito, proyecto y mes.');
+   groupedTotals.set(g.padreId,(groupedTotals.get(g.padreId)||0)+cents(child.monto));
+   if(groupedTotals.get(g.padreId)>cents(parent.monto))
+    throw fail(409,'Los conceptos incluidos superan el importe total del gasto principal.');
   }
   const porEgreso=new Map();
   for(const x of clean){
@@ -138,12 +171,14 @@ async function guardar(req,res){
    }
    const next=version+1;
    await db.query(`INSERT INTO finanzas_planes_mensuales
-     (periodo,version,asignaciones,excluidos,observaciones,actualizado_por)
-     VALUES (:periodo,:next,:asignaciones,:excluidos,:observaciones,:usuario)
+     (periodo,version,asignaciones,excluidos,agrupaciones,observaciones,actualizado_por)
+     VALUES (:periodo,:next,:asignaciones,:excluidos,:agrupaciones,:observaciones,:usuario)
      ON DUPLICATE KEY UPDATE version=VALUES(version),asignaciones=VALUES(asignaciones),
-       excluidos=VALUES(excluidos),observaciones=VALUES(observaciones),actualizado_por=VALUES(actualizado_por)`,
+       excluidos=VALUES(excluidos),agrupaciones=VALUES(agrupaciones),
+       observaciones=VALUES(observaciones),actualizado_por=VALUES(actualizado_por)`,
     {transaction,replacements:{periodo,next,asignaciones:JSON.stringify(clean),
-     excluidos:JSON.stringify(cleanExcluded),observaciones,usuario:Number(req.usuario.usuarioId)}});
+     excluidos:JSON.stringify(cleanExcluded),agrupaciones:JSON.stringify(cleanGroups),
+     observaciones,usuario:Number(req.usuario.usuarioId)}});
    return {version:next};
   });
   res.setHeader('Cache-Control','no-store');

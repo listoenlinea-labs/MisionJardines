@@ -16,6 +16,7 @@ async function asegurarPlanes(){
    version INT UNSIGNED NOT NULL DEFAULT 1,
    asignaciones JSON NOT NULL,
    excluidos JSON NULL,
+   agrupaciones JSON NULL,
    observaciones VARCHAR(1200) NOT NULL DEFAULT '',
    actualizado_por BIGINT UNSIGNED NOT NULL,
    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -24,6 +25,8 @@ async function asegurarPlanes(){
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [fields]=await db.query("SHOW COLUMNS FROM finanzas_planes_mensuales LIKE 'excluidos'");
   if(!fields.length)await db.query('ALTER TABLE finanzas_planes_mensuales ADD COLUMN excluidos JSON NULL AFTER asignaciones');
+  const [relations]=await db.query("SHOW COLUMNS FROM finanzas_planes_mensuales LIKE 'agrupaciones'");
+  if(!relations.length)await db.query('ALTER TABLE finanzas_planes_mensuales ADD COLUMN agrupaciones JSON NULL AFTER excluidos');
   ready=true;
  })();
  try{return await pending;}finally{pending=null;}

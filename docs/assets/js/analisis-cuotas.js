@@ -350,14 +350,17 @@ let expensePage=1;
  function renderProjectDashboard(project){
   const houses=(data.viviendasMantenimiento||[]).filter(h=>!h.esPrueba),details=project.viviendasDetalle||[];
   const byId=new Map(details.map(x=>[Number(x.casaId),x]));
-  const applied=houses.length-Number(project.noAplica||0),complete=Number(project.cumplidos||0);
+  // El padrón de la tarjeta pertenece al proyecto, no al padrón general.
+  const excluidas=details.filter(h=>h.estatus==='NO_APLICA'||h.noAplica===true).length;
+  const noAplica=Math.max(excluidas,Number(project.noAplica||0));
+  const applied=Math.max(0,houses.length-noAplica),complete=Number(project.cumplidos||0);
   const partial=Number(project.parciales||0),registered=complete+partial;
-  const incomplete=Number(project.pendientes||0)+partial;
+  const incomplete=Math.max(0,applied-complete);
   const pct=applied?Math.round(registered/applied*10000)/100:0;
   const pctSinRegistro=applied?Math.round((100-pct)*100)/100:0;
-  const cards=[['Casas en padrón',houses.length],
+  const cards=[['Casas en padrón',applied],
    ['Con pago registrado',registered+' · '+pct.toFixed(2)+'%'],
-   ['Sin pago completo',Number(project.pendientes||0)+' · '+pctSinRegistro.toFixed(2)+'%'],
+   ['Sin pago completo',Math.max(0,applied-registered)+' · '+pctSinRegistro.toFixed(2)+'%'],
    ['Recaudado del proyecto',fmt(project.recaudado)]];
   $('financialSummary').innerHTML=cards.map(([name,val],index)=>
    downloadableFinancialCard(name,val,['padron','pagadas','pendientes','historicas'][index])).join('');
@@ -369,15 +372,15 @@ let expensePage=1;
    ['Fondos disponibles después de gastos',fmt(project.fondosDisponibles)],
    ['Saldo a favor',fmt(project.saldoFavor)],['Cuotas completas',complete],
    ['Abonos parciales',partial],['Sin aportaciones',project.pendientes],
-   ['No aplica',Number(project.noAplica||0)],['Casas con cuota',applied]
+   ['No aplica',noAplica],['Casas con cuota',applied]
   ].map(([n,v])=>financialCard(n,v)).join('');
   const completion=applied?Math.round(complete/applied*10000)/100:0;
   $('financeDonut').style.setProperty('--percent',completion+'%');
-  $('financeDonutText').innerHTML=esc(completion)+'%<small>Meta alcanzada</small>';
-  $('financeLegend').innerHTML='<div>Meta alcanzada <b>'+complete+'</b></div>'+
-   '<div>Sin meta completa <b>'+incomplete+'</b></div>'+
-   '<div>No aplica <b>'+Number(project.noAplica||0)+'</b></div>'+
-   '<div>Total viviendas <b>'+houses.length+'</b></div>';
+  $('financeDonutText').innerHTML=esc(completion)+'%<small>PAGADO</small>';
+  $('financeLegend').innerHTML='<div>PAGADO <b>'+complete+'</b></div>'+
+   '<div>Sin pago completo <b>'+incomplete+'</b></div>'+
+   '<div>No aplica <b>'+noAplica+'</b></div>'+
+   '<div>Casas con cuota <b>'+applied+'</b></div>';
   const grouped=new Map();
   for(const h of houses){
    const name=String(h.calle||'Sin calle'),detail=byId.get(Number(h.casaId));
@@ -392,7 +395,7 @@ let expensePage=1;
   $('financePadronNote').hidden=false;
   $('financePadronNote').textContent='Datos exclusivos del proyecto «'+project.nombre+
    '». Los porcentajes excluyen casas No aplica; las aportaciones no son cobros de mantenimiento.';
-  document.querySelector('#financeCompliancePanel h2').textContent='Viviendas con meta alcanzada';
+  document.querySelector('#financeCompliancePanel h2').textContent='Viviendas con pago completo';
   document.querySelector('#financeStreetPanel h2').textContent='Cumplimiento del proyecto por calle';
  }
 
@@ -854,7 +857,7 @@ function elegirConcepto(concepto,{resetPage=true}={}){
   const paidOption=$('financeStatus').querySelector('option[value="PAGADO"]');
   const pendingOption=$('financeStatus').querySelector('option[value="PENDIENTE"]');
   const partialOption=$('financeStatus').querySelector('option[value="PAGO_PARCIAL"]');
-  paidOption.textContent=projectStatuses?'Meta alcanzada':'Pagadas';
+  paidOption.textContent=projectStatuses?'PAGADO':'Pagadas';
   pendingOption.textContent=projectStatuses?'Sin aportes':'Pendientes';
   partialOption.hidden=!projectStatuses;partialOption.disabled=!projectStatuses;
   const noAplicaOption=$('financeStatus').querySelector('option[value="NO_APLICA"]');
@@ -1038,7 +1041,7 @@ function renderHouses(){
     houseCell('Estado',activeConcept==='MANTENIMIENTO'&&h.abonoConAdeudo&&Number(h.saldoPendiente)>0
       ?'<span class="house-abono-debt-tag" title="Tiene un pago registrado y todavía conserva adeudos pendientes">Abono con adeudo</span>'
       :'<span class="'+(isProjectNoAplica(h)?'house-no-aplica-tag':h.estatus==='SIN CARGOS'?'status-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'status-paid':'status-pending')+'">'+esc(activeConcept==='EXTRAORDINARIO'&&activeProyectoId
-       ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'META ALCANZADA',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
+       ?({PENDIENTE:'SIN APORTES',PAGO_PARCIAL:'ABONANDO',PAGADO:'PAGADO',NO_APLICA:'No aplica'}[h.estatus]||h.estatus)
        :h.estatus)+'</span>'+clubApprovalBadge(h))+
     houseCell('Pagado','<button type="button" class="house-paid-history'+(isProjectNoAplica(h)?' is-no-aplica':h.estatus==='SIN CARGOS'?' is-neutral':String(h.estatus||'').toUpperCase()==='PAGADO'?'':' is-pending')+'" data-paid-history="'+Number(h.casaId)+'" aria-label="Ver historial de pagos de '+esc(h.calle+' '+h.numero)+'" title="'+(activeConcept==='CASA_CLUB'&&Number(h.recuperacionesHistoricasGoogle)>0?
       esc(String(h.recuperacionesHistoricasGoogle)+' cobro(s) de Google Sheets 2026'):
