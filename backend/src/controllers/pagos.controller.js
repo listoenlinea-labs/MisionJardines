@@ -693,7 +693,7 @@ async function confirmarPagoDesdeBanco(pagoId, correoHash) {
                 fechaValidacion: new Date(), actualizadoEn: new Date(),
                 verificacionBancaria: {...(pago.verificacionBancaria||{}),version:1,etapa:'VALIDADO',
                   fechaRevision:new Date().toISOString(),
-                  detalle:'Pago confirmado: coincidieron los identificadores, el importe, la fecha bancaria y la cuenta destino en una notificación bancaria de remitente autorizado.'},
+                  detalle:'Pago confirmado mediante notificación bancaria autorizada, relacionada de forma única con el comprobante, con importe, fecha y cuenta destino compatibles.'},
                 observacionesRevision: 'Validado automáticamente por coincidencia de notificación bancaria de remitente autorizado.' }, { transaction });
             const vigencia = pago.tipoPago === 'MANTENIMIENTO'
                 ? (repartoService.esReparto(pago.aplicacionCuotas) ? await repartoService.confirmar(pago,transaction) : await cuotasMantenimiento.confirmar(pago, transaction)) : null;
