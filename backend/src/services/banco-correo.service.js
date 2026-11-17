@@ -80,6 +80,27 @@ function montoRecibido(texto){
  }
  return cents.size===1?[...cents][0]/100:null;
 }
+
+// Los avisos pueden traer la clave en la celda/línea siguiente.
+// No unir otras etiquetas, cuentas o fechas a un rastreo: solamente códigos
+// explícitamente rotulados y no ambiguos se pueden conciliar.
+function rastreoEtiquetado(texto){
+ const lines=String(texto||'').split(/\n/).map(l=>l.trim().replace(/\s+/g,' ')).filter(Boolean);
+ const label=/^(?:CLAVE\s+(?:DE\s+)?RASTREO|NUMERO\s+(?:DE\s+)?SEGUIMIENTO|ID\s+(?:DE\s+)?TRANSFERENCIA|CLAVE\s+SPEI)\b/;
+ const encontrados=new Set();
+ for(let i=0;i<lines.length;i++){
+  const m=lines[i].match(label);
+  if(!m)continue;
+  const resto=lines[i].slice(m[0].length).replace(/^\s*[:#=.-]\s*/,'').trim();
+  const candidato=resto||lines[i+1]||'';
+  // Un código no puede contener palabras de otro campo.
+  const match=candidato.match(/^([A-Z0-9][A-Z0-9-]{11,89})(?:\s|$)/);
+  if(!match)continue;
+  const value=clave(match[1]);
+  if(value.length>=12&&value.length<=90&&/\d/.test(value))encontrados.add(value);
+ }
+ return encontrados.size===1?[...encontrados][0]:'';
+}
 function datosAviso(mensaje,config=process.env){
  const remitente=String(mensaje?.from?.emailAddress?.address||'').trim().toLowerCase();
  const administrador=String(config.PAGOS_BANK_FORWARD_FROM_ADDRESS||'').trim().toLowerCase();
@@ -91,9 +112,8 @@ function datosAviso(mensaje,config=process.env){
  const origen=autorizado?'ADMINISTRADOR':'';
  const body=convertirTexto(mensaje?.body?.content||'');
  const upper=normal(body);
- const claveMatch=upper.match(/\b(?:CLAVE\s+(?:DE\s+)?RASTREO|NUMERO\s+(?:DE\s+)?SEGUIMIENTO|ID\s+(?:DE\s+)?TRANSFERENCIA)\s*[:#=\-]?\s*([A-Z0-9][A-Z0-9\s-]{10,100})/);
- const tracking=claveMatch?clave(claveMatch[1].split(/\b(?:CONSULTA|VERIFICA|REFERENCIA|CONCEPTO|TIPO|FECHA|HORA)\b/)[0].split('\n')[0]):'';
- const referencia=valorEtiquetado(upper,/\bREFERENCIA(?:\s+NUMERICA)?\b/,/^\s*(\d{5,20})(?!\d)(?:\s|$)/);
+ const tracking=rastreoEtiquetado(upper);
+ const referencia=valorEtiquetado(upper,/\b(?:REFERENCIA(?:\s+(?:NUMERICA|BANCARIA|SPEI))?|NUMERO\s+DE\s+REFERENCIA)\b/,/^\s*(\d{5,20})(?!\d)(?:\s|$)/);
  const folio=valorEtiquetado(upper,/\b(?:FOLIO(?:\s+DE\s+OPERACION)?|NUMERO\s+DE\s+(?:OPERACION|TRANSACCION)|ID\s+DE\s+(?:OPERACION|MOVIMIENTO)|CODIGO\s+DE\s+AUTORIZACION)\b/,/^\s*([A-Z0-9-]{5,90})(?:\s|$)/);
  // El encabezado y el importe viven en filas HTML distintas. Admitir
  // espacios/saltos entre ellos sin saltar a Comisión, Saldo u otro campo.
@@ -155,4 +175,4 @@ async function obtenerAvisos(){
 function huellaMensaje(messageId,mailbox=process.env.PAGOS_IMAP_MAILBOX){
  return createHash('sha256').update(String(mailbox||'').toLowerCase()+':'+String(messageId)).digest('hex');
 }
-module.exports={datosAviso,montoRecibido,corresponde,coincideDatosBancarios,chequeosAviso,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso};
+module.exports={datosAviso,montoRecibido,corresponde,coincideDatosBancarios,chequeosAviso,configurado,obtenerAvisos,huellaMensaje,fechaDeAviso,rastreoEtiquetado};
