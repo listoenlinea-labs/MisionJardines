@@ -1107,6 +1107,7 @@
     }
     async function openPendingDetail(p) {
       const dialog = $('pendingDetail');
+      dialog.dataset.pagoId=String(p.id);
       const body = $('pendingDetailBody');
       const type = p.tipoPago === 'EXTRAORDINARIO' ? 'Extraordinario' : p.tipoPago==='CASA_CLUB'?'Casa club':'Mantenimiento';
       body.innerHTML =
@@ -1116,7 +1117,12 @@
         '<div><small>Tipo</small><strong>' + esc(type) + '</strong></div></div>' +
         (p.reparto?.length?'<div class="pending-auto-status">'+p.reparto.map(d=>esc(d.calle)+' · Casa '+esc(d.numero)+': '+money(d.monto)).join('<br>')+'</div>':'')+
         '<div class="pending-proof"><strong>Comprobante bancario</strong><p id="pendingProofStatus">Cargando imagen…</p><img id="pendingProofImage" alt="Comprobante bancario, seleccionar para ampliar" role="button" tabindex="0" hidden><button type="button" class="pending-proof-zoom-button" id="pendingZoomButton" hidden>Ampliar fotografía ↗</button></div>' +
-        '<div class="pending-auto-status" role="status">En revisión automática: el sistema confirmará el depósito únicamente cuando el comprobante coincida con una notificación del remitente autorizado en el buzón configurado. No es necesaria una decisión de Administración.</div>';
+        '<div class="pending-cpo-assist"><strong>Cotejo asistido con Titan</strong><p>Si el OCR no encontró la clave, escribe los dígitos que se ven en el comprobante. Se contrastarán con el correo bancario, el importe, la fecha y la cuenta antes de validar.</p>'+
+        '<label for="pendingCpoNumber">Número completo de comprobante / rastreo</label>'+
+        '<div class="pending-cpo-controls"><input id="pendingCpoNumber" type="text" inputmode="numeric" maxlength="22" placeholder="Ej. 190057077496" autocomplete="off">'+
+        '<button type="button" id="pendingCpoCheck">Cotejar con Titan</button></div>'+
+        '<p id="pendingCpoStatus" class="hint" role="status" aria-live="polite"></p></div>'+
+        '<div class="pending-auto-status" role="status">La revisión bancaria automática sigue activa. El cotejo asistido solo acredita con una notificación real y única de Titan, compatible en importe, fecha y cuenta.</div>';
       dialog.showModal();
       dialog.scrollTop = 0;
       try {
@@ -1170,6 +1176,37 @@
     };
     $('pendingDetailBody').addEventListener('click', event => {
       if (event.target.closest('#pendingProofImage, #pendingZoomButton')) zoomProof();
+    });
+    let pendingCpoBusy=false;
+    $('pendingDetailBody').addEventListener('click',async event=>{
+      const button=event.target.closest('#pendingCpoCheck');
+      if(!button||pendingCpoBusy)return;
+      const id=Number($('pendingDetail').dataset.pagoId);
+      const input=$('pendingCpoNumber');
+      const status=$('pendingCpoStatus');
+      const digits=String(input?.value||'').trim().toUpperCase().replace(/[\s-]/g,'').replace(/^CPO/,'');
+      if(!/^\d{10,17}$/.test(digits)){
+        status.textContent='Escribe de 10 a 17 dígitos completos tal como se ven en el comprobante.';
+        return;
+      }
+      if(!window.confirm('¿Confirmas que revisaste el comprobante original y que este es su número completo? Titan todavía debe comprobar el depósito.'))return;
+      pendingCpoBusy=true;
+      button.disabled=true;button.textContent='Cotejando con Titan…';
+      status.textContent='Buscando la notificación bancaria correspondiente…';
+      try{
+        const resultado=await api('/pagos/'+id+'/cotejar-clave-asistida',{
+          method:'POST',headers:headers(true),body:JSON.stringify({codigo:digits})
+        });
+        status.textContent=resultado.message||'Pago validado con Titan.';
+        toast('Pago confirmado con Titan. La cuota se actualizó correctamente.');
+        $('pendingDetail').close();
+        await Promise.allSettled([loadPending(),loadReceipts({preserveOnError:true}),loadDebts(),loadValidity()]);
+      }catch(error){
+        status.textContent=error.message||'Titan no logró identificar el depósito. Se conserva en revisión.';
+      }finally{
+        pendingCpoBusy=false;
+        if(button.isConnected){button.disabled=false;button.textContent='Cotejar con Titan';}
+      }
     });
     $('pendingDetailBody').addEventListener('keydown', event => {
       if ((event.key === 'Enter' || event.key === ' ') && event.target.id === 'pendingProofImage') {
