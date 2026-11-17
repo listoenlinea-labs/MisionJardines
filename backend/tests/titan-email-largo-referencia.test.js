@@ -72,3 +72,23 @@ test('Si no coinciden, explica tipos vistos sin publicar sus valores',()=>{
  assert.ok(d.tiposAviso.includes('referencia'));
  assert.ok(!d.detalle.includes('910260'));
 });
+
+
+test('Titan admite etiqueta alternativa y rastreo en la línea siguiente sin inventar IDs',()=>{
+ const parseo=require('../src/services/banco-correo.service');
+ const message={
+  id:'titan:formatted',subject:'Notificación Banco Azteca',
+  receivedDateTime:new Date().toISOString(),
+  from:{emailAddress:{address:'admin@ejemplo.test'}},
+  body:{content:'Recibiste de otro banco $350 16/Nov/2026, 19:26:00 A tu cuenta ****4409\n'+
+   'Número de referencia\n00910260\nClave de rastreo\nMBAN01002610260078204229'}
+ };
+ const aviso=parseo.datosAviso(message,{PAGOS_BANK_FORWARD_FROM_ADDRESS:'admin@ejemplo.test',
+  PAGOS_BANK_MAIL_SUBJECT:'Notificación Banco Azteca',PAGOS_BANK_MAIL_MAX_DIAS:7});
+ assert.equal(aviso.referencia,'00910260');
+ assert.equal(aviso.tracking,'MBAN01002610260078204229');
+ assert.equal(aviso.monto,350);
+ assert.equal(aviso.cuenta,'4409');
+ assert.equal(parseo.rastreoEtiquetado('CUENTA DESTINO 123456789012345678'),'');
+ assert.equal(parseo.rastreoEtiquetado('CLAVE DE RASTREO 123456789012\nCLAVE DE RASTREO 111111111111'),'');
+});
