@@ -9,7 +9,7 @@
  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const labelMonth=p=>months[Number(p.slice(5))-1]+' '+p.slice(0,4);
  const validMonth=p=>/^20\d\d-(0[1-9]|1[0-2])$/.test(p);
- let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,projectFilterId='';
+ let period='',sourceMonth='',target=null,origin=null,version=0,assignments=[],allPlans=[],notes='',selectedSource=null,editorExpense=null,loading=false,planReady=false,requestIndex=0,selectedExpenseId=null,excluded=[],incomePage=1,expensePage=1;
  const panel=$('fplanSources'),expenses=$('fplanExpenses'),notice=$('fplanStatus');
  function msg(text,error=false){notice.textContent=text;notice.dataset.error=error?'true':'false';}
  async function api(path,options={}){
@@ -49,6 +49,10 @@
  function actionState(){
   $('fplanSave').disabled=!planReady||loading;
   $('fplanRecommend').disabled=!planReady||loading||!target;
+  const source=selectedSource&&pools().find(x=>x.id===selectedSource.id);
+  const expense=expenseRows().find(x=>x.id===selectedExpenseId);
+  $('fplanAssignFooter').disabled=!planReady||loading||!source||source.free<=0||
+   !expense||expense.monto<=spend(expense.id);
  }
  function currentUsed(source){
   const all=allPlans.filter(x=>x.periodo!==period).flatMap(x=>x.asignaciones||[]).concat(assignments);
@@ -69,22 +73,27 @@
     total:annualClub?Number(historical.total||0):Number(origin.finanzasAmbitos?.CASA_CLUB?.ingresos||0),
     sinConciliar:annualClub}
   ];
-  const selected=(target.proyectosExtraordinarios||[]).find(p=>String(p.id)===String(projectFilterId));
-  if(selected)items.push({
-   origen:'PROYECTO:'+Number(selected.id),origenPeriodo:'ACUMULADO',tipo:'Cuotas extraordinarias',
-   name:selected.nombre,total:Number(selected.recaudado||0)});
+  for(const project of target.proyectosExtraordinarios||[]){
+   if(!Number.isSafeInteger(Number(project.id))||Number(project.id)<1)continue;
+   items.push({origen:'PROYECTO:'+Number(project.id),origenPeriodo:'ACUMULADO',
+    tipo:'Cuotas extraordinarias',name:project.nombre,total:Number(project.recaudado||0)});
+  }
   return items.map(p=>({...p,used:currentUsed(p),free:Math.max(0,p.total-currentUsed(p)),
    id:p.origen+'|'+p.origenPeriodo}));
  }
- function expenseRows(){
+ function expenseRows(includeExcluded=false){
   return (target?.egresos||[]).filter(e=>String(e.fecha||'').slice(0,7)===period&&
    Number(e.monto)>0&&!e.esAjusteMensual&&
-   !(e.categoria==='CUOTA_EXTRAORDINARIA'||e.categoria==='PROYECTOS'))
+   !['CUOTA_EXTRAORDINARIA','PROYECTOS'].includes(String(e.categoria))&&
+   !(e.categoria==='PROYECTO'&&!Number(e.proyectoId))&&
+   (includeExcluded||!excluded.includes(Number(e.id))))
    .map(e=>({id:Number(e.id),monto:Number(e.monto),fecha:e.fecha,
     nombre:String(e.concepto||e.categoria||'Egreso'),categoria:e.categoria,
     grupo:e.ambito==='EXTRAORDINARIO'?'Cuotas extraordinarias':
      e.ambito==='CASA_CLUB'?'Casa Club':'Mantenimiento',
-    pagado:e.pagado!==false,proyectoId:e.proyectoId})); 
+    pagado:e.pagado!==false,proyectoId:e.proyectoId,
+    proyectoNombre:(target?.proyectosExtraordinarios||[]).find(p=>Number(p.id)===Number(e.proyectoId))?.nombre||
+      (e.ambito==='EXTRAORDINARIO'?'Sin proyecto asociado':'')})); 
  }
  function labelSource(a){
   if(a.origen==='MANTENIMIENTO')return 'Mantenimiento · '+labelMonth(a.origenPeriodo);
