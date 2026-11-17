@@ -69,6 +69,9 @@ async function cleanup(){
 }
 function start(){
  if(!enabled()||timer)return;
+ if(process.env.WHATSAPP_ZERO_COST_MODE!=='true'){
+  console.error('[WhatsApp $0] El piloto solo se inicia con WHATSAPP_ZERO_COST_MODE=true');return;
+ }
  if(!process.env.WHATSAPP_BOT_SESSION_SECRET||process.env.WHATSAPP_BOT_SESSION_SECRET.length<32){
   console.error('[WhatsApp Bot] Falta secreto de sesiones; piloto deshabilitado');return;
  }
