@@ -372,3 +372,27 @@
     gap:14px;
   }
 }
+
+
+/* Filtro por ámbito y agrupación de egresos incluidos; conserva columnas alineadas. */
+.fplan-expense-panel .fplan-panel-toolbar{
+ grid-template-columns:minmax(108px,.72fr) minmax(150px,1.3fr) minmax(120px,.85fr);
+}
+.fplan-expense-panel .fplan-field-scope select{padding-right:28px}
+.fplan-expense-panel .fplan-data-table tr[data-expense][draggable=true]{cursor:grab}
+.fplan-expense-panel .fplan-data-table tr[data-expense][draggable=true]:active{cursor:grabbing}
+.fplan-expense-panel .fplan-data-table tr[data-expense].is-excluded small{opacity:.85}
+.fplan-expense-panel .fplan-ungroup-button{
+ border:1px solid #afcde9;background:#f0f7ff;color:#245782;
+ border-radius:9px;padding:7px 10px;font-size:.7rem;font-weight:750;
+ max-width:100%;white-space:normal;
+}
+.fplan-expense-panel .fplan-ungroup-button:hover{background:#e0effe}
+@media(max-width:950px){
+ .fplan-expense-panel .fplan-panel-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .fplan-expense-panel .fplan-field-search{grid-column:span 2}
+}
+@media(max-width:700px){
+ .fplan-expense-panel .fplan-panel-toolbar{grid-template-columns:1fr}
+ .fplan-expense-panel .fplan-field-search{grid-column:auto}
+}
