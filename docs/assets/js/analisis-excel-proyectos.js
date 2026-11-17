@@ -20,21 +20,29 @@
   if(!project)throw Error('Selecciona un proyecto extraordinario antes de descargar Excel.');
   const from=data.viviendasMantenimiento||data.viviendas||[];
   const byId=new Map((project.viviendasDetalle||[]).map(h=>[Number(h.casaId),h]));
-  const houses=[...from].sort(numericOrder).map(h=>{
+  // No bloquear la exportación por cargos ausentes: identificarlos en el Excel
+  // como pendientes de conciliación, nunca inventar que la casa "No aplica".
+  const missing=[];
+  const houses=[...from].filter(h=>!h.esPrueba&&Number.isSafeInteger(Number(h.casaId))&&Number(h.casaId)>0)
+   .sort(numericOrder).map(h=>{
    const detail=byId.get(Number(h.casaId));
-   if(!detail)throw Error('El proyecto no contiene los cargos de todas las viviendas. Actualiza el análisis.');
-   return {...detail,casaId:Number(h.casaId),calle:h.calle,numero:h.numero,nombre:h.nombre,
-    tags:h.tags,estatus:String(detail.estatus||'PENDIENTE').toUpperCase()};
+   if(!detail)missing.push(h);
+   return {...(detail||{montoCuota:0,montoPagado:0,saldoPendiente:0,saldoFavor:0,
+    estatus:'SIN_CARGO',sinCargoEnProyecto:true}),
+    casaId:Number(h.casaId),calle:h.calle,numero:h.numero,nombre:h.nombre,
+    tags:h.tags,estatus:String(detail?.estatus||'SIN_CARGO').toUpperCase()};
   });
   const rows=houses.map(h=>[h.casaId,safe(h.calle),safe(h.numero),safe(h.nombre),
-   safe(isNoAplica(h)?'No aplica':h.estatus==='PAGADO'?'Meta alcanzada':
-    h.estatus==='PAGO_PARCIAL'?'Abonando':'Sin aportes'),
+   safe(isNoAplica(h)?'No aplica':h.sinCargoEnProyecto?'Sin cargo / revisar':
+    h.estatus==='PAGADO'?'PAGADO':h.estatus==='PAGO_PARCIAL'?'Abonando':'Sin aportes'),
    money(h.montoCuota),money(h.montoPagado),money(h.ultimoPago?.monto),
    money(h.saldoPendiente),money(h.saldoFavor),date(h.ultimoPago?.fecha),
    safe(h.ultimoPago?.referencia),Number(h.tags?.detalle?.length||0)]);
   const pagos=houses.filter(paid),completas=houses.filter(complete);
-  const pendientes=houses.filter(h=>!complete(h)&&!isNoAplica(h));
+  const pendientes=houses.filter(h=>!complete(h)&&!isNoAplica(h)&&!h.sinCargoEnProyecto);
   const exentas=houses.filter(isNoAplica),parciales=houses.filter(h=>paid(h)&&!complete(h));
+  const aplicables=houses.filter(h=>!isNoAplica(h));
+  const noConciliadas=houses.filter(h=>h.sinCargoEnProyecto);
   const ids=items=>new Set(items.map(h=>h.casaId));
   const rowById=new Map(rows.map(r=>[r[0],r]));
   const list=items=>[...ids(items)].map(id=>rowById.get(id));
@@ -85,6 +93,8 @@
    ['Proyecto','Saldo por recaudar',money(pendiente),'Suma de saldos de las viviendas'],
    ['Proyecto','Saldo a favor',money(saldoFavor),'No descontar de otras viviendas'],
    ['Proyecto','No aplica',exentas.length,'Casas sin cargo; no cuentan como pagadas'],
+   ['Proyecto','Casas aplicables',aplicables.length,'Padrón efectivo sin viviendas No aplica'],
+   ['Proyecto','Cargos sin conciliar',noConciliadas.length,'Revisar cargos faltantes en el backend; no se cuentan como No aplica'],
    ['Balance contra meta','Diferencia de aportaciones contra meta',money(recaudado-total),
     'Un valor negativo significa pendiente por recaudar; la meta es presupuesto, no gasto realizado'],
    ...incomes.map(([label,value])=>['Origen',safe(label),money(value),
@@ -96,8 +106,8 @@
    criterio:'Aportaciones acumuladas menos meta presupuestada; la meta no es un egreso pagado.'};
   const dashboard={
    esProyecto:true,proyectoId:id,balanceMensual:balanceProyecto,
-   status:[['Meta alcanzada',completas.length],['Sin meta completa',pendientes.length]],
-   anual:[['Meta alcanzada',completas.length],['Abonando',parciales.length]],
+   status:[['PAGADO',completas.length],['Sin pago completo',pendientes.length]],
+   anual:[['PAGADO',completas.length],['Abonando',parciales.length]],
    ingresos:incomes,egresos:[
     ['Meta del proyecto',money(total)],['Recaudado',money(recaudado)],
     ['Pendiente',money(pendiente)],['Saldo a favor',money(saldoFavor)]
@@ -113,17 +123,20 @@
   const resumen=[
    ['Reporte extraordinario',label],['Proyecto',safe(project.nombre)],
    ['Clave del proyecto',safe(project.codigo||'')],['Fecha de inicio',date(project.fechaInicio)],
-   ['Viviendas en padrón',houses.length],
+   ['Viviendas en padrón (proyecto)',aplicables.length],
+   ['Padrón general (referencia)',houses.length],
    ['Con aportaciones registradas',pagos.length],
-   ['Meta alcanzada',completas.length],['Abonos parciales',parciales.length],
-   ['Sin meta completa',pendientes.length],['No aplica',exentas.length],
+   ['PAGADO',completas.length],['Abonos parciales',parciales.length],
+   ['Sin pago completo',pendientes.length],['No aplica',exentas.length],
+   ['Cargos sin conciliar',noConciliadas.length],
    ['Costo total actual (MXN)',money(total)],
    ['Aportaciones registradas (MXN)',money(recaudado)],
    ['Pendiente por recaudar (MXN)',money(pendiente)],
    ['Saldo a favor (MXN)',money(saldoFavor)],
    ['Diferencia contra meta (MXN)',money(recaudado-total)],
    ['Estado de diferencia',recaudado>total?'Saldo a favor · sobre la meta':recaudado<total?'Saldo en contra · por recaudar':'Meta cubierta'],
-   ['Alcance','Solo proyecto seleccionado; incluye las 231 viviendas sin depender de filtros ni paginación.'],
+   ['Alcance','Proyecto seleccionado; conserva viviendas No aplica y filas sin cargo en hoja aparte. Padrón efectivo excluye No aplica.'],
+   ['Advertencia',missing.length?missing.length+' viviendas no tienen cargo encontrado en la respuesta. No se asumió que estén exentas.':'Cargos del proyecto conciliados con la respuesta.'],
    ['Criterio financiero','El historial de aportaciones puede incluir importaciones bancarias y registros manuales. No duplicar depósitos en caja.']
   ];
   const hojas=[
@@ -131,11 +144,12 @@
    sheet('Pago registrado',headers,list(pagos)),
    sheet('Sin Pagar',headers,list(pendientes)),
    sheet('Finanzas',['Tipo','Concepto','Monto / viviendas','Procedencia / criterio'],finanzas),
-   sheet('Desglose por calle',['Calle','Meta alcanzada','Sin meta completa','No aplica','Abonado (MXN)','Viviendas'],
+   sheet('Desglose por calle',['Calle','PAGADO','Sin pago completo','No aplica','Abonado (MXN)','Viviendas'],
     streets.map(x=>[...x,x[1]+x[2]+x[3]])),
    sheet('Aportaciones',['ID vivienda','Calle','Número','Residente','Fecha','Monto (MXN)',
     'Referencia','Origen','Forma de pago','ID cargo'],movements),
    sheet('No aplica',headers,list(exentas)),
+   sheet('Cargos sin conciliar',headers,list(noConciliadas)),
    sheet('Abonos parciales',headers,list(parciales))
   ];
   const idSafe=String(project.codigo||project.id).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,60);
