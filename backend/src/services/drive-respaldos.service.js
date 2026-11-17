@@ -72,12 +72,17 @@ async function backup({periodo,xlsx,todos=false,soloExcel=false}){
  recibos.parsePeriodo(periodo);
  const bytes=Buffer.from(String(xlsx||''),'base64');if(!bytes.length||bytes.length>1400*1024||bytes[0]!==0x50||bytes[1]!==0x4B)throw fail(400,'El Excel del padrón no es válido (máximo 1.4 MB)');
  const token=await access();
- const root=await folder(token,'Misión Jardines - Respaldos');
  if(soloExcel){
-  const dir=await folder(token,periodo,root);
+  const setting=await record();
+  if(!safeFolderId(setting?.folder_id))throw fail(409,'Selecciona la carpeta 02_Recibos_PDF antes de guardar el Excel.');
+  const dir=await folder(token,periodo.slice(0,4),setting.folder_id);
   const x=await upload(token,'Padron_'+periodo+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',bytes,dir);
-  return {periodo,cantidad:0,meses:0,excelId:x.id,excelGuardado:true};
+  await verificarArchivo(token,x.id,'Padron_'+periodo+'.xlsx',dir,
+   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  return {periodo,cantidad:0,meses:0,excelId:x.id,excelGuardado:true,
+   folderUrl:'https://drive.google.com/drive/folders/'+dir};
  }
+ const root=await folder(token,'Misión Jardines - Respaldos');
  const periodos=todos?await recibos.periodos():[periodo];
  if(periodos.length>96)throw fail(409,'Hay demasiados períodos para un respaldo en una sola operación; elige períodos individuales');
  const respaldados=[];
@@ -130,10 +135,22 @@ async function pdfExistente(token,parent,name){
  if(!response.ok)throw fail(502,'No se pudo comprobar si el recibo ya existe: '+(j.error?.message||''));
  return j.files?.find(x=>x.name===name)||null;
 }
+async function verificarArchivo(token,id,name,parent,mime){
+ if(!id)throw fail(502,'Drive no devolvió ID para '+name+'.');
+ const r=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+
+  '?fields=id,name,mimeType,parents,size,trashed',
+  {headers:{Authorization:'Bearer '+token}});
+ const file=await r.json().catch(()=>({}));
+ if(!r.ok||file.trashed||file.name!==name||file.mimeType!==mime||
+   !Array.isArray(file.parents)||!file.parents.includes(parent)||Number(file.size||0)<=0)
+  throw fail(502,'No se verificó el archivo '+name+' en la carpeta de Drive. Revisa permisos y destino.');
+ return file;
+}
 async function guardarPdf(token,folderId,item){
  const existing=await pdfExistente(token,folderId,item.name);
  if(!existing){
-  await upload(token,item.name,'application/pdf',item.data,folderId);
+  const created=await upload(token,item.name,'application/pdf',item.data,folderId);
+  await verificarArchivo(token,created.id,item.name,folderId,'application/pdf');
   return 'creado';
  }
  const result=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+encodeURIComponent(existing.id)+'?uploadType=media&fields=id',
@@ -142,6 +159,7 @@ async function guardarPdf(token,folderId,item){
   const info=await result.json().catch(()=>({}));
   throw fail(502,'No se pudo actualizar '+item.name+': '+(info.error?.message||result.status));
  }
+ await verificarArchivo(token,existing.id,item.name,folderId,'application/pdf');
  return 'actualizado';
 }
 async function subirRecibos({periodo,offset=0,proyectoId=null}){
@@ -170,7 +188,7 @@ async function subirRecibos({periodo,offset=0,proyectoId=null}){
  return {periodo,anio:year,folderId:destino,
   folderUrl:'https://drive.google.com/drive/folders/'+destino,
   total:lote.total,nextOffset:lote.nextOffset,terminado:lote.nextOffset>=lote.total,
-  procesados:lote.files.length,creados,actualizados};
+  procesados:lote.files.length,verificados:creados+actualizados,creados,actualizados};
 }
 
 module.exports={init,loginUrl,callback,status,backup,fail,selector,elegirCarpeta,subirRecibos};
