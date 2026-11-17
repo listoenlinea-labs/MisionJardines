@@ -376,12 +376,17 @@
           consultandoReintento?'Nueva lectura OCR concluida; datos comprobados nuevamente.':
           'Se leyeron los datos bancarios y el destinatario del comprobante.',releyendo?'current':'done'),
         formatPaso(3,'Consulta de buzón Titan',releyendo?'Iniciará al finalizar la nueva lectura OCR.':
-          consultandoReintento?'Buscando una notificación auténtica y compatible en Titan.':
+          consultandoReintento&&revisado?'El buzón y remitente ya se verificaron. Reintentando solamente la comparación bancaria pendiente.':
+          consultandoReintento?'Consultando de nuevo Titan para completar la comparación bancaria.':
           buzonError?'La conexión o la aplicación de la consulta tuvo un problema; se reintentará.':
           revisado?'Última revisión: '+fechaTexto:'Se programó la búsqueda de avisos bancarios.',
-          releyendo?'waiting':consultandoReintento||buzonError?'current':revisado?'done':'current'),
+          releyendo?'waiting':buzonError?'current':revisado?'done':'current'),
         formatPaso(4,'Remitente del correo',conAvisos?Number(v.avisosAutenticados)+' aviso(s) del remitente autorizado encontrados en el buzón. No significa que correspondan a este depósito.':revisado?'No hay avisos recientes del remitente autorizado utilizables todavía.':'Esperando un aviso del remitente autorizado.',conAvisos?'done':revisado&&!buzonError?'current':'waiting'),
-        formatPaso(5,'Comparación de datos bancarios',vinculado?(fallido?mensaje:'Se encontró una notificación bancaria relacionada con este pago.'):etapa==='SIN_COINCIDENCIA'?mensaje+detallesReferencia:'Se comparan identificador, importe, fecha, cuenta y vivienda.',fallido?'failed':validado?'done':vinculado?'current':conAvisos?'current':'waiting'),
+        formatPaso(5,'Comparación de datos bancarios',
+          consultandoReintento?'Reintentando el cotejo desde este paso, incluyendo equivalencias CPO de rastreos numéricos del comprobante. No se repiten los pasos anteriores.':
+          vinculado?(fallido?mensaje:'Se encontró una notificación bancaria relacionada con este pago.'):
+          etapa==='SIN_COINCIDENCIA'?mensaje+detallesReferencia:'Se comparan identificador, importe, fecha, cuenta y vivienda.',
+          fallido?'failed':validado?'done':consultandoReintento||vinculado||conAvisos?'current':'waiting'),
         formatPaso(6,'Resultado',validado?'Banco confirmado; el pago fue validado.':fallido?'No se confirmó el reporte: '+mensaje:'El comprobante ya está guardado y sigue en revisión. No lo vuelvas a subir. Titan comprobará automáticamente el depósito cuando exista una notificación bancaria compatible.',fallido?'failed':validado?'done':'waiting')
       ];
       el.innerHTML='<section class="receipt-check-header" aria-live="polite"><div class="receipt-check-top"><div><small class="eyebrow">SEGUIMIENTO BANCARIO</small><h3>'+
