@@ -357,9 +357,8 @@
  $('fplanExpenseNext').addEventListener('click',()=>{expensePage++;render();});
  $('fplanAssignFooter').addEventListener('click',()=>{if(selectedExpenseId)chooseExpense(selectedExpenseId);});
  $('fplanExpenseSort').addEventListener('change',render);
- panel.addEventListener('click',e=>{const x=e.target.closest('[data-pick]');
-  if(x)chooseSource(x.dataset.pick);
- });
+ panel.addEventListener('click',e=>{const x=e.target.closest('[data-source]');if(x)chooseSource(x.dataset.source);});
+ panel.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)&&e.target.matches('[data-source]')){e.preventDefault();chooseSource(e.target.dataset.source);}});
  panel.addEventListener('dragstart',e=>{const x=e.target.closest('[data-source]');
   if(x)e.dataTransfer.setData('text/plain',x.dataset.source);
  });
@@ -372,7 +371,29 @@
  expenses.addEventListener('click',e=>{
   const remove=e.target.closest('[data-remove]');
   if(remove){hideRecommendation();assignments.splice(Number(remove.dataset.remove),1);render();msg('Asignación retirada del borrador. Guarda para conservar el cambio.');return;}
-  const row=e.target.closest('[data-choose]');if(row)chooseExpense(Number(row.dataset.choose));
+  const toggle=e.target.closest('[data-exclude]');
+  if(toggle){
+   const id=Number(toggle.dataset.exclude);
+   if(excluded.includes(id)){excluded=excluded.filter(x=>x!==id);msg('Gasto restaurado; pulsa Guardar plan.');}
+   else{
+    const row=expenseRows(true).find(x=>x.id===id);
+    if(!row||!window.confirm('¿Borrar «'+row.nombre+'» del plan? Se excluirá del cálculo, pero el movimiento original y su comprobante se conservarán.'))return;
+    assignments=assignments.filter(a=>a.egresoId!==id);excluded.push(id);
+    if(selectedExpenseId===id)selectedExpenseId=null;
+    msg('Egreso excluido del plan; pulsa Guardar plan.');
+   }
+   hideRecommendation();render();return;
+  }
+  const row=e.target.closest('[data-expense]');
+  if(row&&!excluded.includes(Number(row.dataset.expense))){
+   selectedExpenseId=Number(row.dataset.expense);render();
+   msg('Egreso seleccionado. Elige un ingreso y pulsa Asignar en el footer.');
+  }
+ });
+ expenses.addEventListener('keydown',e=>{
+  if(['Enter',' '].includes(e.key)&&e.target.matches('[data-expense]')&&!excluded.includes(Number(e.target.dataset.expense))){
+   e.preventDefault();selectedExpenseId=Number(e.target.dataset.expense);render();
+  }
  });
  $('fplanApply').addEventListener('click',()=>{
   if(!selectedSource||!editorExpense)return;
@@ -392,10 +413,10 @@
   const btn=$('fplanSave');btn.disabled=true;msg('Guardando y validando fondos en el servidor...');
   try{
    const result=await api('/plan-mensual',{method:'PUT',body:JSON.stringify({
-    periodo:period,version,asignaciones,observaciones:$('fplanNotes').value})});
+    periodo:period,version,asignaciones,excluidos,observaciones:$('fplanNotes').value})});
    version=result.version;
    const fresh=await api('/plan-mensual?periodo='+encodeURIComponent(period));
-   allPlans=fresh.planes||[];assignments=fresh.asignaciones||[];
+   allPlans=fresh.planes||[];assignments=fresh.asignaciones||[];excluded=(fresh.excluidos||[]).map(Number);
    render();msg(result.message||'Plan guardado correctamente.');
   }catch(e){msg(e.message,true);}
   finally{btn.disabled=false;}
