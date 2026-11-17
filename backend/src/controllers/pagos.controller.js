@@ -640,7 +640,28 @@ async function reintentarValidacion(req,res){
     return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No fue posible reintentar la validación.'});
   }
 }
-module.exports = { reintentarValidacion, confirmarPagoDesdeBanco,
+// Refrescar no es solo un GET: reprograma una conciliación real con Titan
+// si el recibo de esa vivienda sigue pendiente, sin generar un pago nuevo.
+async function actualizarVerificacion(req,res){
+ try{
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1||String(id)!==String(req.params.id||'')||!req.usuario.casaId)
+   return res.status(404).json({ok:false,message:'Comprobante no encontrado.'});
+  const data=await require('../services/pagos-reintento-validacion.service').solicitarActualizacionPendiente({
+   pagoId:id,casaId:Number(req.usuario.casaId),usuarioId:Number(req.usuario.usuarioId)
+  });
+  res.setHeader('Cache-Control','private, no-store');
+  return res.json({ok:true,data,message:data.mensaje||
+   (data.programada?'Nueva comprobación con Titan solicitada. El recibo sigue en revisión hasta la confirmación bancaria.':
+    'El pago ya está validado; no es necesario volver a comprobarlo.')});
+ }catch(error){
+  if(!error.status)console.error('[Pagos][Actualizar verificación]',error);
+  return res.status(error.status||503).json({ok:false,
+   message:error.status?error.message:'No fue posible solicitar una nueva consulta bancaria.'});
+ }
+}
+
+module.exports = { actualizarVerificacion, reintentarValidacion, confirmarPagoDesdeBanco,
     obtenerConfiguracion,
     listarMisPagos,
     listarCuotasExtraordinarias,
