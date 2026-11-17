@@ -18,7 +18,7 @@ function ready(){
  if(process.env.WHATSAPP_BOT_ENABLED!=='true')return false;
  if(process.env.WHATSAPP_ZERO_COST_MODE!=='true')
   throw Error('El bot exige WHATSAPP_ZERO_COST_MODE=true para impedir envíos facturables');
- if(!/^\\d{5,32}$/.test(phoneId())||!/^v\\d+\\.\\d+$/.test(process.env.WHATSAPP_GRAPH_VERSION||'')||
+ if(!/^\d{5,32}$/.test(phoneId())||!/^v\d+\.\d+$/.test(process.env.WHATSAPP_GRAPH_VERSION||'')||
   !process.env.WHATSAPP_ACCESS_TOKEN)throw Error('Falta la configuración de Cloud API');
  return true;
 }
@@ -55,7 +55,7 @@ async function reserve(){
  });
 }
 async function send(phone,message){
- if(!ready()||!/\\d{8,32}/.test(String(phone||'')))return false;
+ if(!ready()||!/^\d{8,32}$/.test(String(phone||'')))return false;
  if(!await hasRecentInbound(phone)){
   console.warn('[WhatsApp $0] Respuesta bloqueada fuera de ventana de 24h');return false;
  }
