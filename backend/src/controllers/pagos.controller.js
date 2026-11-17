@@ -661,27 +661,7 @@ async function actualizarVerificacion(req,res){
  }
 }
 
-// Solo administración: el OCR puede fallar aunque el número se vea claramente.
-// El servidor jamás acepta solo un número escrito: lo verifica en Titan.
-async function cotejarClaveAsistida(req,res){
- try{
-  const id=Number(req.params.id),adminId=Number(req.usuario?.usuarioId);
-  if(!Number.isSafeInteger(id)||id<1||String(id)!==String(req.params.id||''))
-   return res.status(400).json({ok:false,message:'Identificador de pago inválido.'});
-  const result=await require('../services/pagos-cotejo-asistido.service').cotejar({
-   pagoId:id,codigo:req.body?.codigo,adminId
-  });
-  res.setHeader('Cache-Control','private, no-store');
-  return res.json({ok:true,data:result,
-   message:'Titan confirmó una notificación única y compatible. El pago quedó validado.'});
- }catch(e){
-  if(!e.status)console.error('[Pagos][Cotejo asistido]',e);
-  return res.status(e.status||503).json({ok:false,message:e.status?e.message:
-   'No fue posible confirmar el depósito en Titan. El pago sigue en revisión.'});
- }
-}
-
-module.exports = { cotejarClaveAsistida, actualizarVerificacion, reintentarValidacion, confirmarPagoDesdeBanco,
+module.exports = { actualizarVerificacion, reintentarValidacion, confirmarPagoDesdeBanco,
     obtenerConfiguracion,
     listarMisPagos,
     listarCuotasExtraordinarias,
