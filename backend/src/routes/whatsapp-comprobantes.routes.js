@@ -24,6 +24,8 @@ function coincide(a, b) {
 
 webhook.use((req, res, next) => {
     if (process.env.WHATSAPP_COMPROBANTES_ENABLED !== 'true' && process.env.WHATSAPP_BOT_ENABLED !== 'true') return res.sendStatus(404);
+    if (process.env.WHATSAPP_BOT_ENABLED==='true' &&
+        (process.env.WHATSAPP_BOT_SESSION_SECRET||'').length<32) return res.sendStatus(503);
     if (!process.env.WHATSAPP_APP_SECRET || !process.env.WHATSAPP_VERIFY_TOKEN ||
         !process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN ||
         !/^v\d+\.\d+$/.test(process.env.WHATSAPP_GRAPH_VERSION || '')) {
