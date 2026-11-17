@@ -3412,17 +3412,16 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  let projectExceptions=new Map(),projectPreview=null,projectSaving=false,projectPreviousFocus=null;
  const projectBudgetValid=value=>{
   const n=Number(value);
-  return String(value??'').trim()!==''&&Number.isFinite(n)&&Number.isInteger(n)&&n>=3&&n<=10000000&&
-   Math.abs(n*100-Math.round(n*100))<0.001;
+  return String(value??'').trim()!==''&&Number.isFinite(n)&&Number.isInteger(n)&&n>0&&n<=10000000;
  };
  function computeProjectPreview(){
-  if(!projectBudgetValid($('financeRulesBudget').value))return null;
-  if(!window.MJProjectBudget?.distribuir)throw Error('El cálculo de presupuesto no está disponible. Actualiza la página.');
+  if(!projectBudgetValid($('financeRulesQuota').value))return null;
+  if(!window.MJProjectBudget?.distribuirPorCuota)throw Error('El reparto de cuotas no está disponible. Actualiza la página.');
   const exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto}));
-  if(exceptions.some(({monto})=>!Number.isInteger(Number(monto))))
+  if(exceptions.some(({monto})=>String(monto).trim()===''||!Number.isInteger(Number(monto))))
    throw Error('Las cuotas excepcionales deben expresarse en pesos enteros.');
-  return window.MJProjectBudget.distribuir(
-   projectHouses(),Number($('financeRulesBudget').value),exceptions
+  return window.MJProjectBudget.distribuirPorCuota(
+   projectHouses(),Number($('financeRulesQuota').value),exceptions
   );
  }
  function renderProjectModal(){
@@ -3432,11 +3431,11 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   try{projectPreview=computeProjectPreview();}catch(e){projectPreview=null;error=e.message;}
   const amounts=new Map((projectPreview?.rows||[]).map(r=>[r.casaId,r]));
   $('financeRulesBudgetDisplay').textContent=projectPreview
-   ?projectMoneyText(projectPreview.totalCentavos/100)
-   :projectBudgetValid($('financeRulesBudget').value)?'Revisar importe':'Pendiente';
-  $('financeRulesHouses').textContent=String(houses.length);
+   ?projectMoneyText(projectPreview.totalCentavos/100):'Pendiente';
+  $('financeRulesBudget').value=projectPreview?String(projectPreview.totalCentavos/100):'';
+  $('financeRulesHouses').textContent=projectPreview?String(projectPreview.casasIncluidas):'—';
   $('financeRulesSpecialCount').textContent=String(projectExceptions.size);
-  $('financeRulesDiff').textContent=projectPreview?fmt(0):'Pendiente';
+  $('financeRulesDiff').textContent=projectPreview?String(projectPreview.noAplica):'Pendiente';
   $('financeRulesRows').innerHTML=houses.filter(h=>
    (h.calle+' '+h.numero+' '+(h.nombre||'')).toLocaleLowerCase('es').includes(term))
    .map(h=>{
@@ -3466,6 +3465,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   projectExceptions=new Map();projectSaving=false;projectPreview=null;
   $('financeNewProjectName').value='';
   $('financeRulesBudget').value='';
+  $('financeRulesQuota').value='';
   $('financeNewProjectMonth').value=$('expenseDate').value.slice(0,7);
   $('financeRulesSearch').value='';
   $('financeRulesStatus').textContent='';
@@ -3489,7 +3489,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
    e.preventDefault();(e.shiftKey?last:first).focus();
   }else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
  });
- for(const field of ['financeNewProjectName','financeRulesBudget','financeNewProjectMonth','financeRulesSearch'])
+ for(const field of ['financeNewProjectName','financeRulesQuota','financeNewProjectMonth','financeRulesSearch'])
   $(field).addEventListener('input',renderProjectModal);
  $('financeNewProjectMonth').addEventListener('change',renderProjectModal);
  $('financeRulesRows').addEventListener('click',e=>{
@@ -3520,9 +3520,11 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   catch(err){$('financeRulesStatus').textContent=err.message;}
   projectPreview=preview;
   $('financeRulesSpecialCount').textContent=String(projectExceptions.size);
-  $('financeRulesDiff').textContent=preview?fmt(0):'Pendiente';
+  $('financeRulesDiff').textContent=preview?String(preview.noAplica):'Pendiente';
+  $('financeRulesHouses').textContent=preview?String(preview.casasIncluidas):'—';
+  $('financeRulesBudget').value=preview?String(preview.totalCentavos/100):'';
   $('financeRulesBudgetDisplay').textContent=preview
-   ?projectMoneyText(preview.totalCentavos/100):'Revisar importe';
+   ?projectMoneyText(preview.totalCentavos/100):'Pendiente';
   // Mostrar en vivo el nuevo reparto de las demás viviendas sin reemplazar
   // el input que se está editando (mantiene el foco y el valor 0).
   const amounts=new Map((preview?.rows||[]).map(h=>[h.casaId,h.montoCentavos]));
@@ -3545,22 +3547,23 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   const name=$('financeNewProjectName').value.trim(),month=$('financeNewProjectMonth').value;
   if(!projectPreview||projectHouses().length!==231||name.length<8||
      !/^20\d{2}-(?:0[1-9]|1[0-2])$/.test(month)){
-   $('financeRulesStatus').textContent='Completa el nombre (mínimo 8 caracteres), el costo total, el mes y las excepciones válidas.';
+   $('financeRulesStatus').textContent='Completa el nombre (mínimo 8 caracteres), la cuota por casa, el mes y las excepciones válidas.';
    return;
   }
-  const budget=projectPreview.totalCentavos/100,exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto:Number(monto)}));
-  if(!confirm('¿Crear «'+name+'» por '+projectMoneyText(budget)+' para 231 viviendas con '+exceptions.length+
-   ' excepciones? El saldo se reparte entre las demás casas. Esta acción generará los 231 cargos.'))return;
+  const budget=projectPreview.totalCentavos/100,quota=Number($('financeRulesQuota').value),
+   count=projectPreview.casasIncluidas,exceptions=[...projectExceptions].map(([casaId,monto])=>({casaId,monto:Number(monto)}));
+  if(!confirm('¿Crear «'+name+'» con meta de '+projectMoneyText(budget)+' para '+count+
+   ' casas que pagan y '+projectPreview.noAplica+' No aplica? Se crearán 231 cargos, incluidos los $0.'))return;
   projectSaving=true;renderProjectModal();
   $('financeRulesStatus').textContent='Guardando proyecto y cuotas de las 231 viviendas…';
   try{
    const result=await request('/proyectos-extraordinarios',{
-    nombre:name,fechaInicio:month+'-01',montoTotal:budget,excepciones
+    nombre:name,fechaInicio:month+'-01',cuotaPorCasa:quota,excepciones
    });
    activeProyectoId=result.data?.proyectos?.[0]?.id||null;
    projectSaving=false;closeProjectModal();
    const refreshed=await load();
-   notice(refreshed?'Proyecto creado. Se guardaron 231 cuotas y las excepciones configuradas.':
+   notice(refreshed?'Proyecto creado. Se guardaron las cuotas y exenciones, con la meta recalculada.':
     'El proyecto se guardó, pero la tabla no se pudo actualizar. Vuelve a consultar antes de intentar crearlo otra vez.','success');
   }catch(err){$('financeRulesStatus').textContent=err.message;notice(err.message);}
   finally{projectSaving=false;renderProjectModal();}
@@ -3602,7 +3605,7 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  function bulkSummary(){
   const computed=bulkCompute(),houses=bulkHouses();
   $('financeBulkTotal').textContent=computed
-   ?houses.length+' viviendas · '+bulkExceptions.size+' excepciones · Meta: '+fmt(computed.total/100)
+   ?houses.length+' en padrón · '+houses.filter(h=>bulkAmount(h.casaId)>0).length+' que pagan · '+bulkExceptions.size+' excepciones · Meta: '+fmt(computed.total/100)
    :houses.length+' viviendas · Revisa la cuota general y las excepciones antes de guardar.';
   $('financeBulkApply').disabled=bulkSaving||!computed;
   return computed;
