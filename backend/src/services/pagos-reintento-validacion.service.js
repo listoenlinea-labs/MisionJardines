@@ -65,4 +65,46 @@ async function solicitarReintento({pagoId,casaId,usuarioId,reservaCasaClubId=nul
   require('./pagos-relectura-ocr.service').programarRelectura(pagoId);
   return result;
 }
-module.exports={solicitarReintento,elegible,diagnosticoAnterior,MAX_REINTENTOS,ESPERA_MS};
+
+// Actualizar estado de un pago EN REVISIÓN debe solicitar una nueva lectura
+// del buzón Titan. No se vuelve a cargar el archivo, ni se aplica la cuota aquí.
+const ESPERA_CONSULTA_MANUAL_MS=30*1000;
+async function solicitarActualizacionPendiente({pagoId,casaId,usuarioId,ahora=new Date()}){
+ if(!Number.isSafeInteger(pagoId)||pagoId<=0||!Number.isSafeInteger(casaId)||casaId<=0)
+  throw fail(404,'Comprobante no encontrado.');
+ if(!banco.configurado())
+  throw fail(503,'La consulta bancaria no está disponible. Se conserva tu comprobante en revisión.');
+ const data=await sequelize.transaction({isolationLevel:'READ COMMITTED'},async transaction=>{
+  const pago=await PagoReportado.findOne({
+   where:{id:pagoId,...require('./pagos-reparto.service').condicionLectura(casaId,usuarioId)},
+   attributes:['id','estatus','verificacionBancaria','correoBancarioHash','fechaValidacion'],
+   transaction,lock:transaction.LOCK.UPDATE
+  });
+  if(!pago)throw fail(404,'Comprobante no encontrado.');
+  if(pago.estatus==='VALIDADO'||pago.fechaValidacion||pago.correoBancarioHash)
+   return {id:pago.id,estatus:'VALIDADO',programada:false};
+  if(pago.estatus!=='PENDIENTE_VALIDACION')
+   throw fail(409,'Este pago no está en revisión. Si fue rechazado utiliza Reintentar validación.');
+  const previo=diagnosticoAnterior(pago.verificacionBancaria);
+  if(previo.etapa==='REINTENTO_OCR')
+   return {id:pago.id,estatus:pago.estatus,programada:false,
+    mensaje:'Ya está releyéndose el comprobante; Titan se consultará después.'};
+  const ultima=Date.parse(String(previo.ultimaConsultaManualEn||''));
+  if(Number.isFinite(ultima)&&ahora.getTime()-ultima<ESPERA_CONSULTA_MANUAL_MS)
+   return {id:pago.id,estatus:pago.estatus,programada:false,
+    mensaje:'Ya se solicitó una consulta recientemente. El seguimiento se actualizará automáticamente.'};
+  await pago.update({
+   verificacionBancaria:{
+    ...previo,version:1,etapa:'REINTENTO_TITAN',
+    detalle:'Consultando nuevamente las notificaciones bancarias de Titan para este comprobante.',
+    ultimaConsultaManualEn:ahora.toISOString()
+   },
+   actualizadoEn:ahora
+  },{transaction});
+  return {id:pago.id,estatus:pago.estatus,programada:true};
+ });
+ if(data.programada)require('./banco-correo-worker.service').programarRevision();
+ return data;
+}
+
+module.exports={solicitarReintento,solicitarActualizacionPendiente,elegible,diagnosticoAnterior,MAX_REINTENTOS,ESPERA_MS};
