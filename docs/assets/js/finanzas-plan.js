@@ -117,7 +117,12 @@
   sources.sort((a,b)=>sort==='asc'?a.total-b.total:sort==='name'?a.name.localeCompare(b.name,'es'):b.total-a.total);
   const visibleSources=grouped.flatMap(group=>sources.filter(x=>x.tipo===group))
    .filter(x=>(x.name+' '+x.tipo).toLocaleLowerCase('es').includes(searchIn));
-  const pageLimit=10,inPages=Math.max(1,Math.ceil(visibleSources.length/pageLimit));
+  // Cada página tiene 10 espacios visuales en ambas tablas; los vacíos no son registros.
+  const pageLimit=10;
+  const emptyPageRows=(missing,message='')=>Array.from({length:Math.max(0,missing)},(_,i)=>
+   '<tr class="fplan-empty-row" aria-hidden="true"><td colspan="3">'+
+    (i===0&&message?esc(message):'&nbsp;')+'</td></tr>').join('');
+  const inPages=Math.max(1,Math.ceil(visibleSources.length/pageLimit));
   incomePage=Math.max(1,Math.min(incomePage,inPages));
   const incomeRows=visibleSources.slice((incomePage-1)*pageLimit,incomePage*pageLimit);
   panel.innerHTML='<table class="fplan-data-table"><thead><tr><th>Ingreso / proyecto</th><th>Disponible</th><th>Asignado</th></tr></thead><tbody>'+
@@ -125,8 +130,8 @@
      (selectedSource?.id===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.name)+
      '</strong><small>'+esc(x.tipo)+(x.sinConciliar?' · histórico sin conciliación':'')+'</small></td>'+
      '<td class="fplan-number-cell">'+money(x.free)+'</td><td>'+money(x.used)+
-     '<small>Recibido: '+money(x.total)+'</small></td></tr>').join('')||
-    '<tr><td colspan="3">No hay ingresos con ese filtro.</td></tr>')+'</tbody></table>';
+     '<small>Recibido: '+money(x.total)+'</small></td></tr>').join('')+
+    emptyPageRows(pageLimit-incomeRows.length,incomeRows.length?'':'No hay ingresos con ese filtro.'))+'</tbody></table>';
   $('fplanIncomePagination').textContent='Página '+incomePage+' de '+inPages+' · '+visibleSources.length+' fuentes';
   $('fplanIncomePrev').disabled=incomePage===1;$('fplanIncomeNext').disabled=incomePage===inPages;
   const searchOut=$('fplanSearch').value.trim().toLocaleLowerCase('es'),outSort=$('fplanExpenseSort').value;
@@ -149,9 +154,12 @@
      (removed?'Excluido del plan':'Sin asignar: '+money(remaining))+'</small>'+
      (removed?'':attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
        ' · '+money(a.monto)+'<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join(''))+
-     '<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'">'+(removed?'Restaurar':'Borrar')+
-     '</button></td></tr>';
-   }).join('')||'<tr><td colspan="3">No hay egresos con ese filtro.</td></tr>')+'</tbody></table>';
+     '<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'" aria-label="'+
+      (removed?'Restaurar egreso en el plan':'Borrar egreso del plan')+'">'+
+      '<span class="fplan-exclude-icon" aria-hidden="true">'+(removed?'↺':'×')+'</span>'+
+      '<span>'+(removed?'Restaurar':'Borrar')+'</span></button></td></tr>';
+   }).join('')+
+   emptyPageRows(pageLimit-expenseRowsPage.length,expenseRowsPage.length?'':'No hay egresos con ese filtro.'))+'</tbody></table>';
   $('fplanExpensePagination').textContent='Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos';
   $('fplanExpensePrev').disabled=expensePage===1;$('fplanExpenseNext').disabled=expensePage===outPages;
   const groupsTotal=grouped.map(group=>sources.filter(x=>x.tipo===group).reduce((sum,x)=>sum+x.free,0));

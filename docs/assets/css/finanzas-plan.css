@@ -211,3 +211,52 @@
 .fplan-footer-actions button{min-height:43px}
 @media(max-width:850px){.fplan-data-table th,.fplan-data-table td{padding:8px 6px}.fplan-data-table strong{font-size:.73rem}.fplan-footer-actions{width:100%}.fplan-footer-actions button{flex:1}}
 
+
+/* UI de fondos: las dos tablas nacen a la misma altura y tienen diez
+   renglones visuales por página. Las filas de relleno no son movimientos. */
+@media (min-width:951px){
+ .fplan-columns{align-items:stretch}
+ .fplan-columns>.fplan-panel{display:flex;flex-direction:column}
+ .fplan-columns .fplan-panel-head{min-height:49px}
+ .fplan-columns .fplan-filters{height:210px;display:flex;flex-direction:column;flex:none}
+ .fplan-columns .fplan-filters>.fplan-section-help{margin-top:auto;min-height:35px}
+ .fplan-columns .fplan-page-nav{margin-top:auto}
+}
+.fplan-data-table tbody tr{height:112px}
+.fplan-data-table tbody td{height:112px}
+.fplan-data-table strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.fplan-data-table td>small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.fplan-data-table .fplan-empty-row{pointer-events:none;background:#fcfdff}
+.fplan-data-table .fplan-empty-row td{border-bottom:1px solid #eef2f6}
+.fplan-income-panel .fplan-data-table :is(th,td):nth-child(1){width:59%}
+.fplan-income-panel .fplan-data-table :is(th,td):nth-child(2){width:19%;text-align:center}
+.fplan-income-panel .fplan-data-table :is(th,td):nth-child(3){width:22%}
+.fplan-income-panel .fplan-data-table td.fplan-number-cell{text-align:center;font-variant-numeric:tabular-nums}
+.fplan-income-panel .fplan-data-table th:nth-child(2){white-space:nowrap}
+.fplan-data-table .fplan-exclude-button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ width:auto;min-height:33px;padding:6px 12px!important;margin-top:9px;
+ border:1px solid #eac7c3!important;border-radius:9px!important;
+ background:#fff2f0!important;color:#ae4841!important;
+ font-size:.74rem!important;font-weight:750!important;line-height:1.2;
+ box-shadow:0 1px 2px #a63c3210;
+}
+.fplan-data-table .fplan-exclude-icon{
+ display:grid;place-items:center;flex:none;width:17px;height:17px;border-radius:5px;
+ background:#f5dbd8;color:#ae4841;font-size:15px;line-height:1;font-weight:800;
+}
+.fplan-data-table .fplan-exclude-button:hover:not(:disabled){
+ border-color:#dcaba5!important;background:#fce3df!important;box-shadow:0 2px 8px #b14d3b17;
+}
+.fplan-data-table .fplan-exclude-button:focus-visible{outline:2px solid #b85b51;outline-offset:2px}
+.fplan-data-table .fplan-empty-row:only-child td{color:#61758d}
+@media (max-width:950px){
+ .fplan-columns .fplan-filters{height:auto;min-height:0}
+ .fplan-data-table tbody tr,.fplan-data-table tbody td{height:100px}
+}
+@media (max-width:520px){
+ .fplan-data-table .fplan-exclude-button{padding:6px 8px!important;gap:5px}
+ .fplan-income-panel .fplan-data-table :is(th,td):nth-child(1){width:54%}
+ .fplan-income-panel .fplan-data-table :is(th,td):nth-child(2){width:23%}
+ .fplan-income-panel .fplan-data-table :is(th,td):nth-child(3){width:23%}
+}
