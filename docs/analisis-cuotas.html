@@ -922,10 +922,10 @@
       <label class="fplan-field"><span>Ordenar</span><select id="fplanIncomeSort" aria-label="Ordenar ingresos">
         <option value="desc">Mayor importe</option><option value="asc">Menor importe</option><option value="name">Por nombre</option></select></label>
      </div>
-     <label class="fplan-field fplan-project-choice"><span>Proyecto extraordinario del plan</span><select id="fplanProjectFilter" aria-label="Seleccionar proyecto como origen de fondos"></select>
- <small>Solo se incluyen las aportaciones del proyecto elegido. Puedes cambiarlo para asignar dinero de otro proyecto.</small></label>
- <p class="fplan-section-help">Selecciona un origen antes de elegir el gasto; no se asigna automáticamente dinero de otro fondo.</p>
-     <div id="fplanSources" aria-live="polite"></div>
+     <label class="fplan-field"><span>Buscar ingreso o proyecto</span><input id="fplanIncomeSearch" type="search" placeholder="Mantenimiento, Jardines, barandal…" aria-label="Buscar fuente de ingreso"></label>
+     <p class="fplan-section-help">Se muestran todos los proyectos extraordinarios por separado. Selecciona una fila de ingreso y una de egreso; confirma en el pie del modal.</p>
+     <div id="fplanSources" class="fplan-table-area" aria-live="polite"></div>
+     <nav class="fplan-page-nav" aria-label="Páginas de ingresos"><button id="fplanIncomePrev" type="button">Anterior</button><span id="fplanIncomePagination" role="status">Página 1</span><button id="fplanIncomeNext" type="button">Siguiente</button></nav>
     </section>
     <section class="fplan-panel fplan-expense-panel" aria-labelledby="fplanExpenseTitle">
      <header class="fplan-panel-head"><div><span class="fplan-panel-kicker">DESTINO DEL DINERO</span><h3 id="fplanExpenseTitle">Egresos por concepto</h3></div>
@@ -937,8 +937,10 @@
       <label class="fplan-field"><span>Ordenar</span><select id="fplanExpenseSort" aria-label="Ordenar egresos">
        <option value="desc">Mayor importe</option><option value="asc">Menor importe</option><option value="name">Por nombre</option></select></label>
      </div>
+     <label class="fplan-filter-inline"><input type="checkbox" id="fplanOnlyUnassigned"> Mostrar solo egresos sin asignar</label>
      <p id="fplanExpenseTotal" class="fplan-section-help"></p>
-     <div id="fplanExpenses" aria-live="polite"></div>
+     <div id="fplanExpenses" class="fplan-table-area" aria-live="polite"></div>
+     <nav class="fplan-page-nav" aria-label="Páginas de egresos"><button id="fplanExpensePrev" type="button">Anterior</button><span id="fplanExpensePagination" role="status">Página 1</span><button id="fplanExpenseNext" type="button">Siguiente</button></nav>
     </section>
    </div>
    <section id="fplanAllocator" class="fplan-allocator" hidden>
@@ -969,7 +971,8 @@
    <p class="fplan-footnote">Estas asignaciones son un plan interno. No realizan transferencias ni representan saldos bancarios conciliados.</p>
   </div>
   <footer class="fplan-footer"><p id="fplanStatus" class="fplan-message" role="status" aria-live="polite"></p>
-   <button type="button" class="fplan-btn" id="fplanSave">Guardar plan</button>
+   <div class="fplan-footer-actions"><button type="button" class="fplan-btn-secondary" id="fplanAssignFooter" disabled>Asignar ingreso a egreso</button>
+   <button type="button" class="fplan-btn" id="fplanSave">Guardar plan</button></div>
   </footer>
  </div>
 </dialog><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script><script src="assets/js/analisis-balance.js?v=20261116-club-balance-anual-v1" defer></script><script src="assets/js/analisis-excel-charts.js?v=20261022-recuperar-graficas-20261109-pesos-enteros" defer></script><script src="assets/js/analisis-excel.js?v=20261109-abono-estados-v2" defer></script><script src="assets/js/analisis-excel-proyectos.js?v=20261109-balance-recibos-v1" defer></script><script src="assets/js/analisis-orden-viviendas.js?v=20261021-registro-pago" defer></script><script src="assets/js/proyectos-presupuesto.js?v=20261103-proyecto-cero-v1" defer></script><script src="assets/js/costos-presupuesto-proyecto.js?v=20261115-meta" defer></script><script src="assets/js/finanzas-ambitos-vista.js?v=20261116-club-total-sin-limpieza-v2" defer></script><script src="assets/js/finanzas-egresos-ambito.js?v=20261113-proyectos-consulta" defer></script><script src="assets/js/analisis-cuotas.js?v=20261116-cuotas-club-fondos-v3" defer></script><script src="assets/js/finanzas-casa-club-conceptos.js?v=20261116-v3" defer></script><script src="assets/js/recibos-manuales.js?v=20261110-responsive-borrar-v1" defer></script><script src="assets/js/finanzas-recomendacion.js?v=20261115-explicable-v1" defer></script><script src="assets/js/finanzas-plan.js?v=20261116-origen-club-fondos-v3" defer></script><script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll" defer></script></body></html>
