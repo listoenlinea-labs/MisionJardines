@@ -2,6 +2,7 @@ const { parentPort, workerData } = require('node:worker_threads');
 const path = require('node:path');
 const { createWorker, OEM, PSM } = require('tesseract.js');
 const parser = require('./comprobante-parser');
+const { localizarRenglon, leerNumero } = require('./comprobante-ocr-renglon');
 const cuentaOficial = require('./pagos-cuenta-oficial.service');
 
 (async () => {
@@ -15,6 +16,28 @@ const cuentaOficial = require('./pagos-cuenta-oficial.service');
     });
     const image = Buffer.from(workerData.bytes);
     await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+    if (workerData.renglonComprobante) {
+      let rectangle;
+      for (const mode of [PSM.AUTO, PSM.SPARSE_TEXT]) {
+        await worker.setParameters({ tessedit_pageseg_mode: mode });
+        const { data } = await worker.recognize(image, {}, { blocks: true });
+        rectangle = localizarRenglon(data.blocks);
+        if (rectangle) break;
+      }
+      let text = '';
+      if (rectangle) {
+        // La línea no contiene palabras. El modelo inglés distingue # del
+        // dígito inicial en capturas donde spa+eng los confunde.
+        if (codes.join('+') !== 'eng') await worker.reinitialize('eng', OEM.LSTM_ONLY);
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE });
+        const result = await worker.recognize(image, { rectangle });
+        text = leerNumero(result.data.text);
+      }
+      await worker.terminate();
+      worker = null;
+      parentPort.postMessage({ ok: true, text });
+      return;
+    }
     const { data } = await worker.recognize(image);
     const readings = [data.text || ''];
     const {titular,destinosUltimos4}=cuentaOficial.obtener();

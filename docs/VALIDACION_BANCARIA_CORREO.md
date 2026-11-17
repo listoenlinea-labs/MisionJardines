@@ -68,3 +68,15 @@ Un reporte que ya quedó RECHAZADO por la antigua regla no vuelve automáticamen
 pendiente: revisar ese caso explícitamente. No se modifican estados históricos en
 esta entrega, ni se requiere SQL o variables nuevas. Pruebas con buzón/DB simulados;
 no se afirma acreditación real ni despliegue.
+
+## Relectura del renglón Comprobante
+
+Si la cuenta, el importe y la fecha son compatibles con un aviso CPO, pero
+el identificador impide conciliar, el worker vuelve a leer la imagen original.
+Localiza la etiqueta Comprobante y aplica OCR de línea al número inmediatamente
+inferior. El símbolo # se trata como separador cuando el lector lo reconoce;
+no se descartan dígitos iniciales ni se aceptan subcadenas. Se conserva el
+folio reportado y solo se agrega un candidato si el número íntegro coincide
+con un único rastreo compatible. Después se aplican los controles normales,
+incluido el uso único del aviso. Si no hay coincidencia, sigue en revisión.
+El intento automático se registra por pago para no releer en cada ciclo.
