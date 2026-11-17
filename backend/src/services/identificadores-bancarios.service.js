@@ -20,6 +20,25 @@ const equivalen=(a,b)=>Boolean(normal(a)&&normal(b)&&(
   normal(a)===normal(b)||(referencia(a)&&referencia(b)&&referencia(a)===referencia(b))
 ));
 const candidatos=texto=>parser.candidatosOperacion(texto||'').filter(v=>v.length>=7);
+// Recuperar números que el OCR servidor separó con espacios bajo etiquetas
+// de rastreo/operación, sin leer cuentas ni aceptar fragmentos.
+function rastreosNumericosOcr(texto){
+ const lineas=String(texto||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toUpperCase().split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const label=/^(?:CLAVE\s+(?:DE\s+)?RASTREO|RASTREO|NUMERO\s+DE\s+(?:OPERACION|SEGUIMIENTO)|FOLIO\s+(?:DE\s+OPERACION)?|COMPROBANTE|IDENTIFICADOR\s+(?:DE\s+OPERACION)?)\b/;
+ const validos=new Set();
+ for(let i=0;i<lineas.length;i++){
+  const m=lineas[i].match(label);
+  if(!m)continue;
+  const resto=lineas[i].slice(m[0].length).replace(/^\s*[:#=.-]\s*/,'').trim();
+  for(const raw of [resto,resto?'':lineas[i+1]||'']){
+   if(!/^#?\s*[\d -]{10,28}\s*$/.test(raw))continue;
+   const numero=raw.replace(/\D/g,'');
+   if(/^\d{10,17}$/.test(numero))validos.add(numero);
+  }
+ }
+ return [...validos].slice(0,10);
+}
 function almacenarVerificados(extraido, folioOperacion, textoOcr='') {
  const parsed = {
   claveRastreo: normal(extraido?.claveRastreo),
@@ -44,8 +63,13 @@ function identificadoresPago(pago){
  if(meta&&typeof meta==='object'&&[1,2].includes(meta.version)&&meta.origen==='OCR_SERVIDOR'
    &&['claveRastreo','referencia','folio','candidato','sinIdentificador'].includes(meta.tipo)){
   const typed={claveRastreo:normal(meta.claveRastreo),referencia:referencia(meta.referencia),folio:normal(meta.folio)};
-  if(typed[meta.tipo]||(meta.tipo==='candidato'&&Array.isArray(meta.candidatos))||meta.tipo==='sinIdentificador')
-   return {...typed,candidatos:meta.version===2&&Array.isArray(meta.candidatos)?meta.candidatos.filter(v=>/^[A-Z0-9]{7,80}$/.test(String(v))).slice(0,30):[]};
+  if(typed[meta.tipo]||(meta.tipo==='candidato'&&Array.isArray(meta.candidatos))||meta.tipo==='sinIdentificador'){
+   // Recuperar posibles rastreos del texto OCR ya guardado.
+   const stored=meta.version===2&&Array.isArray(meta.candidatos)
+    ?meta.candidatos.filter(v=>/^[A-Z0-9]{7,80}$/.test(String(v))).slice(0,30):[];
+   const recovered=[...stored,...candidatos(pago?.textoOcr),...rastreosNumericosOcr(pago?.textoOcr)];
+   return {...typed,candidatos:[...new Set(recovered)].slice(0,30)};
+  }
  }
  const extraidos=extraer(pago?.textoOcr);
  // Recuperación conservadora de comprobantes históricos: usar el campo que
@@ -70,7 +94,7 @@ function identificadoresPago(pago){
  if(!extraidos.claveRastreo&&!extraidos.referencia&&!extraidos.folio
     && !String(pago?.textoOcr||'').trim())
     extraidos.claveRastreo=normal(pago?.folioOperacion);
- return {...extraidos,candidatos:candidatos(pago?.textoOcr)};
+ return {...extraidos,candidatos:[...new Set([...candidatos(pago?.textoOcr),...rastreosNumericosOcr(pago?.textoOcr)])].slice(0,30)};
 }
 function identificadoresAviso(aviso){
  return {claveRastreo:normal(aviso?.tracking),referencia:referencia(aviso?.referencia),folio:normal(aviso?.folio)};
@@ -90,7 +114,7 @@ function coinciden(pago,aviso){
   const verificado=meta&&meta.origen==='OCR_SERVIDOR'&&[1,2].includes(meta.version);
   const ocrDisponible=Boolean(String(pago?.textoOcr||'').trim());
   if((verificado||ocrDisponible)&&
-     [a.claveRastreo,a.referencia,a.folio,...(a.candidatos||[])].some(v=>v===numero))return true;
+     [a.claveRastreo,a.referencia,a.folio,...(a.candidatos||[])].some(v=>normal(v)===numero))return true;
  }
  // Candidatos OCR sin etiqueta, contra valores con etiqueta EXPLÍCITA de Titan.
  // No transformar un campo folio etiquetado en una referencia distinta.
@@ -102,4 +126,4 @@ function coinciden(pago,aviso){
 function disponibles(v){
  return ['claveRastreo','referencia','folio'].filter(k=>v[k]);
 }
-module.exports={normal,referencia,extraer,almacenarVerificados,identificadoresPago,identificadoresAviso,coinciden,disponibles};
+module.exports={normal,referencia,extraer,almacenarVerificados,identificadoresPago,identificadoresAviso,coinciden,disponibles,rastreosNumericosOcr};
