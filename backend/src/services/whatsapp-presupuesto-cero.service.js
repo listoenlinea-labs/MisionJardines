@@ -4,6 +4,7 @@
 // El servidor jamás envía plantillas comerciales o de autenticación aquí.
 const db=require('../config/database');
 const {QueryTypes}=require('sequelize');
+const {normalizarDestinatario}=require('./whatsapp-destinatario.service');
 const CAP=900, SOFT_CAP=875;
 const today=()=>new Intl.DateTimeFormat('sv-SE',{
  timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'
@@ -67,10 +68,23 @@ async function send(phone,message){
  const response=await fetch('https://graph.facebook.com/'+process.env.WHATSAPP_GRAPH_VERSION+
   '/'+phoneId()+'/messages',{method:'POST',headers:{
   Authorization:'Bearer '+process.env.WHATSAPP_ACCESS_TOKEN,'Content-Type':'application/json'
- },body:JSON.stringify({messaging_product:'whatsapp',to:phone,type:'text',
+ },body:JSON.stringify({messaging_product:'whatsapp',to:normalizarDestinatario(phone),type:'text',
   text:{preview_url:false,body:String(message||'').slice(0,3900)}}),
   signal:AbortSignal.timeout(15000)});
- if(!response.ok)throw Error('Meta rechazó mensaje de servicio (HTTP '+response.status+')');
+ if(!response.ok){
+  // Meta devuelve el código específico del rechazo dentro del cuerpo JSON.
+  // Registrar el diagnóstico sin teléfonos completos, tokens ni payloads.
+  const payload=await response.json().catch(()=>({}));
+  const error=payload?.error||{};
+  const ocultar=v=>String(v||'').replace(/\+?\d{7,20}/g,'[número oculto]')
+   .replace(/EAA[A-Za-z0-9]+/g,'[token oculto]').slice(0,240);
+  console.error('[WhatsApp Bot] Meta rechazó envío:',JSON.stringify({
+   http:response.status,code:error.code??null,subcode:error.error_subcode??null,
+   mensaje:ocultar(error.message),detalle:ocultar(error.error_data?.details)
+  }));
+  throw Error('Meta rechazó mensaje de servicio (HTTP '+response.status+
+   ', código '+(error.code??'desconocido')+')');
+ }
  return true;
 }
 const fallback='🌿 Misión Jardines: el bot está llegando al límite sin costo. Para continuar, usa nuestro portal: https://listoenlinea-labs.github.io/MisionJardines/ . Allí permanecen disponibles tus trámites.';
