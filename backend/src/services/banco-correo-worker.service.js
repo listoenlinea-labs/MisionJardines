@@ -47,40 +47,35 @@ function registrarImporteRelacionado(pago,autenticados){
   ' identificadorCoincide='+identificadorCoincide+
   ' (solo diagnostico: NO confirma deposito)');
 }
-// Rescate puntual: si un pago sigue bloqueado en etapa 5 después de
-// pulsar Actualizar, intentar recuperar el rastreo de la MISMA imagen
-// original. No rehace ni invalida los pasos ya aprobados, ni acredita sin
-// comprobar el aviso bancario real. Evita releerla cada 15 segundos.
+// Si Titan solo discrepa en el identificador, releer automáticamente el
+// renglón Comprobante de la imagen original. Un intento por reporte, más
+// los reintentos explícitos sujetos al enfriamiento existente.
 async function rescatarRastreoOcr(pago,autenticados,revision){
  const info=revision?.cotejoAvisos||{};
  const previo=datosReintento(pago.verificacionBancaria);
- if(revision?.etapa!=='SIN_COINCIDENCIA'||previo.etapa!=='REINTENTO_TITAN'||
-    !info.avisosRastreoCpo||!info.cuenta||!info.importe||!info.fecha)return false;
+ if(revision?.etapa!=='SIN_COINCIDENCIA'||info.filtroBloqueante!=='IDENTIFICADOR'||
+    !info.avisosRastreoCpo)return false;
+ if(previo.rescateOcrRenglonIntentado && previo.etapa!=='REINTENTO_TITAN')return false;
  const before=Date.parse(previo.ultimoRescateOcrEn||'');
- if(Number.isFinite(before)&&Date.now()-before<10*60*1000)return false;
+ if(previo.rescateOcrRenglonIntentado && Number.isFinite(before)&&Date.now()-before<10*60*1000)return false;
  const candidatos=autenticados.filter(aviso=>{
   const check=banco.chequeosAviso(pago,aviso);
-  return check.cuenta&&check.importe&&check.fecha&&/^CPO\d{10,17}$/.test(String(aviso.tracking||''));
+  return check.cuenta&&check.importe&&check.fecha&&/^CPO\d{10,17}$/.test(identificadores.identificadoresAviso(aviso).claveRastreo);
  });
  if(!candidatos.length)return false;
  const cuando=new Date().toISOString();
  // Marcar ANTES de iniciar el OCR para evitar relecturas simultáneas.
  const inicio={...previo,ultimoRescateOcrEn:cuando,origenRescate:'COMPROBANTE_ORIGINAL',
-  rescateOcrEstado:'EN_CURSO'};
+  rescateOcrEstado:'EN_CURSO',rescateOcrRenglonIntentado:true};
  await PagoReportado.update({verificacionBancaria:inicio},{where:{id:pago.id,estatus:'PENDIENTE_VALIDACION'}});
  pago.setDataValue('verificacionBancaria',inicio);
  try{
   const original=await PagoReportado.findByPk(pago.id,{attributes:['comprobanteData']});
   if(!original?.comprobanteData)throw Error('Comprobante original no disponible');
-  const texto=await require('./comprobante-lector.service').reconocerImagen(original.comprobanteData);
-  const ids=require('./identificadores-bancarios.service');
-  const encontrados=[...new Set(candidatos.filter(a=>{
-   const num=String(a.tracking).slice(3);
-   return ids.rastreosNumericosOcr(texto).includes(num)||
-    ids.rastreoEnTextoOcr(texto,num);
-  }).map(a=>String(a.tracking).slice(3)))];
-  // Nunca elegir un rastreo arbitrario si la imagen parece contener varios.
-  if(encontrados.length!==1)throw Error('No apareció una clave bancaria única en el nuevo OCR');
+  const numero=await require('./comprobante-lector.service').reconocerImagen(
+   original.comprobanteData,{renglonComprobante:true});
+  const coincidencias=candidatos.filter(a=>identificadores.identificadoresAviso(a).claveRastreo==='CPO'+numero);
+  if(!numero||coincidencias.length!==1)throw Error('La relectura no identificó un aviso único');
   const meta=pago.identificadoresVerificados;
   const previoMeta=meta&&typeof meta==='object'&&meta.origen==='OCR_SERVIDOR'?meta:null;
   const nuevo={version:2,origen:'OCR_SERVIDOR',
@@ -88,7 +83,7 @@ async function rescatarRastreoOcr(pago,autenticados,revision){
    claveRastreo:previoMeta?.claveRastreo||'',
    referencia:previoMeta?.referencia||'',
    folio:previoMeta?.folio||'',
-   candidatos:[...new Set([...(previoMeta?.candidatos||[]),...encontrados])].slice(0,30)};
+   candidatos:[...new Set([numero,...(previoMeta?.candidatos||[])])].slice(0,30)};
   await PagoReportado.update({identificadoresVerificados:nuevo},{
    where:{id:pago.id,estatus:'PENDIENTE_VALIDACION'}});
   pago.setDataValue('identificadoresVerificados',nuevo);
@@ -121,6 +116,7 @@ async function persistir(pago,revision,fallido=false){
    ultimaConsultaManualEn:anterior.ultimaConsultaManualEn||null,
    ultimoRescateOcrEn:anterior.ultimoRescateOcrEn||null,
    rescateOcrEstado:anterior.rescateOcrEstado||null,
+   rescateOcrRenglonIntentado:anterior.rescateOcrRenglonIntentado===true,
    ultimoReintentoEn:anterior.ultimoReintentoEn||null,
    historialReintentos:Array.isArray(anterior.historialReintentos)?anterior.historialReintentos:[]
  },actualizadoEn:new Date()};

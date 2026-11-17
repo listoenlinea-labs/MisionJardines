@@ -9,7 +9,7 @@ let running = 0;
 const MAX_CONCURRENT = 2;
 const MAX_OCR_OUTPUT = 50000;
 
-function reconocerImagen(imageData) {
+function reconocerImagen(imageData, { renglonComprobante = false } = {}) {
   if (running >= MAX_CONCURRENT) {
     return Promise.reject(Object.assign(new Error('El lector de comprobantes está ocupado. Vuelve a intentarlo en unos segundos.'), { status: 503 }));
   }
@@ -35,7 +35,7 @@ function reconocerImagen(imageData) {
     const unavailable = () => Object.assign(new Error('No fue posible leer el comprobante con el OCR del servidor. Intenta de nuevo con una imagen clara; si persiste, Administración debe revisar el despliegue de Tesseract.js.'), { status: 503 });
     try {
       worker = new Worker(path.join(__dirname, 'comprobante-ocr.worker.js'), {
-        workerData: { bytes, lang: process.env.PAGOS_OCR_LANG || 'spa+eng' }
+        workerData: { bytes, renglonComprobante, lang: process.env.PAGOS_OCR_LANG || 'spa+eng' }
       });
       timer = setTimeout(() => finish(Object.assign(new Error('Se agotó el tiempo de lectura del comprobante. Intenta con una imagen más clara.'), { status: 503 })), 50000);
       worker.once('message', message => {
