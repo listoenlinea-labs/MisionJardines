@@ -1,25 +1,71 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 15/nov/2026, 23:33, America/Mexico_City.
-**SHA de main consultado:** `0bdfb37f4cbabf37ebea2f3b9be712c694560771`.
+**Última revisión:** 16/nov/2026, 23:34, America/Mexico_City.
+**SHA de main consultado:** `8ee62038031115280413d958beb51928a3ed68bb`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `ace4cc3434a605163a4081fa4dd155a97566778e`,
-historial de 65 commits, PR #433–#436, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `684636c40e470c3410c4572f06edfd8fddbf433f`, dedicado exclusivamente
-a la bitácora anterior. Los cuatro PR de producto están fusionados y no hay PR abiertos
-ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
-declaradas y los casos presentes en el código se conservan como evidencia limitada y
-no se presentan como CI.
-No se consultaron Hostinger, MySQL, Google Sheets/Drive, Titan o C3 directamente, no
-se ejecutaron migraciones, planes financieros, transferencias, reservas, cargas de
-archivos ni pruebas físicas. El cotejo de Google descrito por #434 se atribuye al PR y
-no a una lectura independiente de esta revisión. No se publican credenciales, contactos,
-comprobantes o contenido privado del padrón.
+comparación de main desde `0bdfb37f4cbabf37ebea2f3b9be712c694560771`,
+historial de 200 commits, PR #437–#454, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `31376c45c6601a257d6624a0c0a8dec191d69d4d`, dedicado exclusivamente
+a la bitácora anterior. Los dieciocho PR de producto están fusionados y no hay PR
+abiertos ni revertidos nuevos. #440 terminó fusionado aunque su descripción conserva
+la advertencia inicial de borrador. Los dieciocho heads devuelven cero workflows y cero
+estados; las pruebas declaradas se conservan como evidencia local o simulada, no como CI.
+No se consultaron Hostinger, MySQL, Google Sheets/Drive, Titan, IMAP o C3 directamente,
+no se ejecutaron migraciones, borrados, asignaciones financieras, respaldos, pagos ni
+pruebas físicas. La conversación accesible confirma que el usuario aportó una captura
+controlada, pidió releer automáticamente el renglón Comprobante y autorizó el merge; no
+confirma despliegue, conciliación bancaria, acreditación, DB o C3. No se publican datos
+del comprobante, credenciales, contactos ni contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 16/nov/2026
+
+Los PR [#437](https://github.com/listoenlinea-labs/MisionJardines/pull/437)–[#442](https://github.com/listoenlinea-labs/MisionJardines/pull/442)
+iteran la contabilidad visible de Casa Club. #437 separa recuperación, limpieza y garantía,
+y permite que una aprobación se vea como pagada solo en la consulta administrativa sin
+crear depósito ni ingreso bancario. #438 concilia conservadoramente el histórico Google
+por calle y vivienda, con modal de movimientos; el PR declara 29 registros pagados por
+$25,550 y uno cancelado, pero no inserta movimientos en MySQL. #439 propuso restar la
+limpieza prevista; #441–#442 lo sustituyen como comportamiento final: limpieza permanece
+visible e informativa, pero se excluye tanto de la diferencia central como del total de
+egresos; únicamente otros gastos registrados reducen esos totales. #440 recuperó una
+rama extensa y fue fusionado pese a que su cuerpo advertía validación incompleta. Nada de
+esto prueba el saldo bancario, el Sheet actual o el despliegue.
+
+Los PR [#443](https://github.com/listoenlinea-labs/MisionJardines/pull/443)–[#448](https://github.com/listoenlinea-labs/MisionJardines/pull/448)
+amplían egresos, extraordinarias, planificación y respaldos. Mantenimiento incorpora
+borrado transaccional y auditado de egresos, bloqueado si hay planes vinculados, con
+eliminación posterior del archivo. Las cuotas extraordinarias calculan meta desde 231
+cargos, conservan exenciones en cero para auditoría y distinguen Meta alcanzada, Abonando,
+Sin aportes y No aplica. El plan muestra todos los proyectos, permite excluir/restaurar
+egresos sin borrar el original y valida asignaciones. Los respaldos Drive se ejecutan como
+jobs en memoria, verifican PDF/Excel después de subir y solo reportan completado con
+archivos verificados; un reinicio de Node interrumpe el job. #444–#448 son iteraciones
+visuales de tablas, columnas, paginación y ancho del modal, sin cambiar cálculos.
+
+Los PR [#449](https://github.com/listoenlinea-labs/MisionJardines/pull/449)–[#454](https://github.com/listoenlinea-labs/MisionJardines/pull/454)
+mejoran la conciliación Titan sin aprobar por la mera existencia de mensajes. Se amplían
+etiquetas bancarias, comparación segura de CPO, diagnóstico, confirmación visual y
+reconsulta protegida desde Actualizar estado. Las iteraciones posteriores recuperan
+identificadores del OCR, admiten un vínculo único por hora de operación bajo todas las
+guardas y, finalmente, #454 recorta y relee automáticamente el renglón inmediatamente
+debajo de Comprobante. Solo agrega el número íntegro cuando coincide con un único aviso
+compatible; conserva cuenta, importe, fecha, remitente autorizado, unicidad y no
+reutilización. El usuario aportó la captura que motivó el ajuste y autorizó el merge;
+#454 declara haber recuperado localmente el número esperado, pero no se concilió ni
+acreditó ningún pago de producción.
+
+GitHub devuelve cero runs y cero estados para los dieciocho heads. En main existen 13
+casos focalizados asociados a #437, 5 a #438, 3 a #439, 6 en la regresión rescatada de
+#440, 5 en el resultado final #441–#442 y 8 para #443; varios PR declaran expresamente que
+Node no se ejecutó o que faltaba QA. #444–#448 solo registran revisión estática. #449–#453
+declaran sintaxis y comparaciones puntuales sin suite integral; #454 declara 27 pruebas
+dirigidas aprobadas y recuperación local de la captura. Ningún resultado acredita
+Hostinger, MySQL, Google Sheets/Drive, Titan/IMAP real, navegador, banco o C3 físico.
 
 ## Implementado en main el 15/nov/2026
 
@@ -673,6 +719,9 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Casa Club: histórico y contabilidad visible | Iteraciones implementadas; cifras reales y despliegue pendientes | #437–#442 separan recuperación/limpieza/garantía, concilian histórico por vivienda y dejan limpieza solo informativa en el resultado final. El $25,550 es evidencia declarada del PR, no saldo bancario verificado en esta revisión |
+| Egresos, extraordinarias y fondos | Backend/UI implementados; operaciones reales pendientes | #443 agrega borrado auditado, exenciones, meta automática, plan por proyectos y respaldo Drive verificable; #444–#448 ajustan UI. No se borró ni asignó nada y los jobs en memoria se pierden al reiniciar |
+| Titan y OCR del comprobante | Conciliación automática reforzada; caso real no confirmado | #449–#454 reconsultan Titan, comparan CPO y releen el renglón Comprobante. #454 recuperó la captura localmente, pero no acredita despliegue, aviso único, pago, cuotas, TAGs o DB |
 | Detalle administrativo Casa Club | Implementado en main; privacidad y datos reales pendientes | #433 permite consultar reservas locales y tarjetas rojas por fecha solo a Administración. No cambia pagos/sincronización ni prueba datos de producción |
 | Plan mensual de fondos | Implementado y auto-inicializable; no equivale a banco | #434–#435 asignan fuentes a egresos con límites, versión y transacción; no mueven dinero. Falta MySQL, concurrencia, permisos CREATE, navegador y recuperación real |
 | Histórico Google Casa Club | Lector automático de solo lectura implementado; acceso y conciliación pendientes | #434 declara $25,550/29 pagados/1 cancelado; #436 separa la lectura de Drive y sync. No se verificaron credenciales, permisos ni backend de producción y no se suma a MySQL |
@@ -782,6 +831,13 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 16/nov/2026 | PR #437–#454, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 18 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
+| 16/nov/2026 | #437–#440, archivos focalizados Casa Club | **13 + 5 + 3 + 6 casos presentes**; PR declaran cálculo/sintaxis o validación pendiente | Evidencia de fuente/local; no prueba Sheet, MySQL, navegador ni banco |
+| 16/nov/2026 | #441–#442, `node --test tests/casa-club-limpieza-solo-egresos-20261116.test.cjs` | **5 casos presentes; comando no ejecutado** según los PR | La limpieza queda informativa en el código; falta ejecución y vista real |
+| 16/nov/2026 | #443, `tests/analisis-cuotas-fondos-proyectos-respaldos-20261116.test.cjs` | **8 pruebas focalizadas agregadas**; PR pide Node CI/QA antes de usar | No prueba borrado, planes, Drive, Hostinger ni recuperación tras reinicio |
+| 16/nov/2026 | #444–#448, revisión de sintaxis/estructura/CSS | Revisión ligera o estática; **sin suite extensa** | Solo UI; falta navegador, sidebar, móvil y caché reales |
+| 16/nov/2026 | #449–#453, sintaxis y comparaciones Titan/OCR simuladas | Casos puntuales declarados correctos; **sin suite integral ni IMAP real** | No confirma aviso bancario único ni acreditación |
+| 16/nov/2026 | #454, pruebas dirigidas de OCR del renglón y worker | PR declara **27 aprobadas** y recuperación local de la captura aportada | No ejecutó conciliación, no cambió pagos y requiere desplegar backend |
 | 15/nov/2026 | PR #433–#436, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 4 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
 | 15/nov/2026 | #433, revisión focalizada del detalle privado por fecha | PR declara revisión focalizada; **suite completa no ejecutada** | No prueba permisos, privacidad, MySQL ni móvil real |
 | 15/nov/2026 | #434, archivos de prueba de plan/recomendación | **8 casos presentes** (3 + 5); PR declara sintaxis y ejemplo de importes verificados, sin salida completa | No prueba migración, fondos, Sheet, Hostinger ni conciliación real |
@@ -961,6 +1017,10 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Casa Club final #437–#442 | Desplegar frontend/backend, releer el Sheet y cotejar 29 movimientos, viviendas ambiguas y total sin datos privados. Verificar que limpieza sea informativa y que garantía/recuperación no se dupliquen ni se presenten como banco o MySQL |
+| Egresos, extraordinarias y fondos #443–#448 | Respaldar y probar en clon borrado/versionado/auditoría/archivo, 231 cargos y exenciones, metas, filtros, asignaciones y exclusiones. Ejecutar los 8 casos, validar UI 10 filas/móvil/sidebar y no borrar registros históricos dudosos sin conciliación |
+| Respaldos Drive #443 | Probar OAuth/carpeta autorizada con archivos ficticios, PDF/Excel, creación/actualización, verificación MIME/padre/tamaño, errores y reinicio de Node. Para durabilidad real sustituir la cola en memoria por persistencia |
+| Titan/OCR #449–#454 | Desplegar backend y repetir Actualizar estado sobre el caso controlado; confirmar un único aviso autorizado/no usado, cuenta, importe, fecha y número íntegro. Revisar logs sin datos bancarios; si no coincide, mantener En revisión. Solo después verificar pago/cuotas y nunca inferir C3 |
 | Detalle privado Casa Club #433 | Desplegar frontend/backend juntos y probar con datos ficticios roles 200/403, fecha válida, caché privada, reservas múltiples, vivienda faltante, tarjetas activas/históricas, modal móvil y ausencia de datos personales en API pública |
 | Plan mensual #434–#435 | Respaldar y probar en clon la auto-inicialización con/sin permiso CREATE y el SQL alternativo; validar versión 409, límites por fuente/egreso, meses, caída parcial, reintento, iPhone/escritorio y rollback. No usar el plan como evidencia bancaria ni ejecutar transferencias |
 | Histórico Google #434/#436 | Desplegar backend/frontend y reiniciar Node; verificar API, cuenta de servicio y permiso Lector sin publicar credenciales. Releer total/filas, conciliar los siete pares históricos y su banco/MySQL antes de sumar, borrar o normalizar; confirmar que Drive y sincronización siguen independientes |
@@ -1073,6 +1133,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-16
+
+- Main consultado a las 23:34, America/Mexico_City, en `8ee62038031115280413d958beb51928a3ed68bb`, 200 commits por delante del SHA guardado.
+- Se excluyó `31376c4`, que solo actualizó esta bitácora. Como producto se verificaron dieciocho PR fusionados: #437–#454; no hay PR abiertos ni revertidos nuevos. #440 terminó fusionado aunque su texto aún lo describe como borrador.
+- Los dieciocho heads devuelven cero workflows y cero estados. Se conservaron pruebas/casos locales de Casa Club y fondos, revisiones estáticas de UI y las 27 pruebas dirigidas declaradas por #454; no hay CI verde observable.
+- La conversación accesible confirma que el usuario aportó una captura controlada, pidió automatizar la lectura del renglón Comprobante y autorizó el merge. #454 declara recuperación local del número esperado; esto no confirma conciliación, acreditación, MySQL, Hostinger, Titan real o prueba física.
+- No se consultaron ni modificaron Hostinger, MySQL, Google Sheets/Drive, Titan/IMAP o C3; no se ejecutaron SQL, borrados, planes, respaldos, pagos ni pruebas físicas. Se preservaron guardas bancarias, privacidad y pendientes de verificación.
 
 ### 2026-11-15
 
