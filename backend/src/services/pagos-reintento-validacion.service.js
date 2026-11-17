@@ -68,7 +68,7 @@ async function solicitarReintento({pagoId,casaId,usuarioId,reservaCasaClubId=nul
 
 // Actualizar estado de un pago EN REVISIÓN debe solicitar una nueva lectura
 // del buzón Titan. No se vuelve a cargar el archivo, ni se aplica la cuota aquí.
-const ESPERA_CONSULTA_MANUAL_MS=30*1000;
+const ESPERA_CONSULTA_MANUAL_MS=8*1000;
 async function solicitarActualizacionPendiente({pagoId,casaId,usuarioId,ahora=new Date()}){
  if(!Number.isSafeInteger(pagoId)||pagoId<=0||!Number.isSafeInteger(casaId)||casaId<=0)
   throw fail(404,'Comprobante no encontrado.');
@@ -96,7 +96,8 @@ async function solicitarActualizacionPendiente({pagoId,casaId,usuarioId,ahora=ne
   await pago.update({
    verificacionBancaria:{
     ...previo,version:1,etapa:'REINTENTO_TITAN',
-    detalle:'Consultando nuevamente las notificaciones bancarias de Titan para este comprobante.',
+    detalle:'Se conservan las verificaciones previas. Reintentando exclusivamente el cotejo bancario pendiente con Titan.',
+    fasePendiente:'COMPARACION_BANCARIA',
     ultimaConsultaManualEn:ahora.toISOString()
    },
    actualizadoEn:ahora

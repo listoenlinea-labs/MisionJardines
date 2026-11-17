@@ -93,7 +93,16 @@ function rastreoEtiquetado(texto){
   if(!m)continue;
   const resto=lines[i].slice(m[0].length).replace(/^\s*[:#=.-]\s*/,'').trim();
   const candidato=resto||lines[i+1]||'';
-  // Un código no puede contener palabras de otro campo.
+  // HTML bancario puede separar el prefijo CPO y los dígitos con espacios
+  // o incluso en dos celdas, aunque visualmente se vea una sola clave.
+  // Sólo se admite cuando la etiqueta "CLAVE DE RASTREO" precede al valor.
+  const cpo=candidato.match(/^CPO[\s-]*(\d{10,17})(?:\s|$)/);
+  const cpoSeparado=candidato==='CPO'&&(lines[i+2]||'').match(/^(\d{10,17})$/);
+  if(cpo||cpoSeparado){
+   encontrados.add('CPO'+(cpo||cpoSeparado)[1]);
+   continue;
+  }
+  // No extraer números sueltos de cuentas, fechas ni otras etiquetas.
   const match=candidato.match(/^([A-Z0-9][A-Z0-9-]{11,89})(?:\s|$)/);
   if(!match)continue;
   const value=clave(match[1]);
