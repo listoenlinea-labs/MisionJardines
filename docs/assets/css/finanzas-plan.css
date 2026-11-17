@@ -356,3 +356,19 @@
     line-height:1.35;
   }
 }
+
+/* Al contraer la navegación lateral, aprovechar el ancho liberado.
+   El selector usa el estado que ya asigna site-sidebar.js al <body>.
+   No modifica los modales de otras pantallas ni la vista móvil. */
+@media (min-width:951px) {
+  body.mj-shared-sidebar-enabled.mj-shared-sidebar-collapsed .fplan-dialog {
+    width:min(1760px,calc(100vw - 24px));
+    max-width:none;
+    height:min(94dvh,1000px);
+    max-height:94dvh;
+  }
+  body.mj-shared-sidebar-enabled.mj-shared-sidebar-collapsed .fplan-dialog .fplan-columns {
+    grid-template-columns:minmax(0,46fr) minmax(0,54fr);
+    gap:14px;
+  }
+}
