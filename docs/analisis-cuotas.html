@@ -343,22 +343,23 @@
   </div>
   <div class="finance-rules-controls">
    <label>Nombre del proyecto<input id="financeNewProjectName" type="text" maxlength="300" placeholder="Ej. Rehabilitación de áreas comunes" required></label>
-   <label>Costo total del proyecto (MXN)<input id="financeRulesBudget" type="number" min="3" max="10000000" step="1" inputmode="numeric" placeholder="231000" required></label>
+   <label>Cuota general por vivienda (MXN)<input id="financeRulesQuota" type="number" min="1" max="10000000" step="1" inputmode="numeric" placeholder="Ej. 600" required></label>
+   <label>Meta estimada (MXN) · automática<input id="financeRulesBudget" type="number" min="1" max="10000000" step="1" readonly aria-readonly="true" placeholder="Se calcula con las 231 viviendas"></label>
    <label>Mes de inicio<input id="financeNewProjectMonth" type="month" required></label>
   </div>
   <div class="finance-rules-overview">
    <div><span>Meta del proyecto</span><strong id="financeRulesBudgetDisplay">$0</strong></div>
-   <div><span>Casas incluidas</span><strong id="financeRulesHouses">231</strong></div>
+   <div><span>Casas que pagan</span><strong id="financeRulesHouses">231</strong></div>
    <div><span>Reglas especiales</span><strong id="financeRulesSpecialCount">0</strong></div>
-   <div><span>Reparto exacto</span><strong id="financeRulesDiff">Sin diferencia</strong></div>
+   <div><span>Exentas / No aplica</span><strong id="financeRulesDiff">0</strong></div>
   </div>
   <div class="finance-rules-list-heading">
-   <div><strong>Importe por vivienda</strong><p class="hint">Una excepción fija el importe de esa casa. Puedes poner $0 para exentar a una vivienda; el saldo se redistribuye entre las demás para conservar el costo total exacto.</p></div>
+   <div><strong>Importe por vivienda</strong><p class="hint">La cuota por casa determina la meta. Si asignas $0 (No aplica) se excluye esa vivienda: 230 casas con cuota significan 230 casas que pagan. Una excepción mayor o menor modifica la meta, sin redistribuir silenciosamente.</p></div>
    <label>Buscar vivienda<input id="financeRulesSearch" type="search" placeholder="Calle, número o residente"></label>
   </div>
   <div class="finance-rules-scroll"><table aria-label="Distribución de cuotas del nuevo proyecto"><thead><tr><th>Vivienda</th><th>Cuota calculada</th><th>Regla especial</th></tr></thead><tbody id="financeRulesRows"></tbody></table></div>
   <p id="financeRulesStatus" role="status" aria-live="polite"></p>
-  <div class="finance-rules-actions"><button type="button" id="financeRulesCancel" class="soft">Cancelar</button><button type="button" id="financeRulesApply" class="primary">Crear proyecto para las 231 casas</button></div>
+  <div class="finance-rules-actions"><button type="button" id="financeRulesCancel" class="soft">Cancelar</button><button type="button" id="financeRulesApply" class="primary">Crear proyecto con cuotas calculadas</button></div>
  </div>
 </section>
 <section id="houseReceiptModal" class="finance-pay-overlay" hidden aria-label="Recibo de mantenimiento">
