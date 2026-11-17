@@ -107,64 +107,70 @@
  function spend(id){return assignments.filter(x=>x.egresoId===id).reduce((s,x)=>s+Number(x.monto||0),0);}
  function render(){
   if(!target){
-   panel.innerHTML='<p class="fplan-empty">No hay ingresos disponibles para mostrar.</p>';
-   expenses.innerHTML='<p class="fplan-empty">No se pudieron cargar los egresos.</p>';
-   $('fplanOverview').replaceChildren();
-   return;
+   panel.innerHTML='<p class="fplan-empty">No hay ingresos disponibles.</p>';
+   expenses.innerHTML='<p class="fplan-empty">No hay egresos disponibles.</p>';
+   $('fplanOverview').replaceChildren();return;
   }
-  const sources=pools(),rows=expenseRows();
-  const selectedProject=(target.proyectosExtraordinarios||[]).find(p=>String(p.id)===String(projectFilterId));
-  $('fplanProjectFilter').title=selectedProject?'Proyecto seleccionado: '+selectedProject.nombre:'Selecciona un proyecto';
-  const order=$('fplanIncomeSort').value;
-  sources.sort((a,b)=>order==='asc'?a.total-b.total:order==='name'?a.name.localeCompare(b.name,'es'):b.total-a.total);
   const grouped=['Mantenimiento','Cuotas extraordinarias','Casa Club'];
-  panel.innerHTML=grouped.map(group=>{
-   const groupRows=sources.filter(x=>x.tipo===group);
-   return '<h4 class="fplan-source-label">'+esc(group)+'</h4>'+
-    (groupRows.length?groupRows.map(x=>
-     '<article class="fplan-bucket" draggable="true" tabindex="0" data-source="'+esc(x.id)+'" aria-label="Arrastra este dinero a un egreso">'+
-     '<span class="fplan-number">'+money(x.free)+'</span><strong>'+esc(x.name)+'</strong>'+
-     '<span>Fuente '+money(x.total)+' · '+(planReady?'Asignado '+money(x.used):'Asignaciones por verificar')+'</span>'+
-     '<div><button type="button" data-pick="'+esc(x.id)+'"'+(planReady?'':' disabled')+'>Asignar fondos</button></div></article>').join(''):
-    '<p class="fplan-empty">Sin fondos registrados en este origen.</p>');
-  }).join('');
-  const query=$('fplanSearch').value.trim().toLocaleLowerCase('es');
-  let visible=rows.filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo).toLocaleLowerCase('es').includes(query));
-  const sort=$('fplanExpenseSort').value;
-  visible.sort((a,b)=>sort==='asc'?a.monto-b.monto:sort==='name'?a.nombre.localeCompare(b.nombre,'es'):b.monto-a.monto);
-  expenses.innerHTML=grouped.map(group=>{
-   const subset=visible.filter(x=>x.grupo===group);
-   if(!subset.length)return '';
-   return '<h4 class="fplan-source-label">'+esc(group)+'</h4>'+
-    subset.map(x=>{
-     const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
-     const remaining=Math.max(0,x.monto-spend(x.id));
-     return '<article class="fplan-expense" data-expense="'+x.id+'" tabindex="0">'+
-      '<span class="fplan-number">'+money(x.monto)+'</span>'+
-      '<strong>'+esc(x.nombre)+'</strong>'+
-      '<div class="fplan-expense-meta">'+esc(x.fecha)+' · '+esc(x.categoria)+' · '+
-      (x.pagado?'Registrado como pagado':'Pendiente de pagar')+
-      ' · Sin fuente asignada: <b>'+money(remaining)+'</b></div>'+
-      attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
-       ' · '+money(a.monto)+
-       '<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join('')+
-      '<div><button type="button" data-choose="'+x.id+'"'+(planReady?'':' disabled')+'>Asignar fondos</button></div></article>';
-    }).join('');
-  }).join('')||'<p class="fplan-empty">No hay egresos registrados para este mes o filtro.</p>';
-  const totalByGroup=grouped.map(group=>sources.filter(s=>s.tipo===group).reduce((t,s)=>t+s.free,0));
-  const total=totalByGroup.reduce((s,n)=>s+n,0);
-  const totalUnassigned=rows.reduce((n,e)=>n+Math.max(0,e.monto-spend(e.id)),0);
-  const labels=['Mantenimiento','Cuotas extraordinarias','Casa Club'];
-  $('fplanOverview').innerHTML=totalByGroup.map((n,i)=>'<div class="fplan-kpi"><small>'+(planReady?'Sin asignar':'Ingresos reportados')+' · '+labels[i]+'</small><strong>'+money(n)+'</strong></div>').join('')+
-   '<div class="fplan-kpi" data-tone="total"><small>'+(planReady?'Total aún sin asignar':'Ingresos reportados (no conciliados)')+'</small><strong>'+money(total)+'</strong></div>';
-  const pendientes=rows.filter(x=>!x.pagado).reduce((t,x)=>t+x.monto,0);
-  $('fplanExpenseTotal').textContent='Egresos registrados '+money(rows.reduce((t,x)=>t+x.monto,0))+
-   ' · Pendientes de pago '+money(pendientes)+(planReady?' · Sin financiación asignada '+money(totalUnassigned):' · Asignaciones por verificar');
+  const sources=pools(),rows=expenseRows(),allRows=expenseRows(true);
+  const sort=$('fplanIncomeSort').value,searchIn=$('fplanIncomeSearch').value.trim().toLocaleLowerCase('es');
+  sources.sort((a,b)=>sort==='asc'?a.total-b.total:sort==='name'?a.name.localeCompare(b.name,'es'):b.total-a.total);
+  const visibleSources=grouped.flatMap(group=>sources.filter(x=>x.tipo===group))
+   .filter(x=>(x.name+' '+x.tipo).toLocaleLowerCase('es').includes(searchIn));
+  const pageLimit=10,inPages=Math.max(1,Math.ceil(visibleSources.length/pageLimit));
+  incomePage=Math.max(1,Math.min(incomePage,inPages));
+  const incomeRows=visibleSources.slice((incomePage-1)*pageLimit,incomePage*pageLimit);
+  panel.innerHTML='<table class="fplan-data-table"><thead><tr><th>Ingreso / proyecto</th><th>Disponible</th><th>Asignado</th></tr></thead><tbody>'+
+   (incomeRows.map(x=>'<tr data-source="'+esc(x.id)+'" tabindex="0" role="button" aria-selected="'+(selectedSource?.id===x.id)+'"'+
+     (selectedSource?.id===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.name)+
+     '</strong><small>'+esc(x.tipo)+(x.sinConciliar?' · histórico sin conciliación':'')+'</small></td>'+
+     '<td class="fplan-number-cell">'+money(x.free)+'</td><td>'+money(x.used)+
+     '<small>Recibido: '+money(x.total)+'</small></td></tr>').join('')||
+    '<tr><td colspan="3">No hay ingresos con ese filtro.</td></tr>')+'</tbody></table>';
+  $('fplanIncomePagination').textContent='Página '+incomePage+' de '+inPages+' · '+visibleSources.length+' fuentes';
+  $('fplanIncomePrev').disabled=incomePage===1;$('fplanIncomeNext').disabled=incomePage===inPages;
+  const searchOut=$('fplanSearch').value.trim().toLocaleLowerCase('es'),outSort=$('fplanExpenseSort').value;
+  let visibleExpenses=allRows.filter(x=>(x.nombre+' '+x.categoria+' '+x.grupo+' '+x.proyectoNombre).toLocaleLowerCase('es').includes(searchOut))
+   .filter(x=>!$('fplanOnlyUnassigned').checked||
+      (!excluded.includes(x.id)&&x.monto>spend(x.id)));
+  visibleExpenses.sort((a,b)=>outSort==='asc'?a.monto-b.monto:outSort==='name'?a.nombre.localeCompare(b.nombre,'es'):b.monto-a.monto);
+  visibleExpenses=grouped.flatMap(group=>visibleExpenses.filter(x=>x.grupo===group));
+  const outPages=Math.max(1,Math.ceil(visibleExpenses.length/pageLimit));
+  expensePage=Math.max(1,Math.min(expensePage,outPages));
+  const expenseRowsPage=visibleExpenses.slice((expensePage-1)*pageLimit,expensePage*pageLimit);
+  expenses.innerHTML='<table class="fplan-data-table"><thead><tr><th>Egreso / proyecto</th><th>Importe</th><th>Sin asignar / acciones</th></tr></thead><tbody>'+
+   (expenseRowsPage.map(x=>{
+    const removed=excluded.includes(x.id),remaining=Math.max(0,x.monto-spend(x.id));
+    const attached=assignments.map((a,i)=>({...a,index:i})).filter(a=>a.egresoId===x.id);
+    return '<tr data-expense="'+x.id+'" tabindex="0" role="button" aria-selected="'+(selectedExpenseId===x.id&&!removed)+'"'+
+     (removed?' class="is-excluded"':selectedExpenseId===x.id?' class="is-selected"':'')+'><td><strong>'+esc(x.nombre)+
+     '</strong><small>'+esc(x.proyectoNombre||x.grupo)+' · '+esc(x.fecha)+' · '+(x.pagado?'Pagado':'Pendiente')+
+     '</small></td><td class="fplan-number-cell">'+money(x.monto)+'</td><td><small>'+
+     (removed?'Excluido del plan':'Sin asignar: '+money(remaining))+'</small>'+
+     (removed?'':attached.map(a=>'<span class="fplan-allocation"><b>Desde: </b>'+esc(labelSource(a))+
+       ' · '+money(a.monto)+'<button type="button" data-remove="'+a.index+'" title="Quitar asignación" aria-label="Quitar asignación">×</button></span>').join(''))+
+     '<button type="button" class="fplan-exclude-button" data-exclude="'+x.id+'">'+(removed?'Restaurar':'Borrar')+
+     '</button></td></tr>';
+   }).join('')||'<tr><td colspan="3">No hay egresos con ese filtro.</td></tr>')+'</tbody></table>';
+  $('fplanExpensePagination').textContent='Página '+expensePage+' de '+outPages+' · '+visibleExpenses.length+' egresos';
+  $('fplanExpensePrev').disabled=expensePage===1;$('fplanExpenseNext').disabled=expensePage===outPages;
+  const groupsTotal=grouped.map(group=>sources.filter(x=>x.tipo===group).reduce((sum,x)=>sum+x.free,0));
+  const total=groupsTotal.reduce((sum,x)=>sum+x,0);
+  $('fplanOverview').innerHTML=groupsTotal.map((n,i)=>'<div class="fplan-kpi"><small>'+
+   (planReady?'Sin asignar':'Ingresos reportados')+' · '+esc(grouped[i])+
+   '</small><strong>'+money(n)+'</strong></div>').join('')+
+   '<div class="fplan-kpi" data-tone="total"><small>Total aún sin asignar</small><strong>'+money(total)+'</strong></div>';
+  const remaining=rows.reduce((sum,x)=>sum+Math.max(0,x.monto-spend(x.id)),0);
+  const pending=rows.filter(x=>!x.pagado).reduce((sum,x)=>sum+x.monto,0);
+  $('fplanExpenseTotal').textContent='Egresos considerados '+money(rows.reduce((sum,x)=>sum+x.monto,0))+
+   ' · Pendientes de pago '+money(pending)+' · Sin financiación '+money(remaining)+
+   (excluded.length?' · Excluidos del plan: '+excluded.length:'');
   const historical=target.casaClubGoogle2026;
   $('fplanHistoric').textContent=historical?.disponible&&target.anio===2026
-   ?'Casa Club histórico 2026 (Google): '+money(historical.total)+' · '+historical.registros+
-    ' cobros registrados. Se consulta por separado: no se suma a los fondos disponibles hasta conciliarlo con MySQL y el banco.'
-   :'Casa Club Google: histórico no disponible para conciliación. Solo se distribuyen importes presentes en MySQL.';
+   ?'Casa Club Google 2026: '+money(historical.total)+' · '+historical.registros+
+    ' cobros históricos. No equivalen a un saldo bancario conciliado.'
+   :'Histórico de Casa Club pendiente de conciliación.';
+  actionState();
  }
  // El recomendador solo propone en memoria; cada decisión es trazable y editable.
  let recommendation=null;
