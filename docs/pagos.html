@@ -1462,19 +1462,6 @@
 .mj-debt-item.extra{background:#f8f3ff;border-color:#eadcfa}.mj-debt-item.club{background:#fff5ed;border-color:#ffdfc1}.mj-debt-item strong{font-size:13px}.mj-debt-item span{font-size:13px}.mj-debt-item b{white-space:nowrap;color:#1d7a55}
 .mj-debt-item small{display:block;margin-top:4px;color:#8a6070;font-size:10px}.mj-debt-total{display:flex;justify-content:space-between;align-items:center;padding:17px 4px 0;margin-top:14px;border-top:1px solid #e6e9ef;font-weight:800}.mj-debt-total strong{color:#166e49;font-size:23px}
 @media(max-width:560px){.mj-debt-item{grid-template-columns:1fr auto;gap:7px}.mj-debt-item span{grid-column:1/3;grid-row:2}.mj-debt-item b{grid-column:2;grid-row:1}}
-
-/* Cotejo puntual del rastreo cuando el OCR no pudo leerlo. Solo administración. */
-.pending-cpo-assist{margin:14px 0;padding:14px 16px;border:1px solid #c9e2d5;border-radius:14px;background:#f3fbf6}
-.pending-cpo-assist strong{display:block;color:#205a42;font-size:14px}
-.pending-cpo-assist p{margin:7px 0 10px;color:#52647a;font-size:12px;line-height:1.5}
-.pending-cpo-assist label{display:block;color:#304c62;font-size:12px;font-weight:750;margin-bottom:6px}
-.pending-cpo-controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-.pending-cpo-controls input{min-width:170px;flex:1;padding:11px;border:1px solid #cbd9e5;border-radius:9px;background:white;font-size:15px}
-.pending-cpo-controls button{padding:11px 15px;border:0;border-radius:9px;background:#147a4b;color:white;font-size:13px;font-weight:800;cursor:pointer}
-.pending-cpo-controls button:disabled{opacity:.65;cursor:wait}
-.pending-cpo-assist #pendingCpoStatus{margin-bottom:0}
-@media(max-width:480px){.pending-cpo-controls input,.pending-cpo-controls button{width:100%;flex-basis:100%}}
-
 </style>
 <dialog id="receiptAllModal" class="receipt-large-modal" aria-labelledby="receiptAllHeading">
 <div class="receipt-modal-top"><div><span class="eyebrow">MIS RECIBOS</span><h2 id="receiptAllHeading">Todos mis pagos</h2></div><button id="closeReceiptAll" type="button" class="receipt-close" aria-label="Cerrar">×</button></div>
@@ -1492,7 +1479,7 @@
   <script src="assets/js/comprobante-parser.js?v=20261112-ocr-flexible"></script>
   <script src="assets/js/pagos-reparto-calculo.js?v=20261026-reparto"></script>
   <script src="assets/js/pagos-reparto-ui.js?v=20261109-pesos-enteros-v1"></script>
-  <script src="assets/js/pagos.js?v=20261117-cotejo-asistido-v6"></script>
+  <script src="assets/js/pagos.js?v=20261117-cpo-fase-pendiente-v5"></script>
   <script src="assets/js/pagos-historial.js?v=20261109-pesos-enteros-v1"></script>
 
   <script src="assets/js/site-sidebar.js?v=20261111-condomino-pagos"></script>
