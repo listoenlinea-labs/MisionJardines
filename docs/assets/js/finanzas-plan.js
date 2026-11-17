@@ -132,7 +132,7 @@
      '</strong><small>'+esc(x.tipo)+(x.sinConciliar?' · histórico sin conciliación':'')+'</small></td>'+
      '<td class="fplan-number-cell">'+money(x.free)+'</td><td>'+money(x.used)+
      '<small>Recibido: '+money(x.total)+'</small></td></tr>').join('')+
-    emptyPageRows(pageLimit-incomeRows.length,incomeRows.length?'':'No hay ingresos con ese filtro.'))+'</tbody></table>';
+    emptyPageRows(incomeRows.length?0:1,incomeRows.length?'':'No hay ingresos con ese filtro.'))+'</tbody></table>';
   $('fplanIncomePagination').textContent='Página '+incomePage+' de '+inPages+' · '+visibleSources.length+' fuentes';
   $('fplanIncomePrev').disabled=incomePage===1;$('fplanIncomeNext').disabled=incomePage===inPages;
   const searchOut=$('fplanSearch').value.trim().toLocaleLowerCase('es'),outSort=$('fplanExpenseSort').value;
