@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Análisis de cuotas · Misión Jardines</title>
 <link rel="icon" href="assets/images/favicon.ico?v=20261005">
 <script src="assets/js/permissions.js?v=20261111-condomino-pagos"></script><script src="assets/js/page-access.js?v=20261012-seguridad"></script>
-<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261116-suite-auditoria-v4"><link rel="stylesheet" href="assets/css/finanzas-plan.css?v=20261117-modal-sidebar-ampliado-v9">
+<link rel="stylesheet" href="assets/css/analisis-cuotas.css?v=20261116-suite-auditoria-v4"><link rel="stylesheet" href="assets/css/finanzas-plan.css?v=20261117-padron-filtros-fondos-v10">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head><body class="page-analisis">
 <main class="analysis-page">
@@ -940,6 +940,7 @@
      </header>
      <div class="fplan-filters">
      <div class="fplan-panel-toolbar fplan-expense-sort">
+      <label class="fplan-field fplan-field-scope"><span>Ámbito</span><select id="fplanExpenseScope" aria-label="Filtrar egresos por ámbito"><option value="TODOS" selected>Todos</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTOS">Proyectos</option><option value="CASA_CLUB">Casa Club</option></select></label>
       <label class="fplan-field fplan-field-search"><span>Buscar concepto</span>
        <input id="fplanSearch" type="search" placeholder="Seguridad, luz, barandal…" aria-label="Buscar egreso"></label>
       <label class="fplan-field"><span>Ordenar</span><select id="fplanExpenseSort" aria-label="Ordenar egresos">
