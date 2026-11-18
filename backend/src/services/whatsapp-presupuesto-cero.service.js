@@ -99,7 +99,7 @@ function list(phone,text,label,items){
   type:'list',body:{text:String(text).slice(0,1024)},
   action:{button:String(label||'Elegir').slice(0,20),
    sections:[{title:'Opciones',rows:items.map(x=>({id:String(x.id).slice(0,100),
-    title:String(x.title).slice(0,24),description:String(x.description||'').slice(0,72)}))}]}
+    title:String(x.title).slice(0,24),...(x.description?{description:String(x.description).slice(0,72)}:{})}))}]}
  }});
 }
 async function document(phone,buffer,filename,caption){
