@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_bot_pagos (
   remitente VARCHAR(32) NOT NULL,
   usuario_id BIGINT UNSIGNED NOT NULL,
   casa_id INT UNSIGNED NOT NULL,
+  avisado_en DATETIME NULL,
   enviado_en DATETIME NULL,
   creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY ix_whatsapp_pagos_pendientes (enviado_en, creado_en)
