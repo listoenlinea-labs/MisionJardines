@@ -4,6 +4,7 @@ const {consultarAdeudos}=require('./adeudos-comunidad.service');
 function moneda(n){return '$'+Number(n||0).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';}
 async function deudaPdf(auth){
  const datos=await consultarAdeudos(auth.casaId);
+ const cuenta=require('./pagos-cuenta-oficial.service').obtener();
  const pdf=new PDFDocument({size:'LETTER',margin:48,info:{Title:'Estado de adeudos Misión Jardines'}});
  const chunks=[];
  pdf.on('data',chunk=>chunks.push(chunk));
@@ -18,6 +19,12 @@ async function deudaPdf(auth){
  pdf.text('Cuotas extraordinarias: '+moneda(datos.totales?.EXTRAORDINARIO));
  pdf.text('Casa Club: '+moneda(datos.totales?.CASA_CLUB));
  pdf.moveDown().fontSize(14).text('Total: '+moneda(datos.total));
+ pdf.moveDown().fontSize(11).fillColor('#19392d').text('Cómo pagar');
+ pdf.fillColor('#222222').fontSize(10).text('Banco: '+String(cuenta.banco||'Consulta Administración'));
+ if(cuenta.titular)pdf.text('Beneficiario: '+cuenta.titular);
+ if(cuenta.clabe)pdf.text('CLABE: '+cuenta.clabe);
+ if(cuenta.cuenta)pdf.text('Cuenta: '+cuenta.cuenta);
+ pdf.text('Concepto: '+(auth.casa.calleCorrecta||auth.casa.calle)+' '+auth.casa.numero);
  pdf.moveDown(1.5).fontSize(9).fillColor('#555555')
   .text('Documento informativo generado a partir de los saldos actuales de Misión Jardines. Los pagos en revisión bancaria no se consideran confirmados hasta su conciliación.');
  pdf.end();
