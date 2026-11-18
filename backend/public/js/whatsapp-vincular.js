@@ -43,7 +43,12 @@
    await json('/api/auth/whatsapp-bot/confirmar',{method:'POST',headers:{Authorization:'Bearer '+jwt},
     body:JSON.stringify({token,casaId})});
    jwt='';$('vivienda').hidden=true;say('✅ Cuenta vinculada. Vuelve a WhatsApp y pulsa Ya ingresé.');
-  }catch(error){say(error.message);$('vincular').disabled=false;}
+  }catch(error){
+   // Si falla el enlace automático, mostrar una forma de reintentar sin
+   // pedir que escriba calle/número nuevamente ni perder la sesión actual.
+   $('vivienda').hidden=false;
+   say(error.message);$('vincular').disabled=false;
+  }
  }
  $('vivienda').addEventListener('submit',e=>{
   e.preventDefault();void confirmarCasa(Number($('casa').value));
