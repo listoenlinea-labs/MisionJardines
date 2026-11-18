@@ -33,6 +33,12 @@ async function confirmar({token,usuarioId,casaId}){
    WHERE enlace_hash=:hash AND enlace_expira_en>NOW()
    LIMIT 1 FOR UPDATE`,{type:QueryTypes.SELECT,replacements:{hash:idHash},transaction});
   if(!row)throw fail(410,'El enlace venció o ya fue utilizado. Solicita uno nuevo en WhatsApp');
+  // Si el número apunta sin ambigüedad a una cuenta y vivienda, no permitir
+  // vincularlo a otra identidad aunque alguien tenga sus propias credenciales.
+  const reconocido=await require('./whatsapp-bot-identidad.service').reconocer(row.remitente);
+  if(reconocido.tipo==='unico'&&(Number(reconocido.usuarioId)!==Number(usuarioId)||
+    Number(reconocido.casaId)!==Number(casaId)))
+   throw fail(403,'La cuenta y la vivienda no coinciden con el número registrado. Consulta a Administración.');
   await db.query(`UPDATE whatsapp_bot_vinculos SET usuario_id=:usuarioId,casa_id=:casaId,
     sesion_version=:version,autenticado_hasta=DATE_ADD(NOW(),INTERVAL 24 HOUR),
     enlace_hash=NULL,enlace_expira_en=NULL WHERE remitente=:phone`,{
