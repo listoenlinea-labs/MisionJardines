@@ -29,7 +29,7 @@ async function notifyPayments(){
  if(running||process.env.WHATSAPP_BOT_ENABLED!=='true')return;
  running=true;
  try{
-  const rows=await db.query('SELECT pago_id,remitente,usuario_id,casa_id,avisado_en FROM whatsapp_bot_pagos WHERE enviado_en IS NULL ORDER BY creado_en ASC LIMIT 25',
+  const rows=await db.query("SELECT w.pago_id,w.remitente,w.usuario_id,w.casa_id,w.avisado_en FROM whatsapp_bot_pagos w INNER JOIN pagos_reportados p ON p.id=w.pago_id AND p.estatus='VALIDADO' WHERE w.enviado_en IS NULL ORDER BY w.creado_en ASC LIMIT 25",
    {type:QueryTypes.SELECT});
   for(const row of rows){
    try{
