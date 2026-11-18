@@ -55,27 +55,22 @@ async function reserve(){
   return true;
  });
 }
-async function send(phone,message){
+async function sendPayload(phone,payload){
  if(!ready()||!/^\d{8,32}$/.test(String(phone||'')))return false;
  if(!await hasRecentInbound(phone)){
   console.warn('[WhatsApp $0] Respuesta bloqueada fuera de ventana de 24h');return false;
  }
- // Reservar ANTES del request. No liberar en errores de red: Meta podría
- // haberlo recibido, por lo que un reintento consumiría otro envío.
  if(!await reserve()){
   console.warn('[WhatsApp $0] Límite preventivo agotado');return false;
  }
  const response=await fetch('https://graph.facebook.com/'+process.env.WHATSAPP_GRAPH_VERSION+
   '/'+phoneId()+'/messages',{method:'POST',headers:{
   Authorization:'Bearer '+process.env.WHATSAPP_ACCESS_TOKEN,'Content-Type':'application/json'
- },body:JSON.stringify({messaging_product:'whatsapp',to:normalizarDestinatario(phone),type:'text',
-  text:{preview_url:false,body:String(message||'').slice(0,3900)}}),
+ },body:JSON.stringify({messaging_product:'whatsapp',to:normalizarDestinatario(phone),...payload}),
   signal:AbortSignal.timeout(15000)});
  if(!response.ok){
-  // Meta devuelve el código específico del rechazo dentro del cuerpo JSON.
-  // Registrar el diagnóstico sin teléfonos completos, tokens ni payloads.
-  const payload=await response.json().catch(()=>({}));
-  const error=payload?.error||{};
+  const result=await response.json().catch(()=>({}));
+  const error=result?.error||{};
   const ocultar=v=>String(v||'').replace(/\+?\d{7,20}/g,'[número oculto]')
    .replace(/EAA[A-Za-z0-9]+/g,'[token oculto]').slice(0,240);
   console.error('[WhatsApp Bot] Meta rechazó envío:',JSON.stringify({
@@ -87,5 +82,41 @@ async function send(phone,message){
  }
  return true;
 }
+function send(phone,message){
+ return sendPayload(phone,{type:'text',text:{preview_url:false,body:String(message||'').slice(0,3900)}});
+}
+function buttons(phone,text,items){
+ if(!Array.isArray(items)||!items.length||items.length>3)throw Error('Botones fuera de rango');
+ return sendPayload(phone,{type:'interactive',interactive:{
+  type:'button',body:{text:String(text).slice(0,1024)},
+  action:{buttons:items.map(x=>({type:'reply',reply:{id:String(x.id).slice(0,100),
+   title:String(x.title).slice(0,20)}}))}
+ }});
+}
+function list(phone,text,label,items){
+ if(!Array.isArray(items)||!items.length||items.length>10)throw Error('Lista fuera de rango');
+ return sendPayload(phone,{type:'interactive',interactive:{
+  type:'list',body:{text:String(text).slice(0,1024)},
+  action:{button:String(label||'Elegir').slice(0,20),
+   sections:[{title:'Opciones',rows:items.map(x=>({id:String(x.id).slice(0,100),
+    title:String(x.title).slice(0,24),...(x.description?{description:String(x.description).slice(0,72)}:{})}))}]}
+ }});
+}
+async function document(phone,buffer,filename,caption){
+ if(!Buffer.isBuffer(buffer)||!buffer.length||buffer.length>10*1024*1024)
+  throw Error('Documento PDF fuera de límite');
+ const form=new FormData();
+ const fileName=String(filename||'Recibo.pdf').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,100);
+ form.append('messaging_product','whatsapp');
+ form.append('file',new Blob([buffer],{type:'application/pdf'}),fileName);
+ const uploaded=await fetch('https://graph.facebook.com/'+process.env.WHATSAPP_GRAPH_VERSION+
+  '/'+phoneId()+'/media',{method:'POST',headers:{Authorization:'Bearer '+process.env.WHATSAPP_ACCESS_TOKEN},
+   body:form,signal:AbortSignal.timeout(30000)});
+ if(!uploaded.ok)throw Error('No se pudo subir el PDF a Meta (HTTP '+uploaded.status+')');
+ const result=await uploaded.json();
+ if(!/^\d+$/.test(String(result.id||'')))throw Error('Meta no devolvió el ID del PDF');
+ return sendPayload(phone,{type:'document',document:{id:result.id,filename:fileName,caption:String(caption||'').slice(0,1024)}});
+}
+
 const fallback='🌿 Misión Jardines: el bot está llegando al límite sin costo. Para continuar, usa nuestro portal: https://listoenlinea-labs.github.io/MisionJardines/ . Allí permanecen disponibles tus trámites.';
-module.exports={send,usage,reserve,hasRecentInbound,ready,fallback,CAP,SOFT_CAP};
+module.exports={send,sendPayload,buttons,list,document,usage,reserve,hasRecentInbound,ready,fallback,CAP,SOFT_CAP};

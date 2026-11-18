@@ -6,6 +6,9 @@ const parser=require('./comprobante-parser');
 const {reconocerImagen}=require('./comprobante-lector.service');
 const {REGLAMENTO_VERSION}=require('./casa-club-acceso-publico.service');
 const free=require('./whatsapp-presupuesto-cero.service');
+const privateFlow=require('./whatsapp-bot-privado.service');
+const vinculos=require('./whatsapp-bot-vinculos.service');
+const {fechaISO:fechaFlexible}=require('./whatsapp-bot-fechas.service');
 const HOME='https://listoenlinea-labs.github.io/MisionJardines/';
 const MENU='🌿 *Misión Jardines*\n\nElige una opción:\n1. Reservar Casa Club\n2. Revisar mis deudas\n3. Reportar un pago\n4. Registrar una visita\n\nResponde con un número o escribe *MENÚ*.';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -22,7 +25,7 @@ async function load(phone){
  {replacements:{phone},type:QueryTypes.SELECT});
  if(!row)return {state:'MENU',ctx:{}};
  const expired=Date.now()-new Date(row.actualizado_en).getTime()>30*60*1000;
- return expired&&!['PAGO_CLUB','REVISION_CLUB'].includes(row.estado)?
+ return expired&&!['PAGO_CLUB','REVISION_CLUB','PAGO_COMPROBANTE','PAGO_TIPO','ESPERANDO_VINCULO'].includes(row.estado)?
   {state:'MENU',ctx:{}}:{state:row.estado,ctx:unseal(row.contexto)};
 }
 async function save(phone,state,ctx={}){
@@ -47,6 +50,9 @@ function dateISO(v){
  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===v2?v2:'';
 }
 async function status(phone,s){
+ if(!s.ctx.casaId||!await vinculos.verificar(phone,s.ctx.casaId))
+  return privateFlow.enlace(phone,'PAGO_COMPROBANTE',
+   {tipo:'CASA_CLUB',reservaId:s.ctx.id,casaId:s.ctx.casaId});
  if(!s.ctx.id||!s.ctx.token)return send(phone,'No hay una solicitud activa en esta conversación. Escribe MENÚ.');
  const x=(await api('publico/comprobante/estado',{reservaId:s.ctx.id,claveAcceso:s.ctx.token})).data;
  if(x.estatusReserva==='APROBADA'&&x.pagado){
@@ -82,6 +88,9 @@ async function getMedia(mediaId){
  return 'data:'+mime+';base64,'+b.toString('base64');
 }
 async function upload(phone,s,message){
+ if(!s.ctx.casaId||!await vinculos.verificar(phone,s.ctx.casaId))
+  return privateFlow.enlace(phone,'PAGO_COMPROBANTE',
+   {tipo:'CASA_CLUB',reservaId:s.ctx.id,casaId:s.ctx.casaId});
  try{
   if(message.type!=='image')throw Error('Envía una fotografía JPG/PNG; para PDF usa el enlace privado del correo.');
   const img=await getMedia(message.image?.id);
@@ -98,6 +107,23 @@ async function upload(phone,s,message){
   return send(phone,'✅ *Comprobante recibido y registrado para revisión.* Titan debe verificar el depósito antes de confirmar la fecha. Escribe *ESTADO* para consultar.');
  }catch(e){return send(phone,'No pude registrar el comprobante automáticamente: '+String(e.message).slice(0,220)+
   '\nTu solicitud sigue pendiente. Puedes cargarlo en el enlace privado: '+s.ctx.link);}
+}
+async function mostrarMenu(phone){
+ return free.list(phone,'🌿 *Misión Jardines*\nSelecciona un trámite tocando una opción:',
+  'Ver opciones',[
+   {id:'MENU_RESERVAR',title:'Reservar Casa Club'},
+   {id:'MENU_ADEUDOS',title:'Revisar mis deudas'},
+   {id:'MENU_PAGOS',title:'Reportar un pago'},
+   {id:'MENU_VISITAS',title:'Registrar una visita'}
+  ]);
+}
+async function mostrarReglamento(phone,ctx){
+ const auth=await vinculos.verificar(phone,ctx.casaId);
+ if(!auth)return privateFlow.enlace(phone,'REGLAMENTO',ctx);
+ await save(phone,'REGLAMENTO',{...ctx,reglamentoVersion:REGLAMENTO_VERSION});
+ return free.buttons(phone,'📜 *Lectura y aceptación obligatoria*\nLee el reglamento oficial y todas sus condiciones en:\n'+
+  HOME+'reglamento-casa-club.html\n\nSin aceptar el reglamento vigente no se enviará ninguna solicitud.',
+  [{id:'CLUB_ACEPTAR',title:'Acepto reglamento'},{id:'MENU',title:'Menú'}]);
 }
 async function handle(message){
  const phone=String(message.from||'');
@@ -119,21 +145,32 @@ async function handle(message){
  if(s.state==='LIMITE_GRATIS'){
   await save(phone,'MENU',{});s={state:'MENU',ctx:{}};
  }
- if(['MENU','MENÚ','INICIO','CANCELAR','0'].includes(word)){await save(phone,'MENU',{});return send(phone,MENU);}
- if(['PAGO_CLUB','REVISION_CLUB'].includes(s.state)&&word==='ESTADO')return status(phone,s);
- if(s.state==='MENU'){
-  if(word==='1'||word==='RESERVAR'||word==='CASA CLUB'){
-   await save(phone,'FECHA',{});return send(phone,'🏡 ¿Qué día deseas reservar Casa Club? Escribe DD/MM/AAAA (por ejemplo 25/11/2026).');
-  }
-  if(word==='2')return send(phone,'🔐 Para consultar tus deudas personales y descargar tu PDF, inicia sesión de forma segura en '+
-   HOME+'app.html?page=pagos.html\nNo envíes tu contraseña por WhatsApp. El enlace de sesión para recibir el PDF aquí se incorporará después.');
-  if(word==='3')return send(phone,'🔐 Para reportar pagos de mantenimiento o proyectos, abre '+
-   HOME+'app.html?page=pagos.html\nTu comprobante se verificará con OCR y Titan; no se acredita automáticamente al subirlo.');
-  if(word==='4')return send(phone,'🔐 *Registrar una visita* requiere comprobar la identidad del residente y la vivienda antes de autorizar el acceso.\nEsta función todavía no está habilitada en el piloto de WhatsApp. Por ahora solicita el registro a Administración o Seguridad; no compartas tu contraseña por chat.');
-  return send(phone,MENU);
+ if(['MENU','MENÚ','INICIO','CANCELAR','0'].includes(word)){
+  await save(phone,'MENU',{});return mostrarMenu(phone);
  }
+ if(word==='CERRAR SESION'||word==='CERRAR SESIÓN'){
+  await vinculos.desvincular(phone);await save(phone,'MENU',{});
+  return mostrarMenu(phone);
+ }
+ if(word==='MENU_RESERVAR'||(s.state==='MENU'&&['1','RESERVAR','CASA CLUB'].includes(word))){
+  await save(phone,'FECHA',{});
+  return free.buttons(phone,'🏡 ¿Qué fecha deseas reservar? Puedes escribir 20/04/2027, 20 de abril de 2027, diciembre 13 de 2026, o AAAA-MM-DD.',
+   [{id:'MENU',title:'Menú'}]);
+ }
+ if(word==='MENU_ADEUDOS'||(s.state==='MENU'&&['2','DEUDAS'].includes(word)))
+  return privateFlow.empezar(phone,'ADEUDOS');
+ if(word==='MENU_PAGOS'||(s.state==='MENU'&&['3','PAGO'].includes(word)))
+  return privateFlow.empezar(phone,'PAGO_TIPO');
+ if(word==='MENU_VISITAS'||(s.state==='MENU'&&['4','VISITA'].includes(word)))
+  return privateFlow.empezar(phone,'VISITA_NOMBRE');
+ if(['ESPERANDO_VINCULO','PAGO_TIPO','PAGO_PROYECTOS','PAGO_RESERVAS',
+   'PAGO_COMPROBANTE','VISITA_NOMBRE','VISITA_TIPO','VISITA_FECHA',
+   'VISITA_HORA','VISITA_CONFIRMAR'].includes(s.state)){
+  return privateFlow.manejar(phone,s,word,text,message);
+ }
+ if(s.state==='MENU')return mostrarMenu(phone);
  if(s.state==='FECHA'){
-  const date=dateISO(text);
+  const date=fechaFlexible(text);
   if(!date||date<=today()||new Date(date+'T12:00:00Z')-new Date(today()+'T12:00:00Z')>365*86400000)
    return send(phone,'Escribe una fecha válida desde mañana y dentro de los próximos 365 días (DD/MM/AAAA).');
   try{
@@ -143,83 +180,68 @@ async function handle(message){
    const streets=(await api('publico/domicilios')).opciones||[];
    if(!streets.length)throw Error('Sin catálogo de calles');
    await save(phone,'CALLE',{date,streets});
-   return send(phone,'✅ '+date+' aparece disponible. Elige una calle:\n'+streets.map((x,i)=>(i+1)+'. '+x).join('\n'));
+   return free.list(phone,'✅ '+date+' aparece disponible. Selecciona tu calle:',
+    'Elegir calle',streets.slice(0,10).map((x,i)=>({id:'CALLE_'+i,title:x})));
   }catch(e){return send(phone,'No pude verificar esa fecha: '+e.message);}
  }
  if(s.state==='CALLE'){
   const options=s.ctx.streets||[];
-  const street=/^\d{1,2}$/.test(text)?options[Number(text)-1]:options.find(x=>norm(x)===word);
-  if(!street)return send(phone,'Escribe uno de los números de calle que aparecen en la lista.');
+  const index=/^CALLE_(\d+)$/.exec(word);
+  const street=index?options[Number(index[1])]:/^\d{1,2}$/.test(text)?options[Number(text)-1]:options.find(x=>norm(x)===word);
+  if(!street)return free.list(phone,'Selecciona una calle de la lista:', 'Elegir calle',
+   options.slice(0,10).map((x,i)=>({id:'CALLE_'+i,title:x})));
   await save(phone,'CASA',{date:s.ctx.date,street});
   return send(phone,'Seleccionaste *'+street+'*. ¿Cuál es el número de tu casa?');
  }
  if(s.state==='CASA'){
-  if(!/^[\w -]{1,20}$/.test(text))return send(phone,'Escribe un número de vivienda válido.');
+  if(!/^[\w -]{1,20}$/.test(text))return send(phone,'Escribe el número de casa válido.');
   try{
    const houses=(await api('publico/domicilios?calle='+encodeURIComponent(s.ctx.street))).opciones||[];
-   if(!houses.some(x=>norm(x)===word))return send(phone,'No encontré esa casa en la calle seleccionada. Verifica el número.');
-   await save(phone,'NOMBRE',{...s.ctx,house:text});
-   return send(phone,'¿Cuál es el nombre completo de quien solicita la reserva?');
-  }catch(e){return send(phone,'No pude verificar la vivienda. Intenta nuevamente.');}
- }
- if(s.state==='NOMBRE'){
-  if(text.length<4||text.length>180)return send(phone,'Escribe el nombre y apellido de quien solicita.');
-  await save(phone,'CORREO',{...s.ctx,name:text});
-  return send(phone,'¿A qué correo enviamos tu confirmación y enlace de pago privado?');
- }
- if(s.state==='CORREO'){
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(text)||text.length>150)
-   return send(phone,'Escribe un correo electrónico válido.');
-  // Cada solicitud requiere aceptación independiente de la versión oficial vigente.
-  await save(phone,'REGLAMENTO',{...s.ctx,email:text.toLowerCase(),
-   reglamentoVersion:REGLAMENTO_VERSION});
-  return send(phone,'📜 *Lectura y aceptación obligatoria*\n\n'+
-   'Antes de solicitar Casa Club, lee el *reglamento oficial y términos y condiciones completos*, '+ 
-   'los mismos que se muestran en la plataforma:\n'+HOME+'reglamento-casa-club.html\n\n'+
-   'Entre otras disposiciones: debes estar al corriente en tus cuotas; respetar el horario autorizado; '+
-   'responsabilizarte de tus invitados, la limpieza y cualquier daño; y cumplir las prohibiciones del reglamento.\n\n'+
-   'Cuando hayas leído el documento completo y aceptes todas sus condiciones, responde exactamente *ACEPTO*.\n'+
-   'Si no aceptas, escribe *MENÚ*. *Sin aceptación no se enviará la reservación.*');
+   if(!houses.some(x=>norm(x)===word))return send(phone,'Verifica el número de vivienda indicado.');
+   const {Op}=require('sequelize');
+   const {Casa}=require('../models');
+   const found=await Casa.findAll({where:{numero:text,
+     [Op.or]:[{calle:s.ctx.street},{calleCorrecta:s.ctx.street}]},attributes:['id'],limit:2});
+   if(found.length!==1)return send(phone,'No se pudo verificar esa vivienda. Revisa los datos con Administración.');
+   const ctx={date:s.ctx.date,street:s.ctx.street,house:text,casaId:Number(found[0].id)};
+   return mostrarReglamento(phone,ctx);
+  }catch(e){return send(phone,'No pude comprobar esa vivienda. Intenta de nuevo más tarde.');}
  }
  if(s.state==='REGLAMENTO'){
-  // Si cambiaron las reglas durante la conversación, exigir leer la nueva
-  // versión antes de permitir cualquier solicitud.
-  if(s.ctx.reglamentoVersion!==REGLAMENTO_VERSION){
-   await save(phone,'REGLAMENTO',{...s.ctx,reglamentoVersion:REGLAMENTO_VERSION});
-   return send(phone,'El reglamento de Casa Club se actualizó. Para continuar debes leer la versión vigente: '+
-    HOME+'reglamento-casa-club.html\n\nDespués de leerla, escribe *ACEPTO*.');
-  }
-  if(word!=='ACEPTO')
-   return send(phone,'Tu reservación no puede enviarse sin aceptar los términos y condiciones. '+
-    'Lee el reglamento completo en '+HOME+'reglamento-casa-club.html'+
-    ' y responde *ACEPTO* únicamente si estás de acuerdo. O escribe *MENÚ* para cancelar.');
+  const auth=await vinculos.verificar(phone,s.ctx.casaId);
+  if(!auth)return privateFlow.enlace(phone,'REGLAMENTO',s.ctx);
+  if(s.ctx.reglamentoVersion!==REGLAMENTO_VERSION)return mostrarReglamento(phone,s.ctx);
+  if(word!=='CLUB_ACEPTAR'&&word!=='ACEPTO')return mostrarReglamento(phone,s.ctx);
+  if(!auth.correo||!auth.nombre)
+   return send(phone,'Actualiza el nombre y correo de tu cuenta en el portal antes de solicitar Casa Club.');
   try{
-   const result=await api('publico/solicitudes',{fecha:s.ctx.date,calle:s.ctx.street,numero:s.ctx.house,
-    solicitante:s.ctx.name,correo:s.ctx.email,
-    telefono:/^521\d{10}$/.test(phone)?'52'+phone.slice(3):phone,propietario:false,
-    motivo:'Reservación solicitada desde WhatsApp',aceptaReglamento:true});
-   const link=result.data?.pago?.enlaceCarga;
-   const token=link?decodeURIComponent(new URL(link).hash.split('=').slice(1).join('=')).split('.').at(-1):'';
-   if(!result.data?.id||!/^[a-f0-9]{64}$/.test(token)){
-    await save(phone,'MENU',{});
-    return send(phone,'Tu solicitud fue registrada, pero no pude abrir su enlace de pago en el chat. Revisa el correo que acabamos de enviarte antes de intentar otra reserva.');
-   }
-   await save(phone,'PAGO_CLUB',{id:result.data.id,token,link,date:s.ctx.date,lastInboundAt:new Date().toISOString()});
-   const price=Number(result.data.pago?.monto||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
-   return send(phone,'🟡 *Reserva apartada provisionalmente*\nFolio: CC-'+result.data.id+
-    '\nFecha: '+s.ctx.date+'\nTotal a transferir: '+price+
-    '\n\nPuedes subir *ahora mismo* una foto de tu comprobante en este chat. '+
-    'Si el archivo es PDF o no se lee, utiliza el enlace privado enviado a tu correo.\n' +
-    'La fecha se confirma únicamente cuando Titan valida el pago.');
-  }catch(e){await save(phone,'MENU',{});return send(phone,'No se pudo completar la reserva: '+e.message+
-   '\nSi recibiste un correo de solicitud, consulta ese enlace antes de reintentarlo.');}
+   const result=await api('publico/solicitudes',{
+    fecha:s.ctx.date,calle:s.ctx.street,numero:s.ctx.house,solicitante:auth.nombre,
+    correo:auth.correo,telefono:/^521\d{10}$/.test(phone)?'52'+phone.slice(3):phone,
+    propietario:false,motivo:'Solicitud de cuenta vinculada desde WhatsApp',aceptaReglamento:true
+   });
+   await save(phone,'PAGO_CLUB',{id:result.data?.id,casaId:auth.casaId,date:s.ctx.date});
+   return free.buttons(phone,'🟡 *Reserva apartada provisionalmente.* Enviamos los datos de transferencia y el enlace privado al correo registrado de la cuenta vinculada con esta vivienda. La reservación solo se confirma al validar el banco.',
+    [{id:'PAGO_SUBIR',title:'Subir comprobante'},{id:'MENU',title:'Menú'}]);
+  }catch(e){
+   // Nunca devolver motivos de deuda o datos de una reservación personal.
+   return free.buttons(phone,'No se pudo completar la solicitud. Verifica tu cuenta y el calendario o consulta a Administración.',
+    [{id:'MENU_RESERVAR',title:'Otra fecha'},{id:'MENU',title:'Menú'}]);
+  }
  }
- if(s.state==='PAGO_CLUB'){
-  if(t==='image'||t==='document')return upload(phone,s,message);
-  return send(phone,'Envía la foto del comprobante, escribe *ESTADO* o *MENÚ*. También puedes utilizar el enlace del correo.');
+ if(s.state==='PAGO_CLUB'||s.state==='REVISION_CLUB'){
+  const auth=await vinculos.verificar(phone,s.ctx.casaId);
+  const ctx={tipo:'CASA_CLUB',reservaId:s.ctx.id,casaId:s.ctx.casaId};
+  if(!auth)return privateFlow.enlace(phone,'PAGO_COMPROBANTE',ctx);
+  if(word==='PAGO_SUBIR'||t==='image'){
+   await save(phone,'PAGO_COMPROBANTE',ctx);
+   return t==='image'?privateFlow.subir(phone,{ctx},message):privateFlow.pedirComprobante(phone);
+  }
+  return free.buttons(phone,'Tu solicitud continúa pendiente de pago o revisión bancaria. Puedes subir el comprobante desde aquí cuando estés listo.',
+   [{id:'PAGO_SUBIR',title:'Subir comprobante'},{id:'MENU',title:'Menú'}]);
  }
- if(s.state==='REVISION_CLUB')return send(phone,'El comprobante sigue en revisión bancaria. Escribe *ESTADO* para consultar o *MENÚ* para comenzar.');
- await save(phone,'MENU',{});return send(phone,MENU);
+
+ await save(phone,'MENU',{});return mostrarMenu(phone);
 }
 // Notificación automática: solo si el vecino escribió dentro de las
 // últimas 24 horas, para no infringir la ventana de mensajes de Meta.
@@ -238,4 +260,4 @@ async function notifyIfConfirmed(phone){
  await save(phone,'MENU',{});
  return true;
 }
-module.exports={handle,send,load,save,status,notifyIfConfirmed,dateISO,MENU};
+module.exports={handle,send,load,save,status,notifyIfConfirmed,dateISO:fechaFlexible,MENU,mostrarMenu,mostrarReglamento};

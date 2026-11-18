@@ -56,6 +56,7 @@ async function pollConfirmed(){
    try{await flow.notifyIfConfirmed(item.remitente);}
    catch(e){console.warn('[WhatsApp Bot] Consulta estado:',String(e.message).slice(0,90));}
   }
+  await require('./whatsapp-bot-recibos-worker.service').notifyPayments();
  }catch(e){console.warn('[WhatsApp Bot] Notificaciones no disponibles:',String(e.message).slice(0,90));}
  finally{polling=false;}
 }

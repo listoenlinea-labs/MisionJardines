@@ -182,6 +182,9 @@ app.get('/api/health/database', async (req, res) => {
 app.use('/api/viviendas', require('./routes/viviendas.routes'));
 app.use('/api/casas', casasRoutes);
 app.use('/api/auth', authRoutes);
+// Vinculación temporal por HTTPS; jamás se solicitan contraseñas en el chat.
+app.use('/api/auth/whatsapp-bot', require('./routes/whatsapp-bot-vinculos.routes'));
+
 app.use('/api/auto-users', require('./routes/auto-users.routes'));
 app.use('/api/cuotas', cuotasRoutes);
 app.use('/api/calles', callesRoutes);
