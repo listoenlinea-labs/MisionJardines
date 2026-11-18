@@ -53,6 +53,7 @@ async function empezar(phone,kind){
 }
 async function continuar(phone,ctx,auth){
  if(ctx.next==='REGLAMENTO')return require('./whatsapp-bot-flujo.service').mostrarReglamento(phone,ctx);
+ if(ctx.next==='REGLAMENTO_AUTO')return require('./whatsapp-bot-flujo.service').mostrarReglamentoAuto(phone,ctx);
  if(ctx.next==='ADEUDOS')return deudas(phone,auth);
  if(ctx.next==='PAGO_TIPO')return pagoTipos(phone);
  if(ctx.next==='VISITA_NOMBRE')return visitas(phone,auth);
