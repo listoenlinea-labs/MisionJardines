@@ -9,6 +9,7 @@ const free=require('./whatsapp-presupuesto-cero.service');
 const privateFlow=require('./whatsapp-bot-privado.service');
 const vinculos=require('./whatsapp-bot-vinculos.service');
 const {fechaISO:fechaFlexible}=require('./whatsapp-bot-fechas.service');
+const calendario=require('./whatsapp-casa-club-calendario.service');
 const HOME='https://listoenlinea-labs.github.io/MisionJardines/';
 const MENU='🌿 *Misión Jardines*\n\nElige una opción:\n1. Reservar Casa Club\n2. Revisar mis deudas\n3. Reportar un pago\n4. Registrar una visita\n\nResponde con un número o escribe *MENÚ*.';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -117,6 +118,18 @@ async function mostrarMenu(phone){
    {id:'MENU_VISITAS',title:'Registrar una visita'}
   ]);
 }
+async function pedirFecha(phone){
+ try{
+  if(await calendario.enviar(phone,save))return true;
+ }catch(e){
+  // El bot nunca afirma disponibilidad si la fuente del calendario falló.
+  // Recuperación: sigue vigente la captura manual existente.
+  console.warn('[WhatsApp Bot] Calendario no disponible:',String(e.message||e).slice(0,120));
+ }
+ await save(phone,'FECHA',{});
+ return free.buttons(phone,'🏡 ¿Qué fecha deseas reservar? Puedes escribir 20/04/2027, 20 de abril de 2027 o diciembre 13 de 2026. El calendario interactivo no está disponible en este momento.',
+  [{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
+}
 async function mostrarReglamento(phone,ctx){
  const auth=await vinculos.verificar(phone,ctx.casaId);
  if(!auth)return privateFlow.enlace(phone,'REGLAMENTO',ctx);
@@ -153,9 +166,7 @@ async function handle(message){
   return mostrarMenu(phone);
  }
  if(word==='MENU_RESERVAR'||(s.state==='MENU'&&['1','RESERVAR','CASA CLUB'].includes(word))){
-  await save(phone,'FECHA',{});
-  return free.buttons(phone,'🏡 ¿Qué fecha deseas reservar? Puedes escribir 20/04/2027, 20 de abril de 2027, diciembre 13 de 2026, o AAAA-MM-DD.',
-   [{id:'MENU',title:'Menú'}]);
+  return pedirFecha(phone);
  }
  if(word==='MENU_ADEUDOS'||(s.state==='MENU'&&['2','DEUDAS'].includes(word)))
   return privateFlow.empezar(phone,'ADEUDOS');
@@ -170,19 +181,31 @@ async function handle(message){
  }
  if(s.state==='MENU')return mostrarMenu(phone);
  if(s.state==='FECHA'){
-  const date=fechaFlexible(text);
+  if(word==='FECHA_REINTENTAR')return pedirFecha(phone);
+  if(word==='FECHA_MANUAL')return send(phone,'✏️ Escribe la fecha como DD/MM/AAAA, 20 de abril de 2027, diciembre 13 de 2026 o AAAA-MM-DD.');
+  const flowReply=message.type==='interactive'&&message.interactive?.type==='nfm_reply';
+  const date=flowReply?calendario.fechaRespuesta(message,s.ctx):fechaFlexible(text);
+  if(flowReply&&!date)return free.buttons(phone,
+   'Este calendario ya venció, se utilizó o la fecha no es válida. Vuelve a abrirlo para seleccionar otra fecha.',
+   [{id:'FECHA_REINTENTAR',title:'Abrir calendario'},{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
   if(!date||date<=today()||new Date(date+'T12:00:00Z')-new Date(today()+'T12:00:00Z')>365*86400000)
-   return send(phone,'Escribe una fecha válida desde mañana y dentro de los próximos 365 días (DD/MM/AAAA).');
+   return free.buttons(phone,'Selecciona una fecha válida desde mañana y dentro de los próximos 365 días.',
+    [{id:'FECHA_REINTENTAR',title:'Abrir calendario'},{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
+  // El completion consume el token; no confiar en pantallas antiguas.
+  if(flowReply)await save(phone,'FECHA',{});
   try{
    const info=await api('publico/fechas?desde='+date+'&hasta='+date);
-   if(!info.disponibilidadVerificada)return send(phone,'No pude verificar disponibilidad contra el calendario. Intenta de nuevo después.');
-   if(info.ocupadas?.some(r=>r.fecha===date))return send(phone,'❌ El '+date+' no está disponible. Escribe otra fecha para revisar.');
+   if(!info.disponibilidadVerificada)return free.buttons(phone,'No se pudo verificar la disponibilidad completa. No se ha reservado ninguna fecha.',
+    [{id:'FECHA_REINTENTAR',title:'Abrir calendario'},{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
+   if(info.ocupadas?.some(r=>r.fecha===date))return free.buttons(phone,'❌ La fecha '+date+' ya no está disponible. Selecciona otra fecha.',
+    [{id:'FECHA_REINTENTAR',title:'Abrir calendario'},{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
    const streets=(await api('publico/domicilios')).opciones||[];
    if(!streets.length)throw Error('Sin catálogo de calles');
    await save(phone,'CALLE',{date,streets});
    return free.list(phone,'✅ '+date+' aparece disponible. Selecciona tu calle:',
     'Elegir calle',streets.slice(0,10).map((x,i)=>({id:'CALLE_'+i,title:x})));
-  }catch(e){return send(phone,'No pude verificar esa fecha: '+e.message);}
+  }catch(e){return free.buttons(phone,'No pude comprobar la disponibilidad de esa fecha. Inténtalo de nuevo.',
+    [{id:'FECHA_REINTENTAR',title:'Abrir calendario'},{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);}
  }
  if(s.state==='CALLE'){
   const options=s.ctx.streets||[];
