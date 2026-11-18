@@ -1,6 +1,8 @@
 'use strict';
 const {createHash}=require('node:crypto');
 const {Op}=require('sequelize');
+const {Casa}=require('../models');
+const identidad=require('./whatsapp-bot-identidad.service');
 const db=require('../config/database');
 const {ReservaCasaClub}=require('../models');
 const {estadoCargos}=require('./cargos-extraordinarios.service');
@@ -22,13 +24,36 @@ async function enlace(phone,next,ctx={}){
   '\n\nEscribe tu correo (mayúsculas o minúsculas) y tu contraseña exacta SOLO en esa página HTTPS, nunca en el chat. El enlace vence en 10 minutos.',
   [{id:'VINCULO_CONTINUAR',title:'Ya ingresé'},...volver]);
 }
+async function callesPublicas(){
+ const url=new URL('/api/casa-club/publico/domicilios',
+  process.env.APP_BASE_URL||'https://api-misionjardines.listoenlinea.host');
+ const response=await fetch(url,{signal:AbortSignal.timeout(15000)});
+ if(!response.ok)throw Error('No se pudo cargar el catálogo público');
+ const datos=await response.json();
+ if(datos?.ok!==true||!Array.isArray(datos.opciones))throw Error('Catálogo no disponible');
+ return datos.opciones.filter(x=>typeof x==='string'&&x.length<=100);
+}
+async function domicilioDesconocido(phone,next){
+ // Una persona sin número registrado primero indica la dirección, pero
+ // nunca puede ver información privada ni registrar una visita hasta autenticarse.
+ const calles=await callesPublicas();
+ if(!calles.length)return say(phone,'La identificación de viviendas no está disponible. Consulta a Administración.');
+ await save(phone,'IDENTIFICAR_CALLE',{next,calles});
+ return list(phone,'No encontramos un número asociado a una cuenta activa. Selecciona tu calle y después verifica tu identidad para continuar:',
+  calles.slice(0,10).map((calle,i)=>({id:'IDENT_CALLE_'+i,title:calle})));
+}
 async function empezar(phone,kind){
  const auth=await links.verificar(phone);
- if(!auth)return enlace(phone,kind);
- return continuar(phone,{next:kind},auth);
+ if(auth)return continuar(phone,{next:kind},auth);
+ const found=await identidad.reconocer(phone);
+ if(found.tipo==='desconocido')return domicilioDesconocido(phone,kind);
+ // Número registrado: se omite calle y número, se solicita únicamente
+ // vinculación HTTPS (si ya expiró). Una coincidencia telefónica NO autoriza.
+ return enlace(phone,kind,found.tipo==='unico'?{casaId:found.casaId}:{});
 }
 async function continuar(phone,ctx,auth){
  if(ctx.next==='REGLAMENTO')return require('./whatsapp-bot-flujo.service').mostrarReglamento(phone,ctx);
+ if(ctx.next==='REGLAMENTO_AUTO')return require('./whatsapp-bot-flujo.service').mostrarReglamentoAuto(phone,ctx);
  if(ctx.next==='ADEUDOS')return deudas(phone,auth);
  if(ctx.next==='PAGO_TIPO')return pagoTipos(phone);
  if(ctx.next==='VISITA_NOMBRE')return visitas(phone,auth);
@@ -172,6 +197,25 @@ async function registrarVisita(phone,s){
   [{id:'MENU_VISITAS',title:'Otra visita'},...volver]);
 }
 async function manejar(phone,s,word,text,message){
+ if(s.state==='IDENTIFICAR_CALLE'){
+  const options=s.ctx.calles||[];
+  const picked=/^IDENT_CALLE_(\d+)$/.exec(word);
+  const calle=picked?options[Number(picked[1])]:options.find(x=>
+   String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()===word);
+  if(!calle)return list(phone,'Elige una calle de la lista:',
+   options.slice(0,10).map((x,i)=>({id:'IDENT_CALLE_'+i,title:x})));
+  await save(phone,'IDENTIFICAR_CASA',{next:s.ctx.next,calle});
+  return say(phone,'Escribe el número de tu casa. Después verificaremos que tengas permiso para gestionarla.');
+ }
+ if(s.state==='IDENTIFICAR_CASA'){
+  if(!/^[a-zA-Z0-9 -]{1,20}$/.test(text))
+   return say(phone,'Escribe un número de vivienda válido.');
+  const rows=await Casa.findAll({where:{numero:text,
+   [Op.or]:[{calle:s.ctx.calle},{calleCorrecta:s.ctx.calle}]},
+   attributes:['id'],limit:2});
+  if(rows.length!==1)return say(phone,'No se pudo identificar esa vivienda. Verifica los datos con Administración.');
+  return enlace(phone,s.ctx.next,{casaId:Number(rows[0].id)});
+ }
  if(s.state==='ESPERANDO_VINCULO')return manejarVinculacion(phone,s,word);
  if(s.state==='PAGO_TIPO'){
   const auth=await links.verificar(phone);

@@ -27,15 +27,30 @@
     item.value=String(v.casaId);item.textContent=(v.casa.calleCorrecta||v.casa.calle)+' '+v.casa.numero;
     select.appendChild(item);
    }
-   $('login').hidden=true;$('vivienda').hidden=false;say('Selecciona tu vivienda para continuar.');
+   $('login').hidden=true;
+   if(opciones.length===1){
+    // Una única vivienda ya vinculada no requiere volver a escribir ni elegir calle/casa.
+    await confirmarCasa(Number(opciones[0].casaId));
+   }else{
+    $('vivienda').hidden=false;
+    say('Tu cuenta tiene varias viviendas. Selecciona la que deseas gestionar.');
+   }
   }catch(error){say(error.message);$('entrar').disabled=false;}
  });
- $('vivienda').addEventListener('submit',async e=>{
-  e.preventDefault();$('vincular').disabled=true;say('Vinculando vivienda…');
+ async function confirmarCasa(casaId){
+  $('vincular').disabled=true;say('Vinculando tu cuenta de forma segura…');
   try{
    await json('/api/auth/whatsapp-bot/confirmar',{method:'POST',headers:{Authorization:'Bearer '+jwt},
-    body:JSON.stringify({token,casaId:Number($('casa').value)})});
-   jwt='';$('vivienda').hidden=true;say('✅ Cuenta vinculada. Vuelve a WhatsApp y escribe CONTINUAR.');
-  }catch(error){say(error.message);$('vincular').disabled=false;}
+    body:JSON.stringify({token,casaId})});
+   jwt='';$('vivienda').hidden=true;say('✅ Cuenta vinculada. Vuelve a WhatsApp y pulsa Ya ingresé.');
+  }catch(error){
+   // Si falla el enlace automático, mostrar una forma de reintentar sin
+   // pedir que escriba calle/número nuevamente ni perder la sesión actual.
+   $('vivienda').hidden=false;
+   say(error.message);$('vincular').disabled=false;
+  }
+ }
+ $('vivienda').addEventListener('submit',e=>{
+  e.preventDefault();void confirmarCasa(Number($('casa').value));
  });
 })();

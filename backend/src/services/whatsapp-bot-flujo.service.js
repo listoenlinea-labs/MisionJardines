@@ -8,6 +8,7 @@ const {REGLAMENTO_VERSION}=require('./casa-club-acceso-publico.service');
 const free=require('./whatsapp-presupuesto-cero.service');
 const privateFlow=require('./whatsapp-bot-privado.service');
 const vinculos=require('./whatsapp-bot-vinculos.service');
+const identidad=require('./whatsapp-bot-identidad.service');
 const {fechaISO:fechaFlexible}=require('./whatsapp-bot-fechas.service');
 const calendario=require('./whatsapp-casa-club-calendario.service');
 const HOME='https://listoenlinea-labs.github.io/MisionJardines/';
@@ -130,6 +131,19 @@ async function pedirFecha(phone){
  return free.buttons(phone,'🏡 ¿Qué fecha deseas reservar? Puedes escribir 20/04/2027, 20 de abril de 2027 o diciembre 13 de 2026. El calendario interactivo no está disponible en este momento.',
   [{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
 }
+async function mostrarReglamentoAuto(phone,ctx){
+ const auth=await vinculos.verificar(phone);
+ if(!auth)return privateFlow.enlace(phone,'REGLAMENTO_AUTO',{date:ctx.date});
+ if(!ctx?.date||!fechaFlexible(ctx.date))return pedirFecha(phone);
+ // Solo la sesión autorizada aporta calle y número. Nunca se resuelven
+ // a partir de un teléfono no verificado ni se muestran a extraños.
+ return mostrarReglamento(phone,{
+  date:ctx.date,
+  street:auth.casa.calleCorrecta||auth.casa.calle,
+  house:String(auth.casa.numero),
+  casaId:auth.casaId
+ });
+}
 async function mostrarReglamento(phone,ctx){
  const auth=await vinculos.verificar(phone,ctx.casaId);
  if(!auth)return privateFlow.enlace(phone,'REGLAMENTO',ctx);
@@ -174,7 +188,8 @@ async function handle(message){
   return privateFlow.empezar(phone,'PAGO_TIPO');
  if(word==='MENU_VISITAS'||(s.state==='MENU'&&['4','VISITA'].includes(word)))
   return privateFlow.empezar(phone,'VISITA_NOMBRE');
- if(['ESPERANDO_VINCULO','PAGO_TIPO','PAGO_PROYECTOS','PAGO_RESERVAS',
+ if(['ESPERANDO_VINCULO','IDENTIFICAR_CALLE','IDENTIFICAR_CASA',
+   'PAGO_TIPO','PAGO_PROYECTOS','PAGO_RESERVAS',
    'PAGO_COMPROBANTE','VISITA_NOMBRE','VISITA_TIPO','VISITA_FECHA',
    'VISITA_HORA','VISITA_CONFIRMAR'].includes(s.state)){
   return privateFlow.manejar(phone,s,word,text,message);
@@ -199,6 +214,15 @@ async function handle(message){
     [{id:'FECHA_REINTENTAR',title:'Abrir calendario'},{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
    if(info.ocupadas?.some(r=>r.fecha===date))return free.buttons(phone,'❌ La fecha '+date+' ya no está disponible. Selecciona otra fecha.',
     [{id:'FECHA_REINTENTAR',title:'Abrir calendario'},{id:'FECHA_MANUAL',title:'Escribir fecha'},{id:'MENU',title:'Menú'}]);
+   // Reconocimiento automático: no pedir calle/casa si el WhatsApp
+   // corresponde a un usuario registrado. Sin login HTTPS, nunca revelar
+   // adeudos, identidad ni datos personales de ninguna vivienda.
+   const auth=await vinculos.verificar(phone);
+   if(auth)return mostrarReglamentoAuto(phone,{date});
+   const match=await identidad.reconocer(phone);
+   if(match.tipo!=='desconocido'){
+    return privateFlow.enlace(phone,'REGLAMENTO_AUTO',{date});
+   }
    const streets=(await api('publico/domicilios')).opciones||[];
    if(!streets.length)throw Error('Sin catálogo de calles');
    await save(phone,'CALLE',{date,streets});
@@ -283,4 +307,4 @@ async function notifyIfConfirmed(phone){
  await save(phone,'MENU',{});
  return true;
 }
-module.exports={handle,send,load,save,status,notifyIfConfirmed,dateISO:fechaFlexible,MENU,mostrarMenu,mostrarReglamento};
+module.exports={handle,send,load,save,status,notifyIfConfirmed,dateISO:fechaFlexible,MENU,mostrarMenu,mostrarReglamento,mostrarReglamentoAuto};
