@@ -182,7 +182,8 @@ async function handle(message){
   const options=s.ctx.streets||[];
   const index=/^CALLE_(\d+)$/.exec(word);
   const street=index?options[Number(index[1])]:/^\d{1,2}$/.test(text)?options[Number(text)-1]:options.find(x=>norm(x)===word);
-  if(!street)return send(phone,'Escribe uno de los números de calle que aparecen en la lista.');
+  if(!street)return free.list(phone,'Selecciona una calle de la lista:', 'Elegir calle',
+   options.slice(0,10).map((x,i)=>({id:'CALLE_'+i,title:x})));
   await save(phone,'CASA',{date:s.ctx.date,street});
   return send(phone,'Seleccionaste *'+street+'*. ¿Cuál es el número de tu casa?');
  }
