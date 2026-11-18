@@ -1,26 +1,63 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 16/nov/2026, 23:34, America/Mexico_City.
-**SHA de main consultado:** `8ee62038031115280413d958beb51928a3ed68bb`.
+**Última revisión:** 17/nov/2026, 23:25, America/Mexico_City.
+**SHA de main consultado:** `1a4906414e9b0f355fe0d35b1c9d2a29346310a9`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `0bdfb37f4cbabf37ebea2f3b9be712c694560771`,
-historial de 200 commits, PR #437–#454, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `31376c45c6601a257d6624a0c0a8dec191d69d4d`, dedicado exclusivamente
-a la bitácora anterior. Los dieciocho PR de producto están fusionados y no hay PR
-abiertos ni revertidos nuevos. #440 terminó fusionado aunque su descripción conserva
-la advertencia inicial de borrador. Los dieciocho heads devuelven cero workflows y cero
-estados; las pruebas declaradas se conservan como evidencia local o simulada, no como CI.
-No se consultaron Hostinger, MySQL, Google Sheets/Drive, Titan, IMAP o C3 directamente,
-no se ejecutaron migraciones, borrados, asignaciones financieras, respaldos, pagos ni
-pruebas físicas. La conversación accesible confirma que el usuario aportó una captura
-controlada, pidió releer automáticamente el renglón Comprobante y autorizó el merge; no
-confirma despliegue, conciliación bancaria, acreditación, DB o C3. No se publican datos
-del comprobante, credenciales, contactos ni contenido privado del padrón.
+comparación de main desde `8ee62038031115280413d958beb51928a3ed68bb`,
+historial de 83 commits, PR #455–#461, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `dcd695d42fa636e5c95e84f77d9ef272a70ade55`, dedicado exclusivamente
+a la bitácora anterior. Los siete PR de producto están fusionados y no hay PR abiertos
+ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
+declaradas se conservan como evidencia local o simulada, no como CI.
+No se consultaron Hostinger, MySQL, Meta/WhatsApp, Google Sheets/Drive, Titan/IMAP o C3
+directamente, no se ejecutaron SQL, migraciones, agrupaciones, reservas, pagos, visitas,
+mensajes ni pruebas físicas. No hay una confirmación nueva accesible del usuario sobre
+despliegue, base de producción o funcionamiento real del piloto WhatsApp. No se publican
+credenciales, teléfonos, contactos, comprobantes ni contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 17/nov/2026
+
+Los PR [#455](https://github.com/listoenlinea-labs/MisionJardines/pull/455)–[#456](https://github.com/listoenlinea-labs/MisionJardines/pull/456)
+ajustan extraordinarias y el plan de fondos. El padrón efectivo de un proyecto excluye
+las filas No aplica sin retirar las 231 del padrón general; Excel conserva exentas y
+cargos faltantes como Sin cargo/revisar en vez de inventar importes. El plan puede filtrar
+por ámbito y agrupar un egreso A dentro de B solo en mismo mes/ámbito/proyecto, con
+validación del servidor, sin ciclos ni doble suma; el movimiento y comprobante originales
+permanecen. #456 agrega Deshacer/Ctrl+Z para cambios aún no guardados y mini tarjetas de
+subegresos. La agrupación requiere la columna JSON nueva o su preparación automática; no
+fusiona contabilidad ni mueve dinero.
+
+Los PR [#457](https://github.com/listoenlinea-labs/MisionJardines/pull/457)–[#460](https://github.com/listoenlinea-labs/MisionJardines/pull/460)
+incorporan un piloto WhatsApp Cloud API apagado por defecto. El bot ofrece menú, reserva
+Casa Club, fotos OCR/Titan y, tras vinculación HTTPS temporal y privada, consulta de
+adeudos con PDF, reporte de pagos por concepto y registro de visitas. Las credenciales no
+se piden en el chat; Titan sigue siendo quien valida depósitos. #458 añade modo preventivo
+de costo con reserva transaccional de hasta 900 respuestas en 31 días y corte suave en
+875, pero el código no puede garantizar factura Meta de $0. #459 normaliza únicamente el
+destinatario mexicano al enviar y mejora logs sin exponer números/tokens. #460 agrega
+menús táctiles, fechas flexibles, sesión vinculada, worker de recibos y las tablas
+correspondientes. Todo requiere SQL, variables, Meta, Hostinger y pruebas controladas.
+
+El PR [#461](https://github.com/listoenlinea-labs/MisionJardines/pull/461) agrega un
+WhatsApp Flow JSON 7.3 con calendario Casa Club. Al enviar consulta disponibilidad pública,
+transmite solo límites y fechas no disponibles, protege la respuesta con token de un solo
+uso almacenado como hash y vuelve a consultar MySQL/Google antes de continuar. Seleccionar
+una fecha no reserva ni aparta. Si falta configuración o falla el Flow, conserva captura
+manual. El repositorio no publica el Flow en Meta ni obtiene su ID: aún debe validarse en
+Flow Builder, publicarse, configurarse en Hostinger y probarse con la cuenta correcta.
+
+GitHub devuelve cero runs y cero estados para los siete heads. #455 declara sintaxis de
+cinco módulos y generación de Excel de ejemplo; #456 solo revisión estática. #457 declara
+sintaxis de cuatro archivos y seis casos rápidos. #458 simula los límites 899/900/901 y
+ventana, sin Graph real. En main hay tres pruebas de normalización asociadas a #459,
+dos bloques de fechas con dieciséis muestras para #460 y cuatro pruebas de calendario,
+token y payload para #461. Ningún resultado acredita MySQL/Hostinger, Meta/WhatsApp real,
+Titan/IMAP, Google, navegador, banco o C3 físico.
 
 ## Implementado en main el 16/nov/2026
 
@@ -719,6 +756,9 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Extraordinarias y plan agrupable | Implementado en main; migración y datos reales pendientes | #455 calcula padrón efectivo, exporta faltantes sin inventarlos y agrupa egresos sin borrar originales; #456 añade Deshacer local. No se probó MySQL, Excel manual ni persistencia real |
+| Piloto WhatsApp privado | Implementado pero apagado por defecto; configuración externa pendiente | #457–#460 incorporan menú, Casa Club, vinculación HTTPS, adeudos/PDF, pagos OCR/Titan y visitas con tope preventivo. Requiere tres SQL, variables, Meta/Hostinger y pruebas reales; no garantiza costo $0 |
+| Calendario WhatsApp Flow | Código y JSON implementados; Flow no publicado | #461 bloquea fechas públicas, usa token de un solo uso y revalida antes de avanzar. Falta validación/publicación en Meta, Flow ID y prueba de entrega; selección no crea reserva |
 | Casa Club: histórico y contabilidad visible | Iteraciones implementadas; cifras reales y despliegue pendientes | #437–#442 separan recuperación/limpieza/garantía, concilian histórico por vivienda y dejan limpieza solo informativa en el resultado final. El $25,550 es evidencia declarada del PR, no saldo bancario verificado en esta revisión |
 | Egresos, extraordinarias y fondos | Backend/UI implementados; operaciones reales pendientes | #443 agrega borrado auditado, exenciones, meta automática, plan por proyectos y respaldo Drive verificable; #444–#448 ajustan UI. No se borró ni asignó nada y los jobs en memoria se pierden al reiniciar |
 | Titan y OCR del comprobante | Conciliación automática reforzada; caso real no confirmado | #449–#454 reconsultan Titan, comparan CPO y releen el renglón Comprobante. #454 recuperó la captura localmente, pero no acredita despliegue, aviso único, pago, cuotas, TAGs o DB |
@@ -831,6 +871,13 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 17/nov/2026 | PR #455–#461, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 7 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
+| 17/nov/2026 | #455–#456, sintaxis/Excel de ejemplo/estructura UI | #455 declara sintaxis de **5 módulos** y ejemplo generado; #456 revisión estática | No prueba ALTER/SQL, MySQL, Excel descargado, agrupación guardada ni navegador |
+| 17/nov/2026 | #457, piloto WhatsApp | Sintaxis de **4 archivos** y **6 casos rápidos** declarados | Sin WhatsApp, Hostinger, MySQL, OCR/Titan o reserva real |
+| 17/nov/2026 | #458, presupuesto preventivo | Simulación **899→900 permitido; 901 bloqueado** y ventana bloqueada | Graph API simulado; no garantiza tarifa ni consumo total de la cuenta |
+| 17/nov/2026 | `node --test backend/test/whatsapp-destinatario.test.js` (#459) | **3 casos presentes** de normalización; PR solo confirma revisión manual | No prueba envío real ni que resolviera el HTTP 400 en Hostinger |
+| 17/nov/2026 | `node --test backend/test/whatsapp-bot-fechas.test.js` (#460) | **2 bloques / 16 muestras presentes**; PR declara cinco casos verificados | No prueba vinculación, PDF, visita, pago o Meta real |
+| 17/nov/2026 | `node --test backend/test/whatsapp-casa-club-calendario.test.js` (#461) | **4 pruebas presentes**; JSON y sintaxis revisados | No fue aceptado/publicado en Meta Builder ni entregado por WhatsApp real |
 | 16/nov/2026 | PR #437–#454, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 18 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
 | 16/nov/2026 | #437–#440, archivos focalizados Casa Club | **13 + 5 + 3 + 6 casos presentes**; PR declaran cálculo/sintaxis o validación pendiente | Evidencia de fuente/local; no prueba Sheet, MySQL, navegador ni banco |
 | 16/nov/2026 | #441–#442, `node --test tests/casa-club-limpieza-solo-egresos-20261116.test.cjs` | **5 casos presentes; comando no ejecutado** según los PR | La limpieza queda informativa en el código; falta ejecución y vista real |
@@ -1017,6 +1064,11 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Extraordinarias/agrupaciones #455–#456 | Respaldar y probar en clon la columna agrupaciones o SQL alternativo, padrón efectivo, No aplica, cargos faltantes, Excel, filtros, ciclos/límites, guardar/recargar, Deshacer/Ctrl+Z y mini tarjetas. No agrupar sin comprobar que A ya está contenido en B |
+| Piloto WhatsApp #457–#460 | Mantener apagado hasta aplicar los SQL del bot, presupuesto y vinculación; configurar secretos/URL/Meta en Hostinger sin publicarlos. Probar webhook HMAC, número autorizado, límite, sesión HTTPS, Casa Club, adeudos/PDF, foto OCR/Titan y visita con datos controlados y rollback |
+| Costos Meta #458 | Confirmar en Insights la política/tarifa vigente y todo uso del número; el guard local no ve otras apps, Manager ni cambios de precio. Apagar si aparecen cargos y no prometer $0 |
+| Destinatario WhatsApp #459 | Desplegar/reiniciar y enviar un mensaje nuevo desde número autorizado; revisar el error sanitizado si persiste. No alterar ni reintentar eventos históricos en ERROR |
+| Flow calendario #461 | Validar el JSON en Meta Flow Builder, publicar una versión, configurar el Flow ID y probar fecha libre, ocupada y carrera con disponibilidad cambiante. Confirmar fallback manual y ausencia de datos personales; no afirmar reserva al seleccionar |
 | Casa Club final #437–#442 | Desplegar frontend/backend, releer el Sheet y cotejar 29 movimientos, viviendas ambiguas y total sin datos privados. Verificar que limpieza sea informativa y que garantía/recuperación no se dupliquen ni se presenten como banco o MySQL |
 | Egresos, extraordinarias y fondos #443–#448 | Respaldar y probar en clon borrado/versionado/auditoría/archivo, 231 cargos y exenciones, metas, filtros, asignaciones y exclusiones. Ejecutar los 8 casos, validar UI 10 filas/móvil/sidebar y no borrar registros históricos dudosos sin conciliación |
 | Respaldos Drive #443 | Probar OAuth/carpeta autorizada con archivos ficticios, PDF/Excel, creación/actualización, verificación MIME/padre/tamaño, errores y reinicio de Node. Para durabilidad real sustituir la cola en memoria por persistencia |
@@ -1133,6 +1185,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-17
+
+- Main consultado a las 23:25, America/Mexico_City, en `1a4906414e9b0f355fe0d35b1c9d2a29346310a9`, 83 commits por delante del SHA guardado.
+- Se excluyó `dcd695d`, que solo actualizó esta bitácora. Como producto se verificaron siete PR fusionados: #455–#461; no hay PR abiertos ni revertidos nuevos.
+- Los siete heads devuelven cero workflows y cero estados. Se registraron sintaxis/ejemplos locales de fondos, simulación de presupuesto y 3/2/4 bloques de prueba presentes para destinatario, fechas y Flow; no hay CI verde observable.
+- No hubo confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, Meta/WhatsApp, Titan, reservas, pagos, visitas o pruebas físicas. Los PR solo describen verificaciones locales/simuladas.
+- No se consultaron ni modificaron Hostinger, MySQL, Meta, Google, Titan/IMAP o C3; no se ejecutaron SQL, agrupaciones, mensajes, reservas, pagos ni visitas. El piloto queda apagado y el Flow pendiente de publicación/configuración externa.
 
 ### 2026-11-16
 
