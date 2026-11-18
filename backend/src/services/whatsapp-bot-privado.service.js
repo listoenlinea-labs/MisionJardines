@@ -230,8 +230,9 @@ async function manejar(phone,s,word,text,message){
  }
  if(s.state==='VISITA_FECHA'){
   const date=fechaISO(text);
-  const days=(Date.parse(date+'T12:00:00Z')-Date.now())/86400000;
-  if(!date||days<0||days>90)return say(phone,'Escribe una fecha válida dentro de los próximos 90 días.');
+  const hoy=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const days=(Date.parse(date+'T12:00:00Z')-Date.parse(hoy+'T12:00:00Z'))/86400000;
+  if(!date||!Number.isFinite(days)||days<0||days>90)return say(phone,'Escribe una fecha válida dentro de los próximos 90 días.');
   await save(phone,'VISITA_HORA',{...s.ctx,fecha:date});
   return buttons(phone,'Escribe la hora aproximada de llegada (HH:MM), o elige Sin hora.',
    [{id:'VISITA_SIN_HORA',title:'Sin hora'},...volver]);
