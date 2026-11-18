@@ -1,0 +1,64 @@
+{
+  "version": "7.3",
+  "screens": [
+    {
+      "id": "FECHA_CASA_CLUB",
+      "title": "Reservar Casa Club",
+      "terminal": true,
+      "data": {
+        "min_date": {
+          "type": "string",
+          "__example__": "2026-11-18"
+        },
+        "max_date": {
+          "type": "string",
+          "__example__": "2027-11-17"
+        },
+        "unavailable_dates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "__example__": [
+            "2026-11-21",
+            "2026-12-13"
+          ]
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Selecciona la fecha"
+          },
+          {
+            "type": "TextBody",
+            "text": "Los días ocupados o en revisión no están disponibles. La fecha se volverá a verificar cuando confirmes."
+          },
+          {
+            "type": "CalendarPicker",
+            "name": "fecha",
+            "label": "Día de reservación",
+            "mode": "single",
+            "required": true,
+            "min-date": "${data.min_date}",
+            "max-date": "${data.max_date}",
+            "unavailable-dates": "${data.unavailable_dates}",
+            "helper-text": "Elige una fecha libre para continuar en el chat."
+          },
+          {
+            "type": "Footer",
+            "label": "Confirmar fecha",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "fecha": "${form.fecha}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
