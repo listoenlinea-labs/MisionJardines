@@ -19,6 +19,23 @@ async function deudaPdf(auth){
  pdf.text('Cuotas extraordinarias: '+moneda(datos.totales?.EXTRAORDINARIO));
  pdf.text('Casa Club: '+moneda(datos.totales?.CASA_CLUB));
  pdf.moveDown().fontSize(14).text('Total: '+moneda(datos.total));
+ const categorias=[
+  ['MANTENIMIENTO','Mantenimiento'],
+  ['EXTRAORDINARIO','Cuotas extraordinarias'],
+  ['CASA_CLUB','Casa Club']
+ ];
+ for(const [clave,titulo] of categorias){
+  const partidas=(datos.tipos?.[clave]||[]).filter(item=>Number(item.monto)>0);
+  pdf.moveDown(1).fontSize(12).fillColor('#19392d').text(titulo+' — '+moneda(datos.totales?.[clave]));
+  pdf.fontSize(9).fillColor('#222222');
+  if(!partidas.length){pdf.text('Sin adeudos registrados en este concepto.');continue;}
+  for(const partida of partidas){
+   const periodo=String(partida.periodo||'').slice(0,16);
+   const concepto=String(partida.concepto||titulo).replace(/[\r\n\t]/g,' ').slice(0,85);
+   pdf.text(periodo+' · '+concepto+' · '+moneda(partida.monto));
+   if(partida.estado==='EN_REVISION')pdf.fillColor('#8b5e00').text('Comprobante pendiente de conciliación bancaria.').fillColor('#222222');
+  }
+ }
  pdf.moveDown().fontSize(11).fillColor('#19392d').text('Cómo pagar');
  pdf.fillColor('#222222').fontSize(10).text('Banco: '+String(cuenta.banco||'Consulta Administración'));
  if(cuenta.titular)pdf.text('Beneficiario: '+cuenta.titular);
