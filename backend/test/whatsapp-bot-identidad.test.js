@@ -2,6 +2,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {clasificarCoincidencia}=require('../src/services/whatsapp-bot-identidad.service');
+const {normalizarTelefono}=require('../src/services/telefono-cuenta.service');
 
 const activo={id:12,estatus:'ACTIVO',cuentaAceptada:true,rol:{nombre:'CONDOMINO',activo:true}};
 const miembro={casaId:5,activo:true};
@@ -24,4 +25,10 @@ test('usuarios suspendidos y sin rol residencial no dan acceso automático',()=>
 });
 test('ignora vínculos de viviendas inactivos sin permitir su uso',()=>{
  assert.deepEqual(clasificarCoincidencia([activo],[{casaId:5,activo:false}]),{tipo:'sin_vivienda'});
+});
+
+test('normaliza variantes mexicanas de WhatsApp 52/521 y teléfonos locales',()=>{
+ assert.equal(normalizarTelefono('5213312345678'),'523312345678');
+ assert.equal(normalizarTelefono('+52 33 1234 5678'),'523312345678');
+ assert.equal(normalizarTelefono('3312345678'),'523312345678');
 });
