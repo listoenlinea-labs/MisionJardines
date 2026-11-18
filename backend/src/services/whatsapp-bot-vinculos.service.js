@@ -35,7 +35,7 @@ async function confirmar({token,usuarioId,casaId}){
   if(!row)throw fail(410,'El enlace venció o ya fue utilizado. Solicita uno nuevo en WhatsApp');
   // Si el número apunta sin ambigüedad a una cuenta y vivienda, no permitir
   // vincularlo a otra identidad aunque alguien tenga sus propias credenciales.
-  const reconocido=await require('./whatsapp-bot-identidad.service').reconocer(row.remitente);
+  const reconocido=await require('./whatsapp-bot-identidad.service').reconocer(row.remitente,{transaction});
   if(reconocido.tipo==='unico'&&(Number(reconocido.usuarioId)!==Number(usuarioId)||
     Number(reconocido.casaId)!==Number(casaId)))
    throw fail(403,'La cuenta y la vivienda no coinciden con el número registrado. Consulta a Administración.');
