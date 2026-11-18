@@ -50,6 +50,9 @@ function dateISO(v){
  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===v2?v2:'';
 }
 async function status(phone,s){
+ if(!s.ctx.casaId||!await vinculos.verificar(phone,s.ctx.casaId))
+  return privateFlow.enlace(phone,'PAGO_COMPROBANTE',
+   {tipo:'CASA_CLUB',reservaId:s.ctx.id,casaId:s.ctx.casaId});
  if(!s.ctx.id||!s.ctx.token)return send(phone,'No hay una solicitud activa en esta conversación. Escribe MENÚ.');
  const x=(await api('publico/comprobante/estado',{reservaId:s.ctx.id,claveAcceso:s.ctx.token})).data;
  if(x.estatusReserva==='APROBADA'&&x.pagado){
@@ -85,6 +88,9 @@ async function getMedia(mediaId){
  return 'data:'+mime+';base64,'+b.toString('base64');
 }
 async function upload(phone,s,message){
+ if(!s.ctx.casaId||!await vinculos.verificar(phone,s.ctx.casaId))
+  return privateFlow.enlace(phone,'PAGO_COMPROBANTE',
+   {tipo:'CASA_CLUB',reservaId:s.ctx.id,casaId:s.ctx.casaId});
  try{
   if(message.type!=='image')throw Error('Envía una fotografía JPG/PNG; para PDF usa el enlace privado del correo.');
   const img=await getMedia(message.image?.id);
@@ -212,7 +218,7 @@ async function handle(message){
    const result=await api('publico/solicitudes',{
     fecha:s.ctx.date,calle:s.ctx.street,numero:s.ctx.house,solicitante:auth.nombre,
     correo:auth.correo,telefono:/^521\d{10}$/.test(phone)?'52'+phone.slice(3):phone,
-    propietario:true,motivo:'Solicitud de cuenta vinculada desde WhatsApp',aceptaReglamento:true
+    propietario:false,motivo:'Solicitud de cuenta vinculada desde WhatsApp',aceptaReglamento:true
    });
    await save(phone,'PAGO_CLUB',{id:result.data?.id,casaId:auth.casaId,date:s.ctx.date});
    return free.buttons(phone,'🟡 *Reserva apartada provisionalmente.* Enviamos los datos de transferencia y el enlace privado al correo registrado de la cuenta vinculada con esta vivienda. La reservación solo se confirma al validar el banco.',
