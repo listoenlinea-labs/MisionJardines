@@ -53,6 +53,7 @@ async function deudas(phone,auth){
  const entregado=await free.document(phone,pdf.buffer,'Estado_adeudos_Mision_Jardines.pdf',
   'Estado de adeudos privado de tu vivienda');
  if(!entregado)return false;
+ await save(phone,'MENU',{});
  return buttons(phone,'✅ Te envié tu estado de adeudos en PDF. Los comprobantes en revisión no son pagos confirmados.',
   [{id:'MENU_PAGOS',title:'Reportar pago'},...volver]);
 }
