@@ -188,7 +188,8 @@ async function handle(message){
   return privateFlow.empezar(phone,'PAGO_TIPO');
  if(word==='MENU_VISITAS'||(s.state==='MENU'&&['4','VISITA'].includes(word)))
   return privateFlow.empezar(phone,'VISITA_NOMBRE');
- if(['ESPERANDO_VINCULO','PAGO_TIPO','PAGO_PROYECTOS','PAGO_RESERVAS',
+ if(['ESPERANDO_VINCULO','IDENTIFICAR_CALLE','IDENTIFICAR_CASA',
+   'PAGO_TIPO','PAGO_PROYECTOS','PAGO_RESERVAS',
    'PAGO_COMPROBANTE','VISITA_NOMBRE','VISITA_TIPO','VISITA_FECHA',
    'VISITA_HORA','VISITA_CONFIRMAR'].includes(s.state)){
   return privateFlow.manejar(phone,s,word,text,message);
