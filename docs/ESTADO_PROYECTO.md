@@ -1,24 +1,49 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 17/nov/2026, 23:25, America/Mexico_City.
-**SHA de main consultado:** `1a4906414e9b0f355fe0d35b1c9d2a29346310a9`.
+**Última revisión:** 18/nov/2026, 23:31, America/Mexico_City.
+**SHA de main consultado:** `1d5a54dc8202bfc6fa33ccff4a6f22e508d4a8ae`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `8ee62038031115280413d958beb51928a3ed68bb`,
-historial de 83 commits, PR #455–#461, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `dcd695d42fa636e5c95e84f77d9ef272a70ade55`, dedicado exclusivamente
-a la bitácora anterior. Los siete PR de producto están fusionados y no hay PR abiertos
-ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
-declaradas se conservan como evidencia local o simulada, no como CI.
-No se consultaron Hostinger, MySQL, Meta/WhatsApp, Google Sheets/Drive, Titan/IMAP o C3
-directamente, no se ejecutaron SQL, migraciones, agrupaciones, reservas, pagos, visitas,
-mensajes ni pruebas físicas. No hay una confirmación nueva accesible del usuario sobre
-despliegue, base de producción o funcionamiento real del piloto WhatsApp. No se publican
-credenciales, teléfonos, contactos, comprobantes ni contenido privado del padrón.
+comparación de main desde `1a4906414e9b0f355fe0d35b1c9d2a29346310a9`,
+historial de 16 commits, PR #462, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `6f618742cadc6809701ea0e2888a846dfe6e164c`, dedicado exclusivamente
+a la bitácora anterior. El único PR de producto está fusionado y no hay PR abiertos
+ni revertidos nuevos. Su head devuelve cero workflows y cero estados; las pruebas
+presentes y verificaciones declaradas son evidencia local, no CI.
+No se consultaron Hostinger, MySQL, Meta/WhatsApp, Titan/IMAP o C3 directamente, no
+se ejecutaron SQL, identificaciones, vinculaciones, consultas privadas, pagos, reservas,
+visitas, mensajes ni pruebas físicas. No hay confirmaciones nuevas accesibles del usuario
+sobre despliegue o funcionamiento del bot. No se publican credenciales, teléfonos,
+contactos, comprobantes ni contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 18/nov/2026
+
+El PR [#462](https://github.com/listoenlinea-labs/MisionJardines/pull/462) permite que
+el bot WhatsApp use el teléfono registrado como pista para evitar pedir calle y casa
+cuando existe exactamente un usuario CONDOMINO activo y una sola asociación activa.
+El número no autentica: para Casa Club, adeudos, pagos o visitas sigue siendo obligatorio
+un vínculo HTTPS vigente, con usuario, rol, vivienda, versión de sesión y caducidad
+verificados por backend. Teléfonos duplicados, cuentas suspendidas, múltiples viviendas
+o ausencia de relación nunca seleccionan una casa arbitrariamente.
+
+Con vínculo vigente, Casa Club pasa a reglamento después de la fecha; adeudos genera un
+PDF privado con desglose de mantenimiento, extraordinarias y Casa Club; pagos conserva
+OCR/Titan y visitas usa el controlador existente. Si el número no está registrado, el bot
+puede pedir domicilio, pero conocerlo tampoco concede acceso y después exige login HTTPS
+y relación activa. La página de vinculación selecciona automáticamente una única vivienda
+autorizada y conserva selección explícita cuando hay varias. El cambio no agrega SQL ni
+variables y no elimina los requisitos de Meta para el calendario Flow.
+
+GitHub devuelve cero runs y cero estados para el head. En main hay seis pruebas de
+clasificación/normalización: coincidencia única, duplicados, ausencia o varias viviendas,
+cuentas suspendidas/roles, vínculos inactivos y variantes mexicanas. El PR declara sintaxis
+revisada y estos casos verificados, pero no ejecución de integración contra MySQL,
+Hostinger, Meta o Titan. Ningún resultado acredita mensajes, identidad, PDF, reserva,
+pago, visita, banco o C3 reales.
 
 ## Implementado en main el 17/nov/2026
 
@@ -756,6 +781,7 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Identificación WhatsApp por teléfono | Implementada como pista; autorización real sigue en HTTPS | #462 omite domicilio solo con coincidencia única y vínculo válido; duplicados, suspensión o varias casas requieren verificación. No se probó MySQL/Meta/Titan ni se envió información real |
 | Extraordinarias y plan agrupable | Implementado en main; migración y datos reales pendientes | #455 calcula padrón efectivo, exporta faltantes sin inventarlos y agrupa egresos sin borrar originales; #456 añade Deshacer local. No se probó MySQL, Excel manual ni persistencia real |
 | Piloto WhatsApp privado | Implementado pero apagado por defecto; configuración externa pendiente | #457–#460 incorporan menú, Casa Club, vinculación HTTPS, adeudos/PDF, pagos OCR/Titan y visitas con tope preventivo. Requiere tres SQL, variables, Meta/Hostinger y pruebas reales; no garantiza costo $0 |
 | Calendario WhatsApp Flow | Código y JSON implementados; Flow no publicado | #461 bloquea fechas públicas, usa token de un solo uso y revalida antes de avanzar. Falta validación/publicación en Meta, Flow ID y prueba de entrega; selección no crea reserva |
@@ -871,6 +897,8 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 18/nov/2026 | PR #462, consulta GitHub de workflows/estados en el head | **0 workflows y 0 estados** | No hay CI observable; merge y revisión declarada no prueban despliegue |
+| 18/nov/2026 | `node --test backend/test/whatsapp-bot-identidad.test.js` | **6 pruebas presentes**; PR declara clasificación y sintaxis verificadas, sin salida CI | No prueba BD, vínculo HTTPS, PDF, Meta, Titan, reserva, pago o visita real |
 | 17/nov/2026 | PR #455–#461, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 7 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
 | 17/nov/2026 | #455–#456, sintaxis/Excel de ejemplo/estructura UI | #455 declara sintaxis de **5 módulos** y ejemplo generado; #456 revisión estática | No prueba ALTER/SQL, MySQL, Excel descargado, agrupación guardada ni navegador |
 | 17/nov/2026 | #457, piloto WhatsApp | Sintaxis de **4 archivos** y **6 casos rápidos** declarados | Sin WhatsApp, Hostinger, MySQL, OCR/Titan o reserva real |
@@ -1064,6 +1092,7 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Identidad WhatsApp #462 | Desplegar backend y probar con datos controlados: número único 52/521, vínculo vigente/vencido, desconocido, duplicado, varias viviendas, suspendido, cambio de contraseña y desvinculación. Confirmar que sin login no se revelen adeudos, PDF, identidad, reservas o visitas y que OCR/Titan mantenga sus guardas |
 | Extraordinarias/agrupaciones #455–#456 | Respaldar y probar en clon la columna agrupaciones o SQL alternativo, padrón efectivo, No aplica, cargos faltantes, Excel, filtros, ciclos/límites, guardar/recargar, Deshacer/Ctrl+Z y mini tarjetas. No agrupar sin comprobar que A ya está contenido en B |
 | Piloto WhatsApp #457–#460 | Mantener apagado hasta aplicar los SQL del bot, presupuesto y vinculación; configurar secretos/URL/Meta en Hostinger sin publicarlos. Probar webhook HMAC, número autorizado, límite, sesión HTTPS, Casa Club, adeudos/PDF, foto OCR/Titan y visita con datos controlados y rollback |
 | Costos Meta #458 | Confirmar en Insights la política/tarifa vigente y todo uso del número; el guard local no ve otras apps, Manager ni cambios de precio. Apagar si aparecen cargos y no prometer $0 |
@@ -1185,6 +1214,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-18
+
+- Main consultado a las 23:31, America/Mexico_City, en `1d5a54dc8202bfc6fa33ccff4a6f22e508d4a8ae`, 16 commits por delante del SHA guardado.
+- Se excluyó `6f61874`, que solo actualizó esta bitácora. Como producto se verificó el PR #462 fusionado; no hay PR abiertos ni revertidos nuevos.
+- El head devuelve cero workflows y cero estados. Se registraron seis pruebas presentes de clasificación y normalización, sin CI ni integración observable.
+- No hubo confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, Meta/WhatsApp, Titan, identidad, PDF, reservas, pagos, visitas o pruebas físicas.
+- No se consultaron ni modificaron Hostinger, MySQL, Meta, Titan/IMAP o C3 y no se ejecutó ninguna operación real. El teléfono queda documentado únicamente como pista; el vínculo HTTPS conserva la autorización.
 
 ### 2026-11-17
 
