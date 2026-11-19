@@ -94,7 +94,7 @@ router.post('/llamadas', autenticarToken, personal, habilitado, async (req, res)
       );
       return true;
     });
-    if (!aceptada) return res.status(409).json({ ok: false, message: 'Hay una solicitud reciente. Espera a que timbre caseta.' });
+    if (!aceptada) return res.status(409).json({ ok: false, message: 'La solicitud anterior sigue activa. Intenta de nuevo cuando termine.' });
     return res.status(202).json({ ok: true, solicitud });
   } catch (error) {
     return fallo(res, error);
@@ -144,13 +144,16 @@ router.post('/agente/siguiente', habilitado, agente, async (_req, res) => {
 
 router.post('/agente/resultado', habilitado, agente, async (req, res) => {
   const { solicitud, reclamo, estado } = req.body || {};
-  if (!uuid(solicitud) || !uuid(reclamo) || !['ENVIADA', 'ERROR'].includes(estado)) {
+  if (!uuid(solicitud) || !uuid(reclamo) || !['ENVIADA', 'ERROR', 'FINALIZADA'].includes(estado)) {
     return res.sendStatus(400);
   }
   try {
     await sequelize.query(`
-      UPDATE conmutador_caseta SET estado = :estado, destino = NULL, reclamo = NULL
-      WHERE id = 1 AND solicitud = :solicitud AND reclamo = :reclamo AND estado = 'RECLAMADA'
+      UPDATE conmutador_caseta SET estado = :estado, destino = NULL,
+        reclamo = CASE WHEN :estado = 'ENVIADA' THEN reclamo ELSE NULL END,
+        vence_en = CASE WHEN :estado IN ('FINALIZADA', 'ERROR') THEN UTC_TIMESTAMP(3) ELSE vence_en END
+      WHERE id = 1 AND solicitud = :solicitud AND reclamo = :reclamo
+        AND (estado = 'RECLAMADA' OR (estado = 'ENVIADA' AND :estado = 'FINALIZADA'))
     `, { replacements: { estado, solicitud, reclamo }, type: QueryTypes.UPDATE });
     return res.sendStatus(204);
   } catch (error) {

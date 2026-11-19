@@ -61,8 +61,16 @@ def ejecutar():
             return None if respuesta.status == 204 else json.load(respuesta)
 
     uuid = r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}"
+    entregadas = {}
     while True:
         try:
+            for solicitud, reclamo in list(entregadas.items()):
+                archivo = spool / "outgoing" / (solicitud + ".call")
+                if not archivo.exists():
+                    solicitar("/resultado", {
+                        "solicitud": solicitud, "reclamo": reclamo, "estado": "FINALIZADA"
+                    })
+                    del entregadas[solicitud]
             inicio = time.monotonic()
             orden = solicitar("/siguiente", {})
             if orden:
@@ -75,10 +83,11 @@ def ejecutar():
                     if time.monotonic() - inicio < int(orden["vigencia_ms"]) / 1000:
                         enviar_call_file(orden, spool)
                         estado = "ENVIADA"
+                        entregadas[solicitud] = reclamo
                 except (OSError, ValueError, TypeError) as error:
                     print(f"No se pudo preparar la llamada ({type(error).__name__}).", flush=True)
                 solicitar("/resultado", {"solicitud": solicitud, "reclamo": reclamo, "estado": estado})
-            time.sleep(3)
+            time.sleep(2)
         except (OSError, ValueError, KeyError, TypeError) as error:
             # No se vuelve a publicar una llamada si falló la confirmación HTTP.
             print(f"No se pudo consultar o reportar a Hostinger ({type(error).__name__}).", flush=True)
