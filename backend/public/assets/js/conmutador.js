@@ -12,17 +12,46 @@ const sections=[
 ];
 
 let active=sections[0],phones=[];
+let modoCaseta = false;
+let domicilioPendiente = null;
+const caseta = crearConmutadorCaseta({ api: call, mostrarEstado: msg });
 const tabs=document.getElementById('tabs'),grid=document.getElementById('grid'),status=document.getElementById('status'),modal=document.getElementById('modal');
 const caller=new TelefoniaEngine({api:API,token,status:(t,k)=>msg(t,k)});
 function msg(t,k=''){status.className='status'+(k?' '+k:'');status.textContent=t}
-async function call(path){const r=await fetch(API+path,{headers:{Authorization:'Bearer '+token}});let d={};try{d=await r.json()}catch{}if(r.status===401){localStorage.removeItem('misionJardinesToken');location.replace('login.html');throw Error('Sesión vencida')}if(!r.ok||d.ok===false)throw Error(d.message||'Error');return d}
+async function call(path, options = {}) {
+const headers = { Authorization: 'Bearer ' + token };
+if (options.body) headers['Content-Type'] = 'application/json';
+const r = await fetch(API + path, { ...options, headers, cache: 'no-store' });let d={};try{d=await r.json()}catch{}if(r.status===401){localStorage.removeItem('misionJardinesToken');location.replace('login.html');throw Error('Sesión vencida')}if(!r.ok||d.ok===false)throw Error(d.message||'Error');return d}
 function commerce(k,n){return(k==='Gardenias'&&n==='28')||(k==='Lirios'&&n==='32')}
 function drawTabs(){tabs.innerHTML='';sections.forEach(s=>{const b=document.createElement('button');b.className='tab'+(s.key===active.key?' active':'');b.textContent=s.key;b.onclick=()=>{active=s;drawTabs();draw()};tabs.appendChild(b)})}
 function draw(){document.getElementById('streetTitle').textContent=active.key;document.getElementById('houseCount').textContent=active.houses.length+' domicilios';grid.innerHTML='';active.houses.forEach(h=>{const b=document.createElement('button');b.className='house'+(commerce(active.key,h.number)?' commerce':'')+(active.key==='Exterior'?' ext':'');if(h.label){const sm=document.createElement('small');sm.textContent=h.label;b.appendChild(sm)}const sp=document.createElement('span');sp.textContent=h.number;b.appendChild(sp);if(commerce(active.key,h.number)){const bd=document.createElement('span');bd.className='badge';bd.textContent='Comercio';b.appendChild(bd)}b.onclick=()=>selectHouse(h);grid.appendChild(b)})}
 function normalizeWhatsAppNumber(number){let digits=String(number||'').replace(/\D/g,'');if(digits.length===13&&digits.startsWith('521'))digits='52'+digits.slice(3);if(digits.length===10)digits='52'+digits;return /^52\d{10}$/.test(digits)?digits:''}
 function openWhatsApp(number,preparedWindow=null){const destination=normalizeWhatsAppNumber(number);if(!destination){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('El teléfono registrado no tiene un formato válido para WhatsApp en México.','error');return}const url='misionjardines-call://call?phone='+destination;let target=preparedWindow;try{if(!target||target.closed)target=window.open('','mj-whatsapp-caseta');if(!target){msg('El navegador bloqueó WhatsApp. Habilita ventanas emergentes para este sitio.','error');return}target.opener=null;target.location.replace(url);msg('Enviando la llamada a WhatsApp Desktop desde la cuenta autorizada 33••••8609…','ok');setTimeout(()=>{try{if(target&&!target.closed)target.close()}catch{}},1800)}catch(e){msg('No fue posible iniciar el agente de llamadas. Verifica que el agente Misión Jardines y WhatsApp para Windows estén instalados.','error')}}
-async function selectHouse(h){const preparedWindow=caller.prepareWindow();if(preparedWindow){try{preparedWindow.document.title='Misión Jardines · WhatsApp';preparedWindow.document.body.innerHTML='<p style="font-family:system-ui;padding:24px">Preparando WhatsApp…</p>'}catch{}}document.querySelectorAll('.house').forEach(x=>x.disabled=true);msg('Buscando teléfono registrado…');try{const p=new URLSearchParams({grupo:h.lookup||active.key,numero:h.number});const d=await call('/busqueda/conmutador/telefono?'+p);phones=(d.telefonos||[]).filter(Boolean).slice(0,2);if(!phones.length){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Este domicilio no tiene teléfono registrado.','error')}else if(phones.length>1){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Hay dos teléfonos registrados. Elige A o B para llamar.');modal.classList.add('show')}else{await caller.call(phones[0],preparedWindow,openWhatsApp)}}catch(e){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg(e.message,'error')}finally{document.querySelectorAll('.house').forEach(x=>x.disabled=false)}}
-document.querySelectorAll('.choice').forEach(b=>b.onclick=async()=>{const n=phones[Number(b.dataset.i)];modal.classList.remove('show');if(n)await caller.call(n,caller.prepareWindow(),openWhatsApp)});
+async function llamarDesdeCaseta(h) {
+  const domicilio = { grupo: h.lookup || active.key, numero: h.number };
+  document.querySelectorAll('.house').forEach(button => { button.disabled = true; });
+  try {
+    const contactos = await caseta.contactos(domicilio);
+    if (!contactos.length) return msg('Esta vivienda no tiene un contacto disponible.', 'error');
+    if (contactos.length === 1) return await caseta.llamar(domicilio, contactos[0]);
+    domicilioPendiente = domicilio;
+    phones = contactos;
+    modal.querySelector('p').textContent = 'Contesta el teléfono fijo de caseta cuando timbre.';
+    modal.classList.add('show');
+  } catch (error) {
+    msg(error.message, 'error');
+  } finally {
+    document.querySelectorAll('.house').forEach(button => { button.disabled = false; });
+  }
+}
+async function selectHouse(h){if(modoCaseta)return llamarDesdeCaseta(h);const preparedWindow=caller.prepareWindow();if(preparedWindow){try{preparedWindow.document.title='Misión Jardines · WhatsApp';preparedWindow.document.body.innerHTML='<p style="font-family:system-ui;padding:24px">Preparando WhatsApp…</p>'}catch{}}document.querySelectorAll('.house').forEach(x=>x.disabled=true);msg('Buscando teléfono registrado…');try{const p=new URLSearchParams({grupo:h.lookup||active.key,numero:h.number});const d=await call('/busqueda/conmutador/telefono?'+p);phones=(d.telefonos||[]).filter(Boolean).slice(0,2);if(!phones.length){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Este domicilio no tiene teléfono registrado.','error')}else if(phones.length>1){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Hay dos teléfonos registrados. Elige A o B para llamar.');modal.classList.add('show')}else{await caller.call(phones[0],preparedWindow,openWhatsApp)}}catch(e){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg(e.message,'error')}finally{document.querySelectorAll('.house').forEach(x=>x.disabled=false)}}
+document.querySelectorAll('.choice').forEach(b=>b.onclick=async()=>{const n=phones[Number(b.dataset.i)];modal.classList.remove('show');if(n && modoCaseta) await caseta.llamar(domicilioPendiente,n); else if(n)await caller.call(n,caller.prepareWindow(),openWhatsApp)});
 document.getElementById('close').onclick=()=>modal.classList.remove('show');
 document.getElementById('logout').onclick=()=>{localStorage.removeItem('misionJardinesToken');localStorage.removeItem('misionJardinesUsuario');location.replace('login.html')};
-(async()=>{try{await call('/auth/perfil');await caller.init();drawTabs();draw()}catch(e){msg(e.message,'error')}})();
+(async()=>{try{await call('/auth/perfil');
+modoCaseta = await caseta.modo();
+if (modoCaseta) {
+  document.querySelector('[data-call-description]').textContent = 'Elige una vivienda y contesta el teléfono fijo de caseta cuando timbre.';
+  document.querySelectorAll('[data-whatsapp-only]').forEach(element => { element.hidden = true; });
+} else await caller.init();
+drawTabs();draw()}catch(e){msg(e.message,'error')}})();

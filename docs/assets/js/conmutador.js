@@ -33,6 +33,8 @@
       let requestNumber = 0;
       const isIPhone = /iPhone|iPod/i.test(navigator.userAgent);
       let selectedHouse = null;
+      let modoCaseta = false;
+      const caseta = crearConmutadorCaseta({ api, mostrarEstado: setStatus });
       function attempt(house) {
         return fetch(API + '/conmutador/historial', {
           method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
@@ -100,8 +102,10 @@
         status.hidden = !message;
       }
 
-      async function api(path) {
-        const response = await fetch(API + path, { headers: { Authorization: 'Bearer ' + token } });
+      async function api(path, options = {}) {
+        const headers = { Authorization: 'Bearer ' + token };
+        if (options.body) headers['Content-Type'] = 'application/json';
+        const response = await fetch(API + path, { ...options, headers, cache: 'no-store' });
         let data = {};
         try { data = await response.json(); } catch (_) {}
         if (response.status === 401) { location.replace('login.html'); throw Error('La sesión expiró'); }
@@ -216,7 +220,7 @@
 
       async function selectHouse(button, house) {
         const currentRequest = ++requestNumber;
-        const preparedWindow = isIPhone ? null : caller.prepareWindow();
+        const preparedWindow = isIPhone || modoCaseta ? null : caller.prepareWindow();
         if (preparedWindow) {
           try {
             preparedWindow.document.title = 'Misión Jardines · WhatsApp';
@@ -231,6 +235,23 @@
             grupo: house.lookup || activeSection.key,
             numero: house.number
           });
+          if (modoCaseta) {
+            const domicilio = { grupo: params.get('grupo'), numero: params.get('numero') };
+            const contactos = await caseta.contactos(domicilio);
+            if (currentRequest !== requestNumber) return;
+            if (!contactos.length) {
+              setStatus('Esta vivienda no tiene un contacto disponible.', 'error');
+              return;
+            }
+            if (contactos.length === 1) {
+              await caseta.llamar(domicilio, contactos[0]);
+              return;
+            }
+            openPhoneChoice(contactos, domicilio);
+            byId('phoneChoiceDescription').textContent = 'Contesta el teléfono fijo de caseta cuando timbre.';
+            setStatus('');
+            return;
+          }
           const data = await api('/busqueda/conmutador/telefono?' + params.toString());
           if (currentRequest !== requestNumber) return;
 
@@ -271,7 +292,8 @@
           const house=selectedHouse;
           closePhoneChoice();
           selectedHouse=null;
-          if(selected && isIPhone && house)callFromIPhone(selected,house);
+          if (selected && modoCaseta && house) await caseta.llamar(house, selected);
+          else if(selected && isIPhone && house)callFromIPhone(selected,house);
           else if(selected) {
             if(house) void attempt(house);
             await caller.call(selected, caller.prepareWindow(), openWhatsApp);
@@ -289,11 +311,19 @@
       renderTabs();
       renderHouses();
       document.querySelectorAll('.house-btn').forEach(item => { item.disabled = true; });
-      (isIPhone ? Promise.resolve().then(() => {
-        setStatus('');
-        document.querySelectorAll('[data-call-description]').forEach(el=>el.textContent='Elige una vivienda para llamar desde el iPhone sin WhatsApp.');
-        document.querySelectorAll('[data-whatsapp-only]').forEach(el=>el.hidden=true);
-      }) : caller.init()).then(() => {
+      caseta.modo().then(async habilitado => {
+        modoCaseta = habilitado;
+        if (modoCaseta || isIPhone) {
+          setStatus('');
+          document.querySelectorAll('[data-call-description]').forEach(el => {
+            el.textContent = modoCaseta ? 'Elige una vivienda y contesta el teléfono fijo de caseta cuando timbre.'
+              : 'Elige una vivienda para llamar desde el iPhone sin WhatsApp.';
+          });
+          document.querySelectorAll('[data-whatsapp-only]').forEach(el => { el.hidden = true; });
+          return;
+        }
+        await caller.init();
+      }).then(() => {
         document.querySelectorAll('.house-btn').forEach(item => { item.disabled = false; });
       }).catch(error => setStatus(error.message, 'error'));
     })();
