@@ -38,7 +38,7 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
       return [];
     }
     if (sql.includes("SET solicitud = ")) {
-      if (fila) return [undefined, 0];
+      if (fila && !['FINALIZADA', 'ERROR'].includes(fila.estado)) return [undefined, 0];
       fila = { ...campos, estado: 'PENDIENTE' };
       return [undefined, 1];
     }
@@ -56,7 +56,8 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
       return [undefined, 1];
     }
     if (sql.includes('SET estado = :estado')) {
-      assert.equal(campos.reclamo, fila.reclamo);
+      if (campos.solicitud !== fila.solicitud || campos.reclamo !== fila.reclamo) return [undefined, 0];
+      if (campos.estado === 'FINALIZADA') assert.match(sql, /THEN UTC_TIMESTAMP/);
       fila.estado = campos.estado;
       return [undefined, 1];
     }
@@ -102,4 +103,12 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.equal((await llamar(base + '/agente/resultado', agente, { solicitud, reclamo, estado: 'ENVIADA' })).codigo, 204);
   assert.deepEqual((await llamar(base + '/llamadas/' + solicitud, guardia)).json, { ok: true, estado: 'ENVIADA' });
   assert.equal((await llamar(base + '/llamadas/' + solicitud, jwtPara(2))).codigo, 404);
+  assert.equal((await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' })).codigo, 409);
+  assert.equal((await llamar(base + '/agente/resultado', agente, { solicitud, reclamo, estado: 'FINALIZADA' })).codigo, 204);
+  assert.deepEqual((await llamar(base + '/llamadas/' + solicitud, guardia)).json, { ok: true, estado: 'FINALIZADA' });
+  const reintento = await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' });
+  assert.equal(reintento.codigo, 202);
+  assert.notEqual(reintento.json.solicitud, solicitud);
+  await llamar(base + '/agente/resultado', agente, { solicitud, reclamo, estado: 'FINALIZADA' });
+  assert.equal(fila.estado, 'PENDIENTE');
 });

@@ -71,8 +71,9 @@ se escuche el audio en ambos sentidos. Revisa que los endpoints de
 contactos y estado no entreguen teléfonos a una cuenta de Seguridad
 y que el endpoint anterior de números rechace esa cuenta.
 
-Se admite una solicitud cada 30 segundos y el dialplan limita el uso simultáneo
-de la extensión de caseta. Las solicitudes viejas vencen y una entrega reclamada
+El agente libera la solicitud cuando Asterisk termina el intento. Si no puede
+reportar el cierre, la reserva vence a los 30 segundos. El dialplan limita el
+uso simultáneo de la extensión de caseta. Una entrega reclamada
 no se reintenta automáticamente para evitar llamadas duplicadas. «Solicitud
 enviada» indica que se entregó al spool, no que caseta o el residente contestaron.
 El historial conserva los intentos sin el número de destino.
