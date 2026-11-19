@@ -34,7 +34,8 @@ actual del C3 ni a una consulta en vivo de MySQL.
 | [Roles](ROLES.md) | Descripción de permisos | Navegación de Seguridad actualizada el 12/oct; la política completa está en los dos archivos permissions.js |
 | [Vigencia de mantenimiento](../backend/docs/vigencia-mantenimiento.md) | Historia de implementaciones y API heredada | **Histórico y mixto.** Sus secciones de fecha base, total acumulado, corte general, autoaprobación y reenvío SQL al C3 no son las reglas vigentes. Leer AGENTS.md y PAGOS_ACCESO_C3.md en su lugar |
 | [Cambios visuales](README_CAMBIOS.md) | Contexto de una migración de estilos | Histórico; no describe toda la interfaz actual |
-| [Telefonía](../telefonia/README.md) | Motor y futura conexión del conmutador | Consultar el flag/configuración actual antes de habilitarlo |
+| [Telefonía](../telefonia/README.md) | Modo SIP desde el navegador | Consultar el flag antes de habilitarlo |
+| [Teléfono fijo de caseta](../telefonia/caseta/README.md) | Integración del portal con la VM y el HT813 | Migración SQL, agente en la VM y activación en Hostinger |
 | [Bridge Pull SDK](../tools/zkteco-pullsdk-bridge/README.md) | Herramienta Windows alternativa | No se necesita para el escritor DIRECT de pagos; no implica que todas las operaciones globales sean DIRECT por defecto |
 
 ## Archivos operativos privados y sus versiones
