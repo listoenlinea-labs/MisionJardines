@@ -198,7 +198,19 @@
    const response=await api('/administracion/fecha/'+encodeURIComponent(fecha));
    if(!dialog.open)return;
    const rows=response.data||[];
-   if(!rows.length){body.textContent='No hay reservaciones locales registradas para esta fecha. Si el calendario muestra un registro histórico de Google Sheets, consulta el historial de administración.';return;}
+   if(!rows.length){
+    const historicas=historicGoogleRows.filter(r=>r.fecha===fecha);
+    if(historicas.length){
+     body.innerHTML=historicas.map(r=>'<section style="padding:15px;margin-bottom:14px;border:1px solid #e1e7f0;border-radius:12px;background:#fafcff">'+
+      '<strong>'+clean([r.casa?.calle,r.casa?.numero].filter(Boolean).join(' ')||'Vivienda histórica')+'</strong>'+
+      '<p><b>Solicitante:</b> '+clean(r.solicitante)+'</p>'+
+      '<p><b>Propietario:</b> '+clean(r.casa?.nombre)+'</p>'+
+      '<p><b>Estado:</b> '+clean(r.estatus)+' · <b>Pago:</b> '+(r.estatus==='HISTORICA_GOOGLE'?'Pagado':'Sin confirmar')+'</p>'+
+      '<p><b>Motivo del evento:</b> Sin descripción</p>'+
+      '<p><small>Registro histórico de Google; pago no conciliado en MySQL.</small></p></section>').join('');
+    }else body.textContent='No hay reservaciones registradas para esta fecha.';
+    return;
+   }
    body.innerHTML=rows.map(r=>{
     const t=r.tarjetas||{},hist=t.historial||[];
     const casa=r.casa?[r.casa.calle,r.casa.numero].filter(Boolean).join(' '):'Vivienda no vinculada';
@@ -719,7 +731,7 @@
  function observationText(r){
   return r.soloLectura?
    'Tarifa de referencia $2,000 (1000/700/300); pago no verificado en Google.':
-   String(r.motivo||'').trim()||'Sin observaciones registradas.';
+   (!r.motivo||String(r.motivo).trim().toLocaleLowerCase('es-MX')==='apartado registrado previamente')?'Sin descripción':String(r.motivo).trim();
  }
  function openObservations(id){
   const r=adminTableRows.find(x=>Number(x.id)===id);
@@ -779,7 +791,7 @@
     r.soloLectura?money(700):money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
     r.soloLectura?money(300):money(r.limpieza),r.folio||'—',
     r.propietario?'Sí':'No',paymentStatus(r),
-    r.soloLectura?'Tarifa de referencia $2,000; pago no verificado (solo consulta)':r.motivo||'—',
+    r.soloLectura?'Registro histórico de Google; pago no conciliado en MySQL':(!r.motivo||String(r.motivo).trim().toLocaleLowerCase('es-MX')==='apartado registrado previamente'?'Sin descripción':r.motivo),
     r.soloLectura?'Histórica · Google':r.estatus
    ];
    const details=labels.map((label,i)=>'<div class="club-admin-mobile-line"><span>'+
