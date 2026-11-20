@@ -80,19 +80,30 @@
           });
         }catch(_){list.textContent='No se pudo consultar el historial.';}
       }
-      function showHistory(history){
-        byId('homesPanel').hidden=history;
-        byId('historyPanel').hidden=!history;
-        byId('callStatus').hidden=history;
-        byId('showHistory').classList.toggle('active',history);
-        byId('showHomes').classList.toggle('active',!history);
-        byId('showHistory').setAttribute('aria-pressed',String(history));
-        byId('showHomes').setAttribute('aria-pressed',String(!history));
-        if(history)void loadHistory();
+      // La pestaña privada se habilita ÚNICAMENTE tras verificar el rol con el backend.
+      let contactosAdmin = null;
+      function mostrarPanel(vista) {
+        const history = vista === 'historial', contacts = vista === 'contactos';
+        byId('homesPanel').hidden = vista !== 'viviendas';
+        byId('historyPanel').hidden = !history;
+        byId('contactsPanel').hidden = !contacts;
+        byId('callStatus').hidden = history || contacts;
+        for(const [id,visible] of [['showHomes',vista==='viviendas'],['showHistory',history],['showContacts',contacts]]) {
+          byId(id).classList.toggle('active',visible);
+          byId(id).setAttribute('aria-pressed',String(visible));
+        }
+        if(history) void loadHistory();
+        if(contacts) contactosAdmin?.open();
       }
-      byId('showHistory').addEventListener('click',()=>showHistory(true));
-      byId('showHomes').addEventListener('click',()=>showHistory(false));
+      byId('showHistory').addEventListener('click',()=>mostrarPanel('historial'));
+      byId('showHomes').addEventListener('click',()=>mostrarPanel('viviendas'));
       byId('refreshHistory').addEventListener('click',loadHistory);
+      Promise.resolve(window.MJAccessReady).then(autorizado => {
+        if(autorizado !== true || window.MJVerifiedRole !== 'ADMINISTRADOR')return;
+        contactosAdmin = window.crearContactosConmutadorAdmin({api, sections});
+        byId('showContacts').hidden = false;
+        byId('showContacts').addEventListener('click',()=>mostrarPanel('contactos'));
+      });
 
 
       function setStatus(message, kind) {
