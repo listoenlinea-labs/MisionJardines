@@ -1,7 +1,7 @@
 const {filtrarViviendasVisibles,esViviendaVisible}=require('../services/viviendas-visibles.service');
 const express = require('express');
 const { Op } = require('sequelize');
-const { domicilioConmutador, buscarTelefonosConmutador } = require('../services/conmutador-padron.service');
+const { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados } = require('../services/conmutador-padron.service');
 const { casetaHabilitada } = require('../config/conmutador-caseta');
 const { Casa, Condomino, Cuota, Visita, Acceso, Evento, PagoReportado } = require('../models');
 const { autenticarToken } = require('../middlewares/auth.middleware');
@@ -67,6 +67,55 @@ router.get('/', async (req, res) => {
   }
 });
 
+
+
+/**
+ * ÚNICO rol con acceso a esta agenda: ADMINISTRADOR.
+ * No reutilizar la autorización amplia de /conmutador/telefono.
+ * Jamás entregar números al personal de Seguridad o Mesa Directiva.
+ */
+router.post('/conmutador/contactos-admin/consultar', autorizarRoles('ADMINISTRADOR'), async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  const domicilios = req.body?.domicilios;
+  if (!Array.isArray(domicilios) || domicilios.length > 10 || !domicilios.length) {
+    return res.status(400).json({ ok: false, message: 'Consulta de contactos inválida' });
+  }
+  const validos = domicilios.map(item => ({
+    grupo: typeof item?.grupo === 'string' ? item.grupo.trim() : '',
+    numero: typeof item?.numero === 'string' ? item.numero.trim() : ''
+  }));
+  if (validos.some(item => !domicilioConmutador(item.grupo, item.numero))) {
+    return res.status(400).json({ ok: false, message: 'Domicilio de contacto no disponible' });
+  }
+  try {
+    const contactos = await Promise.all(validos.map(async item => ({
+      ...item, telefonos: await buscarTelefonosConmutador(item)
+    })));
+    return res.json({ ok: true, contactos });
+  } catch (error) {
+    console.error('Error consultando contactos del conmutador:', error.name);
+    return res.status(503).json({ ok: false, message: 'No fue posible obtener los teléfonos del conmutador' });
+  }
+});
+
+router.put('/conmutador/contactos-admin', autorizarRoles('ADMINISTRADOR'), async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  const grupo = typeof req.body?.grupo === 'string' ? req.body.grupo.trim() : '';
+  const numero = typeof req.body?.numero === 'string' ? req.body.numero.trim() : '';
+  if (!domicilioConmutador(grupo, numero)) {
+    return res.status(400).json({ ok: false, message: 'Vivienda inválida' });
+  }
+  try {
+    const telefonos = await guardarContactosAdministrados(
+      { grupo, numero }, req.body?.telefonos, req.usuario.usuarioId
+    );
+    return res.json({ ok: true, grupo, numero, telefonos, message: 'Contacto actualizado' });
+  } catch (error) {
+    if (error.status === 400) return res.status(400).json({ ok: false, message: error.message });
+    console.error('Error guardando contactos del conmutador:', error.name);
+    return res.status(503).json({ ok: false, message: 'No fue posible guardar el contacto' });
+  }
+});
 
 router.get('/conmutador/telefono', autorizarRoles(...personnel), async (req, res) => {
   res.set('Cache-Control', 'no-store');
