@@ -32,9 +32,10 @@ window.crearContactosConmutadorAdmin = function ({ api, sections }) {
     const q=clean(search.value).replace(/\s+/g,' ');
     if(!q)return true;
     const phoneQuery=digits(q);
+    const phoneSearch=/^[+()\d\s-]+$/.test(search.value.trim()) && phoneQuery.length>=2;
     return clean(row.calle+' '+row.numero).includes(q) || clean(row.calle).includes(q) ||
       clean(row.numero).includes(q) || clean(row.propietario).includes(q) ||
-      (phoneQuery.length>=3&&(row.telefonos||[]).some(phone=>digits(phone).includes(phoneQuery)));
+      (phoneSearch&&(row.telefonos||[]).some(phone=>digits(phone).includes(phoneQuery)));
   }
   function actions(row) {
     if(editing===key(row))return '<div class="contact-actions"><button class="contact-save" type="button" data-action="save">Guardar</button>'+
