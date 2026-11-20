@@ -2,7 +2,7 @@ const {filtrarViviendasVisibles,esViviendaVisible}=require('../services/vivienda
 const express = require('express');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
-const { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido, nombresGuardadosConmutador, guardarNombreConmutador, obtenerContactosAdministrados } = require('../services/conmutador-padron.service');
+const { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido, nombresGuardadosConmutador, guardarNombreConmutador, obtenerContactosAdministrados, casaDeDomicilioConmutador, asegurarContactosAdministrados, asegurarNombresConmutador, telefonoNacionalCompartido } = require('../services/conmutador-padron.service');
 const { casetaHabilitada } = require('../config/conmutador-caseta');
 const { Casa, Condomino, Cuota, Visita, Acceso, Evento, PagoReportado } = require('../models');
 const { autenticarToken } = require('../middlewares/auth.middleware');
@@ -130,8 +130,14 @@ router.put('/conmutador/contactos-admin', autorizarRoles('ADMINISTRADOR'), async
   try {
     // Compatibilidad con la interfaz anterior sin borrar sus contactos B.
     if(Array.isArray(req.body?.telefonos)&&req.body?.propietario===undefined) {
-      const telefonos=await guardarContactosAdministrados({grupo,numero},req.body.telefonos,req.usuario.usuarioId);
-      return res.json({ok:true,grupo,numero,telefonos,message:'Contactos actualizados'});
+      const casa=await casaDeDomicilioConmutador({grupo,numero});
+      await asegurarContactosAdministrados();
+      const telefonos=await sequelize.transaction(async transaction=>{
+        const saved=await guardarContactosAdministrados({grupo,numero},req.body.telefonos,req.usuario.usuarioId,transaction);
+        if(casa) await casa.update({telefono:saved[0]?'52'+saved[0]:null},{fields:['telefono'],transaction});
+        return saved;
+      });
+      return res.json({ok:true,grupo,numero,telefonos,sincronizadoRecibos:Boolean(casa),message:'Contactos actualizados'});
     }
     const {telefono,propietario}=req.body||{};
     if(typeof telefono!=='string'||telefonoContactoValido(telefono)===null ||
@@ -142,12 +148,19 @@ router.put('/conmutador/contactos-admin', autorizarRoles('ADMINISTRADOR'), async
     // El contacto B permanece almacenado para no perder datos previos aunque ya no aparezca en esta tabla.
     const administrados=await obtenerContactosAdministrados(domicilio);
     const existentes=administrados===null?await buscarTelefonosConmutador(domicilio):administrados;
+    const casa=await casaDeDomicilioConmutador(domicilio);
+    await Promise.all([asegurarContactosAdministrados(),asegurarNombresConmutador()]);
     const guardado=await sequelize.transaction(async transaction=>{
       const telefonos=await guardarContactosAdministrados(domicilio,[telefono,existentes[1]||''],req.usuario.usuarioId,transaction);
       const nombre=await guardarNombreConmutador(domicilio,propietario,req.usuario.usuarioId,transaction);
+      if(casa){
+        const recibos=telefonos[0]?'52'+telefonoNacionalCompartido(telefonos[0]):null;
+        await casa.update({telefono:recibos},{fields:['telefono'],transaction});
+      }
       return {telefonos,propietario:nombre};
     });
-    return res.json({ok:true,grupo,numero,...guardado,message:'Contacto y propietario actualizados'});
+    return res.json({ok:true,grupo,numero,...guardado,sincronizadoRecibos:Boolean(casa),
+      message:casa?'Contacto y propietario actualizados también para recibos':'Contacto guardado; no se encontró vínculo único con una vivienda de recibos'});
   } catch(error) {
     if(error.status===400)return res.status(400).json({ok:false,message:error.message});
     console.error('Error guardando contacto y propietario:',error.name);
