@@ -1,24 +1,52 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 18/nov/2026, 23:31, America/Mexico_City.
-**SHA de main consultado:** `1d5a54dc8202bfc6fa33ccff4a6f22e508d4a8ae`.
+**Última revisión:** 19/nov/2026, 23:28, America/Mexico_City.
+**SHA de main consultado:** `05d203a6583ed196a940ddae40ebba35881630bc`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `1a4906414e9b0f355fe0d35b1c9d2a29346310a9`,
-historial de 16 commits, PR #462, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `6f618742cadc6809701ea0e2888a846dfe6e164c`, dedicado exclusivamente
-a la bitácora anterior. El único PR de producto está fusionado y no hay PR abiertos
-ni revertidos nuevos. Su head devuelve cero workflows y cero estados; las pruebas
-presentes y verificaciones declaradas son evidencia local, no CI.
-No se consultaron Hostinger, MySQL, Meta/WhatsApp, Titan/IMAP o C3 directamente, no
-se ejecutaron SQL, identificaciones, vinculaciones, consultas privadas, pagos, reservas,
-visitas, mensajes ni pruebas físicas. No hay confirmaciones nuevas accesibles del usuario
-sobre despliegue o funcionamiento del bot. No se publican credenciales, teléfonos,
-contactos, comprobantes ni contenido privado del padrón.
+comparación de main desde `1d5a54dc8202bfc6fa33ccff4a6f22e508d4a8ae`,
+historial de 5 commits, PR #463–#464, PR abiertos y evidencia de checks en GitHub.
+Se excluyó `669fc16d0c351196ee238a0e1ff0d7b3558eadbb`, dedicado exclusivamente
+a la bitácora anterior. Los dos PR de producto están fusionados; no hay PR abiertos
+ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
+de API declaradas son evidencia local/simulada, no CI.
+La conversación accesible confirma que el teléfono de caseta timbró, que después se
+oyó un pitido y que una prueba pasó tras corregir la configuración de red. Esto acredita
+solo esa prueba física puntual: no confirma audio bidireccional, llamada al residente,
+reintento sin recargar, despliegue completo ni operación sostenida.
+No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no ejecutó SQL,
+pagos, escrituras C3 ni pruebas físicas. No se publican credenciales, direcciones de red,
+teléfonos, contactos, comprobantes ni contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 19/nov/2026
+
+El PR [#463](https://github.com/listoenlinea-labs/MisionJardines/pull/463) conecta el
+conmutador del portal con una VM de Asterisk: Seguridad selecciona vivienda y contacto
+A/B, Hostinger resuelve el destino y un agente autenticado por HTTPS entrega un archivo
+completo al spool local. El dialplan hace timbrar primero el teléfono fijo de caseta y,
+solo al contestar, intenta la salida por el gateway. En modo caseta, la cuenta de Seguridad
+no recibe el número telefónico; el historial conserva el intento sin el destino. El modo
+queda apagado por defecto y requiere migración MySQL, secreto privado, backend/frontend,
+agente, dialplan y activación coordinada.
+
+El PR [#464](https://github.com/listoenlinea-labs/MisionJardines/pull/464) permite liberar
+la solicitud cuando Asterisk termina, volver a marcar sin recargar, acotar esperas de red
+y evitar que un cierre tardío afecte una solicitud nueva. Requiere actualizar backend,
+frontend y agente de la VM; no agrega migración ni cambia el dialplan. La presencia en
+main no acredita que esas versiones estén desplegadas ni que el reintento funcione en el
+iPhone o en la instalación real.
+
+Los heads de ambos PR devuelven cero workflows y cero estados. En main existe un bloque
+de prueba de API simulada que cubre permisos, ocultamiento del número, solicitud,
+reclamación, finalización y reintento; #463 declara esa prueba aprobada y #464 declara
+la regresión aprobada, sin salida CI recuperable. #463 también informa dos fallos
+preexistentes reproducidos en main, sin atribuirlos a este cambio. Ninguno de estos
+resultados prueba MySQL/Hostinger desplegados, Asterisk/HT813 sostenidos, marcado al
+residente, audio en ambos sentidos o reintento físico.
 
 ## Implementado en main el 18/nov/2026
 
@@ -781,6 +809,7 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Conmutador caseta–Asterisk | Implementado en main; integración física parcial y despliegue completo pendientes | #463 conecta portal/Hostinger/agente/spool/dialplan sin revelar teléfonos a Seguridad; #464 libera intentos y permite reintentar. El usuario confirmó timbrado y pitido en una prueba, no audio bidireccional, llamada al residente ni reintento real |
 | Identificación WhatsApp por teléfono | Implementada como pista; autorización real sigue en HTTPS | #462 omite domicilio solo con coincidencia única y vínculo válido; duplicados, suspensión o varias casas requieren verificación. No se probó MySQL/Meta/Titan ni se envió información real |
 | Extraordinarias y plan agrupable | Implementado en main; migración y datos reales pendientes | #455 calcula padrón efectivo, exporta faltantes sin inventarlos y agrupa egresos sin borrar originales; #456 añade Deshacer local. No se probó MySQL, Excel manual ni persistencia real |
 | Piloto WhatsApp privado | Implementado pero apagado por defecto; configuración externa pendiente | #457–#460 incorporan menú, Casa Club, vinculación HTTPS, adeudos/PDF, pagos OCR/Titan y visitas con tope preventivo. Requiere tres SQL, variables, Meta/Hostinger y pruebas reales; no garantiza costo $0 |
@@ -871,6 +900,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Caso | Confirmación | Alcance |
 | --- | --- | --- |
+| Conmutador físico de caseta | El usuario confirmó que caseta timbró, que se oyó un pitido después y que una prueba pasó tras corregir la configuración de red | Confirma esa prueba puntual de señalización; no confirma audio bidireccional, marcado/contestación del residente, reintento sin recargar, despliegue completo ni estabilidad. No se publican números ni direcciones de red |
 | Pago de prueba con TAGs de una misma vivienda | El usuario informó que todos cambiaron después de validar como administrador | Confirma esa prueba concreta; no prueba todas las viviendas ni autoaprobación |
 | Reutilización de folio durante pruebas | Tras revisar/limpiar el diario antiguo, el usuario informó que volvió a funcionar | No autoriza reutilizar referencias reales; cada depósito distinto requiere su referencia |
 | Alta directa de TAG | El usuario informó apertura con un TAG de otra vivienda | Hubo otro caso que requirió ZKAccess; no considerar todas las altas físicas confirmadas |
@@ -897,6 +927,8 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 19/nov/2026 | PR #463–#464, consulta GitHub de workflows/estados en ambos heads | **0 workflows y 0 estados** en los 2 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
+| 19/nov/2026 | `node --test backend/test/conmutador-caseta.test.js` | **1 bloque de prueba presente**; #463 declara API simulada aprobada y #464 regresión aprobada, sin salida CI recuperable | Cubre permisos, solicitud, finalización y reintento simulados; no prueba MySQL, Hostinger, Asterisk, gateway, iPhone ni audio real |
 | 18/nov/2026 | PR #462, consulta GitHub de workflows/estados en el head | **0 workflows y 0 estados** | No hay CI observable; merge y revisión declarada no prueban despliegue |
 | 18/nov/2026 | `node --test backend/test/whatsapp-bot-identidad.test.js` | **6 pruebas presentes**; PR declara clasificación y sintaxis verificadas, sin salida CI | No prueba BD, vínculo HTTPS, PDF, Meta, Titan, reserva, pago o visita real |
 | 17/nov/2026 | PR #455–#461, consulta GitHub de workflows/estados en cada head | **0 workflows y 0 estados** en los 7 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
@@ -1092,6 +1124,7 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Conmutador caseta–Asterisk #463–#464 | Confirmar revisión desplegada de backend/frontend/agente y migración #463; probar con vivienda controlada: caseta timbra primero, dejar sonar no marca, contestar marca al destino, audio en ambos sentidos, colgar libera, reintento sin recargar y cierre tardío no afecta otra solicitud. Revisar logs sanitizados y rollback sin exponer teléfonos ni secretos |
 | Identidad WhatsApp #462 | Desplegar backend y probar con datos controlados: número único 52/521, vínculo vigente/vencido, desconocido, duplicado, varias viviendas, suspendido, cambio de contraseña y desvinculación. Confirmar que sin login no se revelen adeudos, PDF, identidad, reservas o visitas y que OCR/Titan mantenga sus guardas |
 | Extraordinarias/agrupaciones #455–#456 | Respaldar y probar en clon la columna agrupaciones o SQL alternativo, padrón efectivo, No aplica, cargos faltantes, Excel, filtros, ciclos/límites, guardar/recargar, Deshacer/Ctrl+Z y mini tarjetas. No agrupar sin comprobar que A ya está contenido en B |
 | Piloto WhatsApp #457–#460 | Mantener apagado hasta aplicar los SQL del bot, presupuesto y vinculación; configurar secretos/URL/Meta en Hostinger sin publicarlos. Probar webhook HMAC, número autorizado, límite, sesión HTTPS, Casa Club, adeudos/PDF, foto OCR/Titan y visita con datos controlados y rollback |
@@ -1214,6 +1247,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-19
+
+- Main consultado a las 23:28, America/Mexico_City, en `05d203a6583ed196a940ddae40ebba35881630bc`, 5 commits por delante del SHA guardado.
+- Se excluyó `669fc16`, que solo actualizó esta bitácora. Como producto se verificaron los PR #463–#464 fusionados; no hay PR abiertos ni revertidos nuevos.
+- Ambos heads devuelven cero workflows y cero estados. Se registró un bloque de prueba de API presente y las aprobaciones locales declaradas por los PR; no hay CI verde observable y #463 conserva el reporte de dos fallos preexistentes reproducidos en main.
+- La conversación accesible confirma timbrado de caseta, un pitido posterior y una prueba que pasó tras corregir la configuración de red. No confirma audio bidireccional, llamada al residente, reintento real ni operación sostenida.
+- Esta revisión no consultó ni modificó Hostinger, MySQL o C3, no ejecutó SQL, pagos, escrituras ni pruebas físicas y no publicó datos privados. Se conservaron los pendientes de despliegue y validación integral.
 
 ### 2026-11-18
 
