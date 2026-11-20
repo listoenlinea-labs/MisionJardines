@@ -31,6 +31,7 @@ async function guardarContacto(casaId,campo,valor,actor){
   throw error(400,'Vivienda o administrador inválidos.');
  if(!['telefono','correo'].includes(campo))throw error(400,'Campo de contacto inválido.');
  const normalized=campo==='telefono'?telefonoMX(valor):correoValido(valor);
+ let sincronizadoConmutador=null;
  const casa=await Casa.findByPk(id,{attributes:['id','telefono','correo','calle','calleCorrecta','numero']});
  if(!casa)throw error(404,'Vivienda no encontrada.');
  if(campo==='telefono') {
@@ -46,14 +47,17 @@ async function guardarContacto(casaId,campo,valor,actor){
      await casa.update({telefono:normalized},{fields:['telefono'],transaction});
     await guardarContactosAdministrados(domicilio,[normalized.slice(2),actuales[1]||''],Number(actor),transaction);
    });
+   sincronizadoConmutador=true;
   }else if(String(casa.telefono||'').trim()!==normalized){
+   sincronizadoConmutador=false;
    // Una vivienda no mapeada no puede sincronizarse con otra por coincidencia parcial.
    await casa.update({telefono:normalized},{fields:['telefono']});
-  }
+  }else if(campo==='telefono')sincronizadoConmutador=false;
  }else if(String(casa.correo||'').trim()!==normalized){
   await casa.update({correo:normalized},{fields:['correo']});
  }
  console.info('[recibos] Contacto de vivienda guardado',{casaId:id,campo,actorId:Number(actor)});
- return {casaId:id,campo,valor:normalized,guardado:true};
+ return {casaId:id,campo,valor:normalized,guardado:true,
+  ...(campo==='telefono'?{sincronizadoConmutador}:{})};
 }
 module.exports={telefonoMX,correoValido,guardarContacto};
