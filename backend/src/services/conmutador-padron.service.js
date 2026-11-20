@@ -55,13 +55,13 @@ async function obtenerContactosAdministrados({ grupo, numero }) {
   return rows.length ? [rows[0].telefono_a || '', rows[0].telefono_b || ''] : null;
 }
 
-async function guardarContactosAdministrados(domicilio, telefonos, usuarioId) {
+async function guardarContactosAdministrados(domicilio, telefonos, usuarioId, transaction) {
   const { grupo, numero } = domicilio || {};
   if (!domicilioConmutador(grupo, numero) || !Array.isArray(telefonos) || telefonos.length !== 2) {
     const err = new Error('Domicilio o contactos inválidos'); err.status = 400; throw err;
   }
   const normalizados = telefonos.map(telefonoContactoValido);
-  if (normalizados.some(t => t === null) || (normalizados[1] && !normalizados[0])) {
+  if (normalizados.some(t => t === null)) {
     const err = new Error('Captura teléfonos nacionales válidos de 10 dígitos (A antes que B)'); err.status = 400; throw err;
   }
   await asegurarContactosAdministrados();
@@ -72,8 +72,49 @@ async function guardarContactosAdministrados(domicilio, telefonos, usuarioId) {
     ON DUPLICATE KEY UPDATE
       telefono_a = VALUES(telefono_a), telefono_b = VALUES(telefono_b),
       actualizado_por = VALUES(actualizado_por), actualizado_en = CURRENT_TIMESTAMP(3)
-  `, { replacements: { grupo, numero, a: normalizados[0] || null, b: normalizados[1] || null, usuarioId }, type: QueryTypes.INSERT });
+  `, { replacements: { grupo, numero, a: normalizados[0] || null, b: normalizados[1] || null, usuarioId }, type: QueryTypes.INSERT, transaction });
   return normalizados;
+}
+
+
+// Separa el nombre del contacto del padrón general y de los teléfonos A/B ya existentes.
+// Solo la ruta privada ADMINISTRADOR consulta o modifica esta tabla.
+const NOMBRES_TABLE = 'conmutador_contactos_propietarios';
+let nombresSchemaPromise = null;
+async function asegurarNombresConmutador() {
+  if (!nombresSchemaPromise) nombresSchemaPromise = sequelize.query(`
+    CREATE TABLE IF NOT EXISTS conmutador_contactos_propietarios (
+      grupo VARCHAR(60) NOT NULL,
+      numero VARCHAR(12) NOT NULL,
+      propietario VARCHAR(150) NOT NULL DEFAULT '',
+      actualizado_por INT NULL,
+      actualizado_en DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (grupo, numero)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `).catch(error => { nombresSchemaPromise = null; throw error; });
+  return nombresSchemaPromise;
+}
+async function nombresGuardadosConmutador() {
+  await asegurarNombresConmutador();
+  return sequelize.query('SELECT grupo, numero, propietario FROM '+ NOMBRES_TABLE, {type:QueryTypes.SELECT});
+}
+async function guardarNombreConmutador(domicilio, propietario, usuarioId, transaction) {
+  if (!domicilioConmutador(domicilio.grupo, domicilio.numero) ||
+      typeof propietario !== 'string' || propietario.length > 150 ||
+      /[\u0000-\u001f\u007f]/.test(propietario)) {
+    const error = new Error('Nombre de propietario inválido (máximo 150 caracteres)');
+    error.status = 400;
+    throw error;
+  }
+  await asegurarNombresConmutador();
+  const nombre = propietario.trim().replace(/\s+/g,' ');
+  await sequelize.query(`
+    INSERT INTO conmutador_contactos_propietarios (grupo, numero, propietario, actualizado_por)
+    VALUES (:grupo, :numero, :propietario, :usuarioId)
+    ON DUPLICATE KEY UPDATE propietario=VALUES(propietario),
+      actualizado_por=VALUES(actualizado_por), actualizado_en=CURRENT_TIMESTAMP(3)
+  `, { replacements:{...domicilio, propietario:nombre, usuarioId}, type:QueryTypes.INSERT, transaction });
+  return nombre;
 }
 
 let importColumnsPromise = null;
@@ -169,4 +210,4 @@ async function buscarTelefonosConmutador({ grupo, numero }) {
   }
 }
 
-module.exports = { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido };
+module.exports = { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido, nombresGuardadosConmutador, guardarNombreConmutador, obtenerContactosAdministrados };
