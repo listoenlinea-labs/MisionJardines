@@ -133,7 +133,7 @@ window.crearContactosConmutadorAdmin = function ({ api, sections }) {
       });
       record.propietario=result.propietario;
       record.telefonos=(result.telefonos||[]).filter(Boolean);
-      editing='';paint();message('Propietario y teléfono guardados correctamente.');
+      editing='';paint();message(result.sincronizadoRecibos===false?'Contacto guardado en el conmutador. No se encontró una vivienda única para sincronizar con Recibos.':'Propietario y teléfono guardados y sincronizados con Recibos.');
     }catch(error){
       message(error.message||'No se pudieron guardar los cambios.',true);
       button.disabled=false;
