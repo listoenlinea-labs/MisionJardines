@@ -89,7 +89,7 @@
       .statusbar{margin-top:12px}
     }
   </style>
-  <link rel="stylesheet" href="assets/css/conmutador-contactos-admin.css?v=20261120">
+  <link rel="stylesheet" href="assets/css/conmutador-contactos-admin.css?v=20261120-propietario">
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 <body>
@@ -116,17 +116,18 @@
     </section>
     <section class="panel contacts-panel" id="contactsPanel" aria-label="Contactos del conmutador" hidden>
       <div class="contacts-title">
-        <div><h2>Contactos de viviendas</h2><p>Administra los números A y B a los que llama el conmutador. Los cambios se guardan para las próximas llamadas.</p></div>
+        <div><h2>Contactos de viviendas</h2><p>Consulta o actualiza el propietario y el número de contacto al que llama el conmutador.</p></div>
       </div>
       <div class="contact-toolbar">
-        <label for="contactSearch">Buscar calle o número de casa<input type="search" id="contactSearch" placeholder="Ej. Gardenias 20" autocomplete="off"></label>
+        <label for="contactSearch">Buscar calle, casa, propietario o celular<input type="search" id="contactSearch" placeholder="Ej. Gardenias 20 o 3312345678" autocomplete="off"></label>
         <label for="contactStreet">Calle<select id="contactStreet"><option value="">Todas las calles</option></select></label>
+        <label for="contactStatusFilter">Número registrado<select id="contactStatusFilter"><option value="todos">Todos</option><option value="con">Con número</option><option value="sin">Sin número</option></select></label>
         <button type="button" id="contactClear">Limpiar filtros</button>
         <button type="button" id="contactRefresh">Actualizar</button>
       </div>
       <p id="contactState" class="contact-status" role="status" aria-live="polite" hidden></p>
       <div class="contact-table-wrap"><table class="contact-table">
-        <thead><tr><th>Calle</th><th>Casa</th><th>Contacto A</th><th>Contacto B</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Calle</th><th>Casa</th><th>Propietario</th><th>Contacto</th><th>Acciones</th></tr></thead>
         <tbody id="contactRows"></tbody>
       </table></div>
       <div id="contactCards" class="contact-cards" aria-label="Contactos en tarjetas"></div>
@@ -167,7 +168,7 @@
 
   <script src="assets/js/telefonia-engine.js?v=20261006"></script>
   <script src="assets/js/conmutador-caseta.js?v=20261119-reintento"></script>
-  <script src="assets/js/conmutador-contactos-admin.js?v=20261120"></script>
+  <script src="assets/js/conmutador-contactos-admin.js?v=20261120-propietario"></script>
   <script src="assets/js/conmutador.js?v=20261120-contactos-admin"></script>
   <script src="assets/js/site-sidebar.js?v=20261109-seguridad-caseta"></script>
 </body>
