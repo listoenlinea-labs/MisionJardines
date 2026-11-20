@@ -88,7 +88,7 @@
  }
  const notify=(msg,bad=false,scroll=true)=>{const el=$('clubNotice');el.textContent=msg;el.style.borderColor=bad?'#f2caca':'#d9e9dd';el.style.background=bad?'#fff2f3':'#f2faf5';el.hidden=false;if(scroll)window.scrollTo({top:0,behavior:'smooth'});};
  const debtDialog=$('clubDebtModal');
- const debtNames={MANTENIMIENTO:'Mantenimiento'};
+ const debtNames={MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuotas extraordinarias'};
  const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const monthPeriod=p=>{
   const m=/^(\d{4})-(0[1-9]|1[0-2])(?:-\d{2})?$/.exec(String(p||''));
@@ -97,11 +97,11 @@
  function showDebtAlert(error){
   if(error.codigo!=='ADEUDOS_RESERVA'||!error.adeudos)return false;
   const adeudos=error.adeudos;
-  $('clubDebtExplanation').textContent='Esta vivienda no puede solicitar una reserva hasta cubrir los adeudos de mantenimiento. Las cuotas extraordinarias no bloquean Casa Club.';
-  $('clubDebtSummary').innerHTML=['MANTENIMIENTO'].map(tipo=>
+  $('clubDebtExplanation').textContent='Esta vivienda no puede reservar hasta cubrir los adeudos de mantenimiento y cuotas extraordinarias.';
+  $('clubDebtSummary').innerHTML=['MANTENIMIENTO','EXTRAORDINARIO'].map(tipo=>
    '<div class="club-debt-stat '+(tipo==='MANTENIMIENTO'?'maintenance':'extra')+'"><small>'+debtNames[tipo]+'</small><strong>'+esc(money(adeudos.totales?.[tipo]))+'</strong></div>'
   ).join('')+'<div class="club-debt-total"><span>Total por regularizar</span><strong>'+esc(money(adeudos.total))+'</strong></div>';
-  const rows=['MANTENIMIENTO'].flatMap(tipo=>(adeudos.tipos?.[tipo]||[]).map(item=>({tipo,...item})));
+  const rows=['MANTENIMIENTO','EXTRAORDINARIO'].flatMap(tipo=>(adeudos.tipos?.[tipo]||[]).map(item=>({tipo,...item})));
   $('clubDebtDetails').innerHTML=rows.length?'<h3>Desglose de los adeudos</h3>'+rows.map(item=>
    '<div class="club-debt-item"><div><b>'+esc(debtNames[item.tipo])+'</b><small>'+esc(monthPeriod(item.periodo))+
    (item.concepto?' · '+esc(item.concepto):'')+'</small></div><div><strong>'+esc(money(item.monto))+'</strong>'+
@@ -731,8 +731,8 @@
  }
  $('clubObservationsClose').addEventListener('click',()=>observationsModal.close());
  $('clubObservationsDone').addEventListener('click',()=>observationsModal.close());
- function renderAdminTable(rows){
-   $('clubAdminRows').innerHTML=rows.map(r=>{
+ function renderAdminTable(rows,startIndex=0){
+   $('clubAdminRows').innerHTML=rows.map((r,index)=>{
       const acciones=r.soloLectura?'<span class="club-google-readonly">Solo consulta · Google</span>':
        '<button type="button" class="soft">Ver detalles</button> '+
        (r.estatus==='APROBADA'
@@ -741,6 +741,7 @@
          ?'<button type="button" class="danger" data-delete="'+Number(r.id)+'">Eliminar registro</button>'
          :'');
       const valores=[
+       startIndex+index+1,
        r.casa?.calleCorrecta||r.casa?.calle||'—',
        r.casa?.numero||'—',
        r.solicitante||'—',
@@ -757,11 +758,11 @@
         r.estatus==='CONFLICTO_GOOGLE'?'Conflicto · Google':'En revisión · Google'):r.estatus
       ];
       return '<tr data-reserva="'+Number(r.id)+'">'+
-       valores.map((v,idx)=>idx===11?
+       valores.map((v,idx)=>idx===12?
         '<td class="club-event-reason"><button type="button" class="club-observations-btn" data-club-observations="'+Number(r.id)+'">Ver observaciones</button></td>':
         '<td>'+esc(v)+'</td>').join('')+
        '<td class="club-reservation-actions"><div class="club-actions-inline">'+acciones+'</div></td></tr>';
-    }).join('')||'<tr><td colspan="14">Aún no hay reservas registradas.</td></tr>';
+    }).join('')||'<tr><td colspan="15">Aún no hay reservas registradas.</td></tr>';
 
 
   const labels=['Calle','Casa','Solicitante','Fecha del evento','Fecha de solicitud',
@@ -804,7 +805,7 @@
   const pageSize=adminPageSize(),pages=Math.max(1,Math.ceil(rows.length/pageSize));
   adminPage=Math.min(Math.max(adminPage,1),pages);
   const start=(adminPage-1)*pageSize;
-  renderAdminTable(rows.slice(start,start+pageSize));
+  renderAdminTable(rows.slice(start,start+pageSize),start);
   $('clubFilterCount').textContent=rows.length?
    'Mostrando '+(start+1)+'–'+Math.min(start+pageSize,rows.length)+' de '+rows.length+
    ' · '+adminTableRows.length+' registros totales':
@@ -906,17 +907,24 @@
    // a una reserva MySQL. Nunca se habilitan botones de edición en esas filas.
    historicGoogleRows=(d.historialGoogle||[]).map((row,i)=>({...row,id:-(i+1),soloLectura:true}));
    const totalRows=allAdminRecords();
-   const summary=d.resumenGoogle||{
-    solicitudes:totalRows.length,
-    personas:new Set(totalRows.map(r=>String(r.correo||r.telefono||r.solicitante||'').toLowerCase())).size,
-    enRevision:adminRows.filter(r=>r.estatus==='PENDIENTE').length,
-    reservadas:adminRows.filter(r=>r.estatus==='APROBADA').length
+   const normalizarNombre=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();
+   const esMismoPropietario=r=>{
+    const solicitante=normalizarNombre(r.solicitante),propietario=normalizarNombre(r.casa?.nombre||r.nombrePropietario||r.propietarioNombre);
+    if(!solicitante||!propietario)return null;
+    const partes=solicitante.split(' '),dueno=propietario.split(' ');
+    return partes.every(p=>dueno.includes(p));
+   };
+   const summary={
+    aprobadas:totalRows.filter(r=>r.estatus==='APROBADA').length,
+    rechazadas:totalRows.filter(r=>r.estatus==='RECHAZADA').length,
+    pendientes:totalRows.filter(r=>r.estatus==='PENDIENTE'||r.estatus==='HISTORICA_GOOGLE').length,
+    distintas:totalRows.filter(r=>esMismoPropietario(r)===false).length
    };
    const cards=[
-    ['Solicitudes únicas',summary.solicitudes],
-    ['Personas distintas (estimación)',summary.personas],
-    ['En revisión',summary.enRevision],
-    ['Reservadas',summary.reservadas]
+    ['Solicitudes aprobadas',summary.aprobadas],
+    ['Solicitudes rechazadas',summary.rechazadas],
+    ['Solicitudes pendientes',summary.pendientes],
+    ['Personas distintas al propietario',summary.distintas]
    ];
    $('clubReviewSummary').innerHTML=cards.map(([title,value])=>
     '<div class="club-overview-stat"><small>'+esc(title)+'</small><strong>'+esc(Number(value)||0)+'</strong></div>').join('');
@@ -931,17 +939,8 @@
    $('clubHistoryInfo').textContent=d.googleDisponible===false?
     'Google no respondió. Se muestran solo los registros de MySQL y el resumen podría estar incompleto.':
     'Incluye '+historicGoogleRows.length+' solicitudes adicionales de Google (solo consulta). Las duplicadas de MySQL se omiten; ningún pago se valida por importar la hoja.';
-   // Una reserva cancelada NO equivale a devolver el pago: conservarlo en lo recaudado.
-   let paid=adminRows.filter(r=>r.pagado);
-   let income=paid.reduce((a,r)=>a+Number(r.cuotaRecuperacion),0),
-       guarantee=paid.reduce((a,r)=>a+Number(r.depositoGarantia),0),
-       cleaning=paid.reduce((a,r)=>a+Number(r.limpieza),0);
-   $('clubTotals').innerHTML=[['Solicitudes únicas (MySQL + Google)',summary.solicitudes],
-    ['Personas distintas (estimación)',summary.personas],
-    ['Reservas aprobadas (MySQL)',adminRows.filter(r=>r.estatus==='APROBADA').length],
-    ['Recuperación cobrada',money(income)],['Garantías recibidas',money(guarantee)],
-    ['Limpieza cobrada',money(cleaning)]].map(([name,value])=>
-     '<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
+   $('clubTotals').innerHTML=cards.map(([name,value])=>
+    '<div class="stat"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join('');
    adminTableRows=totalRows.sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE')||String(b.fecha||'').localeCompare(String(a.fecha||'')));
     refreshReviewMonths();renderReviewRequests();
    actualizarOpcionesCalle();actualizarOpcionesMes();aplicarFiltroReservas();
