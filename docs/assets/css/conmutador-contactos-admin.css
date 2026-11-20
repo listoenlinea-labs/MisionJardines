@@ -2,7 +2,7 @@
 .contacts-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .contacts-title h2{margin:0 0 5px;font-size:20px;letter-spacing:-.025em}
 .contacts-title p{font-size:12px;color:#64748b;margin:0 0 18px;line-height:1.5}
-.contact-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px auto auto;gap:10px;align-items:end;margin-bottom:18px}
+.contact-toolbar{display:grid;grid-template-columns:minmax(240px,1fr) minmax(150px,200px) minmax(150px,200px) auto auto;gap:10px;align-items:end;margin-bottom:18px}
 .contact-toolbar label{display:grid;gap:5px;font-size:12px;font-weight:800;color:#56677e}
 .contact-toolbar input,.contact-toolbar select{width:100%;min-width:0;height:41px;padding:0 12px;color:#24354d;background:#fff;border:1px solid #dce4ee;border-radius:11px;font:inherit;font-weight:500}
 .contact-toolbar button,.contact-actions button,.contact-edit,.contact-card-action button,.contact-pager button{min-height:39px;padding:8px 14px;border-radius:10px;border:1px solid #e1e7ee;background:#fff;color:#425570;font-size:12px;font-weight:850;cursor:pointer}
@@ -54,3 +54,12 @@
  .contact-footer{justify-content:center;flex-direction:column}
  .contact-pager{width:100%;justify-content:space-between}
 }
+
+/* Propietario editable y un contacto visible (A); la segunda línea heredada no se elimina. */
+.contact-owner{font-size:12px;font-weight:750;color:#273a54}
+.contact-fields{align-items:end}
+.contact-fields label:first-child input{width:min(220px,100%)}
+.contact-table td:nth-child(3){min-width:150px}
+.contact-table td:nth-child(4){min-width:135px}
+@media(max-width:1120px) and (min-width:701px){.contact-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}.contact-toolbar label:first-child{grid-column:span 3}}
+@media(max-width:700px){.contact-toolbar{grid-template-columns:1fr 1fr}.contact-toolbar label:first-child{grid-column:1/-1}.contact-toolbar label:nth-child(2),.contact-toolbar label:nth-child(3){min-width:0}.contact-card .contact-owner{max-width:65%;text-align:right}.contact-mobile-editor .contact-fields{grid-template-columns:1fr 1fr}.contact-mobile-editor .contact-fields label input{width:100%}}
