@@ -1,7 +1,8 @@
 const {filtrarViviendasVisibles,esViviendaVisible}=require('../services/viviendas-visibles.service');
 const express = require('express');
+const sequelize = require('../config/database');
 const { Op } = require('sequelize');
-const { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados } = require('../services/conmutador-padron.service');
+const { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido, nombresGuardadosConmutador, guardarNombreConmutador, obtenerContactosAdministrados } = require('../services/conmutador-padron.service');
 const { casetaHabilitada } = require('../config/conmutador-caseta');
 const { Casa, Condomino, Cuota, Visita, Acceso, Evento, PagoReportado } = require('../models');
 const { autenticarToken } = require('../middlewares/auth.middleware');
@@ -9,6 +10,7 @@ const { autorizarRoles } = require('../middlewares/roles.middleware');
 
 const router = express.Router();
 const { ordenarDirecciones } = require('../services/direccion-sort.service');
+const { normalizarCalle } = require('../services/viviendas-visibles.service');
 router.use(autenticarToken);
 
 const personnel = ['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD'];
@@ -77,43 +79,79 @@ router.get('/', async (req, res) => {
 router.post('/conmutador/contactos-admin/consultar', autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   res.set('Cache-Control', 'private, no-store');
   const domicilios = req.body?.domicilios;
-  if (!Array.isArray(domicilios) || domicilios.length > 10 || !domicilios.length) {
-    return res.status(400).json({ ok: false, message: 'Consulta de contactos inválida' });
+  // Se consulta una sola vez el padrón completo para permitir filtros globales (teléfono/sin número).
+  if (!Array.isArray(domicilios) || !domicilios.length || domicilios.length > 350) {
+    return res.status(400).json({ok:false,message:'Consulta de contactos inválida'});
   }
-  const validos = domicilios.map(item => ({
-    grupo: typeof item?.grupo === 'string' ? item.grupo.trim() : '',
-    numero: typeof item?.numero === 'string' ? item.numero.trim() : ''
+  const validos = domicilios.map(row=>({
+    grupo:typeof row?.grupo==='string'?row.grupo.trim():'',
+    numero:typeof row?.numero==='string'?row.numero.trim():''
   }));
-  if (validos.some(item => !domicilioConmutador(item.grupo, item.numero))) {
-    return res.status(400).json({ ok: false, message: 'Domicilio de contacto no disponible' });
+  if (validos.some(x=>!domicilioConmutador(x.grupo,x.numero))) {
+    return res.status(400).json({ok:false,message:'Domicilio de contacto no disponible'});
   }
   try {
-    const contactos = await Promise.all(validos.map(async item => ({
-      ...item, telefonos: await buscarTelefonosConmutador(item)
-    })));
-    return res.json({ ok: true, contactos });
-  } catch (error) {
-    console.error('Error consultando contactos del conmutador:', error.name);
-    return res.status(503).json({ ok: false, message: 'No fue posible obtener los teléfonos del conmutador' });
+    const [padron,ediciones] = await Promise.all([
+      Casa.findAll({attributes:['calle','calleCorrecta','numero','nombre'],raw:true}),
+      nombresGuardadosConmutador()
+    ]);
+    const coincidencias = new Map();
+    for(const casa of padron) {
+      const calle=normalizarCalle(casa.calleCorrecta||casa.calle);
+      const key=calle+'|'+String(casa.numero).trim();
+      if(!coincidencias.has(key))coincidencias.set(key,[]);
+      coincidencias.get(key).push(casa.nombre||'');
+    }
+    const propietarios = new Map(ediciones.map(x=>[x.grupo+'|'+x.numero,x.propietario]));
+    const contactos = new Array(validos.length);
+    // Limitar concurrencia evita saturar MySQL (padrón de >200 viviendas).
+    for(let i=0;i<validos.length;i+=8){
+      await Promise.all(validos.slice(i,i+8).map(async (domicilio,j)=>{
+        const grupo=normalizarCalle(domicilio.grupo).replace(/^jardines [123]$/,'jardines');
+        const candidatos=coincidencias.get(grupo+'|'+domicilio.numero)||[];
+        const nombrePadron=candidatos.length===1?candidatos[0]:'';
+        const clave=domicilio.grupo+'|'+domicilio.numero;
+        contactos[i+j]={...domicilio,telefonos:await buscarTelefonosConmutador(domicilio),
+          propietario:propietarios.has(clave)?propietarios.get(clave):nombrePadron};
+      }));
+    }
+    return res.json({ok:true,contactos});
+  } catch(error) {
+    console.error('Error consultando contactos del conmutador:',error.name);
+    return res.status(503).json({ok:false,message:'No fue posible obtener los contactos'});
   }
 });
 
 router.put('/conmutador/contactos-admin', autorizarRoles('ADMINISTRADOR'), async (req, res) => {
   res.set('Cache-Control', 'private, no-store');
-  const grupo = typeof req.body?.grupo === 'string' ? req.body.grupo.trim() : '';
-  const numero = typeof req.body?.numero === 'string' ? req.body.numero.trim() : '';
-  if (!domicilioConmutador(grupo, numero)) {
-    return res.status(400).json({ ok: false, message: 'Vivienda inválida' });
-  }
+  const grupo=typeof req.body?.grupo==='string'?req.body.grupo.trim():'';
+  const numero=typeof req.body?.numero==='string'?req.body.numero.trim():'';
+  if(!domicilioConmutador(grupo,numero))return res.status(400).json({ok:false,message:'Vivienda inválida'});
   try {
-    const telefonos = await guardarContactosAdministrados(
-      { grupo, numero }, req.body?.telefonos, req.usuario.usuarioId
-    );
-    return res.json({ ok: true, grupo, numero, telefonos, message: 'Contacto actualizado' });
-  } catch (error) {
-    if (error.status === 400) return res.status(400).json({ ok: false, message: error.message });
-    console.error('Error guardando contactos del conmutador:', error.name);
-    return res.status(503).json({ ok: false, message: 'No fue posible guardar el contacto' });
+    // Compatibilidad con la interfaz anterior sin borrar sus contactos B.
+    if(Array.isArray(req.body?.telefonos)&&req.body?.propietario===undefined) {
+      const telefonos=await guardarContactosAdministrados({grupo,numero},req.body.telefonos,req.usuario.usuarioId);
+      return res.json({ok:true,grupo,numero,telefonos,message:'Contactos actualizados'});
+    }
+    const {telefono,propietario}=req.body||{};
+    if(typeof telefono!=='string'||telefonoContactoValido(telefono)===null ||
+      typeof propietario!=='string'||propietario.length>150){
+      return res.status(400).json({ok:false,message:'Escribe un teléfono válido y un nombre de máximo 150 caracteres'});
+    }
+    const domicilio={grupo,numero};
+    // El contacto B permanece almacenado para no perder datos previos aunque ya no aparezca en esta tabla.
+    const administrados=await obtenerContactosAdministrados(domicilio);
+    const existentes=administrados===null?await buscarTelefonosConmutador(domicilio):administrados;
+    const guardado=await sequelize.transaction(async transaction=>{
+      const telefonos=await guardarContactosAdministrados(domicilio,[telefono,existentes[1]||''],req.usuario.usuarioId,transaction);
+      const nombre=await guardarNombreConmutador(domicilio,propietario,req.usuario.usuarioId,transaction);
+      return {telefonos,propietario:nombre};
+    });
+    return res.json({ok:true,grupo,numero,...guardado,message:'Contacto y propietario actualizados'});
+  } catch(error) {
+    if(error.status===400)return res.status(400).json({ok:false,message:error.message});
+    console.error('Error guardando contacto y propietario:',error.name);
+    return res.status(503).json({ok:false,message:'No fue posible guardar el contacto'});
   }
 });
 
