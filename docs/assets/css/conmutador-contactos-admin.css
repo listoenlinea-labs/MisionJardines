@@ -1,0 +1,56 @@
+.contacts-panel{padding:20px 24px 24px}
+.contacts-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.contacts-title h2{margin:0 0 5px;font-size:20px;letter-spacing:-.025em}
+.contacts-title p{font-size:12px;color:#64748b;margin:0 0 18px;line-height:1.5}
+.contact-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px auto auto;gap:10px;align-items:end;margin-bottom:18px}
+.contact-toolbar label{display:grid;gap:5px;font-size:12px;font-weight:800;color:#56677e}
+.contact-toolbar input,.contact-toolbar select{width:100%;min-width:0;height:41px;padding:0 12px;color:#24354d;background:#fff;border:1px solid #dce4ee;border-radius:11px;font:inherit;font-weight:500}
+.contact-toolbar button,.contact-actions button,.contact-edit,.contact-card-action button,.contact-pager button{min-height:39px;padding:8px 14px;border-radius:10px;border:1px solid #e1e7ee;background:#fff;color:#425570;font-size:12px;font-weight:850;cursor:pointer}
+.contact-toolbar button:hover,.contact-edit:hover,.contact-pager button:hover:not(:disabled){border-color:#e4a06c;color:#a65108}
+.contact-toolbar button:disabled,.contact-actions button:disabled,.contact-pager button:disabled{opacity:.5;cursor:not-allowed}
+.contact-table-wrap{max-width:100%;overflow-x:auto;border:1px solid #e1e6ed;border-radius:13px}
+.contact-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:13px}
+.contact-table thead{background:#f4f7fa}
+.contact-table th,.contact-table td{text-align:left;padding:13px 15px;border-bottom:1px solid #edf0f4;vertical-align:middle}
+.contact-table th{color:#64758a;font-size:12px}
+.contact-table td{color:#253850}
+.contact-table tr:last-child td{border-bottom:0}
+.contact-table tr.editing{background:#fff4e7}
+.contact-phone{font-weight:800;color:#24436a;font-variant-numeric:tabular-nums}
+.contact-missing{font-size:12px;color:#97a3b3}
+.contact-edit{border-color:#e9d2bb;background:#fff9f2;color:#b15e0c;white-space:nowrap}
+.contact-actions{display:flex;gap:7px;flex-wrap:wrap}
+.contact-actions .contact-save{background:#ce690d;border-color:#ce690d;color:#fff}
+.contact-actions .contact-save:hover{background:#ae5205}
+.contact-fields{display:flex;flex-wrap:wrap;gap:8px}
+.contact-fields label{display:grid;gap:4px;font-size:11px;color:#5b6980;font-weight:750}
+.contact-fields input{width:154px;max-width:100%;height:37px;padding:7px 9px;background:#fff;border:1px solid #d0dce9;border-radius:9px;color:#23344b;font-size:13px}
+.contact-status{margin:8px 0 13px;color:#327c54;background:#f3faf5;border:1px solid #d6e9dd;border-radius:10px;padding:10px 12px;font-size:12px}
+.contact-status.error{color:#aa3e38;background:#fff3f1;border-color:#efcac6}
+.contact-cards{display:none}
+.contact-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.contact-footer p{margin:0;font-size:12px;color:#718096}
+.contact-pager{display:flex;align-items:center;gap:9px}
+.contact-pager span{color:#6c7b91;font-size:12px;white-space:nowrap}
+@media(max-width:700px){
+ .contacts-panel{padding:15px 13px 18px}
+ .contact-toolbar{grid-template-columns:1fr 1fr;gap:9px}
+ .contact-toolbar label:first-child{grid-column:1/-1}
+ .contact-toolbar button{width:100%}
+ .contact-table-wrap{display:none}
+ .contact-cards{display:grid;gap:10px}
+ .contact-card{border:1px solid #e0e6ed;background:#fff;border-radius:15px;padding:11px 13px;box-shadow:0 2px 8px rgba(24,45,68,.025)}
+ .contact-card.editing{background:#f4d1a9;border-color:#e9a55b;box-shadow:0 0 0 1px #f1b77c}
+ .contact-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px;border-bottom:1px solid rgba(102,130,158,.22);min-height:37px}
+ .contact-line:last-child{border-bottom:0}
+ .contact-line>span{font-size:11px;font-weight:700;color:#69809d}
+ .contact-line strong{font-size:12px;color:#243b59;text-align:right;overflow-wrap:anywhere}
+ .contact-mobile-editor{padding:10px 2px;border-bottom:1px solid rgba(102,130,158,.22)}
+ .contact-mobile-editor .contact-fields{display:grid;grid-template-columns:1fr 1fr}
+ .contact-mobile-editor .contact-fields input{width:100%;min-width:0}
+ .contact-card-action{align-items:center}
+ .contact-card-action button{min-height:35px}
+ .contact-actions{justify-content:flex-end}
+ .contact-footer{justify-content:center;flex-direction:column}
+ .contact-pager{width:100%;justify-content:space-between}
+}
