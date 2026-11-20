@@ -20,17 +20,24 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   let fila = null;
   let historial;
   let override = null;
+  let storedOwner = null;
   t.mock.method(Usuario, 'findByPk', async id => ({
     id, estatus: 'ACTIVO', rol: { nombre: id === 3 ? 'CONDOMINO' : id === 4 ? 'ADMINISTRADOR' : id === 5 ? 'SUPER_ADMIN' : 'SEGURIDAD', activo: true }
   }));
   t.mock.method(UsuarioCasa, 'findOne', async () => null);
   t.mock.method(Casa, 'findAll', async opciones => {
+    if(opciones.attributes?.includes('nombre')) return [{calle:'Rosas',calleCorrecta:'Rosas',numero:'12',nombre:'Jorge Hermosillo'}];
     assert.deepEqual(opciones.include, []);
     return [];
   });
   t.mock.method(db, 'transaction', async run => run({}));
   t.mock.method(db, 'query', async (sql, opciones = {}) => {
     const campos = opciones.replacements || {};
+    if(sql.includes('SELECT grupo, numero, propietario FROM conmutador_contactos_propietarios'))
+      return storedOwner === null ? [] : [{grupo:'Rosas',numero:'12',propietario:storedOwner}];
+    if(sql.includes('INSERT INTO conmutador_contactos_propietarios')){
+      storedOwner = campos.propietario;return [];
+    }
     if (sql.includes('FROM conmutador_contactos_administrados')) return override ?
       [{ telefono_a: override[0], telefono_b: override[1] }] : [];
     if (sql.includes('INSERT INTO conmutador_contactos_administrados')) {
@@ -120,6 +127,7 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   const adminLista = await llamar(adminQuery, jwtPara(4), solicitado);
   assert.equal(adminLista.codigo, 200);
   assert.deepEqual(adminLista.json.contactos[0].telefonos, ['+52' + destino]);
+  assert.equal(adminLista.json.contactos[0].propietario,'Jorge Hermosillo');
   const adminGuardado = async (token, telefonos) => {
     const response = await fetch('http://127.0.0.1:' + servidor.address().port +
       '/api/busqueda/conmutador/contactos-admin', {
@@ -134,6 +142,31 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.equal((await adminGuardado(jwtPara(4),['5551112233',''])).codigo,200);
   const actualizado = await llamar('/api/busqueda/conmutador/telefono?grupo=Rosas&numero=12',jwtPara(4));
   assert.deepEqual(actualizado.json.telefonos,['5551112233']);
+  // Nueva edición de un solo contacto y el nombre, sin alterar datos del padrón.
+  const editarFicha = async (token, telefono, propietario) => {
+    const response = await fetch('http://127.0.0.1:' + servidor.address().port +
+      '/api/busqueda/conmutador/contactos-admin', {
+        method:'PUT',
+        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({...direccion,telefono,propietario})
+      });
+    return {codigo:response.status,json:await response.json()};
+  };
+  assert.equal((await editarFicha(guardia,'5554447788','Otra persona')).codigo,403);
+  assert.equal((await editarFicha(jwtPara(4),'123','Ana')).codigo,400);
+  const nuevo = await editarFicha(jwtPara(4),'5554447788','Ana María');
+  assert.equal(nuevo.codigo,200);
+  assert.equal(nuevo.json.propietario,'Ana María');
+  assert.deepEqual(nuevo.json.telefonos,['5554447788','']);
+  assert.deepEqual((await llamar(adminQuery,jwtPara(4),solicitado)).json.contactos[0],{
+    ...direccion,telefonos:['5554447788'],propietario:'Ana María'
+  });
+  assert.equal((await editarFicha(jwtPara(4),'','Sin número')).codigo,200);
+  const sinNumero = (await llamar(adminQuery,jwtPara(4),solicitado)).json.contactos[0];
+  assert.deepEqual(sinNumero.telefonos,[]);
+  assert.equal(sinNumero.propietario,'Sin número');
+  assert.deepEqual((await llamar('/api/busqueda/conmutador/telefono?grupo=Rosas&numero=12',jwtPara(4))).json.telefonos,[]);
+
   assert.deepEqual((await llamar(base+'/contactos?grupo=Rosas&numero=12',guardia)).json.contactos,['A']);
   const reintento = await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' });
   assert.equal(reintento.codigo, 202);
