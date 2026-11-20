@@ -47,7 +47,7 @@ function mockService({vincular=false}={}){
 test('un telefono dictado de diez dígitos se normaliza y persiste solo en direcciones.telefono',async()=>{
  const {api,rows,updates}=mockService();
  const result=await api.guardarContacto(542,'telefono','33 1234 5678',18);
- assert.deepEqual(result,{casaId:542,campo:'telefono',valor:'523312345678',guardado:true});
+ assert.deepEqual(result,{casaId:542,campo:'telefono',valor:'523312345678',guardado:true,sincronizadoConmutador:false});
  assert.equal(rows.get(542).telefono,'523312345678');
  assert.equal(rows.get(542).correo,null);
  assert.deepEqual(updates[0].payload,{telefono:'523312345678'});
@@ -55,7 +55,8 @@ test('un telefono dictado de diez dígitos se normaliza y persiste solo en direc
 });
 test('guardar teléfono desde recibos sincroniza contacto A y conserva B',async()=>{
  const {api,rows,updates,sincronizados}=mockService({vincular:true});
- await api.guardarContacto(542,'telefono','33 1234 5678',18);
+ const result=await api.guardarContacto(542,'telefono','33 1234 5678',18);
+ assert.equal(result.sincronizadoConmutador,true);
  assert.equal(rows.get(542).telefono,'523312345678');
  assert.equal(sincronizados.length,1);
  assert.deepEqual(sincronizados[0].domicilio,{grupo:'Gardenias',numero:'20'});
