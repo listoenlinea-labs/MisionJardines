@@ -282,12 +282,13 @@ async function listar(req,res){
   const estado=texto(req.query.estatus,15);
   if(estado&&!['PENDIENTE','APROBADA','RECHAZADA','CANCELADA'].includes(estado))throw error(400,'Estado inválido');
   const rows=await Reserva.findAll({where:estado?{estatus:estado}:{},order:[['fecha','DESC']],limit:1000});
-  const ids=[...new Set(rows.map(x=>x.casaId))],casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','calleCorrecta','numero']}):[];
+  const googleIds=(googleResult.historialGoogle||[]).map(x=>Number(x.casa?.id)).filter(Number.isSafeInteger);
+  const ids=[...new Set([...rows.map(x=>x.casaId),...googleIds])],casas=ids.length?await Casa.findAll({where:{id:{[Op.in]:ids}},attributes:['id','calle','calleCorrecta','numero','nombre']}):[];
   const mapa=new Map(casas.map(x=>[Number(x.id),x]));
   res.setHeader('Cache-Control','no-store');
   return res.json({ok:true,
    data:rows.map(x=>({...reservaSegura(x),...cargosSolicitud(x),casa:mapa.get(Number(x.casaId))||null})),
-   historialGoogle:googleResult.historialGoogle||[],
+   historialGoogle:(googleResult.historialGoogle||[]).map(x=>({...x,casa:{...(x.casa||{}),nombre:mapa.get(Number(x.casa?.id))?.nombre||null}})),
    resumenGoogle:googleResult.resumen||null,
    googleDisponible,googleSincronizadoEn:googleDisponible?googleResult.syncedAt:null
   });

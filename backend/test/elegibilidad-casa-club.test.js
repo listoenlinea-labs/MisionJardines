@@ -29,7 +29,7 @@ test('extras pendientes sin deuda de mantenimiento NO bloquean Casa Club',()=>{
  assert.equal(decision.puedeReservar,true);
  assert.equal(decision.total,0);
 });
-test('falla de manera segura si no se pueden verificar las dos deudas necesarias',()=>{
+test('falla de manera segura si no se puede verificar mantenimiento',()=>{
  assert.throws(()=>evaluarElegibilidadReserva(null),/No es posible/);
  assert.doesNotThrow(()=>evaluarElegibilidadReserva({tipos:{MANTENIMIENTO:[]}}));
 });
