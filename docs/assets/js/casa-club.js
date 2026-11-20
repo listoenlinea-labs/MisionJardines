@@ -193,7 +193,7 @@
   const body=dialog.querySelector('#clubAdminDateBody');
   body.textContent='Consultando información…';dialog.showModal();
   const clean=v=>esc(String(v??'—'));
-  const fechaRoja=fecha<today()&&['PENDIENTE','APROBADA','HISTORICA_GOOGLE'].includes(occupied.get(fecha));
+  const fechaRoja=fecha<today();
   try{
    const response=await api('/administracion/fecha/'+encodeURIComponent(fecha));
    if(!dialog.open)return;
@@ -564,7 +564,7 @@
   btn.disabled=true;try{await api('/reservas/'+Number(btn.dataset.cancel)+'/cancelar','PATCH');notify('Reserva cancelada.');await Promise.all([mine(),calendar()]);}catch(err){mostrarError(err);btn.disabled=false;}
  });
  const reviewModal=$('clubReviewModal');
- const pagoVisualReserva=r=>Boolean(r.pagado||r.estatus==='APROBADA'||(r.fecha<today()&&r.estatus==='PENDIENTE'&&['PENDIENTE','APROBADA'].includes(occupied.get(r.fecha)))||(r.soloLectura&&r.estatus==='HISTORICA_GOOGLE'));
+ const pagoVisualReserva=r=>Boolean(r.pagado||r.estatus==='APROBADA'||(r.fecha<today()&&r.estatus==='PENDIENTE')||(r.soloLectura&&r.estatus==='HISTORICA_GOOGLE'));
  const paymentStatus=r=>pagoVisualReserva(r)?'Pagado':(r.estatus==='PENDIENTE'||r.estatus==='EN_REVISION_GOOGLE'||r.estatus==='CONFLICTO_GOOGLE'?'Pendiente de pago':'Sin pago');
  const folioValido=()=>/^[a-z0-9-]{3,60}$/i.test($('clubBankFolio').value.trim());
  let reviewing=false;
@@ -755,7 +755,7 @@
          ?'<button type="button" class="danger" data-delete="'+Number(r.id)+'">Eliminar registro</button>'
          :'');
       const valores=[
-       startIndex+index+1,
+       adminTableRows.indexOf(r)+1,
        r.casa?.calleCorrecta||r.casa?.calle||'—',
        r.casa?.numero||'—',
        r.solicitante||'—',
