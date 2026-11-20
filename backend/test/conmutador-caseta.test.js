@@ -166,6 +166,8 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.deepEqual(sinNumero.telefonos,[]);
   assert.equal(sinNumero.propietario,'Sin número');
   assert.deepEqual((await llamar('/api/busqueda/conmutador/telefono?grupo=Rosas&numero=12',jwtPara(4))).json.telefonos,[]);
+  // Restaurar número antes de comprobar el reintento de llamada heredado.
+  assert.equal((await editarFicha(jwtPara(4),'5554447788','Ana María')).codigo,200);
 
   assert.deepEqual((await llamar(base+'/contactos?grupo=Rosas&numero=12',guardia)).json.contactos,['A']);
   const reintento = await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' });
