@@ -9,8 +9,9 @@ const ui=read('docs/assets/js/analisis-cuotas.js');
 const html=read('docs/analisis-cuotas.html');
 const css=read('docs/assets/css/analisis-cuotas.css');
 
-function mockService(){
- const rows=new Map([[542,{id:542,telefono:null,correo:null}]]);
+function mockService({vincular=false}={}){
+ const rows=new Map([[542,{id:542,calle:'Gardenias',calleCorrecta:'Gardenias',numero:'20',telefono:null,correo:null}]]);
+ const sincronizados=[];
  const updates=[];
  const Casa={
   async findByPk(id){
@@ -26,19 +27,45 @@ function mockService(){
  new Function('module','exports','require',source)(module,module.exports,
   name=>{
    if(name==='../models')return {Casa};
+   if(name==='../config/database')return {transaction:async fn=>fn({mock:true})};
+   if(name==='./vivienda-conmutador-correspondencia.service')return {
+    domicilioDesdeCasa:()=>vincular?{grupo:'Gardenias',numero:'20'}:null
+   };
+   if(name==='./conmutador-padron.service')return {
+    asegurarContactosAdministrados:async()=>{},
+    obtenerContactosAdministrados:async()=>null,
+    buscarTelefonosConmutador:async()=>['3331234567','3337654321'],
+    guardarContactosAdministrados:async(domicilio,telefonos,actor,transaction)=>{
+     sincronizados.push({domicilio,telefonos,actor,transaction});
+     return telefonos;
+    }
+   };
    throw Error('Unexpected dependency '+name);
   });
- return {api:module.exports,rows,updates};
+ return {api:module.exports,rows,updates,sincronizados};
 }
 test('un telefono dictado de diez dígitos se normaliza y persiste solo en direcciones.telefono',async()=>{
  const {api,rows,updates}=mockService();
  const result=await api.guardarContacto(542,'telefono','33 1234 5678',18);
- assert.deepEqual(result,{casaId:542,campo:'telefono',valor:'523312345678',guardado:true});
+ assert.deepEqual(result,{casaId:542,campo:'telefono',valor:'523312345678',guardado:true,sincronizadoConmutador:false});
  assert.equal(rows.get(542).telefono,'523312345678');
  assert.equal(rows.get(542).correo,null);
  assert.deepEqual(updates[0].payload,{telefono:'523312345678'});
  assert.deepEqual(updates[0].options.fields,['telefono']);
 });
+test('guardar teléfono desde recibos sincroniza contacto A y conserva B',async()=>{
+ const {api,rows,updates,sincronizados}=mockService({vincular:true});
+ const result=await api.guardarContacto(542,'telefono','33 1234 5678',18);
+ assert.equal(result.sincronizadoConmutador,true);
+ assert.equal(rows.get(542).telefono,'523312345678');
+ assert.equal(sincronizados.length,1);
+ assert.deepEqual(sincronizados[0].domicilio,{grupo:'Gardenias',numero:'20'});
+ assert.deepEqual(sincronizados[0].telefonos,['3312345678','3337654321']);
+ assert.equal(sincronizados[0].actor,18);
+ assert.deepEqual(updates[0].options.fields,['telefono']);
+ assert.ok(updates[0].options.transaction,'el guardado debe ser transaccional');
+});
+
 test('guardar correo usa una sola columna y no modifica el telefono de la vivienda',async()=>{
  const {api,rows,updates}=mockService();
  rows.get(542).telefono='523312345678';

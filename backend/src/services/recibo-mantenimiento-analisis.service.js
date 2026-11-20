@@ -5,6 +5,8 @@ const { Op } = require('sequelize');
 const { Casa, Cuota, PagoReportado, Condomino, CondominoVivienda, Usuario, UsuarioCasa } = require('../models');
 const { historialMantenimiento } = require('./historial-pagos-vivienda.service');
 const { generarReciboPdf } = require('./pdf.service');
+const { domicilioDesdeCasa } = require('./vivienda-conmutador-correspondencia.service');
+const { buscarTelefonosConmutador } = require('./conmutador-padron.service');
 
 const abreviaturasMes = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 function folioRecibo({calle,numero,periodo,referencia,tipo='MANTENIMIENTO'}) {
@@ -224,6 +226,19 @@ async function consultarTelefonos(casa) {
     // El teléfono guardado explícitamente en la vivienda se ofrece primero
     // en el modal de recibos, sin modificar el de los usuarios vinculados.
     agregarTelefonos(destinatarios, vistos, casa.telefono, casa.nombre, 'Vivienda');
+    if (!normalizarTelefonoMX(casa.telefono)) {
+        // Recibo sin teléfono guardado: reutiliza el principal del conmutador de
+        // esa misma vivienda, incluso si viene de la importación histórica.
+        const domicilio=domicilioDesdeCasa(casa);
+        if (domicilio) {
+            try {
+                const numeros=await buscarTelefonosConmutador(domicilio);
+                agregarTelefonos(destinatarios, vistos, numeros[0], casa.nombre, 'Conmutador');
+            } catch (e) {
+                console.warn('[recibos] No fue posible consultar el contacto del conmutador:',e.name);
+            }
+        }
+    }
     for (const u of usuarios.filter(item => item.esContactoPrincipal)) {
         agregarTelefonos(destinatarios, vistos, u.telefono,
             [u.nombre, u.apellidoPaterno, u.apellidoMaterno].filter(Boolean).join(' '), 'Contacto principal');

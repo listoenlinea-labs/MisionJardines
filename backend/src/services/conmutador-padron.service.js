@@ -1,6 +1,8 @@
 const { QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const { esViviendaVisible } = require('./viviendas-visibles.service');
+const { Casa } = require('../models');
+const { domicilioDesdeCasa } = require('./vivienda-conmutador-correspondencia.service');
 
 const CONMUTADOR_GROUPS = {
   Gardenias: { streetLikes: ['%Gardenias%'] },
@@ -46,13 +48,31 @@ function telefonoContactoValido(valor) {
   return /^[2-9]\d{9}$/.test(digits) ? digits : null;
 }
 
-async function obtenerContactosAdministrados({ grupo, numero }) {
+async function obtenerContactosAdministrados({ grupo, numero }, transaction) {
   await asegurarContactosAdministrados();
   const rows = await sequelize.query(
     'SELECT telefono_a, telefono_b FROM ' + CONTACTOS_TABLE + ' WHERE grupo = :grupo AND numero = :numero LIMIT 1',
-    { replacements: { grupo, numero }, type: QueryTypes.SELECT }
+    { replacements: { grupo, numero }, type: QueryTypes.SELECT, transaction }
   );
   return rows.length ? [rows[0].telefono_a || '', rows[0].telefono_b || ''] : null;
+}
+
+// Solo se vincula una coincidencia unívoca del padrón, nunca otra vivienda con igual número.
+async function casaDeDomicilioConmutador({ grupo, numero }) {
+  if (!domicilioConmutador(grupo, numero)) return null;
+  const casas=await Casa.findAll({where:{numero},attributes:['id','calle','calleCorrecta','numero','telefono'],limit:500});
+  const matches=casas.filter(c=>{
+    const domicilio=domicilioDesdeCasa(c);
+    return domicilio?.grupo===grupo&&domicilio?.numero===numero;
+  });
+  return matches.length===1?matches[0]:null;
+}
+
+function telefonoNacionalCompartido(phone) {
+  const raw=String(phone||'').replace(/\D/g,'');
+  const national=raw.startsWith('521')&&raw.length===13?raw.slice(3):
+    raw.startsWith('52')&&raw.length===12?raw.slice(2):raw;
+  return /^[2-9]\d{9}$/.test(national)?national:'';
 }
 
 async function guardarContactosAdministrados(domicilio, telefonos, usuarioId, transaction) {
@@ -165,7 +185,11 @@ async function buscarTelefonosConmutador({ grupo, numero }) {
   if (!domicilioConmutador(grupo, numero)) return [];
   try {
     const administrados = await obtenerContactosAdministrados({ grupo, numero });
-    if (administrados !== null) return administrados.filter(Boolean);
+    if (administrados !== null) {
+      const casa=administrados[0]?null:await casaDeDomicilioConmutador({grupo,numero});
+      const principal=administrados[0]||telefonoNacionalCompartido(casa?.telefono);
+      return [principal,administrados[1]].filter(Boolean);
+    }
     const columns = await importColumns();
     const phoneColumn = findColumn(columns, ['telefono', 'teléfono', 'telefono1', 'tel']);
     const streetColumn = findColumn(columns, ['calle', 'direccion', 'dirección', 'domicilio']);
@@ -203,11 +227,14 @@ async function buscarTelefonosConmutador({ grupo, numero }) {
       rows.flatMap(row => normalizePhoneParts(row.telefono))
     )].slice(0, 2);
 
-    return telefonos;
+    if (telefonos.length) return telefonos;
+    const casa=await casaDeDomicilioConmutador({grupo,numero});
+    const recibos=telefonoNacionalCompartido(casa?.telefono);
+    return recibos?[recibos]:[];
   } catch (error) {
     importColumnsPromise = null;
     throw error;
   }
 }
 
-module.exports = { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido, nombresGuardadosConmutador, guardarNombreConmutador, obtenerContactosAdministrados };
+module.exports = { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido, nombresGuardadosConmutador, guardarNombreConmutador, obtenerContactosAdministrados, casaDeDomicilioConmutador, telefonoNacionalCompartido, asegurarContactosAdministrados, asegurarNombresConmutador };

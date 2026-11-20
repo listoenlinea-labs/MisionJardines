@@ -21,11 +21,14 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   let historial;
   let override = null;
   let storedOwner = null;
+  const linkedCasa = {id:42,calle:'Rosas',calleCorrecta:'Rosas',numero:'12',telefono:null,
+    async update(data,options){assert.deepEqual(options.fields,['telefono']);this.telefono=data.telefono;return this;}};
   t.mock.method(Usuario, 'findByPk', async id => ({
     id, estatus: 'ACTIVO', rol: { nombre: id === 3 ? 'CONDOMINO' : id === 4 ? 'ADMINISTRADOR' : id === 5 ? 'SUPER_ADMIN' : 'SEGURIDAD', activo: true }
   }));
   t.mock.method(UsuarioCasa, 'findOne', async () => null);
   t.mock.method(Casa, 'findAll', async opciones => {
+    if(opciones.attributes?.includes('telefono')) return [linkedCasa];
     if(opciones.attributes?.includes('nombre')) return [{calle:'Rosas',calleCorrecta:'Rosas',numero:'12',nombre:'Jorge Hermosillo'}];
     assert.deepEqual(opciones.include, []);
     return [];
@@ -140,6 +143,7 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.equal((await adminGuardado(guardia,['5551112233',''])).codigo,403);
   assert.equal((await adminGuardado(jwtPara(4),['123',''])).codigo,400);
   assert.equal((await adminGuardado(jwtPara(4),['5551112233',''])).codigo,200);
+  assert.equal(linkedCasa.telefono,'525551112233','el cambio del conmutador se comparte con recibos');
   const actualizado = await llamar('/api/busqueda/conmutador/telefono?grupo=Rosas&numero=12',jwtPara(4));
   assert.deepEqual(actualizado.json.telefonos,['5551112233']);
   // Nueva edición de un solo contacto y el nombre, sin alterar datos del padrón.
@@ -158,6 +162,8 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.equal(nuevo.codigo,200);
   assert.equal(nuevo.json.propietario,'Ana María');
   assert.deepEqual(nuevo.json.telefonos,['5554447788','']);
+  assert.equal(nuevo.json.sincronizadoRecibos,true);
+  assert.equal(linkedCasa.telefono,'525554447788');
   assert.deepEqual((await llamar(adminQuery,jwtPara(4),solicitado)).json.contactos[0],{
     ...direccion,telefonos:['5554447788'],propietario:'Ana María'
   });
@@ -165,7 +171,12 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   const sinNumero = (await llamar(adminQuery,jwtPara(4),solicitado)).json.contactos[0];
   assert.deepEqual(sinNumero.telefonos,[]);
   assert.equal(sinNumero.propietario,'Sin número');
+  assert.equal(linkedCasa.telefono,null,'borrar A debe quitar el teléfono de vivienda sin alterar otros contactos');
   assert.deepEqual((await llamar('/api/busqueda/conmutador/telefono?grupo=Rosas&numero=12',jwtPara(4))).json.telefonos,[]);
+  linkedCasa.telefono='523355001122';
+  assert.deepEqual((await llamar('/api/busqueda/conmutador/telefono?grupo=Rosas&numero=12',jwtPara(4))).json.telefonos,['3355001122'],
+   'si conmutador no tiene A recupera el teléfono guardado en recibos');
+  linkedCasa.telefono=null;
   // Restaurar número antes de comprobar el reintento de llamada heredado.
   assert.equal((await editarFicha(jwtPara(4),'5554447788','Ana María')).codigo,200);
 
