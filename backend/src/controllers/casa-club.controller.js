@@ -6,7 +6,7 @@ const PagoReportado=require('../models/PagoReportado');
 const PagoManualConcepto=require('../models/PagoManualConcepto');
 const {randomUUID}=require('crypto');
 const accesoPublico=require('../services/casa-club-acceso-publico.service');
-const {consultarAdeudos}=require('../services/adeudos-comunidad.service');
+const {consultarSoloMantenimiento}=require('../services/adeudos-comunidad.service');
 const avisos=require('../services/casa-club-avisos.service');
 const googleCasaClub=require('../services/casa-club-google-sync.service');
 const tarifas=require('../services/casa-club-tarifas.service');
@@ -39,9 +39,9 @@ function manejar(res,e){
  });
 }
 async function revisarElegibilidad(casaId){
- const saldo=evaluarElegibilidadReserva(await consultarAdeudos(casaId));
+ const saldo=evaluarElegibilidadReserva(await consultarSoloMantenimiento(casaId));
  if(!saldo.puedeReservar)throw error(409,'No puedes reservar Casa club: tienes adeudos por '+saldo.total.toLocaleString('es-MX',{style:'currency',currency:'MXN'})+
-  ' en mantenimiento y/o cuotas extraordinarias. Regulariza los conceptos en Pagos.',
+  ' de mantenimiento. Regulariza ese concepto en Pagos.',
   {codigo:'ADEUDOS_RESERVA',adeudos:saldo});
  await tarjetasRojas.exigirDisponible(casaId);
 }
