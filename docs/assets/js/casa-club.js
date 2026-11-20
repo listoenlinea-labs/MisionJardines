@@ -204,7 +204,7 @@
     return '<section style="padding:15px;margin-bottom:14px;border:1px solid #e1e7f0;border-radius:12px;background:#fafcff">'+
      '<strong>'+clean(casa)+'</strong><p><b>Solicitante:</b> '+clean(r.solicitante)+'</p>'+
      '<p><b>Propietario:</b> '+clean(r.propietario)+'</p>'+
-     '<p><b>Estado:</b> '+clean(r.estatus)+' · <b>Pago:</b> '+(r.estatus==='APROBADA'||r.pagado?'Pagado':'Sin confirmar')+'</p>'+
+     '<p><b>Estado:</b> '+clean(r.estatus)+' · <b>Pago:</b> '+(r.estatus==='APROBADA'||r.pagado||(fecha<today()&&['PENDIENTE','HISTORICA_GOOGLE'].includes(occupied.get(fecha)))?'Pagado':'Sin confirmar')+'</p>'+
      '<p><b>Fecha de solicitud:</b> '+clean(r.creadoEn?fechaSolicitud(r.creadoEn):null)+'</p>'+
      '<p><b>Observaciones:</b> '+clean(r.observaciones)+'</p>'+
      '<h3 style="font-size:1rem">Tarjetas rojas: '+Number(t.totalActivas||0)+' activas · '+Number(t.totalHistoricas||0)+' históricas</h3>'+
@@ -551,7 +551,7 @@
   btn.disabled=true;try{await api('/reservas/'+Number(btn.dataset.cancel)+'/cancelar','PATCH');notify('Reserva cancelada.');await Promise.all([mine(),calendar()]);}catch(err){mostrarError(err);btn.disabled=false;}
  });
  const reviewModal=$('clubReviewModal');
- const paymentStatus=r=>(r.estatus==='APROBADA'||r.pagado)?'Pagado':(r.estatus==='PENDIENTE'?'Pendiente de pago':'Sin pago');
+ const paymentStatus=r=>(r.estatus==='APROBADA'||r.pagado||(r.fecha<today()&&['PENDIENTE','HISTORICA_GOOGLE'].includes(occupied.get(r.fecha))))?'Pagado':(r.estatus==='PENDIENTE'?'Pendiente de pago':'Sin pago');
  const folioValido=()=>/^[a-z0-9-]{3,60}$/i.test($('clubBankFolio').value.trim());
  let reviewing=false;
  const syncReview=()=>{
