@@ -1,5 +1,8 @@
 'use strict';
 const {Casa}=require('../models');
+const sequelize=require('../config/database');
+const {domicilioDesdeCasa}=require('./vivienda-conmutador-correspondencia.service');
+const {asegurarContactosAdministrados,obtenerContactosAdministrados,buscarTelefonosConmutador,guardarContactosAdministrados}=require('./conmutador-padron.service');
 
 // Los datos pertenecen a la vivienda: NO reescribir usuarios ni condóminos.
 const error=(status,message)=>Object.assign(new Error(message),{status});
@@ -28,11 +31,27 @@ async function guardarContacto(casaId,campo,valor,actor){
   throw error(400,'Vivienda o administrador inválidos.');
  if(!['telefono','correo'].includes(campo))throw error(400,'Campo de contacto inválido.');
  const normalized=campo==='telefono'?telefonoMX(valor):correoValido(valor);
- const casa=await Casa.findByPk(id,{attributes:['id','telefono','correo']});
+ const casa=await Casa.findByPk(id,{attributes:['id','telefono','correo','calle','calleCorrecta','numero']});
  if(!casa)throw error(404,'Vivienda no encontrada.');
- if(String(casa[campo]||'').trim()!==normalized){
-  // Se actualiza UNA sola columna, nunca el usuario vinculado.
-  await casa.update({[campo]:normalized},{fields:[campo]});
+ if(campo==='telefono') {
+  const domicilio=domicilioDesdeCasa(casa);
+  if(domicilio){
+   // Preparar el esquema y recuperar B antes de abrir una transacción:
+   // no ejecutar DDL dentro de la transacción del contacto.
+   await asegurarContactosAdministrados();
+   const administrados=await obtenerContactosAdministrados(domicilio);
+   const actuales=administrados===null?await buscarTelefonosConmutador(domicilio):administrados;
+   await sequelize.transaction(async transaction=>{
+    if(String(casa.telefono||'').trim()!==normalized)
+     await casa.update({telefono:normalized},{fields:['telefono'],transaction});
+    await guardarContactosAdministrados(domicilio,[normalized.slice(2),actuales[1]||''],Number(actor),transaction);
+   });
+  }else if(String(casa.telefono||'').trim()!==normalized){
+   // Una vivienda no mapeada no puede sincronizarse con otra por coincidencia parcial.
+   await casa.update({telefono:normalized},{fields:['telefono']});
+  }
+ }else if(String(casa.correo||'').trim()!==normalized){
+  await casa.update({correo:normalized},{fields:['correo']});
  }
  console.info('[recibos] Contacto de vivienda guardado',{casaId:id,campo,actorId:Number(actor)});
  return {casaId:id,campo,valor:normalized,guardado:true};
