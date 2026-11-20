@@ -19,8 +19,9 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   const destino = '5550000100';
   let fila = null;
   let historial;
+  let override = null;
   t.mock.method(Usuario, 'findByPk', async id => ({
-    id, estatus: 'ACTIVO', rol: { nombre: id === 3 ? 'CONDOMINO' : 'SEGURIDAD', activo: true }
+    id, estatus: 'ACTIVO', rol: { nombre: id === 3 ? 'CONDOMINO' : id === 4 ? 'ADMINISTRADOR' : id === 5 ? 'SUPER_ADMIN' : 'SEGURIDAD', activo: true }
   }));
   t.mock.method(UsuarioCasa, 'findOne', async () => null);
   t.mock.method(Casa, 'findAll', async opciones => {
@@ -30,6 +31,11 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   t.mock.method(db, 'transaction', async run => run({}));
   t.mock.method(db, 'query', async (sql, opciones = {}) => {
     const campos = opciones.replacements || {};
+    if (sql.includes('FROM conmutador_contactos_administrados')) return override ?
+      [{ telefono_a: override[0], telefono_b: override[1] }] : [];
+    if (sql.includes('INSERT INTO conmutador_contactos_administrados')) {
+      override = [campos.a, campos.b]; return [];
+    }
     if (sql.includes('SHOW COLUMNS')) return ['telefono', 'calle', 'numero'].map(Field => ({ Field }));
     if (sql.includes('condominos_importacion')) return [{ telefono: '+52' + destino }];
     if (sql.includes('CREATE TABLE')) return [];
@@ -106,6 +112,29 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.equal((await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' })).codigo, 409);
   assert.equal((await llamar(base + '/agente/resultado', agente, { solicitud, reclamo, estado: 'FINALIZADA' })).codigo, 204);
   assert.deepEqual((await llamar(base + '/llamadas/' + solicitud, guardia)).json, { ok: true, estado: 'FINALIZADA' });
+  // La agenda privada no debe entregar números a Seguridad, Mesa o Super Admin.
+  const adminQuery = '/api/busqueda/conmutador/contactos-admin/consultar';
+  const solicitado = { domicilios: [direccion] };
+  assert.equal((await llamar(adminQuery, guardia, solicitado)).codigo, 403);
+  assert.equal((await llamar(adminQuery, jwtPara(5), solicitado)).codigo, 403);
+  const adminLista = await llamar(adminQuery, jwtPara(4), solicitado);
+  assert.equal(adminLista.codigo, 200);
+  assert.deepEqual(adminLista.json.contactos[0].telefonos, ['+52' + destino]);
+  const adminGuardado = async (token, telefonos) => {
+    const response = await fetch('http://127.0.0.1:' + servidor.address().port +
+      '/api/busqueda/conmutador/contactos-admin', {
+        method:'PUT',
+        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({...direccion,telefonos})
+      });
+    return { codigo: response.status, json: await response.json() };
+  };
+  assert.equal((await adminGuardado(guardia,['5551112233',''])).codigo,403);
+  assert.equal((await adminGuardado(jwtPara(4),['123',''])).codigo,400);
+  assert.equal((await adminGuardado(jwtPara(4),['5551112233',''])).codigo,200);
+  const actualizado = await llamar('/api/busqueda/conmutador/telefono?grupo=Rosas&numero=12',jwtPara(4));
+  assert.deepEqual(actualizado.json.telefonos,['5551112233']);
+  assert.deepEqual((await llamar(base+'/contactos?grupo=Rosas&numero=12',guardia)).json.contactos,['A']);
   const reintento = await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' });
   assert.equal(reintento.codigo, 202);
   assert.notEqual(reintento.json.solicitud, solicitud);

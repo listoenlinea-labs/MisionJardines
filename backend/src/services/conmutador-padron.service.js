@@ -16,6 +16,66 @@ const CONMUTADOR_GROUPS = {
 };
 
 const IMPORT_TABLE = 'condominos_importacion';
+const CONTACTOS_TABLE = 'conmutador_contactos_administrados';
+let contactosSchemaPromise;
+
+function asegurarContactosAdministrados() {
+  if (!contactosSchemaPromise) {
+    contactosSchemaPromise = sequelize.query(`
+      CREATE TABLE IF NOT EXISTS conmutador_contactos_administrados (
+        grupo VARCHAR(60) NOT NULL,
+        numero VARCHAR(12) NOT NULL,
+        telefono_a VARCHAR(16) NULL,
+        telefono_b VARCHAR(16) NULL,
+        actualizado_por INT NULL,
+        actualizado_en DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (grupo, numero)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `).catch(error => { contactosSchemaPromise = null; throw error; });
+  }
+  return contactosSchemaPromise;
+}
+
+function telefonoContactoValido(valor) {
+  const input = String(valor ?? '').trim();
+  if (!input) return '';
+  if (!/^[+()\d\s-]{10,24}$/.test(input)) return null;
+  let digits = input.replace(/\D/g, '');
+  if (digits.length === 13 && digits.startsWith('521')) digits = digits.slice(3);
+  else if (digits.length === 12 && digits.startsWith('52')) digits = digits.slice(2);
+  return /^[2-9]\d{9}$/.test(digits) ? digits : null;
+}
+
+async function obtenerContactosAdministrados({ grupo, numero }) {
+  await asegurarContactosAdministrados();
+  const rows = await sequelize.query(
+    'SELECT telefono_a, telefono_b FROM ' + CONTACTOS_TABLE + ' WHERE grupo = :grupo AND numero = :numero LIMIT 1',
+    { replacements: { grupo, numero }, type: QueryTypes.SELECT }
+  );
+  return rows.length ? [rows[0].telefono_a || '', rows[0].telefono_b || ''] : null;
+}
+
+async function guardarContactosAdministrados(domicilio, telefonos, usuarioId) {
+  const { grupo, numero } = domicilio || {};
+  if (!domicilioConmutador(grupo, numero) || !Array.isArray(telefonos) || telefonos.length !== 2) {
+    const err = new Error('Domicilio o contactos inválidos'); err.status = 400; throw err;
+  }
+  const normalizados = telefonos.map(telefonoContactoValido);
+  if (normalizados.some(t => t === null) || (normalizados[1] && !normalizados[0])) {
+    const err = new Error('Captura teléfonos nacionales válidos de 10 dígitos (A antes que B)'); err.status = 400; throw err;
+  }
+  await asegurarContactosAdministrados();
+  await sequelize.query(`
+    INSERT INTO conmutador_contactos_administrados
+      (grupo, numero, telefono_a, telefono_b, actualizado_por)
+    VALUES (:grupo, :numero, :a, :b, :usuarioId)
+    ON DUPLICATE KEY UPDATE
+      telefono_a = VALUES(telefono_a), telefono_b = VALUES(telefono_b),
+      actualizado_por = VALUES(actualizado_por), actualizado_en = CURRENT_TIMESTAMP(3)
+  `, { replacements: { grupo, numero, a: normalizados[0] || null, b: normalizados[1] || null, usuarioId }, type: QueryTypes.INSERT });
+  return normalizados;
+}
+
 let importColumnsPromise = null;
 
 function quoteIdentifier(value) {
@@ -61,7 +121,10 @@ function domicilioConmutador(grupo, numero) {
 
 async function buscarTelefonosConmutador({ grupo, numero }) {
   const config = CONMUTADOR_GROUPS[grupo];
+  if (!domicilioConmutador(grupo, numero)) return [];
   try {
+    const administrados = await obtenerContactosAdministrados({ grupo, numero });
+    if (administrados !== null) return administrados.filter(Boolean);
     const columns = await importColumns();
     const phoneColumn = findColumn(columns, ['telefono', 'teléfono', 'telefono1', 'tel']);
     const streetColumn = findColumn(columns, ['calle', 'direccion', 'dirección', 'domicilio']);
@@ -106,4 +169,4 @@ async function buscarTelefonosConmutador({ grupo, numero }) {
   }
 }
 
-module.exports = { domicilioConmutador, buscarTelefonosConmutador };
+module.exports = { domicilioConmutador, buscarTelefonosConmutador, guardarContactosAdministrados, telefonoContactoValido };
