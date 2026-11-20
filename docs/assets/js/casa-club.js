@@ -88,7 +88,7 @@
  }
  const notify=(msg,bad=false,scroll=true)=>{const el=$('clubNotice');el.textContent=msg;el.style.borderColor=bad?'#f2caca':'#d9e9dd';el.style.background=bad?'#fff2f3':'#f2faf5';el.hidden=false;if(scroll)window.scrollTo({top:0,behavior:'smooth'});};
  const debtDialog=$('clubDebtModal');
- const debtNames={MANTENIMIENTO:'Mantenimiento',EXTRAORDINARIO:'Cuotas extraordinarias'};
+ const debtNames={MANTENIMIENTO:'Mantenimiento'};
  const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
  const monthPeriod=p=>{
   const m=/^(\d{4})-(0[1-9]|1[0-2])(?:-\d{2})?$/.exec(String(p||''));
@@ -97,11 +97,11 @@
  function showDebtAlert(error){
   if(error.codigo!=='ADEUDOS_RESERVA'||!error.adeudos)return false;
   const adeudos=error.adeudos;
-  $('clubDebtExplanation').textContent='Esta vivienda no puede reservar hasta cubrir los adeudos de mantenimiento y cuotas extraordinarias.';
-  $('clubDebtSummary').innerHTML=['MANTENIMIENTO','EXTRAORDINARIO'].map(tipo=>
+  $('clubDebtExplanation').textContent='Esta vivienda no puede reservar hasta cubrir los adeudos de mantenimiento. Las cuotas extraordinarias no bloquean las reservas de Casa Club.';
+  $('clubDebtSummary').innerHTML=['MANTENIMIENTO'].map(tipo=>
    '<div class="club-debt-stat '+(tipo==='MANTENIMIENTO'?'maintenance':'extra')+'"><small>'+debtNames[tipo]+'</small><strong>'+esc(money(adeudos.totales?.[tipo]))+'</strong></div>'
   ).join('')+'<div class="club-debt-total"><span>Total por regularizar</span><strong>'+esc(money(adeudos.total))+'</strong></div>';
-  const rows=['MANTENIMIENTO','EXTRAORDINARIO'].flatMap(tipo=>(adeudos.tipos?.[tipo]||[]).map(item=>({tipo,...item})));
+  const rows=['MANTENIMIENTO'].flatMap(tipo=>(adeudos.tipos?.[tipo]||[]).map(item=>({tipo,...item})));
   $('clubDebtDetails').innerHTML=rows.length?'<h3>Desglose de los adeudos</h3>'+rows.map(item=>
    '<div class="club-debt-item"><div><b>'+esc(debtNames[item.tipo])+'</b><small>'+esc(monthPeriod(item.periodo))+
    (item.concepto?' · '+esc(item.concepto):'')+'</small></div><div><strong>'+esc(money(item.monto))+'</strong>'+
