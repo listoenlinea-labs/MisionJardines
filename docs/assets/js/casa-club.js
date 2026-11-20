@@ -193,6 +193,7 @@
   const body=dialog.querySelector('#clubAdminDateBody');
   body.textContent='Consultando información…';dialog.showModal();
   const clean=v=>esc(String(v??'—'));
+  const fechaRoja=fecha<today()&&['PENDIENTE','APROBADA','HISTORICA_GOOGLE'].includes(occupied.get(fecha));
   try{
    const response=await api('/administracion/fecha/'+encodeURIComponent(fecha));
    if(!dialog.open)return;
@@ -204,7 +205,7 @@
     return '<section style="padding:15px;margin-bottom:14px;border:1px solid #e1e7f0;border-radius:12px;background:#fafcff">'+
      '<strong>'+clean(casa)+'</strong><p><b>Solicitante:</b> '+clean(r.solicitante)+'</p>'+
      '<p><b>Propietario:</b> '+clean(r.propietario)+'</p>'+
-     '<p><b>Estado:</b> '+clean(r.estatus)+' · <b>Pago:</b> '+(r.estatus==='APROBADA'||r.pagado?'Pagado':'Sin confirmar')+'</p>'+
+     '<p><b>Estado:</b> '+clean(r.estatus)+' · <b>Pago:</b> '+(r.estatus==='APROBADA'||r.pagado||fechaRoja&&r.estatus==='PENDIENTE'?'Pagado':'Sin confirmar')+'</p>'+
      '<p><b>Fecha de solicitud:</b> '+clean(r.creadoEn?fechaSolicitud(r.creadoEn):null)+'</p>'+
      '<p><b>Observaciones:</b> '+clean(r.observaciones)+'</p>'+
      '<h3 style="font-size:1rem">Tarjetas rojas: '+Number(t.totalActivas||0)+' activas · '+Number(t.totalHistoricas||0)+' históricas</h3>'+
@@ -551,7 +552,8 @@
   btn.disabled=true;try{await api('/reservas/'+Number(btn.dataset.cancel)+'/cancelar','PATCH');notify('Reserva cancelada.');await Promise.all([mine(),calendar()]);}catch(err){mostrarError(err);btn.disabled=false;}
  });
  const reviewModal=$('clubReviewModal');
- const paymentStatus=r=>(r.estatus==='APROBADA'||r.pagado)?'Pagado':(r.estatus==='PENDIENTE'?'Pendiente de pago':'Sin pago');
+ const pagoVisualReserva=r=>Boolean(r.pagado||r.estatus==='APROBADA'||(r.fecha<today()&&r.estatus==='PENDIENTE'&&['PENDIENTE','APROBADA'].includes(occupied.get(r.fecha)))||(r.soloLectura&&r.estatus==='HISTORICA_GOOGLE'));
+ const paymentStatus=r=>pagoVisualReserva(r)?'Pagado':(r.estatus==='PENDIENTE'||r.estatus==='EN_REVISION_GOOGLE'||r.estatus==='CONFLICTO_GOOGLE'?'Pendiente de pago':'Sin pago');
  const folioValido=()=>/^[a-z0-9-]{3,60}$/i.test($('clubBankFolio').value.trim());
  let reviewing=false;
  const syncReview=()=>{
@@ -576,7 +578,7 @@
   activeReview=r;$('clubReviewTitle').textContent='Reservación CC-'+r.id+' · '+fmt(r.fecha);
   const detalles=[
    ['Nombre',r.solicitante],['Vivienda',homeText(r)],['WhatsApp',r.telefono],['Correo',r.correo],
-   ['Propietario',r.propietario?'Sí':'No'],['Motivo del evento',(!r.motivo||r.motivo.trim()==='Apartado registrado previamente')?'Sin descripción':r.motivo],
+   ['Propietario',r.propietario?'Sí':'No'],['Motivo del evento',(!r.motivo||!String(r.motivo).trim()||String(r.motivo).trim().toLocaleLowerCase('es-MX')==='apartado registrado previamente')?'Sin descripción':r.motivo],
    ['Solicitud recibida',fechaSolicitud(r.creadoEn)+' (Guadalajara)'],
    ['Estado de la reserva',({PENDIENTE:'Solicitud pendiente',APROBADA:'Confirmada',CANCELADA:'Cancelada',RECHAZADA:'Rechazada'})[r.estatus]],
    ['Estado del pago',paymentStatus(r)],['Renta',money(r.cuotaRecuperacion)],['Garantía',money(r.depositoGarantia)],
@@ -752,8 +754,8 @@
        r.soloLectura?money(300):money(r.limpieza),
        r.folio||'—',
        r.propietario?'Sí':'No',
-       r.soloLectura?'No verificado en Google':paymentStatus(r),
-       r.soloLectura?'Tarifa de referencia $2,000 (1000/700/300); pago no verificado en Google.':r.motivo||'—',
+       paymentStatus(r),
+       r.soloLectura?'Tarifa de referencia $2,000 (1000/700/300); pago no verificado en Google.':r.motivo||'Sin descripción',
        r.soloLectura?(r.estatus==='HISTORICA_GOOGLE'?'Histórica · Google':
         r.estatus==='CONFLICTO_GOOGLE'?'Conflicto · Google':'En revisión · Google'):r.estatus
       ];
@@ -776,7 +778,7 @@
     r.soloLectura?money(1000):money(r.cuotaRecuperacion),
     r.soloLectura?money(700):money(r.depositoGarantia)+(r.garantiaDevuelta?' · Devuelta':''),
     r.soloLectura?money(300):money(r.limpieza),r.folio||'—',
-    r.propietario?'Sí':'No',r.soloLectura?'No verificado en Google':paymentStatus(r),
+    r.propietario?'Sí':'No',paymentStatus(r),
     r.soloLectura?'Tarifa de referencia $2,000; pago no verificado (solo consulta)':r.motivo||'—',
     r.soloLectura?'Histórica · Google':r.estatus
    ];
@@ -908,17 +910,21 @@
    historicGoogleRows=(d.historialGoogle||[]).map((row,i)=>({...row,id:-(i+1),soloLectura:true}));
    const totalRows=allAdminRecords();
    const normalizarNombre=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();
-   const esMismoPropietario=r=>{
-    const solicitante=normalizarNombre(r.solicitante),propietario=normalizarNombre(r.casa?.nombre||r.nombrePropietario||r.propietarioNombre);
-    if(!solicitante||!propietario)return null;
-    const partes=solicitante.split(' '),dueno=propietario.split(' ');
-    return partes.every(p=>dueno.includes(p));
+   // "Jorge" puede identificar a "Jorge Hermosillo"; nunca contar una coincidencia parcial
+   // como una persona distinta y evitar contar la misma persona varias veces.
+   const compararNombres=r=>{
+    const solicitante=normalizarNombre(r.solicitante),dueno=normalizarNombre(r.casa?.nombre);
+    if(!solicitante||!dueno)return null;
+    const palabras=solicitante.split(' '),padron=dueno.split(' ');
+    return palabras.every(p=>padron.includes(p));
    };
+   const distintos=new Set(totalRows.filter(r=>compararNombres(r)===false).map(r=>
+    normalizarNombre(r.solicitante)+'|'+String(r.casa?.id||[r.casa?.calle,r.casa?.numero].join('-'))));
    const summary={
-    aprobadas:totalRows.filter(r=>r.estatus==='APROBADA').length,
+    aprobadas:totalRows.filter(r=>r.estatus==='APROBADA'||r.estatus==='HISTORICA_GOOGLE').length,
     rechazadas:totalRows.filter(r=>r.estatus==='RECHAZADA').length,
-    pendientes:totalRows.filter(r=>r.estatus==='PENDIENTE'||r.estatus==='HISTORICA_GOOGLE').length,
-    distintas:totalRows.filter(r=>esMismoPropietario(r)===false).length
+    pendientes:totalRows.filter(r=>['PENDIENTE','EN_REVISION_GOOGLE','CONFLICTO_GOOGLE'].includes(r.estatus)).length,
+    distintas:distintos.size
    };
    const cards=[
     ['Solicitudes aprobadas',summary.aprobadas],
