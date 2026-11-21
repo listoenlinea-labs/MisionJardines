@@ -1,26 +1,61 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 19/nov/2026, 23:28, America/Mexico_City.
-**SHA de main consultado:** `05d203a6583ed196a940ddae40ebba35881630bc`.
+**Última revisión:** 20/nov/2026, 23:26, America/Mexico_City.
+**SHA de main consultado:** `c18bdc24d4bd67f7ffddceae23d669b62b0fc473`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `1d5a54dc8202bfc6fa33ccff4a6f22e508d4a8ae`,
-historial de 5 commits, PR #463–#464, PR abiertos y evidencia de checks en GitHub.
-Se excluyó `669fc16d0c351196ee238a0e1ff0d7b3558eadbb`, dedicado exclusivamente
-a la bitácora anterior. Los dos PR de producto están fusionados; no hay PR abiertos
-ni revertidos nuevos. Sus heads devuelven cero workflows y cero estados; las pruebas
-de API declaradas son evidencia local/simulada, no CI.
-La conversación accesible confirma que el teléfono de caseta timbró, que después se
-oyó un pitido y que una prueba pasó tras corregir la configuración de red. Esto acredita
-solo esa prueba física puntual: no confirma audio bidireccional, llamada al residente,
-reintento sin recargar, despliegue completo ni operación sostenida.
-No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no ejecutó SQL,
-pagos, escrituras C3 ni pruebas físicas. No se publican credenciales, direcciones de red,
-teléfonos, contactos, comprobantes ni contenido privado del padrón.
+comparación de main desde `05d203a6583ed196a940ddae40ebba35881630bc`,
+historial de 48 commits, PR #465–#469, PR abiertos, archivos de prueba y evidencia
+de checks en GitHub. Se excluyó `bbb0b4a6d83312053102cd4515b241d1b15478db`,
+dedicado exclusivamente a la bitácora anterior. Los cinco PR de producto están
+fusionados; no hay PR abiertos ni revertidos nuevos. Sus merges devuelven cero
+workflows y cero estados. Las revisiones estáticas y pruebas presentes/declaradas
+no equivalen a CI ejecutado.
+No hay confirmaciones nuevas accesibles del usuario sobre despliegue, datos de MySQL,
+reservas, pagos, llamadas o pruebas físicas. No se consultaron Hostinger, MySQL o C3
+directamente y esta revisión no ejecutó SQL, pagos, llamadas, escrituras C3 ni pruebas
+físicas. No se publican credenciales, teléfonos, correos, contactos, comprobantes ni
+contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 20/nov/2026
+
+Los PR [#465](https://github.com/listoenlinea-labs/MisionJardines/pull/465)–[#466](https://github.com/listoenlinea-labs/MisionJardines/pull/466)
+ajustan Casa Club. #465 presenta reservas APROBADAS como «Pagado» y motivos vacíos o
+históricos como «Sin descripción» únicamente en la interfaz; no cambia ni concilia pagos.
+#466 sustituye los indicadores administrativos por aprobadas, rechazadas, pendientes y
+personas distintas al propietario, añade numeración/paginación y cotejo normalizado de
+nombres, y deja como regla de elegibilidad que solo una deuda positiva de mantenimiento
+bloquea una reserva: extraordinarias pendientes por sí solas no la bloquean. Conserva
+otras restricciones, incluidas tarjetas rojas. El merge no acredita cifras, nombres,
+pagos ni reservas reales.
+
+Los PR [#467](https://github.com/listoenlinea-labs/MisionJardines/pull/467)–[#468](https://github.com/listoenlinea-labs/MisionJardines/pull/468)
+incorporan al Conmutador una agenda privada exclusiva del rol exacto ADMINISTRADOR, con
+consulta y edición protegidas también en backend. #467 permite sobrescribir contactos A/B
+sin modificar el padrón original y da prioridad al número administrado para marcar sin
+revelarlo a Seguridad. #468 deja un contacto principal visible, agrega propietario
+editable en almacenamiento independiente, búsqueda global por calle/casa/propietario/
+celular, filtro con/sin número y edición transaccional; el contacto B heredado se conserva
+oculto. Las tablas se crean al usar la función, por lo que faltan permisos y esquema reales.
+
+El PR [#469](https://github.com/listoenlinea-labs/MisionJardines/pull/469) sincroniza el
+contacto principal por vivienda entre Envío de recibos y Conmutador: una escritura
+actualiza `direcciones.telefono` y Contacto A en transacción, conserva B, y las lecturas
+pueden usar el otro módulo como respaldo sin escribir. La correspondencia es estricta por
+calle/número, distingue las tres secciones de Jardines y rechaza domicilios inexistentes,
+ambiguos o no válidos. Mantiene Contactos exclusivo de ADMINISTRADOR y los permisos
+financieros existentes; no cambia correo, propietario, recibos, pagos, TAGs o marcación.
+
+Los cinco merges devuelven cero workflows y cero estados. #465 declara que no ejecutó
+batería extensa y #466 solo revisión estática. En main hay seis bloques de elegibilidad
+Casa Club; un bloque integrado de Conmutador ampliado para permisos, edición y uso del
+contacto; y doce bloques dedicados a sincronización/correspondencia (9 + 3). #467–#469
+declaran sintaxis revisada, pero #469 deja la suite pendiente. No hay salida CI ni prueba
+contra MySQL/Hostinger, navegador, datos privados o llamada real.
 
 ## Implementado en main el 19/nov/2026
 
@@ -809,6 +844,9 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Casa Club: presentación y elegibilidad | Implementado en main; datos y operación reales pendientes | #465 cambia etiquetas visuales sin conciliar pagos; #466 deja solo mantenimiento positivo como bloqueo financiero, conserva tarjetas rojas y añade indicadores/numeración. No se verificaron reservas, nombres, deudas ni pagos reales |
+| Conmutador: agenda administrativa | Implementado en main; esquema, permisos y dispositivos pendientes | #467–#468 restringen consulta/edición al rol exacto ADMINISTRADOR, conservan padrón y contacto B, y añaden propietario/filtros. Las tablas son auto-creadas; no se probó MySQL, móvil ni marcación real |
+| Contactos Recibos–Conmutador | Sincronización implementada; integración real pendiente | #469 escribe el contacto principal en ambos almacenes por vivienda y usa respaldo de lectura con correspondencia estricta. No se ejecutó la suite ni se escribió producción; no modifica pagos, TAGs o correos |
 | Conmutador caseta–Asterisk | Implementado en main; integración física parcial y despliegue completo pendientes | #463 conecta portal/Hostinger/agente/spool/dialplan sin revelar teléfonos a Seguridad; #464 libera intentos y permite reintentar. El usuario confirmó timbrado y pitido en una prueba, no audio bidireccional, llamada al residente ni reintento real |
 | Identificación WhatsApp por teléfono | Implementada como pista; autorización real sigue en HTTPS | #462 omite domicilio solo con coincidencia única y vínculo válido; duplicados, suspensión o varias casas requieren verificación. No se probó MySQL/Meta/Titan ni se envió información real |
 | Extraordinarias y plan agrupable | Implementado en main; migración y datos reales pendientes | #455 calcula padrón efectivo, exporta faltantes sin inventarlos y agrupa egresos sin borrar originales; #456 añade Deshacer local. No se probó MySQL, Excel manual ni persistencia real |
@@ -927,6 +965,10 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 20/nov/2026 | PR #465–#469, consulta GitHub de workflows/estados en los cinco merges | **0 workflows y 0 estados** en los 5 merges | No hay CI observable; merge y revisión declarada no prueban despliegue |
+| 20/nov/2026 | #465–#466, revisión Casa Club | #465: **sin batería extensa**; #466: **revisión estática**. Hay **6 bloques** de elegibilidad presentes en main, sin ejecución acreditada | No prueba reservas, pagos, padrón, nombres, MySQL ni interfaz real |
+| 20/nov/2026 | `node --test backend/test/conmutador-caseta.test.js` (#467–#468) | **1 bloque integrado presente**; sintaxis y ampliaciones declaradas, sin salida CI | Cubre API simulada y permisos/edición; no prueba CREATE TABLE, datos, navegador ni llamada real |
+| 20/nov/2026 | `node --test backend/test/recibos-contactos-guardados.test.js backend/test/contactos-conmutador-recibos-correspondencia.test.js` (#469) | **12 bloques presentes (9 + 3)**; PR deja la suite pendiente | Evidencia de código, no resultado aprobado; falta MySQL/Hostinger y sincronización real |
 | 19/nov/2026 | PR #463–#464, consulta GitHub de workflows/estados en ambos heads | **0 workflows y 0 estados** en los 2 heads | No hay CI observable; merge y pruebas declaradas no prueban despliegue |
 | 19/nov/2026 | `node --test backend/test/conmutador-caseta.test.js` | **1 bloque de prueba presente**; #463 declara API simulada aprobada y #464 regresión aprobada, sin salida CI recuperable | Cubre permisos, solicitud, finalización y reintento simulados; no prueba MySQL, Hostinger, Asterisk, gateway, iPhone ni audio real |
 | 18/nov/2026 | PR #462, consulta GitHub de workflows/estados en el head | **0 workflows y 0 estados** | No hay CI observable; merge y revisión declarada no prueban despliegue |
@@ -1124,6 +1166,9 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Casa Club #465–#466 | Desplegar frontend/backend y probar con datos controlados aprobada/rechazada/pendiente, motivo vacío/histórico, propietario/no propietario, paginación y nombres parciales. Verificar que solo mantenimiento positivo bloquee, que extraordinarias solas no bloqueen y que tarjetas rojas sigan aplicando; cotejar sin tratar «Pagado» visual como conciliación bancaria |
+| Agenda de Contactos #467–#468 | Respaldar y probar en clon permisos CREATE TABLE, migración/auto-creación, rol ADMINISTRADOR frente a Seguridad/SUPER_ADMIN, propietario y teléfono, filtros globales, móvil 3/escritorio 10, concurrencia y rollback. Confirmar que B/padrón no se alteren y que caseta use el contacto correcto sin exponerlo |
+| Sincronización Recibos–Conmutador #469 | Ejecutar los 12 bloques y el test integrado; desplegar en clon y verificar escritura bidireccional, lectura de respaldo, preservación de B, formatos mexicanos, calles/números homónimos, Jardines 1/2/3, ambiguos/inválidos, transacción fallida y permisos. Revisar duplicados antes de tocar producción |
 | Conmutador caseta–Asterisk #463–#464 | Confirmar revisión desplegada de backend/frontend/agente y migración #463; probar con vivienda controlada: caseta timbra primero, dejar sonar no marca, contestar marca al destino, audio en ambos sentidos, colgar libera, reintento sin recargar y cierre tardío no afecta otra solicitud. Revisar logs sanitizados y rollback sin exponer teléfonos ni secretos |
 | Identidad WhatsApp #462 | Desplegar backend y probar con datos controlados: número único 52/521, vínculo vigente/vencido, desconocido, duplicado, varias viviendas, suspendido, cambio de contraseña y desvinculación. Confirmar que sin login no se revelen adeudos, PDF, identidad, reservas o visitas y que OCR/Titan mantenga sus guardas |
 | Extraordinarias/agrupaciones #455–#456 | Respaldar y probar en clon la columna agrupaciones o SQL alternativo, padrón efectivo, No aplica, cargos faltantes, Excel, filtros, ciclos/límites, guardar/recargar, Deshacer/Ctrl+Z y mini tarjetas. No agrupar sin comprobar que A ya está contenido en B |
@@ -1247,6 +1292,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-20
+
+- Main consultado a las 23:26, America/Mexico_City, en `c18bdc24d4bd67f7ffddceae23d669b62b0fc473`, 48 commits por delante del SHA guardado.
+- Se excluyó `bbb0b4a`, que solo actualizó esta bitácora. Como producto se verificaron los PR #465–#469 fusionados; no hay PR abiertos ni revertidos nuevos.
+- Los cinco merges devuelven cero workflows y cero estados. #465 no ejecutó batería extensa; #466 fue revisión estática; #467–#468 declaran sintaxis y ampliaciones del bloque integrado; #469 deja la suite pendiente. Se registraron 6, 1 y 12 bloques presentes, sin declararlos aprobados.
+- No hubo confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, Casa Club, teléfonos, recibos, llamadas o pruebas físicas.
+- Esta revisión no consultó ni modificó Hostinger, MySQL o C3, no ejecutó SQL, pagos, reservas, llamadas, escrituras ni pruebas físicas y no publicó datos privados. Se conservaron los pendientes y límites anteriores.
 
 ### 2026-11-19
 
