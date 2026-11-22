@@ -1,20 +1,20 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 20/nov/2026, 23:26, America/Mexico_City.
-**SHA de main consultado:** `c18bdc24d4bd67f7ffddceae23d669b62b0fc473`.
+**Última revisión:** 21/nov/2026, 23:27, America/Mexico_City.
+**SHA de main consultado:** `36ed66310793ef56c79d87328bffd17dc802ddec`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `05d203a6583ed196a940ddae40ebba35881630bc`,
-historial de 48 commits, PR #465–#469, PR abiertos, archivos de prueba y evidencia
-de checks en GitHub. Se excluyó `bbb0b4a6d83312053102cd4515b241d1b15478db`,
-dedicado exclusivamente a la bitácora anterior. Los cinco PR de producto están
-fusionados; no hay PR abiertos ni revertidos nuevos. Sus merges devuelven cero
-workflows y cero estados. Las revisiones estáticas y pruebas presentes/declaradas
-no equivalen a CI ejecutado.
+comparación de main desde `c18bdc24d4bd67f7ffddceae23d669b62b0fc473`,
+historial de 1 commit, PR abiertos y evidencia de checks en GitHub. El único avance
+fue `36ed66310793ef56c79d87328bffd17dc802ddec`, dedicado exclusivamente a la
+bitácora del 20/nov y excluido de la lista de trabajo de producto. No hubo commits
+ni PR de producto nuevos, PR abiertos o revertidos nuevos. Ese commit documental
+devuelve cero workflows y cero estados; no hubo pruebas automatizadas nuevas.
 No hay confirmaciones nuevas accesibles del usuario sobre despliegue, datos de MySQL,
-reservas, pagos, llamadas o pruebas físicas. No se consultaron Hostinger, MySQL o C3
-directamente y esta revisión no ejecutó SQL, pagos, llamadas, escrituras C3 ni pruebas
-físicas. No se publican credenciales, teléfonos, correos, contactos, comprobantes ni
-contenido privado del padrón.
+reservas, pagos, llamadas o pruebas físicas. Se conservan sin cambios el resumen
+operativo, el historial de pruebas confirmadas y todos los pendientes anteriores.
+No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no ejecutó SQL,
+pagos, reservas, llamadas, escrituras C3 ni pruebas físicas. No se publican credenciales,
+teléfonos, correos, contactos, comprobantes ni contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
@@ -965,6 +965,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 21/nov/2026 | Revisión GitHub del único commit desde el SHA guardado; sin comando de producto nuevo | `36ed663` modificó solo `docs/ESTADO_PROYECTO.md`; **0 workflows y 0 estados** | Sin cambios verificables de producto ni pruebas nuevas; se conservan resultados y pendientes anteriores |
 | 20/nov/2026 | PR #465–#469, consulta GitHub de workflows/estados en los cinco merges | **0 workflows y 0 estados** en los 5 merges | No hay CI observable; merge y revisión declarada no prueban despliegue |
 | 20/nov/2026 | #465–#466, revisión Casa Club | #465: **sin batería extensa**; #466: **revisión estática**. Hay **6 bloques** de elegibilidad presentes en main, sin ejecución acreditada | No prueba reservas, pagos, padrón, nombres, MySQL ni interfaz real |
 | 20/nov/2026 | `node --test backend/test/conmutador-caseta.test.js` (#467–#468) | **1 bloque integrado presente**; sintaxis y ampliaciones declaradas, sin salida CI | Cubre API simulada y permisos/edición; no prueba CREATE TABLE, datos, navegador ni llamada real |
@@ -1292,6 +1293,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-21
+
+- Main consultado a las 23:27, America/Mexico_City, en `36ed66310793ef56c79d87328bffd17dc802ddec`, 1 commit por delante del SHA guardado.
+- El único commit fue `36ed663`, que solo actualizó esta bitácora y se excluyó del trabajo de producto. No hubo commits o PR de producto nuevos, PR abiertos ni revertidos nuevos.
+- El commit documental devuelve cero workflows y cero estados. No se ejecutaron ni declararon pruebas automatizadas nuevas.
+- No hubo confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, Casa Club, teléfonos, recibos, llamadas o pruebas físicas.
+- Sin cambios verificables de producto: se conservaron el resumen operativo, el historial de pruebas y todos los pendientes. Esta revisión no consultó ni modificó Hostinger, MySQL o C3, ni ejecutó operaciones reales.
 
 ### 2026-11-20
 
