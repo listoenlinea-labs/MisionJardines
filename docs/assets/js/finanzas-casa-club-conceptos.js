@@ -26,7 +26,7 @@
   $('financeClubExpenseCategory').value=editing?String(row.categoria||'OTROS'):'OTROS';
   $('financeClubExpenseCategory').disabled=editing;
   $('financeClubExpenseDelete').hidden=!editing;
-  $('financeClubExpenseProofArea').hidden=!editing||!row.comprobanteDisponible;
+  $('financeClubExpenseProofArea').hidden=!editing;
   status('');
   dlg.showModal();$('financeClubExpenseConcept').focus();
  }
@@ -58,25 +58,42 @@
  $('financeClubExpenseCancel').addEventListener('click',close);
  dlg.addEventListener('cancel',event=>{if(busy)event.preventDefault();else resetProof();});
  $('financeClubExpenseShowProof').addEventListener('click',async()=>{
-  if(!source?.comprobanteDisponible||busy)return;
-  setBusy(true);status('Consultando comprobante privado...');
+  if(!source||busy)return;
+  setBusy(true);status('Consultando comprobantes privados...');
   try{
    const api=(window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api')+'/finanzas';
    const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
-   const res=await fetch(api+'/egresos/'+Number(source.id)+'/comprobante',
-    {headers:{Authorization:'Bearer '+token},cache:'no-store'});
-   if(!res.ok)throw Error('No fue posible visualizar el comprobante.');
-   const blob=await res.blob();
-   if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))throw Error('Tipo de comprobante no admitido.');
-   resetProof();proofUrl=URL.createObjectURL(blob);
-   const el=document.createElement(blob.type==='application/pdf'?'iframe':'img');
-   el.src=proofUrl;
-   if(el.tagName==='IFRAME')el.title='Comprobante de gasto de Casa Club';
-   else el.alt='Comprobante del concepto '+source.concepto;
-   const area=$('financeClubExpensePreview');area.replaceChildren(el);area.hidden=false;
-   status('Comprobante cargado.');
-  }catch(e){status(e.message);}
-  finally{setBusy(false);}
+   const path='/egresos/'+Number(source.id)+'/comprobantes';
+   const response=await fetch(api+path,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+   const result=await response.json();
+   if(!response.ok||!result.ok)throw Error(result.message||'No se pudo consultar la lista.');
+   resetProof();
+   const area=$('financeClubExpensePreview');area.hidden=false;
+   const rows=result.data||[];
+   if(!rows.length){area.textContent='Este concepto no tiene comprobantes adjuntos.';return;}
+   const buttons=document.createElement('div'),viewer=document.createElement('div');
+   buttons.style.display='flex';buttons.style.flexWrap='wrap';buttons.style.gap='8px';
+   area.append(buttons,viewer);
+   for(const item of rows){
+    const b=document.createElement('button');b.type='button';b.className='soft';
+    b.textContent=item.nombre||'Comprobante '+item.id;
+    b.addEventListener('click',async()=>{
+     try{
+      const file=await fetch(api+path+'/'+Number(item.id),{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+      if(!file.ok)throw Error('No se pudo abrir el comprobante seleccionado.');
+      const blob=await file.blob();
+      if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))throw Error('Formato no compatible.');
+      if(proofUrl)URL.revokeObjectURL(proofUrl);
+      proofUrl=URL.createObjectURL(blob);
+      const el=document.createElement(blob.type==='application/pdf'?'iframe':'img');
+      el.src=proofUrl;if(el.tagName==='IFRAME')el.title='Comprobante de Casa Club';
+      else el.alt='Comprobante '+(item.nombre||'');
+      viewer.replaceChildren(el);status('Mostrando '+(item.nombre||'comprobante')+'.');
+     }catch(e){status(e.message);}
+    });buttons.append(b);
+   }
+   buttons.firstElementChild?.click();
+  }catch(e){status(e.message);}finally{setBusy(false);}
  });
  form.addEventListener('submit',async event=>{
   event.preventDefault();if(busy)return;
@@ -87,21 +104,31 @@
    pagado:$('financeClubExpensePaid').checked};
   if(!item.concepto||!Number.isSafeInteger(item.monto)||item.monto<1||!/^\d{4}-\d{2}-\d{2}$/.test(item.fecha))
    return status('Completa concepto, fecha e importe entero.');
-  const file=$('financeClubExpenseFile').files?.[0];
-  setBusy(true);status('Guardando concepto...');
+  const files=[...($('financeClubExpenseFile').files||[])];
+  if(files.length>12)return status('Selecciona máximo 12 comprobantes por operación.');
+  setBusy(true);status('Guardando concepto y comprobantes...');
   try{
-   const comprobante=await encode(file);
+   let id=Number(source?.id)||0;
    if(source){
     const previo=snapshot(source);
     const changed=Object.keys(item).some(k=>item[k]!==previo[k]);
-    if(changed)await ctx.request('/egresos/'+Number(source.id)+'/casa-club',{anterior:previo,nuevo:item},'PATCH');
-    if(comprobante)await ctx.request('/egresos/'+Number(source.id)+'/comprobante',{comprobante},'PUT');
-    if(!changed&&!comprobante){status('No hay cambios por guardar.');return;}
+    if(changed)await ctx.request('/egresos/'+id+'/casa-club',{anterior:previo,nuevo:item},'PATCH');
+    if(!changed&&!files.length){status('No hay cambios por guardar.');return;}
    }else{
-    await ctx.request('/egresos',{
-     ...item,ambito:'CASA_CLUB',categoria:$('financeClubExpenseCategory').value,
-     ...(comprobante?{comprobante}:{})
-    });
+    const saved=await ctx.request('/egresos',{...item,ambito:'CASA_CLUB',
+     categoria:$('financeClubExpenseCategory').value});
+    id=Number(saved.id);
+    if(!Number.isSafeInteger(id)||id<=0)throw Error('El concepto quedó registrado pero no llegó su ID. Consulta el historial.');
+   }
+   let uploaded=0;
+   for(const file of files){
+    try{
+     await ctx.request('/egresos/'+id+'/comprobantes',{nombre:file.name,comprobante:await encode(file)});
+     uploaded++;
+    }catch(error){
+     throw Error('El concepto se guardó y '+uploaded+' de '+files.length+
+      ' comprobantes se adjuntaron. '+error.message+' Puedes adjuntar los restantes al editarlo.');
+    }
    }
    resetProof();dlg.close();
    const ok=await ctx.load();
