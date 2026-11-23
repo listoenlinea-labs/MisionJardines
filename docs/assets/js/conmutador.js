@@ -62,64 +62,70 @@
         document.querySelector('[data-phone-choice="1"]').hidden=phones.length<2;
         byId('phoneChoiceModal').classList.add('show');
       }
-      // El historial descarga diez intentos por página en computadora y celular.
-      // No cambia cómo se marcan las llamadas ni se guardan sus intentos.
-      const HISTORY_PAGE_SIZE=10,HISTORY_CACHE_MS=15000;
-      const historyCache=new Map();
-      let historyPage=1,historyPages=1,historyLoading=false;
-      function historyBusy(busy){
-        historyLoading=busy;
-        byId('historyPrevious').disabled=busy||historyPage<=1;
-        byId('historyNext').disabled=busy||historyPage>=historyPages;
-        byId('refreshHistory').disabled=busy;
+      // Consultar todos los intentos del día; ni paginación ni datos privados.
+      const HISTORY_CACHE_MS=15000;
+      const historyCache=new Map(),historyDate=byId('historyDate');
+      function localToday(){
+        const d=new Date();
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       }
-      function renderHistory(data){
-        const list=byId('historyList');
-        const rows=(Array.isArray(data.registros)?data.registros:[]).slice(0,HISTORY_PAGE_SIZE);
-        historyPage=Math.max(1,Number(data.pagina)||1);
-        historyPages=Math.max(1,Number(data.paginas)||1);
-        const total=Math.max(0,Number(data.total)||0);
+      historyDate.value=localToday();
+      let historySeq=0,historyController=null;
+      function renderHistory(result){
+        const rows=Array.isArray(result.registros)?result.registros:[];
         const fragment=document.createDocumentFragment();
         if(!rows.length){
           const empty=document.createElement('p');
-          empty.className='history-empty';empty.textContent='Sin intentos registrados.';
+          empty.className='history-empty';
+          empty.textContent='No se registraron intentos de llamada en esta fecha.';
           fragment.appendChild(empty);
         }
-        for(const entry of rows){
-          const row=document.createElement('div');row.className='history-item';
-          const home=document.createElement('strong');
-          home.textContent=String(entry.grupo||'')+' '+String(entry.numero||'');
-          const timeLabel=document.createElement('span');
-          const [date,time]=String(entry.fecha_hora||'').split(' ');
-          timeLabel.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
-          row.append(home,timeLabel);fragment.appendChild(row);
+        for(const item of rows){
+          const row=document.createElement('div');
+          row.className='history-item';
+          const house=document.createElement('strong');
+          house.textContent=String(item.grupo||'')+' '+String(item.numero||'');
+          const stamp=document.createElement('span');
+          const [date,time]=String(item.fecha_hora||'').split(' ');
+          stamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
+          row.append(house,stamp);fragment.appendChild(row);
         }
-        list.replaceChildren(fragment);
-        const first=total?(historyPage-1)*HISTORY_PAGE_SIZE+1:0;
-        const last=total?Math.min(total,first+rows.length-1):0;
-        byId('historyCount').textContent=total?'Mostrando '+first+'–'+last+' de '+total+' intentos':'0 intentos registrados';
-        byId('historyPageIndicator').textContent='Página '+historyPage+' de '+historyPages;
-        historyBusy(false);
+        byId('historyList').replaceChildren(fragment);
+        byId('historyCount').textContent=rows.length===1?'1 intento de llamada':rows.length+' intentos de llamada';
+        byId('historyStatus').textContent='';
+        byId('refreshHistory').disabled=false;
       }
-      async function loadHistory(page=historyPage,{force=false}={}){
-        if(historyLoading)return;
-        const target=Math.max(1,Math.floor(Number(page)||1));
-        const cached=historyCache.get(target);
-        if(!force&&cached&&Date.now()-cached.at<HISTORY_CACHE_MS){renderHistory(cached.data);return;}
-        historyBusy(true);
-        if(!cached)byId('historyList').textContent='Cargando historial…';
-        byId('historyCount').textContent='Consultando registros…';
+      async function loadHistory({force=false}={}){
+        const fecha=historyDate.value;
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){
+          byId('historyStatus').textContent='Selecciona una fecha válida.';
+          return;
+        }
+        const seq=++historySeq;
+        historyController?.abort();
+        historyController=new AbortController();
+        const cached=historyCache.get(fecha);
+        if(!force&&cached&&Date.now()-cached.at<HISTORY_CACHE_MS){
+          renderHistory(cached.data);return;
+        }
+        byId('refreshHistory').disabled=true;
+        byId('historyStatus').textContent='Consultando el '+fecha.split('-').reverse().join('/')+'…';
+        // Conservar la vista anterior durante la carga evita parpadeos.
         try{
-          const data=await api('/conmutador/historial?pagina='+target);
-          if(!Array.isArray(data.registros))throw Error('Respuesta de historial inválida.');
-          historyCache.set(target,{at:Date.now(),data});
+          const result=await api('/conmutador/historial?fecha='+encodeURIComponent(fecha),
+            {signal:historyController.signal});
+          if(seq!==historySeq)return;
+          if(result.fecha!==fecha||!Array.isArray(result.registros))
+            throw Error('Respuesta de historial inválida.');
+          historyCache.set(fecha,{at:Date.now(),data:result});
           if(historyCache.size>5)historyCache.delete(historyCache.keys().next().value);
-          renderHistory(data);
+          renderHistory(result);
         }catch(error){
-          if(cached)renderHistory(cached.data);
-          else byId('historyList').textContent='No se pudo consultar el historial. Presiona Actualizar.';
-          byId('historyCount').textContent=error.message||'Sin conexión';
-          historyBusy(false);
+          if(seq!==historySeq)return;
+          byId('historyList').replaceChildren();
+          byId('historyCount').textContent='Sin datos verificados para esta fecha';
+          byId('historyStatus').textContent=error.message||'No se pudo consultar el historial.';
+          byId('refreshHistory').disabled=false;
         }
       }
       // La pestaña privada se habilita ÚNICAMENTE tras verificar el rol con el backend.
@@ -139,9 +145,13 @@
       }
       byId('showHistory').addEventListener('click',()=>mostrarPanel('historial'));
       byId('showHomes').addEventListener('click',()=>mostrarPanel('viviendas'));
-      byId('refreshHistory').addEventListener('click',()=>{historyCache.clear();void loadHistory(1,{force:true});});
-      byId('historyPrevious').addEventListener('click',()=>{if(historyPage>1)void loadHistory(historyPage-1);});
-      byId('historyNext').addEventListener('click',()=>{if(historyPage<historyPages)void loadHistory(historyPage+1);});
+      historyDate.addEventListener('change',()=>{void loadHistory();});
+      byId('historyToday').addEventListener('click',()=>{
+        historyDate.value=localToday();void loadHistory({force:true});
+      });
+      byId('refreshHistory').addEventListener('click',()=>{
+        historyCache.delete(historyDate.value);void loadHistory({force:true});
+      });
       Promise.resolve(window.MJAccessReady).then(autorizado => {
         if(autorizado !== true || window.MJVerifiedRole !== 'ADMINISTRADOR')return;
         contactosAdmin = window.crearContactosConmutadorAdmin({api, sections});
