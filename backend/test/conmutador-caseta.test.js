@@ -208,4 +208,20 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.notEqual(reintento.json.solicitud, solicitud);
   await llamar(base + '/agente/resultado', agente, { solicitud, reclamo, estado: 'FINALIZADA' });
   assert.equal(fila.estado, 'PENDIENTE');
+  assert.equal(seguimiento.get(reintento.json.solicitud).confirmado,false,
+    'el resultado tardío de otra solicitud no debe confirmar la nueva');
+  // El agente sí recoge el segundo intento, pero falla al preparar la llamada.
+  const ordenErronea=await llamar(base+'/agente/siguiente',agente,{});
+  assert.equal(ordenErronea.json.solicitud,reintento.json.solicitud);
+  assert.equal((await llamar(base+'/agente/resultado',agente,{
+    solicitud:ordenErronea.json.solicitud,reclamo:ordenErronea.json.reclamo,estado:'ERROR'
+  })).codigo,204);
+  assert.equal(seguimiento.get(reintento.json.solicitud).estado,'ERROR');
+  assert.equal(seguimiento.get(reintento.json.solicitud).confirmado,false,
+    'ERROR no se puede incluir como llamada enviada');
+  // Reintentos duplicados o con reclamo antiguo nunca promueven ERROR a ENVIADA.
+  assert.equal((await llamar(base+'/agente/resultado',agente,{
+    solicitud:ordenErronea.json.solicitud,reclamo:ordenErronea.json.reclamo,estado:'ENVIADA'
+  })).codigo,204);
+  assert.equal(seguimiento.get(reintento.json.solicitud).estado,'ERROR');
 });
