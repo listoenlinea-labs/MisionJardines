@@ -671,7 +671,7 @@
    if(reviewModal.open&&activeReview===r)editReview({...r,estatus:approve?'APROBADA':'RECHAZADA',
     pagado:approve&&info.pagoVerificado,fechaPago:approve&&info.pagoVerificado?today():null,folio:approve&&info.pagoVerificado?info.folio:null,notas:info.notas});
    notify(approve?(info.pagoVerificado?'Pago manual registrado y reservación confirmada.':'Fecha aprobada sin pago. El residente podrá pagar desde Pagos.'):'Solicitud rechazada. La fecha se liberó.');
-   await Promise.all([adminList(),calendar().catch(e=>notify(e.message,true))]);
+   await Promise.all([adminList(false,true),calendar().catch(e=>notify(e.message,true))]);
   }catch(err){
    if(reviewModal.open&&activeReview===r){error.textContent=err.message;error.hidden=false;}
    mostrarError(err);
@@ -690,7 +690,7 @@
    if(reviewModal.open)reviewModal.close();
    notify(d.message+(d.pagoPendienteDeRevision?' Revisa la devolución del dinero.':'')+
     (!d.avisoCorreo?' No se confirmó el correo de aviso.':''));
-   await Promise.all([adminList(),calendar()]);
+   await Promise.all([adminList(false,true),calendar()]);
   }catch(e){mostrarError(e);}
  }
  $('clubRelease').addEventListener('click',()=>{if(activeReview)void liberarReserva(activeReview);});
@@ -913,8 +913,15 @@
  });
  const reviewMedia=window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)');
  reviewMedia.addEventListener?.('change',()=>{reviewPage=1;renderReviewRequests();});
- async function adminList(forceGoogle=false){
+ let adminListPending=null,adminListUpdatedAt=0;
+ async function adminList(forceGoogle=false,forceLocal=false){
   if(!admin)return;
+  if(adminListPending){
+   await adminListPending;
+   if(!forceGoogle&&!forceLocal)return;
+  }
+  if(!forceGoogle&&!forceLocal&&Date.now()-adminListUpdatedAt<12000)return;
+  const task=(async()=>{
   try{
    const d=await api('/administracion'+(forceGoogle===true?'?actualizarGoogle=1':''));adminRows=[...(d.data||[])].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true})||String(a.fecha||'').localeCompare(String(b.fecha||'')));
    // Los folios del formulario antiguo son solo consulta si no corresponden
@@ -962,7 +969,11 @@
    adminTableRows=totalRows.sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE')||String(b.fecha||'').localeCompare(String(a.fecha||'')));
     refreshReviewMonths();renderReviewRequests();
    actualizarOpcionesCalle();actualizarOpcionesMes();aplicarFiltroReservas();
+   adminListUpdatedAt=Date.now();
   }catch(e){notify(e.message,true);}
+  })();
+  adminListPending=task;
+  try{await task;}finally{if(adminListPending===task)adminListPending=null;}
  }
  $('clubRequests').addEventListener('click',e=>{const btn=e.target.closest('[data-review]');if(btn){const r=adminRows.find(x=>Number(x.id)===Number(btn.dataset.review));if(r)editReview(r);}});
  const handleAdminAction=async e=>{
@@ -979,7 +990,7 @@
    try{
     const result=await api('/administracion/'+id,'DELETE');
     notify(result.message);
-    await Promise.all([adminList(),calendar()]);
+    await Promise.all([adminList(false,true),calendar()]);
    }catch(err){notify(err.message,true);eliminar.disabled=false;}
    return;
   }
