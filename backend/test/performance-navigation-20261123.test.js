@@ -9,7 +9,7 @@ test('El portal comparte la sesión solo para la misma vivienda y token',()=>{
  const shell=read('docs/assets/js/app-shell.js'),access=read('docs/assets/js/page-access.js');
  assert.match(shell,/MJShellVerifiedSession/);
  assert.match(shell,/prefetchRoute/);
- assert.match(access,/current\.token === token/);
+ assert.match(access,/current\?\.token === token/);
  assert.match(access,/Number\(current\.user\?\.casaId\)/);
  assert.match(access,/Date\.now\(\) - current\.verifiedAt < 60000/);
  assert.match(access,/MJPermissions\.canAccess\(role,page\)/);
