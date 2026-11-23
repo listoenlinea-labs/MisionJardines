@@ -156,6 +156,9 @@ router.post('/agente/resultado', habilitado, agente, async (req, res) => {
     return res.sendStatus(400);
   }
   try {
+    // También cubrir llamadas que estaban en curso durante un despliegue:
+    // el agente puede reportar un resultado antes de que alguien abra el historial.
+    await asegurarTabla();
     // Ambas actualizaciones son una transacción: nunca se podrá mostrar una
     // llamada "ENVIADA" si caseta no aceptó el resultado del agente.
     await sequelize.transaction(async transaction => {
