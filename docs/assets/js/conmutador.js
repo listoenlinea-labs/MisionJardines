@@ -69,15 +69,33 @@
         const d=new Date();
         return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       }
-      historyDate.value=localToday();
-      let historySeq=0,historyController=null;
+      // El historial no empieza en Hoy: la API elige el último día registrado.
+      historyDate.value='';
+      let historySeq=0,historyController=null,historyOpened=false;
+      let historyAdjacent={anterior:null,siguiente:null};
+      const historyPrevious=byId('historyPrevious'),historyNext=byId('historyNext');
+      function setHistoryNavigation(busy=false){
+        historyPrevious.disabled=busy||!historyAdjacent.anterior;
+        historyNext.disabled=busy||!historyAdjacent.siguiente;
+        historyPrevious.title=historyAdjacent.anterior?
+          'Ir al '+historyAdjacent.anterior.split('-').reverse().join('/'):'No hay llamadas anteriores';
+        historyNext.title=historyAdjacent.siguiente?
+          'Ir al '+historyAdjacent.siguiente.split('-').reverse().join('/'):'No hay llamadas posteriores';
+      }
+      setHistoryNavigation(true);
       function renderHistory(result){
+        historyDate.value=result.fecha||localToday();
+        historyAdjacent={
+          anterior:result.fechaAnterior||null,
+          siguiente:result.fechaSiguiente||null
+        };
         const rows=Array.isArray(result.registros)?result.registros:[];
         const fragment=document.createDocumentFragment();
         if(!rows.length){
           const empty=document.createElement('p');
           empty.className='history-empty';
-          empty.textContent='No se registraron intentos de llamada en esta fecha.';
+          empty.textContent=result.fecha===null?'Todavía no hay intentos de llamada registrados.':
+            'No se registraron intentos de llamada en esta fecha.';
           fragment.appendChild(empty);
         }
         for(const item of rows){
@@ -94,39 +112,56 @@
         byId('historyCount').textContent=rows.length===1?'1 intento de llamada':rows.length+' intentos de llamada';
         byId('historyStatus').textContent='';
         byId('refreshHistory').disabled=false;
+        setHistoryNavigation();
       }
-      async function loadHistory({force=false}={}){
+      async function loadHistory({force=false,latest=false}={}){
         const fecha=historyDate.value;
-        if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){
+        if(!latest&&!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){
           byId('historyStatus').textContent='Selecciona una fecha válida.';
           return;
         }
         const seq=++historySeq;
         historyController?.abort();
         historyController=new AbortController();
-        const cached=historyCache.get(fecha);
+        const cached=!latest&&historyCache.get(fecha);
         if(!force&&cached&&Date.now()-cached.at<HISTORY_CACHE_MS){
-          renderHistory(cached.data);return;
+          renderHistory(cached.data);
+          return;
         }
         byId('refreshHistory').disabled=true;
-        byId('historyStatus').textContent='Consultando el '+fecha.split('-').reverse().join('/')+'…';
-        // Conservar la vista anterior durante la carga evita parpadeos.
+        setHistoryNavigation(true);
+        byId('historyStatus').textContent=latest?
+          'Buscando la fecha más reciente con llamadas…':
+          'Consultando el '+fecha.split('-').reverse().join('/')+'…';
         try{
-          const result=await api('/conmutador/historial?fecha='+encodeURIComponent(fecha),
-            {signal:historyController.signal});
+          const path=latest?'/conmutador/historial':
+            '/conmutador/historial?fecha='+encodeURIComponent(fecha);
+          const result=await api(path,{signal:historyController.signal});
           if(seq!==historySeq)return;
-          if(result.fecha!==fecha||!Array.isArray(result.registros))
+          if(!Array.isArray(result.registros)||
+            (latest?!(!result.fecha||/^\d{4}-\d{2}-\d{2}$/.test(result.fecha)):
+              result.fecha!==fecha))
             throw Error('Respuesta de historial inválida.');
-          historyCache.set(fecha,{at:Date.now(),data:result});
-          if(historyCache.size>5)historyCache.delete(historyCache.keys().next().value);
+          if(result.fecha){
+            historyCache.set(result.fecha,{at:Date.now(),data:result});
+            if(historyCache.size>5)historyCache.delete(historyCache.keys().next().value);
+          }
           renderHistory(result);
         }catch(error){
           if(seq!==historySeq)return;
           byId('historyList').replaceChildren();
           byId('historyCount').textContent='Sin datos verificados para esta fecha';
           byId('historyStatus').textContent=error.message||'No se pudo consultar el historial.';
+          if(latest)historyOpened=false; // Reintentar última fecha al volver a la pestaña.
           byId('refreshHistory').disabled=false;
+          setHistoryNavigation(true);
         }
+      }
+      function navigateHistoryDate(direction){
+        const fecha=historyAdjacent[direction];
+        if(!fecha)return;
+        historyDate.value=fecha;
+        void loadHistory();
       }
       // La pestaña privada se habilita ÚNICAMENTE tras verificar el rol con el backend.
       let contactosAdmin = null;
@@ -140,17 +175,25 @@
           byId(id).classList.toggle('active',visible);
           byId(id).setAttribute('aria-pressed',String(visible));
         }
-        if(history) void loadHistory();
+        if(history){
+          if(!historyOpened){
+            historyOpened=true;
+            void loadHistory({latest:true,force:true});
+          }else void loadHistory();
+        }
         if(contacts) contactosAdmin?.open();
       }
       byId('showHistory').addEventListener('click',()=>mostrarPanel('historial'));
       byId('showHomes').addEventListener('click',()=>mostrarPanel('viviendas'));
       historyDate.addEventListener('change',()=>{void loadHistory();});
+      historyPrevious.addEventListener('click',()=>navigateHistoryDate('anterior'));
+      historyNext.addEventListener('click',()=>navigateHistoryDate('siguiente'));
       byId('historyToday').addEventListener('click',()=>{
         historyDate.value=localToday();void loadHistory({force:true});
       });
       byId('refreshHistory').addEventListener('click',()=>{
-        historyCache.delete(historyDate.value);void loadHistory({force:true});
+        historyCache.delete(historyDate.value);
+        void loadHistory({force:true,latest:!historyDate.value});
       });
       Promise.resolve(window.MJAccessReady).then(autorizado => {
         if(autorizado !== true || window.MJVerifiedRole !== 'ADMINISTRADOR')return;

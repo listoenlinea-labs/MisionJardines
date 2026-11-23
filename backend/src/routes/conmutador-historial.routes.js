@@ -64,25 +64,58 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Consulta todos los intentos del día mediante el índice de creado_en.
+// Un GET del historial devuelve las llamadas de la fecha elegida y las dos
+// fechas adyacentes QUE SÍ TIENEN REGISTROS; sin recorrer días vacíos.
+// Omitir fecha abre la última fecha con un intento registrado, no "hoy".
 router.get('/',async(req,res)=>{
  res.set('Cache-Control','no-store');
- const fecha=String(req.query.fecha||'');
- if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||
+ const provided=req.query.fecha;
+ let fecha=provided===undefined?null:String(provided);
+ if(fecha!==null&&(
+   !/^\d{4}-\d{2}-\d{2}$/.test(fecha)||
    Number.isNaN(Date.parse(fecha+'T00:00:00Z'))||
-   new Date(fecha+'T00:00:00Z').toISOString().slice(0,10)!==fecha)
-  return res.status(400).json({ok:false,message:'Selecciona una fecha válida (AAAA-MM-DD).'});
+   new Date(fecha+'T00:00:00Z').toISOString().slice(0,10)!==fecha
+ ))return res.status(400).json({ok:false,message:'Selecciona una fecha válida (AAAA-MM-DD).'});
  try{
   await asegurarTabla();
-  // Rango indexable: NO DATE(creado_en), COUNT adicional, LIMIT ni OFFSET.
-  const registros=await sequelize.query(
-   "SELECT id, grupo, numero, DATE_FORMAT(creado_en, '%Y-%m-%d %H:%i:%s') AS fecha_hora "+
-   'FROM conmutador_intentos_llamada WHERE creado_en >= :fecha '+
-   'AND creado_en < DATE_ADD(:fecha, INTERVAL 1 DAY) '+
-   'ORDER BY creado_en DESC, id DESC',
-   {replacements:{fecha},type:QueryTypes.SELECT}
-  );
-  return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',fecha,total:registros.length,registros});
+  if(fecha===null){
+   // El índice de creado_en permite conocer el último día en una sola fila.
+   const newest=await sequelize.query(
+    "SELECT DATE_FORMAT(creado_en, '%Y-%m-%d') AS fecha "+
+    'FROM conmutador_intentos_llamada ORDER BY creado_en DESC LIMIT 1',
+    {type:QueryTypes.SELECT}
+   );
+   fecha=newest[0]?.fecha||null;
+  }
+  if(fecha===null){
+   return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',
+    fecha:null,total:0,registros:[],fechaAnterior:null,fechaSiguiente:null});
+  }
+  // WHERE usa rangos de fecha sargables: no aplicar DATE() a la columna.
+  // Se consultan simultáneamente el día completo y los vecinos reales.
+  const [registros,previous,next]=await Promise.all([
+   sequelize.query(
+    "SELECT id, grupo, numero, DATE_FORMAT(creado_en, '%Y-%m-%d %H:%i:%s') AS fecha_hora "+
+    'FROM conmutador_intentos_llamada WHERE creado_en >= :fecha '+
+    'AND creado_en < DATE_ADD(:fecha, INTERVAL 1 DAY) '+
+    'ORDER BY creado_en DESC, id DESC',
+    {replacements:{fecha},type:QueryTypes.SELECT}
+   ),
+   sequelize.query(
+    "SELECT DATE_FORMAT(creado_en, '%Y-%m-%d') AS fecha "+
+    'FROM conmutador_intentos_llamada WHERE creado_en < :fecha '+
+    'ORDER BY creado_en DESC LIMIT 1',
+    {replacements:{fecha},type:QueryTypes.SELECT}
+   ),
+   sequelize.query(
+    "SELECT DATE_FORMAT(creado_en, '%Y-%m-%d') AS fecha "+
+    'FROM conmutador_intentos_llamada WHERE creado_en >= DATE_ADD(:fecha, INTERVAL 1 DAY) '+
+    'ORDER BY creado_en ASC LIMIT 1',
+    {replacements:{fecha},type:QueryTypes.SELECT}
+   )
+  ]);
+  return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',fecha,total:registros.length,registros,
+   fechaAnterior:previous[0]?.fecha||null,fechaSiguiente:next[0]?.fecha||null});
  }catch(error){
   console.error('No se pudo consultar el historial del conmutador:',error.message);
   return res.status(503).json({ok:false,message:'No fue posible consultar el historial'});
