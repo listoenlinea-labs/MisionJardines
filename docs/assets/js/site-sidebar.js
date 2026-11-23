@@ -405,6 +405,9 @@
       houseBox.innerHTML='<label style="font-size:11px;font-weight:700;color:var(--mj-side-orange)">Vivienda seleccionada<select aria-label="Vivienda seleccionada" style="width:100%;margin-top:6px;padding:7px;border:1px solid #ddd;border-radius:7px"></select></label>';
       aside.querySelector('.mj-side-community').after(houseBox);
       const selector=houseBox.querySelector('select'); selector.disabled=true;
+      // El menú y la navegación deben funcionar ANTES de responder /viviendas/mias.
+      // Esta consulta solo completa el selector, no autoriza ninguna ruta.
+      void (async()=>{
       try {
         const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
         const response=await fetch((window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api')+'/viviendas/mias',{headers:{Authorization:'Bearer '+token}});
@@ -418,6 +421,7 @@
         selector.disabled=links.length<2;
         selector.addEventListener('change',()=>{sessionStorage.setItem('mjCasaSeleccionada',selector.value);if(window.MJ_SHELL_MODE)window.MJShell?.reload();else location.reload();});
       } catch (_) {const option=document.createElement('option');option.textContent='Consulta Mis viviendas';selector.append(option);}
+      })();
 
     }
 

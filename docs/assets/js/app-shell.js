@@ -360,10 +360,21 @@
     pendingNavigation = {frame,route,ordinal,finish};
     // La página secundaria notifica cuando su DOM está autorizado. El load
     // clásico queda como respaldo, por ejemplo para secciones antiguas.
-    frame.addEventListener('load',()=>{
-      if (ordinal!==sequence || frameStates.get(frame)!==state) return;
+    const onTargetLoad=()=>{
+      if (ordinal!==sequence || frameStates.get(frame)!==state){
+        frame.removeEventListener('load',onTargetLoad);
+        return;
+      }
+      // Cambiar src desde about:blank puede emitir un load anterior.
+      // No consumir el listener hasta que llegue la URL solicitada.
+      try{
+        const here=new URL(frame.contentWindow.location.href);
+        if(here.origin!==location.origin||here.pathname.split('/').pop()!==route.page)return;
+      }catch(_){return;}
+      frame.removeEventListener('load',onTargetLoad);
       void finish();
-    },{once:true});
+    };
+    frame.addEventListener('load',onTargetLoad);
     frame.src=targetUrl;
     return true;
   }
@@ -443,12 +454,12 @@
       // No persistimos este estado en el disco ni lo exponemos a otros orígenes.
       // El contexto de casa se captura junto con el perfil; otra casa exige
       // una nueva validación con el backend.
+      if (!result.ok || !window.MJPermissions.canAccess(userRole, window.MJPermissions.landing(userRole))) throw Error('Sesión inválida.');
       window.MJShellVerifiedSession = {
         token, user: result.usuario,
         houseId: sessionStorage.getItem('mjCasaSeleccionada') || '',
         verifiedAt: Date.now()
       };
-      if (!result.ok || !window.MJPermissions.canAccess(userRole, window.MJPermissions.landing(userRole))) throw Error('Sesión inválida.');
       for (const storage of [localStorage, sessionStorage]) {
         if (storage.getItem('misionJardinesToken') === token) {
           storage.setItem('misionJardinesUsuario', JSON.stringify(result.usuario));
