@@ -59,6 +59,10 @@
     .history-item span{color:#69788d;font-size:12px;text-align:right}
     .history-empty{font-size:13px;color:#69788d}
     .history-filter{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+    .history-date-navigation{display:flex;align-items:flex-end;gap:8px;flex-wrap:nowrap}
+    .history-date-navigation label{flex:1}
+    .history-date-navigation .history-arrow{display:inline-flex;align-items:center;justify-content:center;min-width:44px;width:44px;height:44px;padding:0;font-size:27px;font-weight:700;line-height:1}
+    .history-date-navigation .history-arrow:disabled{opacity:.35;cursor:not-allowed}
     .history-filter label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#53657b}
     .history-filter input[type=date]{min-height:44px;min-width:200px;padding:9px 12px;border:1px solid #dfe5ec;border-radius:11px;background:#fff;font:inherit;font-size:14px;color:#283950}
     .history-filter input[type=date]:focus-visible{outline:2px solid #ee8e2a;outline-offset:2px}
@@ -69,7 +73,7 @@
     .history-count,.history-status{margin:0;color:#66778e;font-size:12px}
     .history-status{min-height:16px;margin-bottom:9px}
     .history-item{content-visibility:auto;contain-intrinsic-size:auto 57px}
-    @media(max-width:560px){.history-panel{padding:16px}.history-item{padding:12px;align-items:flex-start}.history-filter{align-items:stretch}.history-filter label{flex:1 1 100%}.history-filter input[type=date]{width:100%}.history-filter button{flex:1}.history-footer{justify-content:flex-start}}
+    @media(max-width:560px){.history-panel{padding:16px}.history-item{padding:12px;align-items:flex-start}.history-filter{align-items:stretch}.history-date-navigation{width:100%}.history-date-navigation label{flex:1 1 auto;min-width:0}.history-date-navigation input[type=date]{width:100%;min-width:0}.history-date-navigation .history-arrow{flex:0 0 44px}.history-filter>button{flex:1}.history-footer{justify-content:flex-start}}
     [hidden]{display:none!important}
     .privacy-note{margin:12px 3px 0;color:#8490a1;font-size:11px;line-height:1.5}
     .modal-backdrop{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(23,34,50,.42);backdrop-filter:blur(3px)}
@@ -124,10 +128,20 @@
     <section class="panel history-panel" id="historyPanel" aria-label="Historial de intentos de llamadas" hidden>
       <div class="history-head"><h2>Historial de intentos</h2></div>
       <p class="privacy-note">Selecciona una fecha para ver todas las viviendas y horas de intento, sin paginación.</p>
-      <div class="history-filter" role="group" aria-label="Filtrar historial por fecha">
-        <label for="historyDate">Fecha de las llamadas
-          <input type="date" id="historyDate" required>
-        </label>
+      <div class="history-filter" role="group" aria-label="Historial por fecha">
+        <div class="history-date-navigation">
+          <button type="button" id="historyPrevious" class="history-arrow"
+            aria-label="Ir a la fecha anterior con llamadas" title="Fecha anterior con llamadas" disabled>
+            <span aria-hidden="true">‹</span>
+          </button>
+          <label for="historyDate">Fecha de las llamadas
+            <input type="date" id="historyDate" required>
+          </label>
+          <button type="button" id="historyNext" class="history-arrow"
+            aria-label="Ir a la fecha siguiente con llamadas" title="Fecha siguiente con llamadas" disabled>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
         <button type="button" id="historyToday">Hoy</button>
         <button type="button" id="refreshHistory">Actualizar</button>
       </div>
@@ -194,7 +208,7 @@
   <script src="assets/js/telefonia-engine.js?v=20261006"></script>
   <script src="assets/js/conmutador-caseta.js?v=20261119-reintento"></script>
   <script src="assets/js/conmutador-contactos-admin.js?v=20261120-sync-recibos"></script>
-  <script src="assets/js/conmutador.js?v=20261123-filtro-fecha-v4"></script>
+  <script src="assets/js/conmutador.js?v=20261123-fechas-con-llamadas-v5"></script>
   <script src="assets/js/site-sidebar.js?v=20261109-seguridad-caseta"></script>
 </body>
 </html>
