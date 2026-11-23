@@ -79,10 +79,12 @@ document.querySelectorAll('.choice').forEach(b=>b.onclick=async()=>{
  if(!n)return;
  const prepared=modoCaseta?null:caller.prepareWindow();
  openCallModal();
+ document.querySelectorAll('.house').forEach(button=>{button.disabled=true;});
  try{
   if(modoCaseta)await caseta.llamar(domicilioPendiente,n);
   else await caller.call(n,prepared,openWhatsApp);
  }catch(error){msg(error.message||'No se pudo iniciar la llamada.','error');}
+ finally{document.querySelectorAll('.house').forEach(button=>{button.disabled=false;});}
 });
 document.getElementById('close').onclick=()=>modal.classList.remove('show');
 document.addEventListener('keydown',event=>{if(event.key==='Escape')closeCallModal();});

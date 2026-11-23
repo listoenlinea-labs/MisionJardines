@@ -447,6 +447,9 @@
           selectedHouse=null;
           if(!selected)return;
           openCallModal('Llamando… Preparando la comunicación.');
+          // Al elegir contacto B también bloquear la cuadrícula mientras se
+          // confirma la solicitud, evitando dobles pulsaciones en iPhone.
+          document.querySelectorAll('.house-btn').forEach(item=>{item.disabled=true;});
           try{
             if(modoCaseta && house)await caseta.llamar(house, selected);
             else if(isIPhone && house)callFromIPhone(selected,house);
@@ -455,6 +458,7 @@
               await caller.call(selected, caller.prepareWindow(), openWhatsApp);
             }
           }catch(error){setStatus(error.message||'No se pudo iniciar la llamada.','error');}
+          finally{document.querySelectorAll('.house-btn').forEach(item=>{item.disabled=false;});}
         });
       });
       byId('closePhoneChoice').addEventListener('click', closePhoneChoice);
