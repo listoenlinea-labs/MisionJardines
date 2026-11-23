@@ -51,7 +51,8 @@
    {headers:{Authorization:'Bearer '+token},cache:'no-store'});
   const result=await r.json();
   if(!r.ok||!result.ok)throw Error('La sesión ya no está disponible.');
-  admin=['SUPER_ADMIN','ADMINISTRADOR'].includes(result.usuario?.rol);
+  const rol=typeof result.usuario?.rol==='string'?result.usuario.rol:result.usuario?.rol?.nombre;
+  admin=['SUPER_ADMIN','ADMINISTRADOR'].includes(rol);
   $('newNotice').hidden=!admin;
   $('publicInfo').textContent=admin?'Puedes publicar avisos oficiales para toda la comunidad.':'Comunicados de Administración · Solo lectura, sin comentarios ni respuestas.';
  }
