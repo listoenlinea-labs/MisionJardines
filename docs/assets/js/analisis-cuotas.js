@@ -545,7 +545,11 @@ function render(){
    consultaProyectos||e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
    '<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
    '" data-amount="'+Number(e.monto)+'" tabindex="0" role="button" title="Doble clic o Enter para editar el monto">'+
-   esc(fmt(e.monto))+'</span>')+cell('Comprobante',e.comprobanteDisponible?
+   esc(fmt(e.monto))+'</span>')+cell('Comprobante',activeConcept==='MANTENIMIENTO'&&!consultaProyectos&&
+   e.ambito==='MANTENIMIENTO'&&!e.esAjusteMensual?
+   '<button type="button" class="soft" data-expense-attachments="'+Number(e.id)+'">'+
+    (e.comprobanteDisponible?'Ver / agregar comprobantes':'Agregar comprobantes')+'</button>':
+   e.comprobanteDisponible?
    '<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Descargar comprobante</button>':
    (!consultaProyectos&&!e.esAjusteMensual&&e.categoria==='CUOTA_EXTRAORDINARIA'&&!e.tieneCuota?
    '<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>':'—'))+
@@ -2997,6 +3001,8 @@ let historicalExtraId=null;
   }
  });
  $('financeExpenseRows').addEventListener('click',event=>{
+  const upload=event.target.closest('[data-expense-attachments]');
+  if(upload){openExpenseAttachments(Number(upload.dataset.expenseAttachments));return;}
   const proof=event.target.closest('[data-expense-proof]');if(proof){descargarComprobante(proof.dataset.expenseProof);return;}
   const b=event.target.closest('[data-extra-expense]');if(!b)return;
   const item=data?.egresos?.find(e=>Number(e.id)===Number(b.dataset.extraExpense));if(!item)return;
@@ -3073,7 +3079,104 @@ let historicalExtraId=null;
 });
  
 
-// Visor seguro de comprobantes de proyectos: no expone tokens ni enlaces públicos.
+// Comprobantes de conceptos de egresos: Mantenimiento (complemento posterior al alta).
+ const attachmentDialog=$('expenseAttachmentsModal'),attachmentStatus=$('expenseAttachmentsStatus');
+ let attachmentId=null,attachmentBusy=false,attachmentUrl=null,attachmentRows=[];
+ function clearAttachmentPreview(){
+  $('expenseAttachmentsPreview').replaceChildren();
+  $('expenseAttachmentsPreview').hidden=true;
+  if(attachmentUrl){URL.revokeObjectURL(attachmentUrl);attachmentUrl=null;}
+ }
+ function closeExpenseAttachments(){
+  if(attachmentBusy)return;
+  clearAttachmentPreview();
+  attachmentDialog.close();attachmentId=null;attachmentRows=[];
+  $('expenseAttachmentsForm').reset();
+ }
+ $('expenseAttachmentsClose').addEventListener('click',closeExpenseAttachments);
+ $('expenseAttachmentsCancel').addEventListener('click',closeExpenseAttachments);
+ attachmentDialog.addEventListener('cancel',event=>{
+  if(attachmentBusy){event.preventDefault();return;}
+  clearAttachmentPreview();attachmentId=null;attachmentRows=[];
+ });
+ async function loadExpenseAttachments(){
+  const id=attachmentId;
+  if(!id)return;
+  const result=await request('/egresos/'+id+'/comprobantes');
+  if(!attachmentDialog.open||attachmentId!==id)return;
+  attachmentRows=result.data||[];
+  const target=$('expenseAttachmentsList');target.replaceChildren();clearAttachmentPreview();
+  attachmentStatus.textContent=attachmentRows.length
+   ?'Comprobantes guardados: '+attachmentRows.length
+   :'No hay comprobantes adjuntos a este gasto.';
+  for(const row of attachmentRows){
+   const button=document.createElement('button');button.type='button';button.className='soft';
+   button.textContent=row.nombre||'Comprobante '+row.id;
+   button.style.margin='4px';
+   button.addEventListener('click',async()=>{
+    const current=attachmentId;
+    try{
+     const response=await fetch(API+'/finanzas/egresos/'+current+'/comprobantes/'+Number(row.id),
+      {headers:{Authorization:'Bearer '+token},cache:'no-store'});
+     if(!response.ok)throw Error('No se pudo abrir el comprobante.');
+     const blob=await response.blob();
+     if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))throw Error('Formato no admitido.');
+     if(!attachmentDialog.open||attachmentId!==current)return;
+     clearAttachmentPreview();
+     attachmentUrl=URL.createObjectURL(blob);
+     const viewer=document.createElement(blob.type==='application/pdf'?'iframe':'img');
+     viewer.src=attachmentUrl;
+     if(blob.type==='application/pdf')viewer.title='Comprobante del gasto';
+     else viewer.alt='Comprobante '+String(row.nombre||'');
+     $('expenseAttachmentsPreview').append(viewer);
+     $('expenseAttachmentsPreview').hidden=false;
+    }catch(error){attachmentStatus.textContent=error.message;}
+   });target.append(button);
+  }
+ }
+ async function openExpenseAttachments(id){
+  const expense=data?.egresos?.find(e=>Number(e.id)===id);
+  if(!expense||expense.ambito!=='MANTENIMIENTO'||expense.esAjusteMensual)
+   return notice('El gasto seleccionado no admite adjuntos.');
+  if(attachmentDialog.open)return;
+  attachmentId=id;$('expenseAttachmentsTitle').textContent=expense.concepto;
+  attachmentDialog.showModal();
+  try{await loadExpenseAttachments();}catch(error){attachmentStatus.textContent=error.message;}
+ }
+ $('expenseAttachmentsForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!attachmentId||attachmentBusy)return;
+  const files=[...($('expenseAttachmentsFiles').files||[])];
+  const existing=attachmentRows.filter(row=>!row.heredado).length;
+  if(!files.length)return attachmentStatus.textContent='Selecciona comprobantes.';
+  if(existing+files.length>12)
+   return attachmentStatus.textContent='Máximo 12 archivos nuevos por concepto. Ya tienes '+existing+'.';
+  attachmentBusy=true;
+  for(const name of ['expenseAttachmentsSave','expenseAttachmentsClose','expenseAttachmentsCancel'])
+   $(name).disabled=true;
+  let saved=0;
+  try{
+   for(const file of files){
+    await request('/egresos/'+attachmentId+'/comprobantes',
+     {nombre:file.name,comprobante:await encodeProjectExpenseFile(file)});
+    saved++;
+   }
+   $('expenseAttachmentsForm').reset();
+   await loadExpenseAttachments();await load();
+   attachmentStatus.textContent='Se agregaron '+saved+' comprobantes y se conservaron los anteriores.';
+  }catch(error){
+   const message='Se agregaron '+saved+' de '+files.length+' archivos. '+error.message+
+    ' Puedes volver a subir solo los faltantes.';
+   try{await loadExpenseAttachments();await load();}catch(_){}
+   attachmentStatus.textContent=message;
+  }finally{
+   attachmentBusy=false;
+   for(const name of ['expenseAttachmentsSave','expenseAttachmentsClose','expenseAttachmentsCancel'])
+    $(name).disabled=false;
+  }
+ });
+
+ // Visor seguro de comprobantes de proyectos: no expone tokens ni enlaces públicos.
 const projectProofModal=$('financeProjectProofModal');
 const projectProofPreview=$('financeProjectProofPreview');
 const projectProofDownload=$('financeProjectProofDownload');
