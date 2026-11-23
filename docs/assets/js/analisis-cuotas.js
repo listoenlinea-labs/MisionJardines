@@ -405,34 +405,11 @@ let expensePage=1;
   document.querySelector('#financeStreetPanel h2').textContent='Cumplimiento del proyecto por calle';
  }
 
- let driveIntegration=null,driveIntegrationAt=0,driveIntegrationBusy=false;
- function updateFinanceConnections(){
-  const sheets=$('financeSheetsState');
-  sheets.hidden=activeConcept!=='CASA_CLUB';
-  if(sheets.parentElement)sheets.parentElement.hidden=sheets.hidden;
-  if(sheets.hidden)return;
-  const historical=data?.casaClubGoogle2026,year=Number(data?.anio);
-  const sheetsConnected=year===2026&&historical?.disponible===true;
-  sheets.dataset.state=sheetsConnected?'connected':historical?.codigo==='FUERA_DE_PERIODO'?'checking':'disconnected';
-  sheets.textContent=sheetsConnected
-   ?'Google Sheets conectado · '+Number(historical.registros||0)+' registros'
-   :year!==2026?'Google Sheets · Casa Club: histórico disponible para 2026'
-   :'Google Sheets · Casa Club: '+String(historical?.mensaje||'Sin conexión confirmada');
-
- }
- async function refreshDriveIntegration(force=false){
-  if(driveIntegrationBusy)return;
-  if(!force&&driveIntegration&&Date.now()-driveIntegrationAt<60000)return;
-  driveIntegrationBusy=true;
-  try{
-   const {data:state}=await request('/drive/status');
-   driveIntegration={connected:Boolean(state?.connected),folderConfigured:Boolean(state?.folderConfigured)};
-  }catch(error){driveIntegration={connected:false,folderConfigured:false,error:true};}
-  finally{
-   driveIntegrationAt=Date.now();driveIntegrationBusy=false;
-   updateFinanceConnections();
-  }
- }
+ // El indicador de conexión no se muestra en Análisis de cuotas.
+ // Las lecturas históricas de Casa Club y la verificación de Drive en el
+ // modal de respaldos mantienen sus mismas llamadas y lógica.
+ let driveIntegration=null,driveIntegrationAt=0;
+ function updateFinanceConnections(){ /* Sin indicador visual en esta vista. */ }
  function renderClubDashboard(){
   const scope=data?.finanzasAmbitos?.CASA_CLUB||{},houses=Number(data.casas||0);
   const historico=data?.casaClubGoogle2026||{};
@@ -2052,7 +2029,7 @@ function renderHouses(){
   if(!backupJobId||backupJobChecking||document.visibilityState==='hidden')return;
   backupJobChecking=true;
   const banner=$('financeBackupJobBanner'),info=$('financeBackupJobText'),link=$('financeBackupJobLink');
-  banner.hidden=false;
+  // El seguimiento del respaldo continúa sin mostrar una franja permanente.
   try{
    const {data:job}=await request('/drive/respaldos-estado/'+encodeURIComponent(backupJobId));
    info.textContent=job.estado==='COMPLETADO'
@@ -2127,7 +2104,7 @@ function renderHouses(){
     if(!backupJobId)throw Error('El servidor no devolvió el identificador del respaldo.');
     try{sessionStorage.setItem(backupJobStorageKey,backupJobId);}catch(_){}
     backupModal.hidden=true;backupAction=null;
-    $('financeBackupJobBanner').hidden=false;
+    // Sin banner permanente; el trabajo y su seguimiento permanecen activos.
     $('financeBackupJobText').textContent='Respaldo iniciado en segundo plano. Verificando PDF en Drive…';
     void refreshBackupJob();
     notice('Respaldo iniciado. Puedes seguir usando la página; revisa el progreso junto a la tabla.','success');
@@ -4063,7 +4040,6 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
   activeProyectoId=Number.isSafeInteger(pid)&&pid>0?pid:null;
  }
  await load();
- void refreshDriveIntegration();
  if(returnState&&data){
   $('financeSearch').value=String(returnState.search||'').slice(0,160);
   $('financeStreet').value=String(returnState.street||'');
@@ -4088,10 +4064,9 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  setInterval(()=>{if(window.MJSectionActive!==false)void refreshWhenChanged();},20000);
  document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'){
-   void refreshWhenChanged();void refreshDriveIntegration();
+   void refreshWhenChanged();
   }
  });
- window.addEventListener('focus',()=>{void refreshDriveIntegration(true);});
  window.addEventListener('storage',event=>{
   if(event.key!=='mj_casa_club_aprobacion_revision'||document.visibilityState==='hidden')return;
   void load();
