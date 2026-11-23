@@ -40,6 +40,7 @@ async function iniciarServidor() {
         await require('./services/cuentas-schema.service').asegurarCuentas();
         await require('./models/RecuperacionContrasena').sync();
         await require('./services/casa-club-schema.service').asegurarCasaClub();
+        await require('./models/AvisoOficial').sync();
         await require('./services/finanzas-schema.service').asegurarFinanzas();
         await require('./services/proyectos-extraordinarios-schema.service').asegurarProyectosExtraordinarios();
         await require('./services/viviendas-schema.service').asegurarViviendas();

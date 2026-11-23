@@ -32,7 +32,7 @@
       { page: 'zkteco.html', label: 'ZKTeco', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
       { page: 'conmutador.html', label: 'Conmutador', icon: 'phone', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
       { page: 'reportes.html', label: 'Reportes', icon: 'reports', roles: 'SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO' },
-      { page: 'anuncios.html', label: 'Anuncios', icon: 'ads', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,SEGURIDAD,CONDOMINO' },
+      { page: 'anuncios.html', label: 'Avisos', icon: 'ads', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,SEGURIDAD,CONDOMINO' },
       { page: 'calendario.html', label: 'Calendario', icon: 'calendar', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,CONDOMINO' },
       { page: 'directorio.html', label: 'Directorio', icon: 'directory', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD,MANTENIMIENTO,CONDOMINO' }
     ]},

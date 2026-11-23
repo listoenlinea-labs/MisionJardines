@@ -10,7 +10,7 @@
   <script src="assets/js/page-access.js?v=20261012-seguridad"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Anuncios | Misión Jardines</title>
+  <title>Avisos | Misión Jardines</title>
   <style>
     :root{color-scheme:light}*{box-sizing:border-box}
     body.ann-page{--o:#ef7d0b;--ink:#20283d;--muted:#71809a;--line:#e2e7ef;margin:0;min-height:100vh;background:radial-gradient(circle at 91% 2%,#f2ecff 0,transparent 31%),#fafbff;color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -26,85 +26,38 @@
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 <body class="ann-page">
-  <main class="ann-shell">
-    <div class="topline">
-      <div><span class="kicker">COMUNIDAD</span><strong>Tabloide de anuncios</strong></div>
-      <div class="local-pill">Datos guardados en este dispositivo</div>
-    </div>
-
-    <section class="board" aria-label="Tabloide de anuncios">
-      <div id="boardGrid" class="board-grid"></div>
-      <div id="emptyState" class="empty" hidden><div><div class="empty-icon">📌</div><h2>Aún no hay anuncios</h2><p>Sé el primero en publicar algo para la comunidad utilizando el botón “Agregar anuncio”.</p></div></div>
-    </section>
-
-    <footer class="footer"><span>Misión Jardines Residencial · Zapopan, Jalisco</span><span>Plataforma desarrollada por <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a></span></footer>
-  </main>
-
-  <button class="floating-add" type="button" onclick="openCreate()"><span>＋</span><span>Agregar anuncio</span></button>
-
-  <section id="createModal" class="modal" hidden aria-modal="true" role="dialog">
-    <div class="modal-box">
-      <div class="modal-head"><div><span class="eyebrow">NUEVA PUBLICACIÓN</span><h2>Agregar anuncio</h2><p>Completa la información que quieres compartir con tus vecinos.</p></div><button class="close" onclick="closeCreate()" aria-label="Cerrar">×</button></div>
-      <div class="modal-body"><div class="form-grid">
-        <div><label class="required" for="adTitle">Título</label><input id="adTitle" maxlength="100" placeholder="Ej. Venta de tamales"></div>
-        <div><label for="adImage">Añadir imagen</label><input id="adImage" type="file" accept="image/*" onchange="previewImage(event)"><span class="hint">Opcional. Para evitar problemas de almacenamiento, la imagen debe pesar menos de 2.5 MB.</span><div id="imagePreview" class="photo-preview">Puedes agregar una imagen para que el anuncio destaque en el tabloide.</div></div>
-        <div><label for="adBrief">Descripción breve</label><textarea id="adBrief" maxlength="300" placeholder="Ej. Estamos vendiendo tamales en la casa 13. También hacemos entregas dentro del fraccionamiento."></textarea><span class="hint">Esta descripción aparece debajo de la imagen en el tabloide.</span></div>
-        <div><label for="adFull">Anuncio completo</label><textarea id="adFull" maxlength="4000" placeholder="Agrega aquí todos los detalles: sabores, precios, horarios, condiciones de renta, características del producto, etc."></textarea></div>
-        <div class="form-row"><div><label for="adPhone">Número de contacto</label><input id="adPhone" inputmode="tel" maxlength="25" placeholder="Ej. 3312345678"><span class="hint">Se utilizará para los botones de llamada rápida y WhatsApp.</span></div><div><label class="required" for="adHouse">Número de casa</label><input id="adHouse" maxlength="30" placeholder="Ej. 13"></div></div>
-        <div><label for="adContactMore">Más información de contacto</label><textarea id="adContactMore" maxlength="1000" placeholder="Ej. Preguntar por Ana. Entregas después de las 6 PM. También puedes tocar en la puerta de la casa 13."></textarea></div>
-        <div><label for="adDuration">Tiempo en tabloide</label><select id="adDuration"><option value="1" selected>1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select><span class="hint">El máximo permitido es 3 meses desde la fecha de publicación.</span></div>
-      </div></div>
-      <div class="modal-foot"><button class="btn" onclick="closeCreate()">Cancelar</button><button class="btn btn-primary" onclick="addAd()">Publicar anuncio</button></div>
-    </div>
+ <main class="ann-shell">
+  <div class="topline"><div><span class="kicker">COMUNIDAD</span><strong>Tablón oficial de avisos</strong></div>
+   <div class="local-pill" id="publicInfo">Comunicados de Administración · Sin respuestas</div></div>
+  <section class="board" aria-label="Avisos de Administración"><div id="boardGrid" class="board-grid"></div>
+   <div id="emptyState" class="empty" hidden><div><div class="empty-icon">📢</div><h2>No hay avisos vigentes</h2><p>Los comunicados publicados por Administración aparecerán aquí para todos los residentes.</p></div></div>
   </section>
-
-  <section id="detailModal" class="modal" hidden aria-modal="true" role="dialog">
-    <div class="modal-box detail-box">
-      <div class="modal-head"><div><span class="eyebrow">ANUNCIO DE LA COMUNIDAD</span><strong id="detailHouse"></strong></div><button class="close" onclick="closeDetail()" aria-label="Cerrar">×</button></div>
-      <div id="detailImage" class="detail-image"></div>
-      <div class="detail-content">
-        <h2 id="detailTitle" class="detail-title"></h2>
-        <p id="detailBrief" class="detail-brief"></p>
-        <div id="detailFull" class="detail-full"></div>
-        <div class="detail-meta"><div class="meta-item"><small>Publicado</small><span id="detailPublished"></span></div><div class="meta-item"><small>Visible hasta</small><strong id="detailExpires"></strong></div></div>
-        <div id="contactActions" class="contact-actions"></div>
-        <div id="detailContactMore" class="contact-more" hidden></div>
-      </div>
-    </div>
-  </section>
-
-  <div id="toast" class="toast"></div>
-
-  <script>
-    const API_URL='https://api-misionjardines.listoenlinea.host/api',STORAGE_KEY='mision_jardines_anuncios';
-    const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
-    if(!token)location.replace('login.html');
-    let ads=[],selectedImage='',currentUser=null;
-    const $=id=>document.getElementById(id),esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-    function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3000)}
-    function nowISO(){return new Date().toISOString()}
-    function addMonthsISO(months){const d=new Date();d.setMonth(d.getMonth()+Math.min(3,Math.max(1,Number(months)||1)));return d.toISOString()}
-    function fmt(value){return value?window.MJDateDisplay.format(value):'—'}
-    function normalizeAd(a){return{...a,id:String(a?.id||`AN-${Date.now()}-${Math.random().toString(36).slice(2,7)}`),createdAt:a?.createdAt||nowISO(),expiresAt:a?.expiresAt||addMonthsISO(1),image:a?.image||''}}
-    function loadAds(){try{const raw=localStorage.getItem(STORAGE_KEY),parsed=raw?JSON.parse(raw):[];ads=(Array.isArray(parsed)?parsed:[]).map(normalizeAd);const before=ads.length;ads=ads.filter(a=>new Date(a.expiresAt).getTime()>Date.now());if(ads.length!==before)saveAds()}catch(e){console.warn(e);ads=[]}}
-    function saveAds(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(ads));return true}catch(e){toast('No fue posible guardar el anuncio. La imagen puede ser demasiado grande.');return false}}
-    function imageMarkup(ad,detail=false){return ad.image?`<img src="${ad.image}" alt="Imagen de ${esc(ad.title)}">`:`<div class="image-placeholder">${detail?'📌':'🏡'}</div>`}
-    function renderAds(){const rows=[...ads].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));boardGrid.innerHTML=rows.map(a=>`<article class="ad-card" tabindex="0" role="button" onclick="openDetail('${esc(a.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDetail('${esc(a.id)}')}" aria-label="Abrir anuncio ${esc(a.title)}"><span class="pin"></span><div class="ad-title">${esc(a.title)}</div><div class="ad-image">${imageMarkup(a)}</div><div class="ad-body"><p class="ad-desc">${esc(a.brief||'Presiona el anuncio para ver todos los detalles.')}</p><div class="ad-meta"><span>Casa <strong>${esc(a.house)}</strong></span><span>Hasta <strong>${esc(fmt(a.expiresAt))}</strong></span></div></div></article>`).join('');emptyState.hidden=rows.length>0;boardGrid.hidden=rows.length===0}
-    function openCreate(){createModal.hidden=false;prefill();setTimeout(()=>adTitle.focus(),0)}
-    function closeCreate(){createModal.hidden=true}
-    function previewImage(event){const file=event.target.files[0];if(!file){selectedImage='';imagePreview.textContent='Puedes agregar una imagen para que el anuncio destaque en el tabloide.';return}if(file.size>2.5*1024*1024){event.target.value='';selectedImage='';toast('La imagen debe pesar menos de 2.5 MB.');return}const reader=new FileReader();reader.onload=e=>{selectedImage=e.target.result;imagePreview.innerHTML=`<img src="${selectedImage}" alt="Vista previa">`};reader.readAsDataURL(file)}
-    function clearForm(){adTitle.value='';adImage.value='';selectedImage='';imagePreview.textContent='Puedes agregar una imagen para que el anuncio destaque en el tabloide.';adBrief.value='';adFull.value='';adPhone.value='';adContactMore.value='';adDuration.value='1';adHouse.value='';prefill()}
-    function prefill(){if(!currentUser)return;const casa=currentUser.casa;if(casa?.numero&&!adHouse.value)adHouse.value=casa.numero;if(currentUser.telefono&&!adPhone.value)adPhone.value=currentUser.telefono}
-    function addAd(){const title=adTitle.value.trim(),house=adHouse.value.trim();if(!title||!house)return toast('El título y el número de casa son obligatorios.');const ad=normalizeAd({id:`AN-${Date.now()}`,title,image:selectedImage,brief:adBrief.value.trim(),full:adFull.value.trim(),phone:adPhone.value.trim(),contactMore:adContactMore.value.trim(),house,duration:Number(adDuration.value)||1,createdAt:nowISO(),expiresAt:addMonthsISO(adDuration.value)});ads.unshift(ad);if(!saveAds()){ads.shift();return}closeCreate();clearForm();renderAds();toast('Anuncio publicado correctamente.')}
-    function phoneDigits(v){return String(v||'').replace(/\D/g,'')}
-    function whatsappDigits(v){const d=phoneDigits(v);return d.length===10?`52${d}`:d}
-    function openDetail(id){const a=ads.find(x=>String(x.id)===String(id));if(!a)return;detailHouse.textContent=`Casa ${a.house}`;detailImage.innerHTML=imageMarkup(a,true);detailTitle.textContent=a.title;detailBrief.textContent=a.brief||'Consulta la información completa del anuncio.';detailFull.textContent=a.full||a.brief||'El vecino no agregó información adicional.';detailPublished.textContent=fmt(a.createdAt);detailExpires.textContent=fmt(a.expiresAt);const phone=phoneDigits(a.phone),wa=whatsappDigits(a.phone);contactActions.innerHTML=phone?`<a class="btn call-btn" href="tel:${phone}">📞 Llamar</a><a class="btn wa-btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>`:'<span style="color:#929bab;font-size:10px">No se proporcionó un número de contacto.</span>';detailContactMore.hidden=!a.contactMore;detailContactMore.textContent=a.contactMore||'';detailModal.hidden=false}
-    function closeDetail(){detailModal.hidden=true}
-    function clearSession(){['misionJardinesToken','misionJardinesUsuario'].forEach(k=>{localStorage.removeItem(k);sessionStorage.removeItem(k)})}
-    async function validate(){try{const r=await fetch(`${API_URL}/auth/perfil`,{headers:{Authorization:`Bearer ${token}`}}),d=await r.json();if(!r.ok||!d.ok)throw Error(d.message||'Sesión inválida');currentUser=d.usuario;prefill()}catch(e){console.error(e);clearSession();location.replace('login.html')}}
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!detailModal.hidden)closeDetail();else if(!createModal.hidden)closeCreate()}});
-    loadAds();renderAds();validate();
-  </script>
-  <script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll"></script>
-</body>
-</html>
+  <footer class="footer"><span>Misión Jardines Residencial · Zapopan, Jalisco</span>
+  <span>Plataforma desarrollada por <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a></span></footer>
+ </main>
+ <button id="newNotice" class="floating-add" type="button" hidden><span>＋</span><span>Publicar aviso</span></button>
+ <section id="createModal" class="modal" hidden aria-modal="true" role="dialog"><div class="modal-box">
+  <div class="modal-head"><div><span class="eyebrow">COMUNICADO DE ADMINISTRACIÓN</span><h2>Publicar aviso</h2><p>Solo Administración puede publicar; los residentes solo podrán leer.</p></div><button id="closeCreate" class="close" aria-label="Cerrar">×</button></div>
+  <div class="modal-body"><form id="noticeForm" class="form-grid" onsubmit="return false">
+   <div><label class="required" for="noticeTitle">Título</label><input id="noticeTitle" maxlength="100" placeholder="Ej. Mantenimiento programado de áreas comunes"></div>
+   <div><label for="noticeImage">Imagen (opcional)</label><input type="file" id="noticeImage" accept="image/png,image/jpeg,image/webp"><span class="hint">Máximo 700 KB.</span><div id="imagePreview" class="photo-preview">Imagen opcional</div></div>
+   <div><label for="noticeBrief">Descripción breve</label><textarea id="noticeBrief" maxlength="300" placeholder="Resumen visible en el tablón"></textarea></div>
+   <div><label class="required" for="noticeFull">Contenido del aviso</label><textarea id="noticeFull" maxlength="4000" placeholder="Detalles, fechas e indicaciones importantes"></textarea></div>
+   <div><label for="noticeDuration">Tiempo visible</label><select id="noticeDuration"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select></div>
+  </form></div>
+  <div class="modal-foot"><button id="cancelCreate" class="btn" type="button">Cancelar</button><button id="publishNotice" class="btn btn-primary" type="button">Publicar aviso</button></div>
+ </div></section>
+ <section id="detailModal" class="modal" hidden aria-modal="true" role="dialog"><div class="modal-box detail-box">
+  <div class="modal-head"><div><span class="eyebrow">AVISO OFICIAL · ADMINISTRACIÓN</span></div><button id="closeDetail" class="close" aria-label="Cerrar">×</button></div>
+  <div id="detailImage" class="detail-image"></div><div class="detail-content">
+   <h2 id="detailTitle" class="detail-title"></h2><p id="detailBrief" class="detail-brief"></p><div id="detailFull" class="detail-full"></div>
+   <div class="detail-meta"><div class="meta-item"><small>Publicado</small><span id="detailPublished"></span></div>
+   <div class="meta-item"><small>Visible hasta</small><strong id="detailExpires"></strong></div></div>
+   <p class="hint">Este es un canal informativo de solo lectura. No admite comentarios ni respuestas.</p>
+   <button id="removeNotice" class="btn" type="button" hidden>Retirar aviso</button>
+  </div>
+ </div></section>
+ <div id="toast" class="toast" role="status"></div>
+ <script src="assets/js/avisos.js?v=20261123"></script>
+ <script src="assets/js/site-sidebar.js?v=20261123-avisos"></script>
+</body></html>
