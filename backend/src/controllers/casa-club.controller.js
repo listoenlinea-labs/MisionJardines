@@ -274,7 +274,7 @@ async function listar(req,res){
   let googleResult={historialGoogle:[],resumen:null};
   let googleDisponible=true;
   try{
-   googleResult=await googleCasaClub.sync({force:true});
+   googleResult=await googleCasaClub.sync({force:req.query.actualizarGoogle==='1'});
    googleDisponible=!googleResult.disabled && Boolean(googleResult.syncedAt);
   }
   catch(e){googleDisponible=false;console.warn('[CasaClub Google] Actualización administrativa parcial:',e.message);}
@@ -297,7 +297,8 @@ async function listar(req,res){
 async function pendientesResumen(req,res){
  if(!admin(req.usuario.rol))return res.status(403).json({ok:false,message:'Acceso exclusivo de Administración'});
  try{
-  try{await googleCasaClub.sync();}catch(e){console.warn('[CasaClub Google] Contador parcial:',e.message);}
+  // El contador solo usa MySQL: no bloquear cada entrada al portal ni el
+  // indicador lateral por una petición externa a Google Sheets.
   return res.json({ok:true,cantidad:await Reserva.count({where:{estatus:'PENDIENTE',
   [Op.or]:[{fechaLimitePago:null},{fechaLimitePago:{[Op.gte]:hoy()}}]}})});
  }

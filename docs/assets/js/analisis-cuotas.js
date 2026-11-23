@@ -3162,12 +3162,24 @@ let historicalExtraId=null;
     saved++;
    }
    $('expenseAttachmentsForm').reset();
-   await loadExpenseAttachments();await load();
+   await loadExpenseAttachments();
+   // Agregar documentos no altera importes: no repetir las consultas de
+   // Análisis de cuotas ni la lectura histórica de Google Sheets.
+   const current=data?.egresos?.find(e=>Number(e.id)===Number(attachmentId));
+   if(current)current.comprobanteDisponible=true;
+   renderExpenses();
    attachmentStatus.textContent='Se agregaron '+saved+' comprobantes y se conservaron los anteriores.';
   }catch(error){
    const message='Se agregaron '+saved+' de '+files.length+' archivos. '+error.message+
     ' Puedes volver a subir solo los faltantes.';
-   try{await loadExpenseAttachments();await load();}catch(_){}
+   try{
+    await loadExpenseAttachments();
+    if(saved){
+     const current=data?.egresos?.find(e=>Number(e.id)===Number(attachmentId));
+     if(current)current.comprobanteDisponible=true;
+     renderExpenses();
+    }
+   }catch(_){}
    attachmentStatus.textContent=message;
   }finally{
    attachmentBusy=false;
@@ -3314,9 +3326,11 @@ $('financeProjectProofUploadForm').addEventListener('submit',async event=>{
      ' archivos. '+error.message+' Puedes volver a cargar solo los faltantes.');
    }
   }
-  status.textContent=uploaded+' comprobante(s) guardados. Actualizando vista…';
-  const ok=await load();
-  if(!ok)throw Error('Comprobantes guardados, pero no se pudo actualizar el análisis.');
+  status.textContent=uploaded+' comprobante(s) guardados. Actualizando archivos…';
+  // Solo cambiar el indicador documental local: ni cuotas ni balances cambian.
+  if(projectProofSource)projectProofSource.comprobanteDisponible=true;
+  const inAnalysis=data?.egresos?.find(x=>Number(x.id)===id);
+  if(inAnalysis)inAnalysis.comprobanteDisponible=true;
   if(!projectProofModal.hidden&&Number(projectProofSource?.id)===id)
    await openProjectProofModal(id,findProjectExpenseTrigger(id));
   notice(uploaded+' comprobante(s) nuevos adjuntados al concepto.','success');

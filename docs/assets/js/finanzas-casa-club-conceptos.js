@@ -109,9 +109,10 @@
   setBusy(true);status('Guardando concepto y comprobantes...');
   try{
    let id=Number(source?.id)||0;
+   let changed=false;
    if(source){
     const previo=snapshot(source);
-    const changed=Object.keys(item).some(k=>item[k]!==previo[k]);
+    changed=Object.keys(item).some(k=>item[k]!==previo[k]);
     if(changed)await ctx.request('/egresos/'+id+'/casa-club',{anterior:previo,nuevo:item},'PATCH');
     if(!changed&&!files.length){status('No hay cambios por guardar.');return;}
    }else{
@@ -130,9 +131,14 @@
       ' comprobantes se adjuntaron. '+error.message+' Puedes adjuntar los restantes al editarlo.');
     }
    }
+   if(source&&uploaded)source.comprobanteDisponible=true;
    resetProof();dlg.close();
-   const ok=await ctx.load();
-   if(!ok)alert('Concepto guardado. Actualiza Análisis para consultar el nuevo resumen.');
+   // Solo recargar el análisis cuando cambió el concepto, la fecha o el importe.
+   // Adjuntar archivos por sí solo no modifica ingresos ni egresos.
+   if(!source||changed){
+    const ok=await ctx.load();
+    if(!ok)alert('Concepto guardado. Actualiza Análisis para consultar el nuevo resumen.');
+   }
   }catch(error){status(error.message||'No se pudo guardar el concepto.');}
   finally{setBusy(false);}
  });

@@ -76,8 +76,10 @@
       const cached = storedUser();
       paintProfile(cached);
 
-      const d = await api('/auth/perfil', { headers: headers() });
-      profile = d.usuario;
+      // La sección ya obtuvo un perfil verificado por page-access.js.
+      // Evitar una tercera consulta de perfil al abrir Pagos.
+      const verified = window.MJVerifiedUser;
+      profile = verified || (await api('/auth/perfil', { headers: headers() })).usuario;
       const painted = paintProfile(profile);
       syncBankReference();
       if (!painted) throw Error('Tu usuario no tiene vivienda asociada');
@@ -667,7 +669,7 @@
     function loadImage(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src }) }
     async function canvasToCompressed(canvas) { let q = .9, data = canvas.toDataURL('image/jpeg', q); while (data.length > 1350000 && q > .42) { q -= .1; data = canvas.toDataURL('image/jpeg', q) } if (data.length > 1500000) throw Error('El comprobante procesado es demasiado grande.'); return data }
     async function imageToData(file) { const raw = await readFile(file); const image = await loadImage(raw); const max = 2800; const upscale = image.width >= 500 && image.width < 1150 ? Math.min(1.75, 1150 / image.width) : 1; const scale = Math.min(upscale, max / Math.max(image.width, image.height)); const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale)); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); return canvasToCompressed(canvas) }
-    async function pdfToData(file) { if (!window.mjPdfJs) throw Error('El lector PDF todavía está cargando. Intenta de nuevo en unos segundos.'); const bytes = new Uint8Array(await file.arrayBuffer()); const pdf = await window.mjPdfJs.getDocument({ data: bytes }).promise; const page = await pdf.getPage(1); const viewport = page.getViewport({ scale: 1.7 }); const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height; await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise; return canvasToCompressed(canvas) }
+    async function pdfToData(file) { await window.MJComprobanteTools.pdf(); if (!window.mjPdfJs) throw Error('No fue posible cargar el lector PDF.'); const bytes = new Uint8Array(await file.arrayBuffer()); const pdf = await window.mjPdfJs.getDocument({ data: bytes }).promise; const page = await pdf.getPage(1); const viewport = page.getViewport({ scale: 1.7 }); const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height; await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise; return canvasToCompressed(canvas) }
     async function imagenAltoContraste(original) {
       // Paso OCR alternativo para letras grises de Mercado Pago y bancos móviles.
       // El comprobante original es el que el servidor recibe y vuelve a leer.
@@ -756,6 +758,9 @@
       $('ocrBar').style.width = '5%';
       setDestinationStatus('Leyendo monto, fecha y hora. La identidad bancaria se validará después con Titan.');
       try {
+        $('ocrState').textContent = 'Preparando lector OCR…';
+        await window.MJComprobanteTools.ocr();
+        if (scanRevision !== revision) return;
         if (!window.Tesseract || !window.MJComprobante) throw Error('El lector OCR no se ha cargado. Revisa tu conexión.');
         const logger=m=>{
           if(scanRevision!==revision)return;

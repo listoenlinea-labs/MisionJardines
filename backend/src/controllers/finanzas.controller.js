@@ -39,6 +39,9 @@ function filters(req){
 async function analizar(req,res){
  try{
   const {anio,mes,mesName,start,end}=filters(req);
+  const historicalGoogle = anio===2026
+   ?googleCasaClubClient.readPagos2026().then(data=>({data}),error=>({error}))
+   :null;
   const [casas,cuotas,pagos,egresos,reservasClub,ingresosManuales,historialCuotas,tarjetas,pagosManualesConcepto,cuotasExtras,cargosExtraordinarios,pagosConceptoHistoricos,manualesConceptoHistoricos,reservasAprobadas,comprobantesMantenimiento,foliosRegistrados,aportacionesExtraordinarias]=await Promise.all([
    Casa.findAll({attributes:['id','calle','calleCorrecta','numero','nombre','controles','cuotaPorCobrar','exencionesRecargo']}),
    Cuota.findAll({where:{anio,mes:mesName},attributes:['id','casaId','anio','mes','estatusPago','montoPagado','montoCuota','recargo','recargoPagado','saldoPendiente','calleSnapshot','numeroCasaSnapshot','nombrePagador','origenImportacion','referencia','folio','fechaPago','fechaConfirmacion','formaPago']}),
@@ -238,7 +241,9 @@ async function analizar(req,res){
   let casaClubGoogle2026={disponible:false,codigo:'FUERA_DE_PERIODO',total:0,registros:0};
   if(anio===2026){
    try{
-    const historical=await googleCasaClubClient.readPagos2026();
+    const historicalResponse=await historicalGoogle;
+    if(historicalResponse.error)throw historicalResponse.error;
+    const historical=historicalResponse.data;
     const {movimientos,...base}=historical;
     const matched=conciliarMovimientos(movimientos||[],padron.casas,historical.excluidos||0);
     // Corte anual: sólo los cobros únicos generan compromisos de limpieza

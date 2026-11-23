@@ -913,10 +913,10 @@
  });
  const reviewMedia=window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)');
  reviewMedia.addEventListener?.('change',()=>{reviewPage=1;renderReviewRequests();});
- async function adminList(){
+ async function adminList(forceGoogle=false){
   if(!admin)return;
   try{
-   const d=await api('/administracion');adminRows=[...(d.data||[])].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true})||String(a.fecha||'').localeCompare(String(b.fecha||'')));
+   const d=await api('/administracion'+(forceGoogle===true?'?actualizarGoogle=1':''));adminRows=[...(d.data||[])].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true})||String(a.fecha||'').localeCompare(String(b.fecha||'')));
    // Los folios del formulario antiguo son solo consulta si no corresponden
    // a una reserva MySQL. Nunca se habilitan botones de edición en esas filas.
    historicGoogleRows=(d.historialGoogle||[]).map((row,i)=>({...row,id:-(i+1),soloLectura:true}));
@@ -992,7 +992,8 @@
  $('clubAdminRows').addEventListener('click',handleAdminAction);
  $('clubAdminCards').addEventListener('click',handleAdminAction);
  $('refreshMine').addEventListener('click',mine);
- $('refreshAdmin').addEventListener('click',adminList);$('refreshReview').addEventListener('click',adminList);
+ $('refreshAdmin').addEventListener('click',()=>void adminList(true));
+ $('refreshReview').addEventListener('click',()=>void adminList(true));
  function fillProfile(){
   if(!profile)return;
   $('clubName').value=[profile.nombre,profile.apellidoPaterno,profile.apellidoMaterno].filter(Boolean).join(' ');
