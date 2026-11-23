@@ -31,7 +31,19 @@ function asegurarTabla() {
         INDEX idx_conmutador_historial_fecha (creado_en),
         INDEX idx_conmutador_historial_usuario (usuario_id, creado_en)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `).catch(error => {
+    `).then(() => sequelize.query(`
+      CREATE TABLE IF NOT EXISTS conmutador_llamadas_seguimiento (
+        solicitud CHAR(36) NOT NULL PRIMARY KEY,
+        usuario_id INT NOT NULL,
+        grupo VARCHAR(60) NOT NULL,
+        numero VARCHAR(12) NOT NULL,
+        estado VARCHAR(16) NOT NULL DEFAULT 'PENDIENTE',
+        creado_en DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        confirmado_en DATETIME(3) NULL,
+        INDEX idx_conmutador_seguimiento_fecha (creado_en),
+        INDEX idx_conmutador_seguimiento_estado_fecha (estado, creado_en)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `)).catch(error => {
       schemaPromise = null;
       throw error;
     });
@@ -64,9 +76,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Un GET del historial devuelve las llamadas de la fecha elegida y las dos
-// fechas adyacentes QUE SÍ TIENEN REGISTROS; sin recorrer días vacíos.
-// Omitir fecha abre la última fecha con un intento registrado, no "hoy".
+// El historial principal muestra SOLO órdenes con envío a Asterisk
+// confirmado por el agente autenticado. El registro antiguo conserva todos
+// los intentos como auditoría, pero no prueba que una llamada se enviara.
+// Los intentos PENDIENTES, ERROR o VENCIDOS no aparecen como realizados.
+// Omitir fecha abre la última fecha con un envío confirmado.
 router.get('/',async(req,res)=>{
  res.set('Cache-Control','no-store');
  const provided=req.query.fecha;
@@ -82,39 +96,42 @@ router.get('/',async(req,res)=>{
    // El índice de creado_en permite conocer el último día en una sola fila.
    const newest=await sequelize.query(
     "SELECT DATE_FORMAT(creado_en, '%Y-%m-%d') AS fecha "+
-    'FROM conmutador_intentos_llamada ORDER BY creado_en DESC LIMIT 1',
+    "FROM conmutador_llamadas_seguimiento WHERE estado IN ('ENVIADA','FINALIZADA') "+
+    'AND confirmado_en IS NOT NULL ORDER BY creado_en DESC LIMIT 1',
     {type:QueryTypes.SELECT}
    );
    fecha=newest[0]?.fecha||null;
   }
   if(fecha===null){
-   return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',
+   return res.json({ok:true,tipo:'ENVIO_CONFIRMADO',
     fecha:null,total:0,registros:[],fechaAnterior:null,fechaSiguiente:null});
   }
   // WHERE usa rangos de fecha sargables: no aplicar DATE() a la columna.
   // Se consultan simultáneamente el día completo y los vecinos reales.
   const [registros,previous,next]=await Promise.all([
    sequelize.query(
-    "SELECT id, grupo, numero, DATE_FORMAT(creado_en, '%Y-%m-%d %H:%i:%s') AS fecha_hora "+
-    'FROM conmutador_intentos_llamada WHERE creado_en >= :fecha '+
-    'AND creado_en < DATE_ADD(:fecha, INTERVAL 1 DAY) '+
-    'ORDER BY creado_en DESC, id DESC',
+    "SELECT solicitud AS id, grupo, numero, estado, DATE_FORMAT(creado_en, '%Y-%m-%d %H:%i:%s') AS fecha_hora "+
+    'FROM conmutador_llamadas_seguimiento WHERE creado_en >= :fecha '+
+    "AND creado_en < DATE_ADD(:fecha, INTERVAL 1 DAY) AND estado IN ('ENVIADA','FINALIZADA') "+
+    'AND confirmado_en IS NOT NULL ORDER BY creado_en DESC, solicitud DESC',
     {replacements:{fecha},type:QueryTypes.SELECT}
    ),
    sequelize.query(
     "SELECT DATE_FORMAT(creado_en, '%Y-%m-%d') AS fecha "+
-    'FROM conmutador_intentos_llamada WHERE creado_en < :fecha '+
+    "FROM conmutador_llamadas_seguimiento WHERE estado IN ('ENVIADA','FINALIZADA') "+
+    'AND confirmado_en IS NOT NULL AND creado_en < :fecha '+
     'ORDER BY creado_en DESC LIMIT 1',
     {replacements:{fecha},type:QueryTypes.SELECT}
    ),
    sequelize.query(
     "SELECT DATE_FORMAT(creado_en, '%Y-%m-%d') AS fecha "+
-    'FROM conmutador_intentos_llamada WHERE creado_en >= DATE_ADD(:fecha, INTERVAL 1 DAY) '+
+    "FROM conmutador_llamadas_seguimiento WHERE estado IN ('ENVIADA','FINALIZADA') "+
+    'AND confirmado_en IS NOT NULL AND creado_en >= DATE_ADD(:fecha, INTERVAL 1 DAY) '+
     'ORDER BY creado_en ASC LIMIT 1',
     {replacements:{fecha},type:QueryTypes.SELECT}
    )
   ]);
-  return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',fecha,total:registros.length,registros,
+  return res.json({ok:true,tipo:'ENVIO_CONFIRMADO',fecha,total:registros.length,registros,
    fechaAnterior:previous[0]?.fecha||null,fechaSiguiente:next[0]?.fecha||null});
  }catch(error){
   console.error('No se pudo consultar el historial del conmutador:',error.message);

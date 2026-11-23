@@ -4,6 +4,10 @@
       if (!token) { location.replace('login.html'); return; }
 
       const byId = id => document.getElementById(id);
+      // Disponible antes de inicializar telefonía: evita referencias
+      // prematuras si un motor informa estado durante su constructor.
+      let callModalVisible=false;
+      let callModalReturnFocus=null;
       const range = amount => Array.from({ length: amount }, (_, index) => ({ number: String(index + 1) }));
       const fromList = value => value.split(',').map(number => ({ number: number.trim() })).filter(item => item.number);
       const sections = [
@@ -60,6 +64,7 @@
         const first=document.querySelector('[data-phone-choice="0"]');
         first.textContent=phones.length>1?'A':'Llamar';
         document.querySelector('[data-phone-choice="1"]').hidden=phones.length<2;
+        closeCallModal();
         byId('phoneChoiceModal').classList.add('show');
       }
       // Consultar todos los intentos del día; ni paginación ni datos privados.
@@ -94,8 +99,9 @@
         if(!rows.length){
           const empty=document.createElement('p');
           empty.className='history-empty';
-          empty.textContent=result.fecha===null?'Todavía no hay intentos de llamada registrados.':
-            'No se registraron intentos de llamada en esta fecha.';
+          empty.textContent=result.fecha===null?
+            'Todavía no hay envíos confirmados a la central. Los intentos sin confirmar no se muestran aquí.':
+            'No hay envíos de llamada confirmados en esta fecha.';
           fragment.appendChild(empty);
         }
         for(const item of rows){
@@ -106,10 +112,15 @@
           const stamp=document.createElement('span');
           const [date,time]=String(item.fecha_hora||'').split(' ');
           stamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
-          row.append(house,stamp);fragment.appendChild(row);
+          const state=document.createElement('small');
+          state.className='history-confirmed';
+          state.textContent=item.estado==='FINALIZADA'?'Orden procesada por central':'Orden enviada a central';
+          // No se afirma que el residente contestó: Asterisk únicamente
+          // confirmó recepción/procesamiento de la orden.
+          row.append(house,state,stamp);fragment.appendChild(row);
         }
         byId('historyList').replaceChildren(fragment);
-        byId('historyCount').textContent=rows.length===1?'1 intento de llamada':rows.length+' intentos de llamada';
+        byId('historyCount').textContent=rows.length===1?'1 envío confirmado a central':rows.length+' envíos confirmados a central';
         byId('historyStatus').textContent='';
         byId('refreshHistory').disabled=false;
         setHistoryNavigation();
@@ -203,11 +214,49 @@
       });
 
 
+      // Modal visible mientras se solicita y confirma una llamada.
+      // Los errores se muestran aquí y en la barra de estado existente.
+      function openCallModal(message){
+        const modal=byId('callProgressModal');
+        if(!callModalVisible){
+          callModalReturnFocus=document.activeElement;
+          callModalVisible=true;
+          modal.hidden=false;
+          modal.classList.add('show');
+        }
+        setStatus(message||'Llamando…','loading');
+        byId('callProgressClose').focus();
+      }
+      function closeCallModal(){
+        if(!callModalVisible)return;
+        callModalVisible=false;
+        const modal=byId('callProgressModal');
+        modal.classList.remove('show');
+        modal.hidden=true;
+        if(callModalReturnFocus && typeof callModalReturnFocus.focus==='function'){
+          try{callModalReturnFocus.focus();}catch(_){}
+        }
+        callModalReturnFocus=null;
+      }
+      byId('callProgressClose').addEventListener('click',closeCallModal);
+      byId('callProgressModal').addEventListener('click',event=>{
+        if(event.target===byId('callProgressModal'))closeCallModal();
+      });
+
       function setStatus(message, kind) {
         const status = byId('callStatus');
         status.className = 'statusbar' + (kind ? ' ' + kind : '');
         status.textContent = message || '';
         status.hidden = !message;
+        if(callModalVisible){
+          const variant=kind==='error'?'error':kind==='ok'?'ok':'loading';
+          const modal=byId('callProgressModal');
+          modal.dataset.status=variant;
+          byId('callProgressTitle').textContent=variant==='error'
+            ?'No se pudo confirmar la llamada'
+            :variant==='ok'?'Resultado de la llamada':'Llamando…';
+          byId('callProgressDescription').textContent=message||'Preparando solicitud…';
+        }
       }
 
       async function api(path, options = {}) {
@@ -282,6 +331,7 @@
       }
 
       function openPhoneChoice(phones, house) {
+        closeCallModal();
         selectedHouse = house;
         pendingPhones = phones.slice(0, 2);
         byId('phoneChoiceModal').classList.add('show');
@@ -329,6 +379,7 @@
       async function selectHouse(button, house) {
         const currentRequest = ++requestNumber;
         const preparedWindow = isIPhone || modoCaseta ? null : caller.prepareWindow();
+        openCallModal('Llamando… Buscando el contacto de la vivienda.');
         if (preparedWindow) {
           try {
             preparedWindow.document.title = 'Misión Jardines · WhatsApp';
@@ -400,12 +451,20 @@
           const house=selectedHouse;
           closePhoneChoice();
           selectedHouse=null;
-          if (selected && modoCaseta && house) await caseta.llamar(house, selected);
-          else if(selected && isIPhone && house)callFromIPhone(selected,house);
-          else if(selected) {
-            if(house) void attempt(house);
-            await caller.call(selected, caller.prepareWindow(), openWhatsApp);
-          }
+          if(!selected)return;
+          openCallModal('Llamando… Preparando la comunicación.');
+          // Al elegir contacto B también bloquear la cuadrícula mientras se
+          // confirma la solicitud, evitando dobles pulsaciones en iPhone.
+          document.querySelectorAll('.house-btn').forEach(item=>{item.disabled=true;});
+          try{
+            if(modoCaseta && house)await caseta.llamar(house, selected);
+            else if(isIPhone && house)callFromIPhone(selected,house);
+            else{
+              if(house)void attempt(house);
+              await caller.call(selected, caller.prepareWindow(), openWhatsApp);
+            }
+          }catch(error){setStatus(error.message||'No se pudo iniciar la llamada.','error');}
+          finally{document.querySelectorAll('.house-btn').forEach(item=>{item.disabled=false;});}
         });
       });
       byId('closePhoneChoice').addEventListener('click', closePhoneChoice);
@@ -413,7 +472,7 @@
         if (event.target === byId('phoneChoiceModal')) closePhoneChoice();
       });
       document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closePhoneChoice();
+        if (event.key === 'Escape') {closePhoneChoice();closeCallModal();}
       });
 
       renderTabs();

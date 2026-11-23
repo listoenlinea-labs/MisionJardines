@@ -13,11 +13,37 @@ const sections=[
 
 let active=sections[0],phones=[];
 let modoCaseta = false;
+let callModalVisible=false;
 let domicilioPendiente = null;
 const caseta = crearConmutadorCaseta({ api: call, mostrarEstado: msg });
 const tabs=document.getElementById('tabs'),grid=document.getElementById('grid'),status=document.getElementById('status'),modal=document.getElementById('modal');
 const caller=new TelefoniaEngine({api:API,token,status:(t,k)=>msg(t,k)});
-function msg(t,k=''){status.className='status'+(k?' '+k:'');status.textContent=t}
+function msg(t,k=''){
+  status.className='status'+(k?' '+k:'');
+  status.textContent=t||'';
+  if(callModalVisible){
+    const modal=document.getElementById('callProgressModal');
+    const kind=k==='error'?'error':k==='ok'?'ok':'loading';
+    modal.dataset.status=kind;
+    document.getElementById('callProgressTitle').textContent=
+      kind==='error'?'No se pudo confirmar la llamada':kind==='ok'?'Resultado de la llamada':'Llamando…';
+    document.getElementById('callProgressDescription').textContent=t||'Preparando llamada…';
+  }
+}
+function openCallModal(){
+  const panel=document.getElementById('callProgressModal');
+  callModalVisible=true;panel.hidden=false;panel.classList.add('show');
+  msg('Llamando… Preparando solicitud de llamada.','loading');
+}
+function closeCallModal(){
+  const panel=document.getElementById('callProgressModal');
+  callModalVisible=false;panel.classList.remove('show');panel.hidden=true;
+}
+document.getElementById('callProgressClose').addEventListener('click',closeCallModal);
+document.getElementById('callProgressModal').addEventListener('click',event=>{
+  if(event.target===document.getElementById('callProgressModal'))closeCallModal();
+});
+
 async function call(path, options = {}) {
 const headers = { Authorization: 'Bearer ' + token };
 if (options.body) headers['Content-Type'] = 'application/json';
@@ -28,6 +54,7 @@ function draw(){document.getElementById('streetTitle').textContent=active.key;do
 function normalizeWhatsAppNumber(number){let digits=String(number||'').replace(/\D/g,'');if(digits.length===13&&digits.startsWith('521'))digits='52'+digits.slice(3);if(digits.length===10)digits='52'+digits;return /^52\d{10}$/.test(digits)?digits:''}
 function openWhatsApp(number,preparedWindow=null){const destination=normalizeWhatsAppNumber(number);if(!destination){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('El teléfono registrado no tiene un formato válido para WhatsApp en México.','error');return}const url='misionjardines-call://call?phone='+destination;let target=preparedWindow;try{if(!target||target.closed)target=window.open('','mj-whatsapp-caseta');if(!target){msg('El navegador bloqueó WhatsApp. Habilita ventanas emergentes para este sitio.','error');return}target.opener=null;target.location.replace(url);msg('Enviando la llamada a WhatsApp Desktop desde la cuenta autorizada 33••••8609…','ok');setTimeout(()=>{try{if(target&&!target.closed)target.close()}catch{}},1800)}catch(e){msg('No fue posible iniciar el agente de llamadas. Verifica que el agente Misión Jardines y WhatsApp para Windows estén instalados.','error')}}
 async function llamarDesdeCaseta(h) {
+  openCallModal();
   const domicilio = { grupo: h.lookup || active.key, numero: h.number };
   document.querySelectorAll('.house').forEach(button => { button.disabled = true; });
   try {
@@ -36,6 +63,7 @@ async function llamarDesdeCaseta(h) {
     if (contactos.length === 1) return await caseta.llamar(domicilio, contactos[0]);
     domicilioPendiente = domicilio;
     phones = contactos;
+    closeCallModal();
     modal.querySelector('p').textContent = 'Contesta el teléfono fijo de caseta cuando timbre.';
     modal.classList.add('show');
   } catch (error) {
@@ -44,9 +72,22 @@ async function llamarDesdeCaseta(h) {
     document.querySelectorAll('.house').forEach(button => { button.disabled = false; });
   }
 }
-async function selectHouse(h){if(modoCaseta)return llamarDesdeCaseta(h);const preparedWindow=caller.prepareWindow();if(preparedWindow){try{preparedWindow.document.title='Misión Jardines · WhatsApp';preparedWindow.document.body.innerHTML='<p style="font-family:system-ui;padding:24px">Preparando WhatsApp…</p>'}catch{}}document.querySelectorAll('.house').forEach(x=>x.disabled=true);msg('Buscando teléfono registrado…');try{const p=new URLSearchParams({grupo:h.lookup||active.key,numero:h.number});const d=await call('/busqueda/conmutador/telefono?'+p);phones=(d.telefonos||[]).filter(Boolean).slice(0,2);if(!phones.length){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Este domicilio no tiene teléfono registrado.','error')}else if(phones.length>1){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Hay dos teléfonos registrados. Elige A o B para llamar.');modal.classList.add('show')}else{await caller.call(phones[0],preparedWindow,openWhatsApp)}}catch(e){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg(e.message,'error')}finally{document.querySelectorAll('.house').forEach(x=>x.disabled=false)}}
-document.querySelectorAll('.choice').forEach(b=>b.onclick=async()=>{const n=phones[Number(b.dataset.i)];modal.classList.remove('show');if(n && modoCaseta) await caseta.llamar(domicilioPendiente,n); else if(n)await caller.call(n,caller.prepareWindow(),openWhatsApp)});
+async function selectHouse(h){if(modoCaseta)return llamarDesdeCaseta(h);const preparedWindow=caller.prepareWindow();openCallModal();if(preparedWindow){try{preparedWindow.document.title='Misión Jardines · WhatsApp';preparedWindow.document.body.innerHTML='<p style="font-family:system-ui;padding:24px">Preparando WhatsApp…</p>'}catch{}}document.querySelectorAll('.house').forEach(x=>x.disabled=true);msg('Buscando teléfono registrado…');try{const p=new URLSearchParams({grupo:h.lookup||active.key,numero:h.number});const d=await call('/busqueda/conmutador/telefono?'+p);phones=(d.telefonos||[]).filter(Boolean).slice(0,2);if(!phones.length){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Este domicilio no tiene teléfono registrado.','error')}else if(phones.length>1){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg('Hay dos teléfonos registrados. Elige A o B para llamar.');closeCallModal();modal.classList.add('show')}else{await caller.call(phones[0],preparedWindow,openWhatsApp)}}catch(e){try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch{}msg(e.message,'error')}finally{document.querySelectorAll('.house').forEach(x=>x.disabled=false)}}
+document.querySelectorAll('.choice').forEach(b=>b.onclick=async()=>{
+ const n=phones[Number(b.dataset.i)];
+ modal.classList.remove('show');
+ if(!n)return;
+ const prepared=modoCaseta?null:caller.prepareWindow();
+ openCallModal();
+ document.querySelectorAll('.house').forEach(button=>{button.disabled=true;});
+ try{
+  if(modoCaseta)await caseta.llamar(domicilioPendiente,n);
+  else await caller.call(n,prepared,openWhatsApp);
+ }catch(error){msg(error.message||'No se pudo iniciar la llamada.','error');}
+ finally{document.querySelectorAll('.house').forEach(button=>{button.disabled=false;});}
+});
 document.getElementById('close').onclick=()=>modal.classList.remove('show');
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeCallModal();});
 document.getElementById('logout').onclick=()=>{localStorage.removeItem('misionJardinesToken');localStorage.removeItem('misionJardinesUsuario');location.replace('login.html')};
 (async()=>{try{await call('/auth/perfil');
 modoCaseta = await caseta.modo();

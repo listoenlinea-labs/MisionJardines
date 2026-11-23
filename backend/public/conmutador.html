@@ -33,6 +33,15 @@ h1{margin:8px 0 7px;font-size:clamp(36px,4vw,50px);letter-spacing:-.05em}
 .box{width:min(360px,100%);padding:22px;border-radius:18px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.2)}
 .box h3{margin:0 0 8px}.box p{color:#758196;font-size:12px}.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}.choice{min-height:70px;border:1px solid #e5c39f;border-radius:14px;background:#fff7ef;color:#a65008;font-size:25px;font-weight:950;cursor:pointer}
 .close{width:100%;margin-top:12px;min-height:40px;border:1px solid #dfe4ea;border-radius:10px;background:#fff;cursor:pointer}
+
+.call-progress-panel{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(23,34,50,.45)}
+.call-progress-panel.show{display:flex}
+.call-progress-card{width:min(360px,100%);padding:22px;border:1px solid #dbe3ed;border-radius:18px;background:#fff;box-shadow:0 24px 60px rgba(17,30,48,.2)}
+.call-progress-title{font-size:19px;font-weight:850;margin:0 0 12px}
+.call-progress-description{font-size:14px;line-height:1.55;color:#637188;overflow-wrap:anywhere}
+.call-progress-panel[data-status="error"] .call-progress-description{color:#aa363e}
+.call-progress-close{min-height:45px;width:100%;margin-top:14px;background:#fff7ee;color:#a65008;font-weight:800;border:1px solid #e6cab0;border-radius:11px;cursor:pointer}
+[hidden]{display:none!important}
 @media(max-width:900px){.tabs{display:flex;overflow-x:auto}.tab{min-width:120px;flex:0 0 auto}.grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}}
 @media(max-width:560px){.wrap{width:min(100% - 20px,520px);padding-top:28px}.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:12px 14px 20px}.head{padding:18px 14px 6px}.house{min-height:70px}.ext{grid-column:span 3}}
 </style>
@@ -51,6 +60,14 @@ h1{margin:8px 0 7px;font-size:clamp(36px,4vw,50px);letter-spacing:-.05em}
   <div id="status" class="status">Verificando sesión…</div>
   <p data-whatsapp-only style="margin:10px 3px 0;color:#8490a1;font-size:11px">Cuenta autorizada de caseta: <strong>33••••8609</strong>. WhatsApp puede mostrar la identidad del contacto dentro de su propia interfaz.</p>
 </main>
+<div id="callProgressModal" class="call-progress-panel" role="dialog" aria-modal="true"
+     aria-labelledby="callProgressTitle" aria-describedby="callProgressDescription" data-status="loading" hidden>
+  <div class="call-progress-card">
+    <h3 class="call-progress-title" id="callProgressTitle">Llamando…</h3>
+    <p class="call-progress-description" id="callProgressDescription" role="status" aria-live="polite">Preparando llamada…</p>
+    <button class="call-progress-close" type="button" id="callProgressClose">Cerrar</button>
+  </div>
+</div>
 <div id="modal" class="modal">
   <div class="box">
     <h3>¿A cuál deseas llamar?</h3>
@@ -60,7 +77,7 @@ h1{margin:8px 0 7px;font-size:clamp(36px,4vw,50px);letter-spacing:-.05em}
   </div>
 </div>
 <script src="assets/js/telefonia-engine.js?v=20261006"></script>
-<script src="assets/js/conmutador-caseta.js?v=20261119-reintento"></script>
-  <script src="assets/js/conmutador.js?v=20261119-caseta"></script>
+<script src="assets/js/conmutador-caseta.js?v=20261123-iphone7-confirmacion-v1"></script>
+  <script src="assets/js/conmutador.js?v=20261123-iphone7-modal-v1"></script>
 </body>
 </html>
