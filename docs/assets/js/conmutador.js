@@ -152,6 +152,7 @@
           byId('historyList').replaceChildren();
           byId('historyCount').textContent='Sin datos verificados para esta fecha';
           byId('historyStatus').textContent=error.message||'No se pudo consultar el historial.';
+          if(latest)historyOpened=false; // Reintentar última fecha al volver a la pestaña.
           byId('refreshHistory').disabled=false;
           setHistoryNavigation(true);
         }
@@ -191,7 +192,8 @@
         historyDate.value=localToday();void loadHistory({force:true});
       });
       byId('refreshHistory').addEventListener('click',()=>{
-        historyCache.delete(historyDate.value);void loadHistory({force:true});
+        historyCache.delete(historyDate.value);
+        void loadHistory({force:true,latest:!historyDate.value});
       });
       Promise.resolve(window.MJAccessReady).then(autorizado => {
         if(autorizado !== true || window.MJVerifiedRole !== 'ADMINISTRADOR')return;
