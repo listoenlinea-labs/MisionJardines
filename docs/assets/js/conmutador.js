@@ -99,8 +99,9 @@
         if(!rows.length){
           const empty=document.createElement('p');
           empty.className='history-empty';
-          empty.textContent=result.fecha===null?'Todavía no hay intentos de llamada registrados.':
-            'No se registraron intentos de llamada en esta fecha.';
+          empty.textContent=result.fecha===null?
+            'Todavía no hay envíos confirmados a la central. Los intentos sin confirmar no se muestran aquí.':
+            'No hay envíos de llamada confirmados en esta fecha.';
           fragment.appendChild(empty);
         }
         for(const item of rows){
@@ -111,10 +112,15 @@
           const stamp=document.createElement('span');
           const [date,time]=String(item.fecha_hora||'').split(' ');
           stamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
-          row.append(house,stamp);fragment.appendChild(row);
+          const state=document.createElement('small');
+          state.className='history-confirmed';
+          state.textContent=item.estado==='FINALIZADA'?'Orden procesada por central':'Orden enviada a central';
+          // No se afirma que el residente contestó: Asterisk únicamente
+          // confirmó recepción/procesamiento de la orden.
+          row.append(house,state,stamp);fragment.appendChild(row);
         }
         byId('historyList').replaceChildren(fragment);
-        byId('historyCount').textContent=rows.length===1?'1 intento de llamada':rows.length+' intentos de llamada';
+        byId('historyCount').textContent=rows.length===1?'1 envío confirmado a central':rows.length+' envíos confirmados a central';
         byId('historyStatus').textContent='';
         byId('refreshHistory').disabled=false;
         setHistoryNavigation();

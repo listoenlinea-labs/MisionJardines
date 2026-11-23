@@ -56,6 +56,8 @@
     .history-list{display:grid;gap:8px}
     .history-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid #e4e8ee;border-radius:12px}
     .history-item strong{font-size:14px}
+    .history-confirmed{font-size:11px;color:#21704d;background:#eaf7f0;border:1px solid #cfe7da;border-radius:8px;padding:6px 9px;font-weight:700}
+    @media(max-width:560px){.history-item{flex-wrap:wrap}.history-item .history-confirmed{order:3;flex:1 1 100%;width:max-content}}
     .history-item span{color:#69788d;font-size:12px;text-align:right}
     .history-empty{font-size:13px;color:#69788d}
     .history-filter{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 12px}
@@ -146,8 +148,8 @@
       <button type="button" id="showContacts" aria-pressed="false" hidden>Contactos</button>
     </div>
     <section class="panel history-panel" id="historyPanel" aria-label="Historial de intentos de llamadas" hidden>
-      <div class="history-head"><h2>Historial de intentos</h2></div>
-      <p class="privacy-note">Selecciona una fecha para ver todas las viviendas y horas de intento, sin paginación.</p>
+      <div class="history-head"><h2>Historial de envíos confirmados</h2></div>
+      <p class="privacy-note">Solo se muestran órdenes cuyo envío confirmó el agente de caseta. No significa que el residente haya contestado. Los intentos fallidos o sin verificar se conservan para diagnóstico, sin contarse como llamadas enviadas.</p>
       <div class="history-filter" role="group" aria-label="Historial por fecha">
         <div class="history-date-navigation">
           <button type="button" id="historyPrevious" class="history-arrow"
@@ -170,7 +172,7 @@
         <p class="history-empty">Selecciona una fecha para consultar las llamadas.</p>
       </div>
       <div class="history-footer">
-        <p id="historyCount" class="history-count" aria-live="polite">Todas las llamadas de la fecha seleccionada</p>
+        <p id="historyCount" class="history-count" aria-live="polite">Envíos confirmados de la fecha seleccionada</p>
       </div>
     </section>
     <section class="panel contacts-panel" id="contactsPanel" aria-label="Contactos del conmutador" hidden>
