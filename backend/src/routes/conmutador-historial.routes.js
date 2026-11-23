@@ -64,34 +64,29 @@ router.post('/', async (req, res) => {
   }
 });
 
-const PAGE_SIZE=10;
-router.get('/', async (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  const raw=String(req.query.pagina??'1');
-  if(!/^[1-9]\d{0,4}$/.test(raw))return res.status(400).json({ok:false,message:'Página inválida'});
-  const requestedPage=Number(raw);
-  try{
-    await asegurarTabla();
-    const [counts,firstRows]=await Promise.all([
-      sequelize.query('SELECT COUNT(*) AS total FROM conmutador_intentos_llamada',{type:QueryTypes.SELECT}),
-      sequelize.query("SELECT id, grupo, numero, DATE_FORMAT(creado_en, '%Y-%m-%d %H:%i:%s') AS fecha_hora "+
-        'FROM conmutador_intentos_llamada ORDER BY id DESC LIMIT 10 OFFSET :offset',
-        {replacements:{offset:(requestedPage-1)*PAGE_SIZE},type:QueryTypes.SELECT})
-    ]);
-    const total=Number(counts[0]?.total||0);
-    const paginas=Math.max(1,Math.ceil(total/PAGE_SIZE));
-    const pagina=Math.min(requestedPage,paginas);
-    let registros=firstRows;
-    if(pagina!==requestedPage&&total>0){
-      registros=await sequelize.query("SELECT id, grupo, numero, DATE_FORMAT(creado_en, '%Y-%m-%d %H:%i:%s') AS fecha_hora "+
-        'FROM conmutador_intentos_llamada ORDER BY id DESC LIMIT 10 OFFSET :offset',
-        {replacements:{offset:(pagina-1)*PAGE_SIZE},type:QueryTypes.SELECT});
-    }
-    return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',registros,pagina,paginas,porPagina:PAGE_SIZE,total});
-  }catch(error){
-    console.error('No se pudo consultar el historial del conmutador:',error.message);
-    return res.status(503).json({ok:false,message:'No fue posible consultar el historial'});
-  }
+// Consulta todos los intentos del día mediante el índice de creado_en.
+router.get('/',async(req,res)=>{
+ res.set('Cache-Control','no-store');
+ const fecha=String(req.query.fecha||'');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||
+   Number.isNaN(Date.parse(fecha+'T00:00:00Z'))||
+   new Date(fecha+'T00:00:00Z').toISOString().slice(0,10)!==fecha)
+  return res.status(400).json({ok:false,message:'Selecciona una fecha válida (AAAA-MM-DD).'});
+ try{
+  await asegurarTabla();
+  // Rango indexable: NO DATE(creado_en), COUNT adicional, LIMIT ni OFFSET.
+  const registros=await sequelize.query(
+   "SELECT id, grupo, numero, DATE_FORMAT(creado_en, '%Y-%m-%d %H:%i:%s') AS fecha_hora "+
+   'FROM conmutador_intentos_llamada WHERE creado_en >= :fecha '+
+   'AND creado_en < DATE_ADD(:fecha, INTERVAL 1 DAY) '+
+   'ORDER BY creado_en DESC, id DESC',
+   {replacements:{fecha},type:QueryTypes.SELECT}
+  );
+  return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',fecha,total:registros.length,registros});
+ }catch(error){
+  console.error('No se pudo consultar el historial del conmutador:',error.message);
+  return res.status(503).json({ok:false,message:'No fue posible consultar el historial'});
+ }
 });
 
 module.exports = router;
