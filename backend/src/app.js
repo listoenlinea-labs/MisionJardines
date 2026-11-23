@@ -116,6 +116,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Notificar mutaciones sin abrir conexiones nuevas a MySQL.
 app.use(require('./services/finanzas-live-signal.service').observe);
+app.use(require('./services/api-slow-monitor.service'));
 
 // Responder explícitamente los preflight antes del rate-limit y de las rutas.
 // Esto evita que un POST JSON con Authorization sea rechazado antes de llegar
