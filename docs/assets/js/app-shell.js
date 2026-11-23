@@ -103,6 +103,7 @@
       frame.setAttribute('allow','clipboard-write; fullscreen');
       frameHost.insertBefore(frame,loading);
       frames.push(frame);
+      document.dispatchEvent(new CustomEvent('mj-shell-frame-added',{detail:{frame}}));
       watchFrameNavigation(frame);
       return frame;
     }
@@ -202,7 +203,17 @@
     // También reinstalar el gesto si la sección se recarga por su cuenta.
     installPullToRefresh(frame);
     hideRefreshHint();
-    childModalObserver = new MutationObserver(() => syncChildModalChrome(frame));
+    let scheduled=false;
+    childModalObserver = new MutationObserver(() => {
+      // Una actualización de tablas puede mutar miles de elementos:
+      // revisar modales una sola vez por frame, no por cada lote de cambios.
+      if(scheduled)return;
+      scheduled=true;
+      requestAnimationFrame(()=>{
+        scheduled=false;
+        if(frames[activeIndex]===frame)syncChildModalChrome(frame);
+      });
+    });
     childModalObserver.observe(body, {
       subtree: true, childList: true, attributes: true,
       attributeFilter: ['hidden', 'open', 'class', 'style', 'aria-hidden', 'inert']
