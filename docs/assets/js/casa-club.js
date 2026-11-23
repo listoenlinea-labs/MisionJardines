@@ -228,12 +228,16 @@
   }catch(e){body.textContent=e.message||'No fue posible consultar esta fecha.';}
  }
 
+ let calendarPaintedMonth='';
  async function calendar(){
   const [year,month]=currentMonth.split('-').map(Number);
   const start=currentMonth+'-01',end=new Date(Date.UTC(year,month,0)).toISOString().slice(0,10);
   const request=++calendarRequest;
   calendarReady=false;syncSubmit();
-  $('calendarDays').replaceChildren();
+  const calendarGrid=$('calendarDays');
+  calendarGrid.inert=true;
+  calendarGrid.setAttribute('aria-busy','true');
+  if(calendarPaintedMonth!==currentMonth)calendarGrid.replaceChildren();
   const response=await api('/publico/fechas?desde='+start+'&hasta='+end);
   if(request!==calendarRequest)return;
   const googleVerificado=response.disponibilidadVerificada!==false;
@@ -263,7 +267,8 @@
    start.slice(0,7)<=today().slice(0,7);
   if(occupied.has(selectedDate)){selectedDate='';$('clubDate').value='';}
   syncSubmit();
-  const days=$('calendarDays');
+  const days=calendarGrid;
+  days.replaceChildren();
   const offset=(new Date(Date.UTC(year,month-1,1)).getUTCDay()+6)%7;
   for(let n=0;n<offset;n++){let gap=document.createElement('div');gap.className='calendar-blank';days.append(gap);}
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
@@ -294,6 +299,9 @@
     $('clubDate').value=fmt(date);days.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');syncSubmit();abrirSolicitudMovil();});
    days.append(btn);
   }
+  calendarPaintedMonth=currentMonth;
+  days.inert=false;
+  days.removeAttribute('aria-busy');
  }
   // El mismo formulario se mueve al modal solo en teléfonos: nunca duplicar IDs.
  const mobileReservationQuery=window.matchMedia('(max-width: 700px)');
