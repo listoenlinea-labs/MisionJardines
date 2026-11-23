@@ -19,6 +19,22 @@
   const openWithoutSession = () => publicClubEntry ? openPublicClub() : location.replace('login.html');
   const base = new URL('.', location.href);
   let userRole = '';
+  // Perfil validado en memoria para las secciones embebidas. El backend
+  // sigue autorizando cada petición y el cambio de vivienda lo invalida.
+  window.MJShellVerifiedSession = null;
+  const prefetchedRoutes = new Set();
+  function prefetchRoute(input) {
+    const route = allowed(input);
+    if (!route || navigator.connection?.saveData || navigator.connection?.effectiveType === '2g') return;
+    const href = frameUrl(route);
+    if (prefetchedRoutes.has(href) || prefetchedRoutes.size >= 8) return;
+    prefetchedRoutes.add(href);
+    const hint = document.createElement('link');
+    hint.rel = 'prefetch';
+    hint.as = 'document';
+    hint.href = href;
+    document.head.appendChild(hint);
+  }
   let activeIndex = -1;
   let requested = '';
   let currentPage = home;
@@ -175,6 +191,11 @@
     document.title = (frame.contentDocument?.title || route.page) + ' | Misión Jardines';
     updateSidebar();
     document.dispatchEvent(new CustomEvent('mj-shell-page-ready', { detail: { page: route.page } }));
+    if (performance.mark && performance.measure) {
+      performance.mark('mj-section-visible-' + ordinal);
+      try { performance.measure('mj-section-navigation', 'mj-section-start-' + ordinal, 'mj-section-visible-' + ordinal); }
+      catch (_) { /* Medición opcional en navegadores antiguos */ }
+    }
   }
 
   function navigate(input, { replace = false, fromHistory = false, reload = false } = {}) {
@@ -183,6 +204,7 @@
     if (!reload && route.target === requested) return true;
     resetChildModalChrome();
     const ordinal = ++sequence;
+    performance.mark?.('mj-section-start-' + ordinal);
     const next = activeIndex < 0 ? 0 : 1 - activeIndex;
     const frame = frames[next];
     const address = new URL(location.href);
@@ -266,6 +288,14 @@
       if (!response.ok) throw Error('No fue posible validar la sesión.');
       const result = await response.json();
       userRole = result.usuario?.rol?.nombre || result.usuario?.rol || '';
+      // No persistimos este estado en el disco ni lo exponemos a otros orígenes.
+      // El contexto de casa se captura junto con el perfil; otra casa exige
+      // una nueva validación con el backend.
+      window.MJShellVerifiedSession = {
+        token, user: result.usuario,
+        houseId: sessionStorage.getItem('mjCasaSeleccionada') || '',
+        verifiedAt: Date.now()
+      };
       if (!result.ok || !window.MJPermissions.canAccess(userRole, window.MJPermissions.landing(userRole))) throw Error('Sesión inválida.');
       for (const storage of [localStorage, sessionStorage]) {
         if (storage.getItem('misionJardinesToken') === token) {
@@ -282,6 +312,15 @@
     }
   })();
 
+  // Prefetch de HTML autorizado solo cuando el usuario se aproxima a un enlace;
+  // no descarga datos privados ni ejecuta scripts de esa sección.
+  const warmLink = event => {
+    const link = event.target.closest?.('a[href]');
+    if (link && !link.hasAttribute('download') && link.target !== '_blank')
+      prefetchRoute(link.getAttribute('href'));
+  };
+  document.addEventListener('pointerover', warmLink, { passive: true });
+  document.addEventListener('focusin', warmLink);
   document.addEventListener('click', event => {
     const anchor = event.target.closest('a[href]');
     if (!anchor || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey ||

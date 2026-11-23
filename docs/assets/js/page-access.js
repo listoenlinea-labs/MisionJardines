@@ -23,7 +23,21 @@
   window.MJAccessReady = (async () => {
     if (!token) { location.replace('login.html'); return false; }
     try {
-      const response = await fetch((window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api') + '/auth/perfil', {headers:{Authorization:'Bearer '+token}});
+      // En el iframe del portal, evitar repetir la consulta de perfil que el
+      // padre ya verificó. Directo y en sesiones expiradas: consulta normal.
+      const fromShell = (() => {
+        if (window.parent === window || new URLSearchParams(location.search).get('_mjFrame') !== '1') return null;
+        try {
+          if (window.parent.location.origin !== location.origin || !window.parent.MJ_SHELL_MODE) return null;
+          const current = window.parent.MJShellVerifiedSession;
+          return current?.token === token &&
+            current.houseId === (sessionStorage.getItem('mjCasaSeleccionada') || '') &&
+            Date.now() - current.verifiedAt < 60000 ? current.user : null;
+        } catch (_) { return null; }
+      })();
+      let user = fromShell;
+      if (!user) {
+        const response = await fetch((window.MJ_API_URL || 'https://api-misionjardines.listoenlinea.host/api') + '/auth/perfil', {headers:{Authorization:'Bearer '+token},cache:'no-store'});
       if (response.status === 403 && sessionStorage.getItem('mjCasaSeleccionada') && !['cuenta.html','viviendas.html','verificacion-cuentas.html'].includes(page)) {
         sessionStorage.removeItem('mjCasaSeleccionada');
         let roleAnterior = '';
@@ -31,10 +45,24 @@
         location.replace(roleAnterior === 'CONDOMINO' ? 'pagos.html' : 'viviendas.html'); return false;
       }
       if (!response.ok) throw new Error('No fue posible verificar tu sesión.');
-      const data = await response.json();
-      const user = data.usuario;
+        const data = await response.json();
+        if (!data.ok) throw new Error('Sesión inválida.');
+        user = data.usuario;
+        // Solo reutilizar un perfil comprobado del mismo contexto de casa.
+        if (window.parent !== window && new URLSearchParams(location.search).get('_mjFrame') === '1') {
+          try {
+            if (window.parent.MJ_SHELL_MODE && window.parent.location.origin === location.origin) {
+              window.parent.MJShellVerifiedSession = {
+                token, user, houseId: sessionStorage.getItem('mjCasaSeleccionada') || '',
+                verifiedAt: Date.now()
+              };
+            }
+          } catch (_) { /* Sin acceso al padre */ }
+        }
+      }
       const role = user?.rol?.nombre || user?.rol;
-      if (!data.ok || !role || !MJPermissions.canAccess(role,MJPermissions.landing(role))) throw new Error('Sesión inválida.');
+      if (!role || !MJPermissions.canAccess(role,MJPermissions.landing(role))) throw new Error('Sesión inválida.');
+      window.MJVerifiedUser = user;
       for (const storage of [localStorage, sessionStorage]) {
         if (storage.getItem('misionJardinesToken') === token) storage.setItem('misionJardinesUsuario',JSON.stringify(user));
       }

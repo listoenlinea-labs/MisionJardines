@@ -76,8 +76,10 @@
       const cached = storedUser();
       paintProfile(cached);
 
-      const d = await api('/auth/perfil', { headers: headers() });
-      profile = d.usuario;
+      // La sección ya obtuvo un perfil verificado por page-access.js.
+      // Evitar una tercera consulta de perfil al abrir Pagos.
+      const verified = window.MJVerifiedUser;
+      profile = verified || (await api('/auth/perfil', { headers: headers() })).usuario;
       const painted = paintProfile(profile);
       syncBankReference();
       if (!painted) throw Error('Tu usuario no tiene vivienda asociada');
