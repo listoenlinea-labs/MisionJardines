@@ -32,6 +32,8 @@
           const current = window.parent.MJShellVerifiedSession;
           return current?.token === token &&
             current.houseId === (sessionStorage.getItem('mjCasaSeleccionada') || '') &&
+            (!(sessionStorage.getItem('mjCasaSeleccionada')) ||
+              Number(current.user?.casaId) === Number(sessionStorage.getItem('mjCasaSeleccionada'))) &&
             Date.now() - current.verifiedAt < 60000 ? current.user : null;
         } catch (_) { return null; }
       })();

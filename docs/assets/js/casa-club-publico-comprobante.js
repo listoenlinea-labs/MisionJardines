@@ -170,7 +170,8 @@
  }
  async function convertirArchivo(file){
   if(file.type==='application/pdf'){
-   if(!window.mjPdfJs)throw Error('El lector PDF todavía se está cargando. Intenta de nuevo.');
+   await window.MJComprobanteTools.pdf();
+   if(!window.mjPdfJs)throw Error('No fue posible cargar el lector PDF.');
    const pdf=await window.mjPdfJs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
    const page=await pdf.getPage(1);
    const viewport=page.getViewport({scale:1.7});
@@ -227,6 +228,9 @@
   $('clubProofOcrStatus').textContent='Leyendo monto, fecha y hora del comprobante. No exigimos beneficiario ni referencia.';
   let worker=null;
   try{
+   $('clubProofOcrStatus').textContent='Preparando lector OCR…';
+   await window.MJComprobanteTools.ocr();
+   if(revision!==escaneo)return;
    if(!window.Tesseract||!window.MJComprobante)throw Error('El lector OCR no se ha cargado. Revisa tu conexión e inténtalo de nuevo.');
    const logger=status=>{if(revision===escaneo&&status.status==='recognizing text')
     $('clubProofOcrStatus').textContent='Leyendo imagen: '+Math.round((status.progress||0)*100)+'%';};
