@@ -3040,19 +3040,34 @@ let historicalExtraId=null;
  const body={fecha:$('expenseDate').value,categoria:$('expenseCategory').value,
   ambito:$('expenseScope').value,monto:Number($('expenseAmount').value),concepto:$('expenseConcept').value.trim()};
  if(!Number.isInteger(body.monto)||body.monto<=0)return notice('Ingresa un monto sin decimales.');
+ const comprobantesGasto=[...($('expenseFiles').files||[])];
+ if(comprobantesGasto.length>12)return notice('Selecciona máximo 12 comprobantes de gasto.');
+ if(body.categoria==='PROYECTO'&&comprobantesGasto.length)
+  return notice('Crea primero el proyecto. Después adjunta varios comprobantes a cada gasto concreto.');
  const project=body.categoria==='PROYECTO';
  if(!confirm('¿Confirmas '+(project?'crear el proyecto':'registrar este egreso')+
   ' por '+fmt(body.monto)+' de '+body.concepto+'?'))return;
  $('saveExpense').disabled=true;
  try{
   const saved=await request('/egresos',body);
+  let archivosRegistrados=0,erroresArchivos=[];
+  for(const file of comprobantesGasto){
+   try{
+    const comprobante=await encodeProjectExpenseFile(file);
+    await request('/egresos/'+Number(saved.id)+'/comprobantes',{nombre:file.name,comprobante});
+    archivosRegistrados++;
+   }catch(error){erroresArchivos.push(file.name+': '+error.message);}
+  }
   if(project&&saved.proyectoId){activeConcept='EXTRAORDINARIO';activeProyectoId=saved.proyectoId;}
   $('newExpense').reset();syncExtraExpense();
   $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   expenseDateInputs.forEach(syncExpenseDateDisplay);expensePage=1;
   await load();
-  notice(project?'Proyecto creado: disponible en el selector de cuotas extraordinarias.':
-   'Egreso registrado. Referencia: '+(saved.referencia||'generada'),'success');
+  notice(erroresArchivos.length
+   ?'Egreso guardado con '+archivosRegistrados+' comprobante(s). Pendientes: '+erroresArchivos.join('; ')
+   :project?'Proyecto creado: disponible en el selector de cuotas extraordinarias.'
+   :'Egreso y comprobantes registrados. Referencia: '+(saved.referencia||'generada'),
+   erroresArchivos.length?'error':'success');
  }catch(error){notice(error.message);}
  finally{$('saveExpense').disabled=false;}
 });
@@ -3434,28 +3449,33 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  if(activeConcept!=='EXTRAORDINARIO'||!activeProyectoId||
    Number(projectExpenseModal.dataset.proyectoId)!==Number(activeProyectoId))
   return notice('El proyecto cambió. Abre el formulario del proyecto seleccionado.');
- const btn=$('financeProjectExpenseSave'),file=$('financeProjectExpenseProof').files?.[0];
+ const btn=$('financeProjectExpenseSave'),files=[...($('financeProjectExpenseProof').files||[])];
+ if(files.length>12)return notice('Selecciona máximo 12 comprobantes por gasto.');
  const body={fecha:$('financeProjectExpenseDate').value,categoria:'PROYECTO',proyectoId:activeProyectoId,
   concepto:$('financeProjectExpenseName').value.trim(),monto:Number($('financeProjectExpenseAmount').value),
   incluidoPresupuesto:$('financeProjectExpenseIncluded').checked,
   pagado:$('financeProjectExpensePaid').checked};
  if(!Number.isInteger(body.monto)||body.monto<=0)return notice('El costo debe expresarse en pesos enteros.');
- if(file){
-  if(file.size>1024*1024)return notice('El comprobante no puede superar 1 MB.');
-  if(!['image/jpeg','image/png','application/pdf'].includes(file.type))
-   return notice('Adjunta una imagen JPG, PNG o un PDF.');
-  const bytes=new Uint8Array(await file.arrayBuffer()),pieces=[];
-  for(let i=0;i<bytes.length;i+=8192)pieces.push(String.fromCharCode(...bytes.subarray(i,i+8192)));
-  body.comprobante={mime:file.type,base64:btoa(pieces.join(''))};
- }
  if(!confirm('¿Registrar '+body.concepto+' por '+fmt(body.monto)+' en este proyecto?'))return;
  projectExpenseSaving=true;btn.disabled=true;
  try{
-  await request('/egresos',body);$('financeProjectExpenseForm').reset();
+  const saved=await request('/egresos',body);
+  let cargados=0,errores=[];
+  for(const file of files){
+   try{
+    await request('/egresos/'+Number(saved.id)+'/comprobantes',
+     {nombre:file.name,comprobante:await encodeProjectExpenseFile(file)});
+    cargados++;
+   }catch(error){errores.push(file.name+': '+error.message);}
+  }
+  $('financeProjectExpenseForm').reset();
   $('financeProjectExpenseDate').value=$('expenseDate').value;expensePage=1;
   closeProjectExpenseModal({force:true});
   await load();
-  notice(body.pagado?'Concepto pagado registrado y descontado del presupuesto pendiente.':'Concepto registrado como pendiente de pago.','success');
+  notice(errores.length
+   ?'Concepto guardado con '+cargados+' comprobante(s). Algunos adjuntos faltaron: '+errores.join('; ')
+   :body.pagado?'Concepto pagado registrado y comprobantes adjuntados.':'Concepto registrado como pendiente de pago y comprobantes adjuntados.',
+   errores.length?'error':'success');
  }catch(error){$('financeProjectExpenseStatus').textContent=error.message;notice(error.message);}
  finally{projectExpenseSaving=false;btn.disabled=false;}
 });
