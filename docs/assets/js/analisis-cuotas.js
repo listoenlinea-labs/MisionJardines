@@ -3124,37 +3124,54 @@ async function openProjectProofModal(id,trigger){
   'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
  projectProofModal.hidden=false;
  $('financeProjectProofClose').focus();
- if(!expense.comprobanteDisponible)return;
+ const filesArea=$('financeProjectProofFiles');filesArea.replaceChildren();
  const controller=new AbortController();projectProofAbort=controller;
  try{
-  const response=await fetch(API+'/finanzas/egresos/'+Number(expense.id)+'/comprobante',{
-   headers:{Authorization:'Bearer '+token},signal:controller.signal,cache:'no-store'
-  });
-  if(!response.ok)throw Error(response.status===404?
-   'El comprobante indicado no está disponible en el servidor.':'No fue posible cargar el comprobante.');
-  const blob=await response.blob();
-  if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))
-   throw Error('El comprobante tiene un formato que no se puede previsualizar.');
+  const base=API+'/finanzas/egresos/'+Number(expense.id)+'/comprobantes';
+  const response=await fetch(base,{headers:{Authorization:'Bearer '+token},signal:controller.signal,cache:'no-store'});
+  const list=await response.json().catch(()=>({}));
+  if(!response.ok||!list.ok)throw Error(list.message||'No fue posible consultar comprobantes.');
   if(seq!==projectProofSequence||projectProofModal.hidden)return;
-  projectProofUrl=URL.createObjectURL(blob);projectProofMime=blob.type;
-  const viewer=blob.type==='application/pdf'?document.createElement('iframe'):document.createElement('img');
-  viewer.src=projectProofUrl;
-  if(blob.type==='application/pdf'){
-   viewer.title='Vista previa del comprobante PDF';
-   viewer.setAttribute('aria-label','Comprobante PDF del egreso');
-  }else{
-   viewer.alt='Imagen del comprobante de '+expense.concepto;
+  const rows=list.data||[];
+  if(!rows.length){
+   $('financeProjectProofStatus').textContent='Este egreso no tiene comprobantes adjuntos.';
+   return;
   }
-  projectProofPreview.replaceChildren(viewer);
-  projectProofPreview.hidden=false;
-  projectProofDownload.hidden=false;
-  $('financeProjectProofStatus').textContent='Comprobante adjunto al egreso.';
+  $('financeProjectProofStatus').textContent=rows.length+' comprobante(s) disponibles.';
+  for(const item of rows){
+   const button=document.createElement('button');button.type='button';button.className='soft';
+   button.textContent=item.nombre||'Comprobante '+item.id;button.style.margin='4px';
+   button.addEventListener('click',async()=>{
+    const currentSeq=projectProofSequence;
+    try{
+     const data=await fetch(base+'/'+Number(item.id),{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+     if(!data.ok)throw Error('No se pudo abrir el comprobante.');
+     const blob=await data.blob();
+     if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))
+      throw Error('El formato del archivo no permite previsualización.');
+     if(currentSeq!==projectProofSequence||projectProofModal.hidden)return;
+     if(projectProofUrl)URL.revokeObjectURL(projectProofUrl);
+     projectProofUrl=URL.createObjectURL(blob);projectProofMime=blob.type;
+     const viewer=document.createElement(blob.type==='application/pdf'?'iframe':'img');
+     viewer.src=projectProofUrl;
+     if(blob.type==='application/pdf'){viewer.title='Comprobante PDF del gasto';}
+     else viewer.alt='Comprobante de '+expense.concepto;
+     projectProofPreview.replaceChildren(viewer);
+     projectProofPreview.hidden=false;projectProofDownload.hidden=false;
+     $('financeProjectProofStatus').textContent='Visualizando '+(item.nombre||'comprobante')+'.';
+    }catch(error){
+     if(currentSeq===projectProofSequence)$('financeProjectProofStatus').textContent=error.message;
+    }
+   });
+   filesArea.append(button);
+  }
+  filesArea.firstElementChild?.click();
  }catch(error){
   if(controller.signal.aborted||seq!==projectProofSequence)return;
   $('financeProjectProofStatus').textContent=error.message;
  }finally{if(projectProofAbort===controller)projectProofAbort=null;}
 }
-// Los adjuntos pueden llegar después del alta del gasto. Se usa el mismo
+ // Los adjuntos pueden llegar después del alta del gasto. Se usa el mismo
 // almacenamiento privado y validación de tipos que el alta original.
 async function encodeProjectExpenseFile(file){
  if(!file)throw Error('Selecciona el comprobante del concepto.');
@@ -3177,28 +3194,35 @@ $('financeProjectProofUploadForm').addEventListener('submit',async event=>{
  const id=Number(projectProofSource?.id);
  if(!Number.isSafeInteger(id)||id<1)return;
  const button=$('financeProjectProofUploadSave');
- const file=$('financeProjectProofUploadFile').files?.[0];
+ const files=[...($('financeProjectProofUploadFile').files||[])];
  const status=$('financeProjectProofStatus');
- if(!file)return status.textContent='Selecciona un archivo PDF o imagen.';
- if(projectProofSource.comprobanteDisponible &&
-  !confirm('Este concepto ya tiene un comprobante. ¿Deseas reemplazarlo?'))return;
+ if(!files.length)return status.textContent='Selecciona uno o varios PDF o imágenes.';
+ if(files.length>12)return status.textContent='Selecciona máximo 12 comprobantes.';
  projectProofUploadSaving=true;button.disabled=true;
  try{
-  const comprobante=await encodeProjectExpenseFile(file);
-  status.textContent='Guardando comprobante en el servidor…';
-  await request('/egresos/'+id+'/comprobante',{comprobante},'PUT');
-  if(!projectProofModal.hidden)status.textContent='Comprobante guardado. Actualizando la vista…';
+  let uploaded=0;
+  for(const file of files){
+   const comprobante=await encodeProjectExpenseFile(file);
+   try{
+    await request('/egresos/'+id+'/comprobantes',{nombre:file.name,comprobante});
+    uploaded++;
+   }catch(error){
+    throw Error('Se adjuntaron '+uploaded+' de '+files.length+
+     ' archivos. '+error.message+' Puedes volver a cargar solo los faltantes.');
+   }
+  }
+  status.textContent=uploaded+' comprobante(s) guardados. Actualizando vista…';
   const ok=await load();
-  if(!ok)throw Error('Se guardó el comprobante, pero no se pudo actualizar el análisis. Recarga la página.');
-  if(!projectProofModal.hidden && Number(projectProofSource?.id)===id)
+  if(!ok)throw Error('Comprobantes guardados, pero no se pudo actualizar el análisis.');
+  if(!projectProofModal.hidden&&Number(projectProofSource?.id)===id)
    await openProjectProofModal(id,findProjectExpenseTrigger(id));
-  notice('Comprobante adjuntado al concepto.','success');
+  notice(uploaded+' comprobante(s) nuevos adjuntados al concepto.','success');
  }catch(error){
   if(!projectProofModal.hidden)status.textContent=error.message;
   notice(error.message);
  }finally{projectProofUploadSaving=false;button.disabled=false;}
 });
-$('financeProjectProofPaymentForm').addEventListener('submit',async event=>{
+ $('financeProjectProofPaymentForm').addEventListener('submit',async event=>{
  event.preventDefault();
  if(projectProofModal.hidden||projectProofStatusSaving||projectProofUploadSaving)return;
  const id=Number(projectProofSource?.id),old=projectProofSource?.pagado!==false;
