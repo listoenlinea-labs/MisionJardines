@@ -120,6 +120,33 @@ window.crearConmutadorCaseta = function ({ api, mostrarEstado }) {
           }
           if (Date.now() < limite) await pausa(INTERVALO_MS);
         }
+        // Safari del iPhone 7 puede suspender temporizadores si la pantalla
+        // se bloquea. Antes de afirmar que se venció, consultar UNA VEZ más
+        // el estado del servidor; nunca reenviar el POST de llamada.
+        mostrarEstado('Verificando el resultado final con caseta…', 'loading');
+        try {
+          var estadoFinal = (await consultar('/conmutador/caseta/llamadas/' + solicitud, {}, 10000)).estado;
+          if (estadoFinal === 'ENVIADA' || estadoFinal === 'FINALIZADA') {
+            mostrarEstado(estadoFinal === 'ENVIADA'
+              ? 'Llamada enviada a caseta. Contesta el teléfono fijo cuando timbre.'
+              : 'La solicitud terminó en caseta. Puedes iniciar otra llamada.', 'ok');
+            return { ok: true, estado: estadoFinal };
+          }
+          if (estadoFinal === 'ERROR') {
+            throw Error('El agente de caseta reportó un error al preparar la llamada en Asterisk. Revisa sus registros en la computadora.');
+          }
+          if (estadoFinal === 'VENCIDA') {
+            throw Error(caducidadUltimoEstado(ultimoEstado || 'PENDIENTE'));
+          }
+          if (estadoFinal !== 'PENDIENTE' && estadoFinal !== 'RECLAMADA') {
+            throw Error('Hostinger devolvió un estado de llamada no reconocido: ' + String(estadoFinal));
+          }
+          ultimoEstado = estadoFinal;
+          ultimoErrorRed = null;
+        } catch (error) {
+          if (!esTemporal(error)) throw error;
+          ultimoErrorRed = error;
+        }
         if (ultimoErrorRed) {
           throw Error('El iPhone no pudo consultar el resultado por una falla de red. La solicitud podría haber sonado en caseta. Contesta si timbra y verifica antes de intentar otra vez.');
         }
