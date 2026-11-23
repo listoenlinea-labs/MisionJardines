@@ -58,14 +58,18 @@
     .history-item strong{font-size:14px}
     .history-item span{color:#69788d;font-size:12px;text-align:right}
     .history-empty{font-size:13px;color:#69788d}
-    .history-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px}
-    .history-count{margin:0;color:#718096;font-size:12px}
-    .history-pager{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .history-pager button{border:1px solid #dfe5ec;border-radius:10px;background:#fff;color:#475569;padding:10px 13px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-    .history-pager button:hover:not(:disabled){border-color:#e8ab73;background:#fff3e7;color:#a94f04}
-    .history-pager button:disabled{opacity:.48;cursor:not-allowed}
-    .history-pager span{min-width:94px;text-align:center;font-size:12px;font-weight:700;color:#334155}
-    @media(max-width:560px){.history-panel{padding:16px}.history-item{padding:12px;align-items:flex-start}.history-footer{align-items:stretch;flex-direction:column}.history-pager{width:100%;justify-content:space-between}.history-pager button{min-height:44px}}
+    .history-filter{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+    .history-filter label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#53657b}
+    .history-filter input[type=date]{min-height:44px;min-width:200px;padding:9px 12px;border:1px solid #dfe5ec;border-radius:11px;background:#fff;font:inherit;font-size:14px;color:#283950}
+    .history-filter input[type=date]:focus-visible{outline:2px solid #ee8e2a;outline-offset:2px}
+    .history-filter button{min-height:44px;padding:9px 15px;border:1px solid #dfe5ec;border-radius:10px;background:#fff;color:#53657b;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+    .history-filter button:hover:not(:disabled){border-color:#e8ab73;background:#fff3e7;color:#a94f04}
+    .history-filter button:disabled{opacity:.6;cursor:wait}
+    .history-footer{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:15px}
+    .history-count,.history-status{margin:0;color:#66778e;font-size:12px}
+    .history-status{min-height:16px;margin-bottom:9px}
+    .history-item{content-visibility:auto;contain-intrinsic-size:auto 57px}
+    @media(max-width:560px){.history-panel{padding:16px}.history-item{padding:12px;align-items:flex-start}.history-filter{align-items:stretch}.history-filter label{flex:1 1 100%}.history-filter input[type=date]{width:100%}.history-filter button{flex:1}.history-footer{justify-content:flex-start}}
     [hidden]{display:none!important}
     .privacy-note{margin:12px 3px 0;color:#8490a1;font-size:11px;line-height:1.5}
     .modal-backdrop{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(23,34,50,.42);backdrop-filter:blur(3px)}
@@ -118,16 +122,21 @@
       <button type="button" id="showContacts" aria-pressed="false" hidden>Contactos</button>
     </div>
     <section class="panel history-panel" id="historyPanel" aria-label="Historial de intentos de llamadas" hidden>
-      <div class="history-head"><h2>Historial de intentos</h2><button type="button" id="refreshHistory" class="modal-close" style="width:auto;margin:0;padding:0 14px">Actualizar</button></div>
-      <p class="privacy-note">Se muestran la vivienda, fecha y hora de cada intento.</p>
-      <div class="history-list" id="historyList" aria-live="polite"><p class="history-empty">Selecciona el historial para consultar las llamadas.</p></div>
+      <div class="history-head"><h2>Historial de intentos</h2></div>
+      <p class="privacy-note">Selecciona una fecha para ver todas las viviendas y horas de intento, sin paginación.</p>
+      <div class="history-filter" role="group" aria-label="Filtrar historial por fecha">
+        <label for="historyDate">Fecha de las llamadas
+          <input type="date" id="historyDate" required>
+        </label>
+        <button type="button" id="historyToday">Hoy</button>
+        <button type="button" id="refreshHistory">Actualizar</button>
+      </div>
+      <p id="historyStatus" class="history-status" role="status" aria-live="polite"></p>
+      <div class="history-list" id="historyList" aria-live="polite">
+        <p class="history-empty">Selecciona una fecha para consultar las llamadas.</p>
+      </div>
       <div class="history-footer">
-        <p id="historyCount" class="history-count" aria-live="polite">10 intentos por página</p>
-        <nav class="history-pager" aria-label="Paginación del historial de llamadas">
-          <button type="button" id="historyPrevious" disabled>Anterior</button>
-          <span id="historyPageIndicator" aria-live="polite">Página 1 de 1</span>
-          <button type="button" id="historyNext" disabled>Siguiente</button>
-        </nav>
+        <p id="historyCount" class="history-count" aria-live="polite">Todas las llamadas de la fecha seleccionada</p>
       </div>
     </section>
     <section class="panel contacts-panel" id="contactsPanel" aria-label="Contactos del conmutador" hidden>
@@ -185,7 +194,7 @@
   <script src="assets/js/telefonia-engine.js?v=20261006"></script>
   <script src="assets/js/conmutador-caseta.js?v=20261119-reintento"></script>
   <script src="assets/js/conmutador-contactos-admin.js?v=20261120-sync-recibos"></script>
-  <script src="assets/js/conmutador.js?v=20261123-historial-10-rapido"></script>
+  <script src="assets/js/conmutador.js?v=20261123-filtro-fecha-v4"></script>
   <script src="assets/js/site-sidebar.js?v=20261109-seguridad-caseta"></script>
 </body>
 </html>
