@@ -8,14 +8,17 @@ const root=path.resolve(__dirname,'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
 function testApi(entries){
- const records=[...entries].sort((a,b)=>b.fecha_hora.localeCompare(a.fecha_hora)||b.id-a.id);
+ // Los registros anteriores y fallidos existen, pero NO son llamadas confirmadas.
+ const records=[...entries]
+   .filter(x=>['ENVIADA','FINALIZADA'].includes(x.estado)&&x.confirmado_en)
+   .sort((a,b)=>b.fecha_hora.localeCompare(a.fecha_hora)||b.id-a.id);
  const calls=[],handlers={};
  const database={query:async(sql,opts={})=>{
   calls.push({sql,replacements:opts.replacements});
   if(sql.includes('CREATE TABLE'))return [];
-  if(!sql.includes('FROM conmutador_intentos_llamada'))throw Error('SQL no esperado');
+  if(!sql.includes('FROM conmutador_llamadas_seguimiento'))throw Error('SQL no esperado');
   const fecha=opts.replacements?.fecha;
-  if(sql.includes('SELECT id'))return records.filter(r=>r.fecha_hora.startsWith(fecha));
+  if(sql.includes('SELECT solicitud AS id'))return records.filter(r=>r.fecha_hora.startsWith(fecha));
   let filtered=records;
   if(sql.includes('WHERE creado_en < :fecha'))
    filtered=records.filter(r=>r.fecha_hora.slice(0,10)<fecha);
@@ -49,11 +52,15 @@ function testApi(entries){
 const fixtures=[
  ...Array.from({length:17},(_,i)=>({
   id:i+1,grupo:'Gardenias',numero:String(i+1),
-  fecha_hora:'2026-11-20 '+String(23-i).padStart(2,'0')+':00:00'
+  fecha_hora:'2026-11-20 '+String(23-i).padStart(2,'0')+':00:00',
+  estado:'ENVIADA',confirmado_en:'2026-11-20 23:59:00'
  })),
- {id:18,grupo:'Lirios',numero:'12',fecha_hora:'2026-11-23 19:23:00'},
- {id:19,grupo:'Rosas',numero:'18',fecha_hora:'2026-11-23 19:31:00'},
- {id:20,grupo:'Magnolias',numero:'2',fecha_hora:'2026-11-26 09:30:00'}
+ {id:18,grupo:'Lirios',numero:'12',fecha_hora:'2026-11-23 19:23:00',estado:'ENVIADA',confirmado_en:'2026-11-23 19:23:15'},
+ {id:19,grupo:'Rosas',numero:'18',fecha_hora:'2026-11-23 19:31:00',estado:'FINALIZADA',confirmado_en:'2026-11-23 19:31:15'},
+ {id:20,grupo:'Magnolias',numero:'2',fecha_hora:'2026-11-26 09:30:00',estado:'ENVIADA',confirmado_en:'2026-11-26 09:30:15'},
+ {id:21,grupo:'Gardenias',numero:'5',fecha_hora:'2026-11-28 09:30:00',estado:'PENDIENTE',confirmado_en:null},
+ {id:22,grupo:'Rosas',numero:'12',fecha_hora:'2026-11-29 09:30:00',estado:'ERROR',confirmado_en:null},
+ {id:23,grupo:'Lirios',numero:'3',fecha_hora:'2026-11-30 09:30:00',estado:'SIN_VERIFICAR',confirmado_en:null}
 ];
 
 test('Al iniciar selecciona último día con registros, no necesariamente hoy',async()=>{
@@ -65,6 +72,10 @@ test('Al iniciar selecciona último día con registros, no necesariamente hoy',a
  assert.equal(response.body.fechaAnterior,'2026-11-23');
  assert.equal(response.body.fechaSiguiente,null);
  assert.ok(api.calls.some(c=>c.sql.includes('ORDER BY creado_en DESC LIMIT 1')));
+ assert.ok(api.calls.every(c=>c.sql.includes('CREATE TABLE')||
+   (c.sql.includes("estado IN ('ENVIADA','FINALIZADA')")&&
+    c.sql.includes('confirmado_en IS NOT NULL'))),
+   'ningún SELECT incluye registros pendientes, fallidos o sin verificar');
 });
 
 test('Las flechas saltan días vacíos y no se pagina el listado del día',async()=>{
@@ -77,8 +88,20 @@ test('Las flechas saltan días vacíos y no se pagina el listado del día',async
  assert.equal(oldest.fechaSiguiente,'2026-11-23');
  assert.equal(oldest.registros.length,17);
  assert.equal(oldest.total,17);
- assert.ok(api.calls.filter(c=>c.sql.includes('SELECT id')).every(c=>
+ assert.ok(api.calls.filter(c=>c.sql.includes('SELECT solicitud AS id')).every(c=>
   !/LIMIT|OFFSET|COUNT\(/.test(c.sql)));
+});
+
+test('Intentos fallidos posteriores no aparecen ni desplazan la última fecha',async()=>{
+ const api=testApi(fixtures);
+ const latest=(await api.get()).body;
+ assert.equal(latest.fecha,'2026-11-26');
+ for(const fecha of ['2026-11-28','2026-11-29','2026-11-30']){
+  const result=(await api.get(fecha)).body;
+  assert.equal(result.total,0);
+  assert.equal(result.fechaAnterior,'2026-11-26');
+  assert.equal(result.fechaSiguiente,null);
+ }
 });
 
 test('Una fecha sin registros puede navegar a los días disponibles cercanos',async()=>{
