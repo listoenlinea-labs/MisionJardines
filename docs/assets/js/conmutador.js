@@ -60,6 +60,7 @@
         const first=document.querySelector('[data-phone-choice="0"]');
         first.textContent=phones.length>1?'A':'Llamar';
         document.querySelector('[data-phone-choice="1"]').hidden=phones.length<2;
+        closeCallModal();
         byId('phoneChoiceModal').classList.add('show');
       }
       // Consultar todos los intentos del día; ni paginación ni datos privados.
@@ -203,11 +204,51 @@
       });
 
 
+      // Modal visible mientras se solicita y confirma una llamada.
+      // Los errores se muestran aquí y en la barra de estado existente.
+      let callModalVisible=false;
+      let callModalReturnFocus=null;
+      function openCallModal(message){
+        const modal=byId('callProgressModal');
+        if(!callModalVisible){
+          callModalReturnFocus=document.activeElement;
+          callModalVisible=true;
+          modal.hidden=false;
+          modal.classList.add('show');
+        }
+        setStatus(message||'Llamando…','loading');
+        byId('callProgressClose').focus();
+      }
+      function closeCallModal(){
+        if(!callModalVisible)return;
+        callModalVisible=false;
+        const modal=byId('callProgressModal');
+        modal.classList.remove('show');
+        modal.hidden=true;
+        if(callModalReturnFocus && typeof callModalReturnFocus.focus==='function'){
+          try{callModalReturnFocus.focus();}catch(_){}
+        }
+        callModalReturnFocus=null;
+      }
+      byId('callProgressClose').addEventListener('click',closeCallModal);
+      byId('callProgressModal').addEventListener('click',event=>{
+        if(event.target===byId('callProgressModal'))closeCallModal();
+      });
+
       function setStatus(message, kind) {
         const status = byId('callStatus');
         status.className = 'statusbar' + (kind ? ' ' + kind : '');
         status.textContent = message || '';
         status.hidden = !message;
+        if(callModalVisible){
+          const variant=kind==='error'?'error':kind==='ok'?'ok':'loading';
+          const modal=byId('callProgressModal');
+          modal.dataset.status=variant;
+          byId('callProgressTitle').textContent=variant==='error'
+            ?'No se pudo confirmar la llamada'
+            :variant==='ok'?'Resultado de la llamada':'Llamando…';
+          byId('callProgressDescription').textContent=message||'Preparando solicitud…';
+        }
       }
 
       async function api(path, options = {}) {
@@ -282,6 +323,7 @@
       }
 
       function openPhoneChoice(phones, house) {
+        closeCallModal();
         selectedHouse = house;
         pendingPhones = phones.slice(0, 2);
         byId('phoneChoiceModal').classList.add('show');
@@ -329,6 +371,7 @@
       async function selectHouse(button, house) {
         const currentRequest = ++requestNumber;
         const preparedWindow = isIPhone || modoCaseta ? null : caller.prepareWindow();
+        openCallModal('Llamando… Buscando el contacto de la vivienda.');
         if (preparedWindow) {
           try {
             preparedWindow.document.title = 'Misión Jardines · WhatsApp';
@@ -400,12 +443,16 @@
           const house=selectedHouse;
           closePhoneChoice();
           selectedHouse=null;
-          if (selected && modoCaseta && house) await caseta.llamar(house, selected);
-          else if(selected && isIPhone && house)callFromIPhone(selected,house);
-          else if(selected) {
-            if(house) void attempt(house);
-            await caller.call(selected, caller.prepareWindow(), openWhatsApp);
-          }
+          if(!selected)return;
+          openCallModal('Llamando… Preparando la comunicación.');
+          try{
+            if(modoCaseta && house)await caseta.llamar(house, selected);
+            else if(isIPhone && house)callFromIPhone(selected,house);
+            else{
+              if(house)void attempt(house);
+              await caller.call(selected, caller.prepareWindow(), openWhatsApp);
+            }
+          }catch(error){setStatus(error.message||'No se pudo iniciar la llamada.','error');}
         });
       });
       byId('closePhoneChoice').addEventListener('click', closePhoneChoice);
@@ -413,7 +460,7 @@
         if (event.target === byId('phoneChoiceModal')) closePhoneChoice();
       });
       document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closePhoneChoice();
+        if (event.key === 'Escape') {closePhoneChoice();closeCallModal();}
       });
 
       renderTabs();

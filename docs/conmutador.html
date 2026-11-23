@@ -76,6 +76,26 @@
     @media(max-width:560px){.history-panel{padding:16px}.history-item{padding:12px;align-items:flex-start}.history-filter{align-items:stretch}.history-date-navigation{width:100%}.history-date-navigation label{flex:1 1 auto;min-width:0}.history-date-navigation input[type=date]{width:100%;min-width:0}.history-date-navigation .history-arrow{flex:0 0 44px}.history-filter>button{flex:1}.history-footer{justify-content:flex-start}}
     [hidden]{display:none!important}
     .privacy-note{margin:12px 3px 0;color:#8490a1;font-size:11px;line-height:1.5}
+
+    /* Modal ligero; no usa bibliotecas ni animaciones costosas en iPhone 7. */
+    .call-progress-panel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+      padding:16px;z-index:1300;background:rgba(24,35,53,.45)}
+    .call-progress-panel.show{display:flex}
+    .call-progress-card{width:min(360px,100%);border:1px solid #dce5ef;border-radius:18px;
+      padding:22px;background:#fff;color:#283950;box-shadow:0 20px 50px rgba(17,30,48,.2)}
+    .call-progress-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .call-progress-head h3{margin:0;font-size:19px;line-height:1.3;color:#22334a}
+    .call-progress-spinner{width:23px;height:23px;border:3px solid #f0d6b7;border-top-color:#dd7615;
+      border-radius:50%;animation:mj-conmutador-spin 1s linear infinite;flex-shrink:0}
+    @keyframes mj-conmutador-spin{to{transform:rotate(360deg)}}
+    .call-progress-panel[data-status="error"] .call-progress-spinner,
+    .call-progress-panel[data-status="ok"] .call-progress-spinner{animation:none;border-color:#dfecdf}
+    .call-progress-panel[data-status="error"] .call-progress-spinner{border-color:#f0c6c6}
+    .call-progress-description{font-size:14px;line-height:1.55;color:#64738a;margin:0;white-space:pre-line;overflow-wrap:anywhere}
+    .call-progress-panel[data-status="error"] .call-progress-description{color:#a3313e}
+    .call-progress-close{display:block;width:100%;min-height:45px;margin-top:18px;border:1px solid #dbe3ed;
+      border-radius:11px;background:#fff8f1;color:#a54f04;font-weight:800;cursor:pointer}
+    @media(prefers-reduced-motion:reduce){.call-progress-spinner{animation:none}}
     .modal-backdrop{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(23,34,50,.42);backdrop-filter:blur(3px)}
     .modal-backdrop.show{display:flex}
     .choice-modal{width:min(360px,100%);padding:22px;border:1px solid #e5e8ed;border-radius:20px;background:#fff;box-shadow:0 26px 70px rgba(17,30,48,.22)}
@@ -192,6 +212,22 @@
     <p class="privacy-note" data-whatsapp-only>Cuenta autorizada de caseta: <strong>33••••8609</strong>. La cuadrícula no muestra nombres ni teléfonos; WhatsApp puede mostrar la identidad del contacto dentro de su propia interfaz.</p>
   </main>
 
+
+  <div id="callProgressModal" class="call-progress-panel" role="dialog" aria-modal="true"
+       aria-labelledby="callProgressTitle" aria-describedby="callProgressDescription"
+       data-status="loading" hidden>
+    <div class="call-progress-card">
+      <div class="call-progress-head">
+        <span class="call-progress-spinner" aria-hidden="true"></span>
+        <h3 id="callProgressTitle">Llamando…</h3>
+      </div>
+      <p class="call-progress-description" id="callProgressDescription" role="status" aria-live="polite">
+        Preparando solicitud de llamada.
+      </p>
+      <button id="callProgressClose" class="call-progress-close" type="button">Cerrar</button>
+    </div>
+  </div>
+
   <div id="phoneChoiceModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="phoneChoiceTitle">
     <div class="choice-modal">
       <span class="eyebrow">LLAMADA A VIVIENDA</span>
@@ -206,9 +242,9 @@
   </div>
 
   <script src="assets/js/telefonia-engine.js?v=20261006"></script>
-  <script src="assets/js/conmutador-caseta.js?v=20261119-reintento"></script>
+  <script src="assets/js/conmutador-caseta.js?v=20261123-iphone7-confirmacion-v1"></script>
   <script src="assets/js/conmutador-contactos-admin.js?v=20261120-sync-recibos"></script>
-  <script src="assets/js/conmutador.js?v=20261123-fechas-con-llamadas-v5"></script>
+  <script src="assets/js/conmutador.js?v=20261123-iphone7-modal-v1"></script>
   <script src="assets/js/site-sidebar.js?v=20261109-seguridad-caseta"></script>
 </body>
 </html>
