@@ -228,12 +228,16 @@
   }catch(e){body.textContent=e.message||'No fue posible consultar esta fecha.';}
  }
 
+ let calendarPaintedMonth='';
  async function calendar(){
   const [year,month]=currentMonth.split('-').map(Number);
   const start=currentMonth+'-01',end=new Date(Date.UTC(year,month,0)).toISOString().slice(0,10);
   const request=++calendarRequest;
   calendarReady=false;syncSubmit();
-  $('calendarDays').replaceChildren();
+  const calendarGrid=$('calendarDays');
+  calendarGrid.inert=true;
+  calendarGrid.setAttribute('aria-busy','true');
+  if(calendarPaintedMonth!==currentMonth)calendarGrid.replaceChildren();
   const response=await api('/publico/fechas?desde='+start+'&hasta='+end);
   if(request!==calendarRequest)return;
   const googleVerificado=response.disponibilidadVerificada!==false;
@@ -263,7 +267,8 @@
    start.slice(0,7)<=today().slice(0,7);
   if(occupied.has(selectedDate)){selectedDate='';$('clubDate').value='';}
   syncSubmit();
-  const days=$('calendarDays');
+  const days=calendarGrid;
+  days.replaceChildren();
   const offset=(new Date(Date.UTC(year,month-1,1)).getUTCDay()+6)%7;
   for(let n=0;n<offset;n++){let gap=document.createElement('div');gap.className='calendar-blank';days.append(gap);}
   for(let n=1;n<=new Date(Date.UTC(year,month,0)).getUTCDate();n++){
@@ -294,6 +299,9 @@
     $('clubDate').value=fmt(date);days.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');syncSubmit();abrirSolicitudMovil();});
    days.append(btn);
   }
+  calendarPaintedMonth=currentMonth;
+  days.inert=false;
+  days.removeAttribute('aria-busy');
  }
   // El mismo formulario se mueve al modal solo en teléfonos: nunca duplicar IDs.
  const mobileReservationQuery=window.matchMedia('(max-width: 700px)');
@@ -671,7 +679,7 @@
    if(reviewModal.open&&activeReview===r)editReview({...r,estatus:approve?'APROBADA':'RECHAZADA',
     pagado:approve&&info.pagoVerificado,fechaPago:approve&&info.pagoVerificado?today():null,folio:approve&&info.pagoVerificado?info.folio:null,notas:info.notas});
    notify(approve?(info.pagoVerificado?'Pago manual registrado y reservación confirmada.':'Fecha aprobada sin pago. El residente podrá pagar desde Pagos.'):'Solicitud rechazada. La fecha se liberó.');
-   await Promise.all([adminList(),calendar().catch(e=>notify(e.message,true))]);
+   await Promise.all([adminList(false,true),calendar().catch(e=>notify(e.message,true))]);
   }catch(err){
    if(reviewModal.open&&activeReview===r){error.textContent=err.message;error.hidden=false;}
    mostrarError(err);
@@ -690,7 +698,7 @@
    if(reviewModal.open)reviewModal.close();
    notify(d.message+(d.pagoPendienteDeRevision?' Revisa la devolución del dinero.':'')+
     (!d.avisoCorreo?' No se confirmó el correo de aviso.':''));
-   await Promise.all([adminList(),calendar()]);
+   await Promise.all([adminList(false,true),calendar()]);
   }catch(e){mostrarError(e);}
  }
  $('clubRelease').addEventListener('click',()=>{if(activeReview)void liberarReserva(activeReview);});
@@ -913,8 +921,15 @@
  });
  const reviewMedia=window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-height: 550px) and (pointer: coarse)');
  reviewMedia.addEventListener?.('change',()=>{reviewPage=1;renderReviewRequests();});
- async function adminList(forceGoogle=false){
+ let adminListPending=null,adminListUpdatedAt=0;
+ async function adminList(forceGoogle=false,forceLocal=false){
   if(!admin)return;
+  if(adminListPending){
+   await adminListPending;
+   if(!forceGoogle&&!forceLocal)return;
+  }
+  if(!forceGoogle&&!forceLocal&&Date.now()-adminListUpdatedAt<12000)return;
+  const task=(async()=>{
   try{
    const d=await api('/administracion'+(forceGoogle===true?'?actualizarGoogle=1':''));adminRows=[...(d.data||[])].sort((a,b)=>String(a.casa?.calleCorrecta||a.casa?.calle||'').localeCompare(String(b.casa?.calleCorrecta||b.casa?.calle||''),'es-MX',{numeric:true,sensitivity:'base'})||String(a.casa?.numero||'').localeCompare(String(b.casa?.numero||''),'es-MX',{numeric:true})||String(a.fecha||'').localeCompare(String(b.fecha||'')));
    // Los folios del formulario antiguo son solo consulta si no corresponden
@@ -962,7 +977,11 @@
    adminTableRows=totalRows.sort((a,b)=>Number(b.estatus==='PENDIENTE')-Number(a.estatus==='PENDIENTE')||String(b.fecha||'').localeCompare(String(a.fecha||'')));
     refreshReviewMonths();renderReviewRequests();
    actualizarOpcionesCalle();actualizarOpcionesMes();aplicarFiltroReservas();
+   adminListUpdatedAt=Date.now();
   }catch(e){notify(e.message,true);}
+  })();
+  adminListPending=task;
+  try{await task;}finally{if(adminListPending===task)adminListPending=null;}
  }
  $('clubRequests').addEventListener('click',e=>{const btn=e.target.closest('[data-review]');if(btn){const r=adminRows.find(x=>Number(x.id)===Number(btn.dataset.review));if(r)editReview(r);}});
  const handleAdminAction=async e=>{
@@ -979,7 +998,7 @@
    try{
     const result=await api('/administracion/'+id,'DELETE');
     notify(result.message);
-    await Promise.all([adminList(),calendar()]);
+    await Promise.all([adminList(false,true),calendar()]);
    }catch(err){notify(err.message,true);eliminar.disabled=false;}
    return;
   }
@@ -1120,4 +1139,12 @@
  if(admin)await adminList();
  try{await calendar();}catch(e){notify(e.message,true);}
  tab('reservar');
+ // Al mostrar un calendario conservado se consulta de nuevo la ocupación
+ // real. No se mantiene habilitado Reservar mientras se verifica.
+ window.addEventListener('mj:shell-activated',event=>{
+  if(!event.detail?.fromCache)return;
+  void calendar().catch(e=>{calendarReady=false;syncSubmit();notify(e.message,true);});
+  const section=document.querySelector('[data-tab][aria-current="page"]')?.dataset.tab;
+  if(admin&&['administracion','aprobacion'].includes(section))void adminList();
+ });
 })();

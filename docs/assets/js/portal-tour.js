@@ -209,15 +209,20 @@
     window.addEventListener('resize', alignViewport, {passive:true});
     window.addEventListener('scroll', reposition, {passive:true});
     window.visualViewport?.addEventListener('resize', alignViewport, {passive:true});
-    // Seguir el desplazamiento dentro de los marcos, no solo del shell.
-    document.querySelectorAll('.mj-app-frame').forEach(frame => {
-      const attachScroll = () => {
-        try { frame.contentWindow?.addEventListener('scroll', reposition, {passive:true}); }
-        catch (_) { /* Página inaccesible: no romper el recorrido. */ }
+    // Seguir también los marcos creados bajo demanda al navegar.
+    const watchedFrames=new WeakSet();
+    const watchFrame=frame=>{
+      if(!frame||watchedFrames.has(frame))return;
+      watchedFrames.add(frame);
+      const attachScroll=()=>{
+        try{frame.contentWindow?.addEventListener('scroll',reposition,{passive:true});}
+        catch(_){/* Marco no disponible: conservar la guía */ }
       };
-      frame.addEventListener('load', attachScroll);
-      attachScroll(); // El iframe actual ya estaba cargado al abrir la guía.
-    });
+      frame.addEventListener('load',attachScroll);
+      attachScroll();
+    };
+    document.querySelectorAll('.mj-app-frame').forEach(watchFrame);
+    document.addEventListener('mj-shell-frame-added',event=>watchFrame(event.detail?.frame));
     return root;
   }
 

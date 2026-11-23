@@ -62,23 +62,71 @@
         document.querySelector('[data-phone-choice="1"]').hidden=phones.length<2;
         byId('phoneChoiceModal').classList.add('show');
       }
-      async function loadHistory(){
-        const list=byId('historyList');
-        list.textContent='Cargando historial…';
-        try {
-          const data=await api('/conmutador/historial');
-          list.replaceChildren();
-          if(!data.registros.length){list.textContent='Sin intentos registrados.';return;}
-          data.registros.forEach(entry=>{
-            const row=document.createElement('div');row.className='history-item';
-            const home=document.createElement('strong');
-            home.textContent=entry.grupo+' '+entry.numero;
-            const timestamp=document.createElement('span');
-            const [date,time]=String(entry.fecha_hora||'').split(' ');
-            timestamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
-            row.append(home,timestamp);list.appendChild(row);
-          });
-        }catch(_){list.textContent='No se pudo consultar el historial.';}
+      // Consultar todos los intentos del día; ni paginación ni datos privados.
+      const HISTORY_CACHE_MS=15000;
+      const historyCache=new Map(),historyDate=byId('historyDate');
+      function localToday(){
+        const d=new Date();
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      }
+      historyDate.value=localToday();
+      let historySeq=0,historyController=null;
+      function renderHistory(result){
+        const rows=Array.isArray(result.registros)?result.registros:[];
+        const fragment=document.createDocumentFragment();
+        if(!rows.length){
+          const empty=document.createElement('p');
+          empty.className='history-empty';
+          empty.textContent='No se registraron intentos de llamada en esta fecha.';
+          fragment.appendChild(empty);
+        }
+        for(const item of rows){
+          const row=document.createElement('div');
+          row.className='history-item';
+          const house=document.createElement('strong');
+          house.textContent=String(item.grupo||'')+' '+String(item.numero||'');
+          const stamp=document.createElement('span');
+          const [date,time]=String(item.fecha_hora||'').split(' ');
+          stamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
+          row.append(house,stamp);fragment.appendChild(row);
+        }
+        byId('historyList').replaceChildren(fragment);
+        byId('historyCount').textContent=rows.length===1?'1 intento de llamada':rows.length+' intentos de llamada';
+        byId('historyStatus').textContent='';
+        byId('refreshHistory').disabled=false;
+      }
+      async function loadHistory({force=false}={}){
+        const fecha=historyDate.value;
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){
+          byId('historyStatus').textContent='Selecciona una fecha válida.';
+          return;
+        }
+        const seq=++historySeq;
+        historyController?.abort();
+        historyController=new AbortController();
+        const cached=historyCache.get(fecha);
+        if(!force&&cached&&Date.now()-cached.at<HISTORY_CACHE_MS){
+          renderHistory(cached.data);return;
+        }
+        byId('refreshHistory').disabled=true;
+        byId('historyStatus').textContent='Consultando el '+fecha.split('-').reverse().join('/')+'…';
+        // Conservar la vista anterior durante la carga evita parpadeos.
+        try{
+          const result=await api('/conmutador/historial?fecha='+encodeURIComponent(fecha),
+            {signal:historyController.signal});
+          if(seq!==historySeq)return;
+          if(result.fecha!==fecha||!Array.isArray(result.registros))
+            throw Error('Respuesta de historial inválida.');
+          historyCache.set(fecha,{at:Date.now(),data:result});
+          if(historyCache.size>5)historyCache.delete(historyCache.keys().next().value);
+          renderHistory(result);
+        }catch(error){
+          if(seq!==historySeq)return;
+          byId('historyList').replaceChildren();
+          byId('historyCount').textContent='Sin datos verificados para esta fecha';
+          byId('historyStatus').textContent=error.message||'No se pudo consultar el historial.';
+          byId('refreshHistory').disabled=false;
+        }
       }
       // La pestaña privada se habilita ÚNICAMENTE tras verificar el rol con el backend.
       let contactosAdmin = null;
@@ -97,7 +145,13 @@
       }
       byId('showHistory').addEventListener('click',()=>mostrarPanel('historial'));
       byId('showHomes').addEventListener('click',()=>mostrarPanel('viviendas'));
-      byId('refreshHistory').addEventListener('click',loadHistory);
+      historyDate.addEventListener('change',()=>{void loadHistory();});
+      byId('historyToday').addEventListener('click',()=>{
+        historyDate.value=localToday();void loadHistory({force:true});
+      });
+      byId('refreshHistory').addEventListener('click',()=>{
+        historyCache.delete(historyDate.value);void loadHistory({force:true});
+      });
       Promise.resolve(window.MJAccessReady).then(autorizado => {
         if(autorizado !== true || window.MJVerifiedRole !== 'ADMINISTRADOR')return;
         contactosAdmin = window.crearContactosConmutadorAdmin({api, sections});

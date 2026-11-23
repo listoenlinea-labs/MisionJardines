@@ -826,6 +826,9 @@
       renderAll();
     }
 
+    window.addEventListener('mj:shell-activated',event=>{
+      if(event.detail?.fromCache)void initializeCalendar();
+    });
     initializeCalendar();
   </script>
   <script src="assets/js/site-sidebar.js?v=20261021-purple-x"></script>

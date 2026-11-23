@@ -71,19 +71,46 @@
       if (!MJPermissions.canAccess(role,page)) { location.replace(MJPermissions.landing(role)); return false; }
       window.MJVerifiedRole = role;
       if (role === 'SEGURIDAD') sessionStorage.removeItem('mjCasaSeleccionada');
-      function filterLinks() {
-        document.querySelectorAll('a[href]').forEach(link => {
-          const url = new URL(link.href,location.href);
-          const target = url.pathname.split('/').pop() || 'index.html';
-          if (url.origin === location.origin && MJPermissions.pages.includes(target)) {
-            if (!MJPermissions.canAccess(role,target)) link.setAttribute('data-mj-denied','');
-            else link.removeAttribute('data-mj-denied');
-          }
-        });
+      function filterLink(link) {
+        const url = new URL(link.href,location.href);
+        const target = url.pathname.split('/').pop() || 'index.html';
+        if (url.origin === location.origin && MJPermissions.pages.includes(target)) {
+          if (!MJPermissions.canAccess(role,target)) link.setAttribute('data-mj-denied','');
+          else link.removeAttribute('data-mj-denied');
+        }
       }
+      function filterLinks(){document.querySelectorAll('a[href]').forEach(filterLink);}
       filterLinks();
-      new MutationObserver(filterLinks).observe(document.documentElement,{childList:true,subtree:true});
+      // Solo revisar los enlaces agregados. La observación anterior recorría
+      // TODA la página en cada mutación, incluso tablas grandes de Finanzas.
+      const linkNodes = new Set();
+      let linkUpdateQueued = false;
+      new MutationObserver(mutations=>{
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) if (node.nodeType===1) linkNodes.add(node);
+        }
+        if (!linkNodes.size || linkUpdateQueued) return;
+        linkUpdateQueued=true;
+        requestAnimationFrame(()=>{
+          linkUpdateQueued=false;
+          for(const root of linkNodes){
+            if(root.matches?.('a[href]'))filterLink(root);
+            root.querySelectorAll?.('a[href]').forEach(filterLink);
+          }
+          linkNodes.clear();
+        });
+      }).observe(document.documentElement,{childList:true,subtree:true});
       document.documentElement.dataset.mjAuthorized = 'true';
+      const notifyShellReady = () => {
+        if (window.parent===window || new URLSearchParams(location.search).get('_mjFrame')!=='1') return;
+        try{
+          if (window.parent.location.origin===location.origin)
+            window.parent.postMessage({type:'MJ_SHELL_READY',page},location.origin);
+        }catch(_) {}
+      };
+      if(document.readyState==='loading')
+        document.addEventListener('DOMContentLoaded',notifyShellReady,{once:true});
+      else notifyShellReady();
       return true;
     } catch (error) {
       document.addEventListener('DOMContentLoaded', showError, {once:true});

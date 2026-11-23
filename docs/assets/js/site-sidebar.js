@@ -336,44 +336,85 @@
     location.replace('login.html');
   }
 
+  // El iframe embebido no solicita contadores: el shell padre los centraliza.
+  // En modo página independiente el menú conserva exactamente la misma función.
   async function refreshPaymentNotices(aside) {
-    if (!MJPermissions.canAccess(role(),'pagos.html')) return;
+    if(!MJPermissions.canAccess(role(),'pagos.html'))return;
     const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
     if(!token)return;
-    const api=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
     const selected=sessionStorage.getItem('mjCasaSeleccionada');
+    const roleValue=role();
+    const api=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
     const headers={Authorization:'Bearer '+token,...(selected?{'X-Casa-Id':selected}:{})};
+    const belongs=()=>token===(localStorage.getItem('misionJardinesToken')||
+      sessionStorage.getItem('misionJardinesToken'))&&
+      (selected||'')===(sessionStorage.getItem('mjCasaSeleccionada')||'');
     const decorate=(page,count)=>{
       const link=aside.querySelector('.mj-side-link[href="'+page+'"]');
       link?.querySelector('.mj-side-count')?.remove();
-      if(count>0&&link){const badge=document.createElement('b');badge.className='mj-side-count';badge.textContent=count>99?'99+':String(count);badge.setAttribute('aria-label',count+' avisos');link.append(badge);}
+      if(count>0&&link){
+        const badge=document.createElement('b');
+        badge.className='mj-side-count';badge.textContent=count>99?'99+':String(count);
+        badge.setAttribute('aria-label',count+' avisos');link.append(badge);
+      }
     };
-    try{
-      const response=await fetch(api+'/pagos/adeudos',{headers,cache:'no-store'});
-      if(response.ok){const result=await response.json();if(result.ok){window.MJAdeudos=result.data;decorate('pagos.html',result.data.cantidad||0);decorate('index.html',0);document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:result.data}));}}
-    }catch(_){/* No presentar cero cuando la API no está disponible. */}
-    if(['ADMINISTRADOR','SUPER_ADMIN'].includes(role())){
-      try{const r=await fetch(api+'/casa-club/solicitudes-pendientes',{headers,cache:'no-store'});if(r.ok){const d=await r.json();if(d.ok)decorate('casa-club.html',d.cantidad||0);}}catch(_){}
-    }
+    // Ejecutar en paralelo: el contador de Casa Club no tiene que esperar
+    // a los adeudos, ni viceversa.
+    const tasks=[(async()=>{
+      try{
+        const response=await fetch(api+'/pagos/adeudos',{headers,cache:'no-store'});
+        if(!response.ok)return;
+        const result=await response.json();
+        if(result.ok&&belongs()){
+          window.MJAdeudos=result.data;
+          decorate('pagos.html',result.data.cantidad||0);decorate('index.html',0);
+          document.dispatchEvent(new CustomEvent('mj:adeudos',{detail:result.data}));
+        }
+      }catch(_){/* Mantener último estado ante una falla de red */ }
+    })()];
+    if(['ADMINISTRADOR','SUPER_ADMIN'].includes(roleValue))tasks.push((async()=>{
+      try{
+        const response=await fetch(api+'/casa-club/solicitudes-pendientes',{headers,cache:'no-store'});
+        if(!response.ok)return;
+        const result=await response.json();
+        if(result.ok&&belongs())decorate('casa-club.html',result.cantidad||0);
+      }catch(_){/* El contador sigue disponible al actualizar */ }
+    })());
+    await Promise.all(tasks);
   }
 
-  // El sidebar pertenece al portal padre; Pagos corre en un iframe.
-  // Reconsultar el adeudo real cuando el módulo notifique un cambio y
-  // periódicamente mientras Pagos esté a la vista (sin inventar saldos).
   function watchPaymentNotices(aside) {
-    const refresh = () => { if (!document.hidden) void refreshPaymentNotices(aside); };
-    document.addEventListener('mj:pagos-cambios', refresh);
-    window.addEventListener('message', event => {
-      if (!window.MJ_SHELL_MODE || event.origin !== location.origin ||
-          event.data?.type !== 'MJ_PAGOS_CAMBIOS') return;
-      const activeFrame = [...document.querySelectorAll('#mjPageA, #mjPageB')]
-        .find(frame => frame.classList.contains('is-active'));
-      if (window.MJShell?.currentPage === 'pagos.html' &&
-          event.source === activeFrame?.contentWindow) refresh();
+    let lastRequested=0;
+    let inFlight=null,queuedForce=false;
+    const refresh=(force=false)=>{
+      if(document.hidden)return;
+      const now=Date.now();
+      if(inFlight){
+        if(force)queuedForce=true;
+        return;
+      }
+      if(!force&&now-lastRequested<8000)return;
+      lastRequested=now;
+      const job=refreshPaymentNotices(aside);
+      inFlight=job;
+      void job.finally(()=>{
+        if(inFlight!==job)return;
+        inFlight=null;
+        if(queuedForce){queuedForce=false;refresh(true);}
+      });
+    };
+    document.addEventListener('mj:pagos-cambios',()=>refresh(true));
+    window.addEventListener('message',event=>{
+      if(!window.MJ_SHELL_MODE||event.origin!==location.origin||
+          event.data?.type!=='MJ_PAGOS_CAMBIOS')return;
+      const activeFrame=document.querySelector('.mj-app-frame.is-active');
+      if(window.MJShell?.currentPage==='pagos.html'&&
+        event.source===activeFrame?.contentWindow)refresh(true);
     });
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', refresh);
-    setInterval(() => { if (page() === 'pagos.html') refresh(); }, 15000);
+    window.addEventListener('focus',()=>refresh());
+    document.addEventListener('visibilitychange',()=>refresh());
+    setInterval(()=>{if(page()==='pagos.html')refresh();},15000);
+    refresh();
   }
 
   function loadHomeDashboard() {
@@ -405,6 +446,9 @@
       houseBox.innerHTML='<label style="font-size:11px;font-weight:700;color:var(--mj-side-orange)">Vivienda seleccionada<select aria-label="Vivienda seleccionada" style="width:100%;margin-top:6px;padding:7px;border:1px solid #ddd;border-radius:7px"></select></label>';
       aside.querySelector('.mj-side-community').after(houseBox);
       const selector=houseBox.querySelector('select'); selector.disabled=true;
+      // El menú y la navegación deben funcionar ANTES de responder /viviendas/mias.
+      // Esta consulta solo completa el selector, no autoriza ninguna ruta.
+      void (async()=>{
       try {
         const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
         const response=await fetch((window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api')+'/viviendas/mias',{headers:{Authorization:'Bearer '+token}});
@@ -418,13 +462,18 @@
         selector.disabled=links.length<2;
         selector.addEventListener('change',()=>{sessionStorage.setItem('mjCasaSeleccionada',selector.value);if(window.MJ_SHELL_MODE)window.MJShell?.reload();else location.reload();});
       } catch (_) {const option=document.createElement('option');option.textContent='Consulta Mis viviendas';selector.append(option);}
+      })();
 
     }
 
     permissions(aside);
-    void refreshPaymentNotices(aside);
-    watchPaymentNotices(aside);
-    void alertAccountRequests(aside);
+    // El menú padre gestiona contadores de toda la aplicación; no duplicar
+    // solicitudes desde cada iframe conservado en memoria.
+    const embeddedShell=window.parent!==window&&new URLSearchParams(location.search).get('_mjFrame')==='1';
+    if(!embeddedShell){
+      watchPaymentNotices(aside);
+      void alertAccountRequests(aside);
+    }
     aside.querySelector('.mj-side-logout')?.addEventListener('click', logout);
 
     if (page() === 'visitas.html' && !document.querySelector('script[data-house-fields]')) {
