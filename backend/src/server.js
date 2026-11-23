@@ -42,6 +42,7 @@ async function iniciarServidor() {
         await require('./services/casa-club-schema.service').asegurarCasaClub();
         await require('./models/AvisoOficial').sync();
         await require('./services/finanzas-schema.service').asegurarFinanzas();
+        await require('./models/ComprobanteEgreso').sync();
         await require('./services/proyectos-extraordinarios-schema.service').asegurarProyectosExtraordinarios();
         await require('./services/viviendas-schema.service').asegurarViviendas();
         await require('./services/zkteco-schema.service').asegurarEsquemaZkteco();

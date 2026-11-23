@@ -47,7 +47,7 @@ async function editar(req,res){
  }catch(e){return err(res,e);}
 }
 async function eliminar(req,res){
- let file=null;
+ let file=null,extras=[];
  try{
   const id=Number(req.params.id),anterior=clean(req.body?.anterior);
   if(!Number.isSafeInteger(id)||id<1)throw bad(400,'Concepto inválido.');
@@ -63,12 +63,14 @@ async function eliminar(req,res){
     }))throw bad(409,'Este gasto aparece en un plan de fondos. Retira primero sus asignaciones.');
    }
    file=row.comprobanteArchivo;
+   extras=await require('./comprobantes-egresos-multiples.controller').retirarRegistros(id,transaction);
    await audit('ELIMINAR_CONCEPTO_CASA_CLUB',id,prev.monto,0,req.usuario.usuarioId,
     prev.concepto+'; '+(row.referencia||''),transaction);
    await row.destroy({transaction});
    return {id};
   });
   if(file)await archivos.eliminar(file);
+  await require('./comprobantes-egresos-multiples.controller').eliminarArchivos(extras);
   return res.json({ok:true,...result,message:'Concepto eliminado y auditoría conservada.'});
  }catch(e){return err(res,e);}
 }

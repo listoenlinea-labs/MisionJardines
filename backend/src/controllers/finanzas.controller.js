@@ -60,7 +60,9 @@ async function analizar(req,res){
    PagoReportado.findAll({attributes:['casaId','tipoPago','creadoEn','estatus','folioReporte','folioOperacion','aplicacionCuotas']}),
     AportacionExtraordinaria.findAll({attributes:['id','cuotaExtraordinariaId','cargoExtraordinarioId','casaId','fecha','monto','referencia','origen']})
   ]);
-  const [egresosHistoricos,gastosProyectos]=await Promise.all([
+  const adjuntosNuevos=await require('../models/ComprobanteEgreso').findAll({attributes:['egresoId'],raw:true});
+   const conComprobantesMultiples=new Set(adjuntosNuevos.map(x=>Number(x.egresoId)));
+   const [egresosHistoricos,gastosProyectos]=await Promise.all([
    Egreso.findAll({where:{fecha:{[Op.lte]:end}},attributes:['fecha','categoria','monto','ambito'],raw:true}),
    Egreso.findAll({where:{ambito:'EXTRAORDINARIO',proyectoId:{[Op.ne]:null}},order:[['fecha','DESC'],['id','DESC']]})
   ]);
@@ -162,7 +164,7 @@ async function analizar(req,res){
    const id=Number(e.proyectoId);
    if(!gastosPorProyecto.has(id))gastosPorProyecto.set(id,[]);
    gastosPorProyecto.get(id).push({id:Number(e.id),fecha:e.fecha,concepto:e.concepto,monto:num(e.monto),
-    referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo,
+    referencia:e.referencia,comprobanteDisponible:!!e.comprobanteArchivo||conComprobantesMultiples.has(Number(e.id)),
     incluidoPresupuesto:e.incluidoPresupuesto!==false,pagado:Boolean(Number(e.pagado))});
   }
   const cuotasPorId=new Map(cuotasExtras.map(p=>[Number(p.id),p]));
@@ -300,9 +302,9 @@ async function analizar(req,res){
    ingresosMantenimientoCalles:cobranzaMantenimiento,egresosPorConcepto:egresosAcumulados,
    egresosCategorias:categoriasGasto,
    egresosCasaClubAnuales:gastosCasaClubAnuales.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();
-    return {...row,comprobanteDisponible:Boolean(comprobanteArchivo)};}),
+    return {...row,comprobanteDisponible:Boolean(comprobanteArchivo)||conComprobantesMultiples.has(Number(e.id))};}),
    egresos:egresos.map(e=>{const {comprobanteArchivo,...row}=e.toJSON();return {...row,
-    ambito:ambitoDeEgreso(e),comprobanteDisponible:!!comprobanteArchivo,
+    ambito:ambitoDeEgreso(e),comprobanteDisponible:!!comprobanteArchivo||conComprobantesMultiples.has(Number(e.id)),
     esAjusteMensual:esAjuste(e),tieneCuota:cuotasExtras.some(c=>Number(c.egresoId)===Number(e.id))};}),
    avisoConciliacion:'Los ingresos por calle se asignan a la mensualidad cubierta (con recargo efectivamente pagado). El saldo de caja se calcula por fecha del cobro, sin duplicar depósitos. Los movimientos sin período requieren conciliación.'
   }});
@@ -549,7 +551,7 @@ async function editarConceptoProyecto(req,res){
  }catch(e){return sendErr(res,e);}
 }
 async function eliminarConceptoProyecto(req,res){
- let comprobante=null;
+ let comprobante=null,extras=[];
  try{
   const {id,proyectoId,anterior}=solicitudConcepto(req,false);
   const result=await sequelize.transaction({isolationLevel:Transaction.ISOLATION_LEVELS.SERIALIZABLE},async transaction=>{
@@ -558,6 +560,7 @@ async function eliminarConceptoProyecto(req,res){
    const previo=estadoConcepto(row);
    const referencia=String(row.referencia||'');
    comprobante=row.comprobanteArchivo;
+   extras=await require('./comprobantes-egresos-multiples.controller').retirarRegistros(id,transaction);
    const detalle=('Proyecto '+proyectoId+' · '+referencia+' · '+previo.concepto+
     ' · '+previo.fecha+' · incluido '+Number(previo.incluidoPresupuesto)+
     ' · pagado '+Number(previo.pagado)+
@@ -571,6 +574,7 @@ async function eliminarConceptoProyecto(req,res){
   // Borrar el comprobante solamente después del commit. La referencia queda
   // documentada en auditoría; otros proyectos y sus archivos no se alteran.
   await archivosEgresos.eliminar(comprobante);
+  await require('./comprobantes-egresos-multiples.controller').eliminarArchivos(extras);
   return res.json({ok:true,...result,message:'Concepto eliminado. Las cifras se actualizarán al recargar.'});
  }catch(e){return sendErr(res,e);}
 }
