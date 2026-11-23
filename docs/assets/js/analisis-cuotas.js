@@ -70,8 +70,8 @@ $('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpens
  window.MJFinanceClubExpenseContext=()=>({activeConcept,data,request,load,fmt});
  window.MJFinanceSelectedProject=()=>activeProyectoId;
  let lastSuccessfulFinanceLoad=Date.now(),lastRevisionSeen=null,revisionBusy=false;
- async function refreshWhenChanged(){
-  if(revisionBusy||document.visibilityState==='hidden'||!data||
+ async function refreshWhenChanged(onResume=false){
+  if(revisionBusy||window.MJSectionActive===false||document.visibilityState==='hidden'||!data||
    document.querySelector('.finance-pay-overlay:not([hidden])')||
    document.querySelector('#financeProjectRulesModal:not([hidden])')||
    document.querySelector('#financeBulkModal:not([hidden])'))return;
@@ -80,7 +80,13 @@ $('expenseCategory').addEventListener('change',syncExtraExpense);syncExtraExpens
    const response=await request('/revision');
    const version=Number(response.data?.revision);
    if(!Number.isSafeInteger(version))return;
-   if(lastRevisionSeen===null){lastRevisionSeen=version;return;}
+   if(lastRevisionSeen===null){
+    lastRevisionSeen=version;
+    // Al recuperar la pestaña, no dar por actuales saldos antiguos si aún
+    // no teníamos una revisión inicial de referencia.
+    if(onResume&&Date.now()-lastSuccessfulFinanceLoad>10000)await load();
+    return;
+   }
    const changed=version!==lastRevisionSeen;
    if(changed||Date.now()-lastSuccessfulFinanceLoad>=10*60*1000){
     lastRevisionSeen=version;
@@ -4074,7 +4080,12 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  }
  // El contador consultado cada 20 s es memoria Node, NO una query SQL.
  // Respaldo cada 10 min si hay varias instancias en Hostinger.
- setInterval(()=>{void refreshWhenChanged();},20000);
+ // Mantener las vistas de vuelta casi instantáneas; sincronizar importes
+ // en segundo plano solo cuando el usuario realmente ve esta sección.
+ window.addEventListener('mj:shell-activated',event=>{
+  if(event.detail?.fromCache&&data)void refreshWhenChanged(true);
+ });
+ setInterval(()=>{if(window.MJSectionActive!==false)void refreshWhenChanged();},20000);
  document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'){
    void refreshWhenChanged();void refreshDriveIntegration();

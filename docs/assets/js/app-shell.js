@@ -17,6 +17,8 @@
     'anuncios.html','calendario.html','directorio.html','cuotas.html'
   ]);
   const MAX_CACHE_AGE = 4 * 60 * 1000;
+  // Nunca conservar enlaces con folios, tokens o parámetros de formularios.
+  const canCache = route => SAFE_CACHE.has(route.page) && route.target === route.page;
   const frameLimit = () => matchMedia('(max-width:820px)').matches ? 3 : 4;
   const currentToken = () => localStorage.getItem('misionJardinesToken')
     || sessionStorage.getItem('misionJardinesToken');
@@ -77,7 +79,8 @@
     try {
       const here = new URL(entry.frame.contentWindow.location.href);
       if (here.origin !== location.origin || here.pathname.split('/').pop() !== route.page ||
-          !entry.frame.contentDocument?.documentElement?.hasAttribute('data-mj-authorized')) {
+          !(entry.frame.contentDocument?.documentElement?.hasAttribute('data-mj-authorized') ||
+            route.page === 'casa-club.html')) {
         cached.delete(route.target);
         return null;
       }
@@ -310,7 +313,7 @@
 
     // Ruta ya visitada: volver instantáneamente al MISMO documento.
     // Nunca permite reutilizar otra vivienda, token ni una página hardware/pago.
-    const hit = !reload && SAFE_CACHE.has(route.page) ? cacheEntry(route) : null;
+    const hit = !reload && canCache(route) ? cacheEntry(route) : null;
     if (hit) {
       hit.lastUsed=Date.now();
       activateFrame(hit.frame,route,ordinal,true);
@@ -346,7 +349,7 @@
           throw Error('Esta sección no está disponible para tu cuenta.');
         }
         state.ready=true;
-        if (SAFE_CACHE.has(route.page)) {
+        if (canCache(route)) {
           cached.set(route.target,{
             frame,token,house:currentHouse,ready:true,
             createdAt:Date.now(),lastUsed:Date.now()

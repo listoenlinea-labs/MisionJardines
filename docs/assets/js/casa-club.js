@@ -1120,4 +1120,12 @@
  if(admin)await adminList();
  try{await calendar();}catch(e){notify(e.message,true);}
  tab('reservar');
+ // Al mostrar un calendario conservado se consulta de nuevo la ocupación
+ // real. No se mantiene habilitado Reservar mientras se verifica.
+ window.addEventListener('mj:shell-activated',event=>{
+  if(!event.detail?.fromCache)return;
+  void calendar().catch(e=>{calendarReady=false;syncSubmit();notify(e.message,true);});
+  const section=document.querySelector('[data-tab][aria-current="page"]')?.dataset.tab;
+  if(admin&&['administracion','aprobacion'].includes(section))void adminList();
+ });
 })();
