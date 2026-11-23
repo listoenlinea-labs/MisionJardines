@@ -22,9 +22,9 @@ test('Modal informa explícitamente si no hay comprobante visual',()=>{
  const open=js.slice(start,end);
  assert.ok(start>0&&end>start);
  assert.match(open,/Este egreso no tiene recibo o comprobante visual adjunto/);
- assert.match(open,/if\(!expense\.comprobanteDisponible\)return/);
+ assert.match(open,/if\(!rows\.length\)/);
  for(const id of ['financeProjectProofModal','financeProjectProofStatus','financeProjectProofPreview',
-  'financeProjectProofDownload','financeProjectProofProject','financeProjectProofConcept',
+  'financeProjectProofDownload','financeProjectProofFiles','financeProjectProofProject','financeProjectProofConcept',
   'financeProjectProofAmount','financeProjectProofDate','financeProjectProofReference']){
   assert.equal(html.split('id="'+id+'"').length-1,1,id);
  }
@@ -33,9 +33,9 @@ test('Modal informa explícitamente si no hay comprobante visual',()=>{
 
 test('La vista previa descarga PDF o imagen autenticados, libera recursos al cerrar',()=>{
  const js=read('docs/assets/js/analisis-cuotas.js');
- assert.match(js,/\/finanzas\/egresos\/['"]\+Number\(expense\.id\)\+['"]\/comprobante/);
+ assert.match(js,/const base=API\+'\/finanzas\/egresos\/'\+Number\(expense\.id\)\+'\/comprobantes'/);
  assert.match(js,/Authorization:'Bearer '\+token/);
- assert.match(js,/blob\.type==='application\/pdf'\?document\.createElement\('iframe'\):document\.createElement\('img'\)/);
+ assert.match(js,/document\.createElement\(blob\.type==='application\/pdf'\?'iframe':'img'\)/);
  assert.match(js,/URL\.createObjectURL\(blob\)/);
  assert.match(js,/URL\.revokeObjectURL\(projectProofUrl\)/);
  assert.match(js,/projectProofAbort\?\.abort\(\)/);

@@ -65,7 +65,7 @@ test('UI: casillas independientes y marcadas por defecto, carga posterior del co
  assert.match(html,/\.pdf,\.png,\.jpg,\.jpeg/);
  assert.match(script,/pagado:\$\('financeProjectExpensePaid'\)\.checked/);
  assert.match(script,/encodeProjectExpenseFile\(file\)/);
- assert.match(script,/\/egresos\/'\+id\+'\/comprobante'/);
+ assert.match(script,/\/egresos\/'\+id\+'\/comprobantes'/);
  assert.match(script,/\/egresos\/'\+id\+'\/pagado'/);
  assert.match(view,/Presupuesto restante por pagar/);
  assert.match(view,/presupuestoRestante/);

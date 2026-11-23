@@ -3,7 +3,7 @@
 ## Entregado en esta rama
 
 1. «Anuncios» pasa a **Avisos**, tablón de lectura para CONDOMINO y publicación/eliminación exclusivamente por SUPER_ADMIN o ADMINISTRADOR. Los mensajes se guardan en MySQL y se comparten entre dispositivos; ya no dependen de localStorage. No hay comentarios, réplicas, respuestas ni botón de WhatsApp al autor. En backend los permisos se verifican por rol y token.
-2. Los **egresos reales de Mantenimiento, Cuotas Extraordinarias y Casa Club** aceptan hasta 12 comprobantes nuevos por concepto, cada uno PDF/JPG/PNG de hasta 1 MB; el histórico de comprobante único se conserva. Los adjuntos se consultan por separado, con autenticación y verificación de cabecera de archivo. Se impide adjuntar exactamente el mismo archivo dos veces al mismo gasto.
+2. Los **egresos reales de Mantenimiento, Cuotas Extraordinarias y Casa Club** aceptan hasta 12 comprobantes nuevos por concepto, cada uno PDF/JPG/PNG de hasta 1 MB; el histórico de comprobante único se conserva. En Mantenimiento, un botón en la tabla también permite consultar/añadir comprobantes a conceptos ya registrados. Los adjuntos se consultan por separado, con autenticación y verificación de cabecera de archivo. Se impide adjuntar exactamente el mismo archivo dos veces al mismo gasto.
 3. La carga múltiple de *comprobantes de gasto* es documental: **no crea pagos, no modifica adeudos ni acredita ingresos**. Evita confundir una factura de proveedor con el depósito de un residente.
 
 ## Requisito financiero del cliente: pendiente de implementación contable completa
