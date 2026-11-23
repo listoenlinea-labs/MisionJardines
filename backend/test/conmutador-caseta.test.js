@@ -19,6 +19,7 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   const destino = '5550000100';
   let fila = null;
   let historial;
+  const seguimiento = new Map();
   let override = null;
   let storedOwner = null;
   const linkedCasa = {id:42,calle:'Rosas',calleCorrecta:'Rosas',numero:'12',telefono:null,
@@ -52,6 +53,21 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
     if (sql.includes('INSERT INTO conmutador_intentos_llamada')) {
       historial = campos;
       return [];
+    }
+    if (sql.includes('INSERT INTO conmutador_llamadas_seguimiento')) {
+      seguimiento.set(campos.solicitud, {
+        usuarioId:campos.usuarioId,grupo:campos.grupo,
+        numero:campos.numero,estado:'PENDIENTE',confirmado:false
+      });
+      return [];
+    }
+    if (sql.includes('UPDATE conmutador_llamadas_seguimiento')) {
+      const entry=seguimiento.get(campos.solicitud);
+      if(entry&&['PENDIENTE','ENVIADA'].includes(entry.estado)){
+        entry.estado=campos.estado;
+        if(['ENVIADA','FINALIZADA'].includes(campos.estado))entry.confirmado=true;
+      }
+      return [undefined,entry?1:0];
     }
     if (sql.includes("SET solicitud = ")) {
       if (fila && !['FINALIZADA', 'ERROR'].includes(fila.estado)) return [undefined, 0];
@@ -109,6 +125,9 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.equal(creada.codigo, 202);
   assert.deepEqual(Object.keys(creada.json), ['ok', 'solicitud']);
   assert.deepEqual(historial, { usuarioId: 1, ...direccion });
+  assert.deepEqual(seguimiento.get(creada.json.solicitud), {
+    usuarioId:1,...direccion,estado:'PENDIENTE',confirmado:false
+  },'aceptar solicitud no confirma la llamada');
   assert.equal((await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' })).codigo, 409);
   assert.equal((await llamar(base + '/agente/siguiente', guardia, {})).codigo, 401);
   const orden = await llamar(base + '/agente/siguiente', agente, {});
@@ -117,10 +136,13 @@ test('Seguridad solicita por vivienda y solo el agente autenticado recibe el nú
   assert.equal((await llamar(base + '/agente/siguiente', agente, {})).codigo, 204);
   const { solicitud, reclamo } = orden.json;
   assert.equal((await llamar(base + '/agente/resultado', agente, { solicitud, reclamo, estado: 'ENVIADA' })).codigo, 204);
+  assert.equal(seguimiento.get(solicitud).estado,'ENVIADA');
+  assert.equal(seguimiento.get(solicitud).confirmado,true);
   assert.deepEqual((await llamar(base + '/llamadas/' + solicitud, guardia)).json, { ok: true, estado: 'ENVIADA' });
   assert.equal((await llamar(base + '/llamadas/' + solicitud, jwtPara(2))).codigo, 404);
   assert.equal((await llamar(base + '/llamadas', guardia, { ...direccion, contacto: 'A' })).codigo, 409);
   assert.equal((await llamar(base + '/agente/resultado', agente, { solicitud, reclamo, estado: 'FINALIZADA' })).codigo, 204);
+  assert.equal(seguimiento.get(solicitud).estado,'FINALIZADA');
   assert.deepEqual((await llamar(base + '/llamadas/' + solicitud, guardia)).json, { ok: true, estado: 'FINALIZADA' });
   // La agenda privada no debe entregar números a Seguridad, Mesa o Super Admin.
   const adminQuery = '/api/busqueda/conmutador/contactos-admin/consultar';
