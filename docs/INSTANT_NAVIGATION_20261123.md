@@ -24,10 +24,26 @@ El test de navegación con iframe simulado comprueba: regreso a Inicio sin recar
 
 **Antes de fusionar**: comprobar flujo real en Android, iOS y escritorio; cambiar de casa; entrar y salir durante una validación de pagos; comprobar Casa Club con Google Sheets disponible/no disponible, calendario, avisos, diseño de modales y el recorrido guiado. Comparar DevTools Performance usando `performance.getEntriesByName('mj-section-navigation')` y logs de Hostinger. No inventar mejoras porcentuales sin benchmarks reales. Las secciones visitadas por primera vez siguen dependiendo de red y del backend; la experiencia casi instantánea aplica principalmente al regreso a páginas ya abiertas.
 
-## Extensión: paginación del historial de llamadas
-- El endpoint protegido GET /api/conmutador/historial ahora solicita **solo 10 registros por página** en MySQL (ORDER BY id DESC), tanto para computadora como para celular. Devuelve página, número de páginas y total de intentos.
-- La vista incluye **Anterior**, **Página X de Y**, **Siguiente** y rango mostrado. Las páginas consultadas se conservan 15 segundos en memoria para regresar rápido; Actualizar vuelve a solicitar la primera página.
-- El registro POST de intentos se conserva exactamente igual. También permanecen intactos los módulos de conexión a caseta, motor de telefonía, marcación iPhone/WhatsApp, números, permisos y roles de acceso.
-- No se guardan números telefónicos en el historial; solo vivienda, fecha y hora de intento.
-- Las pruebas `backend/test/conmutador-historial-paginacion-20261123.test.js` comprueban los límites (10/10/3 registros), errores de página, privacidad y controles del navegador. La ejecución simulada del cliente comprueba regreso a página consultada con caché y Actualizar forzado.
-- **El cambio del historial NO implica conservar el iframe de Conmutador en caché**: sigue cargándose normalmente para evitar interferir con el agente de llamadas.
+## Extensión actual: historial completo filtrado por fecha
+- La pestaña **Historial de llamadas** ahora ofrece un selector de día, **Hoy** y **Actualizar**, sin paginación. Muestra todos los intentos registrados durante la fecha seleccionada, en una sola vista tanto en computadora como en móvil.
+- El endpoint protegido GET `/api/conmutador/historial?fecha=AAAA-MM-DD` usa el índice de `creado_en` mediante rango `>= fecha` y `< fecha + 1 día`, sin `LIMIT`, `OFFSET` ni consulta adicional de conteo.
+- Se validan las fechas del cliente; los resultados únicamente contienen calle, vivienda, fecha y hora. No se transmiten números telefónicos.
+- Las consultas recientes de cada día se conservan 15 segundos (máximo cinco días); **Actualizar** omite ese caché. Al cambiar de fecha se cancela una petición anterior para evitar resultados mezclados.
+- El POST del historial, el motor de telefonía, las llamadas por iPhone/WhatsApp y el agente de caseta no cambian. El iframe del Conmutador **sigue excluido de la caché de páginas**.
+
+## Optimización adicional de pestañas, modales y contadores
+- Casa Club reutiliza durante 12 segundos una consulta reciente de Administración/Aprobación al alternar entre esas pestañas y comparte solicitudes concurrentes. Después de aprobar/rechazar/liberar/eliminar, solicita datos nuevos sin forzar una sincronización Google innecesaria.
+- Al volver a consultar el calendario del mismo mes, conserva visibles los días anteriores hasta recibir una respuesta; deshabilita interacción y envío de la reserva hasta tener confirmación del backend. Evita parpadeos sin permitir reservas sobre datos antiguos.
+- Los iframes embebidos ya no consultan individualmente adeudos y solicitudes pendientes para los indicadores del menú: lo hace el shell padre una sola vez, con un pequeño intervalo antirrebote y ambas APIs en paralelo.
+- Los mensajes de actualización de Pagos se aceptan también desde los marcos dinámicos que usa la nueva caché, preservando la actualización del indicador sin afectar OCR, comprobantes ni pagos validados.
+- El observador de modales del shell continúa agrupando cambios en un único fotograma; no se altera la lógica de los formularios.
+
+## Pruebas obligatorias antes de fusionar
+1. Abrir el historial de Conmutador en PC y celular, elegir una fecha con varios intentos y verificar que aparecen todos en una sola vista; cambiar entre días y usar Hoy/Actualizar.
+2. Comprobar generación de un intento al iniciar llamada, acceso del agente de caseta, permisos y ausencia de números telefónicos en la respuesta del historial.
+3. Alternar Administración/Aprobación de Casa Club: abrir inmediatamente sin repetir la consulta al instante; después de una aprobación, cancelación o eliminación debe actualizarse la tabla y la ocupación real.
+4. Probar calendario de Casa Club en la misma fecha y al cambiar mes, con conexión lenta y sin Google Sheets. Reservar no puede habilitarse hasta obtener verificación.
+5. Regresar a secciones habituales, entrar y salir de modales, cambiar vivienda, abrir Pagos y subir JPG/PDF; verificar OCR, recargos, conciliación, ZKTeco y las llamadas del Conmutador.
+6. Medir tiempos en DevTools/Hostinger antes y después. No se afirman mejoras porcentuales sin mediciones reales.
+
+Estas optimizaciones no requieren cambios de estructura SQL ni ejecutan migraciones en producción.
