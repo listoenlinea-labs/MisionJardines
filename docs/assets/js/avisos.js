@@ -84,5 +84,8 @@
    $('createModal').hidden=true;await load();toast('Aviso publicado para la comunidad.');
   }catch(e){toast(e.message);}finally{working=false;$('publishNotice').disabled=false;}
  });
+ window.addEventListener('mj:shell-activated',event=>{
+  if(event.detail?.fromCache)void load().catch(error=>toast('No se pudieron actualizar los avisos: '+error.message));
+ });
  (async()=>{try{await profile();await load();}catch(e){$('emptyState').hidden=false;$('emptyState').textContent='No se pudieron cargar los avisos: '+e.message;toast(e.message);}})();
 })();

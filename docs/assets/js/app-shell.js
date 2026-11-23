@@ -14,7 +14,7 @@
   // bancarios NO se conservan en segundo plano: mantienen su ciclo original.
   const SAFE_CACHE = new Set([
     'index.html','analisis-cuotas.html','casa-club.html',
-    'anuncios.html','calendario.html','directorio.html','cuotas.html'
+    'anuncios.html','calendario.html','directorio.html'
   ]);
   const MAX_CACHE_AGE = 4 * 60 * 1000;
   // Nunca conservar enlaces con folios, tokens o parámetros de formularios.
