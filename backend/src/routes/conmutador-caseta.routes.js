@@ -88,9 +88,17 @@ router.post('/llamadas', autenticarToken, personal, habilitado, async (req, res)
         WHERE id = 1 AND (vence_en IS NULL OR vence_en <= UTC_TIMESTAMP(3))
       `, { replacements: { solicitud, usuarioId, destino }, type: QueryTypes.UPDATE, transaction, logging: false });
       if (!cambios) return false;
+      // Auditoría: conservar el intento original sin darlo por realizado.
       await sequelize.query(
         'INSERT INTO conmutador_intentos_llamada (usuario_id, grupo, numero) VALUES (:usuarioId, :grupo, :numero)',
         { replacements: { usuarioId, ...resultado.domicilio }, type: QueryTypes.INSERT, transaction }
+      );
+      // Una fila única por solicitud, con estado PENDIENTE. Solo el agente
+      // autenticado podrá confirmar posteriormente el envío a Asterisk.
+      await sequelize.query(
+        'INSERT INTO conmutador_llamadas_seguimiento (solicitud, usuario_id, grupo, numero, estado) ' +
+        "VALUES (:solicitud, :usuarioId, :grupo, :numero, 'PENDIENTE')",
+        { replacements: { solicitud, usuarioId, ...resultado.domicilio }, type: QueryTypes.INSERT, transaction }
       );
       return true;
     });
@@ -148,13 +156,26 @@ router.post('/agente/resultado', habilitado, agente, async (req, res) => {
     return res.sendStatus(400);
   }
   try {
-    await sequelize.query(`
-      UPDATE conmutador_caseta SET estado = :estado, destino = NULL,
-        reclamo = CASE WHEN :estado = 'ENVIADA' THEN reclamo ELSE NULL END,
-        vence_en = CASE WHEN :estado IN ('FINALIZADA', 'ERROR') THEN UTC_TIMESTAMP(3) ELSE vence_en END
-      WHERE id = 1 AND solicitud = :solicitud AND reclamo = :reclamo
-        AND (estado = 'RECLAMADA' OR (estado = 'ENVIADA' AND :estado = 'FINALIZADA'))
-    `, { replacements: { estado, solicitud, reclamo }, type: QueryTypes.UPDATE });
+    // Ambas actualizaciones son una transacción: nunca se podrá mostrar una
+    // llamada "ENVIADA" si caseta no aceptó el resultado del agente.
+    await sequelize.transaction(async transaction => {
+      const [, cambios] = await sequelize.query(`
+        UPDATE conmutador_caseta SET estado = :estado, destino = NULL,
+          reclamo = CASE WHEN :estado = 'ENVIADA' THEN reclamo ELSE NULL END,
+          vence_en = CASE WHEN :estado IN ('FINALIZADA', 'ERROR') THEN UTC_TIMESTAMP(3) ELSE vence_en END
+        WHERE id = 1 AND solicitud = :solicitud AND reclamo = :reclamo
+          AND (estado = 'RECLAMADA' OR (estado = 'ENVIADA' AND :estado = 'FINALIZADA'))
+      `, { replacements: { estado, solicitud, reclamo }, type: QueryTypes.UPDATE, transaction });
+      if (!cambios) return; // Duplicado o identificador ajeno: jamás confirmar historial.
+      await sequelize.query(`
+        UPDATE conmutador_llamadas_seguimiento
+        SET estado = :estado,
+          confirmado_en = CASE WHEN :estado IN ('ENVIADA','FINALIZADA')
+            THEN COALESCE(confirmado_en, UTC_TIMESTAMP(3)) ELSE confirmado_en END
+        WHERE solicitud = :solicitud
+          AND estado IN ('PENDIENTE','ENVIADA')
+      `, { replacements: { estado, solicitud }, type: QueryTypes.UPDATE, transaction });
+    });
     return res.sendStatus(204);
   } catch (error) {
     return fallo(res, error);
