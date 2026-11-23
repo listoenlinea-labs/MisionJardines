@@ -3400,17 +3400,35 @@ $('financeExpenseChart').addEventListener('keydown',event=>{
 
 async function descargarComprobante(id){
  try{
-  const num=Number(id);if(!Number.isSafeInteger(num)||num<1)throw Error('Comprobante inválido');
-  const response=await fetch(API+'/finanzas/egresos/'+num+'/comprobante',{headers:{Authorization:'Bearer '+token}});
+  const num=Number(id);if(!Number.isSafeInteger(num)||num<1)throw Error('Comprobante inválido.');
+  const listResponse=await fetch(API+'/finanzas/egresos/'+num+'/comprobantes',
+   {headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  const list=await listResponse.json().catch(()=>({}));
+  if(!listResponse.ok||!list.ok)throw Error(list.message||'No se pudieron consultar comprobantes.');
+  const files=list.data||[];
+  if(!files.length)throw Error('Este gasto no tiene comprobantes para descargar.');
+  let selected=files[0];
+  if(files.length>1){
+   const options=files.map((f,i)=>(i+1)+'. '+(f.nombre||'Comprobante')).join('\n');
+   const choice=prompt('Selecciona el comprobante a descargar:\n'+options,'1');
+   if(choice===null)return;
+   const index=Number(choice)-1;
+   if(!Number.isSafeInteger(index)||index<0||index>=files.length)
+    throw Error('El número seleccionado no corresponde a un comprobante.');
+   selected=files[index];
+  }
+  const response=await fetch(API+'/finanzas/egresos/'+num+'/comprobantes/'+Number(selected.id),
+   {headers:{Authorization:'Bearer '+token},cache:'no-store'});
   if(!response.ok)throw Error('No se pudo descargar el comprobante.');
-  const blob=await response.blob(),extension=blob.type==='application/pdf'?'pdf':blob.type==='image/png'?'png':'jpg';
+  const blob=await response.blob();
+  const extension=blob.type==='application/pdf'?'pdf':blob.type==='image/png'?'png':'jpg';
   const url=URL.createObjectURL(blob),anchor=document.createElement('a');
-  anchor.href=url;anchor.download='comprobante-egreso-'+num+'.'+extension;
+  anchor.href=url;anchor.download='comprobante-egreso-'+num+'-'+Number(selected.id)+'.'+extension;
   document.body.append(anchor);anchor.click();anchor.remove();
   setTimeout(()=>URL.revokeObjectURL(url),15000);
  }catch(error){notice(error.message);}
 }
-$('financeExpenseChart').addEventListener('click',e=>{
+ $('financeExpenseChart').addEventListener('click',e=>{
  const proof=e.target.closest('[data-expense-proof]');
  if(proof)descargarComprobante(proof.dataset.expenseProof);
 });
