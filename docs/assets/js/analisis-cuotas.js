@@ -545,7 +545,11 @@ function render(){
    consultaProyectos||e.esAjusteMensual||e.tieneCuota?esc(fmt(e.monto)):
    '<span class="finance-expense-edit-amount" data-expense-edit="'+Number(e.id)+
    '" data-amount="'+Number(e.monto)+'" tabindex="0" role="button" title="Doble clic o Enter para editar el monto">'+
-   esc(fmt(e.monto))+'</span>')+cell('Comprobante',e.comprobanteDisponible?
+   esc(fmt(e.monto))+'</span>')+cell('Comprobante',activeConcept==='MANTENIMIENTO'&&!consultaProyectos&&
+   e.ambito==='MANTENIMIENTO'&&!e.esAjusteMensual?
+   '<button type="button" class="soft" data-expense-attachments="'+Number(e.id)+'">'+
+    (e.comprobanteDisponible?'Ver / agregar comprobantes':'Agregar comprobantes')+'</button>':
+   e.comprobanteDisponible?
    '<button type="button" class="soft" data-expense-proof="'+Number(e.id)+'">Descargar comprobante</button>':
    (!consultaProyectos&&!e.esAjusteMensual&&e.categoria==='CUOTA_EXTRAORDINARIA'&&!e.tieneCuota?
    '<button type="button" class="soft" data-extra-expense="'+Number(e.id)+'">Configurar cobro</button>':'—'))+
@@ -2997,6 +3001,8 @@ let historicalExtraId=null;
   }
  });
  $('financeExpenseRows').addEventListener('click',event=>{
+  const upload=event.target.closest('[data-expense-attachments]');
+  if(upload){openExpenseAttachments(Number(upload.dataset.expenseAttachments));return;}
   const proof=event.target.closest('[data-expense-proof]');if(proof){descargarComprobante(proof.dataset.expenseProof);return;}
   const b=event.target.closest('[data-extra-expense]');if(!b)return;
   const item=data?.egresos?.find(e=>Number(e.id)===Number(b.dataset.extraExpense));if(!item)return;
@@ -3040,25 +3046,137 @@ let historicalExtraId=null;
  const body={fecha:$('expenseDate').value,categoria:$('expenseCategory').value,
   ambito:$('expenseScope').value,monto:Number($('expenseAmount').value),concepto:$('expenseConcept').value.trim()};
  if(!Number.isInteger(body.monto)||body.monto<=0)return notice('Ingresa un monto sin decimales.');
+ const comprobantesGasto=[...($('expenseFiles').files||[])];
+ if(comprobantesGasto.length>12)return notice('Selecciona máximo 12 comprobantes de gasto.');
+ if(body.categoria==='PROYECTO'&&comprobantesGasto.length)
+  return notice('Crea primero el proyecto. Después adjunta varios comprobantes a cada gasto concreto.');
  const project=body.categoria==='PROYECTO';
  if(!confirm('¿Confirmas '+(project?'crear el proyecto':'registrar este egreso')+
   ' por '+fmt(body.monto)+' de '+body.concepto+'?'))return;
  $('saveExpense').disabled=true;
  try{
   const saved=await request('/egresos',body);
+  let archivosRegistrados=0,erroresArchivos=[];
+  for(const file of comprobantesGasto){
+   try{
+    const comprobante=await encodeProjectExpenseFile(file);
+    await request('/egresos/'+Number(saved.id)+'/comprobantes',{nombre:file.name,comprobante});
+    archivosRegistrados++;
+   }catch(error){erroresArchivos.push(file.name+': '+error.message);}
+  }
   if(project&&saved.proyectoId){activeConcept='EXTRAORDINARIO';activeProyectoId=saved.proyectoId;}
   $('newExpense').reset();syncExtraExpense();
   $('expenseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   expenseDateInputs.forEach(syncExpenseDateDisplay);expensePage=1;
   await load();
-  notice(project?'Proyecto creado: disponible en el selector de cuotas extraordinarias.':
-   'Egreso registrado. Referencia: '+(saved.referencia||'generada'),'success');
+  notice(erroresArchivos.length
+   ?'Egreso guardado con '+archivosRegistrados+' comprobante(s). Pendientes: '+erroresArchivos.join('; ')
+   :project?'Proyecto creado: disponible en el selector de cuotas extraordinarias.'
+   :'Egreso y comprobantes registrados. Referencia: '+(saved.referencia||'generada'),
+   erroresArchivos.length?'error':'success');
  }catch(error){notice(error.message);}
  finally{$('saveExpense').disabled=false;}
 });
  
 
-// Visor seguro de comprobantes de proyectos: no expone tokens ni enlaces públicos.
+// Comprobantes de conceptos de egresos: Mantenimiento (complemento posterior al alta).
+ const attachmentDialog=$('expenseAttachmentsModal'),attachmentStatus=$('expenseAttachmentsStatus');
+ let attachmentId=null,attachmentBusy=false,attachmentUrl=null,attachmentRows=[];
+ function clearAttachmentPreview(){
+  $('expenseAttachmentsPreview').replaceChildren();
+  $('expenseAttachmentsPreview').hidden=true;
+  if(attachmentUrl){URL.revokeObjectURL(attachmentUrl);attachmentUrl=null;}
+ }
+ function closeExpenseAttachments(){
+  if(attachmentBusy)return;
+  clearAttachmentPreview();
+  attachmentDialog.close();attachmentId=null;attachmentRows=[];
+  $('expenseAttachmentsForm').reset();
+ }
+ $('expenseAttachmentsClose').addEventListener('click',closeExpenseAttachments);
+ $('expenseAttachmentsCancel').addEventListener('click',closeExpenseAttachments);
+ attachmentDialog.addEventListener('cancel',event=>{
+  if(attachmentBusy){event.preventDefault();return;}
+  clearAttachmentPreview();attachmentId=null;attachmentRows=[];
+ });
+ async function loadExpenseAttachments(){
+  const id=attachmentId;
+  if(!id)return;
+  const result=await request('/egresos/'+id+'/comprobantes');
+  if(!attachmentDialog.open||attachmentId!==id)return;
+  attachmentRows=result.data||[];
+  const target=$('expenseAttachmentsList');target.replaceChildren();clearAttachmentPreview();
+  attachmentStatus.textContent=attachmentRows.length
+   ?'Comprobantes guardados: '+attachmentRows.length
+   :'No hay comprobantes adjuntos a este gasto.';
+  for(const row of attachmentRows){
+   const button=document.createElement('button');button.type='button';button.className='soft';
+   button.textContent=row.nombre||'Comprobante '+row.id;
+   button.style.margin='4px';
+   button.addEventListener('click',async()=>{
+    const current=attachmentId;
+    try{
+     const response=await fetch(API+'/finanzas/egresos/'+current+'/comprobantes/'+Number(row.id),
+      {headers:{Authorization:'Bearer '+token},cache:'no-store'});
+     if(!response.ok)throw Error('No se pudo abrir el comprobante.');
+     const blob=await response.blob();
+     if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))throw Error('Formato no admitido.');
+     if(!attachmentDialog.open||attachmentId!==current)return;
+     clearAttachmentPreview();
+     attachmentUrl=URL.createObjectURL(blob);
+     const viewer=document.createElement(blob.type==='application/pdf'?'iframe':'img');
+     viewer.src=attachmentUrl;
+     if(blob.type==='application/pdf')viewer.title='Comprobante del gasto';
+     else viewer.alt='Comprobante '+String(row.nombre||'');
+     $('expenseAttachmentsPreview').append(viewer);
+     $('expenseAttachmentsPreview').hidden=false;
+    }catch(error){attachmentStatus.textContent=error.message;}
+   });target.append(button);
+  }
+ }
+ async function openExpenseAttachments(id){
+  const expense=data?.egresos?.find(e=>Number(e.id)===id);
+  if(!expense||expense.ambito!=='MANTENIMIENTO'||expense.esAjusteMensual)
+   return notice('El gasto seleccionado no admite adjuntos.');
+  if(attachmentDialog.open)return;
+  attachmentId=id;$('expenseAttachmentsTitle').textContent=expense.concepto;
+  attachmentDialog.showModal();
+  try{await loadExpenseAttachments();}catch(error){attachmentStatus.textContent=error.message;}
+ }
+ $('expenseAttachmentsForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!attachmentId||attachmentBusy)return;
+  const files=[...($('expenseAttachmentsFiles').files||[])];
+  const existing=attachmentRows.filter(row=>!row.heredado).length;
+  if(!files.length)return attachmentStatus.textContent='Selecciona comprobantes.';
+  if(existing+files.length>12)
+   return attachmentStatus.textContent='Máximo 12 archivos nuevos por concepto. Ya tienes '+existing+'.';
+  attachmentBusy=true;
+  for(const name of ['expenseAttachmentsSave','expenseAttachmentsClose','expenseAttachmentsCancel'])
+   $(name).disabled=true;
+  let saved=0;
+  try{
+   for(const file of files){
+    await request('/egresos/'+attachmentId+'/comprobantes',
+     {nombre:file.name,comprobante:await encodeProjectExpenseFile(file)});
+    saved++;
+   }
+   $('expenseAttachmentsForm').reset();
+   await loadExpenseAttachments();await load();
+   attachmentStatus.textContent='Se agregaron '+saved+' comprobantes y se conservaron los anteriores.';
+  }catch(error){
+   const message='Se agregaron '+saved+' de '+files.length+' archivos. '+error.message+
+    ' Puedes volver a subir solo los faltantes.';
+   try{await loadExpenseAttachments();await load();}catch(_){}
+   attachmentStatus.textContent=message;
+  }finally{
+   attachmentBusy=false;
+   for(const name of ['expenseAttachmentsSave','expenseAttachmentsClose','expenseAttachmentsCancel'])
+    $(name).disabled=false;
+  }
+ });
+
+ // Visor seguro de comprobantes de proyectos: no expone tokens ni enlaces públicos.
 const projectProofModal=$('financeProjectProofModal');
 const projectProofPreview=$('financeProjectProofPreview');
 const projectProofDownload=$('financeProjectProofDownload');
@@ -3109,37 +3227,54 @@ async function openProjectProofModal(id,trigger){
   'Cargando comprobante…':'Este egreso no tiene recibo o comprobante visual adjunto.';
  projectProofModal.hidden=false;
  $('financeProjectProofClose').focus();
- if(!expense.comprobanteDisponible)return;
+ const filesArea=$('financeProjectProofFiles');filesArea.replaceChildren();
  const controller=new AbortController();projectProofAbort=controller;
  try{
-  const response=await fetch(API+'/finanzas/egresos/'+Number(expense.id)+'/comprobante',{
-   headers:{Authorization:'Bearer '+token},signal:controller.signal,cache:'no-store'
-  });
-  if(!response.ok)throw Error(response.status===404?
-   'El comprobante indicado no está disponible en el servidor.':'No fue posible cargar el comprobante.');
-  const blob=await response.blob();
-  if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))
-   throw Error('El comprobante tiene un formato que no se puede previsualizar.');
+  const base=API+'/finanzas/egresos/'+Number(expense.id)+'/comprobantes';
+  const response=await fetch(base,{headers:{Authorization:'Bearer '+token},signal:controller.signal,cache:'no-store'});
+  const list=await response.json().catch(()=>({}));
+  if(!response.ok||!list.ok)throw Error(list.message||'No fue posible consultar comprobantes.');
   if(seq!==projectProofSequence||projectProofModal.hidden)return;
-  projectProofUrl=URL.createObjectURL(blob);projectProofMime=blob.type;
-  const viewer=blob.type==='application/pdf'?document.createElement('iframe'):document.createElement('img');
-  viewer.src=projectProofUrl;
-  if(blob.type==='application/pdf'){
-   viewer.title='Vista previa del comprobante PDF';
-   viewer.setAttribute('aria-label','Comprobante PDF del egreso');
-  }else{
-   viewer.alt='Imagen del comprobante de '+expense.concepto;
+  const rows=list.data||[];
+  if(!rows.length){
+   $('financeProjectProofStatus').textContent='Este egreso no tiene comprobantes adjuntos.';
+   return;
   }
-  projectProofPreview.replaceChildren(viewer);
-  projectProofPreview.hidden=false;
-  projectProofDownload.hidden=false;
-  $('financeProjectProofStatus').textContent='Comprobante adjunto al egreso.';
+  $('financeProjectProofStatus').textContent=rows.length+' comprobante(s) disponibles.';
+  for(const item of rows){
+   const button=document.createElement('button');button.type='button';button.className='soft';
+   button.textContent=item.nombre||'Comprobante '+item.id;button.style.margin='4px';
+   button.addEventListener('click',async()=>{
+    const currentSeq=projectProofSequence;
+    try{
+     const data=await fetch(base+'/'+Number(item.id),{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+     if(!data.ok)throw Error('No se pudo abrir el comprobante.');
+     const blob=await data.blob();
+     if(!['application/pdf','image/png','image/jpeg'].includes(blob.type))
+      throw Error('El formato del archivo no permite previsualización.');
+     if(currentSeq!==projectProofSequence||projectProofModal.hidden)return;
+     if(projectProofUrl)URL.revokeObjectURL(projectProofUrl);
+     projectProofUrl=URL.createObjectURL(blob);projectProofMime=blob.type;
+     const viewer=document.createElement(blob.type==='application/pdf'?'iframe':'img');
+     viewer.src=projectProofUrl;
+     if(blob.type==='application/pdf'){viewer.title='Comprobante PDF del gasto';}
+     else viewer.alt='Comprobante de '+expense.concepto;
+     projectProofPreview.replaceChildren(viewer);
+     projectProofPreview.hidden=false;projectProofDownload.hidden=false;
+     $('financeProjectProofStatus').textContent='Visualizando '+(item.nombre||'comprobante')+'.';
+    }catch(error){
+     if(currentSeq===projectProofSequence)$('financeProjectProofStatus').textContent=error.message;
+    }
+   });
+   filesArea.append(button);
+  }
+  filesArea.firstElementChild?.click();
  }catch(error){
   if(controller.signal.aborted||seq!==projectProofSequence)return;
   $('financeProjectProofStatus').textContent=error.message;
  }finally{if(projectProofAbort===controller)projectProofAbort=null;}
 }
-// Los adjuntos pueden llegar después del alta del gasto. Se usa el mismo
+ // Los adjuntos pueden llegar después del alta del gasto. Se usa el mismo
 // almacenamiento privado y validación de tipos que el alta original.
 async function encodeProjectExpenseFile(file){
  if(!file)throw Error('Selecciona el comprobante del concepto.');
@@ -3162,28 +3297,35 @@ $('financeProjectProofUploadForm').addEventListener('submit',async event=>{
  const id=Number(projectProofSource?.id);
  if(!Number.isSafeInteger(id)||id<1)return;
  const button=$('financeProjectProofUploadSave');
- const file=$('financeProjectProofUploadFile').files?.[0];
+ const files=[...($('financeProjectProofUploadFile').files||[])];
  const status=$('financeProjectProofStatus');
- if(!file)return status.textContent='Selecciona un archivo PDF o imagen.';
- if(projectProofSource.comprobanteDisponible &&
-  !confirm('Este concepto ya tiene un comprobante. ¿Deseas reemplazarlo?'))return;
+ if(!files.length)return status.textContent='Selecciona uno o varios PDF o imágenes.';
+ if(files.length>12)return status.textContent='Selecciona máximo 12 comprobantes.';
  projectProofUploadSaving=true;button.disabled=true;
  try{
-  const comprobante=await encodeProjectExpenseFile(file);
-  status.textContent='Guardando comprobante en el servidor…';
-  await request('/egresos/'+id+'/comprobante',{comprobante},'PUT');
-  if(!projectProofModal.hidden)status.textContent='Comprobante guardado. Actualizando la vista…';
+  let uploaded=0;
+  for(const file of files){
+   const comprobante=await encodeProjectExpenseFile(file);
+   try{
+    await request('/egresos/'+id+'/comprobantes',{nombre:file.name,comprobante});
+    uploaded++;
+   }catch(error){
+    throw Error('Se adjuntaron '+uploaded+' de '+files.length+
+     ' archivos. '+error.message+' Puedes volver a cargar solo los faltantes.');
+   }
+  }
+  status.textContent=uploaded+' comprobante(s) guardados. Actualizando vista…';
   const ok=await load();
-  if(!ok)throw Error('Se guardó el comprobante, pero no se pudo actualizar el análisis. Recarga la página.');
-  if(!projectProofModal.hidden && Number(projectProofSource?.id)===id)
+  if(!ok)throw Error('Comprobantes guardados, pero no se pudo actualizar el análisis.');
+  if(!projectProofModal.hidden&&Number(projectProofSource?.id)===id)
    await openProjectProofModal(id,findProjectExpenseTrigger(id));
-  notice('Comprobante adjuntado al concepto.','success');
+  notice(uploaded+' comprobante(s) nuevos adjuntados al concepto.','success');
  }catch(error){
   if(!projectProofModal.hidden)status.textContent=error.message;
   notice(error.message);
  }finally{projectProofUploadSaving=false;button.disabled=false;}
 });
-$('financeProjectProofPaymentForm').addEventListener('submit',async event=>{
+ $('financeProjectProofPaymentForm').addEventListener('submit',async event=>{
  event.preventDefault();
  if(projectProofModal.hidden||projectProofStatusSaving||projectProofUploadSaving)return;
  const id=Number(projectProofSource?.id),old=projectProofSource?.pagado!==false;
@@ -3361,17 +3503,35 @@ $('financeExpenseChart').addEventListener('keydown',event=>{
 
 async function descargarComprobante(id){
  try{
-  const num=Number(id);if(!Number.isSafeInteger(num)||num<1)throw Error('Comprobante inválido');
-  const response=await fetch(API+'/finanzas/egresos/'+num+'/comprobante',{headers:{Authorization:'Bearer '+token}});
+  const num=Number(id);if(!Number.isSafeInteger(num)||num<1)throw Error('Comprobante inválido.');
+  const listResponse=await fetch(API+'/finanzas/egresos/'+num+'/comprobantes',
+   {headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  const list=await listResponse.json().catch(()=>({}));
+  if(!listResponse.ok||!list.ok)throw Error(list.message||'No se pudieron consultar comprobantes.');
+  const files=list.data||[];
+  if(!files.length)throw Error('Este gasto no tiene comprobantes para descargar.');
+  let selected=files[0];
+  if(files.length>1){
+   const options=files.map((f,i)=>(i+1)+'. '+(f.nombre||'Comprobante')).join('\n');
+   const choice=prompt('Selecciona el comprobante a descargar:\n'+options,'1');
+   if(choice===null)return;
+   const index=Number(choice)-1;
+   if(!Number.isSafeInteger(index)||index<0||index>=files.length)
+    throw Error('El número seleccionado no corresponde a un comprobante.');
+   selected=files[index];
+  }
+  const response=await fetch(API+'/finanzas/egresos/'+num+'/comprobantes/'+Number(selected.id),
+   {headers:{Authorization:'Bearer '+token},cache:'no-store'});
   if(!response.ok)throw Error('No se pudo descargar el comprobante.');
-  const blob=await response.blob(),extension=blob.type==='application/pdf'?'pdf':blob.type==='image/png'?'png':'jpg';
+  const blob=await response.blob();
+  const extension=blob.type==='application/pdf'?'pdf':blob.type==='image/png'?'png':'jpg';
   const url=URL.createObjectURL(blob),anchor=document.createElement('a');
-  anchor.href=url;anchor.download='comprobante-egreso-'+num+'.'+extension;
+  anchor.href=url;anchor.download='comprobante-egreso-'+num+'-'+Number(selected.id)+'.'+extension;
   document.body.append(anchor);anchor.click();anchor.remove();
   setTimeout(()=>URL.revokeObjectURL(url),15000);
  }catch(error){notice(error.message);}
 }
-$('financeExpenseChart').addEventListener('click',e=>{
+ $('financeExpenseChart').addEventListener('click',e=>{
  const proof=e.target.closest('[data-expense-proof]');
  if(proof)descargarComprobante(proof.dataset.expenseProof);
 });
@@ -3434,28 +3594,33 @@ $('financeProjectExpenseForm').addEventListener('submit',async e=>{
  if(activeConcept!=='EXTRAORDINARIO'||!activeProyectoId||
    Number(projectExpenseModal.dataset.proyectoId)!==Number(activeProyectoId))
   return notice('El proyecto cambió. Abre el formulario del proyecto seleccionado.');
- const btn=$('financeProjectExpenseSave'),file=$('financeProjectExpenseProof').files?.[0];
+ const btn=$('financeProjectExpenseSave'),files=[...($('financeProjectExpenseProof').files||[])];
+ if(files.length>12)return notice('Selecciona máximo 12 comprobantes por gasto.');
  const body={fecha:$('financeProjectExpenseDate').value,categoria:'PROYECTO',proyectoId:activeProyectoId,
   concepto:$('financeProjectExpenseName').value.trim(),monto:Number($('financeProjectExpenseAmount').value),
   incluidoPresupuesto:$('financeProjectExpenseIncluded').checked,
   pagado:$('financeProjectExpensePaid').checked};
  if(!Number.isInteger(body.monto)||body.monto<=0)return notice('El costo debe expresarse en pesos enteros.');
- if(file){
-  if(file.size>1024*1024)return notice('El comprobante no puede superar 1 MB.');
-  if(!['image/jpeg','image/png','application/pdf'].includes(file.type))
-   return notice('Adjunta una imagen JPG, PNG o un PDF.');
-  const bytes=new Uint8Array(await file.arrayBuffer()),pieces=[];
-  for(let i=0;i<bytes.length;i+=8192)pieces.push(String.fromCharCode(...bytes.subarray(i,i+8192)));
-  body.comprobante={mime:file.type,base64:btoa(pieces.join(''))};
- }
  if(!confirm('¿Registrar '+body.concepto+' por '+fmt(body.monto)+' en este proyecto?'))return;
  projectExpenseSaving=true;btn.disabled=true;
  try{
-  await request('/egresos',body);$('financeProjectExpenseForm').reset();
+  const saved=await request('/egresos',body);
+  let cargados=0,errores=[];
+  for(const file of files){
+   try{
+    await request('/egresos/'+Number(saved.id)+'/comprobantes',
+     {nombre:file.name,comprobante:await encodeProjectExpenseFile(file)});
+    cargados++;
+   }catch(error){errores.push(file.name+': '+error.message);}
+  }
+  $('financeProjectExpenseForm').reset();
   $('financeProjectExpenseDate').value=$('expenseDate').value;expensePage=1;
   closeProjectExpenseModal({force:true});
   await load();
-  notice(body.pagado?'Concepto pagado registrado y descontado del presupuesto pendiente.':'Concepto registrado como pendiente de pago.','success');
+  notice(errores.length
+   ?'Concepto guardado con '+cargados+' comprobante(s). Algunos adjuntos faltaron: '+errores.join('; ')
+   :body.pagado?'Concepto pagado registrado y comprobantes adjuntados.':'Concepto registrado como pendiente de pago y comprobantes adjuntados.',
+   errores.length?'error':'success');
  }catch(error){$('financeProjectExpenseStatus').textContent=error.message;notice(error.message);}
  finally{projectExpenseSaving=false;btn.disabled=false;}
 });

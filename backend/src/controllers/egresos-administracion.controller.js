@@ -6,7 +6,7 @@ const Egreso=require('../models/Egreso');
 const archivos=require('../services/comprobantes-egresos.service');
 const error=(status,message)=>Object.assign(new Error(message),{status});
 async function eliminarMantenimiento(req,res){
- let comprobante=null;
+ let comprobante=null,extras=[];
  try{
   const id=Number(req.params.id),previous=req.body?.anterior||{};
   if(!Number.isSafeInteger(id)||id<=0)throw error(400,'Identificador de egreso inválido.');
@@ -31,6 +31,7 @@ async function eliminarMantenimiento(req,res){
     }))throw error(409,'El gasto está asignado a un plan. Retira primero la asignación.');
    }
    comprobante=row.comprobanteArchivo;
+   extras=await require('./comprobantes-egresos-multiples.controller').retirarRegistros(id,transaction);
    await db.query('INSERT INTO finanzas_edicion_auditoria (tipo,entidad_id,monto_anterior,monto_nuevo,usuario_id,detalle) VALUES (?,?,?,?,?,?)',
     {transaction,replacements:['ELIMINAR_EGRESO_MANTENIMIENTO',id,monto,0,
      Number(req.usuario.usuarioId),String(row.concepto+' · '+fecha+' · '+(row.referencia||'')).slice(0,250)]});
@@ -38,6 +39,7 @@ async function eliminarMantenimiento(req,res){
    return {id,referencia:row.referencia||null};
   });
   if(comprobante)await archivos.eliminar(comprobante);
+  await require('./comprobantes-egresos-multiples.controller').eliminarArchivos(extras);
   return res.json({ok:true,...result,message:'Egreso de mantenimiento eliminado con auditoría.'});
  }catch(e){
   if(!e.status)console.error('[Eliminar mantenimiento]',e);

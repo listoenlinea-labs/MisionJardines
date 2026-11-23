@@ -10,7 +10,7 @@
   <script src="assets/js/page-access.js?v=20261012-seguridad"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Anuncios | Misión Jardines</title>
+  <title>Avisos | Misión Jardines</title>
   <style>
     :root{color-scheme:light}*{box-sizing:border-box}
     body.ann-page{--o:#ef7d0b;--ink:#20283d;--muted:#71809a;--line:#e2e7ef;margin:0;min-height:100vh;background:radial-gradient(circle at 91% 2%,#f2ecff 0,transparent 31%),#fafbff;color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -19,92 +19,45 @@
     label{display:block;margin-bottom:6px;color:#59657a;font-size:10px;font-weight:800}input,select,textarea{width:100%;min-height:42px;padding:9px 11px;border:1px solid #dce3ed;border-radius:10px;color:#263148;background:#fff;font-size:10px;outline:0}textarea{min-height:100px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:#ed9c4d;box-shadow:0 0 0 4px rgba(239,125,11,.09)}
     .board{position:relative;min-height:330px;margin-top:22px;padding:24px;border:1px solid #e5dfd5;border-radius:21px;background-color:#fdfbf7;background-image:radial-gradient(#dfd6c8 .7px,transparent .7px);background-size:14px 14px;box-shadow:0 12px 32px rgba(62,55,43,.055)}.board-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:19px}.ad-card{position:relative;overflow:hidden;border:1px solid #e1e5ec;border-radius:16px;background:#fff;box-shadow:0 11px 28px rgba(50,56,72,.075);cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.ad-card:hover{transform:translateY(-3px);border-color:#efbb84;box-shadow:0 16px 34px rgba(50,56,72,.11)}.ad-card:focus-visible{outline:3px solid rgba(239,125,11,.25);outline-offset:3px}.pin{width:11px;height:11px;position:absolute;top:10px;right:11px;z-index:2;border:2px solid #fff;border-radius:50%;background:var(--o);box-shadow:0 2px 7px rgba(0,0,0,.18)}.ad-title{padding:15px 17px 12px;font-size:17px;font-weight:900;line-height:1.25;letter-spacing:-.015em}.ad-image{height:210px;display:grid;place-items:center;overflow:hidden;background:linear-gradient(145deg,#fff2e4,#eef2ff)}.ad-image img{width:100%;height:100%;object-fit:cover}.image-placeholder{display:grid;place-items:center;width:100%;height:100%;color:#d87922;font-size:46px}.ad-body{padding:14px 17px 16px}.ad-desc{min-height:42px;margin:0 0 13px;color:#5f6b80;font-size:11px;line-height:1.6}.ad-meta{display:flex;justify-content:space-between;gap:12px;padding-top:11px;border-top:1px solid #edf0f4;color:#8993a5;font-size:9px}.ad-meta strong{color:#5e697d}.empty{display:grid;place-items:center;min-height:290px;text-align:center}.empty div{max-width:420px}.empty-icon{font-size:43px}.empty h2{margin:10px 0 6px;font-size:21px}.empty p{margin:0;color:var(--muted);font-size:11px;line-height:1.6}
     .floating-add{position:fixed;right:26px;bottom:23px;z-index:2500;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:50px;padding:12px 20px;border:0;border-radius:999px;color:#fff;background:linear-gradient(135deg,#f58b1c,#e87100);box-shadow:0 13px 32px rgba(232,113,0,.3);font-size:12px;font-weight:900;cursor:pointer}.floating-add:hover{transform:translateY(-1px)}.floating-add span:first-child{font-size:20px;line-height:1}
-    .modal[hidden]{display:none!important}.modal{position:fixed;inset:0;z-index:4000;display:grid;place-items:center;padding:20px;background:rgba(27,35,51,.62);backdrop-filter:blur(7px)}.modal-box{width:min(880px,100%);max-height:calc(100vh - 40px);overflow:auto;border:1px solid rgba(255,255,255,.72);border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(20,27,42,.3)}.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:21px 23px;border-bottom:1px solid var(--line);background:linear-gradient(110deg,#fffaf5,#f5f7ff)}.modal-head h2{margin:4px 0;font-size:22px}.modal-head p{margin:0;color:var(--muted);font-size:10px}.close{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;padding:0;border:1px solid #dfe4ec;border-radius:11px;color:#606b80;background:#fff;font-size:20px;cursor:pointer}.modal-body{padding:21px 23px}.form-grid{display:grid;gap:13px}.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.required:after{content:" *";color:#d95862}.photo-preview{display:grid;place-items:center;min-height:120px;margin-top:8px;padding:10px;border:1px dashed #d8dfe8;border-radius:12px;color:#929bab;background:#fafbfc;font-size:9px;text-align:center}.photo-preview img{max-width:100%;max-height:260px;border-radius:10px}.hint{display:block;margin-top:5px;color:#929bab;font-size:8px;line-height:1.45}.modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:15px 23px;border-top:1px solid var(--line);background:#fbfcfe}.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:9px 14px;border:1px solid #dfe4ec;border-radius:10px;color:#5d6880;background:#fff;font-size:10px;font-weight:850;cursor:pointer;text-decoration:none}.btn:hover{border-color:#efb579;background:#fffaf6}.btn-primary{color:#fff;border-color:var(--o);background:linear-gradient(135deg,#f58b1c,#e87100)}
+    [hidden]{display:none!important}.modal[hidden]{display:none!important}.modal{position:fixed;inset:0;z-index:4000;display:grid;place-items:center;padding:20px;background:rgba(27,35,51,.62);backdrop-filter:blur(7px)}.modal-box{width:min(880px,100%);max-height:calc(100vh - 40px);overflow:auto;border:1px solid rgba(255,255,255,.72);border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(20,27,42,.3)}.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:21px 23px;border-bottom:1px solid var(--line);background:linear-gradient(110deg,#fffaf5,#f5f7ff)}.modal-head h2{margin:4px 0;font-size:22px}.modal-head p{margin:0;color:var(--muted);font-size:10px}.close{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;padding:0;border:1px solid #dfe4ec;border-radius:11px;color:#606b80;background:#fff;font-size:20px;cursor:pointer}.modal-body{padding:21px 23px}.form-grid{display:grid;gap:13px}.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.required:after{content:" *";color:#d95862}.photo-preview{display:grid;place-items:center;min-height:120px;margin-top:8px;padding:10px;border:1px dashed #d8dfe8;border-radius:12px;color:#929bab;background:#fafbfc;font-size:9px;text-align:center}.photo-preview img{max-width:100%;max-height:260px;border-radius:10px}.hint{display:block;margin-top:5px;color:#929bab;font-size:8px;line-height:1.45}.modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:15px 23px;border-top:1px solid var(--line);background:#fbfcfe}.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:9px 14px;border:1px solid #dfe4ec;border-radius:10px;color:#5d6880;background:#fff;font-size:10px;font-weight:850;cursor:pointer;text-decoration:none}.btn:hover{border-color:#efb579;background:#fffaf6}.btn-primary{color:#fff;border-color:var(--o);background:linear-gradient(135deg,#f58b1c,#e87100)}
     .detail-box{width:min(900px,100%)}.detail-image{height:min(410px,46vh);overflow:hidden;background:linear-gradient(145deg,#fff2e4,#eef2ff)}.detail-image img{width:100%;height:100%;object-fit:cover}.detail-image .image-placeholder{font-size:66px}.detail-content{padding:22px 24px 25px}.detail-title{margin:6px 0 8px;font-size:clamp(25px,4vw,36px);letter-spacing:-.025em}.detail-brief{margin:0 0 19px;color:#59657a;font-size:12px;line-height:1.7}.detail-full{padding:17px 18px;border:1px solid #e8ebf1;border-radius:13px;color:#455167;background:#fafbfc;font-size:11px;line-height:1.75;white-space:pre-wrap}.detail-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:17px}.meta-item{padding:12px 13px;border:1px solid #eceff3;border-radius:11px}.meta-item small{display:block;color:#929bab;font-size:8px;font-weight:850;text-transform:uppercase}.meta-item strong,.meta-item span{display:block;margin-top:4px;color:#465269;font-size:10px;line-height:1.5}.contact-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.contact-actions .btn{min-width:125px}.call-btn{color:#27699a;border-color:#cfe4f4;background:#f2f9fe}.wa-btn{color:#237a4b;border-color:#cce8d8;background:#eefaf3}.contact-more{margin-top:14px;padding:14px;border-left:3px solid #efad68;border-radius:0 10px 10px 0;color:#657087;background:#fff9f3;font-size:10px;line-height:1.65;white-space:pre-wrap}.toast{position:fixed;right:24px;bottom:88px;z-index:5000;display:none;max-width:360px;padding:12px 16px;border-radius:12px;color:#fff;background:#29344b;box-shadow:0 16px 40px rgba(27,37,55,.2);font-size:11px;font-weight:700}.footer{display:flex;justify-content:space-between;gap:18px;margin-top:25px;padding-top:18px;border-top:1px solid var(--line);color:#8a94a6;font-size:9px}.footer a{color:#d76500;text-decoration:none;font-weight:800}
     @media(max-width:1000px){.board-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.ann-shell{width:min(100% - 28px,1260px);padding-top:18px}.topline,.footer{align-items:flex-start;flex-direction:column}.board{margin-top:16px;padding:16px}.board-grid,.form-row,.detail-meta{grid-template-columns:1fr}.ad-image{height:225px}.modal{padding:10px}.modal-body,.detail-content{padding:18px}.modal-head{padding:18px}.modal-foot{padding:13px 18px}.floating-add{right:17px;bottom:17px}.detail-image{height:280px}}
   </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
 <body class="ann-page">
-  <main class="ann-shell">
-    <div class="topline">
-      <div><span class="kicker">COMUNIDAD</span><strong>Tabloide de anuncios</strong></div>
-      <div class="local-pill">Datos guardados en este dispositivo</div>
-    </div>
-
-    <section class="board" aria-label="Tabloide de anuncios">
-      <div id="boardGrid" class="board-grid"></div>
-      <div id="emptyState" class="empty" hidden><div><div class="empty-icon">📌</div><h2>Aún no hay anuncios</h2><p>Sé el primero en publicar algo para la comunidad utilizando el botón “Agregar anuncio”.</p></div></div>
-    </section>
-
-    <footer class="footer"><span>Misión Jardines Residencial · Zapopan, Jalisco</span><span>Plataforma desarrollada por <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a></span></footer>
-  </main>
-
-  <button class="floating-add" type="button" onclick="openCreate()"><span>＋</span><span>Agregar anuncio</span></button>
-
-  <section id="createModal" class="modal" hidden aria-modal="true" role="dialog">
-    <div class="modal-box">
-      <div class="modal-head"><div><span class="eyebrow">NUEVA PUBLICACIÓN</span><h2>Agregar anuncio</h2><p>Completa la información que quieres compartir con tus vecinos.</p></div><button class="close" onclick="closeCreate()" aria-label="Cerrar">×</button></div>
-      <div class="modal-body"><div class="form-grid">
-        <div><label class="required" for="adTitle">Título</label><input id="adTitle" maxlength="100" placeholder="Ej. Venta de tamales"></div>
-        <div><label for="adImage">Añadir imagen</label><input id="adImage" type="file" accept="image/*" onchange="previewImage(event)"><span class="hint">Opcional. Para evitar problemas de almacenamiento, la imagen debe pesar menos de 2.5 MB.</span><div id="imagePreview" class="photo-preview">Puedes agregar una imagen para que el anuncio destaque en el tabloide.</div></div>
-        <div><label for="adBrief">Descripción breve</label><textarea id="adBrief" maxlength="300" placeholder="Ej. Estamos vendiendo tamales en la casa 13. También hacemos entregas dentro del fraccionamiento."></textarea><span class="hint">Esta descripción aparece debajo de la imagen en el tabloide.</span></div>
-        <div><label for="adFull">Anuncio completo</label><textarea id="adFull" maxlength="4000" placeholder="Agrega aquí todos los detalles: sabores, precios, horarios, condiciones de renta, características del producto, etc."></textarea></div>
-        <div class="form-row"><div><label for="adPhone">Número de contacto</label><input id="adPhone" inputmode="tel" maxlength="25" placeholder="Ej. 3312345678"><span class="hint">Se utilizará para los botones de llamada rápida y WhatsApp.</span></div><div><label class="required" for="adHouse">Número de casa</label><input id="adHouse" maxlength="30" placeholder="Ej. 13"></div></div>
-        <div><label for="adContactMore">Más información de contacto</label><textarea id="adContactMore" maxlength="1000" placeholder="Ej. Preguntar por Ana. Entregas después de las 6 PM. También puedes tocar en la puerta de la casa 13."></textarea></div>
-        <div><label for="adDuration">Tiempo en tabloide</label><select id="adDuration"><option value="1" selected>1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select><span class="hint">El máximo permitido es 3 meses desde la fecha de publicación.</span></div>
-      </div></div>
-      <div class="modal-foot"><button class="btn" onclick="closeCreate()">Cancelar</button><button class="btn btn-primary" onclick="addAd()">Publicar anuncio</button></div>
-    </div>
+ <main class="ann-shell">
+  <div class="topline"><div><span class="kicker">COMUNIDAD</span><strong>Tablón oficial de avisos</strong></div>
+   <div class="local-pill" id="publicInfo">Comunicados de Administración · Sin respuestas</div></div>
+  <section class="board" aria-label="Avisos de Administración"><div id="boardGrid" class="board-grid"></div>
+   <div id="emptyState" class="empty" hidden><div><div class="empty-icon">📢</div><h2>No hay avisos vigentes</h2><p>Los comunicados publicados por Administración aparecerán aquí para todos los residentes.</p></div></div>
   </section>
-
-  <section id="detailModal" class="modal" hidden aria-modal="true" role="dialog">
-    <div class="modal-box detail-box">
-      <div class="modal-head"><div><span class="eyebrow">ANUNCIO DE LA COMUNIDAD</span><strong id="detailHouse"></strong></div><button class="close" onclick="closeDetail()" aria-label="Cerrar">×</button></div>
-      <div id="detailImage" class="detail-image"></div>
-      <div class="detail-content">
-        <h2 id="detailTitle" class="detail-title"></h2>
-        <p id="detailBrief" class="detail-brief"></p>
-        <div id="detailFull" class="detail-full"></div>
-        <div class="detail-meta"><div class="meta-item"><small>Publicado</small><span id="detailPublished"></span></div><div class="meta-item"><small>Visible hasta</small><strong id="detailExpires"></strong></div></div>
-        <div id="contactActions" class="contact-actions"></div>
-        <div id="detailContactMore" class="contact-more" hidden></div>
-      </div>
-    </div>
-  </section>
-
-  <div id="toast" class="toast"></div>
-
-  <script>
-    const API_URL='https://api-misionjardines.listoenlinea.host/api',STORAGE_KEY='mision_jardines_anuncios';
-    const token=localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
-    if(!token)location.replace('login.html');
-    let ads=[],selectedImage='',currentUser=null;
-    const $=id=>document.getElementById(id),esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-    function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3000)}
-    function nowISO(){return new Date().toISOString()}
-    function addMonthsISO(months){const d=new Date();d.setMonth(d.getMonth()+Math.min(3,Math.max(1,Number(months)||1)));return d.toISOString()}
-    function fmt(value){return value?window.MJDateDisplay.format(value):'—'}
-    function normalizeAd(a){return{...a,id:String(a?.id||`AN-${Date.now()}-${Math.random().toString(36).slice(2,7)}`),createdAt:a?.createdAt||nowISO(),expiresAt:a?.expiresAt||addMonthsISO(1),image:a?.image||''}}
-    function loadAds(){try{const raw=localStorage.getItem(STORAGE_KEY),parsed=raw?JSON.parse(raw):[];ads=(Array.isArray(parsed)?parsed:[]).map(normalizeAd);const before=ads.length;ads=ads.filter(a=>new Date(a.expiresAt).getTime()>Date.now());if(ads.length!==before)saveAds()}catch(e){console.warn(e);ads=[]}}
-    function saveAds(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(ads));return true}catch(e){toast('No fue posible guardar el anuncio. La imagen puede ser demasiado grande.');return false}}
-    function imageMarkup(ad,detail=false){return ad.image?`<img src="${ad.image}" alt="Imagen de ${esc(ad.title)}">`:`<div class="image-placeholder">${detail?'📌':'🏡'}</div>`}
-    function renderAds(){const rows=[...ads].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));boardGrid.innerHTML=rows.map(a=>`<article class="ad-card" tabindex="0" role="button" onclick="openDetail('${esc(a.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDetail('${esc(a.id)}')}" aria-label="Abrir anuncio ${esc(a.title)}"><span class="pin"></span><div class="ad-title">${esc(a.title)}</div><div class="ad-image">${imageMarkup(a)}</div><div class="ad-body"><p class="ad-desc">${esc(a.brief||'Presiona el anuncio para ver todos los detalles.')}</p><div class="ad-meta"><span>Casa <strong>${esc(a.house)}</strong></span><span>Hasta <strong>${esc(fmt(a.expiresAt))}</strong></span></div></div></article>`).join('');emptyState.hidden=rows.length>0;boardGrid.hidden=rows.length===0}
-    function openCreate(){createModal.hidden=false;prefill();setTimeout(()=>adTitle.focus(),0)}
-    function closeCreate(){createModal.hidden=true}
-    function previewImage(event){const file=event.target.files[0];if(!file){selectedImage='';imagePreview.textContent='Puedes agregar una imagen para que el anuncio destaque en el tabloide.';return}if(file.size>2.5*1024*1024){event.target.value='';selectedImage='';toast('La imagen debe pesar menos de 2.5 MB.');return}const reader=new FileReader();reader.onload=e=>{selectedImage=e.target.result;imagePreview.innerHTML=`<img src="${selectedImage}" alt="Vista previa">`};reader.readAsDataURL(file)}
-    function clearForm(){adTitle.value='';adImage.value='';selectedImage='';imagePreview.textContent='Puedes agregar una imagen para que el anuncio destaque en el tabloide.';adBrief.value='';adFull.value='';adPhone.value='';adContactMore.value='';adDuration.value='1';adHouse.value='';prefill()}
-    function prefill(){if(!currentUser)return;const casa=currentUser.casa;if(casa?.numero&&!adHouse.value)adHouse.value=casa.numero;if(currentUser.telefono&&!adPhone.value)adPhone.value=currentUser.telefono}
-    function addAd(){const title=adTitle.value.trim(),house=adHouse.value.trim();if(!title||!house)return toast('El título y el número de casa son obligatorios.');const ad=normalizeAd({id:`AN-${Date.now()}`,title,image:selectedImage,brief:adBrief.value.trim(),full:adFull.value.trim(),phone:adPhone.value.trim(),contactMore:adContactMore.value.trim(),house,duration:Number(adDuration.value)||1,createdAt:nowISO(),expiresAt:addMonthsISO(adDuration.value)});ads.unshift(ad);if(!saveAds()){ads.shift();return}closeCreate();clearForm();renderAds();toast('Anuncio publicado correctamente.')}
-    function phoneDigits(v){return String(v||'').replace(/\D/g,'')}
-    function whatsappDigits(v){const d=phoneDigits(v);return d.length===10?`52${d}`:d}
-    function openDetail(id){const a=ads.find(x=>String(x.id)===String(id));if(!a)return;detailHouse.textContent=`Casa ${a.house}`;detailImage.innerHTML=imageMarkup(a,true);detailTitle.textContent=a.title;detailBrief.textContent=a.brief||'Consulta la información completa del anuncio.';detailFull.textContent=a.full||a.brief||'El vecino no agregó información adicional.';detailPublished.textContent=fmt(a.createdAt);detailExpires.textContent=fmt(a.expiresAt);const phone=phoneDigits(a.phone),wa=whatsappDigits(a.phone);contactActions.innerHTML=phone?`<a class="btn call-btn" href="tel:${phone}">📞 Llamar</a><a class="btn wa-btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>`:'<span style="color:#929bab;font-size:10px">No se proporcionó un número de contacto.</span>';detailContactMore.hidden=!a.contactMore;detailContactMore.textContent=a.contactMore||'';detailModal.hidden=false}
-    function closeDetail(){detailModal.hidden=true}
-    function clearSession(){['misionJardinesToken','misionJardinesUsuario'].forEach(k=>{localStorage.removeItem(k);sessionStorage.removeItem(k)})}
-    async function validate(){try{const r=await fetch(`${API_URL}/auth/perfil`,{headers:{Authorization:`Bearer ${token}`}}),d=await r.json();if(!r.ok||!d.ok)throw Error(d.message||'Sesión inválida');currentUser=d.usuario;prefill()}catch(e){console.error(e);clearSession();location.replace('login.html')}}
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!detailModal.hidden)closeDetail();else if(!createModal.hidden)closeCreate()}});
-    loadAds();renderAds();validate();
-  </script>
-  <script src="assets/js/site-sidebar.js?v=20261021-refresco-scroll"></script>
-</body>
-</html>
+  <footer class="footer"><span>Misión Jardines Residencial · Zapopan, Jalisco</span>
+  <span>Plataforma desarrollada por <a href="https://listoenlinea.com" target="_blank" rel="noopener">ListoEnLinea.com</a></span></footer>
+ </main>
+ <button id="newNotice" class="floating-add" type="button" hidden><span>＋</span><span>Publicar aviso</span></button>
+ <section id="createModal" class="modal" hidden aria-modal="true" role="dialog"><div class="modal-box">
+  <div class="modal-head"><div><span class="eyebrow">COMUNICADO DE ADMINISTRACIÓN</span><h2>Publicar aviso</h2><p>Solo Administración puede publicar; los residentes solo podrán leer.</p></div><button id="closeCreate" class="close" aria-label="Cerrar">×</button></div>
+  <div class="modal-body"><form id="noticeForm" class="form-grid" onsubmit="return false">
+   <div><label class="required" for="noticeTitle">Título</label><input id="noticeTitle" maxlength="100" placeholder="Ej. Mantenimiento programado de áreas comunes"></div>
+   <div><label for="noticeImage">Imagen (opcional)</label><input type="file" id="noticeImage" accept="image/png,image/jpeg,image/webp"><span class="hint">Máximo 700 KB.</span><div id="imagePreview" class="photo-preview">Imagen opcional</div></div>
+   <div><label for="noticeBrief">Descripción breve</label><textarea id="noticeBrief" maxlength="300" placeholder="Resumen visible en el tablón"></textarea></div>
+   <div><label class="required" for="noticeFull">Contenido del aviso</label><textarea id="noticeFull" maxlength="4000" placeholder="Detalles, fechas e indicaciones importantes"></textarea></div>
+   <div><label for="noticeDuration">Tiempo visible</label><select id="noticeDuration"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select></div>
+  </form></div>
+  <div class="modal-foot"><button id="cancelCreate" class="btn" type="button">Cancelar</button><button id="publishNotice" class="btn btn-primary" type="button">Publicar aviso</button></div>
+ </div></section>
+ <section id="detailModal" class="modal" hidden aria-modal="true" role="dialog"><div class="modal-box detail-box">
+  <div class="modal-head"><div><span class="eyebrow">AVISO OFICIAL · ADMINISTRACIÓN</span></div><button id="closeDetail" class="close" aria-label="Cerrar">×</button></div>
+  <div id="detailImage" class="detail-image"></div><div class="detail-content">
+   <h2 id="detailTitle" class="detail-title"></h2><p id="detailBrief" class="detail-brief"></p><div id="detailFull" class="detail-full"></div>
+   <div class="detail-meta"><div class="meta-item"><small>Publicado</small><span id="detailPublished"></span></div>
+   <div class="meta-item"><small>Visible hasta</small><strong id="detailExpires"></strong></div></div>
+   <p class="hint">Este es un canal informativo de solo lectura. No admite comentarios ni respuestas.</p>
+   <button id="removeNotice" class="btn" type="button" hidden>Retirar aviso</button>
+  </div>
+ </div></section>
+ <div id="toast" class="toast" role="status"></div>
+ <script src="assets/js/avisos.js?v=20261123"></script>
+ <script src="assets/js/site-sidebar.js?v=20261123-avisos"></script>
+</body></html>

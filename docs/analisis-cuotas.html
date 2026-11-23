@@ -58,7 +58,7 @@
    <label>Categoría<select id="financeClubExpenseCategory"><option value="OTROS">Otros</option><option value="SERVICIOS">Servicios</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="CFE">CFE</option><option value="SIAPA">SIAPA</option><option value="INTERNET">Internet</option><option value="JARDINERIA">Jardinería</option></select></label>
   </div>
   <label class="finance-club-expense-check"><input type="checkbox" id="financeClubExpensePaid" checked> Este concepto ya se pagó</label>
-  <label>Comprobante opcional (PDF, JPG, PNG · máximo 1 MB)<input id="financeClubExpenseFile" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
+  <label>Comprobantes opcionales (hasta 12 archivos PDF, JPG o PNG de máximo 1 MB cada uno)<input id="financeClubExpenseFile" multiple type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
   <p id="financeClubExpenseStatus" role="status" aria-live="polite"></p>
   <div class="finance-club-expense-actions">
    <button id="financeClubExpenseDelete" class="soft" type="button" hidden>Eliminar concepto</button>
@@ -67,9 +67,23 @@
   </div>
  </form>
  <div class="finance-club-expense-proof" id="financeClubExpenseProofArea" hidden>
-  <button type="button" class="soft" id="financeClubExpenseShowProof">Ver comprobante registrado</button>
+  <button type="button" class="soft" id="financeClubExpenseShowProof">Ver comprobantes registrados</button>
   <div id="financeClubExpensePreview" class="finance-project-proof-preview" hidden></div>
  </div>
+</dialog>
+<dialog id="expenseAttachmentsModal" class="finance-club-expense-dialog" aria-labelledby="expenseAttachmentsTitle">
+ <div class="finance-club-expense-heading"><div><span class="eyebrow">MANTENIMIENTO · EGRESOS</span><h2 id="expenseAttachmentsTitle">Comprobantes del gasto</h2></div>
+  <button id="expenseAttachmentsClose" class="soft" type="button" aria-label="Cerrar">×</button></div>
+ <p class="hint">Puedes agregar archivos sin eliminar los comprobantes existentes.</p>
+ <div id="expenseAttachmentsList" role="group" aria-label="Comprobantes guardados"></div>
+ <div id="expenseAttachmentsPreview" class="finance-project-proof-preview" hidden></div>
+ <form id="expenseAttachmentsForm">
+  <label for="expenseAttachmentsFiles">Agregar comprobantes PDF, JPG o PNG (1 MB máximo por archivo)</label>
+  <input type="file" id="expenseAttachmentsFiles" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required>
+  <p id="expenseAttachmentsStatus" role="status" aria-live="polite"></p>
+  <div class="finance-club-expense-actions"><button class="soft" type="button" id="expenseAttachmentsCancel">Cancelar</button>
+    <button class="primary" type="submit" id="expenseAttachmentsSave">Agregar comprobantes</button></div>
+ </form>
 </dialog>
 <p id="financeConceptHint" class="finance-concept-hint" role="status">Mantenimiento: pagos mensuales, recargos y saldos acumulados hasta el período seleccionado.</p>
 <div class="filters residences-filter"><label>Buscar casa o residente<input id="financeSearch" type="search" placeholder="Ej. Gardenias, 5, nombre"></label><label>Calle<select id="financeStreet"><option value="">Todas las calles</option></select></label><label>Estado<select id="financeStatus"><option value="">Todos</option><option value="PAGADO">Pagadas</option><option value="PAGO_PARCIAL" hidden disabled>Abonando</option><option value="PENDIENTE">Pendientes</option><option value="NO_APLICA" hidden disabled>No aplica</option><option value="PAGO_ANUAL">Pago anual</option><option value="ABONO_CON_ADEUDO">Abono con adeudo</option><option value="ADVERTENCIAS">Advertencias</option></select></label><fieldset class="paid-through-filter"><legend>Último mes pagado</legend><div class="paid-through-controls"><select id="financeLastPaidMonth" aria-label="Mes del último pago mínimo"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select><select id="financeLastPaidYear" aria-label="Año del último pago mínimo"></select></div></fieldset><label class="finance-register-order">Fecha de registro<select id="financeRegistrationOrder" aria-label="Ordenar por fecha y hora del último registro de pago"><option value="">Orden habitual</option><option value="registro_desc">Más reciente primero</option><option value="registro_asc">Más antiguo primero</option></select></label><button id="financeClear" type="button" class="soft">Limpiar</button></div>
@@ -170,11 +184,12 @@
    <button type="submit" class="soft" id="financeProjectProofPaymentSave">Guardar estado</button>
   </form>
   <div id="financeProjectProofStatus" class="finance-project-proof-status" role="status" aria-live="polite"></div>
-  <div id="financeProjectProofPreview" class="finance-project-proof-preview" hidden></div>
+  <div id="financeProjectProofFiles" class="finance-project-proof-files" role="group" aria-label="Comprobantes del egreso"></div>
+   <div id="financeProjectProofPreview" class="finance-project-proof-preview" hidden></div>
   <form id="financeProjectProofUploadForm" class="finance-project-proof-upload-form">
-   <label for="financeProjectProofUploadFile">Adjuntar comprobante de este concepto</label>
-   <p class="hint">PDF, PNG, JPG o JPEG · máximo 1 MB. Puedes agregarlo después de registrar el gasto.</p>
-   <input id="financeProjectProofUploadFile" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required>
+   <label for="financeProjectProofUploadFile">Adjuntar comprobantes de este concepto</label>
+   <p class="hint">PDF, PNG, JPG o JPEG · máximo 1 MB. Puedes agregar varios archivos después de registrar el gasto, sin reemplazar los anteriores.</p>
+   <input id="financeProjectProofUploadFile" multiple type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required>
    <button id="financeProjectProofUploadSave" class="primary" type="submit">Guardar comprobante</button>
   </form>
   <div class="finance-project-proof-actions">
@@ -233,7 +248,7 @@
    <label>Concepto<input id="financeProjectExpenseName" required maxlength="250" placeholder="Ej. Pintura o soldadura"></label>
    <label>Monto (MXN)<input id="financeProjectExpenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label>
    <label>Fecha<input id="financeProjectExpenseDate" type="date" required></label>
-   <label>Recibo o comprobante (opcional)<input id="financeProjectExpenseProof" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
+   <label>Recibo o comprobante (opcional)<input id="financeProjectExpenseProof" multiple type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
    <div class="finance-project-concept-flags">
     <label class="finance-project-compact-check"><input id="financeProjectExpenseIncluded" type="checkbox" checked>
      <span>Este concepto ya está incluido en el presupuesto total.</span></label>
@@ -293,7 +308,7 @@
    <h2 id="financeExpenseRegisterHeading">Registrar un gasto</h2>
    <p>Registra cada movimiento en su área correspondiente sin modificar pagos anteriores.</p>
   </div>
-<form id="newExpense" class="expense-form"><label>Fecha<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input id="expenseDate" type="date" required></div></label><label>Categoría<select id="expenseCategory" required><option value="CFE">CFE</option><option value="SIAPA">SIAPA</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTO">Proyecto</option><option value="INTERNET">Internet</option><option value="SERVICIOS">Servicios</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label><label id="expenseScopeWrap">Área financiera<select id="expenseScope"><option value="MANTENIMIENTO">Mantenimiento</option><option value="CASA_CLUB">Casa Club</option></select></label><label class="expense-concept-field">Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><label class="extra-expense-option" hidden>Meses para cubrir el proyecto<input id="expenseMonths" type="number" min="1" max="36" value="1"></label><label class="extra-expense-option" hidden>Primer mes de cobro<input id="expenseStart" type="month" min="2026-10"></label><p id="expenseFormHint" class="expense-form-hint" role="status">El egreso se contabilizará únicamente en el área seleccionada.</p><button id="saveExpense" class="primary">Registrar egreso</button></form>
+<form id="newExpense" class="expense-form"><label>Fecha<div class="mj-date-control"><span class="mj-date-display" aria-hidden="true">Seleccionar fecha</span><input id="expenseDate" type="date" required></div></label><label>Categoría<select id="expenseCategory" required><option value="CFE">CFE</option><option value="SIAPA">SIAPA</option><option value="JARDINERIA">Jardinería</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="PROYECTO">Proyecto</option><option value="INTERNET">Internet</option><option value="SERVICIOS">Servicios</option><option value="OTROS">Otros</option></select></label><label>Monto (MXN)<input id="expenseAmount" type="number" min="1" step="1" inputmode="numeric" required></label><label id="expenseScopeWrap">Área financiera<select id="expenseScope"><option value="MANTENIMIENTO">Mantenimiento</option><option value="CASA_CLUB">Casa Club</option></select></label><label class="expense-concept-field">Concepto<input id="expenseConcept" maxlength="250" placeholder="Ej. Electricidad de áreas comunes" required></label><label class="extra-expense-option" hidden>Meses para cubrir el proyecto<input id="expenseMonths" type="number" min="1" max="36" value="1"></label><label class="extra-expense-option" hidden>Primer mes de cobro<input id="expenseStart" type="month" min="2026-10"></label><label>Comprobantes del gasto (opcional, hasta 12 PDF o imágenes)<input id="expenseFiles" multiple type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label><p id="expenseFormHint" class="expense-form-hint" role="status">El egreso se contabilizará únicamente en el área seleccionada.</p><button id="saveExpense" class="primary">Registrar egreso</button></form>
  </div>
  <div class="finance-expense-panel finance-expense-filter-panel">
   <div class="finance-expense-panel-heading">
