@@ -62,23 +62,65 @@
         document.querySelector('[data-phone-choice="1"]').hidden=phones.length<2;
         byId('phoneChoiceModal').classList.add('show');
       }
-      async function loadHistory(){
+      // El historial descarga diez intentos por página en computadora y celular.
+      // No cambia cómo se marcan las llamadas ni se guardan sus intentos.
+      const HISTORY_PAGE_SIZE=10,HISTORY_CACHE_MS=15000;
+      const historyCache=new Map();
+      let historyPage=1,historyPages=1,historyLoading=false;
+      function historyBusy(busy){
+        historyLoading=busy;
+        byId('historyPrevious').disabled=busy||historyPage<=1;
+        byId('historyNext').disabled=busy||historyPage>=historyPages;
+        byId('refreshHistory').disabled=busy;
+      }
+      function renderHistory(data){
         const list=byId('historyList');
-        list.textContent='Cargando historial…';
-        try {
-          const data=await api('/conmutador/historial');
-          list.replaceChildren();
-          if(!data.registros.length){list.textContent='Sin intentos registrados.';return;}
-          data.registros.forEach(entry=>{
-            const row=document.createElement('div');row.className='history-item';
-            const home=document.createElement('strong');
-            home.textContent=entry.grupo+' '+entry.numero;
-            const timestamp=document.createElement('span');
-            const [date,time]=String(entry.fecha_hora||'').split(' ');
-            timestamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
-            row.append(home,timestamp);list.appendChild(row);
-          });
-        }catch(_){list.textContent='No se pudo consultar el historial.';}
+        const rows=(Array.isArray(data.registros)?data.registros:[]).slice(0,HISTORY_PAGE_SIZE);
+        historyPage=Math.max(1,Number(data.pagina)||1);
+        historyPages=Math.max(1,Number(data.paginas)||1);
+        const total=Math.max(0,Number(data.total)||0);
+        const fragment=document.createDocumentFragment();
+        if(!rows.length){
+          const empty=document.createElement('p');
+          empty.className='history-empty';empty.textContent='Sin intentos registrados.';
+          fragment.appendChild(empty);
+        }
+        for(const entry of rows){
+          const row=document.createElement('div');row.className='history-item';
+          const home=document.createElement('strong');
+          home.textContent=String(entry.grupo||'')+' '+String(entry.numero||'');
+          const timeLabel=document.createElement('span');
+          const [date,time]=String(entry.fecha_hora||'').split(' ');
+          timeLabel.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
+          row.append(home,timeLabel);fragment.appendChild(row);
+        }
+        list.replaceChildren(fragment);
+        const first=total?(historyPage-1)*HISTORY_PAGE_SIZE+1:0;
+        const last=total?Math.min(total,first+rows.length-1):0;
+        byId('historyCount').textContent=total?'Mostrando '+first+'–'+last+' de '+total+' intentos':'0 intentos registrados';
+        byId('historyPageIndicator').textContent='Página '+historyPage+' de '+historyPages;
+        historyBusy(false);
+      }
+      async function loadHistory(page=historyPage,{force=false}={}){
+        if(historyLoading)return;
+        const target=Math.max(1,Math.floor(Number(page)||1));
+        const cached=historyCache.get(target);
+        if(!force&&cached&&Date.now()-cached.at<HISTORY_CACHE_MS){renderHistory(cached.data);return;}
+        historyBusy(true);
+        if(!cached)byId('historyList').textContent='Cargando historial…';
+        byId('historyCount').textContent='Consultando registros…';
+        try{
+          const data=await api('/conmutador/historial?pagina='+target);
+          if(!Array.isArray(data.registros))throw Error('Respuesta de historial inválida.');
+          historyCache.set(target,{at:Date.now(),data});
+          if(historyCache.size>5)historyCache.delete(historyCache.keys().next().value);
+          renderHistory(data);
+        }catch(error){
+          if(cached)renderHistory(cached.data);
+          else byId('historyList').textContent='No se pudo consultar el historial. Presiona Actualizar.';
+          byId('historyCount').textContent=error.message||'Sin conexión';
+          historyBusy(false);
+        }
       }
       // La pestaña privada se habilita ÚNICAMENTE tras verificar el rol con el backend.
       let contactosAdmin = null;
@@ -97,7 +139,9 @@
       }
       byId('showHistory').addEventListener('click',()=>mostrarPanel('historial'));
       byId('showHomes').addEventListener('click',()=>mostrarPanel('viviendas'));
-      byId('refreshHistory').addEventListener('click',loadHistory);
+      byId('refreshHistory').addEventListener('click',()=>{historyCache.clear();void loadHistory(1,{force:true});});
+      byId('historyPrevious').addEventListener('click',()=>{if(historyPage>1)void loadHistory(historyPage-1);});
+      byId('historyNext').addEventListener('click',()=>{if(historyPage<historyPages)void loadHistory(historyPage+1);});
       Promise.resolve(window.MJAccessReady).then(autorizado => {
         if(autorizado !== true || window.MJVerifiedRole !== 'ADMINISTRADOR')return;
         contactosAdmin = window.crearContactosConmutadorAdmin({api, sections});
