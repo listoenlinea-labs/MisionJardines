@@ -103,7 +103,7 @@ router.get('/',async(req,res)=>{
    fecha=newest[0]?.fecha||null;
   }
   if(fecha===null){
-   return res.json({ok:true,tipo:'INTENTO_DE_MARCADO',
+   return res.json({ok:true,tipo:'ENVIO_CONFIRMADO',
     fecha:null,total:0,registros:[],fechaAnterior:null,fechaSiguiente:null});
   }
   // WHERE usa rangos de fecha sargables: no aplicar DATE() a la columna.
