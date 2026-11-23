@@ -4,6 +4,10 @@
       if (!token) { location.replace('login.html'); return; }
 
       const byId = id => document.getElementById(id);
+      // Disponible antes de inicializar telefonía: evita referencias
+      // prematuras si un motor informa estado durante su constructor.
+      let callModalVisible=false;
+      let callModalReturnFocus=null;
       const range = amount => Array.from({ length: amount }, (_, index) => ({ number: String(index + 1) }));
       const fromList = value => value.split(',').map(number => ({ number: number.trim() })).filter(item => item.number);
       const sections = [
@@ -206,8 +210,6 @@
 
       // Modal visible mientras se solicita y confirma una llamada.
       // Los errores se muestran aquí y en la barra de estado existente.
-      let callModalVisible=false;
-      let callModalReturnFocus=null;
       function openCallModal(message){
         const modal=byId('callProgressModal');
         if(!callModalVisible){
