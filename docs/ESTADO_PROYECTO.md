@@ -1,12 +1,12 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 21/nov/2026, 23:27, America/Mexico_City.
-**SHA de main consultado:** `36ed66310793ef56c79d87328bffd17dc802ddec`.
+**Última revisión:** 22/nov/2026, 23:25, America/Mexico_City.
+**SHA de main consultado:** `7a65e1cd76f06d082babe7604046f7e105749abb`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `c18bdc24d4bd67f7ffddceae23d669b62b0fc473`,
+comparación de main desde `36ed66310793ef56c79d87328bffd17dc802ddec`,
 historial de 1 commit, PR abiertos y evidencia de checks en GitHub. El único avance
-fue `36ed66310793ef56c79d87328bffd17dc802ddec`, dedicado exclusivamente a la
-bitácora del 20/nov y excluido de la lista de trabajo de producto. No hubo commits
+fue `7a65e1cd76f06d082babe7604046f7e105749abb`, dedicado exclusivamente a la
+bitácora del 21/nov y excluido de la lista de trabajo de producto. No hubo commits
 ni PR de producto nuevos, PR abiertos o revertidos nuevos. Ese commit documental
 devuelve cero workflows y cero estados; no hubo pruebas automatizadas nuevas.
 No hay confirmaciones nuevas accesibles del usuario sobre despliegue, datos de MySQL,
@@ -965,6 +965,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 22/nov/2026 | Revisión GitHub del único commit desde el SHA guardado; sin comando de producto nuevo | `7a65e1c` modificó solo `docs/ESTADO_PROYECTO.md`; **0 workflows y 0 estados** | Sin cambios verificables de producto ni pruebas nuevas; se conservan resultados y pendientes anteriores |
 | 21/nov/2026 | Revisión GitHub del único commit desde el SHA guardado; sin comando de producto nuevo | `36ed663` modificó solo `docs/ESTADO_PROYECTO.md`; **0 workflows y 0 estados** | Sin cambios verificables de producto ni pruebas nuevas; se conservan resultados y pendientes anteriores |
 | 20/nov/2026 | PR #465–#469, consulta GitHub de workflows/estados en los cinco merges | **0 workflows y 0 estados** en los 5 merges | No hay CI observable; merge y revisión declarada no prueban despliegue |
 | 20/nov/2026 | #465–#466, revisión Casa Club | #465: **sin batería extensa**; #466: **revisión estática**. Hay **6 bloques** de elegibilidad presentes en main, sin ejecución acreditada | No prueba reservas, pagos, padrón, nombres, MySQL ni interfaz real |
@@ -1293,6 +1294,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-22
+
+- Main consultado a las 23:25, America/Mexico_City, en `7a65e1cd76f06d082babe7604046f7e105749abb`, 1 commit por delante del SHA guardado.
+- El único commit fue `7a65e1c`, que solo actualizó esta bitácora y se excluyó del trabajo de producto. No hubo commits o PR de producto nuevos, PR abiertos ni revertidos nuevos.
+- El commit documental devuelve cero workflows y cero estados. No se ejecutaron ni declararon pruebas automatizadas nuevas.
+- No hubo confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, Casa Club, teléfonos, recibos, llamadas o pruebas físicas.
+- Sin cambios verificables de producto: se conservaron el resumen operativo, el historial de pruebas y todos los pendientes. Esta revisión no consultó ni modificó Hostinger, MySQL o C3, ni ejecutó operaciones reales.
 
 ### 2026-11-21
 
