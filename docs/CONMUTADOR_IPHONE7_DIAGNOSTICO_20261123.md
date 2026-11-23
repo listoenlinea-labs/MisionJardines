@@ -19,6 +19,9 @@ El navegador esperaba **solo 10 segundos** después de que Hostinger aceptara el
 - Modal ligero de "Llamando…" al pulsar una casa y después de escoger A/B, con estados, botón Cerrar y un error visible sin requerir leer la barra inferior.
 - Se actualizan versiones de scripts para evitar que Safari reutilice el código anterior de 10 segundos.
 
+## Compatibilidad con los dos accesos del Conmutador
+La corrección se aplicó en `docs/conmutador.html` (portal GitHub Pages) y en `backend/public/conmutador.html` (Conmutador independiente de Hostinger). Ambos utilizan exactamente el mismo módulo actualizado de caseta, con versiones nuevas de JavaScript para evitar que Safari recupere el código antiguo. El modal y la protección contra dobles pulsaciones también están presentes en ambas pantallas.
+
 ## Sin cambios
 No hay cambios SQL, cambios de números personales, controles de acceso, integración HT813/Asterisk, agente.py, POST de llamadas, registros del historial, pagos, OCR, ZKTeco ni otras partes financieras.
 

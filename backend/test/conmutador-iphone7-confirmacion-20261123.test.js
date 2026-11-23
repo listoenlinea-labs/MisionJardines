@@ -135,3 +135,18 @@ test('Modal de llamada visible, accesible y actualizado con el mismo estado de c
  assert.match(js,/await caseta\.llamar\(domicilio, contactos\[0\]\)/);
  assert.match(js,/await caller\.call/);
 });
+
+test('La versión independiente del Conmutador también se actualiza para Safari antiguo',()=>{
+ const docs=read('docs/assets/js/conmutador-caseta.js');
+ const alternate=read('backend/public/assets/js/conmutador-caseta.js');
+ assert.equal(alternate,docs,'ambas interfaces deben esperar la misma confirmación');
+ const html=read('backend/public/conmutador.html');
+ const js=read('backend/public/assets/js/conmutador.js');
+ for(const id of ['callProgressModal','callProgressTitle','callProgressDescription','callProgressClose'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/conmutador-caseta\.js\?v=20261123-iphone7-confirmacion-v1/);
+ assert.match(js,/openCallModal\(\)/);
+ assert.match(js,/if\(callModalVisible\)/);
+ assert.match(js,/await caseta\.llamar\(domicilioPendiente,n\)/);
+ assert.match(js,/document\.querySelectorAll\('\.house'\).*disabled=true/);
+});
