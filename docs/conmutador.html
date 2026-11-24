@@ -54,11 +54,12 @@
     .history-head{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:15px}
     .history-head h2{font-size:18px;margin:0}
     .history-list{display:grid;gap:8px}
-    .history-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid #e4e8ee;border-radius:12px}
-    .history-item strong{font-size:14px}
-    .history-confirmed{font-size:11px;color:#21704d;background:#eaf7f0;border:1px solid #cfe7da;border-radius:8px;padding:6px 9px;font-weight:700}
-    @media(max-width:560px){.history-item{flex-wrap:wrap}.history-item .history-confirmed{order:3;flex:1 1 100%;width:max-content}}
-    .history-item span{color:#69788d;font-size:12px;text-align:right}
+    /* Dos columnas exteriores idénticas mantienen el estado siempre en el centro,
+       independientemente de la longitud del nombre de la vivienda o de la fecha. */
+    .history-item{display:grid;grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);align-items:center;gap:12px;padding:13px 15px;border:1px solid #e4e8ee;border-radius:12px}
+    .history-item strong{grid-column:1;min-width:0;font-size:14px;overflow-wrap:anywhere}
+    .history-confirmed{grid-column:2;justify-self:center;text-align:center;white-space:nowrap;font-size:11px;color:#21704d;background:#eaf7f0;border:1px solid #cfe7da;border-radius:8px;padding:6px 9px;font-weight:700}
+    .history-item span{grid-column:3;justify-self:end;color:#69788d;font-size:12px;text-align:right}
     .history-empty{font-size:13px;color:#69788d}
     .history-filter{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 12px}
     .history-date-navigation{display:flex;align-items:flex-end;gap:8px;flex-wrap:nowrap}
@@ -75,7 +76,7 @@
     .history-count,.history-status{margin:0;color:#66778e;font-size:12px}
     .history-status{min-height:16px;margin-bottom:9px}
     .history-item{content-visibility:auto;contain-intrinsic-size:auto 57px}
-    @media(max-width:560px){.history-panel{padding:16px}.history-item{padding:12px;align-items:flex-start}.history-filter{align-items:stretch}.history-date-navigation{width:100%}.history-date-navigation label{flex:1 1 auto;min-width:0}.history-date-navigation input[type=date]{width:100%;min-width:0}.history-date-navigation .history-arrow{flex:0 0 44px}.history-filter>button{flex:1}.history-footer{justify-content:flex-start}}
+    @media(max-width:560px){.history-panel{padding:16px}.history-item{grid-template-columns:minmax(0,1fr) max-content;gap:10px;padding:12px;align-items:center}.history-item strong{grid-column:1;grid-row:1}.history-item span{grid-column:2;grid-row:1}.history-item .history-confirmed{grid-column:1/-1;grid-row:2;justify-self:center}.history-filter{align-items:stretch}.history-date-navigation{width:100%}.history-date-navigation label{flex:1 1 auto;min-width:0}.history-date-navigation input[type=date]{width:100%;min-width:0}.history-date-navigation .history-arrow{flex:0 0 44px}.history-filter>button{flex:1}.history-footer{justify-content:flex-start}}
     [hidden]{display:none!important}
     .privacy-note{margin:12px 3px 0;color:#8490a1;font-size:11px;line-height:1.5}
 
