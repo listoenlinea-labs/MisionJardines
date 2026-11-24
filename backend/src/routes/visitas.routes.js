@@ -1,5 +1,5 @@
 const express = require('express');
-const { list, create, enter, exit, cancel, pendientes, viviendas, readIdentificationPhoto } = require('../controllers/visitas.controller');
+const { list, create, enter, exit, cancel, pendientes, viviendas, contactoViviendaAdmin, readIdentificationPhoto } = require('../controllers/visitas.controller');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
 const router = express.Router();
@@ -10,6 +10,7 @@ const managers = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR');
 router.get('/', autenticarToken, allRoles, list);
 router.get('/pendientes', autenticarToken, security, pendientes);
 router.get('/viviendas', autenticarToken, issuers, viviendas);
+router.get('/viviendas/:id/contacto', autenticarToken, managers, contactoViviendaAdmin);
 router.get('/:id/identificacion-foto', autenticarToken, managers, readIdentificationPhoto);
 router.post('/', autenticarToken, issuers, create);
 router.patch('/:id/entrada', autenticarToken, security, enter);
