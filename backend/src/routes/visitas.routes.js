@@ -6,7 +6,7 @@ const router = express.Router();
 const allRoles = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD', 'CONDOMINO');
 const security = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD');
 const issuers = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'CONDOMINO', 'SEGURIDAD');
-const managers = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA');
+const managers = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR');
 router.get('/', autenticarToken, allRoles, list);
 router.get('/pendientes', autenticarToken, security, pendientes);
 router.get('/viviendas', autenticarToken, issuers, viviendas);
