@@ -5,7 +5,8 @@ const db = require('../config/database');
 // Fotografías de documentos: tabla separada de visitas_programadas.
 // Nunca se incluyen en las consultas comunes de visitas.
 module.exports = db.define('VisitaIdentificacionFoto', {
-  visitaId: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, field: 'visita_id' },
+  visitaId: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, field: 'visita_id',
+    references: { model: 'visitas_programadas', key: 'id' }, onDelete: 'CASCADE', onUpdate: 'CASCADE' },
   datosCifrados: { type: DataTypes.BLOB('long'), allowNull: false, field: 'datos_cifrados' },
   nonce: { type: DataTypes.BLOB('tiny'), allowNull: false },
   etiqueta: { type: DataTypes.BLOB('tiny'), allowNull: false },
