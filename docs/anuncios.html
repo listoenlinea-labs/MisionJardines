@@ -24,6 +24,10 @@
     @media(max-width:1000px){.board-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.ann-shell{width:min(100% - 28px,1260px);padding-top:18px}.topline,.footer{align-items:flex-start;flex-direction:column}.board{margin-top:16px;padding:16px}.board-grid,.form-row,.detail-meta{grid-template-columns:1fr}.ad-image{height:225px}.modal{padding:10px}.modal-body,.detail-content{padding:18px}.modal-head{padding:18px}.modal-foot{padding:13px 18px}.floating-add{right:17px;bottom:17px}.detail-image{height:280px}}
     .sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
     .modal-body .form-grid>div>label{font-size:13px;color:#45516a;font-weight:800;margin-bottom:9px}
+    .modal-head p{font-size:13px;line-height:1.5}
+    .modal-body .hint{font-size:11px;line-height:1.6}
+    .modal-body .form-grid input[type="file"]{font-size:13px;padding:11px}
+    .modal-foot .btn{min-height:44px;padding:10px 16px;font-size:13px}
     .modal-body .form-grid input[type="text"],.modal-body .form-grid input:not([type]),.modal-body .form-grid select:not(.tool-select){font-size:14px}
     .editor-wrap{border:1px solid #d6dfeb;border-radius:15px;overflow:hidden;background:#fff;box-shadow:0 5px 22px rgba(32,40,61,.055);transition:border-color .2s,box-shadow .2s}
     .editor-wrap:focus-within{border-color:#eb943b;box-shadow:0 0 0 4px rgba(239,125,11,.1),0 8px 26px rgba(32,40,61,.06)}
@@ -34,8 +38,10 @@
     .ann-page .tool-btn:focus-visible,.color-swatch:focus-visible,.custom-color-tool:focus-within{outline:2px solid #ee8e30;outline-offset:1px}
     .ann-page .tool-select{flex:0 0 auto;width:136px;min-height:38px;padding:5px 25px 5px 10px;border:1px solid #dce3ed;border-radius:9px;background:#fff;color:#33425a;font-size:12px;font-weight:700;cursor:pointer}
     .palette-title{color:#64748b;font-size:11px;font-weight:800;margin-right:3px}
-    .color-swatch{width:25px;height:25px;flex:0 0 25px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--swatch);box-shadow:0 0 0 1px #bec9d8;cursor:pointer;transition:transform .14s,box-shadow .14s}
-    .color-swatch:hover{transform:scale(1.12)}.color-swatch.is-active{box-shadow:0 0 0 2px #ee8e30}
+    .color-swatch{position:relative;width:36px;height:38px;flex:0 0 36px;padding:0;border:0;border-radius:9px;background:transparent;cursor:pointer;transition:background .14s}
+    .color-swatch::after{content:"";position:absolute;top:7px;left:6px;width:24px;height:24px;border:3px solid #fff;border-radius:50%;background:var(--swatch);box-shadow:0 0 0 1px #bec9d8;transition:transform .14s,box-shadow .14s}
+    .color-swatch:hover{background:#eaf0f8}.color-swatch:hover::after{transform:scale(1.1)}
+    .color-swatch.is-active::after{box-shadow:0 0 0 2px #ee8e30}
     .custom-color-tool{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 35px;width:35px;height:35px;padding:0;margin:0;border:1px solid #dce3ed;border-radius:9px;background:#fff;color:#64748b;font-size:22px;cursor:pointer;overflow:hidden}
     .ann-page .custom-color-tool input{position:absolute;inset:0;width:100%;height:100%;padding:0;margin:0;opacity:0;cursor:pointer}
     .tool-btn.clear-format{font-size:13px;text-decoration:line-through;text-decoration-color:#b42332}
@@ -52,7 +58,7 @@
     .detail-full font[size="3"]{font-size:1em}.detail-full font[size="4"]{font-size:1.15em}.detail-full font[size="5"]{font-size:1.42em}.detail-full font[size="6"]{font-size:1.7em}
     .detail-brief{font-size:14px}
     #removeNotice{margin-top:16px;border-color:#f0c5c5;color:#aa3941;background:#fff8f8}
-    @media(max-width:720px){.modal-body .form-grid input,.modal-body .form-grid select{font-size:16px}.editor-toolbar{padding:9px}.editor-group{padding-right:7px}.ann-page .tool-btn{flex-basis:42px;width:42px;height:42px}.rich-editor{min-height:178px;padding:16px;font-size:16px}.editor-mobile-hint{display:block}.editor-bottom{padding:10px 12px}}
+    @media(max-width:720px){.modal-body .form-grid input,.modal-body .form-grid select{font-size:16px}.editor-toolbar{padding:9px}.editor-group{padding-right:7px}.ann-page .tool-btn{flex-basis:42px;width:42px;height:42px}.color-swatch{width:42px;height:42px;flex-basis:42px}.color-swatch::after{left:9px;top:9px}.rich-editor{min-height:178px;padding:16px;font-size:16px}.editor-mobile-hint{display:block}.editor-bottom{padding:10px 12px}}
   </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -119,6 +125,6 @@
   </div>
  </div></section>
  <div id="toast" class="toast" role="status"></div>
- <script src="assets/js/avisos.js?v=20261124-rich-editor-v2"></script>
+ <script src="assets/js/avisos.js?v=20261124-rich-editor-v3"></script>
  <script src="assets/js/site-sidebar.js?v=20261123-avisos"></script>
 </body></html>
