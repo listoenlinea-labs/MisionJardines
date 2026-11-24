@@ -37,8 +37,8 @@ async function autenticarToken(req, res, next) {
         const endpoint = req.baseUrl.split('/').pop();
         // Condómino: solamente pagos y reservaciones; auth/viviendas son
         // auxiliares necesarios para sesión y selección de vivienda propia.
-        if (req.usuario.rol === 'CONDOMINO' && !['auth', 'whatsapp-bot', 'viviendas', 'pagos', 'casa-club', 'avisos'].includes(endpoint)) {
-            return res.status(403).json({ok:false,message:'Tu cuenta solo tiene acceso a Pagos y Casa Club'});
+        if (req.usuario.rol === 'CONDOMINO' && !['auth', 'whatsapp-bot', 'viviendas', 'pagos', 'casa-club', 'avisos', 'visitas'].includes(endpoint)) {
+            return res.status(403).json({ok:false,message:'Tu cuenta solo tiene acceso a Pagos, Casa Club y Visitas'});
         }
         if (req.usuario.rol === 'CONDOMINO' && endpoint === 'viviendas' && req.path !== '/mias') {
             return res.status(403).json({ok:false,message:'Solo puedes consultar tu vivienda vinculada desde Pagos y Casa Club'});

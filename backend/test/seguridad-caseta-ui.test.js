@@ -26,21 +26,24 @@ test('El menú de Seguridad solo incluye Conmutador, Seguridad y Visitas', () =>
   assert.equal(policy.canAccess('SEGURIDAD', 'cuenta.html'), true);
 });
 
-test('Seguridad puede abrir Nueva visita y el backend ya tiene permiso de registro', () => {
+test('Visitas: condómino y administrador autorizan; Seguridad controla únicamente entradas y salidas', () => {
   const src = read('docs/visitas.html');
   const createFn = src.match(/function canCreate\(\)\s*\{[^}]+\}/)?.[0];
-  assert.ok(createFn, 'Falta canCreate');
-  const canCreate = (admin, security, role) => Function('actualIsAdmin',
-    'actualIsSecurity', 'actualRole', createFn + '\nreturn canCreate();')(admin, security, role);
-  assert.equal(canCreate(false, true, 'SEGURIDAD'), true);
-  assert.equal(canCreate(true, false, 'ADMINISTRADOR'), true);
-  assert.equal(canCreate(false, false, 'CONDOMINO'), true);
-  assert.equal(canCreate(false, false, 'MANTENIMIENTO'), false);
-  assert.match(src, /\$\('newVisitButton'\)\.addEventListener\('click', openVisit\)/);
-  assert.match(src, /applyRole\(\);\s*Promise\.allSettled\(\[loadHouses\(\), loadVisits\(\)\]\)/);
-  assert.match(src, /id="visitModal"/);
-  assert.match(read('backend/src/routes/visitas.routes.js'), /'SEGURIDAD'/);
-  assert.match(read('backend/src/controllers/visitas.controller.js'), /const adminOrSecurity = SECURITY_ROLES\.has\(req\.usuario\.rol\)/);
+  assert.ok(createFn,'Falta canCreate');
+  const canCreate = (admin,security,role)=>Function('actualIsAdmin',
+    'actualIsSecurity','actualRole',createFn+'\nreturn canCreate();')(admin,security,role);
+  assert.equal(canCreate(false,true,'SEGURIDAD'),false);
+  assert.equal(canCreate(true,false,'ADMINISTRADOR'),true);
+  assert.equal(canCreate(false,false,'CONDOMINO'),true);
+  assert.equal(canCreate(false,false,'MANTENIMIENTO'),false);
+  assert.match(src,/if\(actualIsSecurity\)showVisitPage\('history'\)/);
+  assert.match(src,/visit-security-table/);
+  assert.match(src,/id="visitPendingBadge"/);
+  assert.match(src,/\$\('newVisitButton'\)\.addEventListener\('click', openVisit\)/);
+  const routes=read('backend/src/routes/visitas.routes.js');
+  assert.match(routes,/router\.post\('\/', autenticarToken, issuers, create\)/);
+  assert.match(routes,/router\.patch\('\/:id\/entrada', autenticarToken, security, enter\)/);
+  assert.match(routes,/router\.patch\('\/:id\/salida', autenticarToken, security, exit\)/);
 });
 
 test('Los tres campos permiten revelar la clave sin enviar el formulario', () => {

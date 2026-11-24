@@ -417,6 +417,69 @@
     refresh();
   }
 
+  // Seguridad: burbuja SOLO de autorizaciones aún sin entrada.
+  // La consulta responde únicamente un número, sin datos de visitantes.
+  // En modo portal se ejecuta en el padre para evitar duplicados en iframes.
+  function watchVisitNotices(aside) {
+    if(role()!=='SEGURIDAD')return;
+    const link=aside.querySelector('.mj-side-link[href="visitas.html"]');
+    if(!link)return;
+    const api=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
+    let lastRequested=0,inFlight=null,queuedForce=false;
+    const request=async()=>{
+      const token=localStorage.getItem('misionJardinesToken')||
+        sessionStorage.getItem('misionJardinesToken');
+      if(!token)return;
+      try{
+        const response=await fetch(api+'/visitas/pendientes',{
+          headers:{Authorization:'Bearer '+token},cache:'no-store'
+        });
+        if(!response.ok)return;
+        const data=await response.json();
+        if(!data.ok||token!==(localStorage.getItem('misionJardinesToken')||
+          sessionStorage.getItem('misionJardinesToken')))return;
+        const count=Math.max(0,Math.floor(Number(data.cantidad)||0));
+        link.querySelector('.mj-side-count')?.remove();
+        if(count>0){
+          const badge=document.createElement('b');
+          badge.className='mj-side-count';
+          badge.textContent=count>99?'99+':String(count);
+          badge.setAttribute('aria-label',count+' visitas pendientes de entrada');
+          badge.title=count+' visitas pendientes de entrada';
+          link.appendChild(badge);
+        }
+      }catch(_){/* No cambiar el contador ante una falla de red */ }
+    };
+    const refresh=(force=false)=>{
+      if(document.hidden)return;
+      if(inFlight){
+        if(force)queuedForce=true;
+        return;
+      }
+      if(!force&&Date.now()-lastRequested<5000)return;
+      lastRequested=Date.now();
+      const task=request();
+      inFlight=task;
+      void task.finally(()=>{
+        if(inFlight!==task)return;
+        inFlight=null;
+        if(queuedForce){queuedForce=false;refresh(true);}
+      });
+    };
+    document.addEventListener('mj:visitas-cambios',()=>refresh(true));
+    window.addEventListener('message',event=>{
+      if(!window.MJ_SHELL_MODE||event.origin!==location.origin||
+        event.data?.type!=='MJ_VISITAS_CAMBIOS')return;
+      const active=document.querySelector('.mj-app-frame.is-active');
+      if(window.MJShell?.currentPage==='visitas.html'&&
+        event.source===active?.contentWindow)refresh(true);
+    });
+    window.addEventListener('focus',()=>refresh());
+    document.addEventListener('visibilitychange',()=>refresh());
+    setInterval(()=>refresh(),15000);
+    refresh(true);
+  }
+
   function loadHomeDashboard() {
     if (window.MJ_SHELL_MODE || page() !== 'index.html' || document.querySelector('script[data-mj-home-dashboard]')) return;
     const script = document.createElement('script');
@@ -472,6 +535,7 @@
     const embeddedShell=window.parent!==window&&new URLSearchParams(location.search).get('_mjFrame')==='1';
     if(!embeddedShell){
       watchPaymentNotices(aside);
+      watchVisitNotices(aside);
       void alertAccountRequests(aside);
     }
     aside.querySelector('.mj-side-logout')?.addEventListener('click', logout);
