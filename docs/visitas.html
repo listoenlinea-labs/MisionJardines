@@ -1035,7 +1035,9 @@
        const result=await api(`${API_BASE_URL}/visitas/viviendas`,{headers:headers()});
        houses=result.data||[];
  fillStreetSelects(); renderVisitBoard(); if (actualRole === 'CONDOMINO' && houses.length) { const own=houses[0]; $('visitStreet').value = own.calleCorrecta||own.calle||''; fillNumbers('visitStreet','visitNumber'); $('visitNumber').value=String(own.id); $('visitStreet').disabled = true; $('visitNumber').disabled = true } }
-    async function loadVisits() {
+    let visitsRequestSeq=0;
+     async function loadVisits() {
+       const seq=++visitsRequestSeq;
        try{
          const [result, pending]=await Promise.all([
            api(`${API_BASE_URL}/visitas`,{headers:headers(),cache:'no-store'}),
@@ -1043,6 +1045,7 @@
              ?api(`${API_BASE_URL}/visitas/pendientes`,{headers:headers(),cache:'no-store'}).catch(()=>null)
              :Promise.resolve(null)
          ]);
+         if(seq!==visitsRequestSeq)return; // No revertir un ingreso nuevo con una consulta anterior.
          visits=result.data||[];
          if(actualIsSecurity&&pending){
            const count=Math.max(0,Number(pending.cantidad)||0);
@@ -1052,11 +1055,17 @@
          }
          $('apiStatus').textContent='Operación normal';$('apiStatus').classList.remove('off');
        }catch(error){
+         if(seq!==visitsRequestSeq)return;
          visits=[];$('apiStatus').textContent='No disponible';$('apiStatus').classList.add('off');
          toast(error.message);
        }
        render();
      }
+     // El guardia recibe las visitas que agreguen otros usuarios sin
+     // recargar la sección ni solicitar datos privados.
+     setInterval(()=>{
+       if(actualIsSecurity && !document.hidden && !$('visitHistoryPanel').hidden)void loadVisits();
+     },15000);
      function notifyVisitsChanged(){
        document.dispatchEvent(new Event('mj:visitas-cambios'));
        if(window.parent!==window){
