@@ -9,7 +9,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const Op={in:'IN',like:'LIKE'};
 function fixture(){
  const houses=[
-  {id:101,calle:'Rosas',calleCorrecta:'Rosas',numero:'18',nombre:'Propietario privado'},
+  {id:101,calle:'Rosas',calleCorrecta:'Rosas',numero:'18',nombre:'Propietario privado',telefono:'3311111111'},
   {id:202,calle:'Gardenias',calleCorrecta:'Gardenias',numero:'5',nombre:'Otro propietario'},
   {id:303,calle:'Prueba',calleCorrecta:'Prueba',numero:'TEST-001',hidden:true}
  ];
@@ -267,4 +267,60 @@ test('La UI de Seguridad minimiza columnas y actualiza burbuja tras cambios',()=
  assert.match(sidebar,/setInterval\(\(\)=>refresh\(\),15000\)/);
  for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))
    if(match[1].trim())assert.doesNotThrow(()=>new vm.Script(match[1]));
+});
+
+test('Solo ADMINISTRADOR y SUPER_ADMIN consultan nombre y teléfono de la vivienda seleccionada',async()=>{
+ for(const role of ['ADMINISTRADOR','SUPER_ADMIN']){
+  const mock=fixture();
+  const response=await mock.run('contactoViviendaAdmin',role,{params:{id:'101'}});
+  assert.equal(response.status,200);
+  assert.deepEqual(Object.keys(response.body.data).sort(),['nombre','telefono']);
+  assert.equal(response.body.data.nombre,'Propietario privado');
+  assert.equal(response.body.data.telefono,'3311111111');
+ }
+ for(const role of ['SEGURIDAD','CONDOMINO','MESA_DIRECTIVA']){
+  const mock=fixture();
+  const response=await mock.run('contactoViviendaAdmin',role,{params:{id:'101'}});
+  assert.equal(response.status,403,'La consulta debe estar prohibida a '+role);
+  assert.doesNotMatch(JSON.stringify(response.body),/Propietario privado|3311111111/);
+ }
+});
+
+test('El contacto del padrón se valida y no revela viviendas inexistentes u ocultas',async()=>{
+ const mock=fixture();
+ for(const id of ['0','abc','-1','1.5']){
+  const response=await mock.run('contactoViviendaAdmin','ADMINISTRADOR',{params:{id}});
+  assert.equal(response.status,400);
+ }
+ for(const id of ['999','303']){
+  const response=await mock.run('contactoViviendaAdmin','ADMINISTRADOR',{params:{id}});
+  assert.equal(response.status,404);
+ }
+});
+
+test('El padrón común sigue excluyendo nombre y teléfono para todos los roles',async()=>{
+ for(const role of ['SEGURIDAD','CONDOMINO','ADMINISTRADOR']){
+  const mock=fixture();
+  const response=await mock.run('viviendas',role);
+  assert.equal(response.status,200);
+  for(const house of response.body.data){
+   assert.deepEqual(Object.keys(house).sort(),['calle','calleCorrecta','id','numero']);
+  }
+ }
+});
+
+test('Contacto y UI privada sólo están disponibles para sesión administrativa auténtica',()=>{
+ const html=read('docs/visitas.html');
+ const routes=read('backend/src/routes/visitas.routes.js');
+ assert.match(routes,/router\.get\('\/viviendas\/:id\/contacto', autenticarToken, managers, contactoViviendaAdmin\)/);
+ assert.match(routes,/const managers = autorizarRoles\('SUPER_ADMIN', 'ADMINISTRADOR'\)/);
+ assert.match(html,/const canViewHouseContact=\['SUPER_ADMIN','ADMINISTRADOR'\]\.includes\(actualRole\)/);
+ assert.match(html,/document\.body\.classList\.toggle\('visit-admin-contact',canViewHouseContact\)/);
+ assert.match(html,/if\(canViewHouseContact&&guardSelectedHouse\)/);
+ assert.match(html,/\/visitas\/viviendas\/'\+houseId\+'\/contacto'/);
+ assert.match(html,/id="adminHouseContact"[^>]+hidden/);
+ assert.match(html,/id="adminHouseContactName"/);
+ assert.match(html,/id="adminHouseContactPhone"/);
+ assert.match(html,/houseContactRequestId\+\+/);
+ assert.match(html,/cache:'no-store'/);
 });
