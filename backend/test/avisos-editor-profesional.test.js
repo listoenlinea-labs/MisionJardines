@@ -136,3 +136,38 @@ test('La lista de avisos consulta únicamente registros sin vencer',async()=>{
  const source=read('backend/src/routes/avisos.routes.js');
  assert.match(source,/expiraEn:\{\[Op\.gt\]:new Date\(\)\}/);
 });
+
+test('Editor de avisos ocupa una columna completa, incluso si hay estilos externos',()=>{
+ const html=read('docs/anuncios.html');
+ assert.match(html,/\.ann-page #createModal #noticeForm\{display:grid!important;grid-template-columns:minmax\(0,1fr\)!important/);
+ assert.match(html,/\.ann-page #createModal #noticeForm>div\{display:block!important;grid-column:1\/-1!important/);
+ assert.match(html,/\.ann-page #createModal \.rich-editor\{display:block;width:100%;min-width:0;min-height:190px/);
+ assert.match(html,/\.ann-page #createModal \.editor-toolbar\{width:100%;min-width:0;max-width:100%;overflow-x:auto/);
+ assert.match(html,/id="imagePreview" class="photo-preview" hidden/);
+ assert.match(html,/\.ann-page #createModal \.modal-body\{flex:1 1 auto;min-height:0;overflow-y:auto/);
+});
+
+test('Las tarjetas tienen altura reducida y abren la lectura completa al pulsarlas',()=>{
+ const html=read('docs/anuncios.html'),script=read('docs/assets/js/avisos.js');
+ assert.match(html,/\.ann-page \.ad-card\{display:flex;flex-direction:column;min-width:0;max-height:290px/);
+ assert.match(html,/\.ann-page \.ad-card\{display:grid;grid-template-columns:104px minmax\(0,1fr\);max-height:164px/);
+ assert.match(html,/\.ann-page \.ad-card--text-only\{grid-template-columns:minmax\(0,1fr\)\}/);
+ assert.match(html,/-webkit-line-clamp:2/);
+ assert.match(script,/const open=\(\)=>detail\(a.id,article\)/);
+ assert.match(script,/article.setAttribute\('role','button'\)/);
+ assert.match(script,/article.setAttribute\('aria-label','Leer aviso: '/);
+ assert.match(script,/article.addEventListener\('keydown'/);
+ assert.match(script,/function detail\(id,opener=null\)/);
+ assert.match(script,/showFull\(a\)/);
+ assert.match(script,/function closeDetailModal\(restoreFocus=true\)/);
+ assert.match(script,/\$\('detailImage'\)\.hidden=!a.image/);
+ assert.match(html,/id="detailModal"[^>]+aria-labelledby="detailTitle"/);
+ assert.match(html,/\.ann-page #detailModal \.modal-box\{width:min\(740px,100%\);max-height:calc\(100dvh - 24px\);overflow-y:auto/);
+});
+
+test('La vista previa de imagen solo aparece al seleccionar un archivo válido',()=>{
+ const script=read('docs/assets/js/avisos.js');
+ assert.match(script,/\$\('imagePreview'\)\.hidden=false/);
+ assert.match(script,/\$\('imagePreview'\)\.hidden=true/);
+ assert.match(script,/document\.addEventListener\('visibilitychange'/);
+});
