@@ -41,6 +41,8 @@ async function iniciarServidor() {
         await require('./models/RecuperacionContrasena').sync();
         await require('./services/casa-club-schema.service').asegurarCasaClub();
         await require('./models/AvisoOficial').sync();
+        // Fotografías de identificación cifradas y aisladas del padrón de visitas.
+        await require('./models/VisitaIdentificacionFoto').sync();
         await require('./services/finanzas-schema.service').asegurarFinanzas();
         await require('./models/ComprobanteEgreso').sync();
         await require('./services/proyectos-extraordinarios-schema.service').asegurarProyectosExtraordinarios();
