@@ -64,6 +64,86 @@
     #noticeTitle{font-size:15px;font-weight:800}
     .ad-card .ad-title,.detail-content .detail-title{font-weight:900}
     #noticeDuration{font-size:15px;font-weight:600}
+
+    /* Avisos — layout aislado para resistir CSS global del shell y pantallas estrechas */
+    .ann-page #createModal .modal-box{display:flex;flex-direction:column;width:min(760px,100%);max-height:calc(100dvh - 24px);overflow:hidden}
+    .ann-page #createModal .modal-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+    .ann-page #createModal .modal-head,.ann-page #createModal .modal-foot{flex:0 0 auto}
+    .ann-page #createModal #noticeForm{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:18px!important;width:100%;min-width:0}
+    .ann-page #createModal #noticeForm>div{display:block!important;grid-column:1/-1!important;min-width:0!important;width:100%!important;max-width:100%!important}
+    .ann-page #createModal #noticeForm input:not([type="color"]),.ann-page #createModal #noticeForm>div>select{display:block;width:100%!important;max-width:100%;min-width:0;box-sizing:border-box}
+    .ann-page #createModal #noticeForm input[type="file"]{min-height:46px;overflow:hidden;font-size:14px!important}
+    .ann-page #createModal .photo-preview{min-height:0;max-height:220px}
+    .ann-page #createModal .photo-preview[hidden]{display:none!important}
+    .ann-page #createModal .rich-editor{display:block;width:100%;min-width:0;min-height:190px;box-sizing:border-box;font-size:16px;line-height:1.65;overflow-wrap:anywhere;word-break:normal}
+    .ann-page #createModal .editor-wrap{width:100%;min-width:0;max-width:100%;overflow:hidden}
+    .ann-page #createModal .editor-toolbar{width:100%;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+    .ann-page #createModal .editor-bottom{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px}
+    .ann-page #createModal .editor-bottom span:first-child{min-width:0}
+    .ann-page #createModal #editorCount{white-space:nowrap}
+    .ann-page #createModal .modal-head h2{font-size:clamp(20px,5vw,26px)}
+    /* Tarjetas = resumen corto. El contenido completo vive únicamente en el modal. */
+    .ann-page .board-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,275px),1fr));align-items:stretch;gap:14px}
+    .ann-page .ad-card{display:flex;flex-direction:column;min-width:0;max-height:290px;overflow:hidden;border-radius:16px}
+    .ann-page .ad-card .ad-image{height:116px;flex:0 0 116px}
+    .ann-page .ad-card .ad-image img{object-fit:cover}
+    .ann-page .ad-card .image-placeholder{font-size:32px}
+    .ann-page .ad-card .ad-body{display:flex;flex-direction:column;flex:1;min-height:0;padding:13px 15px 14px}
+    .ann-page .ad-card .ad-kicker{font-size:10px;letter-spacing:.08em;font-weight:850;color:#ba5f0c}
+    .ann-page .ad-card .ad-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;padding:0;margin:5px 0 7px;font-size:16px;font-weight:900;line-height:1.35;overflow-wrap:anywhere}
+    .ann-page .ad-card .ad-desc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:0;margin:0 0 10px;font-size:13px;line-height:1.4;color:#647087;overflow-wrap:anywhere}
+    .ann-page .ad-card .ad-meta{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:auto;padding-top:9px;min-width:0;border-top:1px solid #edf0f4;font-size:10px;color:#7c8799}
+    .ann-page .ad-card .ad-expiry{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ann-page .ad-card .ad-open{flex:0 0 auto;color:#d26706;font-weight:800}
+    /* Lector de comunicados centrado, accesible y con scroll SOLO dentro del modal si es largo. */
+    .ann-page #detailModal .modal-box{width:min(740px,100%);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+    .ann-page #detailModal .modal-head{position:sticky;top:0;z-index:2;align-items:center;min-height:66px;padding:13px 20px;background:rgba(255,250,245,.97);backdrop-filter:blur(8px)}
+    .ann-page #detailModal .detail-image{height:min(235px,28dvh);min-height:0;background:#fff8ed}
+    .ann-page #detailModal .detail-image[hidden]{display:none!important}
+    .ann-page #detailModal .detail-image img{object-fit:contain}
+    .ann-page #detailModal .detail-content{padding:20px 24px 26px}
+    .ann-page #detailModal .detail-title{margin:0 0 14px;font-size:clamp(22px,4.5vw,30px);font-weight:900;line-height:1.28;overflow-wrap:anywhere}
+    .ann-page #detailModal .detail-full{width:100%;padding:0;border:0;border-radius:0;background:transparent;font-size:16px;line-height:1.7;color:#354057;overflow-wrap:anywhere}
+    .ann-page #detailModal .detail-meta{margin-top:20px}
+    .ann-page #detailModal .meta-item small{font-size:10px}
+    .ann-page #detailModal .meta-item strong,.ann-page #detailModal .meta-item span{font-size:12px}
+    @media(max-width:720px){
+      .ann-page .modal{padding:9px;align-items:center}
+      .ann-page #createModal .modal-box,.ann-page #detailModal .modal-box{width:100%;max-height:calc(100dvh - 18px);border-radius:18px}
+      .ann-page #createModal .modal-head{padding:15px 16px 13px;gap:10px}
+      .ann-page #createModal .modal-head h2{margin:3px 0 5px}
+      .ann-page #createModal .modal-head p{font-size:12px;line-height:1.4}
+      .ann-page #createModal .modal-body{padding:15px 16px}
+      .ann-page #createModal .modal-foot{padding:10px 12px;gap:8px}
+      .ann-page #createModal .modal-foot .btn{flex:1 1 50%;padding:10px 7px}
+      .ann-page #createModal .editor-toolbar{padding:8px 9px}
+      .ann-page #createModal .editor-mobile-hint{display:block;margin-top:5px;font-size:11px}
+      .ann-page #createModal .rich-editor{min-height:196px;padding:15px 14px}
+      .ann-page #createModal .editor-bottom{padding:10px;font-size:10px}
+      .ann-page .board{padding:11px;min-height:180px}
+      .ann-page .board-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+      .ann-page .ad-card{display:grid;grid-template-columns:104px minmax(0,1fr);max-height:164px;min-height:146px}
+      .ann-page .ad-card .ad-image{height:100%;min-height:0;width:104px;grid-column:1;grid-row:1}
+      .ann-page .ad-card .ad-body{grid-column:2;grid-row:1;padding:12px 12px 11px}
+      .ann-page .ad-card .ad-kicker{font-size:9px}
+      .ann-page .ad-card .ad-title{font-size:15px;margin:3px 0 6px}
+      .ann-page .ad-card .ad-desc{font-size:12px;margin-bottom:6px}
+      .ann-page .ad-card .ad-meta{font-size:9px;gap:4px;padding-top:7px}
+      .ann-page .ad-card .ad-open{white-space:nowrap}
+      .ann-page #detailModal .modal-head{padding:12px 15px}
+      .ann-page #detailModal .detail-image{height:min(185px,25dvh)}
+      .ann-page #detailModal .detail-content{padding:18px 18px 24px}
+      .ann-page #detailModal .detail-title{font-size:23px}
+      .ann-page #detailModal .detail-full{font-size:16px;line-height:1.65}
+      .ann-page #detailModal .detail-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media(max-width:360px){
+      .ann-page .ad-card{grid-template-columns:88px minmax(0,1fr)}
+      .ann-page .ad-card .ad-image{width:88px}
+      .ann-page .ad-card .ad-open{font-size:9px}
+      .ann-page #createModal .modal-head p{display:none}
+      .ann-page #detailModal .detail-meta{grid-template-columns:1fr}
+    }
   </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -82,7 +162,7 @@
   <div class="modal-head"><div><span class="eyebrow">COMUNICADO DE ADMINISTRACIÓN</span><h2>Publicar aviso</h2><p>Solo Administración puede publicar; los residentes solo podrán leer.</p></div><button id="closeCreate" class="close" aria-label="Cerrar">×</button></div>
   <div class="modal-body"><form id="noticeForm" class="form-grid" onsubmit="return false">
    <div><label class="required" for="noticeTitle">Título</label><input id="noticeTitle" maxlength="100" placeholder="Ej. Mantenimiento programado de áreas comunes"></div>
-   <div><label for="noticeImage">Imagen (opcional)</label><input type="file" id="noticeImage" accept="image/png,image/jpeg,image/webp"><span class="hint">Máximo 700 KB.</span><div id="imagePreview" class="photo-preview">Imagen opcional</div></div>
+   <div><label for="noticeImage">Imagen (opcional)</label><input type="file" id="noticeImage" accept="image/png,image/jpeg,image/webp"><span class="hint">Máximo 700 KB.</span><div id="imagePreview" class="photo-preview" hidden>Imagen opcional</div></div>
    <div class="notice-description-field"><label class="required" for="noticeDescription">Descripción breve</label>
     <div class="editor-wrap" id="noticeEditorBox">
      <div class="editor-toolbar" role="toolbar" aria-label="Opciones de formato del aviso">
@@ -111,7 +191,7 @@
       </div>
      </div>
      <div id="noticeDescription" class="rich-editor" contenteditable="true" role="textbox" aria-label="Descripción breve del aviso" aria-multiline="true" aria-required="true" data-placeholder="Escribe el comunicado que leerán los residentes…"></div>
-     <div class="editor-bottom"><span>Selecciona texto para aplicarle formato. En el tablón se verá un resumen.</span><span id="editorCount" aria-live="polite">0 / 4000</span></div>
+     <div class="editor-bottom"><span>Selecciona el texto y aplica el formato.</span><span id="editorCount" aria-live="polite">0 / 4000</span></div>
     </div>
     <p class="editor-mobile-hint">Desliza la barra horizontalmente para ver todas las opciones de formato.</p>
    </div>
@@ -119,7 +199,7 @@
   </form></div>
   <div class="modal-foot"><button id="cancelCreate" class="btn" type="button">Cancelar</button><button id="publishNotice" class="btn btn-primary" type="button">Publicar aviso</button></div>
  </div></section>
- <section id="detailModal" class="modal" hidden aria-modal="true" role="dialog"><div class="modal-box detail-box">
+ <section id="detailModal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="detailTitle"><div class="modal-box detail-box" tabindex="-1">
   <div class="modal-head"><div><span class="eyebrow">AVISO OFICIAL · ADMINISTRACIÓN</span></div><button id="closeDetail" class="close" aria-label="Cerrar">×</button></div>
   <div id="detailImage" class="detail-image"></div><div class="detail-content">
    <h2 id="detailTitle" class="detail-title"></h2><p id="detailBrief" class="detail-brief"></p><div id="detailFull" class="detail-full"></div>
@@ -130,6 +210,6 @@
   </div>
  </div></section>
  <div id="toast" class="toast" role="status"></div>
- <script src="assets/js/avisos.js?v=20261124-expiry-days-v1"></script>
+ <script src="assets/js/avisos.js?v=20261124-expiry-mobile-v2"></script>
  <script src="assets/js/site-sidebar.js?v=20261123-avisos"></script>
 </body></html>
