@@ -11,6 +11,8 @@ const reject=(res,error)=>{
  return res.status(error.status||503).json({ok:false,message:error.status?error.message:'No se pudieron consultar los avisos.'});
 };
 const fail=(status,message)=>Object.assign(new Error(message),{status});
+const DURACIONES_DIAS=new Set([1,3,5,7,14]);
+const MILISEGUNDOS_DIA=24*60*60*1000;
 const cleanImage=value=>{
  if(value===undefined||value===null||value==='')return null;
  if(typeof value!=='string')throw fail(400,'Imagen inválida.');
@@ -38,16 +40,17 @@ router.get('/',async(_req,res)=>{
 router.post('/',admin,async(req,res)=>{
  try{
   const title=String(req.body?.title||'').trim(),brief=String(req.body?.brief||'').trim(),
-   full=String(req.body?.full||'').trim(),duration=Number(req.body?.duration);
+   full=String(req.body?.full||'').trim(),durationDays=Number(req.body?.durationDays);
   if(!title||title.length>100||brief.length>300||!full||full.length>20000||
-   !Number.isSafeInteger(duration)||duration<1||duration>3)
-   throw fail(400,'Completa título, texto del aviso y duración de 1 a 3 meses.');
+   !Number.isSafeInteger(durationDays)||!DURACIONES_DIAS.has(durationDays))
+   throw fail(400,'Completa título, texto del aviso y selecciona 1, 3, 5, 7 o 14 días de vigencia.');
   const plain=full.replace(/<[^>]*>/g,' ').replace(/&(?:nbsp|amp|lt|gt|quot|#39);/g,' ').replace(/\s+/g,' ').trim();
   if(!plain||plain.length>4000)throw fail(400,'El aviso debe tener entre 1 y 4000 caracteres de texto.');
   const image=cleanImage(req.body?.image);
-  const expire=new Date();expire.setMonth(expire.getMonth()+duration);
+  const publicadoEn=new Date();
+  const expiraEn=new Date(publicadoEn.getTime()+durationDays*MILISEGUNDOS_DIA);
   const item=await Aviso.create({titulo:title,resumen:brief,contenido:full,
-   imagenData:image,publicadoPor:req.usuario.usuarioId,expiraEn:expire});
+   imagenData:image,publicadoPor:req.usuario.usuarioId,creadoEn:publicadoEn,expiraEn});
   return res.status(201).json({ok:true,data:expose(item),message:'Aviso oficial publicado.'});
  }catch(error){return reject(res,error);}
 });
