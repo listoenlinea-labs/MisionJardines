@@ -139,7 +139,7 @@ test('Seguridad registra visitas en vivienda seleccionada y recibe solamente dat
  assert.equal(created.body.data.casa.numero,'5');
  const saved=mock.visits.find(v=>v.nombreVisitante==='Visitante de caseta');
  assert.equal(saved.telefono,null);assert.equal(saved.notas,null);assert.equal(saved.identificacion,null);
- assert.match(saved.fechaProgramada,/^\\d{4}-\\d{2}-\\d{2}$/);
+ assert.match(saved.fechaProgramada,/^\d{4}-\d{2}-\d{2}$/);
  assert.notEqual(saved.fechaProgramada,'2028-01-01','fecha enviada por cliente debe ignorarse');
  assert.notEqual(saved.horaProgramada,'01:00','hora enviada por cliente debe ignorarse');
  assert.ok(!JSON.stringify(created.body).includes('Guardia Rosa'));
