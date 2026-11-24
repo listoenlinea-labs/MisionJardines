@@ -19,6 +19,8 @@ test('Avisos tiene un solo campo Descripción breve con barra de formato respons
  assert.match(html,/id="editorTextColor"/);
  assert.match(html,/class="color-swatch"/);
  assert.match(html,/overflow-x:auto/);
+ assert.match(html,/\.form-grid>div\{min-width:0\}/);
+ assert.match(html,/\.editor-toolbar\{max-width:100%;min-width:0/);
  assert.match(html,/aria-label="Opciones de formato del aviso"/);
  assert.match(html,/id="removeNotice"[^>]*>Eliminar aviso/);
 });
