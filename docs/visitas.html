@@ -559,6 +559,23 @@
       font-weight: 750
     }
 
+    /* Registro exprés exclusivo de una sesión real de SEGURIDAD. */
+    .page-visitas-v2 .guard-only{display:none!important}
+    .page-visitas-v2.visit-guard #visitModal .guard-only{display:block!important}
+    .page-visitas-v2.visit-guard #visitModal .guard-hide{display:none!important}
+    .page-visitas-v2.visit-guard #visitModal .form-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+    .page-visitas-v2.visit-guard #visitModal .form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .page-visitas-v2.visit-guard #visitModal .form-row>div:only-child{grid-column:1/-1}
+    .page-visitas-v2.visit-guard .guard-house-summary{padding:13px 16px;border-radius:12px;background:#fff5e9;border:1px solid #f4d7b5;color:#874507;font-size:14px;font-weight:800}
+    .page-visitas-v2.visit-guard .guard-camera-btn{display:inline-flex;align-items:center;gap:8px;min-height:47px;background:#fff7ed;border:1px solid #f4c18c;color:#9a510b;font-size:13px}
+    .page-visitas-v2.visit-guard .guard-photo-preview{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0}
+    .page-visitas-v2.visit-guard .guard-photo-preview[hidden]{display:none!important}
+    .page-visitas-v2.visit-guard .guard-photo-preview img{display:block;width:min(240px,100%);max-height:210px;object-fit:contain;border:1px solid #d9e2ec;border-radius:10px}
+    .page-visitas-v2.visit-guard .guard-photo-info{display:block;color:#77869b;font-size:11px;margin-top:9px;line-height:1.5}
+    @media(max-width:720px){
+      .page-visitas-v2.visit-guard #visitModal .form-row{grid-template-columns:minmax(0,1fr)!important}
+      .page-visitas-v2.visit-guard #visitModal .guard-camera-btn{width:100%;justify-content:center}
+    }
     @media(max-width:1050px) {
       .page-visitas-v2 .metric-grid {
         grid-template-columns: repeat(2, 1fr)
@@ -860,13 +877,14 @@
       <div class="modal-head">
         <div><span class="eyebrow">NUEVA AUTORIZACIÓN</span>
           <h2>Registrar visita</h2>
-          <p>Selecciona calle y número, e identifica a la persona que ingresará.</p>
+          <p id="visitModalIntro">Selecciona calle y número, e identifica a la persona que ingresará.</p>
         </div><button class="close" data-close>×</button>
       </div>
       <form id="visitForm">
         <div class="modal-body">
           <div class="form-grid">
-            <div class="form-row">
+            <div class="guard-only guard-house-summary" id="guardSelectedHouse" role="status"></div>
+            <div class="form-row guard-hide">
               <div><label>Calle *</label><select id="visitStreet" required>
                   <option value="">Selecciona una calle</option>
                 </select></div>
@@ -876,9 +894,9 @@
             </div>
             <div class="form-row">
               <div><label>Nombre del visitante *</label><input id="visitorName" maxlength="150" required></div>
-              <div><label>Persona que autoriza *</label><input id="authorizedBy" maxlength="180" required></div>
+              <div><label>Persona que autoriza *</label><input id="authorizedBy" maxlength="180" required autocomplete="off"></div>
             </div>
-            <div class="form-row">
+            <div class="form-row guard-hide">
               <div><label>Fecha programada *</label><input id="visitDate" type="date" required></div>
               <div><label>Hora aproximada</label><input id="visitTime" type="time"></div>
             </div>
@@ -891,14 +909,20 @@
                   <option value="REPARTIDOR">Repartidor</option>
                   <option value="OTRO">Otro</option>
                 </select></div>
-              <div><label>Teléfono</label><input id="visitorPhone" inputmode="tel" maxlength="25"></div>
+              <div class="guard-hide"><label>Teléfono</label><input id="visitorPhone" inputmode="tel" maxlength="25"></div>
             </div>
             <div class="form-row">
               <div><label>Placas</label><input id="visitorPlate" maxlength="25"></div>
-              <div><label>Identificación</label><input id="visitorId" maxlength="100"
+              <div class="guard-hide"><label>Identificación</label><input id="visitorId" maxlength="100"
                   placeholder="INE, licencia u otra"></div>
             </div>
-            <div><label>Notas para caseta</label><textarea id="visitNotes" maxlength="1200"
+            <div class="guard-only guard-id-capture"><label>Identificación (opcional)</label>
+              <input id="guardIdPhoto" type="file" accept="image/*" capture="environment" hidden aria-label="Tomar foto de identificación">
+              <button class="btn guard-camera-btn" id="openGuardCamera" type="button">📷 Tomar foto de INE, licencia u otra</button>
+              <div id="guardPhotoPreview" class="guard-photo-preview" hidden><img id="guardPhotoImage" alt="Vista previa de identificación capturada"><button type="button" class="btn" id="removeGuardPhoto">Quitar foto</button></div>
+              <small class="guard-photo-info">Opcional. La foto se almacena cifrada, no se muestra al guardia en el historial.</small>
+            </div>
+            <div class="guard-hide"><label>Notas para caseta</label><textarea id="visitNotes" maxlength="1200"
                 placeholder="Indicaciones, motivo o información relevante"></textarea></div>
           </div>
         </div>
