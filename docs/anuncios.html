@@ -160,6 +160,24 @@
       .ann-page #createModal .modal-head p{display:none}
       .ann-page #detailModal .detail-meta{grid-template-columns:1fr}
     }
+
+    /* Mantener el botón de publicación naranja también al pasar el cursor.
+       El estilo general de .btn:hover no debe sobrescribir un botón primario. */
+    .ann-page #createModal #publishNotice,
+    .ann-page #createModal #publishNotice:hover,
+    .ann-page #createModal #publishNotice:focus-visible,
+    .ann-page #createModal #publishNotice:active {
+      color: #fff !important;
+      background: linear-gradient(135deg,#f58b1c,#e87100) !important;
+      border-color: #ef7d0b !important;
+    }
+    .ann-page #createModal #publishNotice:hover {
+      box-shadow: 0 7px 20px rgba(232,113,0,.24);
+    }
+    .ann-page #createModal #publishNotice:focus-visible {
+      outline: 3px solid rgba(239,125,11,.35);
+      outline-offset: 2px;
+    }
   </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
