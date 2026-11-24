@@ -29,9 +29,10 @@
     .modal-body .form-grid input[type="file"]{font-size:13px;padding:11px}
     .modal-foot .btn{min-height:44px;padding:10px 16px;font-size:13px}
     .modal-body .form-grid input[type="text"],.modal-body .form-grid input:not([type]),.modal-body .form-grid select:not(.tool-select){font-size:14px}
-    .editor-wrap{border:1px solid #d6dfeb;border-radius:15px;overflow:hidden;background:#fff;box-shadow:0 5px 22px rgba(32,40,61,.055);transition:border-color .2s,box-shadow .2s}
+    .form-grid>div{min-width:0}
+    .editor-wrap{width:100%;min-width:0;border:1px solid #d6dfeb;border-radius:15px;overflow:hidden;background:#fff;box-shadow:0 5px 22px rgba(32,40,61,.055);transition:border-color .2s,box-shadow .2s}
     .editor-wrap:focus-within{border-color:#eb943b;box-shadow:0 0 0 4px rgba(239,125,11,.1),0 8px 26px rgba(32,40,61,.06)}
-    .editor-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#ccd4e1 transparent;padding:11px 12px;border-bottom:1px solid #e7ebf1;background:linear-gradient(180deg,#fbfcfe,#f6f8fc)}
+    .editor-toolbar{max-width:100%;min-width:0;display:flex;align-items:center;gap:9px;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#ccd4e1 transparent;padding:11px 12px;border-bottom:1px solid #e7ebf1;background:linear-gradient(180deg,#fbfcfe,#f6f8fc)}
     .editor-group{display:flex;align-items:center;gap:5px;padding-right:10px;border-right:1px solid #dce3ed;flex:0 0 auto}.editor-group:last-child{padding-right:0;border:0}
     .ann-page .tool-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 39px;width:39px;height:38px;padding:0;border:1px solid transparent;border-radius:9px;background:transparent;color:#33425a;cursor:pointer;font-size:17px;font-weight:750;transition:background .12s,border-color .12s,color .12s}
     .ann-page .tool-btn:hover,.ann-page .tool-btn:focus-visible,.ann-page .tool-btn.is-active{background:#fff1e5;border-color:#efc49f;color:#ae5408;outline:none}
