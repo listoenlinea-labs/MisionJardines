@@ -55,7 +55,7 @@ cuando el observador recibió ambos eventos. No se crean grabaciones.
    **distinta** de la clave de caseta, de al menos 32 caracteres. Confirmar
    que AMI esté habilitado y ligado exclusivamente a `127.0.0.1:5038`
    (si ya lo utilizan otros servicios, revisar compatibilidad antes).
-   Mantener `read=call`, `write=` vacío y ACL solo localhost.
+   Mantener `read=call,dialplan` (VarSet pertenece a DIALPLAN), `write=` vacío y ACL solo localhost.
 3. Aplicar **solo** `manager reload` y comprobar la cuenta de lectura;
    no ejecutar `dialplan reload` ni alterar `extensions-conmutador.conf`.
 4. Agregar estas variables a `/etc/misionjardines-caseta.env`:
