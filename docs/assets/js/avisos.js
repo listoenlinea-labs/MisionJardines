@@ -48,6 +48,12 @@
  }
  function updateCount(){const count=(editor.innerText||editor.textContent||'').trim().length;$('editorCount').textContent=count+' / 4000 caracteres';$('editorCount').style.color=count>4000?'#b42332':'';}
  editor.addEventListener('input',updateCount);
+ editor.addEventListener('paste',event=>{
+  event.preventDefault();
+  const text=event.clipboardData?.getData('text/plain')||'';
+  document.execCommand('insertText',false,text);
+  updateCount();
+ });
  document.querySelectorAll('[data-command]').forEach(button=>{
   button.addEventListener('mousedown',e=>e.preventDefault());
   button.addEventListener('click',()=>{editor.focus();document.execCommand(button.dataset.command,false,null);updateCount();});
@@ -80,7 +86,9 @@
  function detail(id){
   const a=items.find(row=>String(row.id)===String(id));if(!a)return;
   $('detailImage').innerHTML=a.image?'<img src="'+esc(a.image)+'" alt="Imagen del aviso">':'<div class="image-placeholder">📢</div>';
-  $('detailTitle').textContent=a.title;$('detailBrief').textContent=a.brief||'Comunicado oficial';
+  $('detailTitle').textContent=a.title;
+  const repeated=String(a.brief||'').trim()&&plainText(cleanRich(a.full||'')).startsWith(String(a.brief).trim());
+  $('detailBrief').hidden=Boolean(repeated);$('detailBrief').textContent=a.brief||'Comunicado oficial';
   showFull(a);$('detailPublished').textContent=fmt(a.createdAt);
   $('detailExpires').textContent=fmt(a.expiresAt);
   $('removeNotice').hidden=!admin;$('removeNotice').onclick=()=>remove(a.id);
