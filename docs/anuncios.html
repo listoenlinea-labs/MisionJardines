@@ -73,7 +73,16 @@
     .ann-page #createModal #noticeForm>div{display:block!important;grid-column:1/-1!important;min-width:0!important;width:100%!important;max-width:100%!important}
     .ann-page #createModal #noticeForm input:not([type="color"]),.ann-page #createModal #noticeForm>div>select{display:block;width:100%!important;max-width:100%;min-width:0;box-sizing:border-box}
     .ann-page #createModal #noticeForm input[type="file"]{min-height:46px;overflow:hidden;font-size:14px!important}
-    .ann-page #createModal .photo-preview{min-height:0;max-height:220px}
+    /* El alto del contenedor debe crecer con la miniatura, no recortarla ni superponer el siguiente campo. */
+    .ann-page #createModal .photo-preview{
+      display:flex;align-items:center;justify-content:center;box-sizing:border-box;
+      width:100%;min-width:0;height:auto;min-height:0;max-height:none;
+      margin:10px 0 10px;padding:12px;overflow:hidden;
+    }
+    .ann-page #createModal .photo-preview img{
+      display:block;flex:0 1 auto;width:auto;height:auto;max-width:100%;max-height:240px;
+      object-fit:contain;border-radius:10px;
+    }
     .ann-page #createModal .photo-preview[hidden]{display:none!important}
     .ann-page #createModal .rich-editor{display:block;width:100%;min-width:0;min-height:190px;box-sizing:border-box;font-size:16px;line-height:1.65;overflow-wrap:anywhere;word-break:normal}
     .ann-page #createModal .editor-wrap{width:100%;min-width:0;max-width:100%;overflow:hidden}
@@ -108,6 +117,10 @@
     .ann-page #detailModal .detail-meta{margin-top:20px}
     .ann-page #detailModal .meta-item small{font-size:10px}
     .ann-page #detailModal .meta-item strong,.ann-page #detailModal .meta-item span{font-size:12px}
+    @media(max-width:720px){
+      .ann-page #createModal .photo-preview{padding:10px;margin:8px 0 10px}
+      .ann-page #createModal .photo-preview img{max-height:195px}
+    }
     @media(max-width:720px){
       .ann-page .modal{padding:9px;align-items:center}
       .ann-page #createModal .modal-box,.ann-page #detailModal .modal-box{width:100%;max-height:calc(100dvh - 18px);border-radius:18px}

@@ -171,3 +171,15 @@ test('La vista previa de imagen solo aparece al seleccionar un archivo válido',
  assert.match(script,/\$\('imagePreview'\)\.hidden=true/);
  assert.match(script,/document\.addEventListener\('visibilitychange'/);
 });
+
+test('La vista previa de imágenes reserva su altura y no se monta sobre Descripción breve',()=>{
+ const html=read('docs/anuncios.html');
+ const js=read('docs/assets/js/avisos.js');
+ assert.match(html,/\.ann-page #createModal \.photo-preview\{[\s\S]*?height:auto;min-height:0;max-height:none;[\s\S]*?overflow:hidden;/);
+ assert.match(html,/\.ann-page #createModal \.photo-preview img\{[\s\S]*?display:block;[\s\S]*?max-width:100%;max-height:240px;[\s\S]*?object-fit:contain;/);
+ assert.match(html,/\.ann-page #createModal \.photo-preview img\{max-height:195px\}/);
+ assert.doesNotMatch(html,/\.ann-page #createModal \.photo-preview\{min-height:0;max-height:220px\}/);
+ assert.match(html,/\.ann-page #createModal \.photo-preview\[hidden\]\{display:none!important\}/);
+ assert.match(js,/\$\('imagePreview'\)\.replaceChildren\(img\);\$\('imagePreview'\)\.hidden=false/);
+ assert.match(js,/\$\('imagePreview'\)\.hidden=true/);
+});
