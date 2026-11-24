@@ -8,6 +8,7 @@ const sequelize = require('../config/database');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
 const { esViviendaVisible } = require('../services/viviendas-visibles.service');
+const telemetria = require('../services/conmutador-telemetria.service');
 
 const router = express.Router();
 router.use(autenticarToken, autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD'));
@@ -137,6 +138,24 @@ router.get('/',async(req,res)=>{
   console.error('No se pudo consultar el historial del conmutador:',error.message);
   return res.status(503).json({ok:false,message:'No fue posible consultar el historial'});
  }
+});
+
+// Consulta de SOLO LECTURA. El UUID de cada fila del historial identifica una
+// solicitud; la respuesta nunca incluye teléfonos, credenciales ni grabaciones.
+router.get('/:solicitud', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const solicitud = String(req.params.solicitud || '');
+  if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(solicitud))
+    return res.status(404).json({ ok: false, message: 'Llamada no encontrada' });
+  try {
+    await asegurarTabla();
+    const result = await telemetria.detalle(solicitud);
+    if (!result) return res.status(404).json({ ok: false, message: 'Llamada no encontrada' });
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error('No se pudo consultar el detalle de la llamada:', error.name);
+    return res.status(503).json({ ok: false, message: 'No fue posible consultar el diagnóstico de la llamada' });
+  }
 });
 
 module.exports = router;

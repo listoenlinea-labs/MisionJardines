@@ -7,6 +7,7 @@ const { autorizarRoles } = require('../middlewares/roles.middleware');
 const { casetaHabilitada } = require('../config/conmutador-caseta');
 const { domicilioConmutador, buscarTelefonosConmutador } = require('../services/conmutador-padron.service');
 const { asegurarTabla } = require('./conmutador-historial.routes');
+const telemetria = require('../services/conmutador-telemetria.service');
 
 const router = express.Router();
 const personal = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD');
@@ -182,6 +183,27 @@ router.post('/agente/resultado', habilitado, agente, async (req, res) => {
     return res.sendStatus(204);
   } catch (error) {
     return fallo(res, error);
+  }
+});
+
+// Receptor de observaciones verificadas de Asterisk. SOLO ADITIVO:
+ // no escribe en conmutador_caseta y nunca inicia ni modifica una llamada.
+router.post('/agente/telemetria', agente, async (req, res) => {
+  const body = req.body || {};
+  if (!uuid(body.solicitud) || !telemetria.eventos.has(body.evento) ||
+      (body.motivo !== undefined && !telemetria.motivos.has(body.motivo)) ||
+      (body.duracionSegundos !== undefined &&
+       (!Number.isInteger(body.duracionSegundos) || body.duracionSegundos < 0 ||
+        body.duracionSegundos > 7200))) {
+    return res.status(400).json({ ok: false, message: 'Evento de telefonía inválido' });
+  }
+  try {
+    const existe = await telemetria.registrar(body);
+    if (!existe) return res.status(404).json({ ok: false, message: 'Solicitud desconocida' });
+    return res.sendStatus(204);
+  } catch (error) {
+    console.error('No se pudo registrar telemetría de caseta:', error.name);
+    return res.status(503).json({ ok: false, message: 'Error al guardar observación' });
   }
 });
 
