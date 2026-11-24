@@ -35,6 +35,12 @@
    if(node.tagName==='SPAN'){
     const color=node.style?.color||'';
     if(color&&colorAllowed(color))el.style.color=color;
+    const fontSize=node.style?.fontSize||'';
+    if(/^(?:12|13|14|15|16|18|20|22|24|28|32)px$/.test(fontSize)||['small','medium','large','x-large','xx-large'].includes(fontSize))el.style.fontSize=fontSize;
+    const weight=node.style?.fontWeight||'';
+    if(['bold','600','700'].includes(weight))el.style.fontWeight=weight;
+    if(node.style?.fontStyle==='italic')el.style.fontStyle='italic';
+    if(node.style?.textDecorationLine==='underline')el.style.textDecoration='underline';
    }
    for(const child of [...node.childNodes])el.append(clean(child));
    return el;
@@ -97,6 +103,8 @@
  }
  function applyFormat(command,value=null){
   restoreSelection();
+  // Evita que el navegador inserte CSS arbitrario que luego se perdería al sanear.
+  try{document.execCommand('styleWithCSS',false,false);}catch(_error){}
   document.execCommand(command,false,value);
   rememberSelection();updateCount();syncToolbar();
  }
