@@ -1,25 +1,75 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 22/nov/2026, 23:25, America/Mexico_City.
-**SHA de main consultado:** `7a65e1cd76f06d082babe7604046f7e105749abb`.
+**Última revisión:** 23/nov/2026, 23:26, America/Mexico_City.
+**SHA de main consultado:** `9b7ea86540abaa4d55982aa7e0e7f5beff1a74a2`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `36ed66310793ef56c79d87328bffd17dc802ddec`,
-historial de 1 commit, PR abiertos y evidencia de checks en GitHub. El único avance
-fue `7a65e1cd76f06d082babe7604046f7e105749abb`, dedicado exclusivamente a la
-bitácora del 21/nov y excluido de la lista de trabajo de producto. No hubo commits
-ni PR de producto nuevos, PR abiertos o revertidos nuevos. Ese commit documental
-devuelve cero workflows y cero estados; no hubo pruebas automatizadas nuevas.
-No hay confirmaciones nuevas accesibles del usuario sobre despliegue, datos de MySQL,
-reservas, pagos, llamadas o pruebas físicas. Se conservan sin cambios el resumen
-operativo, el historial de pruebas confirmadas y todos los pendientes anteriores.
-No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no ejecutó SQL,
-pagos, reservas, llamadas, escrituras C3 ni pruebas físicas. No se publican credenciales,
-teléfonos, correos, contactos, comprobantes ni contenido privado del padrón.
+comparación de main desde `7a65e1cd76f06d082babe7604046f7e105749abb`,
+historial de 71 commits, PR #470–#476, PR abiertos, archivos de prueba y evidencia
+de checks en GitHub. Se excluyó `6972e3ee38fee5e63181df10ed87f14909d4e7af`,
+dedicado exclusivamente a la bitácora anterior. Los siete PR de producto están
+fusionados; no hay PR abiertos ni revertidos nuevos. Sus merges devuelven cero
+workflows y cero estados. Las pruebas presentes, simulaciones y revisiones declaradas
+no equivalen a CI ni a integración real.
+No hay confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, iPhone,
+Asterisk, llamadas, pagos, reservas o pruebas físicas. No se consultaron Hostinger,
+MySQL o C3 directamente y esta revisión no ejecutó SQL, pagos, reservas, llamadas,
+escrituras C3 ni pruebas físicas. No se publican credenciales, teléfonos, correos,
+contactos, comprobantes ni contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 23/nov/2026
+
+El PR [#470](https://github.com/listoenlinea-labs/MisionJardines/pull/470) reemplaza los
+anuncios locales por Avisos oficiales compartidos en MySQL: solo SUPER_ADMIN o
+ADMINISTRADOR publican/eliminan y los condóminos leen sin comentarios ni réplica.
+También permite varios comprobantes privados por egreso de Mantenimiento,
+Extraordinarias y Casa Club, conservando adjuntos antiguos y permitiendo agregar más
+después; limita cada alta a 12 archivos nuevos de hasta 1 MB en PDF/JPG/PNG y requiere
+roles administrativos de Finanzas. Incluye tabla/SQL y arranque por Sequelize. No
+acredita ingresos bancarios. Los abonos con varios depósitos, saldos a favor,
+transferencias entre ámbitos, diario contable y reversos siguen explícitamente NO
+implementados y requieren conciliación.
+
+Los PR [#471](https://github.com/listoenlinea-labs/MisionJardines/pull/471)–[#472](https://github.com/listoenlinea-labs/MisionJardines/pull/472)
+optimizan navegación y carga sin cambiar contabilidad, permisos de servidor, OCR,
+ZKTeco o telefonía. Comparten temporalmente un perfil solo con igual token/vivienda,
+cargan OCR/PDF bajo demanda, paralelizan lecturas, evitan que Google bloquee contadores,
+centralizan indicadores y conservan en una caché LRU corta únicamente secciones
+seleccionadas; Pagos, ZKTeco, Conmutador, Visitas y formularios sensibles no quedan en
+segundo plano. El historial del Conmutador pasa a mostrar todas las órdenes de una fecha
+sin paginación. No existe benchmark real ni recorrido integral en Hostinger, móvil o
+escritorio; «instantáneo» describe el regreso a una sección cacheada, no la primera carga.
+
+Los PR [#473](https://github.com/listoenlinea-labs/MisionJardines/pull/473),
+[#475](https://github.com/listoenlinea-labs/MisionJardines/pull/475) y
+[#476](https://github.com/listoenlinea-labs/MisionJardines/pull/476) refinan el
+Conmutador. #473 abre en la fecha más reciente con actividad y las flechas saltan entre
+días con registros, sin recorrer días vacíos. #475 extiende la espera del iPhone 7,
+recupera el estado de la misma solicitud sin repetir POST ambiguos, muestra un modal de
+progreso y agrega seguimiento separado: el historial visible solo incluye órdenes
+ENVIADA/FINALIZADA con confirmación del agente; pendientes, errores, vencidas y antiguas
+sin resultado quedan en auditoría, no como llamadas enviadas. ENVIADA prueba entrega a
+Asterisk, no que el residente contestó. #476 centra visualmente esa columna en escritorio
+y móvil sin tocar JavaScript o backend. Las tablas/SQL y versiones requieren despliegue;
+no hubo llamada física, prueba de Safari ni Asterisk/HT813 real.
+
+El PR [#474](https://github.com/listoenlinea-labs/MisionJardines/pull/474) oculta en
+Análisis de cuotas los mensajes de consulta de respaldo y conexión Google Sheets, y
+retira la comprobación automática que solo alimentaba esa franja. Conserva internamente
+el trabajo, sondeo, errores, enlace Drive y lectura histórica; abrir el modal continúa
+consultando Drive. Es un ajuste de interfaz sin cambios a API, MySQL, pagos o importes.
+
+Los siete merges devuelven cero workflows y cero estados. En main se identificaron 33
+bloques en los ocho archivos focalizados: 2 de comprobantes múltiples, 5 de rendimiento,
+4 de pestañas/modal, 4 de caché segura, 1 de ausencia de paginación, 7 de fechas
+registradas, 9 de confirmación iPhone y 1 integración de caseta. #471 declara cinco
+comprobaciones OK; #472–#475 describen simulaciones y sintaxis; #470 no ejecutó suite
+completa y #476 solo revisó CSS. No hay salida CI ni prueba de MySQL/Hostinger,
+navegador, Google, iPhone, Asterisk, banco, pago, reserva o llamada real.
 
 ## Implementado en main el 20/nov/2026
 
@@ -844,6 +894,10 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Avisos oficiales y comprobantes de egresos | Implementado en main; migración, privacidad y operación reales pendientes | #470 publica avisos MySQL de solo lectura para condóminos y admite múltiples adjuntos privados en egresos. No implementa depósitos múltiples, saldos a favor, transferencias ni diario contable y no acredita ingresos |
+| Rendimiento y navegación | Optimizaciones implementadas; benchmark y QA integral pendientes | #471–#472 añaden perfil compartido limitado, carga OCR/PDF diferida, paralelismo y caché LRU selectiva. Secciones sensibles no se conservan; no hay mediciones Hostinger/móvil/escritorio |
+| Conmutador: historial confirmado e iPhone 7 | Implementado en main; despliegue y prueba física pendientes | #473/#475 muestran fechas con actividad y solo órdenes confirmadas por el agente, con espera/modal seguro en Safari; #476 alinea la UI. ENVIADA no demuestra llamada contestada ni audio |
+| Análisis: indicadores técnicos ocultos | Ajuste visual implementado; navegador real pendiente | #474 oculta mensajes de respaldo/Google y evita una comprobación automática solo visual; conserva trabajo interno, modal Drive y lectura histórica sin cambiar cifras |
 | Casa Club: presentación y elegibilidad | Implementado en main; datos y operación reales pendientes | #465 cambia etiquetas visuales sin conciliar pagos; #466 deja solo mantenimiento positivo como bloqueo financiero, conserva tarjetas rojas y añade indicadores/numeración. No se verificaron reservas, nombres, deudas ni pagos reales |
 | Conmutador: agenda administrativa | Implementado en main; esquema, permisos y dispositivos pendientes | #467–#468 restringen consulta/edición al rol exacto ADMINISTRADOR, conservan padrón y contacto B, y añaden propietario/filtros. Las tablas son auto-creadas; no se probó MySQL, móvil ni marcación real |
 | Contactos Recibos–Conmutador | Sincronización implementada; integración real pendiente | #469 escribe el contacto principal en ambos almacenes por vivienda y usa respaldo de lectura con correspondencia estricta. No se ejecutó la suite ni se escribió producción; no modifica pagos, TAGs o correos |
@@ -965,6 +1019,11 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 23/nov/2026 | PR #470–#476, consulta GitHub de workflows/estados en los siete merges | **0 workflows y 0 estados** en los 7 merges | No hay CI observable; merge y verificaciones declaradas no prueban despliegue |
+| 23/nov/2026 | Ocho archivos focalizados de comprobantes, rendimiento, caché e historial/confirmación del Conmutador | **33 bloques presentes** (2 + 5 + 4 + 4 + 1 + 7 + 9 + 1); sin ejecución recuperable conjunta | Evidencia de código, no suite aprobada; no prueba MySQL, navegador, iPhone, Asterisk, banco o C3 |
+| 23/nov/2026 | #471, cinco comprobaciones de regresión y sintaxis declaradas | **5 OK** según el PR, sin workflow ni log CI | Prueba local declarada; falta benchmark real y QA de navegación/archivos/Google |
+| 23/nov/2026 | #472–#475, simulaciones de historial/caché/fechas/iPhone y revisión de sintaxis | Casos declarados correctos; #472 simula **37 intentos** en un día; sin salida CI | No acredita zona horaria, Safari real, Hostinger, envío a Asterisk ni llamada contestada |
+| 23/nov/2026 | #470 y #476, revisión focalizada | #470: suite completa **no ejecutada**; #476: revisión CSS/estructura | No prueba SQL/archivos privados ni alineación visual en dispositivo real |
 | 22/nov/2026 | Revisión GitHub del único commit desde el SHA guardado; sin comando de producto nuevo | `7a65e1c` modificó solo `docs/ESTADO_PROYECTO.md`; **0 workflows y 0 estados** | Sin cambios verificables de producto ni pruebas nuevas; se conservan resultados y pendientes anteriores |
 | 21/nov/2026 | Revisión GitHub del único commit desde el SHA guardado; sin comando de producto nuevo | `36ed663` modificó solo `docs/ESTADO_PROYECTO.md`; **0 workflows y 0 estados** | Sin cambios verificables de producto ni pruebas nuevas; se conservan resultados y pendientes anteriores |
 | 20/nov/2026 | PR #465–#469, consulta GitHub de workflows/estados en los cinco merges | **0 workflows y 0 estados** en los 5 merges | No hay CI observable; merge y revisión declarada no prueban despliegue |
@@ -1168,6 +1227,11 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Avisos y comprobantes de egresos #470 | Respaldar y probar en clon el SQL/Sequelize, roles de alta/borrado/lectura, caducidad, privacidad, 12 archivos de 1 MB, MIME, descargas, adjuntos antiguos, borrado y rollback en Mantenimiento/Extraordinarias/Casa Club. No confundir comprobante de egreso con ingreso bancario |
+| Saldos y depósitos NO implementados de #470 | Diseñar y conciliar diario por vivienda/ámbito, folios únicos, varios depósitos por reserva, sobrantes, transferencias voluntarias auditadas, reversos, concurrencia y doble gasto. Validar banco antes de acreditar; no implementar desde los ejemplos sin reglas y pruebas completas |
+| Rendimiento #471–#472 | Desplegar en ambiente de prueba y medir primera carga/regreso, móvil/escritorio, Data Saver/2G, token/vivienda, expiración de caché, iframes, OCR/PDF, Google online/offline, contadores, modales, adjuntos y creación/edición financiera. Revisar logs sin datos privados y no prometer porcentajes sin medición |
+| Conmutador #473/#475/#476 | Aplicar SQL/auto-creación y desplegar ambas copias frontend/backend; probar iPhone 7 nuevo, WiFi/datos, modal, confirmación tardía, caída de red, solicitud no confirmada, fechas/flechas/zona horaria y CSS móvil/escritorio. Hacer llamada controlada y revisar agente/Asterisk; no declarar contestación por ENVIADA |
+| Análisis #474 | Tras desplegar, comprobar que ambos mensajes no aparezcan, que el respaldo siga sondeando y descargando, el modal consulte Drive y el histórico Google conserve cifras/errores. Validar caché y navegador real |
 | Casa Club #465–#466 | Desplegar frontend/backend y probar con datos controlados aprobada/rechazada/pendiente, motivo vacío/histórico, propietario/no propietario, paginación y nombres parciales. Verificar que solo mantenimiento positivo bloquee, que extraordinarias solas no bloqueen y que tarjetas rojas sigan aplicando; cotejar sin tratar «Pagado» visual como conciliación bancaria |
 | Agenda de Contactos #467–#468 | Respaldar y probar en clon permisos CREATE TABLE, migración/auto-creación, rol ADMINISTRADOR frente a Seguridad/SUPER_ADMIN, propietario y teléfono, filtros globales, móvil 3/escritorio 10, concurrencia y rollback. Confirmar que B/padrón no se alteren y que caseta use el contacto correcto sin exponerlo |
 | Sincronización Recibos–Conmutador #469 | Ejecutar los 12 bloques y el test integrado; desplegar en clon y verificar escritura bidireccional, lectura de respaldo, preservación de B, formatos mexicanos, calles/números homónimos, Jardines 1/2/3, ambiguos/inválidos, transacción fallida y permisos. Revisar duplicados antes de tocar producción |
@@ -1294,6 +1358,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-23
+
+- Main consultado a las 23:26, America/Mexico_City, en `9b7ea86540abaa4d55982aa7e0e7f5beff1a74a2`, 71 commits por delante del SHA guardado.
+- Se excluyó `6972e3e`, que solo actualizó esta bitácora. Como producto se verificaron los PR #470–#476 fusionados; no hay PR abiertos ni revertidos nuevos.
+- Los siete merges devuelven cero workflows y cero estados. Se registraron 33 bloques focalizados presentes, cinco comprobaciones locales declaradas OK y simulaciones de rendimiento/historial/iPhone, sin CI ni integración observable.
+- #470 implementa Avisos y comprobantes múltiples de egresos, pero no los saldos, depósitos múltiples, transferencias o diario contable solicitados. #471–#476 optimizan navegación/Análisis y endurecen el historial del Conmutador; ENVIADA no significa llamada contestada.
+- No hubo confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, iPhone, Asterisk, llamadas, pagos, reservas o pruebas físicas. Esta revisión no consultó ni modificó Hostinger, MySQL o C3 ni ejecutó operaciones reales.
 
 ### 2026-11-22
 
