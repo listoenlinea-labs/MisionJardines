@@ -3,6 +3,8 @@ const { esViviendaVisible } = require('../services/viviendas-visibles.service');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { Visita, Casa } = require('../models');
+const db = require('../config/database');
+const identificationPhoto = require('../services/visitas-identificacion.service');
 
 const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA']);
 const SECURITY_ROLES = new Set([...ADMIN_ROLES, 'SEGURIDAD']);
@@ -12,6 +14,14 @@ const text = value => String(value || '').trim();
 const isGuard = req => req.usuario.rol === 'SEGURIDAD';
 const isManager = req => ADMIN_ROLES.has(req.usuario.rol);
 const houseColumns = ['id', 'calle', 'calleCorrecta', 'numero'];
+const MEXICO_ZONE = 'America/Mexico_City';
+function dateTimeMexico(now = new Date()) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+        timeZone: MEXICO_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(now).filter(p => p.type !== 'literal').map(p => [p.type, p.value]));
+    return { fecha: `${parts.year}-${parts.month}-${parts.day}`, hora: `${parts.hour}:${parts.minute}` };
+}
 
 function includeHouse(privateView = false) {
     return [{ model: Casa, as: 'casa', attributes: privateView ? houseColumns : [...houseColumns, 'nombre'] }];
@@ -52,8 +62,8 @@ async function uniqueCode() {
 }
 async function viviendas(req, res) {
     try {
-        if (isGuard(req)) return res.status(403).json({ ok: false, message: 'Seguridad solo consulta sus visitas autorizadas' });
-        const where = isManager(req) ? {} : { id: req.usuario.casaId || -1 };
+        // Solo id/calle/número: nunca datos de residentes para los guardias.
+        const where = (isManager(req) || isGuard(req)) ? {} : { id: req.usuario.casaId || -1 };
         const rows = await Casa.findAll({ where, attributes: houseColumns, order: [['calleCorrecta', 'ASC'], ['numero', 'ASC']] });
         const data = rows.filter(esViviendaVisible).map(value => {
             const h = plain(value);
@@ -113,36 +123,73 @@ async function list(req, res) {
 }
 async function create(req, res) {
     try {
-        if (isGuard(req)) return res.status(403).json({ ok: false, message: 'Seguridad no puede autorizar visitas' });
-        const casaId = isManager(req) ? Number(req.body.casaId) : Number(req.usuario.casaId);
-        if (!isManager(req) && (!req.usuario.casaId || casaId <= 0))
+        const guard = isGuard(req);
+        const casaId = (isManager(req) || guard) ? Number(req.body.casaId) : Number(req.usuario.casaId);
+        if (!isManager(req) && !guard && (!req.usuario.casaId || casaId <= 0))
             return res.status(403).json({ ok: false, message: 'Debes tener una vivienda vinculada para registrar visitas' });
         const name = text(req.body.nombreVisitante), authorizedBy = text(req.body.autorizadoPor);
-        const date = parseDate(req.body.fechaProgramada);
+        const timestamp = guard ? dateTimeMexico() : null;
+        const date = guard ? timestamp.fecha : parseDate(req.body.fechaProgramada);
+        const time = guard ? timestamp.hora : (/^\d{2}:\d{2}/.test(text(req.body.horaProgramada)) ? text(req.body.horaProgramada).slice(0, 5) : null);
         const type = text(req.body.tipo).toUpperCase();
-        if (!Number.isInteger(casaId) || casaId <= 0 || !name || name.length > 150 ||
+        if (!Number.isSafeInteger(casaId) || casaId <= 0 || !name || name.length > 150 ||
             !authorizedBy || authorizedBy.length > 180 || !date || !TYPES.has(type)) {
-            return res.status(400).json({ ok: false, message: 'Casa, visitante, autorización, tipo y fecha son obligatorios' });
+            return res.status(400).json({ ok: false, message: 'Casa, visitante, autorización y tipo son obligatorios' });
         }
+        if (!guard && req.body.identificacionFoto)
+            return res.status(403).json({ ok: false, message: 'La fotografía de identificación solo se captura desde caseta' });
+        const photo = guard ? identificationPhoto.validatePhoto(req.body.identificacionFoto) : null;
+        const encryptedPhoto = photo ? identificationPhoto.encryptPhoto(photo) : null;
         const house = await Casa.findByPk(casaId, { attributes: houseColumns });
         if (!house || !esViviendaVisible(house))
             return res.status(404).json({ ok: false, message: 'La vivienda seleccionada no existe' });
-        const visit = await Visita.create({
+        const fields = {
             codigo: await uniqueCode(), casaId, nombreVisitante: name,
-            telefono: text(req.body.telefono) || null,
-            placas: text(req.body.placas).toUpperCase() || null,
-            identificacion: text(req.body.identificacion) || null,
+            telefono: guard ? null : text(req.body.telefono) || null,
+            placas: text(req.body.placas).toUpperCase().slice(0,25) || null,
+            identificacion: guard ? null : text(req.body.identificacion) || null,
             autorizadoPor: authorizedBy, tipo: type, fechaProgramada: date,
-            horaProgramada: /^\d{2}:\d{2}/.test(text(req.body.horaProgramada)) ? text(req.body.horaProgramada).slice(0, 5) : null,
-            vigenciaHasta: req.body.vigenciaHasta || null,
-            notas: text(req.body.notas) || null,
+            horaProgramada: time,
+            vigenciaHasta: guard ? null : req.body.vigenciaHasta || null,
+            notas: guard ? null : text(req.body.notas) || null,
             creadoPorUsuarioId: req.usuario.usuarioId
-        });
+        };
+        // Foto y visita se guardan en una sola transacción; si falla una, no se publica ninguna.
+        const visit = encryptedPhoto
+            ? await db.transaction(async transaction => {
+                const entry = await Visita.create(fields, { transaction });
+                await identificationPhoto.save(entry.id, encryptedPhoto, { transaction });
+                return entry;
+            })
+            : await Visita.create(fields);
+        if (guard) {
+            return res.status(201).json({
+                ok: true, message: 'Visita registrada en caseta',
+                data: publicForGuard({ ...plain(visit), casa: plain(house) })
+            });
+        }
         const result = await Visita.findByPk(visit.id, { include: includeHouse() });
         return res.status(201).json({ ok: true, message: 'Visita autorizada correctamente', data: result });
     } catch (error) {
         console.error('Error al registrar visita:', error.name);
-        return res.status(500).json({ ok: false, message: 'No fue posible registrar la visita' });
+        return res.status(error.status || 500).json({ ok: false, message: error.status ? error.message : 'No fue posible registrar la visita' });
+    }
+}
+async function readIdentificationPhoto(req, res) {
+    try {
+        if (!isManager(req)) return res.status(403).json({ ok: false, message: 'Solo administración puede consultar identificaciones' });
+        const id = Number(req.params.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ ok: false, message: 'Visita inválida' });
+        const image = await identificationPhoto.findForAdmin(id);
+        if (!image) return res.status(404).json({ ok: false, message: 'No hay identificación registrada' });
+        res.set('Cache-Control', 'private, no-store');
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.set('Content-Type', image.mime);
+        res.set('Content-Disposition', 'inline');
+        return res.send(image.bytes);
+    } catch (error) {
+        console.error('Error al consultar identificación:', error.name);
+        return res.status(503).json({ ok: false, message: 'No fue posible consultar identificación' });
     }
 }
 async function findAllowed(req, res, statuses) {
@@ -187,4 +234,4 @@ async function cancel(req, res) {
     if (isGuard(req)) return res.status(403).json({ ok: false, message: 'Seguridad no puede cancelar autorizaciones' });
     return transition(req, res, 'PROGRAMADA', 'CANCELADA', {}, 'Visita cancelada');
 }
-module.exports = { list, create, enter, exit, cancel, pendientes, viviendas };
+module.exports = { list, create, enter, exit, cancel, pendientes, viviendas, readIdentificationPhoto };
