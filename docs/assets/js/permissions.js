@@ -2,9 +2,9 @@
 (function(root) {
   const admins = ['SUPER_ADMIN', 'ADMINISTRADOR'];
   const security = ['index.html','bases_datos.html','mapa.html','visitas.html','zkteco.html','conmutador.html','reportes.html','reporte.html','seguridad.html','tarjetas-rojas.html'];
-  const resident = ['pagos.html','casa-club.html','anuncios.html'];
+  const resident = ['pagos.html','casa-club.html','anuncios.html','visitas.html'];
   const legacy = {
-    MESA_DIRECTIVA: ['index.html','cuotas.html','pagos.html','bases_datos.html','zkteco.html','conmutador.html','anuncios.html','calendario.html','directorio.html'],
+    MESA_DIRECTIVA: ['index.html','cuotas.html','pagos.html','bases_datos.html','zkteco.html','conmutador.html','anuncios.html','calendario.html','directorio.html','visitas.html'],
     MANTENIMIENTO: ['index.html','reportes.html','reporte.html','anuncios.html','calendario.html','directorio.html']
   };
   const pages = [...new Set([...security,...resident,'index.html','cuotas.html','anuncios.html','calendario.html','directorio.html','cuenta.html','viviendas.html','verificacion-cuentas.html','auto-users.html','analisis-cuotas.html'])];

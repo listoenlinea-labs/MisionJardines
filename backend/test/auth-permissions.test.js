@@ -30,7 +30,8 @@ test('old administrator JWT cannot bypass current security permissions',async()=
   assert.equal((await check('SEGURIDAD','/api/conexion')).nextCalled,true);
 });
 test('resident cannot load operational APIs; current house replaces token claim',async()=>{
-  for(const section of ['casas','visitas','accesos','conexion']) assert.equal((await check('CONDOMINO','/api/'+section)).status,403);
+  for(const section of ['casas','accesos','conexion']) assert.equal((await check('CONDOMINO','/api/'+section)).status,403);
+  assert.equal((await check('CONDOMINO','/api/visitas')).nextCalled,true);
   assert.equal((await check('CONDOMINO','/api/dashboard')).status,403);
   assert.equal((await check('CONDOMINO','/api/cuotas')).status,403);
   assert.equal((await check('CONDOMINO','/api/pagos')).nextCalled,true);
@@ -47,6 +48,16 @@ test('an unaccepted preregistration cannot use a JWT even if status was manually
 test('administrators retain access across modules',async()=>{
   for(const role of ['ADMINISTRADOR','SUPER_ADMIN']) for(const section of ['casas','cuotas','eventos','accesos','visitas','dashboard','pagos','conexion']) assert.equal((await check(role,'/api/'+section)).nextCalled,true);
 });
+test('condómino puede acceder exclusivamente a sus visitas sin abrir otras APIs',async()=>{
+  assert.equal((await check('CONDOMINO','/api/visitas')).nextCalled,true);
+  assert.equal((await check('CONDOMINO','/api/casas')).status,403);
+  assert.equal((await check('CONDOMINO','/api/accesos')).status,403);
+  const server=require('../src/config/permissions');
+  assert.equal(server.canAccess('CONDOMINO','visitas.html'),true);
+  assert.equal(server.canAccess('CONDOMINO','seguridad.html'),false);
+  assert.equal(server.canAccess('SEGURIDAD','visitas.html'),true);
+});
+
 test('connection configuration remains writable only by administrators',()=>{
   const {autorizarRoles}=require('../src/middlewares/roles.middleware');
   const guard=autorizarRoles('SUPER_ADMIN','ADMINISTRADOR');
