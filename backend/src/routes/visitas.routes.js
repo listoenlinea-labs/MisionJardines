@@ -1,14 +1,16 @@
 const express = require('express');
-const { list, create, enter, exit, cancel, pendientes, viviendas } = require('../controllers/visitas.controller');
+const { list, create, enter, exit, cancel, pendientes, viviendas, readIdentificationPhoto } = require('../controllers/visitas.controller');
 const { autenticarToken } = require('../middlewares/auth.middleware');
 const { autorizarRoles } = require('../middlewares/roles.middleware');
 const router = express.Router();
 const allRoles = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD', 'CONDOMINO');
 const security = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'SEGURIDAD');
-const issuers = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'CONDOMINO');
+const issuers = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA', 'CONDOMINO', 'SEGURIDAD');
+const managers = autorizarRoles('SUPER_ADMIN', 'ADMINISTRADOR');
 router.get('/', autenticarToken, allRoles, list);
 router.get('/pendientes', autenticarToken, security, pendientes);
 router.get('/viviendas', autenticarToken, issuers, viviendas);
+router.get('/:id/identificacion-foto', autenticarToken, managers, readIdentificationPhoto);
 router.post('/', autenticarToken, issuers, create);
 router.patch('/:id/entrada', autenticarToken, security, enter);
 router.patch('/:id/salida', autenticarToken, security, exit);

@@ -24,7 +24,8 @@ function fixture(){
   {id:3,casaId:303,nombreVisitante:'TEST',estatus:'PROGRAMADA',
    fechaProgramada:'2026-11-24',horaProgramada:'11:00',casa:houses[2]}
  ];
- const queries=[];
+ const queries=[];let savedEncryptedPhoto=null;
+ const transactionCalls=[];
  const Casa={
   findAll:async opts=>{
    queries.push({type:'houses',opts});
@@ -64,6 +65,12 @@ function fixture(){
    if(name==='crypto')return require('crypto');
    if(name==='sequelize')return {Op};
    if(name==='../models')return {Visita,Casa};
+   if(name==='../config/database')return {transaction:async callback=>{const transaction={id:'test'};transactionCalls.push(transaction);return callback(transaction);}};
+   if(name==='../services/visitas-identificacion.service')return {
+     validatePhoto:value=>value?{bytes:Buffer.from('foto'),mime:'image/jpeg'}:null,
+     encryptPhoto:photo=>({datosCifrados:photo.bytes,nonce:Buffer.from('nonce'),etiqueta:Buffer.from('tag'),mime:photo.mime}),
+     save:async(id,data,options)=>{savedEncryptedPhoto={id,data,options};},findForAdmin:async()=>null
+   };
    if(name==='../services/viviendas-visibles.service')return {
     esViviendaVisible:value=>!value?.hidden
    };
@@ -83,7 +90,7 @@ function fixture(){
   },res);
   return result;
  }
- return {houses,visits,queries,run};
+ return {houses,visits,queries,run,transactionCalls,getPhoto:()=>savedEncryptedPhoto};
 }
 test('El guardia recibe solo vivienda, nombre, estado e id (nunca teléfono o autorizadoPor)',async()=>{
  const mock=fixture();
@@ -116,12 +123,46 @@ test('Condómino consulta su vivienda real y no puede registrar visita en otra',
  assert.equal(another.body.data[0].id,101);
  assert.ok(!('nombre' in another.body.data[0]));
 });
-test('Seguridad no autoriza visitas nuevas ni consulta el padrón por esta API',async()=>{
+test('Seguridad registra visitas en vivienda seleccionada y recibe solamente datos mínimos',async()=>{
  const mock=fixture();
- const denied=await mock.run('create','SEGURIDAD',{body:{casaId:202}});
- assert.equal(denied.status,403);
  const houses=await mock.run('viviendas','SEGURIDAD');
- assert.equal(houses.status,403);
+ assert.equal(houses.status,200);
+ assert.equal(houses.body.data.length,2);
+ assert.deepEqual(Object.keys(houses.body.data[0]).sort(),['calle','calleCorrecta','id','numero']);
+ const created=await mock.run('create','SEGURIDAD',{body:{
+  casaId:202,nombreVisitante:'Visitante de caseta',autorizadoPor:'Guardia Rosa',
+  tipo:'OTRO',fechaProgramada:'2028-01-01',horaProgramada:'01:00',
+  telefono:'NUNCA',notas:'NUNCA',identificacion:'NUNCA',placas:'ABC123'
+ }});
+ assert.equal(created.status,201);
+ assert.deepEqual(Object.keys(created.body.data).sort(),['casa','estatus','id','nombreVisitante']);
+ assert.equal(created.body.data.casa.numero,'5');
+ const saved=mock.visits.find(v=>v.nombreVisitante==='Visitante de caseta');
+ assert.equal(saved.telefono,null);assert.equal(saved.notas,null);assert.equal(saved.identificacion,null);
+ assert.match(saved.fechaProgramada,/^\d{4}-\d{2}-\d{2}$/);
+ assert.notEqual(saved.fechaProgramada,'2028-01-01','fecha enviada por cliente debe ignorarse');
+ assert.notEqual(saved.horaProgramada,'01:00','hora enviada por cliente debe ignorarse');
+ assert.ok(!JSON.stringify(created.body).includes('Guardia Rosa'));
+ const denied=await mock.run('create','SEGURIDAD',{body:{casaId:999,nombreVisitante:'Prueba',autorizadoPor:'Guardia',tipo:'OTRO'}});
+ assert.equal(denied.status,404);
+});
+
+test('Identificación fotográfica opcional se guarda dentro de una transacción sin devolverla al guardia',async()=>{
+ const mock=fixture();
+ const response=await mock.run('create','SEGURIDAD',{body:{
+  casaId:101,nombreVisitante:'Visitante foto',autorizadoPor:'Guardia',
+  tipo:'OTRO',identificacionFoto:'data:image/jpeg;base64,TEST'
+ }});
+ assert.equal(response.status,201);
+ assert.equal(mock.transactionCalls.length,1);
+ assert.equal(mock.getPhoto().id,mock.visits.find(v=>v.nombreVisitante==='Visitante foto').id);
+ assert.equal(mock.getPhoto().options.transaction,mock.transactionCalls[0]);
+ assert.ok(!('foto' in response.body.data));
+ const resident=await mock.run('create','CONDOMINO',{body:{
+  nombreVisitante:'Residente',autorizadoPor:'Vecino',tipo:'OTRO',
+  fechaProgramada:'2026-11-25',identificacionFoto:'data:image/jpeg;base64,TEST'
+ }});
+ assert.equal(resident.status,403);
 });
 test('El contador es PROGRAMADA: baja al entrar y sigue visible para salida',async()=>{
  const mock=fixture();
@@ -147,6 +188,8 @@ test('El rol Seguridad solo puede registrar entrada y salida; Condómino puede c
  const routes=read('backend/src/routes/visitas.routes.js');
  assert.match(routes,/router\.get\('\/pendientes', autenticarToken, security, pendientes\)/);
  assert.match(routes,/router\.get\('\/viviendas', autenticarToken, issuers, viviendas\)/);
+ assert.match(routes,/const issuers = autorizarRoles\('[^']+'[^\n]*'SEGURIDAD'\)/);
+ assert.match(routes,/router\.get\('\/:id\/identificacion-foto', autenticarToken, managers, readIdentificationPhoto\)/);
  assert.match(routes,/router\.post\('\/', autenticarToken, issuers, create\)/);
  assert.match(routes,/router\.patch\('\/:id\/entrada', autenticarToken, security, enter\)/);
  assert.match(routes,/router\.patch\('\/:id\/salida', autenticarToken, security, exit\)/);
@@ -157,7 +200,9 @@ test('La UI de Seguridad minimiza columnas y actualiza burbuja tras cambios',()=
  assert.match(html,/visitPendingBadge/);
  assert.match(html,/visit-security-table/);
  assert.match(html,/const guardView = actualIsSecurity/);
- assert.match(html,/if\(actualIsSecurity\)showVisitPage\('history'\)/);
+ assert.match(html,/if\(actualIsSecurity\)showVisitPage\('homes'\)/);
+ assert.match(html,/capture="environment"/);
+ assert.match(html,/id="guardHouseSummary"|id="guardSelectedHouse"/);
  assert.match(html,/\/visitas\/viviendas/);
  assert.match(html,/\/visitas\/pendientes/);
  assert.match(html,/MJ_VISITAS_CAMBIOS/);
