@@ -88,7 +88,7 @@ test('Endpoint de fotografía requiere rol administrador y nunca se agrega a lis
  const controller=read('backend/src/controllers/visitas.controller.js');
  const server=read('backend/src/server.js');
  assert.match(routes,/router\.get\('\/:id\/identificacion-foto', autenticarToken, managers, readIdentificationPhoto\)/);
- assert.match(controller,/if \(!isManager\(req\)\) return res\.status\(403\)/);
+ assert.match(controller,/if \(!\['SUPER_ADMIN', 'ADMINISTRADOR'\]\.includes\(req\.usuario\.rol\)\) return res\.status\(403\)/);
  assert.match(controller,/return isGuard\(req\) \? publicForGuard\(value\) : value/);
  assert.match(controller,/identificacion: guard \? null/);
  assert.match(server,/VisitaIdentificacionFoto'\)\.sync\(\)/);
