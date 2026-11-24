@@ -164,6 +164,60 @@ test('Identificación fotográfica opcional se guarda dentro de una transacción
  }});
  assert.equal(resident.status,403);
 });
+test('Administrador también registra visita inmediata con fecha/hora servidor y foto cifrada',async()=>{
+ for(const role of ['ADMINISTRADOR','SUPER_ADMIN','MESA_DIRECTIVA']){
+  const mock=fixture();
+  const response=await mock.run('create',role,{body:{
+   registroInmediato:true,casaId:202,nombreVisitante:'Visita admin',
+   autorizadoPor:'Nombre del guardia',tipo:'OTRO',placas:'abc123',
+   fechaProgramada:'2999-01-01',horaProgramada:'01:00',
+   telefono:'NO-CAPTURAR',notas:'NO-CAPTURAR',identificacion:'NO-CAPTURAR',
+   identificacionFoto:'data:image/jpeg;base64,TEST'
+  }});
+  assert.equal(response.status,201,'La creación debe funcionar para '+role);
+  const saved=mock.visits.find(v=>v.nombreVisitante==='Visita admin');
+  assert.equal(saved.casaId,202);
+  assert.equal(saved.placas,'ABC123');
+  assert.equal(saved.telefono,null);
+  assert.equal(saved.notas,null);
+  assert.equal(saved.identificacion,null);
+  assert.equal(saved.vigenciaHasta,null);
+  assert.match(saved.fechaProgramada,/^\d{4}-\d{2}-\d{2}$/);
+  assert.match(saved.horaProgramada,/^\d{2}:\d{2}$/);
+  assert.notEqual(saved.fechaProgramada,'2999-01-01','fecha enviada debe ignorarse');
+  assert.notEqual(saved.horaProgramada,'01:00','hora enviada debe ignorarse');
+  assert.equal(mock.transactionCalls.length,1);
+  assert.equal(mock.getPhoto().id,saved.id);
+  assert.equal(mock.getPhoto().options.transaction,mock.transactionCalls[0]);
+  assert.ok(!JSON.stringify(response.body.data).includes('data:image'),'La foto nunca se incluye en la respuesta');
+ }
+});
+
+test('Sin modo inmediato, el administrador conserva la fecha programada tradicional',async()=>{
+ const mock=fixture();
+ const response=await mock.run('create','ADMINISTRADOR',{body:{
+  casaId:202,nombreVisitante:'Visita agendada',autorizadoPor:'Admin',
+  fechaProgramada:'2027-02-03',horaProgramada:'09:30',tipo:'FAMILIAR',
+  telefono:'3312345678',notas:'Visita futura'
+ }});
+ assert.equal(response.status,201);
+ const saved=mock.visits.find(v=>v.nombreVisitante==='Visita agendada');
+ assert.equal(saved.fechaProgramada,'2027-02-03');
+ assert.equal(saved.horaProgramada,'09:30');
+ assert.equal(saved.telefono,'3312345678');
+ assert.equal(saved.notas,'Visita futura');
+});
+
+test('Condómino no puede forzar registro inmediato ni adjuntar foto',async()=>{
+ const mock=fixture();
+ const denied=await mock.run('create','CONDOMINO',{body:{
+  registroInmediato:true,casaId:202,nombreVisitante:'Intento',
+  autorizadoPor:'Yo',tipo:'OTRO',fechaProgramada:'2999-02-03',
+  identificacionFoto:'data:image/jpeg;base64,TEST'
+ }});
+ assert.equal(denied.status,403);
+ assert.equal(mock.getPhoto(),null);
+});
 test('El contador es PROGRAMADA: baja al entrar y sigue visible para salida',async()=>{
  const mock=fixture();
  const first=await mock.run('pendientes','SEGURIDAD');
