@@ -39,9 +39,11 @@ router.post('/',admin,async(req,res)=>{
  try{
   const title=String(req.body?.title||'').trim(),brief=String(req.body?.brief||'').trim(),
    full=String(req.body?.full||'').trim(),duration=Number(req.body?.duration);
-  if(!title||title.length>100||brief.length>300||!full||full.length>4000||
+  if(!title||title.length>100||brief.length>300||!full||full.length>20000||
    !Number.isSafeInteger(duration)||duration<1||duration>3)
-   throw fail(400,'Completa título, descripción y duración de 1 a 3 meses.');
+   throw fail(400,'Completa título, texto del aviso y duración de 1 a 3 meses.');
+  const plain=full.replace(/<[^>]*>/g,' ').replace(/&(?:nbsp|amp|lt|gt|quot|#39);/g,' ').replace(/\s+/g,' ').trim();
+  if(!plain||plain.length>4000)throw fail(400,'El aviso debe tener entre 1 y 4000 caracteres de texto.');
   const image=cleanImage(req.body?.image);
   const expire=new Date();expire.setMonth(expire.getMonth()+duration);
   const item=await Aviso.create({titulo:title,resumen:brief,contenido:full,
