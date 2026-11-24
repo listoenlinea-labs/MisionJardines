@@ -183,3 +183,14 @@ test('La vista previa de imágenes reserva su altura y no se monta sobre Descrip
  assert.match(js,/\$\('imagePreview'\)\.replaceChildren\(img\);\$\('imagePreview'\)\.hidden=false/);
  assert.match(js,/\$\('imagePreview'\)\.hidden=true/);
 });
+
+test('El botón Publicar aviso mantiene el color naranja al pasar el cursor',()=>{
+ const html=read('docs/anuncios.html');
+ assert.match(html,/id="publishNotice" class="btn btn-primary"/);
+ for(const state of ['',':hover',':focus-visible',':active']){
+  assert.ok(html.includes('.ann-page #createModal #publishNotice'+state),'Debe estar protegido el estado '+(state||'normal'));
+ }
+ assert.match(html,/background: linear-gradient\(135deg,#f58b1c,#e87100\) !important;/);
+ assert.match(html,/color: #fff !important;/);
+ assert.match(html,/border-color: #ef7d0b !important;/);
+});
