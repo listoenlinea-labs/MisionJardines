@@ -23,21 +23,36 @@
     .detail-box{width:min(900px,100%)}.detail-image{height:min(410px,46vh);overflow:hidden;background:linear-gradient(145deg,#fff2e4,#eef2ff)}.detail-image img{width:100%;height:100%;object-fit:cover}.detail-image .image-placeholder{font-size:66px}.detail-content{padding:22px 24px 25px}.detail-title{margin:6px 0 8px;font-size:clamp(25px,4vw,36px);letter-spacing:-.025em}.detail-brief{margin:0 0 19px;color:#59657a;font-size:12px;line-height:1.7}.detail-full{overflow-wrap:anywhere;padding:17px 18px;border:1px solid #e8ebf1;border-radius:13px;color:#455167;background:#fafbfc;font-size:11px;line-height:1.75;white-space:normal}.detail-full p{margin:0 0 .8em}.detail-full p:last-child{margin-bottom:0}.detail-full ul,.detail-full ol{padding-left:1.4em}.detail-full font[size="2"]{font-size:.86em}.detail-full font[size="4"]{font-size:1.2em}.detail-full font[size="5"]{font-size:1.45em}.detail-full font[size="6"]{font-size:1.75em}.detail-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:17px}.meta-item{padding:12px 13px;border:1px solid #eceff3;border-radius:11px}.meta-item small{display:block;color:#929bab;font-size:8px;font-weight:850;text-transform:uppercase}.meta-item strong,.meta-item span{display:block;margin-top:4px;color:#465269;font-size:10px;line-height:1.5}.contact-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.contact-actions .btn{min-width:125px}.call-btn{color:#27699a;border-color:#cfe4f4;background:#f2f9fe}.wa-btn{color:#237a4b;border-color:#cce8d8;background:#eefaf3}.contact-more{margin-top:14px;padding:14px;border-left:3px solid #efad68;border-radius:0 10px 10px 0;color:#657087;background:#fff9f3;font-size:10px;line-height:1.65;white-space:pre-wrap}.toast{position:fixed;right:24px;bottom:88px;z-index:5000;display:none;max-width:360px;padding:12px 16px;border-radius:12px;color:#fff;background:#29344b;box-shadow:0 16px 40px rgba(27,37,55,.2);font-size:11px;font-weight:700}.footer{display:flex;justify-content:space-between;gap:18px;margin-top:25px;padding-top:18px;border-top:1px solid var(--line);color:#8a94a6;font-size:9px}.footer a{color:#d76500;text-decoration:none;font-weight:800}
     @media(max-width:1000px){.board-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.ann-shell{width:min(100% - 28px,1260px);padding-top:18px}.topline,.footer{align-items:flex-start;flex-direction:column}.board{margin-top:16px;padding:16px}.board-grid,.form-row,.detail-meta{grid-template-columns:1fr}.ad-image{height:225px}.modal{padding:10px}.modal-body,.detail-content{padding:18px}.modal-head{padding:18px}.modal-foot{padding:13px 18px}.floating-add{right:17px;bottom:17px}.detail-image{height:280px}}
     .sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-    .editor-wrap{border:1px solid #dce3ed;border-radius:14px;overflow:hidden;background:white;box-shadow:0 3px 14px rgba(32,40,61,.04)}
-    .editor-wrap:focus-within{border-color:#ef9c45;box-shadow:0 0 0 3px rgba(239,125,11,.1)}
-    .editor-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:9px 11px;border-bottom:1px solid #e8ecf3;background:#f8f9fc}
-    .editor-group{display:flex;align-items:center;gap:5px;padding-right:9px;border-right:1px solid #e2e5ed}.editor-group:last-child{border:0}
-    .tool-btn{width:34px;height:33px;border:1px solid transparent;border-radius:8px;background:transparent;color:#34425b;cursor:pointer;font-size:14px;font-weight:700}.tool-btn:hover,.tool-btn:focus-visible,.tool-btn.is-active{background:#fff1e5;border-color:#efbe90;color:#a34f04}
-    .ann-page .tool-select{width:auto;min-height:33px;padding:5px 25px 5px 8px;border:1px solid #e3e7ee;border-radius:8px;background:#fff;color:#34425b;font-size:12px}
-    .color-tool{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;margin:0;padding:4px 7px;border:1px solid #e3e7ee;border-radius:8px;background:#fff;font-size:14px}
-    .ann-page .color-tool input{width:24px;min-height:25px;height:25px;padding:1px;border:0;border-radius:5px;cursor:pointer}
-    .rich-editor{min-height:160px;max-height:340px;overflow-y:auto;padding:17px 18px;outline:0;color:#263148;font-size:15px;line-height:1.65;overflow-wrap:anywhere}
-    .rich-editor:empty:before{content:attr(data-placeholder);pointer-events:none;color:#9ba4b5}.rich-editor p{margin:0 0 .6em}
-    .editor-bottom{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 14px;border-top:1px solid #edf0f4;color:#78859b;font-size:11px}
-    .ad-desc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
-    .detail-full{font-size:15px;line-height:1.75;background:#fff}.detail-brief{font-size:14px}
+    .modal-body .form-grid>div>label{font-size:13px;color:#45516a;font-weight:800;margin-bottom:9px}
+    .modal-body .form-grid input[type="text"],.modal-body .form-grid input:not([type]),.modal-body .form-grid select:not(.tool-select){font-size:14px}
+    .editor-wrap{border:1px solid #d6dfeb;border-radius:15px;overflow:hidden;background:#fff;box-shadow:0 5px 22px rgba(32,40,61,.055);transition:border-color .2s,box-shadow .2s}
+    .editor-wrap:focus-within{border-color:#eb943b;box-shadow:0 0 0 4px rgba(239,125,11,.1),0 8px 26px rgba(32,40,61,.06)}
+    .editor-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#ccd4e1 transparent;padding:11px 12px;border-bottom:1px solid #e7ebf1;background:linear-gradient(180deg,#fbfcfe,#f6f8fc)}
+    .editor-group{display:flex;align-items:center;gap:5px;padding-right:10px;border-right:1px solid #dce3ed;flex:0 0 auto}.editor-group:last-child{padding-right:0;border:0}
+    .ann-page .tool-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 39px;width:39px;height:38px;padding:0;border:1px solid transparent;border-radius:9px;background:transparent;color:#33425a;cursor:pointer;font-size:17px;font-weight:750;transition:background .12s,border-color .12s,color .12s}
+    .ann-page .tool-btn:hover,.ann-page .tool-btn:focus-visible,.ann-page .tool-btn.is-active{background:#fff1e5;border-color:#efc49f;color:#ae5408;outline:none}
+    .ann-page .tool-btn:focus-visible,.color-swatch:focus-visible,.custom-color-tool:focus-within{outline:2px solid #ee8e30;outline-offset:1px}
+    .ann-page .tool-select{flex:0 0 auto;width:136px;min-height:38px;padding:5px 25px 5px 10px;border:1px solid #dce3ed;border-radius:9px;background:#fff;color:#33425a;font-size:12px;font-weight:700;cursor:pointer}
+    .palette-title{color:#64748b;font-size:11px;font-weight:800;margin-right:3px}
+    .color-swatch{width:25px;height:25px;flex:0 0 25px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--swatch);box-shadow:0 0 0 1px #bec9d8;cursor:pointer;transition:transform .14s,box-shadow .14s}
+    .color-swatch:hover{transform:scale(1.12)}.color-swatch.is-active{box-shadow:0 0 0 2px #ee8e30}
+    .custom-color-tool{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 35px;width:35px;height:35px;padding:0;margin:0;border:1px solid #dce3ed;border-radius:9px;background:#fff;color:#64748b;font-size:22px;cursor:pointer;overflow:hidden}
+    .ann-page .custom-color-tool input{position:absolute;inset:0;width:100%;height:100%;padding:0;margin:0;opacity:0;cursor:pointer}
+    .tool-btn.clear-format{font-size:13px;text-decoration:line-through;text-decoration-color:#b42332}
+    .rich-editor{min-height:182px;max-height:380px;overflow-y:auto;padding:18px 20px;outline:0;color:#263148;font-size:15px;line-height:1.72;overflow-wrap:anywhere;white-space:pre-wrap}
+    .rich-editor:empty:before{content:attr(data-placeholder);pointer-events:none;color:#9ba5b5}
+    .rich-editor p,.rich-editor div{margin:0 0 .45em}.rich-editor ul,.rich-editor ol{padding-left:1.5em}
+    .rich-editor font[size="2"]{font-size:.86em}.rich-editor font[size="4"]{font-size:1.15em}.rich-editor font[size="5"]{font-size:1.42em}.rich-editor font[size="6"]{font-size:1.7em}
+    .editor-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 15px;border-top:1px solid #ebeff5;background:#fbfcfe;color:#718098;font-size:11px}
+    #editorCount{flex-shrink:0;color:#5f6f88;font-variant-numeric:tabular-nums;font-weight:800}
+    .editor-mobile-hint{display:none;margin:7px 0 0;color:#7e899b;font-size:11px}
+    .ad-desc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;font-size:13px;line-height:1.55}
+    .detail-full{font-size:15px;line-height:1.75;background:#fff}
+    .detail-full p,.detail-full div{margin:0 0 .7em}.detail-full ul,.detail-full ol{padding-left:1.5em}
+    .detail-full font[size="3"]{font-size:1em}.detail-full font[size="4"]{font-size:1.15em}.detail-full font[size="5"]{font-size:1.42em}.detail-full font[size="6"]{font-size:1.7em}
+    .detail-brief{font-size:14px}
     #removeNotice{margin-top:16px;border-color:#f0c5c5;color:#aa3941;background:#fff8f8}
-    @media(max-width:720px){.editor-toolbar{gap:5px;padding:8px}.editor-group{padding-right:5px}.rich-editor{min-height:180px}}
+    @media(max-width:720px){.modal-body .form-grid input,.modal-body .form-grid select{font-size:16px}.editor-toolbar{padding:9px}.editor-group{padding-right:7px}.ann-page .tool-btn{flex-basis:42px;width:42px;height:42px}.rich-editor{min-height:178px;padding:16px;font-size:16px}.editor-mobile-hint{display:block}.editor-bottom{padding:10px 12px}}
   </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -57,17 +72,38 @@
   <div class="modal-body"><form id="noticeForm" class="form-grid" onsubmit="return false">
    <div><label class="required" for="noticeTitle">Título</label><input id="noticeTitle" maxlength="100" placeholder="Ej. Mantenimiento programado de áreas comunes"></div>
    <div><label for="noticeImage">Imagen (opcional)</label><input type="file" id="noticeImage" accept="image/png,image/jpeg,image/webp"><span class="hint">Máximo 700 KB.</span><div id="imagePreview" class="photo-preview">Imagen opcional</div></div>
-   <div><label class="required" for="noticeFull">Texto del aviso</label>
-    <div class="editor-wrap">
-     <div class="editor-toolbar" role="toolbar" aria-label="Formato del aviso">
-      <div class="editor-group"><button type="button" class="tool-btn" data-command="bold" title="Negritas" aria-label="Negritas"><strong>B</strong></button><button type="button" class="tool-btn" data-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button><button type="button" class="tool-btn" data-command="underline" title="Subrayado" aria-label="Subrayado"><u>U</u></button></div>
-      <div class="editor-group"><label class="sr-only" for="editorFontSize">Tamaño de letra</label><select id="editorFontSize" class="tool-select" aria-label="Tamaño de letra"><option value="3">Normal</option><option value="2">Pequeño</option><option value="4">Mediano</option><option value="5">Grande</option><option value="6">Título</option></select></div>
-      <div class="editor-group"><label class="color-tool" title="Color del texto"><span aria-hidden="true">A</span><input id="editorTextColor" type="color" value="#263148" aria-label="Color del texto"></label><button type="button" class="tool-btn" data-command="removeFormat" title="Quitar formato" aria-label="Quitar formato">Tx</button></div>
-      <div class="editor-group"><button type="button" class="tool-btn" data-command="insertUnorderedList" title="Lista con viñetas" aria-label="Lista con viñetas">☷</button><button type="button" class="tool-btn" data-command="insertOrderedList" title="Lista numerada" aria-label="Lista numerada">1.</button></div>
+   <div class="notice-description-field"><label class="required" for="noticeDescription">Descripción breve</label>
+    <div class="editor-wrap" id="noticeEditorBox">
+     <div class="editor-toolbar" role="toolbar" aria-label="Opciones de formato del aviso">
+      <div class="editor-group" role="group" aria-label="Estilo de texto">
+       <button type="button" class="tool-btn" data-command="bold" aria-label="Negritas" title="Negritas (Ctrl+B)" aria-pressed="false"><strong>B</strong></button>
+       <button type="button" class="tool-btn" data-command="italic" aria-label="Cursiva" title="Cursiva (Ctrl+I)" aria-pressed="false"><em>I</em></button>
+       <button type="button" class="tool-btn" data-command="underline" aria-label="Subrayado" title="Subrayado (Ctrl+U)" aria-pressed="false"><u>U</u></button>
+      </div>
+      <div class="editor-group" role="group" aria-label="Tamaño de letra">
+       <label class="sr-only" for="editorFontSize">Tamaño de letra</label>
+       <select id="editorFontSize" class="tool-select" title="Tamaño de letra" aria-label="Tamaño de letra"><option value="3">Texto normal</option><option value="2">Pequeño</option><option value="4">Mediano</option><option value="5">Grande</option><option value="6">Título</option></select>
+      </div>
+      <div class="editor-group editor-color-group" role="group" aria-label="Color de texto">
+       <span class="palette-title">Color</span>
+       <button type="button" class="color-swatch" data-color="#263148" style="--swatch:#263148" aria-label="Color azul oscuro" title="Azul oscuro"></button>
+       <button type="button" class="color-swatch" data-color="#b42332" style="--swatch:#b42332" aria-label="Color rojo" title="Rojo"></button>
+       <button type="button" class="color-swatch" data-color="#a64e0b" style="--swatch:#a64e0b" aria-label="Color naranja" title="Naranja"></button>
+       <button type="button" class="color-swatch" data-color="#177c53" style="--swatch:#177c53" aria-label="Color verde" title="Verde"></button>
+       <button type="button" class="color-swatch" data-color="#255cbb" style="--swatch:#255cbb" aria-label="Color azul" title="Azul"></button>
+       <label class="custom-color-tool" title="Elegir otro color"><span aria-hidden="true">◉</span><input id="editorTextColor" type="color" value="#263148" aria-label="Elegir un color personalizado"></label>
+      </div>
+      <div class="editor-group" role="group" aria-label="Listas y limpieza">
+       <button type="button" class="tool-btn tool-icon" data-command="insertUnorderedList" title="Lista con viñetas" aria-label="Lista con viñetas" aria-pressed="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/><path d="M9 6h11M9 12h11M9 18h11"/></svg></button>
+       <button type="button" class="tool-btn tool-icon" data-command="insertOrderedList" title="Lista numerada" aria-label="Lista numerada" aria-pressed="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3 4h2v5M3 11h2v3H3v2h2M3 18h2v2H3"/></svg></button>
+       <button type="button" class="tool-btn clear-format" data-command="removeFormat" title="Quitar formato del texto seleccionado" aria-label="Quitar formato">Tx</button>
+      </div>
      </div>
-     <div id="noticeFull" class="rich-editor" contenteditable="true" role="textbox" aria-label="Texto del aviso" aria-multiline="true" data-placeholder="Escribe aquí tu comunicado para los residentes…"></div>
-     <div class="editor-bottom"><span>El formato que apliques se conservará al publicar.</span><span id="editorCount">0 / 4000 caracteres</span></div>
-    </div></div>
+     <div id="noticeDescription" class="rich-editor" contenteditable="true" role="textbox" aria-label="Descripción breve del aviso" aria-multiline="true" aria-required="true" data-placeholder="Escribe el comunicado que leerán los residentes…"></div>
+     <div class="editor-bottom"><span>Selecciona texto para aplicarle formato. En el tablón se verá un resumen.</span><span id="editorCount" aria-live="polite">0 / 4000</span></div>
+    </div>
+    <p class="editor-mobile-hint">Desliza la barra horizontalmente para ver todas las opciones de formato.</p>
+   </div>
    <div><label for="noticeDuration">Tiempo visible</label><select id="noticeDuration"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select></div>
   </form></div>
   <div class="modal-foot"><button id="cancelCreate" class="btn" type="button">Cancelar</button><button id="publishNotice" class="btn btn-primary" type="button">Publicar aviso</button></div>
@@ -79,10 +115,10 @@
    <div class="detail-meta"><div class="meta-item"><small>Publicado</small><span id="detailPublished"></span></div>
    <div class="meta-item"><small>Visible hasta</small><strong id="detailExpires"></strong></div></div>
    <p class="hint">Este es un canal informativo de solo lectura. No admite comentarios ni respuestas.</p>
-   <button id="removeNotice" class="btn" type="button" hidden>Retirar aviso</button>
+   <button id="removeNotice" class="btn" type="button" hidden>Eliminar aviso</button>
   </div>
  </div></section>
  <div id="toast" class="toast" role="status"></div>
- <script src="assets/js/avisos.js?v=20261124-rich-editor-v1"></script>
+ <script src="assets/js/avisos.js?v=20261124-rich-editor-v2"></script>
  <script src="assets/js/site-sidebar.js?v=20261123-avisos"></script>
 </body></html>
