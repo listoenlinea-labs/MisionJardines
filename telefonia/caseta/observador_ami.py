@@ -5,6 +5,7 @@ No origina, corta, transfiere ni altera llamadas. No registra destinos ni
 telefonos. Si se detiene, el agente principal sigue funcionando como antes.
 """
 import json
+from collections import OrderedDict
 import os
 import queue
 import re
@@ -46,8 +47,9 @@ class Correlador:
         self.link_solicitud = {}
         self.canal_destino = {}
         self.conectadas = {}
-        self.terminadas = set()
-        self.enviadas = set()
+        # Retención acotada: el servicio corre 24/7 en una VM pequeña.
+        self.terminadas = OrderedDict()
+        self.enviadas = OrderedDict()
 
     def solicitud(self, evento):
         return (
@@ -118,7 +120,9 @@ class Correlador:
         clave = (solicitud, estado)
         if clave in self.enviadas or solicitud in self.terminadas:
             return
-        self.enviadas.add(clave)
+        self.enviadas[clave] = None
+        if len(self.enviadas) > 12000:
+            self.enviadas.popitem(last=False)
         payload = {"solicitud": solicitud, "evento": estado}
         if motivo:
             payload["motivo"] = motivo
@@ -126,7 +130,20 @@ class Correlador:
             payload["duracionSegundos"] = duracionSegundos
         self.emitir(payload)
         if estado in ("FINALIZADA", "NO_CONTESTO", "OCUPADO", "FALLIDA"):
-            self.terminadas.add(solicitud)
+            self.terminadas[solicitud] = None
+            if len(self.terminadas) > 4000:
+                self.terminadas.popitem(last=False)
+            self.conectadas.pop(solicitud, None)
+            # Ya no necesitamos retener canales SIP ni el linkedid de una
+            # llamada terminada. Nunca almacenar números de destino.
+            self.canal_solicitud = {
+                channel: call_id for channel, call_id in self.canal_solicitud.items()
+                if call_id != solicitud
+            }
+            self.link_solicitud = {
+                linked: call_id for linked, call_id in self.link_solicitud.items()
+                if call_id != solicitud
+            }
 
 
 class SinRedirecciones(HTTPRedirectHandler):
