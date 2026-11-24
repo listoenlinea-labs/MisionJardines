@@ -177,7 +177,7 @@ async function create(req, res) {
 }
 async function readIdentificationPhoto(req, res) {
     try {
-        if (!isManager(req)) return res.status(403).json({ ok: false, message: 'Solo administración puede consultar identificaciones' });
+        if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario.rol)) return res.status(403).json({ ok: false, message: 'Solo administración puede consultar identificaciones' });
         const id = Number(req.params.id);
         if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ ok: false, message: 'Visita inválida' });
         const image = await identificationPhoto.findForAdmin(id);
