@@ -60,6 +60,10 @@
     .detail-brief{font-size:14px}
     #removeNotice{margin-top:16px;border-color:#f0c5c5;color:#aa3941;background:#fff8f8}
     @media(max-width:720px){.modal-body .form-grid input,.modal-body .form-grid select{font-size:16px}.editor-toolbar{padding:9px}.editor-group{padding-right:7px}.ann-page .tool-btn{flex-basis:42px;width:42px;height:42px}.color-swatch{width:42px;height:42px;flex-basis:42px}.color-swatch::after{left:9px;top:9px}.rich-editor{min-height:178px;padding:16px;font-size:16px}.editor-mobile-hint{display:block}.editor-bottom{padding:10px 12px}}
+    /* Los títulos oficiales conservan negritas en el tablón y en el detalle, con o sin formato en el cuerpo. */
+    #noticeTitle{font-size:15px;font-weight:800}
+    .ad-card .ad-title,.detail-content .detail-title{font-weight:900}
+    #noticeDuration{font-size:15px;font-weight:600}
   </style>
   <script src="assets/js/date-display.js?v=20261019"></script>
 </head>
@@ -111,7 +115,7 @@
     </div>
     <p class="editor-mobile-hint">Desliza la barra horizontalmente para ver todas las opciones de formato.</p>
    </div>
-   <div><label for="noticeDuration">Tiempo visible</label><select id="noticeDuration"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select></div>
+   <div><label for="noticeDuration">Tiempo visible</label><select id="noticeDuration" name="durationDays"><option value="1">1 día</option><option value="3">3 días</option><option value="5">5 días</option><option value="7">1 semana</option><option value="14">2 semanas</option></select><span class="hint">El aviso dejará de mostrarse automáticamente al cumplirse este plazo, contado desde su publicación.</span></div>
   </form></div>
   <div class="modal-foot"><button id="cancelCreate" class="btn" type="button">Cancelar</button><button id="publishNotice" class="btn btn-primary" type="button">Publicar aviso</button></div>
  </div></section>
@@ -126,6 +130,6 @@
   </div>
  </div></section>
  <div id="toast" class="toast" role="status"></div>
- <script src="assets/js/avisos.js?v=20261124-rich-editor-v3"></script>
+ <script src="assets/js/avisos.js?v=20261124-expiry-days-v1"></script>
  <script src="assets/js/site-sidebar.js?v=20261123-avisos"></script>
 </body></html>
