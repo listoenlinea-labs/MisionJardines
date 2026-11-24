@@ -57,7 +57,7 @@ class Correlador:
         )
 
     def leer(self, evento):
-        tipo = evento.get("event", "")
+        tipo = evento.get("event", "").lower()
         canal = evento.get("channel", "")
         linked = evento.get("linkedid", "")
         if tipo == "varset":
