@@ -112,8 +112,11 @@
           const stamp=document.createElement('span');
           const [date,time]=String(item.fecha_hora||'').split(' ');
           stamp.textContent=(date?date.split('-').reverse().join('/'):'')+' · '+(time||'').slice(0,5);
-          const state=document.createElement('small');
+          const state=document.createElement('button');
+          state.type='button';
           state.className='history-confirmed';
+          state.dataset.solicitud=String(item.id||'');
+          state.setAttribute('aria-label','Consultar pasos de llamada de '+String(item.grupo||'')+' '+String(item.numero||''));
           state.textContent=item.estado==='FINALIZADA'?'Orden procesada por central':'Orden enviada a central';
           // No se afirma que el residente contestó: Asterisk únicamente
           // confirmó recepción/procesamiento de la orden.
@@ -125,6 +128,86 @@
         byId('refreshHistory').disabled=false;
         setHistoryNavigation();
       }
+      // Abrir el diagnóstico no altera llamadas; solo consulta datos ya guardados.
+      let detailRequest=0,detailReturnFocus=null;
+      const detailModal=byId('historyDetailModal');
+      function closeHistoryDetail(){
+        detailRequest++;
+        detailModal.hidden=true;
+        detailModal.classList.remove('show');
+        if(detailReturnFocus?.isConnected)detailReturnFocus.focus();
+        detailReturnFocus=null;
+      }
+      byId('historyDetailClose').addEventListener('click',closeHistoryDetail);
+      document.addEventListener('keydown',event=>{
+        if(event.key==='Escape'&&!detailModal.hidden)closeHistoryDetail();
+      });
+      detailModal.addEventListener('click',event=>{
+        if(event.target===detailModal)closeHistoryDetail();
+      });
+      byId('historyList').addEventListener('click',event=>{
+        const button=event.target.closest?.('button.history-confirmed[data-solicitud]');
+        if(button){
+          detailReturnFocus=button;
+          void openHistoryDetail(button.dataset.solicitud);
+        }
+      });
+      const detailLabels={
+        SOLICITADA:'Solicitud registrada',ENVIADA:'Orden enviada a central',
+        TIMBRANDO:'Timbrando',CONTESTADA:'Contestada según Asterisk',
+        NO_CONTESTO:'No contestó',OCUPADO:'Ocupado',
+        FALLIDA:'Fallida',FINALIZADA:'Finalizada'
+      };
+      const detailReasons={
+        CHANUNAVAIL:'Canal no disponible',CONGESTION:'Congestión de la línea',
+        CANCEL:'Llamada cancelada',INVALIDARGS:'Error de parámetros',
+        DONTCALL:'Destino no permitido',OTHER:'Fallo informado por la central'
+      };
+      async function openHistoryDetail(solicitud){
+        if(!/^[a-f0-9-]{36}$/i.test(solicitud))return;
+        const sequence=++detailRequest;
+        detailModal.hidden=false;
+        detailModal.classList.add('show');
+        byId('historyDetailTitle').textContent='Historial de la llamada';
+        byId('historyDetailNotice').textContent='Consultando eventos de Asterisk…';
+        byId('historyDetailDuration').textContent='';
+        byId('historyDetailTimeline').replaceChildren();
+        byId('historyDetailClose').focus();
+        try{
+          const data=await api('/conmutador/historial/'+encodeURIComponent(solicitud));
+          if(sequence!==detailRequest)return;
+          byId('historyDetailTitle').textContent='Llamada · '+String(data.vivienda||'');
+          const steps=Array.isArray(data.etapas)?data.etapas:[];
+          const fragment=document.createDocumentFragment();
+          for(const step of steps){
+            const li=document.createElement('li');li.className='history-detail-step';
+            const label=document.createElement('strong');
+            label.textContent=detailLabels[step.evento]||'Evento de telefonía';
+            const stamp=document.createElement('span');
+            stamp.textContent=String(step.fechaHora||'').replace('T',' ');
+            li.append(label,stamp);
+            if(step.motivo && detailReasons[step.motivo]){
+              const reason=document.createElement('small');
+              reason.textContent=detailReasons[step.motivo];
+              li.append(reason);
+            }
+            fragment.appendChild(li);
+          }
+          byId('historyDetailTimeline').replaceChildren(fragment);
+          byId('historyDetailDuration').textContent=
+            Number.isInteger(data.duracionSegundos)
+              ? 'Duración de conexión registrada: '+Math.floor(data.duracionSegundos/60)+
+                ' min '+(data.duracionSegundos%60)+' s'
+              : 'Duración: no verificada';
+          byId('historyDetailNotice').textContent=data.telemetriaDisponible
+            ? 'Eventos observados por Asterisk. “Contestada” indica respuesta SIP; no garantiza que una persona haya atendido.'
+            : 'No hay datos telefónicos comprobables de timbrado, respuesta o duración para esta llamada. El observador de Asterisk puede estar sin configurar o desconectado.';
+        }catch(error){
+          if(sequence===detailRequest)
+            byId('historyDetailNotice').textContent='No se pudo cargar el diagnóstico: '+error.message;
+        }
+      }
+
       async function loadHistory({force=false,latest=false}={}){
         const fecha=historyDate.value;
         if(!latest&&!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){

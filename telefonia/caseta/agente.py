@@ -21,6 +21,11 @@ def enviar_call_file(orden, spool):
     if not re.fullmatch(r"[2-9][0-9]{9}", destino):
         raise ValueError("Destino nacional inválido")
 
+    correlacion = (
+        f"Setvar: __MJ_SOLICITUD={orden['solicitud']}\n"
+        if os.environ.get("MJ_CONMUTADOR_TELEMETRIA", "").lower() == "true"
+        else ""
+    )
     contenido = (
         "Channel: Local/s@conmutador-caseta-entrada/n\n"
         "Callerid: Conmutador <6001>\n"
@@ -30,6 +35,7 @@ def enviar_call_file(orden, spool):
         "Extension: s\n"
         "Priority: 1\n"
         f"Setvar: MJ_DESTINO={destino}\n"
+        + correlacion
     )
     # Mismo sistema de archivos: Asterisk solo ve el archivo completo.
     with tempfile.NamedTemporaryFile(

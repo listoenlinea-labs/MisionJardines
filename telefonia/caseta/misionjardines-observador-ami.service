@@ -1,0 +1,17 @@
+[Unit]
+Description=Observador pasivo Asterisk para diagnóstico de llamadas Misión Jardines
+Wants=network-online.target asterisk.service
+After=network-online.target asterisk.service
+
+[Service]
+User=asterisk
+Group=asterisk
+UMask=0077
+EnvironmentFile=/etc/misionjardines-caseta.env
+ExecStart=/usr/bin/python3 /opt/misionjardines-caseta/observador_ami.py
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

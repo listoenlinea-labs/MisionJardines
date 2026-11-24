@@ -77,3 +77,10 @@ uso simultáneo de la extensión de caseta. Una entrega reclamada
 no se reintenta automáticamente para evitar llamadas duplicadas. «Solicitud
 enviada» indica que se entregó al spool, no que caseta o el residente contestaron.
 El historial conserva los intentos sin el número de destino.
+
+## Diagnóstico opcional de llamadas
+
+El modal del historial permite ver las etapas observadas en Asterisk sin
+cambiar la marcación. Por seguridad, el observador AMI está deshabilitado por
+defecto y funciona como servicio systemd **independiente** del agente principal.
+Ver las instrucciones completas en [Diagnóstico pasivo](../../docs/CONMUTADOR_DIAGNOSTICO_ASTERISK.md).
