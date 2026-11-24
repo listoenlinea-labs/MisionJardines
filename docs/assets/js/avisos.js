@@ -8,6 +8,53 @@
  const fmt=value=>value?(window.MJDateDisplay?.format(value)||new Date(value).toLocaleDateString('es-MX')):'—';
  const toast=message=>{const e=$('toast');e.textContent=message;e.style.display='block';clearTimeout(toast.timeout);toast.timeout=setTimeout(()=>e.style.display='none',4000);};
  let items=[],admin=false,selectedImage='',working=false;
+ const editor=$('noticeFull');
+ const allowedTags=new Set(['P','DIV','BR','STRONG','B','EM','I','U','UL','OL','LI','FONT','SPAN']);
+ const colorAllowed=value=>/^#[0-9a-f]{6}$/i.test(value)||/^rgb\(\s*(?:\d{1,3}\s*,\s*){2}\d{1,3}\s*\)$/i.test(value);
+ function cleanRich(html){
+  const doc=new DOMParser().parseFromString('<div>'+html+'</div>','text/html'),root=doc.body.firstElementChild;
+  function clean(node){
+   if(node.nodeType===Node.TEXT_NODE)return document.createTextNode(node.textContent);
+   if(node.nodeType!==Node.ELEMENT_NODE)return document.createDocumentFragment();
+   const fragment=document.createDocumentFragment();
+   if(!allowedTags.has(node.tagName)){for(const child of [...node.childNodes])fragment.append(clean(child));return fragment;}
+   const el=document.createElement(node.tagName.toLowerCase());
+   if(node.tagName==='FONT'){
+    const size=node.getAttribute('size');if(['2','3','4','5','6'].includes(size))el.setAttribute('size',size);
+    const color=node.getAttribute('color');if(color&&colorAllowed(color))el.setAttribute('color',color);
+   }
+   if(node.tagName==='SPAN'){
+    const color=node.style?.color||'';
+    if(color&&colorAllowed(color))el.style.color=color;
+   }
+   for(const child of [...node.childNodes])el.append(clean(child));
+   return el;
+  }
+  const output=document.createElement('div');
+  for(const child of [...root.childNodes])output.append(clean(child));
+  return output.innerHTML;
+ }
+ function plainText(html){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  return (doc.body.textContent||'').replace(/\s+/g,' ').trim();
+ }
+ function showFull(a){
+  const full=String(a.full||'');
+  if(!/<\/?(?:p|div|br|strong|b|em|i|u|ul|ol|li|font|span)\b/i.test(full)){
+   $('detailFull').textContent=full;$('detailFull').style.whiteSpace='pre-wrap';return;
+  }
+  $('detailFull').innerHTML=cleanRich(full);
+  $('detailFull').style.whiteSpace='normal';
+ }
+ function updateCount(){const count=(editor.innerText||editor.textContent||'').trim().length;$('editorCount').textContent=count+' / 4000 caracteres';$('editorCount').style.color=count>4000?'#b42332':'';}
+ editor.addEventListener('input',updateCount);
+ document.querySelectorAll('[data-command]').forEach(button=>{
+  button.addEventListener('mousedown',e=>e.preventDefault());
+  button.addEventListener('click',()=>{editor.focus();document.execCommand(button.dataset.command,false,null);updateCount();});
+ });
+ $('editorFontSize').addEventListener('change',event=>{editor.focus();document.execCommand('fontSize',false,event.target.value);updateCount();});
+ $('editorTextColor').addEventListener('input',event=>{editor.focus();document.execCommand('foreColor',false,event.target.value);updateCount();});
+
  async function request(path,options={}){
   const res=await fetch(API+path,{...options,cache:'no-store',headers:{Authorization:'Bearer '+token,...(options.body?{'Content-Type':'application/json'}:{})}});
   const result=await res.json().catch(()=>({}));
@@ -34,7 +81,7 @@
   const a=items.find(row=>String(row.id)===String(id));if(!a)return;
   $('detailImage').innerHTML=a.image?'<img src="'+esc(a.image)+'" alt="Imagen del aviso">':'<div class="image-placeholder">📢</div>';
   $('detailTitle').textContent=a.title;$('detailBrief').textContent=a.brief||'Comunicado oficial';
-  $('detailFull').textContent=a.full;$('detailPublished').textContent=fmt(a.createdAt);
+  showFull(a);$('detailPublished').textContent=fmt(a.createdAt);
   $('detailExpires').textContent=fmt(a.expiresAt);
   $('removeNotice').hidden=!admin;$('removeNotice').onclick=()=>remove(a.id);
   $('detailModal').hidden=false;
@@ -75,12 +122,13 @@
  });
  $('publishNotice').addEventListener('click',async()=>{
   if(!admin||working)return;
-  const title=$('noticeTitle').value.trim(),brief=$('noticeBrief').value.trim(),full=$('noticeFull').value.trim();
-  if(!title||!full)return toast('Título y contenido son obligatorios.');
+  const title=$('noticeTitle').value.trim(),full=cleanRich(editor.innerHTML),content=plainText(full),brief=content.slice(0,300);
+  if(!title||!content)return toast('Título y texto del aviso son obligatorios.');
+  if(content.length>4000)return toast('El aviso debe tener máximo 4000 caracteres.');
   working=true;$('publishNotice').disabled=true;
   try{
    await request('/',{method:'POST',body:JSON.stringify({title,brief,full,image:selectedImage,duration:Number($('noticeDuration').value)})});
-   $('noticeForm').reset();selectedImage='';$('imagePreview').textContent='Imagen opcional';
+   $('noticeForm').reset();editor.replaceChildren();updateCount();selectedImage='';$('imagePreview').textContent='Imagen opcional';
    $('createModal').hidden=true;await load();toast('Aviso publicado para la comunidad.');
   }catch(e){toast(e.message);}finally{working=false;$('publishNotice').disabled=false;}
  });
