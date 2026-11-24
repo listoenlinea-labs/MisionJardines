@@ -60,7 +60,7 @@ class Correlador:
         tipo = evento.get("event", "")
         canal = evento.get("channel", "")
         linked = evento.get("linkedid", "")
-        if tipo == "VarSet".lower() or tipo == "varset":
+        if tipo == "varset":
             variable = evento.get("variable", "").lstrip("_")
             valor = evento.get("value", "")
             if variable == "MJ_SOLICITUD" and UUID_RE.fullmatch(valor):
@@ -77,7 +77,10 @@ class Correlador:
                 if destino:
                     self.canal_destino[destino] = solicitud
             return
-        solicitud = self.canal_destino.get(canal)
+        # DialEnd suele identificar el canal emisor en Channel y el receptor
+        # en DestChannel. No confundirlos con el tramo 6001 (caseta).
+        destino = evento.get("destchannel", "") if tipo == "dialend" else canal
+        solicitud = self.canal_destino.get(destino)
         if not solicitud:
             return
         if tipo == "newstate":
@@ -97,11 +100,14 @@ class Correlador:
             elif dialstatus in FALLOS and solicitud not in self.conectadas:
                 estado, motivo = FALLOS[dialstatus]
                 self._emitir(solicitud, estado, motivo=motivo)
+            if solicitud in self.terminadas:
+                self.canal_destino.pop(destino, None)
         elif tipo == "hangup":
             if solicitud in self.conectadas:
                 segundos = max(0, int(self.reloj() - self.conectadas[solicitud]))
                 self._emitir(solicitud, "FINALIZADA", duracionSegundos=segundos)
-            self.canal_destino.pop(canal, None)
+            if solicitud in self.terminadas:
+                self.canal_destino.pop(canal, None)
 
     def _contestar(self, solicitud):
         if solicitud not in self.conectadas:
@@ -130,8 +136,7 @@ class SinRedirecciones(HTTPRedirectHandler):
 
 def publicador(cola, api, token):
     cliente = build_opener(SinRedirecciones())
-    mientras = True
-    while mientras:
+    while True:
         evento = cola.get()
         for intento in range(3):
             try:
