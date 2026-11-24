@@ -1,0 +1,9 @@
+; AGREGAR a manager.conf existente, sin sustituir otras secciones.
+; Habilitar AMI solo en loopback: [general] enabled=yes, bindaddr=127.0.0.1
+; Este usuario observa eventos; no tiene permisos para originar/cortar llamadas.
+[mj-diagnostico]
+secret=REEMPLAZAR_CLAVE_AMI_INDEPENDIENTE_DE_32_CARACTERES
+deny=0.0.0.0/0.0.0.0
+permit=127.0.0.1/255.255.255.255
+read=call
+write=
