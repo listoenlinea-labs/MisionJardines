@@ -559,6 +559,30 @@
       font-weight: 750
     }
 
+
+    /* El contacto del padrón se consulta solo para ADMINISTRADOR/SUPER_ADMIN. */
+    .page-visitas-v2 #adminHouseContact[hidden]{display:none!important}
+    .page-visitas-v2:not(.visit-admin-contact) #adminHouseContact{display:none!important}
+    .page-visitas-v2.visit-admin-contact #adminHouseContact:not([hidden]){
+      display:block;min-width:0;padding:14px 16px;border:1px solid #dbe5ef;border-radius:13px;
+      background:linear-gradient(115deg,#f9fbff,#fffaf4);
+    }
+    .page-visitas-v2 #adminHouseContact .admin-contact-kicker{
+      display:block;color:#bd650f;font-size:10px;font-weight:900;letter-spacing:.09em;margin-bottom:10px;
+    }
+    .page-visitas-v2 #adminHouseContact .admin-contact-grid{
+      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+    }
+    .page-visitas-v2 #adminHouseContact .admin-contact-grid>div{min-width:0}
+    .page-visitas-v2 #adminHouseContact .admin-contact-grid span{
+      display:block;color:#66758e;font-size:11px;margin-bottom:5px;
+    }
+    .page-visitas-v2 #adminHouseContact .admin-contact-grid strong{
+      display:block;color:#27374e;font-size:14px;line-height:1.4;overflow-wrap:anywhere;
+    }
+    @media(max-width:540px){
+      .page-visitas-v2 #adminHouseContact .admin-contact-grid{grid-template-columns:minmax(0,1fr);gap:11px}
+    }
     /* Registro exprés exclusivo de una sesión real de SEGURIDAD. */
     .page-visitas-v2 .guard-only{display:none!important}
     .page-visitas-v2.visit-operational #visitModal .guard-only{display:block!important}
@@ -885,6 +909,13 @@
         <div class="modal-body">
           <div class="form-grid">
             <div class="guard-only guard-house-summary" id="guardSelectedHouse" role="status"></div>
+            <section id="adminHouseContact" class="admin-house-contact" hidden aria-live="polite" aria-label="Contacto de la vivienda seleccionada">
+              <span class="admin-contact-kicker">CONTACTO DE LA VIVIENDA</span>
+              <div class="admin-contact-grid">
+                <div><span>Nombre registrado</span><strong id="adminHouseContactName">—</strong></div>
+                <div><span>Teléfono registrado</span><strong id="adminHouseContactPhone">—</strong></div>
+              </div>
+            </section>
             <div class="form-row guard-hide">
               <div><label>Calle *</label><select id="visitStreet" required>
                   <option value="">Selecciona una calle</option>
@@ -968,6 +999,9 @@
     const adminRoles = ['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA'];
     const actualIsAdmin = adminRoles.includes(actualRole), actualIsSecurity = actualRole === 'SEGURIDAD';
     const operationalRegistrar=actualIsSecurity||actualIsAdmin;
+    const canViewHouseContact=['SUPER_ADMIN','ADMINISTRADOR'].includes(actualRole);
+    document.body.classList.toggle('visit-admin-contact',canViewHouseContact);
+    let houseContactRequestId=0;
     // La versión de caseta es para roles operativos reales, no para vistas simuladas.
     document.body.classList.toggle('visit-operational',operationalRegistrar);
     let guardSelectedHouse=null, guardPhotoData='';
@@ -979,7 +1013,7 @@
     function formatDateTime(date, time) { if (!date) return '—'; return `${window.MJDateDisplay.format(date)}${time ? ' · ' + String(time).slice(0, 5) : ''}` }
     function formatStamp(value) { return value ? window.MJDateDisplay.formatDateTime(value) : '—' }
     function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' }
-    function closeModal(element) { const modal=element.closest('.modal-shell');if(!modal)return;modal.hidden=true;document.body.style.overflow='';if(modal.id==='visitModal'&&operationalRegistrar){resetGuardPhoto();guardSelectedHouse=null;} }
+    function closeModal(element) { const modal=element.closest('.modal-shell');if(!modal)return;modal.hidden=true;document.body.style.overflow='';if(modal.id==='visitModal'&&operationalRegistrar){houseContactRequestId++;$('adminHouseContact').hidden=true;resetGuardPhoto();guardSelectedHouse=null;} }
 
     // La cuadrícula utiliza exclusivamente viviendas autorizadas devueltas por /casas.
     const visitGroups=['Exterior','Gardenias','Jardines 1','Jardines 2','Jardines 3','Lirios','Magnolias','Rosas'];
@@ -1121,6 +1155,8 @@
         return;
       }
       $('visitForm').reset();
+      houseContactRequestId++;
+      $('adminHouseContact').hidden=true;
       resetGuardPhoto();
       const now=mexicoCurrentParts();
       $('visitDate').value=now.date;
@@ -1152,6 +1188,26 @@
         fillNumbers('visitStreet','visitNumber');$('visitNumber').value=String(house.id);
       }
       openModal('visitModal');
+      // No incorporar contactos al padrón ni a los listados compartidos.
+      if(canViewHouseContact&&guardSelectedHouse){
+        const requestId=++houseContactRequestId;
+        const houseId=Number(guardSelectedHouse.id);
+        $('adminHouseContactName').textContent='Consultando…';
+        $('adminHouseContactPhone').textContent='Consultando…';
+        $('adminHouseContact').hidden=false;
+        void api(API_BASE_URL+'/visitas/viviendas/'+houseId+'/contacto',{
+          headers:headers(),cache:'no-store'
+        }).then(response=>{
+          if(requestId!==houseContactRequestId||$('visitModal').hidden)return;
+          $('adminHouseContactName').textContent=response.data?.nombre||'Sin nombre registrado';
+          $('adminHouseContactPhone').textContent=response.data?.telefono||'Sin teléfono registrado';
+        }).catch(error=>{
+          if(requestId!==houseContactRequestId||$('visitModal').hidden)return;
+          $('adminHouseContactName').textContent='No disponible';
+          $('adminHouseContactPhone').textContent='No disponible';
+          toast('No se pudo consultar el contacto de la vivienda: '+error.message);
+        });
+      }
     }
     async function compressGuardIdPhoto(file){
       if(!file||!file.type.startsWith('image/'))throw new Error('Selecciona una imagen válida');
