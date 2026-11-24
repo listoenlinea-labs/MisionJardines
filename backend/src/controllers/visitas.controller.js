@@ -75,6 +75,30 @@ async function viviendas(req, res) {
         return res.status(503).json({ ok: false, message: 'No fue posible consultar las viviendas' });
     }
 }
+// Consulta puntual y privada: nunca agregar estos datos a /viviendas o a la vista de Seguridad.
+async function contactoViviendaAdmin(req, res) {
+    try {
+        if (!['SUPER_ADMIN', 'ADMINISTRADOR'].includes(req.usuario?.rol))
+            return res.status(403).json({ ok: false, message: 'Solo administración puede consultar contactos de viviendas' });
+        const id = Number(req.params.id);
+        if (!Number.isSafeInteger(id) || id <= 0)
+            return res.status(400).json({ ok: false, message: 'Vivienda inválida' });
+        const record = await Casa.findByPk(id, {
+            attributes: [...houseColumns, 'nombre', 'telefono']
+        });
+        if (!record || !esViviendaVisible(record))
+            return res.status(404).json({ ok: false, message: 'La vivienda seleccionada no existe' });
+        const casa = plain(record);
+        res.set('Cache-Control', 'private, no-store');
+        return res.json({ ok: true, data: {
+            nombre: text(casa.nombre) || null,
+            telefono: text(casa.telefono) || null
+        } });
+    } catch (error) {
+        console.error('Error consultando contacto de vivienda para administración:', error.name);
+        return res.status(503).json({ ok: false, message: 'No fue posible consultar el contacto de la vivienda' });
+    }
+}
 async function pendientes(req, res) {
     try {
         // Se cuentan todas las autorizaciones aún sin entrada, incluso las de
@@ -237,4 +261,4 @@ async function cancel(req, res) {
     if (isGuard(req)) return res.status(403).json({ ok: false, message: 'Seguridad no puede cancelar autorizaciones' });
     return transition(req, res, 'PROGRAMADA', 'CANCELADA', {}, 'Visita cancelada');
 }
-module.exports = { list, create, enter, exit, cancel, pendientes, viviendas, readIdentificationPhoto };
+module.exports = { list, create, enter, exit, cancel, pendientes, viviendas, contactoViviendaAdmin, readIdentificationPhoto };
