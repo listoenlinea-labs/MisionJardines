@@ -561,21 +561,21 @@
 
     /* Registro exprés exclusivo de una sesión real de SEGURIDAD. */
     .page-visitas-v2 .guard-only{display:none!important}
-    .page-visitas-v2.visit-guard #visitModal .guard-only{display:block!important}
-    .page-visitas-v2.visit-guard #visitModal .guard-hide{display:none!important}
-    .page-visitas-v2.visit-guard #visitModal .form-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
-    .page-visitas-v2.visit-guard #visitModal .form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .page-visitas-v2.visit-guard #visitModal .form-row>div:only-child{grid-column:1/-1}
-    .page-visitas-v2.visit-guard #visitModal .guard-simple-row{grid-template-columns:minmax(0,1fr)}
-    .page-visitas-v2.visit-guard .guard-house-summary{padding:13px 16px;border-radius:12px;background:#fff5e9;border:1px solid #f4d7b5;color:#874507;font-size:14px;font-weight:800}
-    .page-visitas-v2.visit-guard .guard-camera-btn{display:inline-flex;align-items:center;gap:8px;min-height:47px;background:#fff7ed;border:1px solid #f4c18c;color:#9a510b;font-size:13px}
-    .page-visitas-v2.visit-guard .guard-photo-preview{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0}
-    .page-visitas-v2.visit-guard .guard-photo-preview[hidden]{display:none!important}
-    .page-visitas-v2.visit-guard .guard-photo-preview img{display:block;width:min(240px,100%);max-height:210px;object-fit:contain;border:1px solid #d9e2ec;border-radius:10px}
-    .page-visitas-v2.visit-guard .guard-photo-info{display:block;color:#77869b;font-size:11px;margin-top:9px;line-height:1.5}
+    .page-visitas-v2.visit-operational #visitModal .guard-only{display:block!important}
+    .page-visitas-v2.visit-operational #visitModal .guard-hide{display:none!important}
+    .page-visitas-v2.visit-operational #visitModal .form-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+    .page-visitas-v2.visit-operational #visitModal .form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .page-visitas-v2.visit-operational #visitModal .form-row>div:only-child{grid-column:1/-1}
+    .page-visitas-v2.visit-operational #visitModal .guard-simple-row{grid-template-columns:minmax(0,1fr)}
+    .page-visitas-v2.visit-operational .guard-house-summary{padding:13px 16px;border-radius:12px;background:#fff5e9;border:1px solid #f4d7b5;color:#874507;font-size:14px;font-weight:800}
+    .page-visitas-v2.visit-operational .guard-camera-btn{display:inline-flex;align-items:center;gap:8px;min-height:47px;background:#fff7ed;border:1px solid #f4c18c;color:#9a510b;font-size:13px}
+    .page-visitas-v2.visit-operational .guard-photo-preview{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0}
+    .page-visitas-v2.visit-operational .guard-photo-preview[hidden]{display:none!important}
+    .page-visitas-v2.visit-operational .guard-photo-preview img{display:block;width:min(240px,100%);max-height:210px;object-fit:contain;border:1px solid #d9e2ec;border-radius:10px}
+    .page-visitas-v2.visit-operational .guard-photo-info{display:block;color:#77869b;font-size:11px;margin-top:9px;line-height:1.5}
     @media(max-width:720px){
-      .page-visitas-v2.visit-guard #visitModal .form-row{grid-template-columns:minmax(0,1fr)!important}
-      .page-visitas-v2.visit-guard #visitModal .guard-camera-btn{width:100%;justify-content:center}
+      .page-visitas-v2.visit-operational #visitModal .form-row{grid-template-columns:minmax(0,1fr)!important}
+      .page-visitas-v2.visit-operational #visitModal .guard-camera-btn{width:100%;justify-content:center}
     }
     @media(max-width:1050px) {
       .page-visitas-v2 .metric-grid {
@@ -921,7 +921,7 @@
               <input id="guardIdPhoto" type="file" accept="image/*" capture="environment" hidden aria-label="Tomar foto de identificación">
               <button class="btn guard-camera-btn" id="openGuardCamera" type="button">📷 Tomar foto de INE, licencia u otra</button>
               <div id="guardPhotoPreview" class="guard-photo-preview" hidden><img id="guardPhotoImage" alt="Vista previa de identificación capturada"><button type="button" class="btn" id="removeGuardPhoto">Quitar foto</button></div>
-              <small class="guard-photo-info">Opcional. La foto se almacena cifrada, no se muestra al guardia en el historial.</small>
+              <small class="guard-photo-info">Opcional. La fotografía se guarda cifrada y solo administración puede consultarla.</small>
             </div>
             <div class="guard-hide"><label>Notas para caseta</label><textarea id="visitNotes" maxlength="1200"
                 placeholder="Indicaciones, motivo o información relevante"></textarea></div>
@@ -967,7 +967,9 @@
     const headers = (json = false) => ({ Authorization: `Bearer ${token}`, ...(json ? { 'Content-Type': 'application/json' } : {}) });
     const adminRoles = ['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA'];
     const actualIsAdmin = adminRoles.includes(actualRole), actualIsSecurity = actualRole === 'SEGURIDAD';
-    document.body.classList.toggle('visit-guard',actualIsSecurity);
+    const operationalRegistrar=actualIsSecurity||actualIsAdmin;
+    // La versión de caseta es para roles operativos reales, no para vistas simuladas.
+    document.body.classList.toggle('visit-operational',operationalRegistrar);
     let guardSelectedHouse=null, guardPhotoData='';
     function toast(message) { $('toast').textContent = message; $('toast').style.display = 'block'; clearTimeout(window.visitToast); window.visitToast = setTimeout(() => $('toast').style.display = 'none', 3500) }
     async function api(url, options = {}) { const response = await fetch(url, options); let result = {}; try { result = await response.json() } catch { } if (response.status === 401) { localStorage.removeItem('misionJardinesToken'); sessionStorage.removeItem('misionJardinesToken'); location.replace('login.html'); throw new Error('La sesión expiró') } if (!response.ok || !result.ok) throw new Error(result.message || 'No fue posible completar la solicitud'); return result }
@@ -977,7 +979,7 @@
     function formatDateTime(date, time) { if (!date) return '—'; return `${window.MJDateDisplay.format(date)}${time ? ' · ' + String(time).slice(0, 5) : ''}` }
     function formatStamp(value) { return value ? window.MJDateDisplay.formatDateTime(value) : '—' }
     function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' }
-    function closeModal(element) { const modal=element.closest('.modal-shell');if(!modal)return;modal.hidden=true;document.body.style.overflow='';if(modal.id==='visitModal'&&actualIsSecurity){resetGuardPhoto();guardSelectedHouse=null;} }
+    function closeModal(element) { const modal=element.closest('.modal-shell');if(!modal)return;modal.hidden=true;document.body.style.overflow='';if(modal.id==='visitModal'&&operationalRegistrar){resetGuardPhoto();guardSelectedHouse=null;} }
 
     // La cuadrícula utiliza exclusivamente viviendas autorizadas devueltas por /casas.
     const visitGroups=['Exterior','Gardenias','Jardines 1','Jardines 2','Jardines 3','Lirios','Magnolias','Rosas'];
@@ -1112,20 +1114,26 @@
     function openVisit(selectedHouse=null){
       if(!canCreate()){toast('Tu cuenta no tiene permiso para registrar visitas.');return;}
       if((actualIsAdmin||actualIsSecurity)&&!houses.length){toast('No se pudo cargar el padrón de viviendas. Actualiza la página.');return;}
+      if(operationalRegistrar&&!houses.some(h=>Number(h.id)===Number(selectedHouse?.id))){
+        showVisitPage('homes');
+        $('visitHomesPanel').scrollIntoView({behavior:'smooth',block:'start'});
+        toast('Primero selecciona una vivienda en el tablero para registrar la visita.');
+        return;
+      }
       $('visitForm').reset();
       resetGuardPhoto();
       const now=mexicoCurrentParts();
       $('visitDate').value=now.date;
       $('visitTime').value=now.time;
       $('visitType').value='OTRO';
-      $('authorizedBy').placeholder=actualIsSecurity?'Nombre del guardia':'';
-      $('visitModalIntro').textContent=actualIsSecurity
+      $('authorizedBy').placeholder=operationalRegistrar?'Nombre del guardia':'';
+      $('visitModalIntro').textContent=operationalRegistrar
         ?'Registra la visita para la vivienda seleccionada.'
         :'Selecciona calle y número, e identifica a la persona que ingresará.';
-      $('saveVisit').textContent=actualIsSecurity?'Registrar visita':'Autorizar visita';
-      $('visitModalEyebrow').textContent=actualIsSecurity?'REGISTRO EN CASETA':'NUEVA AUTORIZACIÓN';
+      $('saveVisit').textContent=operationalRegistrar?'Registrar visita':'Autorizar visita';
+      $('visitModalEyebrow').textContent=operationalRegistrar?'REGISTRO DE VISITA':'NUEVA AUTORIZACIÓN';
       if(actualRole==='CONDOMINO')selectedHouse=houses[0]||null;
-      if(actualIsSecurity){
+      if(operationalRegistrar){
         const house=houses.find(h=>Number(h.id)===Number(selectedHouse?.id));
         if(!house){toast('Primero selecciona una vivienda del tablero.');return;}
         guardSelectedHouse=house;
@@ -1137,7 +1145,7 @@
         $('visitNumber').value=String(selectedHouse.id);
       }
       const resident=roleView()==='RESIDENTE';
-      if(resident&&actualRole!=='CONDOMINO'){
+      if(resident&&!operationalRegistrar&&actualRole!=='CONDOMINO'){
         const house=houses.find(h=>Number(h.id)===selectedDemoHouseId());
         if(!house){toast('Selecciona una vivienda para simular la vista residente.');return;}
         $('visitStreet').value=house.calleCorrecta||house.calle;
@@ -1186,14 +1194,15 @@
     $('removeGuardPhoto').addEventListener('click',resetGuardPhoto);
     async function saveVisit(event){
       event.preventDefault();
-      const button=$('saveVisit'),guard=actualIsSecurity;
-      const casaId=guard?Number(guardSelectedHouse?.id):Number($('visitNumber').value);
+      const button=$('saveVisit'),immediate=operationalRegistrar;
+      const casaId=immediate?Number(guardSelectedHouse?.id):Number($('visitNumber').value);
       if(!Number.isSafeInteger(casaId)||casaId<=0){toast('Selecciona una vivienda válida.');return;}
       const payload={
         casaId,nombreVisitante:$('visitorName').value.trim(),autorizadoPor:$('authorizedBy').value.trim(),
         tipo:$('visitType').value,placas:$('visitorPlate').value.trim()
       };
-      if(guard){
+      if(immediate){
+        payload.registroInmediato=true;
         if(guardPhotoData)payload.identificacionFoto=guardPhotoData;
       }else Object.assign(payload,{
         fechaProgramada:$('visitDate').value,horaProgramada:$('visitTime').value,
@@ -1208,7 +1217,7 @@
         notifyVisitsChanged();
         await loadVisits();
         showVisitPage('history');
-        if(guard){toast('Visita registrada correctamente en caseta.');return;}
+        if(immediate){toast('Visita registrada correctamente.');return;}
         lastInvitation='Misión Jardines\nCódigo: '+result.data.codigo+'\nVisitante: '+result.data.nombreVisitante+'\nDestino: '+result.data.casa?.calle+' '+result.data.casa?.numero+'\nFecha: '+formatDateTime(result.data.fechaProgramada,result.data.horaProgramada);
         $('generatedCode').textContent=result.data.codigo;
         $('generatedSummary').textContent=result.data.nombreVisitante+' · '+result.data.casa?.calle+' '+result.data.casa?.numero;
@@ -1223,7 +1232,7 @@
     }
     async function changeStatus(id, action) { const messages = { entrada: '¿Registrar la entrada de esta visita?', salida: '¿Registrar su salida?', cancelar: '¿Cancelar esta autorización?' }; if (!confirm(messages[action])) return; try { await api(`${API_BASE_URL}/visitas/${id}/${action}`, { method: 'PATCH', headers: headers(true) }); notifyVisitsChanged(); await loadVisits(); toast('Registro actualizado correctamente.') } catch (error) { toast(error.message) } }
     document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button))); document.querySelectorAll('.modal-shell').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) closeModal(modal) }));
-    $('rolePreview').value = actualRole === 'SEGURIDAD' ? 'SEGURIDAD' : actualRole === 'CONDOMINO' ? 'RESIDENTE' : 'ADMIN'; if (!actualIsAdmin) document.querySelector('.mj-role-preview').style.display = 'none'; $('rolePreview').addEventListener('change', applyRole); $('newVisitButton').addEventListener('click', openVisit); $('refreshButton').addEventListener('click', loadVisits); $('visitStreet').addEventListener('change', () => fillNumbers('visitStreet', 'visitNumber')); $('demoStreet').addEventListener('change', () => { fillNumbers('demoStreet', 'demoNumber'); render() }); $('demoNumber').addEventListener('change', render); $('visitForm').addEventListener('submit', saveVisit);['filterText', 'filterNumber'].forEach(id => $(id).addEventListener('input', render));['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).addEventListener('change', render)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterNumber'].forEach(id => $(id).value = '');['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).value = ''); render() }); $('copyInvitation').addEventListener('click', async () => { try { await navigator.clipboard.writeText(lastInvitation); toast('Invitación copiada.') } catch { toast('No fue posible copiar automáticamente.') } });
+    $('rolePreview').value = actualRole === 'SEGURIDAD' ? 'SEGURIDAD' : actualRole === 'CONDOMINO' ? 'RESIDENTE' : 'ADMIN'; if (!actualIsAdmin) document.querySelector('.mj-role-preview').style.display = 'none'; $('rolePreview').addEventListener('change', applyRole); $('newVisitButton').addEventListener('click',()=>openVisit()); $('refreshButton').addEventListener('click', loadVisits); $('visitStreet').addEventListener('change', () => fillNumbers('visitStreet', 'visitNumber')); $('demoStreet').addEventListener('change', () => { fillNumbers('demoStreet', 'demoNumber'); render() }); $('demoNumber').addEventListener('change', render); $('visitForm').addEventListener('submit', saveVisit);['filterText', 'filterNumber'].forEach(id => $(id).addEventListener('input', render));['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).addEventListener('change', render)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterNumber'].forEach(id => $(id).value = '');['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).value = ''); render() }); $('copyInvitation').addEventListener('click', async () => { try { await navigator.clipboard.writeText(lastInvitation); toast('Invitación copiada.') } catch { toast('No fue posible copiar automáticamente.') } });
     const searchParams = new URLSearchParams(location.search); $('filterText').value = searchParams.get('buscar') || '';
     applyRole();
     if(actualIsSecurity)showVisitPage('homes');
