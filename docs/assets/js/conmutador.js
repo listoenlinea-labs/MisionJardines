@@ -129,20 +129,28 @@
         setHistoryNavigation();
       }
       // Abrir el diagnóstico no altera llamadas; solo consulta datos ya guardados.
-      let detailRequest=0;
+      let detailRequest=0,detailReturnFocus=null;
       const detailModal=byId('historyDetailModal');
       function closeHistoryDetail(){
         detailRequest++;
         detailModal.hidden=true;
         detailModal.classList.remove('show');
+        if(detailReturnFocus?.isConnected)detailReturnFocus.focus();
+        detailReturnFocus=null;
       }
       byId('historyDetailClose').addEventListener('click',closeHistoryDetail);
+      document.addEventListener('keydown',event=>{
+        if(event.key==='Escape'&&!detailModal.hidden)closeHistoryDetail();
+      });
       detailModal.addEventListener('click',event=>{
         if(event.target===detailModal)closeHistoryDetail();
       });
       byId('historyList').addEventListener('click',event=>{
         const button=event.target.closest?.('button.history-confirmed[data-solicitud]');
-        if(button)void openHistoryDetail(button.dataset.solicitud);
+        if(button){
+          detailReturnFocus=button;
+          void openHistoryDetail(button.dataset.solicitud);
+        }
       });
       const detailLabels={
         SOLICITADA:'Solicitud registrada',ENVIADA:'Orden enviada a central',

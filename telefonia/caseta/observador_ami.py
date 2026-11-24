@@ -87,8 +87,8 @@ class Correlador:
             estado = evento.get("channelstatedesc", "").lower()
             if estado in ("ringing", "ring"):
                 self._emitir(solicitud, "TIMBRANDO")
-            elif estado == "up":
-                self._contestar(solicitud)
+            # "Up" del gateway no equivale por sí mismo a respuesta del
+            # destinatario PSTN. Preferir puente o DialEnd(ANSWER).
         elif tipo == "bridgeenter":
             # SIP respondió / canal puenteado; puede no significar que una
             # persona atendió la línea PSTN detrás de un gateway.
