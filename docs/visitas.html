@@ -566,6 +566,7 @@
     .page-visitas-v2.visit-guard #visitModal .form-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
     .page-visitas-v2.visit-guard #visitModal .form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
     .page-visitas-v2.visit-guard #visitModal .form-row>div:only-child{grid-column:1/-1}
+    .page-visitas-v2.visit-guard #visitModal .guard-simple-row{grid-template-columns:minmax(0,1fr)}
     .page-visitas-v2.visit-guard .guard-house-summary{padding:13px 16px;border-radius:12px;background:#fff5e9;border:1px solid #f4d7b5;color:#874507;font-size:14px;font-weight:800}
     .page-visitas-v2.visit-guard .guard-camera-btn{display:inline-flex;align-items:center;gap:8px;min-height:47px;background:#fff7ed;border:1px solid #f4c18c;color:#9a510b;font-size:13px}
     .page-visitas-v2.visit-guard .guard-photo-preview{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0}
@@ -875,7 +876,7 @@
   <section class="modal-shell" id="visitModal" hidden>
     <div class="modal-box">
       <div class="modal-head">
-        <div><span class="eyebrow">NUEVA AUTORIZACIÓN</span>
+        <div><span class="eyebrow" id="visitModalEyebrow">NUEVA AUTORIZACIÓN</span>
           <h2>Registrar visita</h2>
           <p id="visitModalIntro">Selecciona calle y número, e identifica a la persona que ingresará.</p>
         </div><button class="close" data-close>×</button>
@@ -900,7 +901,7 @@
               <div><label>Fecha programada *</label><input id="visitDate" type="date" required></div>
               <div><label>Hora aproximada</label><input id="visitTime" type="time"></div>
             </div>
-            <div class="form-row">
+            <div class="form-row guard-simple-row">
               <div><label>Tipo *</label><select id="visitType">
                   <option value="FAMILIAR">Familiar</option>
                   <option value="AMISTAD">Amistad</option>
@@ -911,7 +912,7 @@
                 </select></div>
               <div class="guard-hide"><label>Teléfono</label><input id="visitorPhone" inputmode="tel" maxlength="25"></div>
             </div>
-            <div class="form-row">
+            <div class="form-row guard-simple-row">
               <div><label>Placas</label><input id="visitorPlate" maxlength="25"></div>
               <div class="guard-hide"><label>Identificación</label><input id="visitorId" maxlength="100"
                   placeholder="INE, licencia u otra"></div>
@@ -975,7 +976,8 @@
     function typeLabel(value) { return value ? value.charAt(0) + value.slice(1).toLowerCase() : '—' }
     function formatDateTime(date, time) { if (!date) return '—'; return `${window.MJDateDisplay.format(date)}${time ? ' · ' + String(time).slice(0, 5) : ''}` }
     function formatStamp(value) { return value ? window.MJDateDisplay.formatDateTime(value) : '—' }
-    function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' } function closeModal(element) { element.closest('.modal-shell').hidden = true; document.body.style.overflow = '' }
+    function openModal(id) { $(id).hidden = false; document.body.style.overflow = 'hidden' }
+    function closeModal(element) { const modal=element.closest('.modal-shell');if(!modal)return;modal.hidden=true;document.body.style.overflow='';if(modal.id==='visitModal'&&actualIsSecurity){resetGuardPhoto();guardSelectedHouse=null;} }
 
     // La cuadrícula utiliza exclusivamente viviendas autorizadas devueltas por /casas.
     const visitGroups=['Exterior','Gardenias','Jardines 1','Jardines 2','Jardines 3','Lirios','Magnolias','Rosas'];
@@ -1121,6 +1123,7 @@
         ?'Registra la visita para la vivienda seleccionada.'
         :'Selecciona calle y número, e identifica a la persona que ingresará.';
       $('saveVisit').textContent=actualIsSecurity?'Registrar visita':'Autorizar visita';
+      $('visitModalEyebrow').textContent=actualIsSecurity?'REGISTRO EN CASETA':'NUEVA AUTORIZACIÓN';
       if(actualRole==='CONDOMINO')selectedHouse=houses[0]||null;
       if(actualIsSecurity){
         const house=houses.find(h=>Number(h.id)===Number(selectedHouse?.id));
@@ -1219,7 +1222,7 @@
       finally{button.disabled=false;}
     }
     async function changeStatus(id, action) { const messages = { entrada: '¿Registrar la entrada de esta visita?', salida: '¿Registrar su salida?', cancelar: '¿Cancelar esta autorización?' }; if (!confirm(messages[action])) return; try { await api(`${API_BASE_URL}/visitas/${id}/${action}`, { method: 'PATCH', headers: headers(true) }); notifyVisitsChanged(); await loadVisits(); toast('Registro actualizado correctamente.') } catch (error) { toast(error.message) } }
-    document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button))); document.querySelectorAll('.modal-shell').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) { modal.hidden = true; document.body.style.overflow = '' } }));
+    document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button))); document.querySelectorAll('.modal-shell').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) closeModal(modal) }));
     $('rolePreview').value = actualRole === 'SEGURIDAD' ? 'SEGURIDAD' : actualRole === 'CONDOMINO' ? 'RESIDENTE' : 'ADMIN'; if (!actualIsAdmin) document.querySelector('.mj-role-preview').style.display = 'none'; $('rolePreview').addEventListener('change', applyRole); $('newVisitButton').addEventListener('click', openVisit); $('refreshButton').addEventListener('click', loadVisits); $('visitStreet').addEventListener('change', () => fillNumbers('visitStreet', 'visitNumber')); $('demoStreet').addEventListener('change', () => { fillNumbers('demoStreet', 'demoNumber'); render() }); $('demoNumber').addEventListener('change', render); $('visitForm').addEventListener('submit', saveVisit);['filterText', 'filterNumber'].forEach(id => $(id).addEventListener('input', render));['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).addEventListener('change', render)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterNumber'].forEach(id => $(id).value = '');['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).value = ''); render() }); $('copyInvitation').addEventListener('click', async () => { try { await navigator.clipboard.writeText(lastInvitation); toast('Invitación copiada.') } catch { toast('No fue posible copiar automáticamente.') } });
     const searchParams = new URLSearchParams(location.search); $('filterText').value = searchParams.get('buscar') || '';
     applyRole();
