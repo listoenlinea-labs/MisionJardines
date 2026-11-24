@@ -165,7 +165,10 @@ async function transition(req, res, source, next, fields, message) {
             where: { id: visit.id, estatus: source }
         });
         if (!affected) return res.status(409).json({ ok: false, message: 'La visita cambió de estado. Actualiza el historial.' });
-        const result = await Visita.findByPk(visit.id, { include: includeHouse(isGuard(req)) });
+        const result = await Visita.findByPk(visit.id, {
+            include: includeHouse(isGuard(req)),
+            ...(isGuard(req) ? { attributes: ['id', 'casaId', 'nombreVisitante', 'estatus'] } : {})
+        });
         return res.json({ ok: true, message, data: resultForRole(req, result) });
     } catch (error) {
         console.error('Error al cambiar el estado de visita:', error.name);
