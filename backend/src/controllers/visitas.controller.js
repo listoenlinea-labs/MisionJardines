@@ -124,34 +124,37 @@ async function list(req, res) {
 async function create(req, res) {
     try {
         const guard = isGuard(req);
+        // El administrador utiliza el mismo registro inmediato que caseta cuando
+        // llega desde el tablero. No modifica solicitudes tradicionales externas.
+        const immediate = guard || (isManager(req) && req.body.registroInmediato === true);
         const casaId = (isManager(req) || guard) ? Number(req.body.casaId) : Number(req.usuario.casaId);
         if (!isManager(req) && !guard && (!req.usuario.casaId || casaId <= 0))
             return res.status(403).json({ ok: false, message: 'Debes tener una vivienda vinculada para registrar visitas' });
         const name = text(req.body.nombreVisitante), authorizedBy = text(req.body.autorizadoPor);
-        const timestamp = guard ? dateTimeMexico() : null;
-        const date = guard ? timestamp.fecha : parseDate(req.body.fechaProgramada);
-        const time = guard ? timestamp.hora : (/^\d{2}:\d{2}/.test(text(req.body.horaProgramada)) ? text(req.body.horaProgramada).slice(0, 5) : null);
+        const timestamp = immediate ? dateTimeMexico() : null;
+        const date = immediate ? timestamp.fecha : parseDate(req.body.fechaProgramada);
+        const time = immediate ? timestamp.hora : (/^\d{2}:\d{2}/.test(text(req.body.horaProgramada)) ? text(req.body.horaProgramada).slice(0, 5) : null);
         const type = text(req.body.tipo).toUpperCase();
         if (!Number.isSafeInteger(casaId) || casaId <= 0 || !name || name.length > 150 ||
             !authorizedBy || authorizedBy.length > 180 || !date || !TYPES.has(type)) {
             return res.status(400).json({ ok: false, message: 'Casa, visitante, autorización y tipo son obligatorios' });
         }
-        if (!guard && req.body.identificacionFoto)
-            return res.status(403).json({ ok: false, message: 'La fotografía de identificación solo se captura desde caseta' });
-        const photo = guard ? identificationPhoto.validatePhoto(req.body.identificacionFoto) : null;
+        if (!immediate && req.body.identificacionFoto)
+            return res.status(403).json({ ok: false, message: 'La fotografía solo se admite en el registro inmediato autorizado' });
+        const photo = immediate ? identificationPhoto.validatePhoto(req.body.identificacionFoto) : null;
         const encryptedPhoto = photo ? identificationPhoto.encryptPhoto(photo) : null;
         const house = await Casa.findByPk(casaId, { attributes: houseColumns });
         if (!house || !esViviendaVisible(house))
             return res.status(404).json({ ok: false, message: 'La vivienda seleccionada no existe' });
         const fields = {
             codigo: await uniqueCode(), casaId, nombreVisitante: name,
-            telefono: guard ? null : text(req.body.telefono) || null,
+            telefono: immediate ? null : text(req.body.telefono) || null,
             placas: text(req.body.placas).toUpperCase().slice(0,25) || null,
-            identificacion: guard ? null : text(req.body.identificacion) || null,
+            identificacion: immediate ? null : text(req.body.identificacion) || null,
             autorizadoPor: authorizedBy, tipo: type, fechaProgramada: date,
             horaProgramada: time,
-            vigenciaHasta: guard ? null : req.body.vigenciaHasta || null,
-            notas: guard ? null : text(req.body.notas) || null,
+            vigenciaHasta: immediate ? null : req.body.vigenciaHasta || null,
+            notas: immediate ? null : text(req.body.notas) || null,
             creadoPorUsuarioId: req.usuario.usuarioId
         };
         // Foto y visita se guardan en una sola transacción; si falla una, no se publica ninguna.

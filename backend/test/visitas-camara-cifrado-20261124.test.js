@@ -59,14 +59,15 @@ test('Se rechazan archivos ajenos a imágenes y fotos excesivas',()=>{
  assert.throws(()=>service.validatePhoto('data:image/png;base64,'+Buffer.alloc(700*1024).toString('base64')));
 });
 
-test('El formulario del guardia es exclusivo del rol real y oculta los campos innecesarios',()=>{
+test('El formulario exprés está habilitado para Seguridad y Administración, no condóminos',()=>{
  const html=read('docs/visitas.html');
  assert.match(html,/actualIsSecurity = actualRole === 'SEGURIDAD'/);
- assert.match(html,/document\.body\.classList\.toggle\('visit-guard',actualIsSecurity\)/);
- assert.match(html,/\.page-visitas-v2\.visit-guard #visitModal \.guard-hide\{display:none!important\}/);
+ assert.match(html,/const operationalRegistrar=actualIsSecurity\|\|actualIsAdmin/);
+ assert.match(html,/document\.body\.classList\.toggle\('visit-operational',operationalRegistrar\)/);
+ assert.match(html,/\.page-visitas-v2\.visit-operational #visitModal \.guard-hide\{display:none!important\}/);
  assert.match(html,/class="form-row guard-hide"[\s\S]*?id="visitStreet"[\s\S]*?id="visitNumber"/);
  assert.match(html,/id="authorizedBy"/);
- assert.match(html,/placeholder=actualIsSecurity\?'Nombre del guardia'/);
+ assert.match(html,/placeholder=operationalRegistrar\?'Nombre del guardia'/);
  assert.match(html,/class="form-row guard-hide"[\s\S]*?id="visitDate"[\s\S]*?id="visitTime"/);
  assert.match(html,/id="visitType"/);
  assert.match(html,/id="visitorPlate"/);
@@ -77,7 +78,10 @@ test('El formulario del guardia es exclusivo del rol real y oculta los campos in
  assert.match(html,/duration|tipo/);
  assert.match(html,/guardPhotoData=await compressGuardIdPhoto\(file\)/);
  assert.match(html,/if\(guardPhotoData\)payload.identificacionFoto=guardPhotoData/);
- assert.match(html,/if\(guard\)\{toast\('Visita registrada correctamente en caseta\.'\);return;\}/);
+ assert.match(html,/payload\.registroInmediato=true/);
+ assert.match(html,/if\(operationalRegistrar&&!houses\.some\(/);
+ assert.match(html,/if\(resident&&!operationalRegistrar&&actualRole!=='CONDOMINO'\)/);
+ assert.match(html,/if\(immediate\)\{toast\('Visita registrada correctamente\.'\);return;\}/);
  for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)){
   if(match[1].trim())assert.doesNotThrow(()=>new vm.Script(match[1]));
  }
@@ -90,6 +94,7 @@ test('Endpoint de fotografía requiere rol administrador y nunca se agrega a lis
  assert.match(routes,/router\.get\('\/:id\/identificacion-foto', autenticarToken, managers, readIdentificationPhoto\)/);
  assert.match(controller,/if \(!\['SUPER_ADMIN', 'ADMINISTRADOR'\]\.includes\(req\.usuario\.rol\)\) return res\.status\(403\)/);
  assert.match(controller,/return isGuard\(req\) \? publicForGuard\(value\) : value/);
- assert.match(controller,/identificacion: guard \? null/);
+ assert.match(controller,/identificacion: immediate \? null/);
+ assert.match(controller,/const immediate = guard \|\| \(isManager\(req\) && req\.body\.registroInmediato === true\)/);
  assert.match(server,/VisitaIdentificacionFoto'\)\.sync\(\)/);
 });
