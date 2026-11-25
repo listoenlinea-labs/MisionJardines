@@ -46,6 +46,8 @@ function resultForRole(req, value) {
 }
 function ownerScope(req, where) {
     if (!SECURITY_ROLES.has(req.usuario.rol)) where.casaId = req.usuario.casaId || -1;
+    // Mis visitas: un condómino consulta únicamente las que él registró, no las de vecinos.
+    if (req.usuario.rol === 'CONDOMINO') where.creadoPorUsuarioId = req.usuario.usuarioId;
 }
 function parseDate(value) {
     const parsed = text(value);
@@ -138,7 +140,7 @@ async function list(req, res) {
             order: [['fechaProgramada', 'DESC'], ['horaProgramada', 'DESC']],
             limit: 1000
         });
-        const visibles = visits.filter(v => !v.casa || esViviendaVisible(v.casa));
+        const visibles = visits.filter(v => (!v.casa || esViviendaVisible(v.casa)) && (!(isGuard(req) || req.usuario.rol === 'CONDOMINO') || v.estatus !== 'CANCELADA'));
         return res.json({ ok: true, total: visibles.length, data: privateView ? visibles.map(publicForGuard) : visibles });
     } catch (error) {
         console.error('Error al consultar visitas:', error.name);
@@ -148,13 +150,14 @@ async function list(req, res) {
 async function create(req, res) {
     try {
         const guard = isGuard(req);
+        const resident = req.usuario.rol === 'CONDOMINO';
         // El administrador utiliza el mismo registro inmediato que caseta cuando
         // llega desde el tablero. No modifica solicitudes tradicionales externas.
-        const immediate = guard || (isManager(req) && req.body.registroInmediato === true);
+        const immediate = guard || resident || (isManager(req) && req.body.registroInmediato === true);
         const casaId = (isManager(req) || guard) ? Number(req.body.casaId) : Number(req.usuario.casaId);
         if (!isManager(req) && !guard && (!req.usuario.casaId || casaId <= 0))
             return res.status(403).json({ ok: false, message: 'Debes tener una vivienda vinculada para registrar visitas' });
-        const name = text(req.body.nombreVisitante), authorizedBy = text(req.body.autorizadoPor);
+        const name = text(req.body.nombreVisitante), authorizedBy = resident ? 'Condómino' : text(req.body.autorizadoPor);
         const timestamp = immediate ? dateTimeMexico() : null;
         const date = immediate ? timestamp.fecha : parseDate(req.body.fechaProgramada);
         const time = immediate ? timestamp.hora : (/^\d{2}:\d{2}/.test(text(req.body.horaProgramada)) ? text(req.body.horaProgramada).slice(0, 5) : null);
@@ -163,9 +166,11 @@ async function create(req, res) {
             !authorizedBy || authorizedBy.length > 180 || !date || !TYPES.has(type)) {
             return res.status(400).json({ ok: false, message: 'Casa, visitante, autorización y tipo son obligatorios' });
         }
+        if (req.body.identificacionFoto && resident)
+            return res.status(403).json({ ok: false, message: 'La fotografía de identificación solo se permite al personal autorizado' });
         if (!immediate && req.body.identificacionFoto)
             return res.status(403).json({ ok: false, message: 'La fotografía solo se admite en el registro inmediato autorizado' });
-        const photo = immediate ? identificationPhoto.validatePhoto(req.body.identificacionFoto) : null;
+        const photo = !resident && immediate ? identificationPhoto.validatePhoto(req.body.identificacionFoto) : null;
         const encryptedPhoto = photo ? identificationPhoto.encryptPhoto(photo) : null;
         const house = await Casa.findByPk(casaId, { attributes: houseColumns });
         if (!house || !esViviendaVisible(house))
@@ -196,7 +201,7 @@ async function create(req, res) {
             });
         }
         const result = await Visita.findByPk(visit.id, { include: includeHouse() });
-        return res.status(201).json({ ok: true, message: 'Visita autorizada correctamente', data: result });
+        return res.status(201).json({ ok: true, message: resident ? 'Visita registrada correctamente' : 'Visita autorizada correctamente', data: result });
     } catch (error) {
         console.error('Error al registrar visita:', error.name);
         return res.status(error.status || 500).json({ ok: false, message: error.status ? error.message : 'No fue posible registrar la visita' });
@@ -257,8 +262,36 @@ async function exit(req, res) {
     return transition(req, res, 'EN_CURSO', 'FINALIZADA',
         { fechaSalida: new Date(), salidaPorUsuarioId: req.usuario.usuarioId }, 'Salida registrada');
 }
+// Eliminar del listado activo es una cancelación auditada: nunca borrar una entrada real.
+async function deleteOwn(req, res) {
+    try {
+        if (req.usuario.rol !== 'CONDOMINO')
+            return res.status(403).json({ ok: false, message: 'Esta acción es exclusiva del condómino' });
+        const id=Number(req.params.id),casaId=Number(req.usuario.casaId),userId=Number(req.usuario.usuarioId);
+        if (!Number.isSafeInteger(id) || id<=0 || !Number.isSafeInteger(casaId) || casaId<=0)
+            return res.status(400).json({ ok: false, message: 'Registro inválido o vivienda sin vincular' });
+        const record=await Visita.findByPk(id,{
+            attributes:['id','casaId','creadoPorUsuarioId','estatus']
+        });
+        if (!record || Number(record.casaId)!==casaId || Number(record.creadoPorUsuarioId)!==userId)
+            return res.status(404).json({ ok: false, message: 'No se encontró una visita propia' });
+        if (record.estatus!=='PROGRAMADA')
+            return res.status(409).json({ ok:false, message:'Solo puedes eliminar una visita antes de que ingrese' });
+        // CASO CONCURRENTE: evitar cancelar después de que el guardia registre entrada.
+        const [affected]=await Visita.update({estatus:'CANCELADA',actualizadoEn:new Date()},{
+            where:{id,casaId,creadoPorUsuarioId:userId,estatus:'PROGRAMADA'}
+        });
+        if (!affected) return res.status(409).json({ok:false,message:'La visita cambió de estado. Actualiza Mis visitas.'});
+        res.set('Cache-Control','private, no-store');
+        return res.json({ok:true,message:'Registro de visita eliminado',data:{id,estatus:'CANCELADA'}});
+    } catch(error) {
+        console.error('Error al eliminar registro de visita:',error.name);
+        return res.status(500).json({ok:false,message:'No fue posible eliminar el registro'});
+    }
+}
 async function cancel(req, res) {
     if (isGuard(req)) return res.status(403).json({ ok: false, message: 'Seguridad no puede cancelar autorizaciones' });
+    if (req.usuario.rol === 'CONDOMINO') return deleteOwn(req,res);
     return transition(req, res, 'PROGRAMADA', 'CANCELADA', {}, 'Visita cancelada');
 }
-module.exports = { list, create, enter, exit, cancel, pendientes, viviendas, contactoViviendaAdmin, readIdentificationPhoto };
+module.exports = { list, create, enter, exit, cancel, deleteOwn, pendientes, viviendas, contactoViviendaAdmin, readIdentificationPhoto };
