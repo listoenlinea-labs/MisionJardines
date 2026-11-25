@@ -232,6 +232,7 @@ app.use('/api/conmutador/caseta', require('./routes/conmutador-caseta.routes'));
 app.use('/api/conexion', conexionRoutes);
 app.use('/api/entorno', entornoRoutes);
 app.use('/api/zkteco', zktecoRoutes);
+app.use('/api/infraestructura', require('./routes/infraestructura.routes'));
 // Inventario de controles PO1000 independiente: no modifica controladora C3, TAGs ni pagos.
 app.use('/api/controles-remotos', require('./routes/controles-remotos.routes'));
 app.use('/api/camaras', require('./routes/camaras.routes'));
