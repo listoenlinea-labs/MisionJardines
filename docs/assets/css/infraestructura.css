@@ -33,3 +33,5 @@
 @keyframes infra-refresh-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.infra-refresh-button[data-state="loading"] .infra-refresh-icon{animation:none}}
 @media(max-width:850px){.infra-refresh-control{align-items:stretch;width:100%;min-width:0}.infra-refresh-feedback{text-align:center}.infra-refresh-button{min-width:0}}
+
+.infra-live{font-size:12px;font-weight:750;color:#97600b;display:flex;align-items:center;gap:6px}.infra-live::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 8px}.infra-live[data-tone="ok"]{color:#147043}.infra-live[data-tone="bad"]{color:#ac3428}.infra-live[data-tone="ok"]::before{box-shadow:0 0 0 3px #d9f2e4}@media(max-width:850px){.infra-live{justify-content:center}}

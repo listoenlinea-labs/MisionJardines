@@ -10,8 +10,14 @@ router.use((_req,res,next)=>{res.set('Cache-Control','private, no-store');next()
 router.get('/estado',autenticarToken,admin,async(_req,res)=>{
   try {
   const sync=require('../services/zkteco-autosync.service').getZktecoAutoSyncStatus();
-  res.json({ok:true,...await state.status(),autoSync:{ultimoIntento:sync.lastRun,ultimoExito:sync.lastSuccessAt,fallos:sync.consecutiveFailures,ejecutando:sync.running}});
+  res.json({ok:true,...await state.status(_req.query.historial!=='0'),autoSync:{ultimoIntento:sync.lastRun,ultimoExito:sync.lastSuccessAt,fallos:sync.consecutiveFailures,ejecutando:sync.running}});
   }catch(_){res.status(503).json({ok:false,message:'Estado de infraestructura no disponible en MySQL'});}
+});
+router.post('/actualizar',autenticarToken,admin,async(_req,res)=>{
+  try{
+    const result=await state.requestRefresh();
+    return res.status(result.error?409:202).json({ok:!result.error,...result});
+  }catch(_){return res.status(503).json({ok:false,message:'No se pudo solicitar la muestra a caseta'});}
 });
 router.post('/zkteco/reintentar',autenticarToken,admin,async(_req,res)=>{
   try{res.json({ok:true,diagnostico:await state.retryZkteco(),...await state.status()});}
@@ -70,7 +76,7 @@ router.post('/agente',async(req,res)=>{
   }
   const incoming=req.body?.detalles||{};
   const detalles={};
-  for(const key of ['asteriskEnabled','agenteEnabled','asteriskCli','sip6001','sip6002']){
+  for(const key of ['asteriskEnabled','agenteEnabled','asteriskCli','sip6001','sip6002','ubuntuAccesible']){
     detalles[key]=typeof incoming[key]==='boolean'?incoming[key]:null;
   }
   for(const key of ['erroresAsterisk','erroresAgente']){
@@ -79,7 +85,8 @@ router.post('/agente',async(req,res)=>{
   for(const key of ['ubuntu','zkLocal','grandstream']){
     detalles[key]=typeof incoming[key]==='string'&&require('node:net').isIPv4(incoming[key])?incoming[key]:null;
   }
-  try { return res.json({ok:true,...await state.report(ip,equipos,req.body?.resultado,undefined,detalles)}); }
+  const monitor=req.body?.monitor===true?{confirmacion:typeof req.body?.confirmacion==='string'&&/^[0-9a-f-]{36}$/i.test(req.body.confirmacion)?req.body.confirmacion:null}:null;
+  try { return res.json({ok:true,...await state.report(ip,equipos,monitor?null:req.body?.resultado,undefined,detalles,monitor)}); }
   catch(_){return res.status(503).json({ok:false,message:'Diagnóstico temporalmente no disponible'});}
 });
 module.exports=router;

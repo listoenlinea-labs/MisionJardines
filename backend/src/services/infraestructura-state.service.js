@@ -28,21 +28,32 @@ function createService(store){
     // Fallar cerrado si MySQL no responde; no reutilizar un host en memoria.
     return host(await store.read());
   }
-  async function status(){
+  async function status(includeHistory=true){
     // Evitar escribir cada 30 segundos por cada navegador si no hay orden vencida.
     let s=await store.read();
     if(s.job&&['PENDIENTE','EN_EJECUCION'].includes(s.job.estado)&&Date.now()>=s.job.vence){
       s=await store.mutate((current,remember)=>{expire(current,remember);return current;});
     }
-    const ip=host(s),online=fresh(s),h=s.heartbeat;
+    const ip=host(s),online=fresh(s),h=s.heartbeat,live=s.live;
+    const liveFresh=!!live&&Date.now()-live.at<30000;
+    const observed=live? (liveFresh?live:null) : (online?h:null);
     return {configurado:configured(),automatico:dynamicEnabled(),enLinea:online,ultimaComunicacion:h?.at||null,
       ipDetectada:h?.ip||null,ipPrincipal:dynamicEnabled()?(h?.ip||null):(manualHost()||null),
       ipManual:manualHost()||null,ipEnUso:ip||null,
       modoConexion:dynamicEnabled()?(ip?'DINAMICA':'ESPERANDO_IP'):'MANUAL',
-      equipos:online?h.equipos:null,detalles:online?h.detalles:null,
+      equipos:observed?.equipos||null,detalles:observed?.detalles||null,
+      monitoreo:{habilitado:!!live,enVivo:liveFresh,ultimaMuestra:live?.at||null,edadMs:live?Math.max(0,Date.now()-live.at):null,solicitud:s.refresh?.estado==='PENDIENTE'&&Date.now()>=s.refresh.vence?{...s.refresh,estado:'VENCIDA'}:s.refresh||null},
       diagnosticoC3:s.lastDiagnostic&&s.lastDiagnostic.host===ip?s.lastDiagnostic:null,
       zkteco:dynamicEnabled()&&online&&s.probe?.host===h.ip?s.probe:null,
-      orden:s.job||null,historial:await store.history()};
+      orden:s.job||null,...(includeHistory?{historial:await store.history()}:{})};
+  }
+  async function requestRefresh(){
+    return store.mutate(s=>{
+      if(!s.live||Date.now()-s.live.at>=30000)return {error:'Monitor en vivo sin comunicación reciente; verifica la tarea de caseta'};
+      if(s.refresh&&s.refresh.estado==='PENDIENTE'&&Date.now()<s.refresh.vence)return {solicitud:s.refresh};
+      s.refresh={id:randomUUID(),estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+65000};
+      return {solicitud:s.refresh};
+    });
   }
   async function queue(action,user){
     return store.mutate((s,remember)=>{
@@ -94,17 +105,32 @@ function createService(store){
       if(flight.force||!ok||!wasVerified)remember({accion:'C3_DINAMICA',estado:ok?'CORRECTA':'FALLIDA',at:Date.now(),duracionMs:Date.now()-started});
     });
   }
-  async function report(ip,equipos,result,createClient,detalles=null){
+  async function report(ip,equipos,result,createClient,detalles=null,monitor=null){
     if(!publicIP(ip))throw Error('IP pública inválida');
     const initial=await store.mutate((s,remember)=>{
       const previous=s.heartbeat;
+      const previousLive=s.live;
+      if(monitor){
+        s.live={ip,equipos,detalles,at:Date.now()};
+      }
       if(!fresh(s)||previous?.ip!==ip||equipos.zkteco!==true||s.verified?.serial&&s.verified.serial!==serial()){
         s.verified=null;s.probe=null;s.lastDiagnostic=null;s.lastAttempt=0;s.flight=null;
       }
       s.heartbeat={ip,equipos,detalles,at:Date.now()};
       if(!previous||previous.ip!==ip)remember({accion:'AGENTE_CASETA',estado:'REPORTE_RECIBIDO',ip,at:Date.now()});
       for(const name of ['vm','asterisk','agente','grandstream','zkteco'])
-        if(typeof equipos[name]==='boolean'&&previous?.equipos?.[name]!==equipos[name])remember({accion:'ESTADO_'+name.toUpperCase(),estado:equipos[name]?'DISPONIBLE':'NO_DISPONIBLE',at:Date.now()});
+        if(typeof equipos[name]==='boolean'&&(monitor?previousLive:previous)?.equipos?.[name]!==equipos[name]&&(!s.live||monitor))remember({accion:'ESTADO_'+name.toUpperCase(),estado:equipos[name]?'DISPONIBLE':'NO_DISPONIBLE',at:Date.now()});
+      if(monitor){
+        for(const name of ['ubuntuAccesible','asteriskCli','asteriskEnabled','agenteEnabled','sip6001','sip6002']){
+          if(typeof detalles?.[name]==='boolean'&&previousLive?.detalles?.[name]!==detalles[name])
+            remember({accion:'ESTADO_'+name.toUpperCase(),estado:detalles[name]?'DISPONIBLE':'NO_DISPONIBLE',at:Date.now()});
+        }
+        if(s.refresh?.estado==='PENDIENTE'&&Date.now()>=s.refresh.vence)s.refresh.estado='VENCIDA';
+        const confirms=s.refresh?.estado==='PENDIENTE'&&monitor.confirmacion===s.refresh.id;
+        // Una comprobación C3 manual está limitada a una cada 45 s; no leer inventario continuamente.
+        const force=confirms&&(!s.lastAttempt||Date.now()-s.lastAttempt>=retryMs);
+        return {order:null,flight:claim(s,force),refreshId:confirms?s.refresh.id:null};
+      }
       expire(s,remember);
       // Entrega repetible del mismo UUID si el proceso muere antes de recibir el resultado.
       // Las órdenes permitidas son idempotentes y no abren puertas ni reinician servicios activos.
@@ -117,6 +143,19 @@ function createService(store){
       return {order,flight:claim(s,force)};
     });
     await verify(initial.flight,createClient);
+    if(monitor){
+      // La ruta de monitor no consume órdenes de recuperación. Solo confirma el
+      // UUID recibido en un ciclo anterior, después de tomar una muestra nueva.
+      const finish=s=>{
+        if(initial.refreshId&&s.refresh?.id===initial.refreshId&&s.refresh.estado==='PENDIENTE'&&Date.now()<s.refresh.vence){
+          s.refresh.estado='COMPLETADA';s.refresh.completada=Date.now();
+        }
+        const current=host(s);
+        return {orden:null,automatico:dynamicEnabled(),zktecoConfirmado:Boolean(dynamicEnabled()&&current&&s.probe?.host===current&&s.probe?.ok),ipEnUso:current||null,
+          solicitarMuestra:s.refresh?.estado==='PENDIENTE'&&Date.now()<s.refresh.vence?s.refresh.id:null};
+      };
+      return initial.refreshId?store.mutate(finish):finish(await store.read());
+    }
     // Confirmar solo la orden todavía vigente y la IP de la que procede el resultado.
     return store.mutate((s,remember)=>{
       expire(s,remember);
@@ -148,6 +187,6 @@ function createService(store){
     });
     return value;
   }
-  return {effectiveHost,status,queue,report,retryZkteco};
+  return {effectiveHost,status,queue,report,retryZkteco,requestRefresh};
 }
 module.exports={publicIP,normalizeIP,dynamicEnabled,configured,createService,...createService(require('./infraestructura-store.service'))};

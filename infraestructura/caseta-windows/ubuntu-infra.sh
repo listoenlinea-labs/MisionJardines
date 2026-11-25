@@ -17,8 +17,10 @@ systemctl is-active --quiet asterisk && a=true
 systemctl is-active --quiet misionjardines-caseta && b=true
 systemctl is-enabled --quiet asterisk && ae=true
 systemctl is-enabled --quiet misionjardines-caseta && be=true
-cli=false; sip1=null; sip2=null
-if asterisk -rx 'core show uptime' 2>/dev/null | grep -qi 'System uptime'; then
+cli=null; sip1=null; sip2=null
+# No confundir falta de privilegios con caída del CLI.
+if [ "$(id -u)" = 0 ]; then cli=false; fi
+if [ "$(id -u)" = 0 ] && asterisk -rx 'core show uptime' 2>/dev/null | grep -qi 'System uptime'; then
   cli=true; sip1=false; sip2=false
   contacts=$(asterisk -rx 'pjsip show contacts' 2>/dev/null || true)
   printf '%s\n' "$contacts" | grep -q '6001/sip:' && sip1=true
