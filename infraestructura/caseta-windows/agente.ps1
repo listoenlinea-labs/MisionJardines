@@ -1,4 +1,4 @@
-# Recuperación (tarea existente) o monitoreo pasivo independiente (-Monitor).
+# Recuperación programada cada 2 horas o canal ligero de órdenes (-Monitor).
 param([switch]$Monitor)
 $ErrorActionPreference = 'Stop'
 $VBox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
@@ -42,7 +42,7 @@ function Test-Tcp($hostName,$port) {
 
 # Bloque independiente: nunca depende de Hostinger ni de Internet.
 $vm = $false
-if (!$Monitor) { try { $vm = Ensure-VM } catch { Write-Log 'ERROR: No se pudo iniciar o consultar VirtualBox' } }
+# La revisión se serializa entre ambas tareas mediante un mutex local.
 
 # Bloque independiente: reporta IP incluso si VirtualBox fallo.
 try {
@@ -74,21 +74,14 @@ try {
         }
         return $s
     }
-    $script:cachedIP=$null
-    $script:ipAt=[datetime]::MinValue
     function Send-State($s,$result=$null,$confirmation=$null) {
         # Forzar IPv4 en ambas solicitudes sin modificar la red de Windows.
         $curl=(Get-Command curl.exe -CommandType Application -ErrorAction Stop).Source
-        if (!$Monitor -or !$script:cachedIP -or ((Get-Date)-$script:ipAt).TotalSeconds -ge 60) {
-            $ipOutput=& $curl -q -4 -f -sS --connect-timeout 5 --max-time 12 'https://api.ipify.org'
-            $ipExit=$LASTEXITCODE
-            if($ipExit -ne 0){throw "Consulta IPv4 fallida (curl $ipExit)"}
-            $script:cachedIP=($ipOutput -join '').Trim()
-            $script:ipAt=Get-Date
-        }
-        $ip=$script:cachedIP
+        $ipOutput=& $curl -q -4 -f -sS --connect-timeout 5 --max-time 12 'https://api.ipify.org'
+        if($LASTEXITCODE -ne 0){throw 'Consulta IPv4 fallida'}
+        $ip=($ipOutput -join '').Trim()
         if($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$'){throw 'No se obtuvo IPv4'}
-        $body=@{ip=$ip;equipos=$s;resultado=$result;detalles=$script:details;monitor=[bool]$Monitor;confirmacion=$confirmation}|ConvertTo-Json -Depth 5 -Compress
+        $body=@{ip=$ip;equipos=$s;resultado=$result;detalles=$script:details;monitor=$true;economico=$true;confirmacion=$confirmation}|ConvertTo-Json -Depth 5 -Compress
         # Config por stdin: el token no aparece en argumentos ni archivos temporales.
         $escaped=$body.Replace('\','\\').Replace('"','\"')
         $curlConfig=@(
@@ -96,7 +89,7 @@ try {
             'header = "Content-Type: application/json"'
             ('data-binary = "'+$escaped+'"')
         ) -join "`n"
-        $maxTime=if($Monitor){25}else{60}
+        $maxTime=60
         $output=@($curlConfig | & $curl -q -4 -sS --connect-timeout 10 --max-time $maxTime --request POST --config - --write-out '\n%{http_code}' ($config.api+'/infraestructura/agente'))
         $curlExit=$LASTEXITCODE
         if($curlExit -ne 0){throw "Reporte IPv4 fallido (curl $curlExit)"}
@@ -104,7 +97,6 @@ try {
         $http=[int]$output[-1]
         $payload=$output[0..($output.Count-2)] -join ''
         if($http -lt 200 -or $http -ge 300){
-            if($http -eq 422){$script:cachedIP=$null}
             Write-Log ("Codigo HTTP: "+$http)
             try {
                 $diagnostico=$payload|ConvertFrom-Json
@@ -118,44 +110,70 @@ try {
         if($response.ok -ne $true){throw 'Reporte no confirmado por el servidor'}
         return $response
     }
+    function Get-Control {
+        # Solo consulta órdenes: no toca equipos, no consulta ipify, no escribe muestras.
+        $curl=(Get-Command curl.exe -CommandType Application -ErrorAction Stop).Source
+        $cfg='header = "Authorization: Bearer '+$config.token+'"'
+        $out=@($cfg | & $curl -q -4 -f -sS --connect-timeout 5 --max-time 40 --config - ($config.api+'/infraestructura/agente/control'))
+        if($LASTEXITCODE -ne 0){throw 'Canal de ordenes no disponible'}
+        $control=($out -join '')|ConvertFrom-Json
+        if($control.ok -ne $true){throw 'Canal de ordenes sin confirmacion'}
+        return $control
+    }
+    function Invoke-Sample($recover,$order=$null,$confirmation=$null) {
+        $mutex=[System.Threading.Mutex]::new($false,'Global\MJInfraSample')
+        $locked=$false
+        try {
+            try {$locked=$mutex.WaitOne(90000)} catch [System.Threading.AbandonedMutexException] {$locked=$true}
+            if(!$locked){throw 'Otra revision de infraestructura sigue ejecutandose'}
+            $script:vm=$null
+            try {
+                if($recover){$script:vm=Ensure-VM}else{$script:vm=Get-VMRunning}
+            } catch {Write-Log 'No se pudo consultar o iniciar VirtualBox'}
+            $s=Get-State $recover
+            $result=$null
+            if($order){
+                $ok=switch($order.accion){
+                    'CONMUTADOR' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true }
+                    'ZKTECO' { $s.zkteco -eq $true }
+                    'TODOS' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true -and $s.zkteco -eq $true }
+                    'DIAGNOSTICO' { $true }
+                    default { $false }
+                }
+                $result=@{id=$order.id;ok=[bool]$ok}
+            }
+            return Send-State $s $result $confirmation
+        } finally {
+            if($locked){$mutex.ReleaseMutex()}
+            $mutex.Dispose()
+        }
+    }
     if($Monitor){
-        # No inicia VM ni servicios, no consume órdenes de recuperación.
-        $confirmation=$null
+        # Espera saliente acotada; no hay diagnósticos periódicos en este proceso.
         $previousFailure=$false
         while($true){
-            $cycle=[Diagnostics.Stopwatch]::StartNew()
             try {
-                $vm=Get-VMRunning
-                $s=Get-State
-                $response=Send-State $s $null $confirmation
-                $confirmation=$response.solicitarMuestra
-                if($previousFailure){Write-Log 'Comunicacion del monitor restablecida'}
+                $cycle=[Diagnostics.Stopwatch]::StartNew()
+                $control=Get-Control
+                if($control.orden -or $control.solicitarMuestra){
+                    $recover=$control.orden -and $control.orden.accion -in @('CONMUTADOR','TODOS')
+                    $null=Invoke-Sample $recover $control.orden $control.solicitarMuestra
+                }
+                if($previousFailure){Write-Log 'Canal de ordenes restablecido'}
                 $previousFailure=$false
+                # Evitar bucle rápido si el proxy devuelve inmediatamente sin órdenes.
+                if(!$control.orden -and !$control.solicitarMuestra -and $cycle.ElapsedMilliseconds -lt 20000){
+                    Start-Sleep -Milliseconds (20000-[int]$cycle.ElapsedMilliseconds)
+                }
             } catch {
-                if(!$previousFailure){Write-Log 'ERROR: monitor sin reporte; se reintentara'}
+                if(!$previousFailure){Write-Log 'ERROR: canal de ordenes sin comunicacion'}
                 $previousFailure=$true
+                Start-Sleep -Seconds 30
             }
-            $remaining=[Math]::Max(1000,10000-[int]$cycle.ElapsedMilliseconds)
-            Start-Sleep -Milliseconds $remaining
         }
     }
-    $s=Get-State $true
-    $response=Send-State $s
-    if($response.orden){
-        $action=$response.orden.accion
-        if($action -in @('CONMUTADOR','TODOS')){
-            try { $vm=Ensure-VM } catch { $vm=$false }
-            $s=Get-State $true
-        }else{$s=Get-State}
-        $ok=switch($action){
-            'CONMUTADOR' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true }
-            'ZKTECO' { $s.zkteco -eq $true }
-            'TODOS' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true -and $s.zkteco -eq $true }
-            'DIAGNOSTICO' { $true }
-            default { $false }
-        }
-        $response=Send-State $s @{id=$response.orden.id;ok=[bool]$ok}
-    }
+    # La tarea original recupera localmente aun cuando Hostinger no responda.
+    $response=Invoke-Sample $true
     if($response.zktecoConfirmado){
         Write-Log "ZKTeco verificado desde Hostinger. IP en uso: $($response.ipEnUso)"
     }elseif(!$response.automatico){

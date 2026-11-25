@@ -36,7 +36,10 @@ test('actualización real: espera, éxito, error y reintento sin peticiones dupl
  by('infraRefresh').onclick();assert.match(requests[2].url,/actualizar$/);
  requests[2].resolve({ok:true,json:async()=>({ok:true,solicitud:{id:'sample-1'}})});await tick();
  requests[3].resolve({ok:true,json:async()=>({ok:true,enLinea:true,monitoreo:{habilitado:true,enVivo:true,ultimaMuestra:Date.now(),solicitud:{id:'sample-1',estado:'COMPLETADA'}}})});await tick();
+ requests[4].resolve({ok:true,json:async()=>({ok:true,enLinea:true,monitoreo:{habilitado:true,enVivo:true,modo:'DOS_HORAS',caducidadMs:7800000,ultimaMuestra:Date.now(),solicitud:{id:'sample-1',estado:'COMPLETADA'}}})});await tick();
  assert.match(by('infraRefreshFeedback').textContent,/Muestra nueva recibida/);
  assert.equal(by('infraRefresh').dataset.state,'success');
  assert.match(html,/id="infraRefreshFeedback"[^>]*role="status"/);
 });
+
+test('no hay polling de red al mantener abierta la página',()=>{assert.doesNotMatch(source,/setInterval\([^\n]*refresh\(/);assert.match(source,/setInterval\([^\n]*caducidadMs/);});

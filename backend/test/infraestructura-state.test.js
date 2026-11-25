@@ -75,3 +75,34 @@ test('monitor pasivo confirma UUID solo con muestra siguiente, no consume recupe
  assert.ok((await b.requestRefresh()).error);
  assert.equal('historial' in await b.status(false),false);
 });
+
+test('modo dos horas: canal sin muestra ni escritura, orden manual entre procesos y caducidad',async t=>{
+ env(t);const db=shared(),a=state.createService(db),b=state.createService(db);
+ const e={vm:true,asterisk:true,agente:true,zkteco:true},m={economico:true,confirmacion:null};
+ await a.report('1.1.1.1',e,null,good,{},m);
+ await db.mutate(s=>{s.heartbeat.at-=119*60000;s.live.at-=119*60000;});
+ assert.equal(await b.effectiveHost(),'1.1.1.1');
+ assert.equal((await b.status()).monitoreo.modo,'DOS_HORAS');
+ assert.equal((await b.status()).monitoreo.enVivo,true);
+ const before=await db.read();
+ assert.deepEqual(await b.control(undefined,1),{orden:null,solicitarMuestra:null});
+ assert.deepEqual(await db.read(),before);
+ const waiting=b.control(undefined,100);
+ const refresh=(await b.requestRefresh()).solicitud;
+ const signal=await waiting;assert.equal(signal.solicitarMuestra,refresh.id);
+ await a.report('1.1.1.1',e,null,good,{}, {...m,confirmacion:signal.solicitarMuestra});
+ assert.equal((await b.status()).monitoreo.solicitud.estado,'COMPLETADA');
+ const order=(await b.queue('CONMUTADOR',1)).orden;
+ const claimed=await a.control(undefined,1);assert.equal(claimed.orden.id,order.id);
+ assert.equal((await b.control(undefined,1)).orden,null);
+ await a.report('1.1.1.1',e,{id:order.id,ok:true},good,{},m);
+ assert.equal((await b.status()).orden.estado,'COMPLETADA');
+ const zk=(await b.queue('ZKTECO',1)).orden;assert.equal((await a.control(undefined,1)).orden.id,zk.id);
+ await a.report('9.9.9.9',e,{id:zk.id,ok:true},good,{},m);
+ assert.equal((await b.status()).orden.estado,'COMPLETADA');
+ assert.equal(await a.effectiveHost(),'9.9.9.9');
+ await db.mutate(s=>{s.heartbeat.at-=131*60000;s.live.at-=131*60000;});
+ assert.equal(await a.effectiveHost(),undefined);
+ assert.equal((await b.status()).equipos,null);
+ assert.ok((await b.requestRefresh()).solicitud);
+});
