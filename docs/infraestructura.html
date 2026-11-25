@@ -7,8 +7,9 @@
   <link rel="icon" href="assets/images/favicon.ico">
   <script src="assets/js/permissions.js?v=20261125-infra"></script>
   <script src="assets/js/page-access.js?v=20261123-shell-ready-v3"></script>
-  <link rel="stylesheet" href="assets/css/infraestructura.css?v=20261125-v2">
-  <script src="assets/js/infraestructura-admin.js?v=20261125-v3" defer></script>
+  <link rel="stylesheet" href="assets/css/infraestructura.css?v=20261125-v4">
+  <script src="assets/js/infraestructura-bitacora.js?v=20261125-v1" defer></script>
+  <script src="assets/js/infraestructura-admin.js?v=20261125-v4" defer></script>
   <script src="assets/js/site-sidebar.js?v=20261125-infra" defer></script>
 </head>
 <body class="page-infraestructura">
@@ -26,7 +27,7 @@
         <p class="infra-note" id="zkNote">El diagnóstico es de solo lectura. No abre portones ni modifica TAGs.</p>
       </article>
     </section>
-    <section class="infra-card infra-history"><header><div><span class="infra-eyebrow">BITÁCORA</span><h2>Últimas operaciones</h2><p>Órdenes y observaciones recientes; no sustituye los logs de producción.</p></div></header><div id="infraHistory"></div></section>
+    <section class="infra-card infra-history"><header><div><span class="infra-eyebrow">BITÁCORA</span><h2>Últimas operaciones</h2><p>Órdenes y observaciones recientes · Hora de México (Guadalajara) · No sustituye los logs de producción.</p></div></header><div id="infraHistory"></div><nav class="infra-history-pager" id="infraHistoryPager" aria-label="Paginación de la bitácora" hidden><span id="infraHistoryRange" class="infra-history-range"></span><div class="infra-history-nav"><button type="button" class="infra-button" id="infraHistoryPrev" aria-label="Página anterior">‹ Anterior</button><span id="infraHistoryPage" aria-live="polite"></span><button type="button" class="infra-button" id="infraHistoryNext" aria-label="Página siguiente">Siguiente ›</button></div></nav></section>
     <dialog id="infraDialog" class="infra-dialog"><div class="infra-dialog-head"><h2 id="infraDialogTitle">Logs</h2><button id="infraClose" class="infra-button" type="button">Cerrar</button></div><div id="infraDialogBody"></div></dialog>
   </main>
 </body>
