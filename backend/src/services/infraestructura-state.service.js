@@ -34,6 +34,7 @@ function status() {
 function queue(action,user) {
   expire();
   if (!fresh()) return {error:'Agente de caseta sin comunicación reciente'};
+  if (['ZKTECO','TODOS'].includes(action) && !dynamicEnabled()) return {error:'Activa el modo IP dinámica después de validar el agente y la serie del C3'};
   if (job && ['PENDIENTE','EN_EJECUCION'].includes(job.estado)) return {error:'Hay una operación en curso'};
   job={id:randomUUID(),accion:action,usuarioId:user,estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+180000};
   remember({...job}); return {orden:job};
@@ -63,10 +64,13 @@ async function verify(ip, force=false, createClient) {
 async function report(ip,equipos,result) {
   if (heartbeat?.ip !== ip) { verified=null; probe=null; lastAttempt=0; }
   heartbeat={ip,equipos,at:Date.now()};
+  if(equipos.zkteco!==true){ verified=null; probe={ok:false,detalle:'No se confirmó el puerto local C3',at:Date.now()}; }
   expire();
   if (job?.estado==='EN_EJECUCION' && result?.id===job.id && typeof result.ok==='boolean') {
-    job.estado=result.ok?'COMPLETADA':'FALLIDA'; job.finalizada=Date.now();
-    job.detalle=result.ok?'Agente confirmó la acción solicitada':'El agente no pudo completar la acción';
+    const needsC3=['ZKTECO','TODOS'].includes(job.accion);
+    const ok=result.ok && (!needsC3 || (equipos.zkteco===true && effectiveHost()===ip && probe?.ok===true));
+    job.estado=ok?'COMPLETADA':'FALLIDA'; job.finalizada=Date.now();
+    job.detalle=ok?'Agente confirmó la acción solicitada':needsC3?'No se confirmó la recuperación completa; revisa conexión local y protocolo C3':'El agente no pudo completar la acción';
     remember({...job});
   }
   let order=null;
