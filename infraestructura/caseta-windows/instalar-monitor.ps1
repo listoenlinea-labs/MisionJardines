@@ -18,6 +18,10 @@ Copy-Item -LiteralPath $recoveryPath -Destination $backup -ErrorAction Stop
 $recoveryTrigger=New-ScheduledTaskTrigger -AtStartup
 $recoveryTrigger.Delay='PT1M'
 $recoveryTrigger.Repetition=(New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 2)).Repetition
+# No reintentar cada minuto por fallo del script: respetar la frecuencia solicitada.
+$recoverySettings=(Get-ScheduledTask -TaskName $original.TaskName -TaskPath $original.TaskPath).Settings
+$recoverySettings.RestartCount=0
+$recoverySettings.RestartInterval=$null
 $trigger=New-ScheduledTaskTrigger -AtStartup
 $trigger.Delay='PT1M'
 # Reinicio periódico si el proceso termina; IgnoreNew evita duplicados.
@@ -28,13 +32,13 @@ $settings=New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTi
 if(Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue){Stop-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue}
 try {
     Copy-Item -LiteralPath $AgentPath -Destination $recoveryPath -Force
-    Set-ScheduledTask -TaskName $original.TaskName -TaskPath $original.TaskPath -Trigger $recoveryTrigger | Out-Null
+    Set-ScheduledTask -TaskName $original.TaskName -TaskPath $original.TaskPath -Trigger $recoveryTrigger -Settings $recoverySettings | Out-Null
     Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
     Start-ScheduledTask -TaskName $name
     Start-ScheduledTask -TaskName $original.TaskName -TaskPath $original.TaskPath
     Write-Host 'Modo de dos horas instalado. Canal de ordenes activo y recuperacion programada cada 2 horas.'
 } catch {
     Copy-Item -LiteralPath $backup -Destination $recoveryPath -Force
-    Set-ScheduledTask -TaskName $original.TaskName -TaskPath $original.TaskPath -Trigger $original.Triggers | Out-Null
+    Set-ScheduledTask -TaskName $original.TaskName -TaskPath $original.TaskPath -Trigger $original.Triggers -Settings $original.Settings | Out-Null
     throw
 }
