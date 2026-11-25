@@ -7,7 +7,7 @@
   const names={DIAGNOSTICO:'Diagnóstico',CONMUTADOR:'Conmutador',ZKTECO:'ZKTeco',TODOS:'Ambos sistemas',AGENTE_CASETA:'Agente de caseta',C3_PRINCIPAL:'TCP principal',C3_RESPALDO:'TCP respaldo',DIAGNOSTICO_C3:'Diagnóstico C3',IP_C3_VERIFICADA:'IP de caseta verificada',C3_DINAMICA:'TCP dinámico',C3_PRINCIPAL_RESTAURADA:'TCP principal recuperado',ESTADO_VM:'VirtualBox',ESTADO_ASTERISK:'Asterisk',ESTADO_AGENTE:'Agente de llamadas',ESTADO_GRANDSTREAM:'Grandstream',ESTADO_ZKTECO:'ZKTeco local'};
   const apiBase=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
   const token=()=>localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
-  let data=null, loading=false, action=false, lastError='', lastRefreshAt=null;
+  let data=null, loading=false, action=false, lastError='', lastRefreshAt=null, lastHistoryAt=0, refreshNote='';
   const refreshClock=new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
   function refreshFeedback(state){
     const button=by('infraRefresh'),feedback=by('infraRefreshFeedback');
@@ -17,7 +17,7 @@
     by('infraRefreshLabel').textContent=state==='loading'?'Actualizando…':'Actualizar estado';
     feedback.dataset.state=state;
     const time=lastRefreshAt?refreshClock.format(lastRefreshAt):null;
-    feedback.textContent=state==='loading'?'Consultando el servidor…':state==='success'?'Actualización completada · '+time+' h (México)':state==='error'?'No se pudo actualizar'+(time?' · Última correcta: '+time+' h':''):'Sin actualización todavía';
+    feedback.textContent=state==='loading'?(refreshNote||'Consultando el servidor…'):state==='success'?(refreshNote||'Actualización completada')+' · '+time+' h (México)':state==='error'?'No se pudo actualizar'+(time?' · Última correcta: '+time+' h':''):'Sin actualización todavía';
   }
   const historyMedia=matchMedia('(max-width:850px)');
   const historyTools=window.MJInfraBitacora;
@@ -87,22 +87,25 @@
     by('infraHistoryNext').disabled=p.page>=p.pages;
   }
   function render(){
-    const d=data||{},e=d.equipos||{},t=d.detalles||{},z=d.diagnosticoC3,now=Date.now(),recent=z&&now-z.at<10*60*1000&&z.host===d.ipEnUso;
+    const d=data||{},m=d.monitoreo||{},now=Date.now(),age=m.ultimaMuestra?Math.max(0,now-m.ultimaMuestra):null,live=m.habilitado&&age!==null&&age<30000&&m.enVivo,stale=m.habilitado&&!live,e=stale?{}:d.equipos||{},t=stale?{}:d.detalles||{},z=d.diagnosticoC3,recent=z&&now-z.at<10*60*1000&&z.host===d.ipEnUso;
+    const indicator=by('infraLive');
+    indicator.dataset.tone=live?'ok':stale?'bad':'warn';
+    indicator.textContent=live?'En vivo · hace '+Math.floor(age/1000)+' s':stale?'Comunicación interrumpida · última muestra hace '+Math.floor((age||0)/1000)+' s':'Modo periódico · monitor sin instalar';
     const freshProbe=d.zkteco&&now-d.zkteco.at<10*60*1000;
     const sync=d.autoSync||{}, syncRecent=sync.ultimoIntento&&now-new Date(sync.ultimoIntento).getTime()<180000;
-    const phoneVerified=d.enLinea&&e.vm===true&&e.asterisk===true&&e.agente===true&&t.asteriskCli===true;
-    const phoneBad=d.enLinea&&[e.vm,e.asterisk,e.agente,t.asteriskCli].some(v=>v===false);
-    chip('phoneStatus',phoneVerified?'Servicios verificados':phoneBad?'Revisar servicios':d.enLinea?'Verificación parcial':'Sin reporte',phoneVerified?'ok':phoneBad?'bad':'warn');
-    const remote=recent?z.data.estado==='CONECTADO':freshProbe?d.zkteco.ok:null;
-    chip('zkStatus',remote===true?(recent?'Conectado · inventario leído':'Protocolo verificado'):remote===false?'Fallo de diagnóstico':d.modoConexion==='ESPERANDO_IP'?'Esperando IP verificada':'Sin verificar',remote===true?'ok':remote===false?'bad':'warn');
-    const summaries=[['Computadora de caseta',d.enLinea?'Agente en línea':d.configurado?'Sin reporte reciente':'Pendiente de configurar'],['Último reporte',fmt(d.ultimaComunicacion)],['IP pública Telmex',txt(d.ipDetectada)]];
+    const phoneVerified=!stale&&d.enLinea&&e.vm===true&&e.asterisk===true&&e.agente===true&&t.asteriskCli===true;
+    const phoneBad=!stale&&d.enLinea&&[e.vm,e.asterisk,e.agente,t.asteriskCli].some(v=>v===false);
+    chip('phoneStatus',stale?'Comunicación interrumpida':phoneVerified?'Servicios verificados':phoneBad?'Revisar servicios':d.enLinea?'Verificación parcial':'Sin reporte',phoneVerified?'ok':phoneBad?'bad':'warn');
+    const remote=stale?null:recent?z.data.estado==='CONECTADO':freshProbe?d.zkteco.ok:null;
+    chip('zkStatus',stale?'Sin muestra reciente':remote===true?(recent?'Conectado · inventario leído':'Protocolo verificado'):remote===false?'Fallo de diagnóstico':d.modoConexion==='ESPERANDO_IP'?'Esperando IP verificada':'Sin verificar',remote===true?'ok':remote===false?'bad':'warn');
+    const summaries=[['Computadora de caseta',d.enLinea?'Agente en línea':d.configurado?'Sin reporte reciente':'Pendiente de configurar'],['Última muestra de caseta',fmt(m.ultimaMuestra||d.ultimaComunicacion)],['IP pública Telmex',txt(d.ipDetectada)]];
     by('infraSummary').replaceChildren(...summaries.map(([k,v])=>{const el=document.createElement('div'),small=document.createElement('small'),strong=document.createElement('strong');small.textContent=k;strong.textContent=v;el.append(small,strong);return el;}));
     rows('phoneData',[
-      ['VirtualBox / VM conmutador',bool(e.vm,'En ejecución','Detenida')],['IP local Ubuntu',t.ubuntu],['Asterisk · systemctl is-enabled',bool(t.asteriskEnabled,'enabled','No habilitado')],['Asterisk · systemctl is-active',bool(e.asterisk,'active','No activo')],['Agente · systemctl is-enabled',bool(t.agenteEnabled,'enabled','No habilitado')],['Agente · systemctl is-active',bool(e.agente,'active','No activo')],['Asterisk CLI',bool(t.asteriskCli,'Responde','No responde')],['Contacto SIP 6001',bool(t.sip6001,'Configurado','No observado')],['Contacto SIP 6002',bool(t.sip6002,'Configurado','No observado')],['IP Grandstream',t.grandstream],['Grandstream · TCP puerto 80',bool(e.grandstream,'Puerto accesible','Puerto sin respuesta')],['Última orden',d.orden&&['CONMUTADOR','TODOS','DIAGNOSTICO'].includes(d.orden.accion)?d.orden.estado:null]
+      ['VirtualBox / VM conmutador',bool(e.vm,'En ejecución','Detenida')],['IP local Ubuntu',t.ubuntu],['Ubuntu · SSH TCP 22',bool(t.ubuntuAccesible,'Accesible','Sin respuesta')],['Asterisk · systemctl is-enabled',bool(t.asteriskEnabled,'enabled','No habilitado')],['Asterisk · systemctl is-active',bool(e.asterisk,'active','No activo')],['Agente · systemctl is-enabled',bool(t.agenteEnabled,'enabled','No habilitado')],['Agente · systemctl is-active',bool(e.agente,'active','No activo')],['Asterisk CLI',bool(t.asteriskCli,'Responde','No responde')],['Contacto SIP 6001',bool(t.sip6001,'Configurado','No observado')],['Contacto SIP 6002',bool(t.sip6002,'Configurado','No observado')],['IP Grandstream',t.grandstream],['Grandstream · TCP puerto 80',bool(e.grandstream,'Puerto accesible','Puerto sin respuesta')],['Última orden',d.orden&&['CONMUTADOR','TODOS','DIAGNOSTICO'].includes(d.orden.accion)?d.orden.estado:null]
     ]);
     const checks=recent?z.data.pruebas||[]:[];
     rows('zkData',[
-      ['IP pública reportada por caseta',d.ipDetectada],['IP manual de emergencia · Hostinger',d.ipManual],['Destino TCP en uso',d.ipEnUso],['Modo de conexión',d.modoConexion==='DINAMICA'?'TCP dinámico · IP verificada':d.modoConexion==='ESPERANDO_IP'?'Esperando IP verificada':d.modoConexion==='MANUAL'?'TCP manual (variable de entorno)':null],['Recuperación automática',bool(d.automatico,'Habilitada','Deshabilitada')],['IP local C3',t.zkLocal],['Puerto local TCP',bool(e.zkteco,'Accesible','Sin respuesta')],['Conexión desde Hostinger',bool(remote,'Verificada','Falló la comprobación')],['Último diagnóstico',fmt(z?.at)],['Duración del diagnóstico',z?z.duracionMs+' ms':null],['Última autolectura',fmt(sync.ultimoIntento)],['Autolectura reciente',syncRecent?bool(!sync.fallos,'Sin error registrado','Con errores'):null],...checks.map(x=>[x.etapa,{text:(x.ok?'Correcto · ':'Falló · ')+txt(x.detalle)+(x.serial?' · Serie '+x.serial:''),tone:x.ok?'ok':'bad'}])
+      ['IP pública reportada por caseta',d.ipDetectada],['IP manual de emergencia · Hostinger',d.ipManual],['Destino TCP en uso',d.ipEnUso],['Modo de conexión',d.modoConexion==='DINAMICA'?'TCP dinámico · IP verificada':d.modoConexion==='ESPERANDO_IP'?'Esperando IP verificada':d.modoConexion==='MANUAL'?'TCP manual (variable de entorno)':null],['Recuperación automática',bool(d.automatico,'Habilitada','Deshabilitada')],['IP local C3',t.zkLocal],['Puerto local TCP',bool(e.zkteco,'Accesible','Sin respuesta')],['Conexión desde Hostinger',bool(remote,'Verificada','Falló la comprobación')],['Última verificación C3',fmt(d.zkteco?.at)],['Último diagnóstico de inventario',fmt(z?.at)],['Duración del diagnóstico',z?z.duracionMs+' ms':null],['Última autolectura',fmt(sync.ultimoIntento)],['Autolectura reciente',syncRecent?bool(!sync.fallos,'Sin error registrado','Con errores'):null],...checks.map(x=>[x.etapa,{text:(x.ok?'Correcto · ':'Falló · ')+txt(x.detalle)+(x.serial?' · Serie '+x.serial:''),tone:x.ok?'ok':'bad'}])
     ]);
     by('phoneNote').textContent='Los contactos SIP configurados y el CLI no prueban audio ni llamada real. '+(!t.asteriskEnabled&&t.asteriskEnabled!==false?'Instala el diagnóstico SSH restringido en caseta para verificar systemctl.':'');
     by('zkNote').textContent=d.modoConexion==='ESPERANDO_IP'?(d.zkteco?.detalle||'Esperando un reporte autenticado y la validación del C3. No se prueba la IP manual.'):recent?txt(z.data.recomendacion,'Diagnóstico de solo lectura.'):'Pulsa Reintentar conexión para comprobar TCP, protocolo e inventario desde Hostinger. No se modifican TAGs.';
@@ -112,34 +115,44 @@
     by('zkRetry').disabled=loading||action||!!lastError||!data;
     by('infraRefresh').disabled=loading||action;
   }
-  async function refresh(){
+  async function readStatus(signal,forceHistory=false){
+    const full=forceHistory||!data||Date.now()-lastHistoryAt>=30000;
+    const next=await api(full?'estado':'estado?historial=0',undefined,signal);
+    if(full)lastHistoryAt=Date.now();
+    data={...next,historial:next.historial||data?.historial||[]};
+    lastError='';render();
+  }
+  async function refresh(manual=false){
     if(loading||action||document.hidden||window.MJSectionActive===false)return;
-    loading=true;
-    refreshFeedback('loading');
-    by('phoneRetry').disabled=true;
-    by('zkRetry').disabled=true;
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),45000);
+    loading=true;refreshNote=manual?'Solicitando una muestra nueva a caseta…':'';
+    refreshFeedback('loading');by('phoneRetry').disabled=true;by('zkRetry').disabled=true;
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),75000);
     let outcome='error';
     try{
-      data=await api('estado',undefined,controller.signal);
-      lastError='';
-      notice(data.enLinea?'Estado recibido de caseta. Último reporte: '+fmt(data.ultimaComunicacion):'El backend responde; no hay reporte reciente de la computadora de caseta.');
-      render();
-      lastRefreshAt=new Date();
-      outcome='success';
+      if(manual){
+        const requested=await api('actualizar',{},controller.signal);
+        const id=requested.solicitud.id;
+        refreshNote='Esperando diagnóstico nuevo de caseta…';refreshFeedback('loading');
+        for(;;){
+          await readStatus(controller.signal);
+          const result=data.monitoreo?.solicitud;
+          if(result?.id===id&&result.estado==='COMPLETADA'){
+            if(!data.monitoreo.enVivo)throw Error('La muestra ya no está vigente');
+            break;
+          }
+          if(result?.id!==id||result.estado==='VENCIDA')throw Error('La solicitud de diagnóstico venció; intenta nuevamente');
+          await new Promise(resolve=>setTimeout(resolve,2500));
+          if(controller.signal.aborted)throw Error('Tiempo de espera agotado');
+        }
+      }else await readStatus(controller.signal);
+      notice(data.monitoreo?.habilitado?(data.monitoreo.enVivo?'Estados recibidos de caseta. Las comprobaciones C3 muestran su propia hora.':'Comunicación interrumpida: no se muestran estados locales antiguos como activos.'):(data.enLinea?'Modo periódico. Último reporte: '+fmt(data.ultimaComunicacion):'El backend responde; no hay reporte reciente de caseta.'));
+      lastRefreshAt=new Date();refreshNote=manual?'Muestra nueva recibida':'Estado consultado';outcome='success';
     }catch(error){
-      lastError=controller.signal.aborted?'La actualización excedió el tiempo de espera. Intenta nuevamente.':error.message;
-      data=null;
-      notice(lastError,true);
-      render();
+      lastError=controller.signal.aborted?'No llegó una muestra nueva a tiempo. Revisa la comunicación con caseta.':error.message;
+      // Conservar el último reporte para distinguir su edad; no afirmar éxito.
+      notice(lastError,true);render();
     }finally{
-      clearTimeout(timeout);
-      loading=false;
-      refreshFeedback(outcome);
-      const pending=data?.orden&&['PENDIENTE','EN_EJECUCION'].includes(data.orden.estado);
-      by('phoneRetry').disabled=action||!data?.enLinea||pending||!!lastError;
-      by('zkRetry').disabled=action||!!lastError||!data;
+      clearTimeout(timeout);loading=false;refreshFeedback(outcome);render();
     }
   }
   async function run(phone){
@@ -155,13 +168,13 @@
   async function zkLogs(){const root=showDialog('Logs del ZKTeco');const recent=document.createElement('div');const stored=document.createElement('div');root.replaceChildren(recent,stored);events(recent,(data?.historial||[]).filter(x=>/C3|ZKTECO|TODOS/.test(x.accion)));stored.textContent='Consultando errores históricos…';try{const result=await api('zkteco/logs');events(stored,result.data||[]);}catch(error){stored.textContent=error.message;}}
   async function init(){
     if(!by('infraApp')||!(await window.MJAccessReady)||!['ADMINISTRADOR','SUPER_ADMIN'].includes(window.MJVerifiedRole))return;
-    by('infraApp').hidden=false;by('infraRefresh').onclick=()=>refresh();by('phoneRetry').onclick=()=>run(true);by('zkRetry').onclick=()=>run(false);by('phoneLogs').onclick=phoneLogs;by('zkLogs').onclick=zkLogs;
+    by('infraApp').hidden=false;by('infraRefresh').onclick=()=>refresh(true);by('phoneRetry').onclick=()=>run(true);by('zkRetry').onclick=()=>run(false);by('phoneLogs').onclick=phoneLogs;by('zkLogs').onclick=zkLogs;
     by('infraClose').onclick=()=>{const d=by('infraDialog');if(typeof d.close==='function')d.close();else d.removeAttribute('open');};
     by('infraHistoryPrev').onclick=()=>{historyPage--;renderHistory(data?.historial||[]);};
     by('infraHistoryNext').onclick=()=>{historyPage++;renderHistory(data?.historial||[]);};
     const resizeHistory=()=>{historyPage=1;renderHistory(data?.historial||[]);};
     if(historyMedia.addEventListener)historyMedia.addEventListener('change',resizeHistory);else historyMedia.addListener(resizeHistory);
-    render();await refresh();const timer=setInterval(refresh,30000);window.addEventListener('pagehide',()=>{clearInterval(timer);if(historyMedia.removeEventListener)historyMedia.removeEventListener('change',resizeHistory);else historyMedia.removeListener(resizeHistory);},{once:true});
+    render();await refresh();const timer=setInterval(()=>refresh(),10000);window.addEventListener('pagehide',()=>{clearInterval(timer);if(historyMedia.removeEventListener)historyMedia.removeEventListener('change',resizeHistory);else historyMedia.removeListener(resizeHistory);},{once:true});
   }
   init().catch(()=>{});
 })();

@@ -1,9 +1,10 @@
-# Sustituye recuperar-conmutador.ps1; reutiliza la tarea existente.
+# Recuperación (tarea existente) o monitoreo pasivo independiente (-Monitor).
+param([switch]$Monitor)
 $ErrorActionPreference = 'Stop'
 $VBox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
 $VMName = 'conmutador'
 $Base = 'C:\MisionJardines'
-$Log = Join-Path $Base 'recuperacion.log'
+$Log = Join-Path $Base $(if($Monitor){'monitor.log'}else{'recuperacion.log'})
 
 function Write-Log($Message) {
     Add-Content -Path $Log -Value "$(Get-Date -Format s) - $Message"
@@ -24,6 +25,11 @@ function Ensure-VM {
     Write-Log 'Maquina virtual iniciada correctamente'
     return $true
 }
+function Get-VMRunning {
+    $info = & $VBox showvminfo $VMName --machinereadable
+    if ($LASTEXITCODE -ne 0) { return $null }
+    return [bool]($info -contains 'VMState="running"')
+}
 function Test-Tcp($hostName,$port) {
     $client = New-Object System.Net.Sockets.TcpClient
     try {
@@ -36,7 +42,7 @@ function Test-Tcp($hostName,$port) {
 
 # Bloque independiente: nunca depende de Hostinger ni de Internet.
 $vm = $false
-try { $vm = Ensure-VM } catch { Write-Log 'ERROR: No se pudo iniciar o consultar VirtualBox' }
+if (!$Monitor) { try { $vm = Ensure-VM } catch { Write-Log 'ERROR: No se pudo iniciar o consultar VirtualBox' } }
 
 # Bloque independiente: reporta IP incluso si VirtualBox fallo.
 try {
@@ -48,13 +54,14 @@ try {
 
     function Get-State($recover=$false) {
         $s=@{vm=$vm;asterisk=$null;agente=$null;grandstream=$null;zkteco=(Test-Tcp $config.zkLocal 4370)}
-        $script:details=@{ubuntu=$config.ubuntu;zkLocal=$config.zkLocal;grandstream=$config.grandstream}
+        $script:details=@{ubuntu=$config.ubuntu;zkLocal=$config.zkLocal;grandstream=$config.grandstream;ubuntuAccesible=$null}
+        if ($vm) { $script:details.ubuntuAccesible=Test-Tcp $config.ubuntu 22 }
         if ($config.grandstream) { $s.grandstream=Test-Tcp $config.grandstream 80 }
         if ($vm -and $config.sshKey -and $config.knownHosts -and
-            (Test-Path $config.sshKey) -and (Test-Path $config.knownHosts) -and (Test-Tcp $config.ubuntu 22)) {
+            (Test-Path $config.sshKey) -and (Test-Path $config.knownHosts) -and ($script:details.ubuntuAccesible -eq $true)) {
             $command=if($recover){'recover'}else{'status'}
             try {
-                $out=& ssh.exe -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$($config.knownHosts)" -i $config.sshKey "vboxuser@$($config.ubuntu)" $command
+                $out=& ssh.exe -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=5 -o ServerAliveInterval=3 -o ServerAliveCountMax=2 -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$($config.knownHosts)" -i $config.sshKey "vboxuser@$($config.ubuntu)" $command
                 if($LASTEXITCODE -eq 0){
                     $r=($out -join '')|ConvertFrom-Json
                     $s.asterisk=[bool]$r.asterisk
@@ -67,15 +74,21 @@ try {
         }
         return $s
     }
-    function Send-State($s,$result=$null) {
+    $script:cachedIP=$null
+    $script:ipAt=[datetime]::MinValue
+    function Send-State($s,$result=$null,$confirmation=$null) {
         # Forzar IPv4 en ambas solicitudes sin modificar la red de Windows.
         $curl=(Get-Command curl.exe -CommandType Application -ErrorAction Stop).Source
-        $ipOutput=& $curl -q -4 -f -sS --connect-timeout 5 --max-time 12 'https://api.ipify.org'
-        $ipExit=$LASTEXITCODE
-        if($ipExit -ne 0){throw "Consulta IPv4 fallida (curl $ipExit)"}
-        $ip=($ipOutput -join '').Trim()
+        if (!$Monitor -or !$script:cachedIP -or ((Get-Date)-$script:ipAt).TotalSeconds -ge 60) {
+            $ipOutput=& $curl -q -4 -f -sS --connect-timeout 5 --max-time 12 'https://api.ipify.org'
+            $ipExit=$LASTEXITCODE
+            if($ipExit -ne 0){throw "Consulta IPv4 fallida (curl $ipExit)"}
+            $script:cachedIP=($ipOutput -join '').Trim()
+            $script:ipAt=Get-Date
+        }
+        $ip=$script:cachedIP
         if($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$'){throw 'No se obtuvo IPv4'}
-        $body=@{ip=$ip;equipos=$s;resultado=$result;detalles=$script:details}|ConvertTo-Json -Depth 5 -Compress
+        $body=@{ip=$ip;equipos=$s;resultado=$result;detalles=$script:details;monitor=[bool]$Monitor;confirmacion=$confirmation}|ConvertTo-Json -Depth 5 -Compress
         # Config por stdin: el token no aparece en argumentos ni archivos temporales.
         $escaped=$body.Replace('\','\\').Replace('"','\"')
         $curlConfig=@(
@@ -83,13 +96,15 @@ try {
             'header = "Content-Type: application/json"'
             ('data-binary = "'+$escaped+'"')
         ) -join "`n"
-        $output=@($curlConfig | & $curl -q -4 -sS --connect-timeout 10 --max-time 60 --request POST --config - --write-out '\n%{http_code}' ($config.api+'/infraestructura/agente'))
+        $maxTime=if($Monitor){25}else{60}
+        $output=@($curlConfig | & $curl -q -4 -sS --connect-timeout 10 --max-time $maxTime --request POST --config - --write-out '\n%{http_code}' ($config.api+'/infraestructura/agente'))
         $curlExit=$LASTEXITCODE
         if($curlExit -ne 0){throw "Reporte IPv4 fallido (curl $curlExit)"}
         if($output.Count -lt 2 -or $output[-1] -notmatch '^\d{3}$'){throw 'Respuesta HTTP incompleta'}
         $http=[int]$output[-1]
         $payload=$output[0..($output.Count-2)] -join ''
         if($http -lt 200 -or $http -ge 300){
+            if($http -eq 422){$script:cachedIP=$null}
             Write-Log ("Codigo HTTP: "+$http)
             try {
                 $diagnostico=$payload|ConvertFrom-Json
@@ -102,6 +117,27 @@ try {
         $response=$payload|ConvertFrom-Json
         if($response.ok -ne $true){throw 'Reporte no confirmado por el servidor'}
         return $response
+    }
+    if($Monitor){
+        # No inicia VM ni servicios, no consume órdenes de recuperación.
+        $confirmation=$null
+        $previousFailure=$false
+        while($true){
+            $cycle=[Diagnostics.Stopwatch]::StartNew()
+            try {
+                $vm=Get-VMRunning
+                $s=Get-State
+                $response=Send-State $s $null $confirmation
+                $confirmation=$response.solicitarMuestra
+                if($previousFailure){Write-Log 'Comunicacion del monitor restablecida'}
+                $previousFailure=$false
+            } catch {
+                if(!$previousFailure){Write-Log 'ERROR: monitor sin reporte; se reintentara'}
+                $previousFailure=$true
+            }
+            $remaining=[Math]::Max(1000,10000-[int]$cycle.ElapsedMilliseconds)
+            Start-Sleep -Milliseconds $remaining
+        }
     }
     $s=Get-State $true
     $response=Send-State $s
