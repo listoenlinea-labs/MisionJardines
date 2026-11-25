@@ -95,11 +95,12 @@ function encodeField(type, value) {
 }
 
 class C3Client {
-  constructor({ host, port = 4370, password = '', timeoutMs = 7000 } = {}) {
+  constructor({ host, port = 4370, password = '', timeoutMs = 7000, expectedSerial = '' } = {}) {
     if (!host) throw new Error('Falta ZKTECO_HOST');
     this.host = host;
     this.port = Number(port || 4370);
     this.password = String(password || '');
+    this.expectedSerial = String(expectedSerial || '').trim();
     this.timeoutMs = Number(timeoutMs || 7000);
     this.socket = null;
     this.sessionId = 0xFEFE;
@@ -278,6 +279,10 @@ class C3Client {
       auxInCount: Number(params.AuxInCount || 0),
       auxOutCount: Number(params.AuxOutCount || 0)
     };
+    if (this.expectedSerial && String(this.info.serial || '').trim() !== this.expectedSerial) {
+      this._destroySocket();
+      throw new Error('El número de serie C3 no coincide con el controlador autorizado');
+    }
     return this.info;
   }
 
@@ -471,7 +476,8 @@ class C3Client {
 
 function getDirectConfig() {
   return {
-    host: process.env.ZKTECO_DIRECT_HOST || process.env.ZKTECO_HOST,
+    host: require('./infraestructura-state.service').effectiveHost(),
+    expectedSerial: require('./infraestructura-state.service').dynamicEnabled() ? process.env.INFRA_C3_SERIAL : '',
     port: Number(process.env.ZKTECO_DIRECT_PORT || process.env.ZKTECO_PORT || 4370),
     password: process.env.ZKTECO_COMM_PASSWORD || '',
     timeoutMs: Number(process.env.ZKTECO_TIMEOUT_MS || 7000)
