@@ -7,12 +7,23 @@
   const names={DIAGNOSTICO:'Diagnóstico',CONMUTADOR:'Conmutador',ZKTECO:'ZKTeco',TODOS:'Ambos sistemas',AGENTE_CASETA:'Agente de caseta',C3_PRINCIPAL:'TCP principal',C3_RESPALDO:'TCP respaldo',DIAGNOSTICO_C3:'Diagnóstico C3',IP_C3_VERIFICADA:'IP de caseta verificada',C3_DINAMICA:'TCP dinámico',C3_PRINCIPAL_RESTAURADA:'TCP principal recuperado',ESTADO_VM:'VirtualBox',ESTADO_ASTERISK:'Asterisk',ESTADO_AGENTE:'Agente de llamadas',ESTADO_GRANDSTREAM:'Grandstream',ESTADO_ZKTECO:'ZKTeco local'};
   const apiBase=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
   const token=()=>localStorage.getItem('misionJardinesToken')||sessionStorage.getItem('misionJardinesToken');
-  let data=null, loading=false, action=false, lastError='';
+  let data=null, loading=false, action=false, lastError='', lastRefreshAt=null;
+  const refreshClock=new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+  function refreshFeedback(state){
+    const button=by('infraRefresh'),feedback=by('infraRefreshFeedback');
+    button.dataset.state=state;
+    button.setAttribute('aria-busy',String(state==='loading'));
+    button.disabled=loading||action;
+    by('infraRefreshLabel').textContent=state==='loading'?'Actualizando…':'Actualizar estado';
+    feedback.dataset.state=state;
+    const time=lastRefreshAt?refreshClock.format(lastRefreshAt):null;
+    feedback.textContent=state==='loading'?'Consultando el servidor…':state==='success'?'Actualización completada · '+time+' h (México)':state==='error'?'No se pudo actualizar'+(time?' · Última correcta: '+time+' h':''):'Sin actualización todavía';
+  }
   const historyMedia=matchMedia('(max-width:850px)');
   const historyTools=window.MJInfraBitacora;
   let historyPage=1;
-  async function api(path,body){
-    const res=await fetch(apiBase+'/infraestructura/'+path,{cache:'no-store',headers:{Authorization:'Bearer '+token(),'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
+  async function api(path,body,signal){
+    const res=await fetch(apiBase+'/infraestructura/'+path,{cache:'no-store',signal,headers:{Authorization:'Bearer '+token(),'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
     if(res.status===404)throw Error('La API de infraestructura no está desplegada en Hostinger (404). Comprueba el último despliegue del backend; no significa que los equipos estén desconectados.');
     if(res.status===401||res.status===403)throw Error('La sesión no tiene acceso administrativo.');
     const result=await res.json();
@@ -97,19 +108,42 @@
     by('zkNote').textContent=d.modoConexion==='ESPERANDO_IP'?(d.zkteco?.detalle||'Esperando un reporte autenticado y la validación del C3. No se prueba la IP manual.'):recent?txt(z.data.recomendacion,'Diagnóstico de solo lectura.'):'Pulsa Reintentar conexión para comprobar TCP, protocolo e inventario desde Hostinger. No se modifican TAGs.';
     renderHistory(d.historial||[]);
     const pending=d.orden&&['PENDIENTE','EN_EJECUCION'].includes(d.orden.estado);
-    by('phoneRetry').disabled=action||!d.enLinea||pending||!!lastError;
-    by('zkRetry').disabled=action||!!lastError||!data;
+    by('phoneRetry').disabled=loading||action||!d.enLinea||pending||!!lastError;
+    by('zkRetry').disabled=loading||action||!!lastError||!data;
     by('infraRefresh').disabled=loading||action;
   }
   async function refresh(){
     if(loading||action||document.hidden||window.MJSectionActive===false)return;
     loading=true;
-    try{data=await api('estado');lastError='';notice(data.enLinea?'Estado recibido de caseta. Último reporte: '+fmt(data.ultimaComunicacion):'El backend responde; no hay reporte reciente de la computadora de caseta.');}
-    catch(error){lastError=error.message;data=null;notice(error.message,true);}
-    finally{loading=false;render();}
+    refreshFeedback('loading');
+    by('phoneRetry').disabled=true;
+    by('zkRetry').disabled=true;
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),45000);
+    let outcome='error';
+    try{
+      data=await api('estado',undefined,controller.signal);
+      lastError='';
+      notice(data.enLinea?'Estado recibido de caseta. Último reporte: '+fmt(data.ultimaComunicacion):'El backend responde; no hay reporte reciente de la computadora de caseta.');
+      render();
+      lastRefreshAt=new Date();
+      outcome='success';
+    }catch(error){
+      lastError=controller.signal.aborted?'La actualización excedió el tiempo de espera. Intenta nuevamente.':error.message;
+      data=null;
+      notice(lastError,true);
+      render();
+    }finally{
+      clearTimeout(timeout);
+      loading=false;
+      refreshFeedback(outcome);
+      const pending=data?.orden&&['PENDIENTE','EN_EJECUCION'].includes(data.orden.estado);
+      by('phoneRetry').disabled=action||!data?.enLinea||pending||!!lastError;
+      by('zkRetry').disabled=action||!!lastError||!data;
+    }
   }
   async function run(phone){
-    if(action)return;action=true;render();
+    if(action||loading)return;action=true;render();
     try{
       if(phone){await api('orden',{accion:'CONMUTADOR'});notice('Orden enviada. Se ejecutará en la siguiente revisión de la tarea de Windows; no se reinician servicios activos.');}
       else{notice('Verificando conexión TCP, protocolo C3 e inventario desde Hostinger…');const result=await api('zkteco/reintentar',{});data={...data,...result};notice('Diagnóstico C3: '+txt(result.diagnostico?.data?.estado));}
@@ -121,7 +155,7 @@
   async function zkLogs(){const root=showDialog('Logs del ZKTeco');const recent=document.createElement('div');const stored=document.createElement('div');root.replaceChildren(recent,stored);events(recent,(data?.historial||[]).filter(x=>/C3|ZKTECO|TODOS/.test(x.accion)));stored.textContent='Consultando errores históricos…';try{const result=await api('zkteco/logs');events(stored,result.data||[]);}catch(error){stored.textContent=error.message;}}
   async function init(){
     if(!by('infraApp')||!(await window.MJAccessReady)||!['ADMINISTRADOR','SUPER_ADMIN'].includes(window.MJVerifiedRole))return;
-    by('infraApp').hidden=false;by('infraRefresh').onclick=refresh;by('phoneRetry').onclick=()=>run(true);by('zkRetry').onclick=()=>run(false);by('phoneLogs').onclick=phoneLogs;by('zkLogs').onclick=zkLogs;
+    by('infraApp').hidden=false;by('infraRefresh').onclick=()=>refresh();by('phoneRetry').onclick=()=>run(true);by('zkRetry').onclick=()=>run(false);by('phoneLogs').onclick=phoneLogs;by('zkLogs').onclick=zkLogs;
     by('infraClose').onclick=()=>{const d=by('infraDialog');if(typeof d.close==='function')d.close();else d.removeAttribute('open');};
     by('infraHistoryPrev').onclick=()=>{historyPage--;renderHistory(data?.historial||[]);};
     by('infraHistoryNext').onclick=()=>{historyPage++;renderHistory(data?.historial||[]);};
