@@ -48,6 +48,8 @@ try {
 
     function Get-State($recover=$false) {
         $s=@{vm=$vm;asterisk=$null;agente=$null;grandstream=$null;zkteco=(Test-Tcp $config.zkLocal 4370)}
+        $script:details=@{ubuntu=$config.ubuntu;zkLocal=$config.zkLocal;grandstream=$config.grandstream}
+        if ($config.grandstream) { $s.grandstream=Test-Tcp $config.grandstream 80 }
         if ($vm -and $config.sshKey -and $config.knownHosts -and
             (Test-Path $config.sshKey) -and (Test-Path $config.knownHosts) -and (Test-Tcp $config.ubuntu 22)) {
             $command=if($recover){'recover'}else{'status'}
@@ -57,6 +59,9 @@ try {
                     $r=($out -join '')|ConvertFrom-Json
                     $s.asterisk=[bool]$r.asterisk
                     $s.agente=[bool]$r.agente
+                    foreach($key in @('asteriskEnabled','agenteEnabled','asteriskCli','sip6001','sip6002','erroresAsterisk','erroresAgente')) {
+                        $script:details[$key]=$r.$key
+                    }
                 }
             } catch { Write-Log 'No se pudo consultar Ubuntu' }
         }
@@ -64,7 +69,7 @@ try {
     }
     function Send-State($s,$result=$null) {
         $ip=(Invoke-RestMethod 'https://api.ipify.org' -TimeoutSec 12).ToString().Trim()
-        $body=@{ip=$ip;equipos=$s;resultado=$result}|ConvertTo-Json -Depth 5 -Compress
+        $body=@{ip=$ip;equipos=$s;resultado=$result;detalles=$script:details}|ConvertTo-Json -Depth 5 -Compress
         Invoke-RestMethod ($config.api+'/infraestructura/agente') -Method Post -Headers @{Authorization=('Bearer '+$config.token)} -ContentType 'application/json' -Body $body -TimeoutSec 60 -MaximumRedirection 0
     }
     $s=Get-State $true
