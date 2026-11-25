@@ -42,7 +42,7 @@ function createService(store){
       ipManual:manualHost()||null,ipEnUso:ip||null,
       modoConexion:dynamicEnabled()?(ip?'DINAMICA':'ESPERANDO_IP'):'MANUAL',
       equipos:observed?.equipos||null,detalles:observed?.detalles||null,
-      monitoreo:{habilitado:!!live,enVivo:liveFresh,ultimaMuestra:live?.at||null,edadMs:live?Math.max(0,Date.now()-live.at):null,solicitud:s.refresh||null},
+      monitoreo:{habilitado:!!live,enVivo:liveFresh,ultimaMuestra:live?.at||null,edadMs:live?Math.max(0,Date.now()-live.at):null,solicitud:s.refresh?.estado==='PENDIENTE'&&Date.now()>=s.refresh.vence?{...s.refresh,estado:'VENCIDA'}:s.refresh||null},
       diagnosticoC3:s.lastDiagnostic&&s.lastDiagnostic.host===ip?s.lastDiagnostic:null,
       zkteco:dynamicEnabled()&&online&&s.probe?.host===h.ip?s.probe:null,
       orden:s.job||null,...(includeHistory?{historial:await store.history()}:{})};

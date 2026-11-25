@@ -52,3 +52,26 @@ test('resultado tardío no autoriza IP anterior entre procesos',async t=>{
  assert.equal(await a.effectiveHost(),'9.9.9.9');
 });
 test('sin MySQL no reutiliza host manual en dinámico',async t=>{env(t);const a=state.createService({read:async()=>{throw Error('DB');}});await assert.rejects(a.effectiveHost(),/DB/);});
+
+test('monitor pasivo confirma UUID solo con muestra siguiente, no consume recuperación y caduca',async t=>{
+ env(t);const db=shared(),a=state.createService(db),b=state.createService(db);
+ const e={vm:true,asterisk:true,agente:true,zkteco:true},m={confirmacion:null};
+ await a.report('1.1.1.1',e,null,good,{},m);
+ assert.equal((await b.status()).monitoreo.enVivo,true);
+ const order=(await b.queue('CONMUTADOR',1)).orden;
+ const requested=(await b.requestRefresh()).solicitud;
+ assert.equal((await a.requestRefresh()).solicitud.id,requested.id);
+ const first=await a.report('1.1.1.1',{...e,asterisk:false},null,good,{asteriskCli:false},m);
+ assert.equal(first.orden,null);assert.equal(first.solicitarMuestra,requested.id);
+ assert.equal((await b.status()).monitoreo.solicitud.estado,'PENDIENTE');
+ await a.report('1.1.1.1',{...e,asterisk:false},null,good,{asteriskCli:false},{confirmacion:requested.id});
+ assert.equal((await b.status()).monitoreo.solicitud.estado,'COMPLETADA');
+ assert.equal((await b.status()).orden.estado,'PENDIENTE');
+ assert.equal((await a.report('1.1.1.1',e,null,good)).orden.id,order.id);
+ assert.equal((await b.status()).equipos.asterisk,false);
+ await db.mutate(s=>{s.live.at=Date.now()-31000;});
+ assert.equal((await b.status()).monitoreo.enVivo,false);
+ assert.equal((await b.status()).equipos,null);
+ assert.ok((await b.requestRefresh()).error);
+ assert.equal('historial' in await b.status(false),false);
+});

@@ -174,7 +174,7 @@
     by('infraHistoryNext').onclick=()=>{historyPage++;renderHistory(data?.historial||[]);};
     const resizeHistory=()=>{historyPage=1;renderHistory(data?.historial||[]);};
     if(historyMedia.addEventListener)historyMedia.addEventListener('change',resizeHistory);else historyMedia.addListener(resizeHistory);
-    render();await refresh();const timer=setInterval(()=>refresh(),10000);window.addEventListener('pagehide',()=>{clearInterval(timer);if(historyMedia.removeEventListener)historyMedia.removeEventListener('change',resizeHistory);else historyMedia.removeListener(resizeHistory);},{once:true});
+    render();await refresh();const timer=setInterval(()=>refresh(),10000);const ageTimer=setInterval(()=>{if(!document.hidden&&window.MJSectionActive!==false&&data?.monitoreo?.habilitado){const age=Math.max(0,Date.now()-data.monitoreo.ultimaMuestra);const el=by('infraLive');if(age>=30000&&el.dataset.tone!=='bad')render();else if(age<30000&&data.monitoreo.enVivo){el.textContent='En vivo · hace '+Math.floor(age/1000)+' s';}}},1000);window.addEventListener('pagehide',()=>{clearInterval(timer);clearInterval(ageTimer);if(historyMedia.removeEventListener)historyMedia.removeEventListener('change',resizeHistory);else historyMedia.removeListener(resizeHistory);},{once:true});
   }
   init().catch(()=>{});
 })();

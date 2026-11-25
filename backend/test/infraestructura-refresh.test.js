@@ -12,7 +12,7 @@ function harness(){
  const document={getElementById:by,createElement:node,hidden:false};
  let requests=[];
  const window={MJAccessReady:Promise.resolve(true),MJVerifiedRole:'ADMINISTRADOR',MJInfraBitacora:{paginate:()=>({total:0,items:[],page:1,pages:1})},addEventListener(){}};
- const context={document,window,matchMedia:()=>({matches:false,addEventListener(){}}),localStorage:{getItem:()=> 'test'},sessionStorage:{getItem:()=>null},fetch:()=>new Promise((resolve,reject)=>requests.push({resolve,reject})),Intl,Date,AbortController,setTimeout,clearTimeout,setInterval:()=>0,clearInterval};
+ const context={document,window,matchMedia:()=>({matches:false,addEventListener(){}}),localStorage:{getItem:()=> 'test'},sessionStorage:{getItem:()=>null},fetch:(url)=>new Promise((resolve,reject)=>requests.push({url,resolve,reject})),Intl,Date,AbortController,setTimeout,clearTimeout,setInterval:()=>0,clearInterval};
  vm.runInNewContext(source,context);
  return {by,requests};
 }
@@ -27,13 +27,16 @@ test('actualización real: espera, éxito, error y reintento sin peticiones dupl
  assert.equal(by('infraRefresh').dataset.state,'success');
  assert.equal(by('infraRefresh').disabled,false);
  assert.equal(by('infraRefresh')['aria-busy'],'false');
- assert.match(by('infraRefreshFeedback').textContent,/Actualización completada/);
+ assert.match(by('infraRefreshFeedback').textContent,/Estado consultado/);
  by('infraRefresh').onclick();assert.equal(by('infraRefresh').dataset.state,'loading');
  requests[1].reject(Error('Sin conexión'));await tick();
  assert.equal(by('infraRefresh').dataset.state,'error');
  assert.match(by('infraRefreshFeedback').textContent,/Última correcta/);
  assert.equal(by('infraRefresh').disabled,false);
- by('infraRefresh').onclick();requests[2].resolve({ok:true,json:async()=>({ok:true,enLinea:false})});await tick();
+ by('infraRefresh').onclick();assert.match(requests[2].url,/actualizar$/);
+ requests[2].resolve({ok:true,json:async()=>({ok:true,solicitud:{id:'sample-1'}})});await tick();
+ requests[3].resolve({ok:true,json:async()=>({ok:true,enLinea:true,monitoreo:{habilitado:true,enVivo:true,ultimaMuestra:Date.now(),solicitud:{id:'sample-1',estado:'COMPLETADA'}}})});await tick();
+ assert.match(by('infraRefreshFeedback').textContent,/Muestra nueva recibida/);
  assert.equal(by('infraRefresh').dataset.state,'success');
  assert.match(html,/id="infraRefreshFeedback"[^>]*role="status"/);
 });
