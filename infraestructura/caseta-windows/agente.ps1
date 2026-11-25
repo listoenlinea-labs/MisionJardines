@@ -68,62 +68,15 @@ try {
         return $s
     }
     function Send-State($s,$result=$null) {
-        # Telmex ofrece doble pila. Tanto la IP consultada como el POST deben usar IPv4;
-        # no modificar la configuracion IPv6 de Windows ni la validacion del servidor.
+        # Forzar IPv4 en ambas solicitudes sin modificar la red de Windows.
         $curl=(Get-Command curl.exe -CommandType Application -ErrorAction Stop).Source
         $ipOutput=& $curl -q -4 -f -sS --connect-timeout 5 --max-time 12 'https://api.ipify.org'
         $ipExit=$LASTEXITCODE
         if($ipExit -ne 0){throw "Consulta IPv4 fallida (curl $ipExit)"}
         $ip=($ipOutput -join '').Trim()
-        if($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}
-    }
-    $s=Get-State $true
-    $response=Send-State $s
-    if($response.orden){
-        $action=$response.orden.accion
-        if($action -in @('CONMUTADOR','TODOS')){
-            try { $vm=Ensure-VM } catch { $vm=$false }
-            $s=Get-State $true
-        }else{$s=Get-State}
-        $ok=switch($action){
-            'CONMUTADOR' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true }
-            'ZKTECO' { $s.zkteco -eq $true }
-            'TODOS' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true -and $s.zkteco -eq $true }
-            'DIAGNOSTICO' { $true }
-            default { $false }
-        }
-        $response=Send-State $s @{id=$response.orden.id;ok=[bool]$ok}
-    }
-    if($response.zktecoConfirmado){
-        Write-Log "ZKTeco verificado desde Hostinger. IP en uso: $($response.ipEnUso)"
-    }elseif(!$response.automatico){
-        Write-Log 'Reporte enviado. IP dinamica deshabilitada (modo de prueba).'
-    }else{
-        Write-Log 'Reporte enviado. ZKTeco pendiente de verificacion.'
-    }
-} catch {
-    $failure = $_
-    Write-Log ('ERROR infraestructura: ' + $failure.Exception.GetType().Name)
-    if ($failure.Exception.Response) {
-        Write-Log ('Codigo HTTP: ' + [int]$failure.Exception.Response.StatusCode)
-    }
-    if ($failure.ErrorDetails.Message) {
-        try {
-            $diagnostico = $failure.ErrorDetails.Message | ConvertFrom-Json
-            if ($diagnostico.motivo -in @('IP_REPORTADA_INVALIDA','ORIGEN_NO_IPV4_PUBLICA','IP_NO_COINCIDE')) {
-                Write-Log ('Validacion IP: ' + $diagnostico.motivo)
-            }
-        } catch { }
-    }
-    Write-Log 'Se reintentara en la siguiente ejecucion.'
-    exit 1
-}
-if (!$vm) { exit 1 }
-exit 0
-){throw 'No se obtuvo IPv4'}
+        if($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$'){throw 'No se obtuvo IPv4'}
         $body=@{ip=$ip;equipos=$s;resultado=$result;detalles=$script:details}|ConvertTo-Json -Depth 5 -Compress
-        # La configuracion se entrega por stdin; el token no aparece en argumentos,
-        # archivos temporales ni logs. Escapar JSON para el formato de curl config.
+        # Config por stdin: el token no aparece en argumentos ni archivos temporales.
         $escaped=$body.Replace('\','\\').Replace('"','\"')
         $curlConfig=@(
             ('header = "Authorization: Bearer '+$config.token+'"')
@@ -133,52 +86,7 @@ exit 0
         $output=@($curlConfig | & $curl -q -4 -sS --connect-timeout 10 --max-time 60 --request POST --config - --write-out '\n%{http_code}' ($config.api+'/infraestructura/agente'))
         $curlExit=$LASTEXITCODE
         if($curlExit -ne 0){throw "Reporte IPv4 fallido (curl $curlExit)"}
-        if($output.Count -lt 2 -or $output[-1] -notmatch '^\d{3}
-    }
-    $s=Get-State $true
-    $response=Send-State $s
-    if($response.orden){
-        $action=$response.orden.accion
-        if($action -in @('CONMUTADOR','TODOS')){
-            try { $vm=Ensure-VM } catch { $vm=$false }
-            $s=Get-State $true
-        }else{$s=Get-State}
-        $ok=switch($action){
-            'CONMUTADOR' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true }
-            'ZKTECO' { $s.zkteco -eq $true }
-            'TODOS' { $s.vm -and $s.asterisk -eq $true -and $s.agente -eq $true -and $s.zkteco -eq $true }
-            'DIAGNOSTICO' { $true }
-            default { $false }
-        }
-        $response=Send-State $s @{id=$response.orden.id;ok=[bool]$ok}
-    }
-    if($response.zktecoConfirmado){
-        Write-Log "ZKTeco verificado desde Hostinger. IP en uso: $($response.ipEnUso)"
-    }elseif(!$response.automatico){
-        Write-Log 'Reporte enviado. IP dinamica deshabilitada (modo de prueba).'
-    }else{
-        Write-Log 'Reporte enviado. ZKTeco pendiente de verificacion.'
-    }
-} catch {
-    $failure = $_
-    Write-Log ('ERROR infraestructura: ' + $failure.Exception.GetType().Name)
-    if ($failure.Exception.Response) {
-        Write-Log ('Codigo HTTP: ' + [int]$failure.Exception.Response.StatusCode)
-    }
-    if ($failure.ErrorDetails.Message) {
-        try {
-            $diagnostico = $failure.ErrorDetails.Message | ConvertFrom-Json
-            if ($diagnostico.motivo -in @('IP_REPORTADA_INVALIDA','ORIGEN_NO_IPV4_PUBLICA','IP_NO_COINCIDE')) {
-                Write-Log ('Validacion IP: ' + $diagnostico.motivo)
-            }
-        } catch { }
-    }
-    Write-Log 'Se reintentara en la siguiente ejecucion.'
-    exit 1
-}
-if (!$vm) { exit 1 }
-exit 0
-){throw 'Respuesta HTTP incompleta'}
+        if($output.Count -lt 2 -or $output[-1] -notmatch '^\d{3}$'){throw 'Respuesta HTTP incompleta'}
         $http=[int]$output[-1]
         $payload=$output[0..($output.Count-2)] -join ''
         if($http -lt 200 -or $http -ge 300){
