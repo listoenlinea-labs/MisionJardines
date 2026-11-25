@@ -98,7 +98,7 @@ function createService(store){
     if(!publicIP(ip))throw Error('IP pública inválida');
     const initial=await store.mutate((s,remember)=>{
       const previous=s.heartbeat;
-      if(previous?.ip!==ip||equipos.zkteco!==true||s.verified?.serial&&s.verified.serial!==serial()){
+      if(!fresh(s)||previous?.ip!==ip||equipos.zkteco!==true||s.verified?.serial&&s.verified.serial!==serial()){
         s.verified=null;s.probe=null;s.lastDiagnostic=null;s.lastAttempt=0;s.flight=null;
       }
       s.heartbeat={ip,equipos,detalles,at:Date.now()};
