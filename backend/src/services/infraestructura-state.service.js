@@ -51,8 +51,8 @@ function createService(store){
       if(signal?.aborted)done();
     });
     try{
-      const first=await pendingControl();
-      if(first.orden||first.solicitarMuestra||signal?.aborted)return first;
+      // Una sola lectura por espera vacía. Las órdenes ya guardadas antes de
+      // conectar se entregan como máximo al final de la espera.
       await waiting;
       return signal?.aborted?{orden:null,solicitarMuestra:null}:await pendingControl();
     }finally{done();}
@@ -163,8 +163,8 @@ function createService(store){
         }
         if(s.refresh?.estado==='PENDIENTE'&&Date.now()>=s.refresh.vence)s.refresh.estado='VENCIDA';
         const confirms=s.refresh?.estado==='PENDIENTE'&&monitor.confirmacion===s.refresh.id;
-        // Una comprobación C3 manual está limitada a una cada 45 s; no leer inventario continuamente.
-        const force=(confirms||monitor.economico)&&(!s.lastAttempt||Date.now()-s.lastAttempt>=retryMs);
+        // Cada revisión económica completa comprueba C3; no ocurre durante la espera.
+        const force=monitor.economico===true||(confirms&&(!s.lastAttempt||Date.now()-s.lastAttempt>=retryMs));
         return {order:null,flight:claim(s,force),refreshId:confirms?s.refresh.id:null};
       }
       expire(s,remember);

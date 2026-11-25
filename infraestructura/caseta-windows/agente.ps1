@@ -121,7 +121,7 @@ try {
         return $control
     }
     function Invoke-Sample($recover,$order=$null,$confirmation=$null) {
-        $mutex=New-Object System.Threading.Mutex($false,'Global\MJInfraSample')
+        $mutex=[System.Threading.Mutex]::new($false,'Global\MJInfraSample')
         $locked=$false
         try {
             try {$locked=$mutex.WaitOne(90000)} catch [System.Threading.AbandonedMutexException] {$locked=$true}

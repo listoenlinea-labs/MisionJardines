@@ -138,6 +138,7 @@
           const result=data.monitoreo?.solicitud;
           if(result?.id===id&&result.estado==='COMPLETADA'){
             if(!data.monitoreo.enVivo)throw Error('La muestra ya no está vigente');
+            await readStatus(controller.signal,true);
             break;
           }
           if(result?.id!==id||result.estado==='VENCIDA')throw Error('La solicitud de diagnóstico venció; intenta nuevamente');
