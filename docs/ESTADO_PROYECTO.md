@@ -1,25 +1,74 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 23/nov/2026, 23:26, America/Mexico_City.
-**SHA de main consultado:** `9b7ea86540abaa4d55982aa7e0e7f5beff1a74a2`.
+**Última revisión:** 24/nov/2026, 23:30, America/Mexico_City.
+**SHA de main consultado:** `d1f34977cf8aa1079feb04c078817b65021b88fc`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `7a65e1cd76f06d082babe7604046f7e105749abb`,
-historial de 71 commits, PR #470–#476, PR abiertos, archivos de prueba y evidencia
-de checks en GitHub. Se excluyó `6972e3ee38fee5e63181df10ed87f14909d4e7af`,
-dedicado exclusivamente a la bitácora anterior. Los siete PR de producto están
+comparación de main desde `9b7ea86540abaa4d55982aa7e0e7f5beff1a74a2`,
+historial de 89 commits, PR #477–#486, PR abiertos, archivos de prueba y evidencia
+de checks en GitHub. Se excluyó `2ae81f1bc61f5b31e4374bdd6c7ec306acb0fbc9`,
+dedicado exclusivamente a la bitácora anterior. Los diez PR de producto están
 fusionados; no hay PR abiertos ni revertidos nuevos. Sus merges devuelven cero
-workflows y cero estados. Las pruebas presentes, simulaciones y revisiones declaradas
-no equivalen a CI ni a integración real.
-No hay confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, iPhone,
-Asterisk, llamadas, pagos, reservas o pruebas físicas. No se consultaron Hostinger,
-MySQL o C3 directamente y esta revisión no ejecutó SQL, pagos, reservas, llamadas,
-escrituras C3 ni pruebas físicas. No se publican credenciales, teléfonos, correos,
-contactos, comprobantes ni contenido privado del padrón.
+workflows y cero estados. Los cuerpos de #477, #480 y #481 conservan textos de
+borrador/no fusionado ya desactualizados: el estado efectivo de GitHub es fusionado.
+No hay confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, cámara,
+iPhone, Asterisk, llamadas o pruebas físicas. La conversación accesible solo muestra
+preparación de una mini PC y un script de instalación, no ejecución ni funcionamiento
+confirmados. No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no
+ejecutó SQL, pagos, visitas, llamadas, escrituras C3 ni pruebas físicas. No se publican
+credenciales, teléfonos, correos, identificaciones, comprobantes ni contenido privado
+del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 24/nov/2026
+
+El PR [#477](https://github.com/listoenlinea-labs/MisionJardines/pull/477) agrega
+diagnóstico pasivo y opcional del Conmutador sin cambiar la marcación por defecto.
+El historial abre un modal de eventos comprobados; sin telemetría informa que no hay
+datos verificables en vez de inventar estados. Una tabla separada y endpoints protegidos
+guardan eventos Asterisk por UUID sin teléfonos, nombres o audio. Un observador Python
+AMI de solo lectura puede correlacionar el tramo al destino 6002, ignorando el timbrado
+inicial de caseta 6001; se habilita únicamente con configuración explícita y servicio
+independiente. Desactivarlo no detiene el Conmutador. «Contestada» representa respuesta
+SIP observada y, según el gateway, puede no probar respuesta humana en la línea PSTN;
+la duración es del tramo conectado. La Etapa B no se probó en la VM ni con llamadas reales,
+aunque el PR terminó fusionado pese al texto que pedía mantenerlo en borrador.
+
+Los PR [#478](https://github.com/listoenlinea-labs/MisionJardines/pull/478),
+[#482](https://github.com/listoenlinea-labs/MisionJardines/pull/482),
+[#484](https://github.com/listoenlinea-labs/MisionJardines/pull/484),
+[#485](https://github.com/listoenlinea-labs/MisionJardines/pull/485) y
+[#486](https://github.com/listoenlinea-labs/MisionJardines/pull/486) reestructuran
+Visitas por rol. Condómino registra desde Comunidad usando siempre la vivienda de sesión,
+consulta solo sus visitas y puede cancelar únicamente una propia aún PROGRAMADA,
+conservándola como CANCELADA para auditoría. Seguridad recibe el mínimo operativo,
+contador de pendientes y transiciones atómicas de entrada/salida; también dispone de
+registro exprés tras seleccionar vivienda. Administración puede usar el mismo flujo
+inmediato, y solo ADMINISTRADOR/SUPER_ADMIN consulta puntualmente nombre/teléfono de
+la vivienda. La foto opcional de identificación se normaliza sin EXIF, cifra con
+AES-256-GCM en tabla separada y solo administración puede recuperarla mediante respuesta
+privada sin caché. La clave estable es indispensable: perderla impide descifrar fotos.
+La burbuja usa eventos/polling del portal, no notificación push con la web cerrada.
+
+Los PR [#479](https://github.com/listoenlinea-labs/MisionJardines/pull/479)–[#481](https://github.com/listoenlinea-labs/MisionJardines/pull/481)
+y [#483](https://github.com/listoenlinea-labs/MisionJardines/pull/483) refinan Avisos.
+Queda un único editor de descripción enriquecida con HTML filtrado, límite de 4000
+caracteres, formato y eliminación protegida; la vigencia admite 1/3/5/7/14 días y
+el listado excluye vencidos. Condóminos leen tarjetas compactas y modal completo; se
+corrigen el formulario móvil, vista previa de imagen y estados visuales del botón.
+#480 y #481 fueron fusionados aunque sus cuerpos aún dicen abierto/no fusionado. Nada
+de esto prueba persistencia, sanitización o apariencia en el backend/navegador desplegado.
+
+Los diez merges devuelven cero workflows y cero estados. En main se identificaron 58
+bloques en siete archivos focalizados: 5 Node y 7 Python para diagnóstico Asterisk;
+19 de Visitas; 8 de permisos; 3 de UI Seguridad; 12 de Avisos; y 4 de cámara/cifrado.
+Los PR declaran ejecuciones aisladas/simuladas —incluidos 10/10, 11/11, 7/7, 10/10+2/2,
+14/14 y 19/19+9/9—, pero son resultados solapados de iteraciones y no una suite única.
+No hay salida CI ni prueba contra Hostinger/MySQL, dispositivos, cámara, cifrado
+persistente, iPhone, Asterisk/AMI, gateway o llamada real.
 
 ## Implementado en main el 23/nov/2026
 
@@ -894,6 +943,9 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Diagnóstico pasivo Asterisk | Implementado en main y apagado por defecto; VM/AMI y llamadas reales pendientes | #477 añade modal, tabla de eventos y observador AMI opcional de solo lectura. No cambia marcación por defecto; respuesta SIP/duración no garantizan conversación humana |
+| Visitas por rol y privacidad | Implementado en main; MySQL, dispositivos y flujo extremo a extremo pendientes | #478/#482/#484–#486 separan Condómino, Seguridad y Administración, añaden contador/registro exprés, cancelación auditada, foto cifrada y contacto solo admin. Polling no es push y perder la clave impide leer fotos |
+| Avisos editor/vigencia/móvil | Implementado en main; validación E2E y visual pendiente | #479–#481/#483 consolidan editor seguro, vencimiento por días, tarjetas/modal y correcciones móviles. Los cuerpos de #480/#481 están desactualizados respecto al merge real |
 | Avisos oficiales y comprobantes de egresos | Implementado en main; migración, privacidad y operación reales pendientes | #470 publica avisos MySQL de solo lectura para condóminos y admite múltiples adjuntos privados en egresos. No implementa depósitos múltiples, saldos a favor, transferencias ni diario contable y no acredita ingresos |
 | Rendimiento y navegación | Optimizaciones implementadas; benchmark y QA integral pendientes | #471–#472 añaden perfil compartido limitado, carga OCR/PDF diferida, paralelismo y caché LRU selectiva. Secciones sensibles no se conservan; no hay mediciones Hostinger/móvil/escritorio |
 | Conmutador: historial confirmado e iPhone 7 | Implementado en main; despliegue y prueba física pendientes | #473/#475 muestran fechas con actividad y solo órdenes confirmadas por el agente, con espera/modal seguro en Safari; #476 alinea la UI. ENVIADA no demuestra llamada contestada ni audio |
@@ -1019,6 +1071,11 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 24/nov/2026 | PR #477–#486, consulta GitHub de workflows/estados en los diez merges | **0 workflows y 0 estados** en los 10 merges | No hay CI observable; merge y verificaciones declaradas no prueban despliegue |
+| 24/nov/2026 | Siete archivos focalizados de Asterisk, Visitas, permisos, Avisos y cámara/cifrado | **58 bloques presentes** (5 Node + 7 Python + 19 + 8 + 3 + 12 + 4); sin ejecución conjunta recuperable | Evidencia de código, no suite integral aprobada; no prueba VM, MySQL, navegador o dispositivo real |
+| 24/nov/2026 | #477, diagnóstico Asterisk/AMI | **5 Node + 7 Python presentes**; backend/eventos sintéticos declarados, Python no ejecutado contra VM | No acredita AMI, HT813, PSTN, respuesta humana ni duración física |
+| 24/nov/2026 | #479–#481/#483, Avisos | PR declaran **10/10** y después **11/11** focalizadas; archivo final contiene **12 bloques** | Iteraciones aisladas y solapadas; falta backend/DB real y comprobación manual multinavegador |
+| 24/nov/2026 | #478/#482/#484–#486, Visitas | Resultados simulados declarados: **7/7**, **10/10 + 2/2**, **14/14**, **19/19 + 9/9** según cada iteración | No deben sumarse como suite única; falta MySQL, dos sesiones, cámara, cifrado persistente y móvil real |
 | 23/nov/2026 | PR #470–#476, consulta GitHub de workflows/estados en los siete merges | **0 workflows y 0 estados** en los 7 merges | No hay CI observable; merge y verificaciones declaradas no prueban despliegue |
 | 23/nov/2026 | Ocho archivos focalizados de comprobantes, rendimiento, caché e historial/confirmación del Conmutador | **33 bloques presentes** (2 + 5 + 4 + 4 + 1 + 7 + 9 + 1); sin ejecución recuperable conjunta | Evidencia de código, no suite aprobada; no prueba MySQL, navegador, iPhone, Asterisk, banco o C3 |
 | 23/nov/2026 | #471, cinco comprobaciones de regresión y sintaxis declaradas | **5 OK** según el PR, sin workflow ni log CI | Prueba local declarada; falta benchmark real y QA de navegación/archivos/Google |
@@ -1227,6 +1284,10 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Diagnóstico Asterisk #477 | Desplegar primero frontend/backend con telemetría apagada y verificar el modal sin afectar llamadas. En ventana controlada, crear usuario AMI local mínimo, aplicar SQL/auto-creación, activar observador y probar timbrado/no respuesta/ocupado/fallo/respuesta/duración y reversión. Revisar privacidad y no equiparar SIP contestado con persona contestando |
+| Nueva mini PC de Asterisk | La conversación solo confirma preparación/script, no instalación. Verificar sistema, secretos SIP existentes sin publicarlos, servicio principal, spool, AMI local, observador opcional, reinicio/rollback y una llamada controlada antes de sustituir la VM anterior |
+| Visitas #478/#482/#484–#486 | Desplegar frontend/backend juntos en clon; fijar y respaldar de forma segura la clave de cifrado antes de guardar fotos. Probar Condómino/Seguridad/Admin/Mesa, casa de sesión, privacidad JSON, contador/polling, doble entrada 409, cancelación auditada, cámara iPhone/Android, EXIF, tamaños/MIME, contacto solo admin y dos dispositivos reales |
+| Avisos #479–#481/#483 | Probar con MySQL real de ensayo publicación/lectura/borrado, sanitización XSS, texto histórico, límites 4000/4001, cinco vigencias/zonas horarias, expiración sin recarga, imagen y vista previa. Validar 390 px/iPhone, escritorio, teclado, foco, modal y roles sin publicar contenido privado |
 | Avisos y comprobantes de egresos #470 | Respaldar y probar en clon el SQL/Sequelize, roles de alta/borrado/lectura, caducidad, privacidad, 12 archivos de 1 MB, MIME, descargas, adjuntos antiguos, borrado y rollback en Mantenimiento/Extraordinarias/Casa Club. No confundir comprobante de egreso con ingreso bancario |
 | Saldos y depósitos NO implementados de #470 | Diseñar y conciliar diario por vivienda/ámbito, folios únicos, varios depósitos por reserva, sobrantes, transferencias voluntarias auditadas, reversos, concurrencia y doble gasto. Validar banco antes de acreditar; no implementar desde los ejemplos sin reglas y pruebas completas |
 | Rendimiento #471–#472 | Desplegar en ambiente de prueba y medir primera carga/regreso, móvil/escritorio, Data Saver/2G, token/vivienda, expiración de caché, iframes, OCR/PDF, Google online/offline, contadores, modales, adjuntos y creación/edición financiera. Revisar logs sin datos privados y no prometer porcentajes sin medición |
@@ -1358,6 +1419,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-24
+
+- Main consultado a las 23:30, America/Mexico_City, en `d1f34977cf8aa1079feb04c078817b65021b88fc`, 89 commits por delante del SHA guardado.
+- Se excluyó `2ae81f1`, que solo actualizó esta bitácora. Como producto se verificaron los PR #477–#486 fusionados; no hay PR abiertos ni revertidos nuevos. Los cuerpos de #477/#480/#481 conservan estados textuales anteriores al merge.
+- Los diez merges devuelven cero workflows y cero estados. Se registraron 58 bloques focalizados presentes y resultados aislados/simulados declarados por los PR, sin CI ni integración observable.
+- #477 incorpora diagnóstico Asterisk pasivo y opcional; #478/#482/#484–#486 separan Visitas por rol con foto cifrada/contador/cancelación; #479–#481/#483 consolidan Avisos. Ningún merge acredita despliegue o funcionamiento físico.
+- No hubo confirmaciones nuevas accesibles de instalación de la mini PC, Hostinger, MySQL, cámara, iPhone, AMI/Asterisk o llamadas. Esta revisión no ejecutó SQL, visitas, pagos, llamadas, escrituras C3 ni pruebas físicas.
 
 ### 2026-11-23
 
