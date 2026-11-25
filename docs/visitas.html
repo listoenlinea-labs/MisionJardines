@@ -1146,6 +1146,8 @@
       $('visitTabHistory').classList.toggle('visit-switch-active',history);
       $('visitTabHomes').setAttribute('aria-selected',String(!history));
       $('visitTabHistory').setAttribute('aria-selected',String(history));
+      // Al entrar a Mis visitas/Historial siempre refrescar: caseta pudo registrar entradas.
+      if(history)void loadVisits();
     }
     $('visitTabHomes').addEventListener('click',()=>showVisitPage('homes'));
     $('visitTabHistory').addEventListener('click',()=>showVisitPage('history'));
