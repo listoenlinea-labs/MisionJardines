@@ -44,10 +44,23 @@ router.post('/orden',autenticarToken,admin,async(req,res)=>{
     return res.status(result.error?409:202).json({ok:!result.error,...result});
   }catch(_){return res.status(503).json({ok:false,message:'No se pudo guardar la orden en MySQL'});}
 });
-router.post('/agente',async(req,res)=>{
+function autenticarAgente(req,res,next){
   const key=process.env.INFRA_AGENT_TOKEN||'';
   const expected=Buffer.from('Bearer '+key), actual=Buffer.from(req.get('Authorization')||'');
   if(!state.configured()||expected.length!==actual.length||!timingSafeEqual(expected,actual))return res.sendStatus(401);
+  next();
+}
+router.get('/agente/control',autenticarAgente,async(req,res)=>{
+  const controller=new AbortController();
+  const onClose=()=>controller.abort();
+  res.once('close',onClose);
+  try{
+    const result=await state.control(controller.signal);
+    if(!res.destroyed&&!controller.signal.aborted)res.json({ok:true,...result});
+  }catch(_){if(!res.destroyed&&!controller.signal.aborted)res.status(503).json({ok:false,message:'Canal de órdenes no disponible'});}
+  finally{res.removeListener('close',onClose);}
+});
+router.post('/agente',autenticarAgente,async(req,res)=>{
   const ip=state.normalizeIP(req.ip);
   // No aceptar destinos arbitrarios ni IP privada; debe coincidir con el origen
   // observado por el proxy de Hostinger (trust proxy 1, ingress único).
@@ -85,8 +98,8 @@ router.post('/agente',async(req,res)=>{
   for(const key of ['ubuntu','zkLocal','grandstream']){
     detalles[key]=typeof incoming[key]==='string'&&require('node:net').isIPv4(incoming[key])?incoming[key]:null;
   }
-  const monitor=req.body?.monitor===true?{confirmacion:typeof req.body?.confirmacion==='string'&&/^[0-9a-f-]{36}$/i.test(req.body.confirmacion)?req.body.confirmacion:null}:null;
-  try { return res.json({ok:true,...await state.report(ip,equipos,monitor?null:req.body?.resultado,undefined,detalles,monitor)}); }
+  const monitor=req.body?.monitor===true?{economico:req.body?.economico===true,confirmacion:typeof req.body?.confirmacion==='string'&&/^[0-9a-f-]{36}$/i.test(req.body.confirmacion)?req.body.confirmacion:null}:null;
+  try { return res.json({ok:true,...await state.report(ip,equipos,monitor&&!monitor.economico?null:req.body?.resultado,undefined,detalles,monitor)}); }
   catch(_){return res.status(503).json({ok:false,message:'Diagnóstico temporalmente no disponible'});}
 });
 module.exports=router;

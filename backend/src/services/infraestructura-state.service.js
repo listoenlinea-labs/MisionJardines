@@ -9,9 +9,9 @@ const dynamicEnabled = () => process.env.INFRA_DYNAMIC_ZKTECO === 'true';
 const configured = () => Buffer.byteLength(process.env.INFRA_AGENT_TOKEN || '') >= 32;
 const manualHost = () => process.env.ZKTECO_DIRECT_HOST || process.env.ZKTECO_HOST;
 // Estado compartido en MySQL; conservar las guardas en cada lectura.
-const ttl=12*60*1000, retryMs=45000, leaseMs=90000;
+const ttl=12*60*1000, economyTtl=130*60*1000, manualTtl=3*60*1000, retryMs=45000, leaseMs=90000;
 const serial=()=>String(process.env.INFRA_C3_SERIAL||'').trim();
-const fresh=s=>!!s.heartbeat && Date.now()-s.heartbeat.at<ttl;
+const fresh=s=>!!s.heartbeat && Date.now()-s.heartbeat.at<(s.heartbeat.economico?economyTtl:ttl);
 function host(s){
   if(!dynamicEnabled())return manualHost();
   const h=s.heartbeat,v=s.verified;
@@ -23,6 +23,40 @@ function expire(s,remember){
   }
 }
 function createService(store){
+  // Una espera acotada por agente: notificación inmediata dentro del proceso;
+  // en otro proceso, la nueva lectura a los 25 s encuentra la orden durable.
+  // No se mantiene ninguna transacción ni conexión MySQL durante la espera.
+  const waiters=new Set();
+  function wake(){for(const notify of [...waiters])notify();}
+  async function pendingControl(){
+    const s=await store.read(),now=Date.now(),job=s.job;
+    const refresh=s.refresh?.estado==='PENDIENTE'&&now<s.refresh.vence?s.refresh.id:null;
+    const ready=job&&now<job.vence&&(job.estado==='PENDIENTE'||(job.estado==='EN_EJECUCION'&&now-(job.entregada||0)>=leaseMs));
+    if(!ready)return {orden:null,solicitarMuestra:refresh};
+    return store.mutate((current,remember)=>{
+      expire(current,remember);
+      const j=current.job;
+      let orden=null;
+      if(j&&(j.estado==='PENDIENTE'||(j.estado==='EN_EJECUCION'&&Date.now()-(j.entregada||0)>=leaseMs))){
+        j.estado='EN_EJECUCION';j.entregada=Date.now();orden={id:j.id,accion:j.accion};
+      }
+      return {orden,solicitarMuestra:current.refresh?.estado==='PENDIENTE'&&Date.now()<current.refresh.vence?current.refresh.id:null};
+    });
+  }
+  async function control(signal,waitMs=25000){
+    let done,timer;
+    const waiting=new Promise(resolve=>{
+      done=()=>{clearTimeout(timer);waiters.delete(done);signal?.removeEventListener('abort',done);resolve();};
+      waiters.add(done);timer=setTimeout(done,waitMs);signal?.addEventListener('abort',done,{once:true});
+      if(signal?.aborted)done();
+    });
+    try{
+      const first=await pendingControl();
+      if(first.orden||first.solicitarMuestra||signal?.aborted)return first;
+      await waiting;
+      return signal?.aborted?{orden:null,solicitarMuestra:null}:await pendingControl();
+    }finally{done();}
+  }
   async function effectiveHost(){
     if(!dynamicEnabled())return manualHost();
     // Fallar cerrado si MySQL no responde; no reutilizar un host en memoria.
@@ -35,35 +69,37 @@ function createService(store){
       s=await store.mutate((current,remember)=>{expire(current,remember);return current;});
     }
     const ip=host(s),online=fresh(s),h=s.heartbeat,live=s.live;
-    const liveFresh=!!live&&Date.now()-live.at<30000;
+    const liveFresh=!!live&&Date.now()-live.at<(live.economico?economyTtl:30000);
     const observed=live? (liveFresh?live:null) : (online?h:null);
     return {configurado:configured(),automatico:dynamicEnabled(),enLinea:online,ultimaComunicacion:h?.at||null,
       ipDetectada:h?.ip||null,ipPrincipal:dynamicEnabled()?(h?.ip||null):(manualHost()||null),
       ipManual:manualHost()||null,ipEnUso:ip||null,
       modoConexion:dynamicEnabled()?(ip?'DINAMICA':'ESPERANDO_IP'):'MANUAL',
       equipos:observed?.equipos||null,detalles:observed?.detalles||null,
-      monitoreo:{habilitado:!!live,enVivo:liveFresh,ultimaMuestra:live?.at||null,edadMs:live?Math.max(0,Date.now()-live.at):null,solicitud:s.refresh?.estado==='PENDIENTE'&&Date.now()>=s.refresh.vence?{...s.refresh,estado:'VENCIDA'}:s.refresh||null},
+      monitoreo:{habilitado:!!live,enVivo:liveFresh,modo:live?.economico?'DOS_HORAS':'ANTERIOR',intervaloMs:live?.economico?7200000:10000,caducidadMs:live?.economico?economyTtl:30000,ultimaMuestra:live?.at||null,edadMs:live?Math.max(0,Date.now()-live.at):null,solicitud:s.refresh?.estado==='PENDIENTE'&&Date.now()>=s.refresh.vence?{...s.refresh,estado:'VENCIDA'}:s.refresh||null},
       diagnosticoC3:s.lastDiagnostic&&s.lastDiagnostic.host===ip?s.lastDiagnostic:null,
       zkteco:dynamicEnabled()&&online&&s.probe?.host===h.ip?s.probe:null,
       orden:s.job||null,...(includeHistory?{historial:await store.history()}:{})};
   }
   async function requestRefresh(){
-    return store.mutate(s=>{
-      if(!s.live||Date.now()-s.live.at>=30000)return {error:'Monitor en vivo sin comunicación reciente; verifica la tarea de caseta'};
+    const result=await store.mutate(s=>{
+      if(!s.live||(!s.live.economico&&Date.now()-s.live.at>=30000))return {error:'Monitor sin reporte utilizable; verifica la tarea de caseta'};
       if(s.refresh&&s.refresh.estado==='PENDIENTE'&&Date.now()<s.refresh.vence)return {solicitud:s.refresh};
-      s.refresh={id:randomUUID(),estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+65000};
+      s.refresh={id:randomUUID(),estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+manualTtl};
       return {solicitud:s.refresh};
     });
+    if(result.solicitud)wake();return result;
   }
   async function queue(action,user){
-    return store.mutate((s,remember)=>{
+    const result=await store.mutate((s,remember)=>{
       expire(s,remember);
-      if(!fresh(s))return {error:'Agente de caseta sin comunicación reciente'};
+      if(!fresh(s)&&!s.live?.economico)return {error:'Agente de caseta sin comunicación reciente'};
       if(['ZKTECO','TODOS'].includes(action)&&!dynamicEnabled())return {error:'Activa el modo IP dinámica después de validar el agente y la serie del C3'};
       if(s.job&&['PENDIENTE','EN_EJECUCION'].includes(s.job.estado))return {error:'Hay una operación en curso'};
-      s.job={id:randomUUID(),accion:action,usuarioId:user,estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+ttl};
+      s.job={id:randomUUID(),accion:action,usuarioId:user,estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+(s.live?.economico?manualTtl:ttl)};
       remember({...s.job});return {orden:s.job};
     });
+    if(result.orden)wake();return result;
   }
   // Tomar una concesión durable antes del TCP. Un cambio de IP o de serie
   // invalida el resultado anterior. Una caída de proceso libera por caducidad.
@@ -111,12 +147,12 @@ function createService(store){
       const previous=s.heartbeat;
       const previousLive=s.live;
       if(monitor){
-        s.live={ip,equipos,detalles,at:Date.now()};
+        s.live={ip,equipos,detalles,at:Date.now(),economico:monitor.economico===true};
       }
       if(!fresh(s)||previous?.ip!==ip||equipos.zkteco!==true||s.verified?.serial&&s.verified.serial!==serial()){
         s.verified=null;s.probe=null;s.lastDiagnostic=null;s.lastAttempt=0;s.flight=null;
       }
-      s.heartbeat={ip,equipos,detalles,at:Date.now()};
+      s.heartbeat={ip,equipos,detalles,at:Date.now(),economico:monitor?.economico===true};
       if(!previous||previous.ip!==ip)remember({accion:'AGENTE_CASETA',estado:'REPORTE_RECIBIDO',ip,at:Date.now()});
       for(const name of ['vm','asterisk','agente','grandstream','zkteco'])
         if(typeof equipos[name]==='boolean'&&(monitor?previousLive:previous)?.equipos?.[name]!==equipos[name]&&(!s.live||monitor))remember({accion:'ESTADO_'+name.toUpperCase(),estado:equipos[name]?'DISPONIBLE':'NO_DISPONIBLE',at:Date.now()});
@@ -128,7 +164,7 @@ function createService(store){
         if(s.refresh?.estado==='PENDIENTE'&&Date.now()>=s.refresh.vence)s.refresh.estado='VENCIDA';
         const confirms=s.refresh?.estado==='PENDIENTE'&&monitor.confirmacion===s.refresh.id;
         // Una comprobación C3 manual está limitada a una cada 45 s; no leer inventario continuamente.
-        const force=confirms&&(!s.lastAttempt||Date.now()-s.lastAttempt>=retryMs);
+        const force=(confirms||monitor.economico)&&(!s.lastAttempt||Date.now()-s.lastAttempt>=retryMs);
         return {order:null,flight:claim(s,force),refreshId:confirms?s.refresh.id:null};
       }
       expire(s,remember);
@@ -146,15 +182,25 @@ function createService(store){
     if(monitor){
       // La ruta de monitor no consume órdenes de recuperación. Solo confirma el
       // UUID recibido en un ciclo anterior, después de tomar una muestra nueva.
-      const finish=s=>{
+      const finish=(s,remember)=>{
         if(initial.refreshId&&s.refresh?.id===initial.refreshId&&s.refresh.estado==='PENDIENTE'&&Date.now()<s.refresh.vence){
           s.refresh.estado='COMPLETADA';s.refresh.completada=Date.now();
+        }
+        if(monitor.economico&&result?.id===s.job?.id&&s.job?.estado==='EN_EJECUCION'&&typeof result.ok==='boolean'){
+          expire(s,remember);
+          if(s.job.estado==='EN_EJECUCION'){
+            const needsC3=['ZKTECO','TODOS'].includes(s.job.accion);
+            const ok=result.ok&&(!needsC3||(equipos.zkteco===true&&s.probe?.host===host(s)&&s.probe?.ok===true));
+            s.job.estado=ok?'COMPLETADA':'FALLIDA';s.job.finalizada=Date.now();
+            s.job.detalle=ok?'Agente confirmó la acción solicitada':'No se confirmó la recuperación solicitada';
+            remember({...s.job});
+          }
         }
         const current=host(s);
         return {orden:null,automatico:dynamicEnabled(),zktecoConfirmado:Boolean(dynamicEnabled()&&current&&s.probe?.host===current&&s.probe?.ok),ipEnUso:current||null,
           solicitarMuestra:s.refresh?.estado==='PENDIENTE'&&Date.now()<s.refresh.vence?s.refresh.id:null};
       };
-      return initial.refreshId?store.mutate(finish):finish(await store.read());
+      return initial.refreshId||(monitor.economico&&result?.id)?store.mutate((s,remember)=>finish(s,remember)):finish(await store.read());
     }
     // Confirmar solo la orden todavía vigente y la IP de la que procede el resultado.
     return store.mutate((s,remember)=>{
@@ -187,6 +233,6 @@ function createService(store){
     });
     return value;
   }
-  return {effectiveHost,status,queue,report,retryZkteco,requestRefresh};
+  return {effectiveHost,status,queue,report,retryZkteco,requestRefresh,control};
 }
 module.exports={publicIP,normalizeIP,dynamicEnabled,configured,createService,...createService(require('./infraestructura-store.service'))};
