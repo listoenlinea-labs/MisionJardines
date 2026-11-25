@@ -507,6 +507,15 @@
     if (role() !== 'SEGURIDAD' && !(role()==='CONDOMINO' && page()==='visitas.html')) {
       const houseBox=document.createElement('div');
       houseBox.style.cssText='padding:10px 12px;border-bottom:1px solid #e4e8ef';
+      // Si el portal navega por iframes, el sidebar permanece montado:
+      // ocultar la selección de casa únicamente durante Visitas del condómino.
+      const syncVisitHouseBox=()=>{
+        const hidden=role()==='CONDOMINO'&&page()==='visitas.html';
+        houseBox.hidden=hidden;houseBox.style.display=hidden?'none':'';
+      };
+      document.addEventListener('mj:shell-activated',syncVisitHouseBox);
+      window.addEventListener('popstate',syncVisitHouseBox);
+      syncVisitHouseBox();
       houseBox.innerHTML='<label style="font-size:11px;font-weight:700;color:var(--mj-side-orange)">Vivienda seleccionada<select aria-label="Vivienda seleccionada" style="width:100%;margin-top:6px;padding:7px;border:1px solid #ddd;border-radius:7px"></select></label>';
       aside.querySelector('.mj-side-community').after(houseBox);
       const selector=houseBox.querySelector('select'); selector.disabled=true;
