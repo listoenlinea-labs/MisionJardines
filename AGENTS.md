@@ -130,6 +130,8 @@ La petición del 23/oct/2026 sustituye el cálculo desde fechas físicas:
 
 ## Entrega de fechas al C3 e idempotencia
 
+- Con `INFRA_DYNAMIC_ZKTECO=true`, el cliente TCP usa únicamente la IPv4 reportada por caseta y verificada con el número de serie C3 autorizado. No probar `ZKTECO_DIRECT_HOST` automáticamente ni cambiar a una IP sin verificar. Con `false` se conserva el modo TCP manual; sin reporte reciente se espera la recuperación, sin alterar TAGs ni diarios. Consultar `infraestructura/caseta-windows/README.md`.
+
 - Cliente TCP: `backend/src/services/zkteco-c3-client.service.js`.
   Operaciones de alto nivel: `backend/src/services/zkteco-direct.service.js`.
 - Producción con escrituras reales: `ZKTECO_DRY_RUN=false`. Para exigir TCP directo

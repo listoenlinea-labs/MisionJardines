@@ -8,7 +8,7 @@
   <script src="assets/js/permissions.js?v=20261125-infra"></script>
   <script src="assets/js/page-access.js?v=20261123-shell-ready-v3"></script>
   <link rel="stylesheet" href="assets/css/infraestructura.css?v=20261125-v2">
-  <script src="assets/js/infraestructura-admin.js?v=20261125-v2" defer></script>
+  <script src="assets/js/infraestructura-admin.js?v=20261125-v3" defer></script>
   <script src="assets/js/site-sidebar.js?v=20261125-infra" defer></script>
 </head>
 <body class="page-infraestructura">
@@ -21,7 +21,7 @@
         <div class="infra-data" id="phoneData"></div><div class="infra-actions"><button class="infra-button primary" id="phoneRetry" type="button" disabled>Reintentar conmutador</button><button class="infra-button" id="phoneLogs" type="button">Ver logs del conmutador</button></div>
         <p class="infra-note" id="phoneNote">Los servicios activos y los contactos SIP no certifican audio ni una llamada PSTN real.</p>
       </article>
-      <article class="infra-card"><header><div><span class="infra-eyebrow">02 · CONTROL DE ACCESO</span><h2>ZKTeco C3-200</h2><p>Conexión TCP principal, respaldo y lectura de inventario.</p></div><span id="zkStatus" class="infra-chip">Sin verificar</span></header>
+      <article class="infra-card"><header><div><span class="infra-eyebrow">02 · CONTROL DE ACCESO</span><h2>ZKTeco C3-200</h2><p>Conexión TCP con IP dinámica verificada y modo manual de emergencia.</p></div><span id="zkStatus" class="infra-chip">Sin verificar</span></header>
         <div class="infra-data" id="zkData"></div><div class="infra-actions"><button class="infra-button primary" id="zkRetry" type="button" disabled>Reintentar conexión ZKTeco</button><button class="infra-button" id="zkLogs" type="button">Ver logs del ZKTeco</button></div>
         <p class="infra-note" id="zkNote">El diagnóstico es de solo lectura. No abre portones ni modifica TAGs.</p>
       </article>
