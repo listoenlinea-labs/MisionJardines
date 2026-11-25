@@ -61,7 +61,7 @@ async function diagnosticarConexion({config=getDirectConfig(),probarTcp=puertoTC
   const result={
     estado:'SIN_VERIFICAR',
     configuracion:{
-      origenHost:require('./infraestructura-state.service').dynamicEnabled()?'AGENTE_VERIFICADO':process.env.ZKTECO_DIRECT_HOST?'ZKTECO_DIRECT_HOST':
+      origenHost:require('./infraestructura-state.service').status().modoConexion==='RECUPERACION'?'AGENTE_VERIFICADO':process.env.ZKTECO_DIRECT_HOST?'ZKTECO_DIRECT_HOST':
         process.env.ZKTECO_HOST?'ZKTECO_HOST':'SIN_CONFIGURAR',
       hostConfigurado:Boolean(host),
       puerto:port,
@@ -73,7 +73,7 @@ async function diagnosticarConexion({config=getDirectConfig(),probarTcp=puertoTC
   if(!host||!Number.isInteger(port)||port<1||port>65535){
     result.estado='CONFIGURACION_INVALIDA';
     result.pruebas.push({etapa:'CONFIGURACION',ok:false,detalle:!host?'Falta host ZKTeco':'Puerto TCP inválido'});
-    result.recomendacion=require('./infraestructura-state.service').dynamicEnabled() ? 'Espera el reporte autenticado del agente y verifica su estado en Inicio.' : 'Configura ZKTECO_DIRECT_HOST y ZKTECO_DIRECT_PORT en Hostinger; reinicia el backend.';
+    result.recomendacion=require('./infraestructura-state.service').dynamicEnabled() ? 'Comprueba la variable principal y el reporte autenticado del agente en Inicio.' : 'Configura ZKTECO_DIRECT_HOST y ZKTECO_DIRECT_PORT en Hostinger; reinicia el backend.';
     return result;
   }
   try {
