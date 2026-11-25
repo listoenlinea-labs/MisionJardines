@@ -474,9 +474,9 @@ class C3Client {
   }
 }
 
-function getDirectConfig() {
+function getDirectConfig(host) {
   return {
-    host: require('./infraestructura-state.service').effectiveHost(),
+    host,
     expectedSerial: require('./infraestructura-state.service').dynamicEnabled() ? process.env.INFRA_C3_SERIAL : '',
     port: Number(process.env.ZKTECO_DIRECT_PORT || process.env.ZKTECO_PORT || 4370),
     password: process.env.ZKTECO_COMM_PASSWORD || '',
@@ -484,8 +484,12 @@ function getDirectConfig() {
   };
 }
 
+async function resolveDirectConfig() {
+  return getDirectConfig(await require('./infraestructura-state.service').effectiveHost());
+}
+
 async function withC3(callback) {
-  const config=getDirectConfig();
+  const config=await resolveDirectConfig();
   if (!config.host && require('./infraestructura-state.service').dynamicEnabled()) {
     throw new Error('Falta ZKTeco: esperando IP pública verificada del agente de caseta');
   }
@@ -506,5 +510,6 @@ async function withC3(callback) {
 module.exports = {
   C3Client,
   getDirectConfig,
+  resolveDirectConfig,
   withC3
 };

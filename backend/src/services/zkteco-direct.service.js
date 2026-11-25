@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { withC3, getDirectConfig } = require('./zkteco-c3-client.service');
+const { withC3, resolveDirectConfig } = require('./zkteco-c3-client.service');
 const {
   isPullSdkBridgeConfigured,
   provisionUser: provisionUserViaPullSdk,
@@ -85,7 +85,7 @@ const departmentMatchesHouse = (department,street,number) => {
 };
 
 async function testDirectConnection(){
-  const config=getDirectConfig();
+  const config=await resolveDirectConfig();
   return withC3(async client=>({
     ok:true,
     mode:'DIRECT',

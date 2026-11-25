@@ -3,7 +3,7 @@
 // Diagnóstico desde el propio backend de Hostinger; únicamente lectura.
 // No publica host/IP ni contraseña y nunca envía PUTDATA o controles de puerta.
 const net=require('node:net');
-const {C3Client,getDirectConfig}=require('./zkteco-c3-client.service');
+const {C3Client,resolveDirectConfig}=require('./zkteco-c3-client.service');
 
 function puertoTCP(config){
   return new Promise((resolve,reject)=>{
@@ -55,7 +55,8 @@ function recomendacion(fase,error){
   return 'Revisa el error exacto y los logs de Node.js de Hostinger. No modifiques ni des de alta TAGs basándote en esta lectura.';
 }
 
-async function diagnosticarConexion({config=getDirectConfig(),probarTcp=puertoTCP,crearCliente=cfg=>new C3Client(cfg)}={}){
+async function diagnosticarConexion({config,probarTcp=puertoTCP,crearCliente=cfg=>new C3Client(cfg)}={}){
+  config=config||await resolveDirectConfig();
   const host=String(config.host||'').trim();
   const port=Number(config.port);
   const result={
