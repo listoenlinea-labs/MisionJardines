@@ -7,16 +7,18 @@ const publicIP = ip => typeof ip === 'string' && net.isIPv4(ip) && !blocked.chec
 const normalizeIP = ip => String(ip || '').replace(/^::ffff:/i,'');
 const dynamicEnabled = () => process.env.INFRA_DYNAMIC_ZKTECO === 'true';
 const configured = () => Buffer.byteLength(process.env.INFRA_AGENT_TOKEN || '') >= 32;
-const primary = () => process.env.ZKTECO_DIRECT_HOST || process.env.ZKTECO_HOST;
-// La tarea comprobada de Windows se ejecuta cada 5 minutos.
+const manualHost = () => process.env.ZKTECO_DIRECT_HOST || process.env.ZKTECO_HOST;
+// Margen de expiración para reportes periódicos de la tarea Windows.
 const ttl = 12 * 60 * 1000;
 let heartbeat = null, verified = null, probe = null, job = null, history = [];
-let busy = false, lastAttempt = 0;
+let verificationFlight = null, lastAttempt = 0;
 let lastDiagnostic = null, diagnosticFlight = null, lastDiagnosticAt = 0;
 const fresh = () => !!heartbeat && Date.now()-heartbeat.at < ttl;
 function effectiveHost() {
-  if (dynamicEnabled() && fresh() && verified && verified.ip === heartbeat.ip && verified.primary === primary()) return verified.ip;
-  return primary();
+  if (!dynamicEnabled()) return manualHost();
+  const serial=String(process.env.INFRA_C3_SERIAL || '').trim();
+  // En modo dinámico nunca probar automáticamente la dirección de hPanel.
+  return serial && fresh() && heartbeat.equipos.zkteco===true && verified?.ip===heartbeat.ip && verified.serial===serial ? verified.ip : undefined;
 }
 function remember(entry) {
   history.unshift(entry); history = history.slice(0,20);
@@ -30,10 +32,11 @@ function expire() {
 function status() {
   expire();
   return { configurado:configured(), automatico:dynamicEnabled(), enLinea:fresh(), ultimaComunicacion:heartbeat?.at || null,
-    ipDetectada:heartbeat?.ip || null, ipPrincipal:primary() || null, ipEnUso:effectiveHost() || null,
-    modoConexion:effectiveHost() && effectiveHost()!==primary()?'RECUPERACION':'PRINCIPAL',
+    ipDetectada:heartbeat?.ip || null, ipPrincipal:dynamicEnabled()?(heartbeat?.ip||null):(manualHost()||null),
+    ipManual:manualHost()||null, ipEnUso:effectiveHost() || null,
+    modoConexion:dynamicEnabled()?(effectiveHost()?'DINAMICA':'ESPERANDO_IP'):'MANUAL',
     equipos:fresh()?heartbeat.equipos:null, detalles:fresh()?heartbeat.detalles:null,
-    diagnosticoC3:lastDiagnostic && lastDiagnostic.host===effectiveHost()?lastDiagnostic:null, zkteco:fresh() && probe?.host===effectiveHost()?probe:null, orden:job, historial:history };
+    diagnosticoC3:lastDiagnostic && lastDiagnostic.host===effectiveHost()?lastDiagnostic:null, zkteco:dynamicEnabled() && fresh() && probe?.host===heartbeat.ip?probe:null, orden:job, historial:history };
 }
 function queue(action,user) {
   expire();
@@ -43,60 +46,59 @@ function queue(action,user) {
   job={id:randomUUID(),accion:action,usuarioId:user,estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+12*60*1000};
   remember({...job}); return {orden:job};
 }
-// Nunca cambiar el destino solo porque el agente informe una IP distinta.
-// Probar primero la configuracion existente; el respaldo usa el mismo protocolo.
+// Validar únicamente el destino reportado por caseta. La variable de Hostinger
+// es un modo manual de emergencia, no una alternativa automática.
 async function verify(ip, force=false, createClient) {
-  if (busy || (!force && Date.now()-lastAttempt < 45000)) return;
-  if (!force && probe?.ok && probe.host===effectiveHost() && Date.now()-probe.at < 10*60*1000) return;
+  if (!dynamicEnabled() || !fresh() || heartbeat.ip!==ip || heartbeat.equipos.zkteco!==true || !publicIP(ip)) return;
   const serial=String(process.env.INFRA_C3_SERIAL || '').trim();
-  const original=primary();
-  if (!serial) { probe={ok:false,host:effectiveHost(),detalle:'Falta configurar el número de serie autorizado',at:Date.now()}; return; }
-  busy=true; lastAttempt=Date.now();
-  async function check(host) {
-    if (!host) return false;
+  if(!serial){verified=null;probe={ok:false,host:ip,detalle:'Falta configurar el número de serie autorizado',at:Date.now()};return;}
+  if(verificationFlight){
+    const active=verificationFlight;
+    await active.promise;
+    if(active.ip===ip && active.serial===serial && probe?.host===ip) return;
+    return verify(ip,force,createClient);
+  }
+  if (!force && Date.now()-lastAttempt < 45000) return;
+  if (!force && verified?.ip===ip && verified.serial===serial && probe?.ok && Date.now()-probe.at<10*60*1000) return;
+  lastAttempt=Date.now();
+  const started=Date.now();
+  const flight={ip,serial,promise:null};
+  flight.promise=(async()=>{
     let client;
+    let ok=false;
     try {
       const {C3Client,getDirectConfig}=require('./zkteco-c3-client.service');
-      client=(createClient || (cfg=>new C3Client(cfg)))({...getDirectConfig(),host,expectedSerial:serial,timeoutMs:4000});
+      client=(createClient || (cfg=>new C3Client(cfg)))({...getDirectConfig(),host:ip,expectedSerial:serial,timeoutMs:4000});
       await client.connect();
-      return String(client.info?.serial || '').trim()===serial;
-    } catch (_) { return false; }
+      ok=String(client.info?.serial || '').trim()===serial;
+    } catch (_) { ok=false; }
     finally {
-      if(client) { try { await client.disconnect(); } catch (_) { client._destroySocket?.(); } }
+      if(client){try{await client.disconnect();}catch(_){client._destroySocket?.();}}
     }
-  }
-  try {
-    const started=Date.now();
-    const originalOK=await check(original);
-    if(heartbeat?.ip!==ip || primary()!==original) return;
-    if(force || !originalOK || verified) remember({accion:'C3_PRINCIPAL',estado:originalOK?'CORRECTA':'FALLIDA',at:Date.now(),duracionMs:Date.now()-started});
-    if(originalOK) {
-      if(verified) remember({accion:'C3_PRINCIPAL_RESTAURADA',at:Date.now()});
+    // Un reporte más reciente o un cambio de serie no puede autorizar la IP anterior.
+    if(!dynamicEnabled() || !fresh() || heartbeat.ip!==ip || heartbeat.equipos.zkteco!==true || String(process.env.INFRA_C3_SERIAL||'').trim()!==serial)return;
+    const wasVerified=verified?.ip===ip && verified.serial===serial;
+    if(ok){
+      verified={ip,serial,at:Date.now()};
+      probe={ok:true,host:ip,detalle:'IP reportada por caseta, protocolo C3 y serie verificados',at:Date.now()};
+      if(!wasVerified)remember({accion:'IP_C3_VERIFICADA',ip,at:Date.now()});
+    }else{
       verified=null;
-      probe={ok:true,host:original,detalle:'Conexión TCP principal y serie verificadas',at:Date.now()};
-      return;
+      lastDiagnostic=null;
+      probe={ok:false,host:ip,detalle:'No se confirmó el C3 autorizado en la IP reportada; no se utiliza la IP manual automáticamente',at:Date.now()};
     }
-    const backupStarted=Date.now();
-    const backupOK=ip!==original && heartbeat.equipos.zkteco===true && publicIP(ip) && await check(ip);
-    if(heartbeat?.ip!==ip || primary()!==original) return;
-    if(ip!==original) remember({accion:'C3_RESPALDO',estado:backupOK?'CORRECTA':'FALLIDA',at:Date.now(),duracionMs:Date.now()-backupStarted});
-    if(backupOK && heartbeat.equipos.zkteco===true) {
-      if(verified?.ip!==ip) remember({accion:'IP_C3_VERIFICADA',ip,at:Date.now()});
-      verified={ip,primary:original,at:Date.now()};
-      probe={ok:true,host:ip,detalle:'Principal no disponible; respaldo TCP y serie verificados',at:Date.now()};
-    } else {
-      verified=null;
-      probe={ok:false,host:original,detalle:'No se confirmó el C3 autorizado; se conserva el destino principal',at:Date.now()};
-    }
-  } finally { busy=false; }
+    if(force || !ok || !wasVerified)remember({accion:'C3_DINAMICA',estado:ok?'CORRECTA':'FALLIDA',at:Date.now(),duracionMs:Date.now()-started});
+  })();
+  verificationFlight=flight;
+  try{await flight.promise;}finally{if(verificationFlight===flight)verificationFlight=null;}
 }
 async function report(ip,equipos,result,createClient,detalles=null) {
-  if (heartbeat?.ip !== ip) { verified=null; probe=null; lastAttempt=0; }
+  if (heartbeat?.ip !== ip) { verified=null; probe=null; lastDiagnostic=null; lastAttempt=0; }
   const previous=heartbeat;
   heartbeat={ip,equipos,detalles,at:Date.now()};
   if(!previous || previous.ip!==ip) remember({accion:'AGENTE_CASETA',estado:'REPORTE_RECIBIDO',ip,at:Date.now()});
   for(const name of ['vm','asterisk','agente','grandstream','zkteco']) if(typeof equipos[name]==='boolean' && previous?.equipos?.[name]!==equipos[name]) remember({accion:'ESTADO_'+name.toUpperCase(),estado:equipos[name]?'DISPONIBLE':'NO_DISPONIBLE',at:Date.now()});
-  if(equipos.zkteco!==true){ verified=null; probe=null; lastAttempt=0; }
+  if(equipos.zkteco!==true){ verified=null; probe=null; lastDiagnostic=null; lastAttempt=0; }
   expire();
   if (job?.estado==='EN_EJECUCION' && result?.id===job.id && typeof result.ok==='boolean') {
     const needsC3=['ZKTECO','TODOS'].includes(job.accion);

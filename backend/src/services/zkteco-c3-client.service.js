@@ -485,7 +485,11 @@ function getDirectConfig() {
 }
 
 async function withC3(callback) {
-  const client = new C3Client(getDirectConfig());
+  const config=getDirectConfig();
+  if (!config.host && require('./infraestructura-state.service').dynamicEnabled()) {
+    throw new Error('Falta ZKTeco: esperando IP pública verificada del agente de caseta');
+  }
+  const client = new C3Client(config);
   let connected = false;
   try {
     await client.connect();
