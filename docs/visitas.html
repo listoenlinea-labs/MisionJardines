@@ -1075,7 +1075,12 @@
     const $ = id => document.getElementById(id);
     const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
     const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-    const headers = (json = false) => ({ Authorization: `Bearer ${token}`, ...(json ? { 'Content-Type': 'application/json' } : {}) });
+    const headers = (json = false) => ({
+      Authorization: `Bearer ${token}`,
+      ...(actualRole === 'CONDOMINO' && /^\d+$/.test(sessionStorage.getItem('mjCasaSeleccionada')||'')
+        ? {'X-Casa-Id':sessionStorage.getItem('mjCasaSeleccionada')}:{}),
+      ...(json ? { 'Content-Type': 'application/json' } : {})
+    });
     const adminRoles = ['SUPER_ADMIN', 'ADMINISTRADOR', 'MESA_DIRECTIVA'];
     const actualIsAdmin = adminRoles.includes(actualRole), actualIsSecurity = actualRole === 'SEGURIDAD';
     const operationalRegistrar=actualIsSecurity||actualIsAdmin;
@@ -1084,6 +1089,7 @@
     let houseContactRequestId=0;
     // La versión de caseta es para roles operativos reales, no para vistas simuladas.
     document.body.classList.toggle('visit-operational',operationalRegistrar);
+    document.body.classList.toggle('visit-resident',actualRole==='CONDOMINO');
     let guardSelectedHouse=null, guardPhotoData='';
     function toast(message) { $('toast').textContent = message; $('toast').style.display = 'block'; clearTimeout(window.visitToast); window.visitToast = setTimeout(() => $('toast').style.display = 'none', 3500) }
     async function api(url, options = {}) { const response = await fetch(url, options); let result = {}; try { result = await response.json() } catch { } if (response.status === 401) { localStorage.removeItem('misionJardinesToken'); sessionStorage.removeItem('misionJardinesToken'); location.replace('login.html'); throw new Error('La sesión expiró') } if (!response.ok || !result.ok) throw new Error(result.message || 'No fue posible completar la solicitud'); return result }
@@ -1131,8 +1137,11 @@
       });
     }
     function showVisitPage(page){
-      const history=page==='history';
-      $('visitHomesPanel').hidden=history;$('visitHistoryPanel').hidden=!history;
+      const history=page==='history',resident=actualRole==='CONDOMINO';
+      $('visitHomesPanel').hidden=history||resident;
+      $('residentRegisterPanel').hidden=history||!resident;
+      $('visitHistoryPanel').hidden=!history;
+      $('residentVisitHistory').hidden=!history||!resident;
       $('visitTabHomes').classList.toggle('visit-switch-active',!history);
       $('visitTabHistory').classList.toggle('visit-switch-active',history);
       $('visitTabHomes').setAttribute('aria-selected',String(!history));
@@ -1149,7 +1158,30 @@
     function visibleVisits() { let data = [...visits]; const role = roleView(); if (role === 'RESIDENTE') { const id = actualRole === 'CONDOMINO' ? Number(houses[0]?.id || 0) : selectedDemoHouseId(); data = id ? data.filter(v => Number(v.casaId) === id) : [] } const text = norm($('filterText').value), street = norm($('filterStreet').value), number = norm($('filterNumber').value), status = $('filterStatus').value, type = $('filterType').value; return data.filter(v => (!text || norm([v.codigo, v.nombreVisitante, v.placas, v.telefono].join(' ')).includes(text)) && (!street || norm(v.casa?.calleCorrecta || v.casa?.calle) === street) && (!number || norm(v.casa?.numero).includes(number)) && (!status || v.estatus === status) && (!type || v.tipo === type)).sort((a,b)=>compararCasas(a.casa,b.casa)||String(b.fechaProgramada||'').localeCompare(String(a.fechaProgramada||''))) }
     function canCreate() { return actualIsAdmin || actualIsSecurity || actualRole === 'CONDOMINO'; }
     function actionMarkup(v) { const view = roleView(); const parts = []; if ((actualIsAdmin || actualIsSecurity) && (view === 'SEGURIDAD' || view === 'ADMIN')) { if (v.estatus === 'PROGRAMADA') parts.push(`<button class="btn btn-primary" onclick="changeStatus(${v.id},'entrada')">Registrar entrada</button>`); if (v.estatus === 'EN_CURSO') parts.push(`<button class="btn btn-primary" onclick="changeStatus(${v.id},'salida')">Registrar salida</button>`) } if ((actualIsAdmin || actualRole === 'CONDOMINO') && view !== 'SEGURIDAD' && v.estatus === 'PROGRAMADA') parts.push(`<button class="btn btn-danger" onclick="changeStatus(${v.id},'cancelar')">Cancelar</button>`); return parts.join(' ') || '—' }
+    function renderResidentVisits(){
+      const root=$('residentVisitsList');
+      if(!root)return;
+      const own=visits.filter(v=>v.estatus!=='CANCELADA')
+        .sort((a,b)=>String(b.fechaProgramada||'').localeCompare(String(a.fechaProgramada||''))||
+          String(b.horaProgramada||'').localeCompare(String(a.horaProgramada||'')));
+      if(!own.length){
+        root.innerHTML='<p class="resident-empty">Todavía no has registrado visitas. Entra en Registro para agregar una.</p>';
+        return;
+      }
+      root.innerHTML=own.map(v=>{
+        const status=v.estatus==='PROGRAMADA'?'Registrada':v.estatus==='EN_CURSO'?'Dentro del fraccionamiento':'Finalizada';
+        const style=v.estatus==='EN_CURSO'?'inside':v.estatus==='FINALIZADA'?'done':'';
+        const canDelete=v.estatus==='PROGRAMADA'&&Number(v.creadoPorUsuarioId)>0;
+        return '<article class="resident-visit-card"><div><strong>'+esc(v.nombreVisitante)+'</strong>'+
+          '<small>'+esc(typeLabel(v.tipo))+' · '+esc(formatDateTime(v.fechaProgramada,v.horaProgramada))+
+          (v.placas?' · Placas '+esc(v.placas):'')+'</small>'+
+          '<span class="resident-visit-state '+style+'">'+esc(status)+'</span></div>'+
+          (canDelete?'<button class="btn resident-delete" type="button" data-resident-delete="'+Number(v.id)+'">Eliminar registro</button>':'')+
+          '</article>';
+      }).join('');
+    }
     function render() {
+       if(actualRole==='CONDOMINO'){renderResidentVisits();return;}
        const data = visibleVisits();
        const guardView = actualIsSecurity || roleView() === 'SEGURIDAD';
        $('visitRecordsTable').classList.toggle('visit-security-table',guardView);
@@ -1163,6 +1195,15 @@
          ).join(''):'<tr><td class="empty" colspan="4">No hay visitas que coincidan con los filtros.</td></tr>';
        }else $('visitTable').innerHTML = data.length ? data.map(v => `<tr><td><b>${esc(v.codigo)}</b></td><td><b>${esc(v.nombreVisitante)}</b><br><small>${esc(v.telefono || 'Sin teléfono')}</small></td><td>${esc(v.casa?.calleCorrecta || v.casa?.calle || '—')}<br><b>${esc(v.casa?.numero || 'S/N')}</b></td><td>${formatDateTime(v.fechaProgramada, v.horaProgramada)}</td><td>${typeLabel(v.tipo)}</td><td>${esc(v.placas || '—')}</td><td>${esc(v.autorizadoPor)}</td><td><span class="chip ${v.estatus}">${statusLabel(v.estatus)}</span></td><td>${formatStamp(v.fechaEntrada)}<br>${v.fechaSalida ? 'Salida: ' + formatStamp(v.fechaSalida) : ''}</td><td><div class="actions">${actionMarkup(v)}</div></td></tr>`).join('') : '<tr><td class="empty" colspan="10">No hay visitas que coincidan con esta vista y sus filtros.</td></tr>'; $('metricTotal').textContent = data.length; $('metricScheduled').textContent = data.filter(v => v.estatus === 'PROGRAMADA').length; $('metricInside').textContent = data.filter(v => v.estatus === 'EN_CURSO').length; $('metricDone').textContent = data.filter(v => v.estatus === 'FINALIZADA').length }
     function applyRole() { const role = roleView(); const resident = role === 'RESIDENTE';
+       if(actualRole==='CONDOMINO'){
+         $('visitTabHomes').textContent='Registro';
+         $('visitTabHistory').textContent='Mis visitas';
+         document.querySelector('.hero .eyebrow').textContent='VISITAS DE MI VIVIENDA';
+         document.querySelector('.hero h1').textContent='Registra a tus visitantes';
+         document.querySelector('.hero p').textContent='Registra tus visitas sin solicitar autorización y consulta tus registros.';
+         $('newVisitButton').hidden=true;
+         showVisitPage('homes');
+       }
        if(actualIsSecurity){
          $('visitTabHomes').hidden=false;
          $('visitHomesPanel').hidden=false;
@@ -1175,20 +1216,27 @@
        // SEGURIDAD recibe únicamente id/calle/número; nunca datos de propietarios.
        const result=await api(`${API_BASE_URL}/visitas/viviendas`,{headers:headers()});
        houses=result.data||[];
- fillStreetSelects(); renderVisitBoard(); if (actualRole === 'CONDOMINO' && houses.length) { const own=houses[0]; $('visitStreet').value = own.calleCorrecta||own.calle||''; fillNumbers('visitStreet','visitNumber'); $('visitNumber').value=String(own.id); $('visitStreet').disabled = true; $('visitNumber').disabled = true } }
+ fillStreetSelects(); if(actualRole!=='CONDOMINO')renderVisitBoard();
+       if(actualRole==='CONDOMINO'){
+         $('residentHouseInfo').textContent=houses.length
+           ?'Vivienda vinculada: '+(houses[0].calleCorrecta||houses[0].calle)+' '+houses[0].numero
+           :'No hay una vivienda vinculada a tu cuenta. Revisa Mis viviendas.';
+         $('residentSaveVisit').disabled=!houses.length;
+       }
+       if (actualRole === 'CONDOMINO' && houses.length) { const own=houses[0]; $('visitStreet').value = own.calleCorrecta||own.calle||''; fillNumbers('visitStreet','visitNumber'); $('visitNumber').value=String(own.id); $('visitStreet').disabled = true; $('visitNumber').disabled = true } }
     let visitsRequestSeq=0;
      async function loadVisits() {
        const seq=++visitsRequestSeq;
        try{
          const [result, pending]=await Promise.all([
            api(`${API_BASE_URL}/visitas`,{headers:headers(),cache:'no-store'}),
-           actualIsSecurity
+           (actualIsSecurity||actualIsAdmin)
              ?api(`${API_BASE_URL}/visitas/pendientes`,{headers:headers(),cache:'no-store'}).catch(()=>null)
              :Promise.resolve(null)
          ]);
          if(seq!==visitsRequestSeq)return; // No revertir un ingreso nuevo con una consulta anterior.
          visits=result.data||[];
-         if(actualIsSecurity&&pending){
+         if((actualIsSecurity||actualIsAdmin)&&pending){
            const count=Math.max(0,Number(pending.cantidad)||0);
            $('visitPendingBadge').textContent=count>99?'99+':String(count);
            $('visitPendingBadge').hidden=count===0;
@@ -1205,7 +1253,7 @@
      // El guardia recibe las visitas que agreguen otros usuarios sin
      // recargar la sección ni solicitar datos privados.
      setInterval(()=>{
-       if(actualIsSecurity && !document.hidden && !$('visitHistoryPanel').hidden)void loadVisits();
+       if((actualIsSecurity||actualIsAdmin) && !document.hidden && !$('visitHistoryPanel').hidden)void loadVisits();
      },15000);
      function notifyVisitsChanged(){
        document.dispatchEvent(new Event('mj:visitas-cambios'));
@@ -1369,6 +1417,44 @@
     async function changeStatus(id, action) { const messages = { entrada: '¿Registrar la entrada de esta visita?', salida: '¿Registrar su salida?', cancelar: '¿Cancelar esta autorización?' }; if (!confirm(messages[action])) return; try { await api(`${API_BASE_URL}/visitas/${id}/${action}`, { method: 'PATCH', headers: headers(true) }); notifyVisitsChanged(); await loadVisits(); toast('Registro actualizado correctamente.') } catch (error) { toast(error.message) } }
     document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button))); document.querySelectorAll('.modal-shell').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) closeModal(modal) }));
     $('rolePreview').value = actualRole === 'SEGURIDAD' ? 'SEGURIDAD' : actualRole === 'CONDOMINO' ? 'RESIDENTE' : 'ADMIN'; if (!actualIsAdmin) document.querySelector('.mj-role-preview').style.display = 'none'; $('rolePreview').addEventListener('change', applyRole); $('newVisitButton').addEventListener('click',()=>openVisit()); $('refreshButton').addEventListener('click', loadVisits); $('visitStreet').addEventListener('change', () => fillNumbers('visitStreet', 'visitNumber')); $('demoStreet').addEventListener('change', () => { fillNumbers('demoStreet', 'demoNumber'); render() }); $('demoNumber').addEventListener('change', render); $('visitForm').addEventListener('submit', saveVisit);['filterText', 'filterNumber'].forEach(id => $(id).addEventListener('input', render));['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).addEventListener('change', render)); $('clearFilters').addEventListener('click', () => { ['filterText', 'filterNumber'].forEach(id => $(id).value = '');['filterStreet', 'filterStatus', 'filterType'].forEach(id => $(id).value = ''); render() }); $('copyInvitation').addEventListener('click', async () => { try { await navigator.clipboard.writeText(lastInvitation); toast('Invitación copiada.') } catch { toast('No fue posible copiar automáticamente.') } });
+    async function saveResidentVisit(event){
+      event.preventDefault();
+      if(actualRole!=='CONDOMINO')return;
+      const button=$('residentSaveVisit'),name=$('residentVisitorName').value.trim();
+      if(!name){toast('Ingresa el nombre del visitante.');return;}
+      button.disabled=true;
+      try{
+        await api(API_BASE_URL+'/visitas',{
+          method:'POST',headers:headers(true),
+          body:JSON.stringify({
+            nombreVisitante:name,tipo:$('residentVisitorType').value,
+            placas:$('residentVisitorPlate').value.trim()
+          })
+        });
+        $('residentVisitForm').reset();$('residentVisitorType').value='OTRO';
+        notifyVisitsChanged();
+        await loadVisits();
+        showVisitPage('history');
+        toast('Visita registrada. Seguridad y Administración podrán verla.');
+      }catch(error){toast(error.message);}
+      finally{button.disabled=false;}
+    }
+    async function deleteResidentVisit(id){
+      if(actualRole!=='CONDOMINO'||!Number.isSafeInteger(id)||id<=0)return;
+      if(!confirm('¿Eliminar esta visita registrada? Se notificará la cancelación a caseta.'))return;
+      try{
+        await api(API_BASE_URL+'/visitas/'+id,{method:'DELETE',headers:headers(true)});
+        notifyVisitsChanged();
+        await loadVisits();
+        toast('Visita eliminada. El personal ya no la verá como pendiente.');
+      }catch(error){toast(error.message);}
+    }
+    $('residentVisitForm').addEventListener('submit',saveResidentVisit);
+    $('residentRefreshVisits').addEventListener('click',loadVisits);
+    $('residentVisitsList').addEventListener('click',event=>{
+      const button=event.target.closest('button[data-resident-delete]');
+      if(button)void deleteResidentVisit(Number(button.dataset.residentDelete));
+    });
     const searchParams = new URLSearchParams(location.search); $('filterText').value = searchParams.get('buscar') || '';
     applyRole();
     if(actualIsSecurity)showVisitPage('homes');
