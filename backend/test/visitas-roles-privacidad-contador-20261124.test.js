@@ -17,10 +17,10 @@ function fixture(){
   {id:1,casaId:101,nombreVisitante:'María',estatus:'PROGRAMADA',codigo:'CODIGO-PRIVADO',
    telefono:'3311111111',placas:'PRIVADAS',identificacion:'INE',autorizadoPor:'Residente privado',
    notas:'Datos privados',fechaProgramada:'2026-11-24',horaProgramada:'09:00',
-   casa:houses[0]},
+   creadoPorUsuarioId:8,casa:houses[0]},
   {id:2,casaId:202,nombreVisitante:'Luis',estatus:'EN_CURSO',codigo:'CODIGO-2',
    telefono:'3322222222',placas:'OCULTA',autorizadoPor:'Otro',
-   fechaProgramada:'2026-11-24',horaProgramada:'10:00',casa:houses[1]},
+   fechaProgramada:'2026-11-24',horaProgramada:'10:00',creadoPorUsuarioId:9,casa:houses[1]},
   {id:3,casaId:303,nombreVisitante:'TEST',estatus:'PROGRAMADA',
    fechaProgramada:'2026-11-24',horaProgramada:'11:00',casa:houses[2]}
  ];
@@ -38,6 +38,7 @@ function fixture(){
    queries.push({type:'list',opts});
    let data=visits.filter(v=>
      (!opts.where?.casaId||v.casaId===opts.where.casaId)&&
+     (!opts.where?.creadoPorUsuarioId||v.creadoPorUsuarioId===opts.where.creadoPorUsuarioId)&&
      (!opts.where?.estatus||v.estatus===opts.where.estatus));
    return data;
   },
@@ -52,7 +53,9 @@ function fixture(){
    return visit;
   },
   update:async(values,opts)=>{
-   const visit=visits.find(v=>v.id===Number(opts.where.id)&&v.estatus===opts.where.estatus);
+   const visit=visits.find(v=>v.id===Number(opts.where.id)&&v.estatus===opts.where.estatus&&
+     (opts.where.casaId===undefined||v.casaId===opts.where.casaId)&&
+     (opts.where.creadoPorUsuarioId===undefined||v.creadoPorUsuarioId===opts.where.creadoPorUsuarioId));
    if(!visit)return [0];
    Object.assign(visit,values);
    return [1];
@@ -118,6 +121,10 @@ test('Condómino consulta su vivienda real y no puede registrar visita en otra',
  }});
  assert.equal(created.status,201);
  assert.equal(created.body.data.casaId,101,'el usuario no controla casaId desde el body');
+ const newVisit=mock.visits.find(v=>v.nombreVisitante==='Nuevo visitante');
+ assert.equal(newVisit.autorizadoPor,'Condómino','no se requiere autorización para el registro');
+ assert.equal(newVisit.telefono,null,'no aceptar campos privados enviados por el navegador');
+ assert.notEqual(newVisit.fechaProgramada,'2026-11-25','se registra la fecha real del servidor');
  const another=await mock.run('viviendas','CONDOMINO');
  assert.equal(another.body.data.length,1);
  assert.equal(another.body.data[0].id,101);
@@ -323,4 +330,83 @@ test('Contacto y UI privada sólo están disponibles para sesión administrativa
  assert.match(html,/id="adminHouseContactPhone"/);
  assert.match(html,/houseContactRequestId\+\+/);
  assert.match(html,/cache:'no-store'/);
+});
+
+test('Condómino registra visitante sin autorización, dirección, fecha ni hora en el formulario',async()=>{
+ const mock=fixture();
+ const response=await mock.run('create','CONDOMINO',{body:{
+  nombreVisitante:'Invitada de prueba',tipo:'OTRO',placas:'abc123'
+ }});
+ assert.equal(response.status,201);
+ const created=mock.visits.find(v=>v.nombreVisitante==='Invitada de prueba');
+ assert.equal(created.casaId,101);
+ assert.equal(created.creadoPorUsuarioId,8);
+ assert.equal(created.autorizadoPor,'Condómino');
+ assert.equal(created.placas,'ABC123');
+ assert.equal(created.estatus,'PROGRAMADA');
+ assert.match(created.fechaProgramada,/^\d{4}-\d{2}-\d{2}$/);
+ assert.match(created.horaProgramada,/^\d{2}:\d{2}$/);
+ assert.equal((await mock.run('pendientes','SEGURIDAD')).body.cantidad,2);
+ const visible=(await mock.run('list','SEGURIDAD')).body.data;
+ assert.ok(visible.some(v=>v.nombreVisitante==='Invitada de prueba'));
+ assert.deepEqual(Object.keys(visible[0]).sort(),['casa','estatus','id','nombreVisitante']);
+});
+
+test('Mis visitas no muestra registros de otros usuarios de la misma casa',async()=>{
+ const mock=fixture();
+ mock.visits.push({id:12,casaId:101,creadoPorUsuarioId:99,estatus:'PROGRAMADA',
+  nombreVisitante:'Visita ajena',fechaProgramada:'2026-11-24',casa:mock.houses[0]});
+ const response=await mock.run('list','CONDOMINO');
+ assert.equal(response.status,200);
+ assert.equal(response.body.total,1);
+ assert.ok(response.body.data.every(v=>v.creadoPorUsuarioId===8));
+ const query=mock.queries.find(q=>q.type==='list').opts;
+ assert.equal(query.where.casaId,101);
+ assert.equal(query.where.creadoPorUsuarioId,8);
+});
+
+test('Condómino elimina su visita pendiente y sale del contador sin borrar auditoría',async()=>{
+ const mock=fixture();
+ const response=await mock.run('deleteOwn','CONDOMINO',{params:{id:'1'}});
+ assert.equal(response.status,200);
+ assert.equal(response.body.data.estatus,'CANCELADA');
+ assert.equal(mock.visits.find(v=>v.id===1).estatus,'CANCELADA');
+ assert.equal((await mock.run('pendientes','SEGURIDAD')).body.cantidad,0);
+ assert.equal((await mock.run('list','CONDOMINO')).body.total,0);
+ assert.equal((await mock.run('list','SEGURIDAD')).body.data.some(v=>v.id===1),false);
+ assert.ok(mock.visits.some(v=>v.id===1),'se conserva registro para auditoría');
+});
+
+test('Condómino no puede eliminar visitas ajenas, de otra casa o con entrada registrada',async()=>{
+ const mock=fixture();
+ mock.visits.push({id:13,casaId:101,creadoPorUsuarioId:99,estatus:'PROGRAMADA',
+  nombreVisitante:'Ajena',casa:mock.houses[0]});
+ for(const id of ['2','13','999']){
+  const denied=await mock.run('deleteOwn','CONDOMINO',{params:{id}});
+  assert.equal(denied.status,404);
+ }
+ const entered=await mock.run('enter','SEGURIDAD',{params:{id:'1'}});
+ assert.equal(entered.status,200);
+ const denied=await mock.run('deleteOwn','CONDOMINO',{params:{id:'1'}});
+ assert.equal(denied.status,409);
+ const outsider=await mock.run('deleteOwn','SEGURIDAD',{params:{id:'1'}});
+ assert.equal(outsider.status,403);
+});
+
+test('Ruta DELETE solo condómino y aviso por polling para guardia y administrador',()=>{
+ const routes=read('backend/src/routes/visitas.routes.js');
+ const sidebar=read('docs/assets/js/site-sidebar.js');
+ const html=read('docs/visitas.html');
+ assert.match(routes,/router\.delete\('\/:id', autenticarToken, autorizarRoles\('CONDOMINO'\), deleteOwn\)/);
+ assert.match(sidebar,/if\(!\['SEGURIDAD','ADMINISTRADOR','SUPER_ADMIN'\]\.includes\(role\(\)\)\)return/);
+ assert.match(sidebar,/item\.page === 'visitas\.html' && role\(\) === 'CONDOMINO'/);
+ assert.match(html,/id="residentRegisterPanel"/);
+ assert.match(html,/id="residentVisitHistory"/);
+ assert.match(html,/id="residentVisitForm"/);
+ assert.match(html,/id="residentVisitsList"/);
+ assert.match(html,/if\(actualRole==='CONDOMINO'\)\{renderResidentVisits\(\);return;\}/);
+ assert.match(html,/function saveResidentVisit\(event\)/);
+ assert.match(html,/method:'DELETE'/);
+ assert.match(html,/notifyVisitsChanged\(\)/);
+ assert.match(html,/if\(\(actualIsSecurity\|\|actualIsAdmin\) && !document\.hidden/);
 });
