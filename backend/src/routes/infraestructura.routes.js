@@ -7,12 +7,14 @@ const state=require('../services/infraestructura-state.service');
 const router=express.Router();
 const admin=autorizarRoles('ADMINISTRADOR','SUPER_ADMIN');
 router.use((_req,res,next)=>{res.set('Cache-Control','private, no-store');next();});
-router.get('/estado',autenticarToken,admin,(_req,res)=>{
+router.get('/estado',autenticarToken,admin,async(_req,res)=>{
+  try {
   const sync=require('../services/zkteco-autosync.service').getZktecoAutoSyncStatus();
-  res.json({ok:true,...state.status(),autoSync:{ultimoIntento:sync.lastRun,ultimoExito:sync.lastSuccessAt,fallos:sync.consecutiveFailures,ejecutando:sync.running}});
+  res.json({ok:true,...await state.status(),autoSync:{ultimoIntento:sync.lastRun,ultimoExito:sync.lastSuccessAt,fallos:sync.consecutiveFailures,ejecutando:sync.running}});
+  }catch(_){res.status(503).json({ok:false,message:'Estado de infraestructura no disponible en MySQL'});}
 });
 router.post('/zkteco/reintentar',autenticarToken,admin,async(_req,res)=>{
-  try{res.json({ok:true,diagnostico:await state.retryZkteco(),...state.status()});}
+  try{res.json({ok:true,diagnostico:await state.retryZkteco(),...await state.status()});}
   catch(_){res.status(503).json({ok:false,message:'No se completó el diagnóstico desde Hostinger'});}
 });
 router.get('/zkteco/logs',autenticarToken,admin,async(_req,res)=>{
@@ -29,10 +31,12 @@ router.get('/zkteco/logs',autenticarToken,admin,async(_req,res)=>{
     res.json({ok:true,data:rows.map(row=>({fecha:row.createdAt,accion:row.accion,error:category(row.error)}))});
   }catch(_){res.status(503).json({ok:false,message:'No se pudieron consultar los logs históricos del ZKTeco'});}
 });
-router.post('/orden',autenticarToken,admin,(req,res)=>{
+router.post('/orden',autenticarToken,admin,async(req,res)=>{
   if(!['DIAGNOSTICO','CONMUTADOR','ZKTECO','TODOS'].includes(req.body?.accion))return res.sendStatus(400);
-  const result=state.queue(req.body.accion,req.usuario.usuarioId);
-  return res.status(result.error?409:202).json({ok:!result.error,...result});
+  try{
+    const result=await state.queue(req.body.accion,req.usuario.usuarioId);
+    return res.status(result.error?409:202).json({ok:!result.error,...result});
+  }catch(_){return res.status(503).json({ok:false,message:'No se pudo guardar la orden en MySQL'});}
 });
 router.post('/agente',async(req,res)=>{
   const key=process.env.INFRA_AGENT_TOKEN||'';

@@ -48,6 +48,8 @@ async function iniciarServidor() {
         await require('./services/proyectos-extraordinarios-schema.service').asegurarProyectosExtraordinarios();
         await require('./services/viviendas-schema.service').asegurarViviendas();
         await require('./services/zkteco-schema.service').asegurarEsquemaZkteco();
+        try { await require('./services/infraestructura-store.service').ensure(); }
+        catch (_) { console.error('Infraestructura MySQL no disponible; se reintentará al consultar. El modo dinámico permanece cerrado sin verificación.'); }
         try {
             await require('./services/roles-migration.service').aplicarMigracionRoles();
         } catch (error) {
