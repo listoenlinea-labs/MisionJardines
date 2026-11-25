@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { Usuario, Rol } = require('../models');
 const { seleccionarCasa } = require('../services/viviendas.service');
 const { canAccess } = require('../config/permissions');
-const modules = { casas:'bases_datos.html', cuotas:'cuotas.html', eventos:'calendario.html', accesos:'seguridad.html', visitas:'visitas.html', dashboard:'index.html', viviendas:'viviendas.html', pagos:'pagos.html', conexion:'conexion.html' };
+const modules = { casas:'bases_datos.html', cuotas:'cuotas.html', eventos:'calendario.html', accesos:'seguridad.html', visitas:'visitas.html', dashboard:'index.html', viviendas:'viviendas.html', pagos:'pagos.html', conexion:'conexion.html', infraestructura:'infraestructura.html' };
 
 async function autenticarToken(req, res, next) {
     const authorizationHeader = req.headers.authorization;

@@ -30,6 +30,7 @@
       { page: 'mapa.html', label: 'Mapa', icon: 'map', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO' },
       { page: 'visitas.html', label: 'Visitas', icon: 'visits', roles: 'SUPER_ADMIN,ADMINISTRADOR,SEGURIDAD,CONDOMINO' },
       { page: 'zkteco.html', label: 'ZKTeco', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
+      { page: 'infraestructura.html', label: 'Infraestructura', icon: 'connection', roles: 'SUPER_ADMIN,ADMINISTRADOR' },
       { page: 'conmutador.html', label: 'Conmutador', icon: 'phone', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,SEGURIDAD' },
       { page: 'reportes.html', label: 'Reportes', icon: 'reports', roles: 'SUPER_ADMIN,ADMINISTRADOR,MANTENIMIENTO,SEGURIDAD,CONDOMINO' },
       { page: 'anuncios.html', label: 'Avisos', icon: 'ads', roles: 'SUPER_ADMIN,ADMINISTRADOR,MESA_DIRECTIVA,MANTENIMIENTO,SEGURIDAD,CONDOMINO' },
@@ -53,6 +54,7 @@
     const administrationOrder = [
       'analisis-cuotas.html',
       'zkteco.html',
+      'infraestructura.html',
       'bases_datos.html',
       'verificacion-cuentas.html',
       'auto-users.html'
