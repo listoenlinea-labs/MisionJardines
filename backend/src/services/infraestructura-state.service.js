@@ -8,7 +8,8 @@ const normalizeIP = ip => String(ip || '').replace(/^::ffff:/i,'');
 const dynamicEnabled = () => process.env.INFRA_DYNAMIC_ZKTECO === 'true';
 const configured = () => Buffer.byteLength(process.env.INFRA_AGENT_TOKEN || '') >= 32;
 const fallback = () => process.env.ZKTECO_DIRECT_HOST || process.env.ZKTECO_HOST;
-const ttl = 180000;
+// La tarea comprobada de Windows se ejecuta cada 5 minutos.
+const ttl = 12 * 60 * 1000;
 let heartbeat = null, verified = null, probe = null, job = null, history = [];
 let busy = false, lastAttempt = 0;
 const fresh = () => !!heartbeat && Date.now()-heartbeat.at < ttl;
@@ -36,12 +37,12 @@ function queue(action,user) {
   if (!fresh()) return {error:'Agente de caseta sin comunicación reciente'};
   if (['ZKTECO','TODOS'].includes(action) && !dynamicEnabled()) return {error:'Activa el modo IP dinámica después de validar el agente y la serie del C3'};
   if (job && ['PENDIENTE','EN_EJECUCION'].includes(job.estado)) return {error:'Hay una operación en curso'};
-  job={id:randomUUID(),accion:action,usuarioId:user,estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+180000};
+  job={id:randomUUID(),accion:action,usuarioId:user,estado:'PENDIENTE',creada:Date.now(),vence:Date.now()+12*60*1000};
   remember({...job}); return {orden:job};
 }
 async function verify(ip, force=false, createClient) {
   if (busy || (!force && Date.now()-lastAttempt < 45000)) return;
-  if (!force && verified?.ip === ip && probe?.ok) return;
+  if (!force && verified?.ip === ip && probe?.ok && Date.now()-verified.at < 10*60*1000) return;
   if (!String(process.env.INFRA_C3_SERIAL || '').trim()) { probe={ok:false,detalle:'Falta configurar el número de serie autorizado',at:Date.now()}; return; }
   busy=true; lastAttempt=Date.now();
   let client;
@@ -77,6 +78,6 @@ async function report(ip,equipos,result) {
   if(job?.estado==='PENDIENTE') { job.estado='EN_EJECUCION'; order={id:job.id,accion:job.accion}; }
   const force=order && ['ZKTECO','TODOS','DIAGNOSTICO'].includes(order.accion);
   if (dynamicEnabled() && equipos.zkteco===true) await verify(ip,Boolean(force));
-  return {orden:order};
+  return {orden:order, automatico:dynamicEnabled(), zktecoConfirmado:Boolean(dynamicEnabled() && effectiveHost()===ip && probe?.ok), ipEnUso:effectiveHost()||null};
 }
 module.exports={publicIP,normalizeIP,dynamicEnabled,configured,effectiveHost,status,queue,report};
