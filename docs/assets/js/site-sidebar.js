@@ -61,6 +61,7 @@
       for (const item of group.items) {
         if (item.page === 'cuotas.html') continue; // Oculto, no eliminado.
         if (['index.html', 'viviendas.html'].includes(item.page)) primary.push(item);
+        else if (item.page === 'visitas.html' && role() === 'CONDOMINO') community.push(item);
         else if (securityPages.includes(item.page)) security.push(item);
         else if (administrationOrder.includes(item.page)) administration.push(item);
         else if (MJPermissions.canAccess('CONDOMINO', item.page)) community.push(item);
@@ -74,7 +75,7 @@
         (bOrder < 0 ? administrationOrder.length : bOrder);
     });
     // El grupo Comunidad mantiene un orden estable sin alterar roles ni rutas.
-    const communityOrder = ['pagos.html', 'casa-club.html', 'anuncios.html', 'calendario.html', 'directorio.html'];
+    const communityOrder = ['pagos.html', 'casa-club.html', 'visitas.html', 'anuncios.html', 'calendario.html', 'directorio.html'];
     community.sort((a, b) => {
       const aIndex = communityOrder.indexOf(a.page);
       const bIndex = communityOrder.indexOf(b.page);
@@ -421,7 +422,7 @@
   // La consulta responde únicamente un número, sin datos de visitantes.
   // En modo portal se ejecuta en el padre para evitar duplicados en iframes.
   function watchVisitNotices(aside) {
-    if(role()!=='SEGURIDAD')return;
+    if(!['SEGURIDAD','ADMINISTRADOR','SUPER_ADMIN'].includes(role()))return;
     const link=aside.querySelector('.mj-side-link[href="visitas.html"]');
     if(!link)return;
     const api=window.MJ_API_URL||'https://api-misionjardines.listoenlinea.host/api';
@@ -503,7 +504,7 @@
     if (!body.classList.contains('mj-home')) document.querySelector('body > header')?.remove();
     const aside = createSidebar();
     createTopAccount();
-    if (role() !== 'SEGURIDAD') {
+    if (role() !== 'SEGURIDAD' && !(role()==='CONDOMINO' && page()==='visitas.html')) {
       const houseBox=document.createElement('div');
       houseBox.style.cssText='padding:10px 12px;border-bottom:1px solid #e4e8ef';
       houseBox.innerHTML='<label style="font-size:11px;font-weight:700;color:var(--mj-side-orange)">Vivienda seleccionada<select aria-label="Vivienda seleccionada" style="width:100%;margin-top:6px;padding:7px;border:1px solid #ddd;border-radius:7px"></select></label>';
