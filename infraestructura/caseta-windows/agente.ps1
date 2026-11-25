@@ -1,7 +1,7 @@
 # Sustituye recuperar-conmutador.ps1; reutiliza la tarea existente.
 $ErrorActionPreference = 'Stop'
 $VBox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
-$VM = 'conmutador'
+$VMName = 'conmutador'
 $Base = 'C:\MisionJardines'
 $Log = Join-Path $Base 'recuperacion.log'
 
@@ -9,7 +9,7 @@ function Write-Log($Message) {
     Add-Content -Path $Log -Value "$(Get-Date -Format s) - $Message"
 }
 function Ensure-VM {
-    $info = & $VBox showvminfo $VM --machinereadable
+    $info = & $VBox showvminfo $VMName --machinereadable
     if ($LASTEXITCODE -ne 0) { throw 'No se encontro la maquina virtual' }
     $state = $info | Where-Object { $_ -match '^VMState=' }
     if ($state -eq 'VMState="running"') {
@@ -19,7 +19,7 @@ function Ensure-VM {
     if ($state -notin @('VMState="poweroff"','VMState="saved"','VMState="aborted"')) {
         throw "Estado inesperado: $state"
     }
-    & $VBox startvm $VM --type headless | Out-Null
+    & $VBox startvm $VMName --type headless | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Error al iniciar VirtualBox' }
     Write-Log 'Maquina virtual iniciada correctamente'
     return $true
@@ -97,7 +97,20 @@ try {
         Write-Log 'Reporte enviado. ZKTeco pendiente de verificacion.'
     }
 } catch {
-    Write-Log 'ERROR: No se pudo reportar infraestructura; se reintentara en la siguiente ejecucion.'
+    $failure = $_
+    Write-Log ('ERROR infraestructura: ' + $failure.Exception.GetType().Name)
+    if ($failure.Exception.Response) {
+        Write-Log ('Codigo HTTP: ' + [int]$failure.Exception.Response.StatusCode)
+    }
+    if ($failure.ErrorDetails.Message) {
+        try {
+            $diagnostico = $failure.ErrorDetails.Message | ConvertFrom-Json
+            if ($diagnostico.motivo -in @('IP_REPORTADA_INVALIDA','ORIGEN_NO_IPV4_PUBLICA','IP_NO_COINCIDE')) {
+                Write-Log ('Validacion IP: ' + $diagnostico.motivo)
+            }
+        } catch { }
+    }
+    Write-Log 'Se reintentara en la siguiente ejecucion.'
     exit 1
 }
 if (!$vm) { exit 1 }

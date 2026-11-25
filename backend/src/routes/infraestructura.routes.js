@@ -41,7 +41,24 @@ router.post('/agente',async(req,res)=>{
   const ip=state.normalizeIP(req.ip);
   // No aceptar destinos arbitrarios ni IP privada; debe coincidir con el origen
   // observado por el proxy de Hostinger (trust proxy 1, ingress único).
-  if(!state.publicIP(ip)||ip!==req.body?.ip)return res.status(422).json({ok:false,message:'La IP reportada no coincide con el origen público observado'});
+  if(!state.publicIP(ip)||ip!==req.body?.ip){
+    // Solo después de autenticar al agente. Registrar únicamente valores IP,
+    // nunca cabeceras completas, credenciales ni el cuerpo de la solicitud.
+    const {isIP}=require('node:net');
+    const safeIP=value=>{
+      const normalized=state.normalizeIP(String(value||'').trim());
+      return isIP(normalized)?normalized:null;
+    };
+    const reported=safeIP(req.body?.ip);
+    const observed=safeIP(ip);
+    const reason=!state.publicIP(reported)?'IP_REPORTADA_INVALIDA':!state.publicIP(ip)?'ORIGEN_NO_IPV4_PUBLICA':'IP_NO_COINCIDE';
+    const forwarded=String(req.get('X-Forwarded-For')||'').split(',').slice(-8).map(safeIP).filter(Boolean);
+    console.warn('infraestructura_agente_422',JSON.stringify({
+      motivo:reason,ipReportada:reported,ipObservada:observed,
+      ipSocket:safeIP(req.socket?.remoteAddress),cadenaProxyNoVerificada:forwarded
+    }));
+    return res.status(422).json({ok:false,message:'La IP reportada no coincide con el origen público observado',motivo:reason,ipReportada:reported,ipObservada:observed});
+  }
   const equipos={};
   for(const name of ['vm','asterisk','agente','grandstream','zkteco']){
     const value=req.body?.equipos?.[name];
