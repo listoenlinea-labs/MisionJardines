@@ -186,7 +186,7 @@ function createService(store){
         if(initial.refreshId&&s.refresh?.id===initial.refreshId&&s.refresh.estado==='PENDIENTE'&&Date.now()<s.refresh.vence){
           s.refresh.estado='COMPLETADA';s.refresh.completada=Date.now();
         }
-        if(monitor.economico&&result?.id===s.job?.id&&s.job?.estado==='EN_EJECUCION'&&typeof result.ok==='boolean'){
+        if(monitor.economico&&s.heartbeat?.ip===ip&&result?.id===s.job?.id&&s.job?.estado==='EN_EJECUCION'&&typeof result.ok==='boolean'){
           expire(s,remember);
           if(s.job.estado==='EN_EJECUCION'){
             const needsC3=['ZKTECO','TODOS'].includes(s.job.accion);
@@ -218,7 +218,7 @@ function createService(store){
     });
   }
   async function retryZkteco(){
-    const flight=await store.mutate(s=>claim(s,true));
+    const flight=await store.mutate(s=>claim(s,!(s.probe?.ok&&Date.now()-s.probe.at<retryMs)));
     await verify(flight);
     const s=await store.read(),target=host(s);
     if(s.lastDiagnostic&&Date.now()-s.lastDiagnostic.at<15000&&s.lastDiagnostic.host===target)return s.lastDiagnostic;
