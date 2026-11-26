@@ -1,27 +1,81 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 24/nov/2026, 23:30, America/Mexico_City.
-**SHA de main consultado:** `d1f34977cf8aa1079feb04c078817b65021b88fc`.
+**Última revisión:** 25/nov/2026, 23:31, America/Mexico_City.
+**SHA de main consultado:** `6aeb3c6cfa1348f2c461910de1f283fccb633329`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `9b7ea86540abaa4d55982aa7e0e7f5beff1a74a2`,
-historial de 89 commits, PR #477–#486, PR abiertos, archivos de prueba y evidencia
-de checks en GitHub. Se excluyó `2ae81f1bc61f5b31e4374bdd6c7ec306acb0fbc9`,
-dedicado exclusivamente a la bitácora anterior. Los diez PR de producto están
+comparación de main desde `d1f34977cf8aa1079feb04c078817b65021b88fc`,
+historial de 36 commits, PR #487–#499, PR abiertos, archivos de prueba y evidencia
+de checks en GitHub. Se excluyó `3b25edb206e92c4d473f1db2273380f4261f72e1`,
+dedicado exclusivamente a la bitácora anterior. Los trece PR de producto están
 fusionados; no hay PR abiertos ni revertidos nuevos. Sus merges devuelven cero
-workflows y cero estados. Los cuerpos de #477, #480 y #481 conservan textos de
-borrador/no fusionado ya desactualizados: el estado efectivo de GitHub es fusionado.
-No hay confirmaciones nuevas accesibles del usuario sobre despliegue, MySQL, cámara,
-iPhone, Asterisk, llamadas o pruebas físicas. La conversación accesible solo muestra
-preparación de una mini PC y un script de instalación, no ejecución ni funcionamiento
-confirmados. No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no
-ejecutó SQL, pagos, visitas, llamadas, escrituras C3 ni pruebas físicas. No se publican
-credenciales, teléfonos, correos, identificaciones, comprobantes ni contenido privado
-del padrón.
+workflows y cero estados. El cuerpo de #487 conserva el texto «borrador/no fusionado»,
+pero el estado efectivo de GitHub es fusionado. #492 introdujo una rotura de sintaxis
+del agente que #493 corrige en main; #496 queda sustituido en frecuencia/comportamiento
+por #497.
+La conversación accesible confirma un intento de configuración remota de la mini PC el
+25/nov y el error de `sudo` «invalid path» sobre `/etc/asterisk/pjsip.conf`; no
+confirma instalación terminada, servicio Asterisk operativo ni llamada desde ese equipo.
+Los PR registran evidencia de un error 0x80041319 del Programador de tareas de caseta,
+pero #499 solo incorpora la corrección al repositorio: falta ejecutarla en Windows.
+No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no ejecutó SQL,
+pagos, visitas, llamadas, escrituras C3 ni pruebas físicas. No se publican credenciales,
+teléfonos, correos, direcciones de red, comprobantes ni contenido privado del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
 [reglas de pagos/C3](PAGOS_ACCESO_C3.md). Este archivo conserva estado y evidencia;
 no redefine las reglas de negocio ni sustituye las fuentes originales.
+
+## Implementado en main el 25/nov/2026
+
+Los PR [#487](https://github.com/listoenlinea-labs/MisionJardines/pull/487)–[#489](https://github.com/listoenlinea-labs/MisionJardines/pull/489)
+incorporan recuperación y dirección dinámica para la infraestructura de caseta. La
+página administrativa y sus rutas quedan limitadas a ADMINISTRADOR/SUPER_ADMIN; separa
+Conmutador y ZKTeco, muestra únicamente estados disponibles y ofrece diagnósticos o
+reintentos acotados. El resultado final de #489, cuando
+`INFRA_DYNAMIC_ZKTECO=true`, usa exclusivamente la IP pública reportada por el agente
+y validada mediante protocolo/serie C3, sin probar ni usar automáticamente el host
+manual. Sin reporte reciente, puerto y serie válidos, falla cerrado. En modo manual
+explícito se conserva `ZKTECO_DIRECT_HOST`. Esto sustituye el failover inicialmente
+descrito por #487; el cuerpo de ese PR también quedó desactualizado al decir no
+fusionado.
+
+Los PR [#490](https://github.com/listoenlinea-labs/MisionJardines/pull/490)–[#493](https://github.com/listoenlinea-labs/MisionJardines/pull/493)
+añaden bitácora paginada/móvil, diagnóstico seguro de rechazos HTTP 422 y transporte
+IPv4 explícito del agente Windows. #491 diagnostica la discrepancia IPv4/IPv6 sin
+relajar validaciones; #492 fuerza `curl.exe -4`, pero introdujo una duplicación que
+rompía la sintaxis. #493 reconstruye el agente desde la versión intacta y agrega un
+validador con el parser nativo de PowerShell. La corrección existe en main, pero no se
+ejecutó PowerShell ni se reemplazó el archivo de caseta desde esta revisión.
+
+El PR [#494](https://github.com/listoenlinea-labs/MisionJardines/pull/494) mueve estado,
+órdenes y hasta 500 eventos recientes a dos tablas InnoDB compartidas, con transacciones
+cortas, concesión durable, rechazo de resultados tardíos y modo dinámico fail-closed.
+No recupera la historia que solo existía en memoria. La presencia del código no prueba
+que las tablas se hayan creado ni que Hostinger/MySQL o C3 estén funcionando.
+
+Los PR [#495](https://github.com/listoenlinea-labs/MisionJardines/pull/495)–[#497](https://github.com/listoenlinea-labs/MisionJardines/pull/497)
+iteran actualización y monitoreo. #495 agrega estados visuales sin equiparar una respuesta
+HTTP con equipos físicos. #496 propuso muestreo casi en vivo; el comportamiento final de
+#497 elimina el polling de red continuo de la página y deja revisión/recuperación al
+encender Windows y cada dos horas, más acciones manuales bajo demanda mediante canal
+HTTPS saliente. Puede tardar hasta dos horas en detectar automáticamente una avería o
+cambio de IP. No altera frecuencias de pagos, llamadas o autolectura C3.
+
+Los PR [#498](https://github.com/listoenlinea-labs/MisionJardines/pull/498)–[#499](https://github.com/listoenlinea-labs/MisionJardines/pull/499)
+corrigen la cabecera adaptable y el instalador de Windows. #499 elimina del XML el bloque
+opcional de reinicio que provocaba el error 0x80041319/`Count`, conserva el principal
+S4U, repetición PT2H, respaldos y restauración del XML anterior si falla. Es una
+corrección estática del instalador; falta ejecutarla como administrador en la caseta y
+comprobar la tarea real.
+
+Los trece merges devuelven cero workflows y cero estados. En main existen 16 bloques
+`node:test` en cuatro archivos nuevos de Infraestructura (3 bitácora, 3 panel, 2
+actualización y 8 estado). Los PR describen compilación V8, simulaciones de almacenamiento,
+red/reloj/UI y nueve comprobaciones estáticas para #498, pero no publican una ejecución
+conjunta reproducible. #493 no pudo usar el parser PowerShell y #499 solo tuvo revisión
+estática. No hay CI ni prueba de navegador, Hostinger/MySQL, Windows Task Scheduler,
+Ubuntu/SSH, C3, Grandstream, Asterisk, reinicio, apagón o llamada real.
 
 ## Implementado en main el 24/nov/2026
 
@@ -943,6 +997,9 @@ que el caso real ya esté desplegado o corregido en la base de producción.
 
 | Área | Estado | Evidencia y límites |
 | --- | --- | --- |
+| Infraestructura de caseta | Implementada en main; despliegue e instalación local pendientes | #487–#499 agregan panel admin, agente, estado persistente, recuperación PT2H y correcciones Windows. Merge no prueba Hostinger, Windows, Ubuntu, Asterisk o equipos físicos |
+| ZKTeco con IP dinámica | Código final fail-closed implementado; activación y C3 real pendientes | #489/#494 usan exclusivamente IP reportada y validada cuando el modo dinámico está activo; MySQL compartido conserva estado/órdenes. El host manual solo opera en modo manual explícito |
+| Monitoreo y recuperación | Revisión cada 2 h y acciones manuales en main; migración de scripts pendiente | #497 sustituye el muestreo casi en vivo de #496. Puede tardar hasta 2 h; #499 corrige XML 0x80041319 pero no fue ejecutado en caseta |
 | Diagnóstico pasivo Asterisk | Implementado en main y apagado por defecto; VM/AMI y llamadas reales pendientes | #477 añade modal, tabla de eventos y observador AMI opcional de solo lectura. No cambia marcación por defecto; respuesta SIP/duración no garantizan conversación humana |
 | Visitas por rol y privacidad | Implementado en main; MySQL, dispositivos y flujo extremo a extremo pendientes | #478/#482/#484–#486 separan Condómino, Seguridad y Administración, añaden contador/registro exprés, cancelación auditada, foto cifrada y contacto solo admin. Polling no es push y perder la clave impide leer fotos |
 | Avisos editor/vigencia/móvil | Implementado en main; validación E2E y visual pendiente | #479–#481/#483 consolidan editor seguro, vencimiento por días, tarjetas/modal y correcciones móviles. Los cuerpos de #480/#481 están desactualizados respecto al merge real |
@@ -1044,6 +1101,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Caso | Confirmación | Alcance |
 | --- | --- | --- |
+| Mini PC Asterisk (25/nov/2026) | El usuario confirmó que estaba configurándola remotamente y mostró el error de `sudo` «invalid path: /etc/asterisk/pjsip.conf» | Confirma el intento y el bloqueo concreto; no confirma que Asterisk esté instalado, que el archivo exista, que los servicios arranquen ni que haya llamada física desde la mini PC |
 | Conmutador físico de caseta | El usuario confirmó que caseta timbró, que se oyó un pitido después y que una prueba pasó tras corregir la configuración de red | Confirma esa prueba puntual de señalización; no confirma audio bidireccional, marcado/contestación del residente, reintento sin recargar, despliegue completo ni estabilidad. No se publican números ni direcciones de red |
 | Pago de prueba con TAGs de una misma vivienda | El usuario informó que todos cambiaron después de validar como administrador | Confirma esa prueba concreta; no prueba todas las viviendas ni autoaprobación |
 | Reutilización de folio durante pruebas | Tras revisar/limpiar el diario antiguo, el usuario informó que volvió a funcionar | No autoriza reutilizar referencias reales; cada depósito distinto requiere su referencia |
@@ -1071,6 +1129,10 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 25/nov/2026 | PR #487–#499, consulta GitHub de workflows/estados en los trece merges | **0 workflows y 0 estados** en los 13 merges | No hay CI observable; merge y validaciones declaradas no prueban despliegue |
+| 25/nov/2026 | Cuatro archivos `backend/test/infraestructura-*.test.js` en main | **16 bloques `node:test` presentes** (3 + 3 + 2 + 8); no se recuperó comando/log de ejecución conjunta | Evidencia de pruebas en código, no suite verde ni integración real |
+| 25/nov/2026 | #487–#497, compilación V8 y simulaciones declaradas en los PR | Casos aislados de permisos, red/reloj, almacenamiento compartido, UI, órdenes y caducidad descritos como correctos; **suite completa no ejecutada** | No acredita PowerShell, Task Scheduler, Hostinger/MySQL, Ubuntu, C3 o Asterisk reales |
+| 25/nov/2026 | #498/#499, validación visual/instalador | #498 declara **9 comprobaciones estáticas**; #499 revisión estática del XML. Sin navegador ni Windows real | El error 0x80041319 no se considera corregido físicamente hasta reinstalar y comprobar la tarea |
 | 24/nov/2026 | PR #477–#486, consulta GitHub de workflows/estados en los diez merges | **0 workflows y 0 estados** en los 10 merges | No hay CI observable; merge y verificaciones declaradas no prueban despliegue |
 | 24/nov/2026 | Siete archivos focalizados de Asterisk, Visitas, permisos, Avisos y cámara/cifrado | **58 bloques presentes** (5 Node + 7 Python + 19 + 8 + 3 + 12 + 4); sin ejecución conjunta recuperable | Evidencia de código, no suite integral aprobada; no prueba VM, MySQL, navegador o dispositivo real |
 | 24/nov/2026 | #477, diagnóstico Asterisk/AMI | **5 Node + 7 Python presentes**; backend/eventos sintéticos declarados, Python no ejecutado contra VM | No acredita AMI, HT813, PSTN, respuesta humana ni duración física |
@@ -1284,6 +1346,10 @@ el índice ni publica datos personales o contenido adicional del padrón.
 
 | Pendiente | Qué falta para cerrarlo |
 | --- | --- |
+| Infraestructura #487–#499 | Desplegar frontend/backend en ambiente controlado; comprobar permisos exactos, rutas, timeout, ausencia de datos privados, estado desconocido y rollback. Confirmar que #497 es el comportamiento final y que no queda polling de #496 |
+| MySQL/IP dinámica ZKTeco #489/#494 | Respaldar y verificar creación idempotente de las dos tablas, transacciones/concesiones y reinicio multiinstancia. Mantener modo manual hasta confirmar agente, IPv4, serie, protocolo e inventario de solo lectura; luego activar dinámico y probar cambio de IP, caducidad, caída MySQL y retorno manual sin escribir TAGs |
+| Windows/Ubuntu de caseta #491–#499 | Ejecutar primero el parser de #493; respaldar scripts/XML; instalar #499 como administrador y verificar principal S4U, PT2H, arranque, historial y restauración ante fallo. Instalar solo comandos SSH restringidos de estado/recuperación y comprobar permisos sin exponer secretos |
+| Validación física de infraestructura | Probar desde red externa: revisión inicial y PT2H, acción manual, reinicio de backend, reinicio/apagón Windows, VM, Asterisk/CLI, contactos SIP, Grandstream, TCP/serie C3, latencia/carga Hostinger y rollback. Una respuesta HTTP o un contacto SIP no prueban audio, apertura ni acceso |
 | Diagnóstico Asterisk #477 | Desplegar primero frontend/backend con telemetría apagada y verificar el modal sin afectar llamadas. En ventana controlada, crear usuario AMI local mínimo, aplicar SQL/auto-creación, activar observador y probar timbrado/no respuesta/ocupado/fallo/respuesta/duración y reversión. Revisar privacidad y no equiparar SIP contestado con persona contestando |
 | Nueva mini PC de Asterisk | La conversación solo confirma preparación/script, no instalación. Verificar sistema, secretos SIP existentes sin publicarlos, servicio principal, spool, AMI local, observador opcional, reinicio/rollback y una llamada controlada antes de sustituir la VM anterior |
 | Visitas #478/#482/#484–#486 | Desplegar frontend/backend juntos en clon; fijar y respaldar de forma segura la clave de cifrado antes de guardar fotos. Probar Condómino/Seguridad/Admin/Mesa, casa de sesión, privacidad JSON, contador/polling, doble entrada 409, cancelación auditada, cámara iPhone/Android, EXIF, tamaños/MIME, contacto solo admin y dos dispositivos reales |
@@ -1419,6 +1485,15 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-25
+
+- Main consultado a las 23:31, America/Mexico_City, en `6aeb3c6cfa1348f2c461910de1f283fccb633329`, 36 commits por delante del SHA guardado.
+- Se excluyó `3b25edb`, que solo actualizó esta bitácora. Como producto se verificaron los PR #487–#499 fusionados; no hay PR abiertos ni revertidos nuevos. El cuerpo de #487 conserva «borrador/no fusionado» aunque GitHub confirma el merge.
+- #487–#499 implementan panel/estado de Infraestructura, IP dinámica C3 fail-closed, persistencia MySQL, agente IPv4, revisión/recuperación PT2H y correcciones de UI/instalador. #493 corrige la rotura introducida por #492; #497 sustituye el monitoreo casi en vivo de #496.
+- Los trece merges devuelven cero workflows y cero estados. Hay 16 bloques Node en cuatro archivos focalizados; se conservan resultados V8/simulados/estáticos declarados, sin suite conjunta, PowerShell, navegador, Hostinger/MySQL o hardware real.
+- El usuario confirmó un intento remoto de configurar la mini PC y el error de ruta de `sudo` para `/etc/asterisk/pjsip.conf`; no instalación ni llamada exitosa. #499 registra una corrección estática para el error 0x80041319 de caseta, pendiente de ejecutar.
+- Esta revisión no consultó ni modificó Hostinger, MySQL o C3, ni ejecutó pagos, TAGs, llamadas, reinicios o pruebas físicas.
 
 ### 2026-11-24
 
