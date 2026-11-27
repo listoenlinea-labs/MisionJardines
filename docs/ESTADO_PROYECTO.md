@@ -1,25 +1,21 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 25/nov/2026, 23:31, America/Mexico_City.
-**SHA de main consultado:** `6aeb3c6cfa1348f2c461910de1f283fccb633329`.
+**Última revisión:** 26/nov/2026, 23:28, America/Mexico_City.
+**SHA de main consultado:** `0bbaca8fb8fb909d5669cff5863955eb53ed413c`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `d1f34977cf8aa1079feb04c078817b65021b88fc`,
-historial de 36 commits, PR #487–#499, PR abiertos, archivos de prueba y evidencia
-de checks en GitHub. Se excluyó `3b25edb206e92c4d473f1db2273380f4261f72e1`,
-dedicado exclusivamente a la bitácora anterior. Los trece PR de producto están
-fusionados; no hay PR abiertos ni revertidos nuevos. Sus merges devuelven cero
-workflows y cero estados. El cuerpo de #487 conserva el texto «borrador/no fusionado»,
-pero el estado efectivo de GitHub es fusionado. #492 introdujo una rotura de sintaxis
-del agente que #493 corrige en main; #496 queda sustituido en frecuencia/comportamiento
-por #497.
-La conversación accesible confirma un intento de configuración remota de la mini PC el
-25/nov y el error de `sudo` «invalid path» sobre `/etc/asterisk/pjsip.conf`; no
-confirma instalación terminada, servicio Asterisk operativo ni llamada desde ese equipo.
-Los PR registran evidencia de un error 0x80041319 del Programador de tareas de caseta,
-pero #499 solo incorpora la corrección al repositorio: falta ejecutarla en Windows.
-No se consultaron Hostinger, MySQL o C3 directamente y esta revisión no ejecutó SQL,
-pagos, visitas, llamadas, escrituras C3 ni pruebas físicas. No se publican credenciales,
-teléfonos, correos, direcciones de red, comprobantes ni contenido privado del padrón.
+comparación de main desde `6aeb3c6cfa1348f2c461910de1f283fccb633329`,
+historial de un commit, PR abiertos y evidencia de checks en GitHub. El único avance
+fue `0bbaca8fb8fb909d5669cff5863955eb53ed413c`, dedicado exclusivamente a la
+bitácora del 25/nov y excluido del trabajo de producto. No hay commits o PR de producto
+nuevos, PR abiertos ni revertidos nuevos. El commit documental devuelve cero workflows
+y cero estados; no se identificaron pruebas automatizadas nuevas.
+No hay confirmaciones nuevas accesibles del usuario sobre despliegue, Hostinger, MySQL,
+Windows de caseta, mini PC, Ubuntu, C3, Asterisk, llamadas, pagos, visitas o pruebas
+físicas. Se conservan sin cambios el resumen operativo, las reglas vigentes, el historial
+de pruebas confirmadas y todos los pendientes anteriores. Esta revisión no ejecutó SQL,
+pagos, visitas, llamadas, reinicios, escrituras C3 ni pruebas físicas. No se publican
+credenciales, teléfonos, correos, direcciones de red, comprobantes ni contenido privado
+del padrón.
 
 Leer junto con [AGENTS.md](../AGENTS.md),
 [índice de documentos](INDICE_DOCUMENTOS.md) y
@@ -1129,6 +1125,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 26/nov/2026 | Commit documental `0bbaca8`, consulta GitHub de workflows/estado | **0 workflows y 0 estados**; sin pruebas nuevas | El único avance desde el SHA revisado anterior fue esta bitácora; no aporta trabajo de producto ni evidencia de despliegue |
 | 25/nov/2026 | PR #487–#499, consulta GitHub de workflows/estados en los trece merges | **0 workflows y 0 estados** en los 13 merges | No hay CI observable; merge y validaciones declaradas no prueban despliegue |
 | 25/nov/2026 | Cuatro archivos `backend/test/infraestructura-*.test.js` en main | **16 bloques `node:test` presentes** (3 + 3 + 2 + 8); no se recuperó comando/log de ejecución conjunta | Evidencia de pruebas en código, no suite verde ni integración real |
 | 25/nov/2026 | #487–#497, compilación V8 y simulaciones declaradas en los PR | Casos aislados de permisos, red/reloj, almacenamiento compartido, UI, órdenes y caducidad descritos como correctos; **suite completa no ejecutada** | No acredita PowerShell, Task Scheduler, Hostinger/MySQL, Ubuntu, C3 o Asterisk reales |
@@ -1485,6 +1482,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-26
+
+- Main consultado a las 23:28, America/Mexico_City, en `0bbaca8fb8fb909d5669cff5863955eb53ed413c`, un commit por delante del SHA guardado.
+- El único commit fue `0bbaca8`, que solo actualizó esta bitácora y se excluyó del trabajo de producto. No hubo commits o PR de producto nuevos, PR abiertos ni revertidos nuevos.
+- El commit documental devuelve cero workflows y cero estados. No se identificaron pruebas automatizadas nuevas ni comandos/resultados adicionales.
+- No hubo confirmaciones nuevas accesibles sobre despliegue, Hostinger, MySQL, Windows, mini PC, Ubuntu, C3, Asterisk, llamadas o pruebas físicas. Se conservaron el resumen, las reglas, las pruebas históricas y todos los pendientes.
+- Esta revisión no consultó ni modificó producción y no ejecutó SQL, pagos, visitas, TAGs, llamadas, reinicios o pruebas físicas.
 
 ### 2026-11-25
 
