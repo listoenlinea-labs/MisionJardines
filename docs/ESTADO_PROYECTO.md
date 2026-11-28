@@ -1,14 +1,15 @@
 # Estado actualizado de Misión Jardines
 
-**Última revisión:** 26/nov/2026, 23:28, America/Mexico_City.
-**SHA de main consultado:** `0bbaca8fb8fb909d5669cff5863955eb53ed413c`.
+**Última revisión:** 27/nov/2026, 23:25, America/Mexico_City.
+**SHA de main consultado:** `b248e67948eb13f2dc6f3923fc75fda5512cea55`.
 **Fuentes de esta revisión:** relectura de AGENTS.md, índice y estado vigentes,
-comparación de main desde `6aeb3c6cfa1348f2c461910de1f283fccb633329`,
-historial de un commit, PR abiertos y evidencia de checks en GitHub. El único avance
-fue `0bbaca8fb8fb909d5669cff5863955eb53ed413c`, dedicado exclusivamente a la
-bitácora del 25/nov y excluido del trabajo de producto. No hay commits o PR de producto
-nuevos, PR abiertos ni revertidos nuevos. El commit documental devuelve cero workflows
-y cero estados; no se identificaron pruebas automatizadas nuevas.
+comparación de main desde `0bbaca8fb8fb909d5669cff5863955eb53ed413c`,
+historial de un commit, PR abiertos/actualizados y evidencia de checks en GitHub. El
+único avance fue `b248e67948eb13f2dc6f3923fc75fda5512cea55`, dedicado
+exclusivamente a la bitácora del 26/nov y excluido del trabajo de producto. No hay
+commits o PR de producto nuevos, PR abiertos/actualizados ni revertidos nuevos. El
+commit documental devuelve cero workflows y cero estados; no se identificaron pruebas
+automatizadas nuevas.
 No hay confirmaciones nuevas accesibles del usuario sobre despliegue, Hostinger, MySQL,
 Windows de caseta, mini PC, Ubuntu, C3, Asterisk, llamadas, pagos, visitas o pruebas
 físicas. Se conservan sin cambios el resumen operativo, las reglas vigentes, el historial
@@ -1125,6 +1126,7 @@ prueba no verificada. No se ejecutaron de nuevo al crear este archivo.
 
 | Fecha | Código / comando | Resultado | Interpretación |
 | --- | --- | --- | --- |
+| 27/nov/2026 | Commit documental `b248e67`, consulta GitHub de workflows/estado | **0 workflows y 0 estados**; sin pruebas nuevas | El único avance desde el SHA revisado anterior fue esta bitácora; no aporta trabajo de producto ni evidencia de despliegue |
 | 26/nov/2026 | Commit documental `0bbaca8`, consulta GitHub de workflows/estado | **0 workflows y 0 estados**; sin pruebas nuevas | El único avance desde el SHA revisado anterior fue esta bitácora; no aporta trabajo de producto ni evidencia de despliegue |
 | 25/nov/2026 | PR #487–#499, consulta GitHub de workflows/estados en los trece merges | **0 workflows y 0 estados** en los 13 merges | No hay CI observable; merge y validaciones declaradas no prueban despliegue |
 | 25/nov/2026 | Cuatro archivos `backend/test/infraestructura-*.test.js` en main | **16 bloques `node:test` presentes** (3 + 3 + 2 + 8); no se recuperó comando/log de ejecución conjunta | Evidencia de pruebas en código, no suite verde ni integración real |
@@ -1482,6 +1484,14 @@ No es un cron de Hostinger ni necesita una computadora de caseta encendida.
   reglas de negocio. No ejecuta pruebas físicas ni registra pagos. No publica secretos.
 
 ## Bitácora
+
+### 2026-11-27
+
+- Main consultado a las 23:25, America/Mexico_City, en `b248e67948eb13f2dc6f3923fc75fda5512cea55`, un commit por delante del SHA guardado.
+- El único commit fue `b248e67`, que solo actualizó esta bitácora y se excluyó del trabajo de producto. No hubo commits o PR de producto nuevos, PR abiertos/actualizados ni revertidos nuevos.
+- El commit documental devuelve cero workflows y cero estados. No se identificaron pruebas automatizadas nuevas ni comandos/resultados adicionales.
+- No hubo confirmaciones nuevas accesibles sobre despliegue, Hostinger, MySQL, Windows, mini PC, Ubuntu, C3, Asterisk, llamadas o pruebas físicas. Se conservaron el resumen, las reglas, las pruebas históricas y todos los pendientes.
+- Esta revisión no consultó ni modificó producción y no ejecutó SQL, pagos, visitas, TAGs, llamadas, reinicios o pruebas físicas.
 
 ### 2026-11-26
 
